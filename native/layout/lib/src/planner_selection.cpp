@@ -39,8 +39,11 @@ auto PlannerSelection::select_type(lispb::schema::TypeGraph const& types,
 auto PlannerSelection::select_declaration(lispb::schema::EditableSchemaDocument const& document,
                                           lispb::schema::DeclarationId const next) -> bool {
     auto const* info{document.declaration(next)};
-    if (info == nullptr || document.types().find(info->identity).has_value()) {
+    if (info == nullptr) {
         return false;
+    }
+    if (auto const semantic{document.types().find(info->identity)}) {
+        return select_type(document.types(), *semantic);
     }
     auto const next_kind{declaration_kind(document, *info)};
     if (declaration == next && !type.has_value() && identity_ == info->identity &&

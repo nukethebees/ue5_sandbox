@@ -70,7 +70,7 @@ enum class DeclarationKind {
 auto declaration_kind(DeclarationSchema const& declaration) -> DeclarationKind;
 auto declaration_head(DeclarationSchema const& declaration) -> std::string_view;
 auto declaration_name(DeclarationSchema const& declaration) -> std::string const&;
-auto contributes_semantic_type(DeclarationSchema const& declaration) -> bool;
+auto has_primary_semantic_type(DeclarationSchema const& declaration) -> bool;
 void visit_type_references(DeclarationSchema const& declaration,
                            std::function<void(std::string const&, TypeRef const&)> const& visit);
 void visit_type_references(DeclarationSchema& declaration,

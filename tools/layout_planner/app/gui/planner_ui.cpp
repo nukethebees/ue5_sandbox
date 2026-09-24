@@ -2177,6 +2177,10 @@ auto PlannerUi::load_project(std::filesystem::path const& path,
 }
 
 void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
+    structural_draft_.reset();
+    structural_creation_draft_.reset();
+    structural_creation_module_.reset();
+    open_new_structural_dialog_ = false;
     std::optional<TypeIdentity> previous_identity;
     if (project_path_ == loaded.project_path && target_name_ == loaded.target_name) {
         previous_identity = analysis_session_.inputs.selection.identity();

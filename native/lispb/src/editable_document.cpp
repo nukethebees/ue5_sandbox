@@ -4152,134 +4152,56 @@ void repair_semantic_references(codegen::Manifest& manifest,
         reference.name = new_spelling;
     };
 
-    auto const target_is_soa{std::holds_alternative<SoaType>(types.type(target).definition)};
     for (auto const& user_info : declarations) {
-        auto const user_type{types.find(user_info.identity)};
-        if (!user_type.has_value()) {
+        auto* normal{
+            std::get_if<codegen::NormalModuleSchema>(&manifest.modules[user_info.module_index])};
+        if (normal == nullptr) {
             continue;
         }
-        auto const& definition{types.type(*user_type).definition};
-        auto& module{manifest.modules[user_info.module_index]};
-        if (auto* normal{std::get_if<codegen::NormalModuleSchema>(&module)}) {
-            auto& declaration{normal->declarations.at(user_info.declaration_index)};
-            std::visit(
-                [&](auto& schema) {
-                    using T = std::decay_t<decltype(schema)>;
-                    if constexpr (std::is_same_v<T, codegen::EnumSchema>) {
-                        auto const& resolved{std::get<EnumType>(definition)};
-                        if (schema.underlying_type.has_value() &&
-                            resolved.underlying_type.has_value()) {
-                            repair_ref(*schema.underlying_type, resolved.underlying_type->type);
-                        }
-                    } else if constexpr (std::is_same_v<T, codegen::IntegerScalarSchema>) {
-                        auto const& resolved{std::get<IntegerScalarType>(definition)};
-                        if (schema.relationship.has_value() && resolved.relationship.has_value()) {
-                            repair_ref(schema.relationship->target,
-                                       resolved.relationship->target.type);
-                        }
-                    } else if constexpr (std::is_same_v<T, codegen::LinearQuantizedSchema>) {
-                        repair_ref(schema.source,
-                                   std::get<LinearQuantizedType>(definition).source.type);
-                    } else if constexpr (std::is_same_v<T, codegen::IntegerVarintSchema>) {
-                        repair_ref(schema.source,
-                                   std::get<IntegerVarintType>(definition).source.type);
-                    } else if constexpr (std::is_same_v<T, codegen::OptionalSentinelSchema>) {
-                        repair_ref(schema.source,
-                                   std::get<OptionalSentinelType>(definition).source.type);
-                    } else if constexpr (std::is_same_v<T, codegen::OptionalPresenceBitSchema>) {
-                        repair_ref(schema.source,
-                                   std::get<OptionalPresenceBitType>(definition).source.type);
-                    } else if constexpr (std::is_same_v<T, codegen::PackedValueSchema>) {
-                        auto const& resolved{std::get<PackedType>(definition)};
-                        repair_ref(schema.storage_type, resolved.storage_type.type);
-                        for (std::size_t index{}; index < schema.segments.size(); ++index) {
-                            auto* field{
-                                std::get_if<codegen::PackedFieldSchema>(&schema.segments[index])};
-                            auto const* resolved_field{
-                                std::get_if<PackedField>(&resolved.segments[index])};
-                            if (field == nullptr || resolved_field == nullptr) {
-                                continue;
-                            }
-                            repair_ref(field->type, resolved_field->semantic_type.type);
-                            if (field->relationship.has_value() &&
-                                resolved_field->relationship.has_value()) {
-                                repair_ref(field->relationship->target,
-                                           resolved_field->relationship->target.type);
-                            }
-                        }
-                    } else if constexpr (std::is_same_v<T, codegen::RecordSchema>) {
-                        auto const& resolved{std::get<RecordType>(definition)};
-                        for (std::size_t index{}; index < schema.members.size(); ++index) {
-                            repair_ref(schema.members[index].type,
-                                       resolved.members[index].semantic_type.type);
-                            if (schema.members[index].relationship.has_value() &&
-                                resolved.members[index].relationship.has_value()) {
-                                repair_ref(schema.members[index].relationship->target,
-                                           resolved.members[index].relationship->target.type);
-                            }
-                        }
-                    } else if constexpr (std::is_same_v<T, codegen::UnionSchema>) {
-                        auto const& resolved{std::get<UnionType>(definition)};
-                        for (std::size_t index{}; index < schema.alternatives.size(); ++index) {
-                            repair_ref(schema.alternatives[index].type,
-                                       resolved.alternatives[index].semantic_type.type);
-                        }
-                    } else if constexpr (std::is_same_v<T, codegen::TaggedUnionSchema>) {
-                        auto const& resolved{std::get<TaggedUnionType>(definition)};
-                        repair_ref(schema.discriminant, resolved.discriminant.type);
-                        for (std::size_t index{}; index < schema.alternatives.size(); ++index) {
-                            repair_ref(schema.alternatives[index].type,
-                                       resolved.alternatives[index].semantic_type.type);
-                        }
-                    } else if constexpr (std::is_same_v<T, codegen::VectorSoaSchema>) {
-                        auto const& resolved{std::get<SoaType>(definition)};
-                        if (!resolved.columns.empty()) {
-                            repair_ref(schema.value_type,
-                                       resolved.columns.front().semantic_type.type);
-                        }
-                        if (resolved.equivalent_type.has_value()) {
-                            repair_ref(schema.equivalent_type, resolved.equivalent_type->type);
-                        }
-                    } else if constexpr (std::is_same_v<T, codegen::SoaSchema>) {
-                        auto const& resolved{std::get<SoaType>(definition)};
-                        for (std::size_t index{}; index < schema.members.size(); ++index) {
-                            auto& member{schema.members[index]};
-                            repair_ref(member.type, resolved.columns[index].semantic_type.type);
-                            if (member.relationship.has_value() &&
-                                resolved.columns[index].relationship.has_value()) {
-                                repair_ref(member.relationship->target,
-                                           resolved.columns[index].relationship->target.type);
-                            }
-                            auto const nested_reference{
-                                target_is_soa && resolved.columns[index].nested_type == target &&
-                                member.nested_schema.has_value()};
-                            auto const fixed_reference{
-                                target_is_soa && user_info.module_index == target_module_index &&
-                                member.fixed_schema == old_name};
-                            if ((nested_reference || fixed_reference) &&
-                                local_soa_policy == LocalSoaReferencePolicy::reject) {
-                                throw std::invalid_argument{"Cannot move SoA '" +
-                                                            std::string{old_name} +
-                                                            "' across modules while module-local "
-                                                            "nested/fixed schema references exist"};
-                            }
-                            if (nested_reference &&
-                                local_soa_policy == LocalSoaReferencePolicy::rename) {
-                                member.nested_schema = new_local_name;
-                            }
-                            if (fixed_reference &&
-                                local_soa_policy == LocalSoaReferencePolicy::rename) {
-                                member.fixed_schema = new_local_name;
-                            }
-                        }
-                        if (schema.equivalent_type.has_value() &&
-                            resolved.equivalent_type.has_value()) {
-                            repair_ref(*schema.equivalent_type, resolved.equivalent_type->type);
-                        }
-                    }
-                },
-                declaration);
+        auto& declaration{normal->declarations.at(user_info.declaration_index)};
+        codegen::visit_type_references(
+            declaration, [&](std::string const& role, codegen::TypeRef& reference) {
+                auto const found{std::ranges::find_if(types.type_uses(), [&](auto const& use) {
+                    return use.declaration == user_info.identity && use.role == role;
+                })};
+                if (found != types.type_uses().end()) {
+                    repair_ref(reference, found->target.type);
+                }
+            });
+
+        auto* soa{std::get_if<codegen::SoaSchema>(&declaration)};
+        if (soa == nullptr || !std::holds_alternative<SoaType>(types.type(target).definition)) {
             continue;
+        }
+        auto const user_type{types.find(user_info.identity)};
+        auto const& resolved{std::get<SoaType>(types.type(*user_type).definition)};
+        for (std::size_t index{}; index < soa->members.size(); ++index) {
+            auto& member{soa->members[index]};
+            auto const nested_reference{resolved.columns[index].nested_type == target &&
+                                        member.nested_schema.has_value()};
+            auto const fixed_reference{user_info.module_index == target_module_index &&
+                                       member.fixed_schema == old_name};
+            if ((nested_reference || fixed_reference) &&
+                local_soa_policy == LocalSoaReferencePolicy::reject) {
+                throw std::invalid_argument{
+                    "Cannot move SoA '" + std::string{old_name} +
+                    "' across modules while module-local nested/fixed schema references exist"};
+            }
+            if (local_soa_policy == LocalSoaReferencePolicy::rename) {
+                if (nested_reference) {
+                    member.nested_schema = new_local_name;
+                }
+                if (fixed_reference) {
+                    member.fixed_schema = new_local_name;
+                }
+            }
+        }
+    }
+    for (auto const& use : types.type_uses()) {
+        if (!use.declaration.has_value() && use.target.type == target) {
+            throw std::invalid_argument{
+                "Cannot rename or move a type referenced by module configuration: " +
+                use.module_name + " / " + use.role};
         }
     }
 }
@@ -4771,6 +4693,16 @@ auto EditableSchemaDocument::preview_source_updates() const
                                   std::is_same_v<std::decay_t<decltype(edit)>, MoveDeclaration>) {
                         auto const* renamed{declaration(edit.declaration)};
                         if (renamed != nullptr) {
+                            auto const owned_types{types_.types_for_declaration(renamed->identity)};
+                            for (auto const& use : types_.type_uses()) {
+                                if (use.declaration.has_value() &&
+                                    std::ranges::find(owned_types, use.target.type) !=
+                                        owned_types.end()) {
+                                    if (auto const owner{find_declaration(*use.declaration)}) {
+                                        touched.insert(*owner);
+                                    }
+                                }
+                            }
                             auto const type{types_.find(renamed->identity)};
                             if (type.has_value()) {
                                 for (auto const user : types_.users_of(*type)) {
@@ -5163,32 +5095,36 @@ void EditableSchemaDocument::initialize_declarations(
 auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
     -> std::expected<std::optional<SchemaEditCommand>, SchemaEditError> {
     auto deletion_blocker = [&](DeclarationInfo const& info) -> std::optional<SchemaEditError> {
-        auto const type{types_.find(info.identity)};
-        if (!type.has_value()) {
-            return SchemaEditError{"Declaration is missing from the type graph"};
-        }
-
+        auto const owned_types{types_.types_for_declaration(info.identity)};
         for (auto const& [registered_name, cpp_type] : manifest_.types) {
             static_cast<void>(cpp_type);
-            if (types_.find_registered(registered_name) == type) {
+            auto const registered{types_.find_registered(registered_name)};
+            if (registered.has_value() &&
+                std::ranges::find(owned_types, *registered) != owned_types.end()) {
                 return SchemaEditError{"Cannot delete declaration '" + info.identity.name +
                                        "'; it is registered as '@" + registered_name + "'"};
             }
         }
 
-        auto const users{types_.users_of(*type)};
-        if (users.empty()) {
-            return std::nullopt;
-        }
-
-        auto message{"Cannot delete declaration '" + info.identity.name + "'; it is used by "};
-        for (std::size_t index{}; index < users.size(); ++index) {
-            if (index != 0) {
-                message += ", ";
+        for (auto const& use : types_.type_uses()) {
+            if (use.declaration != info.identity &&
+                std::ranges::find(owned_types, use.target.type) != owned_types.end()) {
+                return SchemaEditError{
+                    "Cannot delete declaration '" + info.identity.name + "'; it is used by '" +
+                    use.module_name + " / " +
+                    (use.declaration.has_value() ? use.declaration->name : use.role) + "'"};
             }
-            message += "'" + types_.type(users[index]).cpp_spelling + "'";
         }
-        return SchemaEditError{std::move(message)};
+        for (auto const owned : owned_types) {
+            for (auto const user : types_.users_of(owned)) {
+                auto const& node{types_.type(user)};
+                if (node.owning_declaration.value_or(node.identity) != info.identity) {
+                    return SchemaEditError{"Cannot delete declaration '" + info.identity.name +
+                                           "'; it is used by '" + node.cpp_spelling + "'"};
+                }
+            }
+        }
+        return std::nullopt;
     };
     auto creation_source = [&](DeclarationId const declaration_id) -> std::optional<SourceRange> {
         auto const found{source_tombstones_.find(declaration_id)};
@@ -5280,6 +5216,31 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 try {
                     codegen::validate_manifest(candidate);
                     candidate_types = resolve_type_graph(candidate);
+                    for (auto const owned : types_.types_for_declaration(info->identity)) {
+                        if (candidate_types.find(types_.type(owned).identity).has_value()) {
+                            continue;
+                        }
+                        for (auto const& [name, registration] : manifest_.types) {
+                            static_cast<void>(registration);
+                            if (types_.find_registered(name) == owned) {
+                                throw std::invalid_argument{
+                                    "Cannot remove or rename generated type '" +
+                                    types_.type(owned).cpp_spelling + "'; it is registered as '@" +
+                                    name + "'"};
+                            }
+                        }
+                        for (auto const& use : types_.type_uses()) {
+                            if (use.target.type == owned && use.declaration != info->identity) {
+                                throw std::invalid_argument{
+                                    "Cannot remove or rename generated type '" +
+                                    types_.type(owned).cpp_spelling + "'; it is used by '" +
+                                    use.module_name + " / " +
+                                    (use.declaration.has_value() ? use.declaration->name
+                                                                 : use.role) +
+                                    "'"};
+                            }
+                        }
+                    }
                 } catch (std::exception const& error) {
                     return std::unexpected{SchemaEditError{error.what()}};
                 }
@@ -5291,10 +5252,8 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 if (found == nullptr) {
                     return std::unexpected{SchemaEditError{"Unknown declaration"}};
                 }
-                if (types_.find(found->identity).has_value()) {
-                    if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
-                        return std::unexpected{*blocker};
-                    }
+                if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
+                    return std::unexpected{*blocker};
                 }
                 auto const info{*found};
                 auto candidate{manifest_};
@@ -5385,12 +5344,33 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                     if (info.module_index != edit.module_index) {
                         continue;
                     }
+                    auto const owned_types{types_.types_for_declaration(info.identity)};
+                    for (auto const& use : types_.type_uses()) {
+                        if (use.module_name != module_name &&
+                            std::ranges::find(owned_types, use.target.type) != owned_types.end()) {
+                            return std::unexpected{SchemaEditError{
+                                "Cannot delete module '" + module_name + "'; declaration '" +
+                                info.identity.name + "' is used by '" + use.module_name + " / " +
+                                (use.declaration.has_value() ? use.declaration->name : use.role) +
+                                "'"}};
+                        }
+                    }
+                    for (auto const& [registered_name, registered_schema] : manifest_.types) {
+                        static_cast<void>(registered_schema);
+                        auto const registered{types_.find_registered(registered_name)};
+                        if (registered.has_value() &&
+                            std::ranges::find(owned_types, *registered) != owned_types.end()) {
+                            return std::unexpected{SchemaEditError{
+                                "Cannot delete module '" + module_name +
+                                "'; it contains a type registered as '@" + registered_name + "'"}};
+                        }
+                    }
                     auto const type{types_.find(info.identity)};
                     if (!type.has_value()) {
                         auto const* normal{std::get_if<codegen::NormalModuleSchema>(
                             &manifest_.modules[edit.module_index])};
                         if (normal != nullptr &&
-                            !codegen::contributes_semantic_type(
+                            !codegen::has_primary_semantic_type(
                                 normal->declarations[info.declaration_index])) {
                             continue;
                         }
@@ -5573,11 +5553,12 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 auto const previous_tombstones{source_tombstones_};
                 auto const original_info{*declaration_it};
                 auto const target{types_.find(original_info.identity)};
+                auto const owned_types{types_.types_for_declaration(original_info.identity)};
                 if (!target.has_value()) {
                     auto const* normal{std::get_if<codegen::NormalModuleSchema>(
                         &manifest_.modules[original_info.module_index])};
                     if (normal == nullptr ||
-                        codegen::contributes_semantic_type(
+                        codegen::has_primary_semantic_type(
                             normal->declarations[original_info.declaration_index])) {
                         return std::unexpected{
                             SchemaEditError{"Declaration is missing from the type graph"}};
@@ -5585,10 +5566,12 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 }
                 auto const namespace_changed{source_settings.namespace_name !=
                                              destination_settings.namespace_name};
-                if (namespace_changed && target.has_value()) {
+                if (namespace_changed) {
                     for (auto const& [registered_name, cpp_type] : manifest_.types) {
                         static_cast<void>(cpp_type);
-                        if (types_.find_registered(registered_name) == target) {
+                        auto const registered{types_.find_registered(registered_name)};
+                        if (registered.has_value() &&
+                            std::ranges::find(owned_types, *registered) != owned_types.end()) {
                             return std::unexpected{SchemaEditError{
                                 "Moving a declaration registered as '@" + registered_name +
                                 "' across namespaces requires source-aware types-registry "
@@ -5596,20 +5579,23 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                         }
                     }
                 }
-                if (namespace_changed && target.has_value()) {
-                    auto const new_spelling{destination_settings.namespace_name.has_value()
-                                                ? *destination_settings.namespace_name +
-                                                      "::" + original_info.identity.name
-                                                : original_info.identity.name};
+                if (namespace_changed) {
                     try {
-                        repair_semantic_references(manifest_,
-                                                   types_,
-                                                   declarations_,
-                                                   *target,
-                                                   new_spelling,
-                                                   original_info.module_index,
-                                                   original_info.identity.name,
-                                                   LocalSoaReferencePolicy::reject);
+                        for (auto const owned : owned_types) {
+                            auto const& name{types_.type(owned).identity.name};
+                            auto const new_spelling{destination_settings.namespace_name.has_value()
+                                                        ? *destination_settings.namespace_name +
+                                                              "::" + name
+                                                        : name};
+                            repair_semantic_references(manifest_,
+                                                       types_,
+                                                       declarations_,
+                                                       owned,
+                                                       new_spelling,
+                                                       original_info.module_index,
+                                                       original_info.identity.name,
+                                                       LocalSoaReferencePolicy::reject);
+                        }
                     } catch (std::exception const& error) {
                         manifest_ = previous_manifest;
                         return std::unexpected{SchemaEditError{error.what()}};
@@ -5758,19 +5744,22 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 }
 
                 auto const target{types_.find(declaration_it->identity)};
-                if (!target.has_value()) {
+                auto const owned_types{types_.types_for_declaration(declaration_it->identity)};
+                if (owned_types.empty()) {
                     return std::unexpected{
                         SchemaEditError{"Declaration is missing from the type graph"}};
                 }
-                auto const& target_definition{types_.type(*target).definition};
-                if (std::holds_alternative<SoaType>(target_definition) &&
+                if (target.has_value() &&
+                    std::holds_alternative<SoaType>(types_.type(*target).definition) &&
                     soa_schema(edit.declaration) == nullptr) {
                     return std::unexpected{
                         SchemaEditError{"Only struct SoA declarations can be renamed"}};
                 }
                 for (auto const& [registered_name, cpp_type] : manifest_.types) {
                     static_cast<void>(cpp_type);
-                    if (types_.find_registered(registered_name) == target) {
+                    auto const registered{types_.find_registered(registered_name)};
+                    if (registered.has_value() &&
+                        std::ranges::find(owned_types, *registered) != owned_types.end()) {
                         return std::unexpected{SchemaEditError{
                             "Renaming a declaration registered as '@" + registered_name +
                             "' requires source-aware types-registry editing"}};
@@ -5785,19 +5774,28 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                         return module.settings;
                     },
                     manifest_.modules[declaration_it->module_index])};
-                auto const new_spelling{target_settings.namespace_name.has_value()
-                                            ? *target_settings.namespace_name + "::" + edit.new_name
-                                            : edit.new_name};
                 try {
-                    repair_semantic_references(manifest_,
-                                               types_,
-                                               declarations_,
-                                               *target,
-                                               new_spelling,
-                                               declaration_it->module_index,
-                                               old_name,
-                                               LocalSoaReferencePolicy::rename,
-                                               edit.new_name);
+                    for (auto const owned : owned_types) {
+                        auto const& node{types_.type(owned)};
+                        auto const generated_name{
+                            node.owning_declaration.has_value()
+                                ? "F" + edit.new_name +
+                                      node.identity.name.substr(1 + old_name.size())
+                                : edit.new_name};
+                        auto const spelling{target_settings.namespace_name.has_value()
+                                                ? *target_settings.namespace_name +
+                                                      "::" + generated_name
+                                                : generated_name};
+                        repair_semantic_references(manifest_,
+                                                   types_,
+                                                   declarations_,
+                                                   owned,
+                                                   spelling,
+                                                   declaration_it->module_index,
+                                                   old_name,
+                                                   LocalSoaReferencePolicy::rename,
+                                                   edit.new_name);
+                    }
                     auto& target_module{manifest_.modules[declaration_it->module_index]};
                     auto& normal{std::get<codegen::NormalModuleSchema>(target_module)};
                     auto& schema{normal.declarations.at(declaration_it->declaration_index)};

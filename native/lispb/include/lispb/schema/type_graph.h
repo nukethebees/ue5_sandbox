@@ -213,6 +213,49 @@ struct SoaType {
     std::vector<std::string> vector_components;
 };
 
+struct StaticTableGroup {
+    std::string name;
+    ResolvedTypeRef result_type;
+    std::vector<std::string> columns;
+};
+
+struct StaticTableType {
+    std::vector<std::string> rows;
+    std::vector<RecordMember> columns;
+    std::vector<StaticTableGroup> groups;
+};
+
+struct FacadeParameter {
+    std::string name;
+    ResolvedTypeRef type;
+    std::optional<std::string> default_value;
+};
+
+struct FacadeMethod {
+    std::string name;
+    ResolvedTypeRef return_type;
+    std::vector<FacadeParameter> parameters;
+    std::string target_name;
+    bool is_const{};
+    bool is_noexcept{};
+};
+
+struct FacadeType {
+    ResolvedTypeRef target;
+    std::string target_member_name;
+    bool reference_target{};
+    std::vector<FacadeMethod> methods;
+};
+
+struct HomogeneousStorageType {
+    std::vector<std::string> components;
+    ResolvedTypeRef value_type;
+    std::optional<ResolvedTypeRef> equivalent_type;
+    std::vector<std::string> input_members;
+    std::vector<ResolvedTypeRef> input_types;
+    std::string view_template_name;
+};
+
 using TypeDefinition = std::variant<ExternalType,
                                     EnumType,
                                     IntegerScalarType,
@@ -226,7 +269,10 @@ using TypeDefinition = std::variant<ExternalType,
                                     RecordType,
                                     UnionType,
                                     TaggedUnionType,
-                                    SoaType>;
+                                    SoaType,
+                                    StaticTableType,
+                                    FacadeType,
+                                    HomogeneousStorageType>;
 
 struct TypeNode {
     TypeIdentity identity;
@@ -234,6 +280,7 @@ struct TypeNode {
     TypeDefinition definition;
     std::vector<TypeId> dependencies;
     std::vector<TypeId> users;
+    std::optional<TypeIdentity> owning_declaration;
 };
 
 auto integer_domain(TypeNode const& node) -> IntegerScalarType const*;
@@ -253,6 +300,7 @@ class TypeGraph {
     auto dependencies_of(TypeId id) const -> std::span<TypeId const>;
     auto users_of(TypeId id) const -> std::span<TypeId const>;
     auto type_uses() const -> std::span<TypeUse const>;
+    auto types_for_declaration(TypeIdentity const& identity) const -> std::vector<TypeId>;
   private:
     friend class TypeGraphBuilder;
     friend auto resolve_type_graph(codegen::Manifest const& manifest) -> TypeGraph;

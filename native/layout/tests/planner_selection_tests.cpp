@@ -219,6 +219,30 @@ TEST(PlannerSelection, DeclarationOnlySelectionKeepsIdentityWithoutInventingType
         lispb::schema::EditableSchemaDocument::from_manifest(declaration_selection_manifest())};
     PlannerSelection selection;
 
+    auto const generated{
+        document.types().types_for_declaration(document.declarations()[1].identity)};
+    ASSERT_EQ(generated.size(), 1U);
+    auto const& storage{document.types().type(generated.front())};
+    EXPECT_EQ(storage.owning_declaration, document.declarations()[1].identity);
+    EXPECT_TRUE(std::holds_alternative<lispb::schema::HomogeneousStorageType>(storage.definition));
+    EXPECT_TRUE(declaration_capabilities(storage).editable);
+    EXPECT_FALSE(declaration_capabilities(storage).physical_analysis_available);
+
+    auto const inventory{external_dependencies(document.types())};
+    for (auto const& [spelling, owner] : {std::pair{"float", "Layout"},
+                                          std::pair{"std::int32_t", "Table"},
+                                          std::pair{"Target", "Facade"}}) {
+        auto const entry{
+            std::ranges::find(inventory, std::string{spelling}, &ExternalDependency::cpp_spelling)};
+        ASSERT_NE(entry, inventory.end());
+        ASSERT_EQ(entry->declarations.size(), 1U);
+        EXPECT_EQ(entry->declarations.front().name, owner);
+        EXPECT_EQ(entry->modules, (std::vector<std::string>{"declarations"}));
+    }
+    EXPECT_EQ(std::ranges::find(inventory, std::string{"void"}, &ExternalDependency::cpp_spelling),
+              inventory.end());
+    PlannerAnalysisSession session{document.types()};
+
     for (auto const& info : document.declarations()) {
         if (info.identity.name == "RecordA") {
             continue;
@@ -227,14 +251,24 @@ TEST(PlannerSelection, DeclarationOnlySelectionKeepsIdentityWithoutInventingType
             &document.manifest().modules[info.module_index])};
         ASSERT_NE(normal, nullptr);
         auto const& schema{normal->declarations[info.declaration_index]};
+        ASSERT_TRUE(session.inputs.selection.select_type(
+            document.types(), document.types().find_declared("declarations", "RecordA")));
+        ASSERT_TRUE(session.refresh(&document));
+        ASSERT_TRUE(session.results().record_analysis.has_value());
+        ASSERT_TRUE(session.inputs.selection.select_declaration(document, info.id));
+        ASSERT_TRUE(session.refresh(&document));
+        EXPECT_FALSE(session.results().record_analysis.has_value());
         EXPECT_TRUE(declaration_capabilities(schema).inspectable);
         EXPECT_FALSE(declaration_capabilities(schema).physical_analysis_available);
-        EXPECT_FALSE(document.types().find(info.identity).has_value());
+        auto const semantic{document.types().find(info.identity)};
         EXPECT_TRUE(selection.select_declaration(document, info.id));
-        EXPECT_EQ(selection.declaration, info.id);
-        EXPECT_FALSE(selection.type.has_value());
-        selection.reconcile(document.types(), std::nullopt, &document);
-        EXPECT_EQ(selection.declaration, info.id);
+        EXPECT_EQ(selection.declaration,
+                  semantic.has_value() ? std::nullopt : std::optional{info.id});
+        EXPECT_EQ(selection.type, semantic);
+        selection.reconcile(document.types(), info.identity, &document);
+        EXPECT_EQ(selection.declaration,
+                  semantic.has_value() ? std::nullopt : std::optional{info.id});
+        EXPECT_EQ(selection.type, semantic);
     }
 
     auto const record_type{*document.types().find_declared("declarations", "RecordA")};
@@ -395,7 +429,8 @@ TEST(PlannerSelection, DeclarationOnlyKindChangeClearsTypeLocalState) {
     selection.soa_access_columns["old"] = AccessOperation::read;
     selection.soa_access_set_explicit = true;
     selection.reconcile(changed.types(), std::nullopt, &changed);
-    EXPECT_EQ(selection.declaration, changed.find_declaration(identity));
+    EXPECT_FALSE(selection.declaration.has_value());
+    EXPECT_EQ(selection.type, changed.types().find(identity));
     EXPECT_TRUE(selection.field.empty());
     EXPECT_TRUE(selection.soa_access_columns.empty());
     EXPECT_FALSE(selection.soa_access_set_explicit);

@@ -127,6 +127,7 @@ class TypeGraphBuilder {
         TypeId id;
         std::size_t module_index{};
         std::size_t declaration_index{};
+        std::optional<std::size_t> homogeneous_value_index;
     };
 
     auto add_type(TypeIdentity identity, std::string cpp_spelling, TypeDefinition definition)
@@ -175,7 +176,24 @@ class TypeGraphBuilder {
             }
             for (std::size_t index{}; index < module->declarations.size(); ++index) {
                 auto const& source{module->declarations[index]};
-                if (!codegen::contributes_semantic_type(source)) {
+                if (auto const* layout{std::get_if<codegen::HomogeneousLayoutSchema>(&source)}) {
+                    for (std::size_t value_index{}; value_index < layout->value_types.size();
+                         ++value_index) {
+                        declare(module_index,
+                                index,
+                                module->settings,
+                                "F" + layout->name + layout->value_types[value_index].suffix,
+                                HomogeneousStorageType{});
+                        auto& generated{declarations_.back()};
+                        generated.homogeneous_value_index = value_index;
+                        graph_.types_[generated.id.value].owning_declaration = TypeIdentity{
+                            .module_name = module->settings.name,
+                            .namespace_name = module->settings.namespace_name.value_or(""),
+                            .name = layout->name};
+                    }
+                    continue;
+                }
+                if (!codegen::has_primary_semantic_type(source)) {
                     continue;
                 }
                 auto definition{std::visit(
@@ -206,6 +224,10 @@ class TypeGraphBuilder {
                             return UnionType{};
                         } else if constexpr (std::is_same_v<T, codegen::TaggedUnionSchema>) {
                             return TaggedUnionType{};
+                        } else if constexpr (std::is_same_v<T, codegen::StaticTableSchema>) {
+                            return StaticTableType{};
+                        } else if constexpr (std::is_same_v<T, codegen::FacadeSchema>) {
+                            return FacadeType{};
                         } else {
                             return SoaType{.backend = module->soa_backend,
                                            .source_kind =
@@ -751,6 +773,43 @@ class TypeGraphBuilder {
                         type.columns.push_back({.name = component, .semantic_type = value_type});
                     }
                     return type;
+                } else if constexpr (std::is_same_v<T, codegen::StaticTableSchema>) {
+                    StaticTableType type;
+                    for (auto const& row : source.rows) {
+                        type.rows.push_back(row.name);
+                    }
+                    for (auto const& column : source.columns) {
+                        type.columns.push_back(
+                            {.name = column.name,
+                             .semantic_type = resolve_ref(column.type, module_name),
+                             .count = source.rows.size()});
+                    }
+                    for (auto const& group : source.groups) {
+                        type.groups.push_back({.name = group.name,
+                                               .result_type = resolve_ref(group.type, module_name),
+                                               .columns = group.columns});
+                    }
+                    return type;
+                } else if constexpr (std::is_same_v<T, codegen::FacadeSchema>) {
+                    FacadeType type{.target = resolve_ref(source.target_type, module_name),
+                                    .target_member_name = source.target_member_name,
+                                    .reference_target = source.reference_target};
+                    for (auto const& method : source.methods) {
+                        FacadeMethod resolved{
+                            .name = method.name,
+                            .return_type = resolve_ref(method.return_type, module_name),
+                            .target_name = method.target_name.value_or(method.name),
+                            .is_const = method.is_const,
+                            .is_noexcept = method.is_noexcept};
+                        for (auto const& parameter : method.parameters) {
+                            resolved.parameters.push_back(
+                                {.name = parameter.name,
+                                 .type = resolve_ref(parameter.type, module_name),
+                                 .default_value = parameter.default_value});
+                        }
+                        type.methods.push_back(std::move(resolved));
+                    }
+                    return type;
                 } else {
                     throw std::logic_error{"Nonsemantic declaration has no TypeGraph definition"};
                 }
@@ -768,6 +827,24 @@ class TypeGraphBuilder {
                     std::holds_alternative<codegen::EnumSchema>(source) ||
                     std::holds_alternative<codegen::IntegerScalarSchema>(source)};
                 if (primary_definition == primary_pass) {
+                    if (declaration.homogeneous_value_index.has_value()) {
+                        auto const& layout{std::get<codegen::HomogeneousLayoutSchema>(source)};
+                        auto const& value{layout.value_types[*declaration.homogeneous_value_index]};
+                        HomogeneousStorageType type{
+                            .components = layout.components,
+                            .value_type = resolve_ref(value.type, module.settings.name),
+                            .input_members = layout.input_members,
+                            .view_template_name = "T" + layout.name + "View"};
+                        if (value.equivalent_type.has_value()) {
+                            type.equivalent_type =
+                                resolve_ref(*value.equivalent_type, module.settings.name);
+                        }
+                        for (auto const& input : value.input_types) {
+                            type.input_types.push_back(resolve_ref(input, module.settings.name));
+                        }
+                        graph_.types_[declaration.id.value].definition = std::move(type);
+                        continue;
+                    }
                     graph_.types_[declaration.id.value].definition =
                         resolve_normal_definition(module, source);
                 }
@@ -809,7 +886,8 @@ class TypeGraphBuilder {
                         auto const& definition{graph_.type(member.semantic_type.type).definition};
                         if (std::holds_alternative<RecordType>(definition) ||
                             std::holds_alternative<UnionType>(definition) ||
-                            std::holds_alternative<TaggedUnionType>(definition)) {
+                            std::holds_alternative<TaggedUnionType>(definition) ||
+                            std::holds_alternative<StaticTableType>(definition)) {
                             validate_aggregate_cycle(member.semantic_type.type, states, path);
                         }
                     }
@@ -819,7 +897,8 @@ class TypeGraphBuilder {
                             graph_.type(alternative.semantic_type.type).definition};
                         if (std::holds_alternative<RecordType>(definition) ||
                             std::holds_alternative<UnionType>(definition) ||
-                            std::holds_alternative<TaggedUnionType>(definition)) {
+                            std::holds_alternative<TaggedUnionType>(definition) ||
+                            std::holds_alternative<StaticTableType>(definition)) {
                             validate_aggregate_cycle(alternative.semantic_type.type, states, path);
                         }
                     }
@@ -829,9 +908,14 @@ class TypeGraphBuilder {
                             graph_.type(alternative.semantic_type.type).definition};
                         if (std::holds_alternative<RecordType>(definition) ||
                             std::holds_alternative<UnionType>(definition) ||
-                            std::holds_alternative<TaggedUnionType>(definition)) {
+                            std::holds_alternative<TaggedUnionType>(definition) ||
+                            std::holds_alternative<StaticTableType>(definition)) {
                             validate_aggregate_cycle(alternative.semantic_type.type, states, path);
                         }
+                    }
+                } else if constexpr (std::is_same_v<Aggregate, StaticTableType>) {
+                    for (auto const& column : aggregate.columns) {
+                        validate_aggregate_cycle(column.semantic_type.type, states, path);
                     }
                 }
             },
@@ -847,7 +931,8 @@ class TypeGraphBuilder {
             auto const& definition{graph_.types_[index].definition};
             if (std::holds_alternative<RecordType>(definition) ||
                 std::holds_alternative<UnionType>(definition) ||
-                std::holds_alternative<TaggedUnionType>(definition)) {
+                std::holds_alternative<TaggedUnionType>(definition) ||
+                std::holds_alternative<StaticTableType>(definition)) {
                 validate_aggregate_cycle(TypeId{index}, states, path);
             }
         }
@@ -861,6 +946,29 @@ class TypeGraphBuilder {
                     if constexpr (std::is_same_v<Definition, EnumType>) {
                         if (definition.underlying_type.has_value()) {
                             add_dependency(node, definition.underlying_type->type);
+                        }
+                    } else if constexpr (std::is_same_v<Definition, StaticTableType>) {
+                        for (auto const& column : definition.columns) {
+                            add_dependency(node, column.semantic_type.type);
+                        }
+                        for (auto const& group : definition.groups) {
+                            add_dependency(node, group.result_type.type);
+                        }
+                    } else if constexpr (std::is_same_v<Definition, FacadeType>) {
+                        add_dependency(node, definition.target.type);
+                        for (auto const& method : definition.methods) {
+                            add_dependency(node, method.return_type.type);
+                            for (auto const& parameter : method.parameters) {
+                                add_dependency(node, parameter.type.type);
+                            }
+                        }
+                    } else if constexpr (std::is_same_v<Definition, HomogeneousStorageType>) {
+                        add_dependency(node, definition.value_type.type);
+                        if (definition.equivalent_type.has_value()) {
+                            add_dependency(node, definition.equivalent_type->type);
+                        }
+                        for (auto const& input : definition.input_types) {
+                            add_dependency(node, input.type);
                         }
                     } else if constexpr (std::is_same_v<Definition, IntegerScalarType>) {
                         if (definition.relationship.has_value()) {
@@ -976,6 +1084,17 @@ auto TypeGraph::users_of(TypeId const id) const -> std::span<TypeId const> {
 
 auto TypeGraph::type_uses() const -> std::span<TypeUse const> {
     return type_uses_;
+}
+
+auto TypeGraph::types_for_declaration(TypeIdentity const& identity) const -> std::vector<TypeId> {
+    std::vector<TypeId> result;
+    for (std::size_t index{}; index < types_.size(); ++index) {
+        auto const& node{types_[index]};
+        if (node.owning_declaration.value_or(node.identity) == identity) {
+            result.push_back(TypeId{static_cast<std::uint32_t>(index)});
+        }
+    }
+    return result;
 }
 
 auto resolve_type_graph(codegen::Manifest const& manifest) -> TypeGraph {

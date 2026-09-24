@@ -106,25 +106,19 @@ auto PlannerUi::draw_type_picker(std::string_view const module_name, TypeIdentit
     ImGui::BeginChild(
         "type-candidates", {420.0F, 260.0F}, true, ImGuiWindowFlags_HorizontalScrollbar);
     std::map<std::string, std::size_t, std::less<>> declaration_spelling_counts;
-    for (auto const& declaration : document_->declarations()) {
-        if (auto const type{analysis_session_.inputs.workspace.types().find(declaration.identity)};
-            type.has_value()) {
-            ++declaration_spelling_counts
-                [analysis_session_.inputs.workspace.types().type(*type).cpp_spelling];
+    for (auto const& node : analysis_session_.inputs.workspace.types().types()) {
+        if (node.identity.origin == TypeOrigin::declaration) {
+            ++declaration_spelling_counts[node.cpp_spelling];
         }
     }
 
     if (detail::section("Declared semantic types")) {
-        for (auto const& declaration : document_->declarations()) {
-            if (declaration.identity == owner) {
+        for (auto const& node : analysis_session_.inputs.workspace.types().types()) {
+            if (node.identity.origin != TypeOrigin::declaration ||
+                node.owning_declaration.value_or(node.identity) == owner) {
                 continue;
             }
-            auto const type{analysis_session_.inputs.workspace.types().find(declaration.identity)};
-            if (!type.has_value()) {
-                continue;
-            }
-            auto const& node{analysis_session_.inputs.workspace.types().type(*type)};
-            auto const same_module{declaration.identity.module_name == module_name};
+            auto const same_module{node.identity.module_name == module_name};
             if (!same_module && declaration_spelling_counts[node.cpp_spelling] != 1) {
                 auto const label{node.cpp_spelling + "  [ambiguous across declaration modules]"};
                 if (filter.empty() || lowercase(label).find(filter) != std::string::npos) {
@@ -132,8 +126,8 @@ auto PlannerUi::draw_type_picker(std::string_view const module_name, TypeIdentit
                 }
                 continue;
             }
-            auto reference{same_module ? declaration.identity.name : node.cpp_spelling};
-            draw_candidate(std::move(reference), "declared in " + declaration.identity.module_name);
+            auto reference{same_module ? node.identity.name : node.cpp_spelling};
+            draw_candidate(std::move(reference), "declared in " + node.identity.module_name);
         }
     }
     if (detail::section("Registered semantic types")) {
@@ -166,6 +160,22 @@ void PlannerUi::draw_properties_panel() {
                  ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
     persist_view_visibility(was_open, properties_view_open_);
     detail::pane_section_menu();
+    if (auto const selected{analysis_session_.inputs.selection.type};
+        selected.has_value() && document_.has_value()) {
+        auto const& node{analysis_session_.inputs.workspace.types().type(*selected)};
+        if (std::holds_alternative<StaticTableType>(node.definition) ||
+            std::holds_alternative<FacadeType>(node.definition) ||
+            std::holds_alternative<HomogeneousStorageType>(node.definition)) {
+            auto const declaration{
+                document_->find_declaration(node.owning_declaration.value_or(node.identity))};
+            if (declaration.has_value()) {
+                static_cast<void>(
+                    draw_structural_declaration(*document_->declaration(*declaration)));
+            }
+            ImGui::End();
+            return;
+        }
+    }
     if (!analysis_session_.inputs.selection.type.has_value()) {
         auto const declaration{analysis_session_.inputs.selection.declaration};
         auto const* info{document_.has_value() && declaration.has_value()
@@ -176,77 +186,11 @@ void PlannerUi::draw_properties_panel() {
             ImGui::End();
             return;
         }
-        auto const& module{std::get<codegen::NormalModuleSchema>(
-            document_->manifest().modules[info->module_index])};
-        auto const& schema{module.declarations[info->declaration_index]};
-        ImGui::Text("%s", info->identity.name.c_str());
-        ImGui::TextDisabled("%s", info->identity.module_name.c_str());
-        ImGui::TextDisabled("%s — view only",
-                            std::string{codegen::declaration_head(schema)}.c_str());
-        if (info->source.has_value() &&
-            info->source->source_file_index < document_->source_files().size()) {
-            auto const& path{document_->source_files()[info->source->source_file_index].path};
-            ImGui::TextWrapped("Source: %s:%llu:%llu",
-                               path.string().c_str(),
-                               static_cast<unsigned long long>(info->source->line),
-                               static_cast<unsigned long long>(info->source->column));
-            if (ImGui::Button("View source")) {
-                selected_source_view_path_ = path.lexically_normal();
-                source_view_open_ = true;
-                focus_source_view_ = true;
-            }
+        if (draw_structural_declaration(*info)) {
+            ImGui::End();
+            return;
         }
-        std::visit(
-            [&](auto const& value) {
-                using Type = std::decay_t<decltype(value)>;
-                if constexpr (std::is_same_v<Type, codegen::HomogeneousLayoutSchema>) {
-                    if (detail::section("Homogeneous layout declaration")) {
-                        for (auto const& component : value.components) {
-                            ImGui::BulletText("Component: %s", component.c_str());
-                        }
-                        for (auto const& input : value.input_members) {
-                            ImGui::BulletText("Input member: %s", input.c_str());
-                        }
-                        for (auto const& type : value.value_types) {
-                            ImGui::BulletText(
-                                "Value type: %s%s", type.type.name.c_str(), type.suffix.c_str());
-                        }
-                    }
-                } else if constexpr (std::is_same_v<Type, codegen::StaticTableSchema>) {
-                    if (detail::section("Static table declaration")) {
-                        for (auto const& row : value.rows) {
-                            ImGui::BulletText("Row: %s", row.name.c_str());
-                        }
-                        for (auto const& column : value.columns) {
-                            ImGui::BulletText(
-                                "Column: %s (%s)", column.name.c_str(), column.type.name.c_str());
-                        }
-                        for (auto const& group : value.groups) {
-                            ImGui::BulletText(
-                                "Group: %s (%s)", group.name.c_str(), group.type.name.c_str());
-                            for (auto const& column : group.columns) {
-                                ImGui::TextDisabled("    %s", column.c_str());
-                            }
-                        }
-                    }
-                } else if constexpr (std::is_same_v<Type, codegen::FacadeSchema>) {
-                    if (detail::section("Facade declaration")) {
-                        ImGui::Text("Target type: %s", value.target_type.name.c_str());
-                        ImGui::Text("Target member: %s", value.target_member_name.c_str());
-                        for (auto const& method : value.methods) {
-                            ImGui::BulletText("Method: %s → %s",
-                                              method.name.c_str(),
-                                              method.return_type.name.c_str());
-                        }
-                        for (auto const& dependency : value.validation_dependencies) {
-                            ImGui::BulletText("Validation dependency: %s", dependency.c_str());
-                        }
-                    }
-                }
-            },
-            schema);
-        draw_declaration_dependencies(info->identity);
-        ImGui::TextDisabled("No semantic TypeGraph node or physical analysis is available.");
+        ImGui::TextWrapped("No structured inspector is available for this declaration.");
         ImGui::End();
         return;
     }

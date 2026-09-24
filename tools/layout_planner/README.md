@@ -240,6 +240,13 @@ checkboxes to include described scalars and types with no LispB references. Filt
 module, select a type to inspect its semantic/target ABI facts, and follow **LispB references** in
 Properties to its users. Usage includes table, facade, and homogeneous-layout declarations.
 
+Static tables, facades and homogeneous layouts can be created from a module's **+** menu and edited
+in Properties. Use **Apply declaration changes** to validate a draft and record an undoable edit;
+**Save** writes applied edits. Declaration actions include rename, duplicate, move and delete.
+Homogeneous layouts require a module with a C++ source output. Their **Generated types** section
+links to each concrete storage type in Graph. Generic views have no single concrete layout.
+Physical layout and comparison remain unavailable for these backend representations.
+
 The planner supports enum and standalone integer-domain inspection, packed values, records, flat
 standard-library SoAs, and standard-library vector SoAs. Enum-backed packed fields retain links to
 their enum definitions; physical facts are derived separately from optional explicit C++ backing or

@@ -60,15 +60,20 @@ void visit_declaration_type_references(Declaration& declaration, Visitor const& 
                     for (auto& variant : schema.single_allocation_variants) {
                         visit("allocator variant " + variant.name, variant.allocator);
                     }
-                    for (auto& method : schema.functions) {
-                        function("function " + method.name, method);
-                        optional("function " + method.name + " trailing return",
-                                 method.trailing_return_type);
+                    for (std::size_t index{}; index < schema.functions.size(); ++index) {
+                        auto& method{schema.functions[index]};
+                        auto const role{"function " + method.name + " [" + std::to_string(index) +
+                                        "]"};
+                        function(role, method);
+                        optional(role + " trailing return", method.trailing_return_type);
                     }
-                    for (auto& method : schema.mutable_view_functions) {
-                        function("view function " + method.name, method);
-                        optional("view function " + method.name + " trailing return",
-                                 method.trailing_return_type);
+                    for (std::size_t index{}; index < schema.mutable_view_functions.size();
+                         ++index) {
+                        auto& method{schema.mutable_view_functions[index]};
+                        auto const role{"view function " + method.name + " [" +
+                                        std::to_string(index) + "]"};
+                        function(role, method);
+                        optional(role + " trailing return", method.trailing_return_type);
                     }
                 }
             } else if constexpr (std::is_same_v<T, UnionSchema> ||
@@ -91,8 +96,9 @@ void visit_declaration_type_references(Declaration& declaration, Visitor const& 
                 }
             } else if constexpr (std::is_same_v<T, FacadeSchema>) {
                 visit("target", schema.target_type);
-                for (auto& method : schema.methods) {
-                    function("method " + method.name, method);
+                for (std::size_t index{}; index < schema.methods.size(); ++index) {
+                    auto& method{schema.methods[index]};
+                    function("method " + method.name + " [" + std::to_string(index) + "]", method);
                 }
             } else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema>) {
                 for (auto& value : schema.value_types) {
@@ -190,9 +196,9 @@ auto declaration_metadata(DeclarationSchema const& declaration) -> DeclarationMe
             } else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema>) {
                 return {DeclarationKind::homogeneous_layout, "layout", false};
             } else if constexpr (std::is_same_v<T, StaticTableSchema>) {
-                return {DeclarationKind::static_table, "table", false};
+                return {DeclarationKind::static_table, "table", true};
             } else if constexpr (std::is_same_v<T, FacadeSchema>) {
-                return {DeclarationKind::facade, "facade", false};
+                return {DeclarationKind::facade, "facade", true};
             } else {
                 static_assert(unhandled_declaration_schema<T>);
             }
@@ -210,7 +216,7 @@ auto declaration_head(DeclarationSchema const& declaration) -> std::string_view 
     return declaration_metadata(declaration).head;
 }
 
-auto contributes_semantic_type(DeclarationSchema const& declaration) -> bool {
+auto has_primary_semantic_type(DeclarationSchema const& declaration) -> bool {
     return declaration_metadata(declaration).semantic_type;
 }
 

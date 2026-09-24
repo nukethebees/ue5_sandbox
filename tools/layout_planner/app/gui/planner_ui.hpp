@@ -180,6 +180,10 @@ class PlannerUi {
     void select_declaration(lispb::schema::DeclarationId declaration);
     void draw_declaration_dependencies(lispb::schema::TypeIdentity const& identity);
     void draw_type_users(lispb::schema::TypeId type);
+    auto draw_structural_declaration(lispb::schema::DeclarationInfo const& info) -> bool;
+    void draw_structural_fields(codegen::DeclarationSchema& draft,
+                                lispb::schema::TypeIdentity const& identity);
+    void draw_new_structural_dialog();
     void invalidate_type_editor_state();
     void draw_project_panel();
     void draw_layout_panel();
@@ -232,6 +236,12 @@ class PlannerUi {
     std::string external_module_filter_;
     bool external_show_described_{};
     bool external_show_unreferenced_{};
+    std::optional<codegen::DeclarationSchema> structural_draft_;
+    std::optional<lispb::schema::TypeIdentity> structural_draft_identity_;
+    std::uint64_t structural_draft_revision_{};
+    std::optional<std::size_t> structural_creation_module_;
+    std::optional<codegen::DeclarationSchema> structural_creation_draft_;
+    bool open_new_structural_dialog_{};
     std::array<char, 128> type_picker_filter_{};
     std::array<char, 1024> target_profile_path_{};
     std::array<char, 1024> comparison_target_profile_path_{};

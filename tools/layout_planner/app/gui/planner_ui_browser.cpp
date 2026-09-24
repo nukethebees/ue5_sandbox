@@ -346,14 +346,39 @@ void PlannerUi::draw_project_panel() {
                     ImGui::SetTooltip("SoA authoring requires a standard-library backend module.");
                 }
                 ImGui::Separator();
-                for (auto const* kind :
-                     {"Vector SoA", "Homogeneous layout", "Static table", "Facade"}) {
-                    ImGui::MenuItem(kind, nullptr, false, false);
-                    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-                        ImGui::SetTooltip("Create this declaration in the LispB source; planner "
-                                          "authoring is not yet available.");
-                    }
+                if (ImGui::MenuItem("Static table")) {
+                    structural_creation_module_ = module_index;
+                    structural_creation_draft_ =
+                        codegen::StaticTableSchema{.name = "Table",
+                                                   .rows = {{"first"}},
+                                                   .columns = {{"value", codegen::TypeRef{"int"}}}};
+                    open_new_structural_dialog_ = true;
                 }
+                if (ImGui::MenuItem("Facade")) {
+                    structural_creation_module_ = module_index;
+                    structural_creation_draft_ = codegen::FacadeSchema{
+                        .name = "Facade",
+                        .target_member_name = "target_",
+                        .methods = {{.return_type = codegen::TypeRef{"void"}}}};
+                    open_new_structural_dialog_ = true;
+                }
+                if (ImGui::MenuItem("Homogeneous layout",
+                                    nullptr,
+                                    false,
+                                    normal->settings.source.has_value())) {
+                    structural_creation_module_ = module_index;
+                    structural_creation_draft_ = codegen::HomogeneousLayoutSchema{
+                        .name = "Layout",
+                        .components = {"x"},
+                        .value_types = {{.type = codegen::TypeRef{"float"}, .suffix = "Float"}}};
+                    open_new_structural_dialog_ = true;
+                }
+                if (!normal->settings.source.has_value() &&
+                    ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                    ImGui::SetTooltip(
+                        "Homogeneous layouts require a module with a C++ source output.");
+                }
+                ImGui::MenuItem("Vector SoA", nullptr, false, false);
                 ImGui::EndDisabled();
                 ImGui::EndPopup();
             }
@@ -427,7 +452,11 @@ void PlannerUi::draw_project_panel() {
                     auto const selected{
                         node != nullptr
                             ? analysis_session_.inputs.selection.type == resolved_type
-                            : analysis_session_.inputs.selection.declaration == declaration->id};
+                            : analysis_session_.inputs.selection.declaration == declaration->id ||
+                                  (analysis_session_.inputs.selection.type.has_value() &&
+                                   analysis_session_.inputs.workspace.types()
+                                           .type(*analysis_session_.inputs.selection.type)
+                                           .owning_declaration == declaration->identity)};
                     ImGui::PushID(static_cast<int>(declaration->id.value));
                     auto const editing_record{inline_record_rename_ == declaration->id};
                     if (editing_record) {
@@ -586,6 +615,7 @@ void PlannerUi::draw_project_panel() {
         }
     }
 
+    draw_new_structural_dialog();
     auto const dependencies{external_dependencies(analysis_session_.inputs.workspace.types())};
     auto const external_label{"External dependencies (" + std::to_string(dependencies.size()) +
                               ")###external-dependencies"};

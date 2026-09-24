@@ -14,6 +14,7 @@ target_sources(layout-planner PRIVATE
   gui/planner_ui_properties_packed.cpp
   gui/planner_ui_properties_aggregate.cpp
   gui/planner_ui_properties_soa.cpp
+  gui/planner_ui_properties_structural.cpp
   gui/planner_ui_support.cpp
   gui/planner_ui_visualizations.cpp
   main.cpp

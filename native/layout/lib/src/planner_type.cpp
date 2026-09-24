@@ -22,6 +22,10 @@ auto external_dependencies(lispb::schema::TypeGraph const& types)
         if (external == nullptr) {
             continue;
         }
+        if (node.cpp_spelling == "void" || node.cpp_spelling == "auto" ||
+            node.cpp_spelling == "decltype(auto)") {
+            continue;
+        }
         auto& entry{grouped[codegen::native_spelling(node.cpp_spelling)]};
         entry.cpp_spelling = codegen::native_spelling(node.cpp_spelling);
         entry.types.push_back(lispb::schema::TypeId{static_cast<std::uint32_t>(index)});
@@ -37,7 +41,11 @@ auto external_dependencies(lispb::schema::TypeGraph const& types)
         if (!std::holds_alternative<lispb::schema::ExternalType>(node.definition)) {
             continue;
         }
-        auto& entry{grouped.at(codegen::native_spelling(node.cpp_spelling))};
+        auto const found{grouped.find(codegen::native_spelling(node.cpp_spelling))};
+        if (found == grouped.end()) {
+            continue;
+        }
+        auto& entry{found->second};
         entry.uses.push_back(index);
         append_unique(entry.modules, use.module_name);
         if (use.declaration.has_value()) {
@@ -145,6 +153,15 @@ auto declaration_capabilities(lispb::schema::TypeNode const& node) -> Declaratio
                         .inspectable = true,
                         .editable = true,
                         .physical_analysis_available = true};
+            } else if constexpr (std::is_same_v<Type, lispb::schema::StaticTableType>) {
+                return {
+                    .kind = DeclarationKind::static_table, .inspectable = true, .editable = true};
+            } else if constexpr (std::is_same_v<Type, lispb::schema::FacadeType>) {
+                return {.kind = DeclarationKind::facade, .inspectable = true, .editable = true};
+            } else if constexpr (std::is_same_v<Type, lispb::schema::HomogeneousStorageType>) {
+                return {.kind = DeclarationKind::homogeneous_layout,
+                        .inspectable = true,
+                        .editable = true};
             } else {
                 auto const supported{definition.backend == codegen::SoaBackend::standard_library};
                 auto const vector{definition.source_kind == lispb::schema::SoaSourceKind::vector};
@@ -165,11 +182,14 @@ auto declaration_capabilities(codegen::DeclarationSchema const& declaration)
         [](auto const& schema) -> DeclarationCapabilities {
             using Type = std::decay_t<decltype(schema)>;
             if constexpr (std::is_same_v<Type, codegen::HomogeneousLayoutSchema>) {
-                return {.kind = DeclarationKind::homogeneous_layout, .inspectable = true};
+                return {.kind = DeclarationKind::homogeneous_layout,
+                        .inspectable = true,
+                        .editable = true};
             } else if constexpr (std::is_same_v<Type, codegen::StaticTableSchema>) {
-                return {.kind = DeclarationKind::static_table, .inspectable = true};
+                return {
+                    .kind = DeclarationKind::static_table, .inspectable = true, .editable = true};
             } else if constexpr (std::is_same_v<Type, codegen::FacadeSchema>) {
-                return {.kind = DeclarationKind::facade, .inspectable = true};
+                return {.kind = DeclarationKind::facade, .inspectable = true, .editable = true};
             } else {
                 return {};
             }
@@ -249,6 +269,9 @@ auto declaration_status(lispb::schema::TypeGraph const& types,
         return LayoutStatus::error;
     }
     auto const& definition{types.type(type).definition};
+    if (!declaration_capabilities(types.type(type)).physical_analysis_available) {
+        return LayoutStatus::unknown;
+    }
     if (std::holds_alternative<lispb::schema::EnumType>(definition)) {
         auto const analysis{Analyzer::analyze_enum(types, type, abi, element_count)};
         return status(analysis.diagnostics, analysis.backing_facts.has_value());

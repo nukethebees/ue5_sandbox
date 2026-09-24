@@ -8897,6 +8897,72 @@ TEST(EditableDocument, PendingNormalModuleSerializesSpecializedDeclarations) {
     EXPECT_TRUE(std::holds_alternative<codegen::VectorSoaSchema>(vector_module.declarations[0]));
     EXPECT_TRUE(
         std::holds_alternative<codegen::HomogeneousLayoutSchema>(vector_module.declarations[1]));
+
+    auto edited{files.load()};
+    auto table{std::get<codegen::StaticTableSchema>(table_module.declarations[0])};
+    table.rows.push_back({"second"});
+    table.groups.push_back(
+        {.name = "row", .type = codegen::TypeRef{"@helper"}, .columns = {"value"}});
+    auto const table_id{declaration_id(edited, "pending_specialized", "Lookup", "")};
+    ASSERT_TRUE(edited.apply(ReplaceDeclaration{table_id, table}).has_value());
+    auto facade{std::get<codegen::FacadeSchema>(table_module.declarations[1])};
+    facade.reference_target = true;
+    facade.methods.front().parameters.push_back(
+        {.type = codegen::TypeRef{"@helper"}, .name = "input"});
+    auto const facade_id{declaration_id(edited, "pending_specialized", "Access", "")};
+    ASSERT_TRUE(edited.apply(ReplaceDeclaration{facade_id, facade}).has_value());
+    auto layout{std::get<codegen::HomogeneousLayoutSchema>(vector_module.declarations[1])};
+    layout.value_types.push_back({.type = codegen::TypeRef{"double"}, .suffix = "d"});
+    auto const layout_id{declaration_id(edited, "pending_vectors", "Pairs", "")};
+    ASSERT_TRUE(edited.apply(ReplaceDeclaration{layout_id, layout}).has_value());
+    ASSERT_TRUE(edited.undo().value());
+    ASSERT_TRUE(edited.redo().value());
+    auto const consumer_id{edited.allocate_declaration_id()};
+    ASSERT_TRUE(
+        edited
+            .apply(CreateDeclaration{
+                .declaration = consumer_id,
+                .module_index = first_index + 1,
+                .schema =
+                    codegen::RecordSchema{
+                        .name = "Consumer",
+                        .members = {{.name = "pairs", .type = codegen::TypeRef{"FPairsf"}}}}})
+            .has_value());
+    ASSERT_TRUE(edited.save().has_value());
+
+    auto const saved_layout_id{declaration_id(edited, "pending_vectors", "Pairs", "")};
+    EXPECT_FALSE(edited.apply(DeleteDeclaration{saved_layout_id}).has_value());
+    auto renamed{edited.apply(RenameDeclaration{saved_layout_id, "Coordinates"})};
+    ASSERT_TRUE(renamed.has_value()) << renamed.error().message;
+    ASSERT_TRUE(edited.undo().value());
+    ASSERT_TRUE(edited.redo().value());
+    ASSERT_TRUE(edited.save().has_value());
+    auto const final_document{files.load()};
+    auto const& types{final_document.types()};
+    auto const resolved_table{types.find_declared("pending_specialized", "Lookup")};
+    ASSERT_TRUE(resolved_table.has_value());
+    auto const& table_type{std::get<StaticTableType>(types.type(*resolved_table).definition)};
+    EXPECT_EQ(table_type.rows.size(), 2U);
+    EXPECT_EQ(table_type.columns.front().count, 2U);
+    EXPECT_EQ(table_type.groups.front().result_type.type, *types.find_registered("helper"));
+    auto const& facade_type{std::get<FacadeType>(
+        types.type(*types.find_declared("pending_specialized", "Access")).definition)};
+    EXPECT_TRUE(facade_type.reference_target);
+    EXPECT_EQ(facade_type.methods.front().parameters.front().type.type,
+              *types.find_registered("helper"));
+    auto const layout_identity{
+        final_document
+            .declaration(declaration_id(final_document, "pending_vectors", "Coordinates", ""))
+            ->identity};
+    EXPECT_FALSE(types.find(layout_identity).has_value());
+    EXPECT_EQ(types.types_for_declaration(layout_identity).size(), 2U);
+    auto const storage{types.find_declared("pending_vectors", "FCoordinatesf")};
+    ASSERT_TRUE(storage.has_value());
+    auto const consumer{types.find_declared("pending_vectors", "Consumer")};
+    ASSERT_TRUE(consumer.has_value());
+    EXPECT_EQ(
+        std::get<RecordType>(types.type(*consumer).definition).members.front().semantic_type.type,
+        *storage);
 }
 
 TEST(EditableDocument, SourceBackedSpecialDeclarationsMoveWithCanonicalFallbacks) {

@@ -6,8 +6,12 @@ declarations once into a consumer-neutral `TypeGraph`.
 
 Normal modules expose one ordered `DeclarationSchema` sequence. The graph visits that sequence
 directly, so a semantic node's declaration index is the index in its source module, including
-when different declaration kinds are interleaved. Presentation-only declarations may occupy an
-index without contributing a graph node. Settings and umbrella output constructs are exceptional
+when different declaration kinds are interleaved. A declaration can own multiple semantic types:
+homogeneous layouts retain declaration identity and produce one `HomogeneousStorageType` per
+value-type specialization. These nodes carry `owning_declaration`; `types_for_declaration` includes
+both ordinary single-type declarations and generated families. The generic view and equivalent-type
+trait remain template descriptions in the authoritative layout schema, without a fabricated
+concrete TypeId or layout. Settings and umbrella output constructs are exceptional
 modules rather than semantic declaration containers.
 
 Each node has a stable `TypeIdentity` made from its origin, module, namespace, and declared name.
@@ -29,6 +33,11 @@ not independently create storage. ABI and layout consumers follow physical type 
 derive sizes; they do not replace an enum or packed value with its storage type in the semantic
 model. `dependencies_of` and `users_of` expose the resulting directed graph.
 
+`StaticTableType` describes rows, typed fixed-count columns and group result types. `FacadeType`
+describes its target binding and method signatures; target dependencies do not imply by-value
+storage. Homogeneous storage nodes resolve element, equivalent and input types. These semantic
+models do not assert an ABI layout for Unreal containers or facade reference members.
+
 `type_uses()` additionally records explicit schema references with their owning declaration or
 module and role. This includes declaration-only constructs, function signatures, allocators,
 registered function/validation dependencies, and settings. These uses support dependency
@@ -42,8 +51,13 @@ kinds such as structs, unions, arrays, and containers should extend `TypeDefinit
 rather than introduce another schema hierarchy.
 
 `EditableSchemaDocument` is the authoring boundary above the resolved graph. It owns a mutable
-validated manifest draft, source-file ownership and declaration ranges, stable declaration IDs,
+validated manifest draft, source-file ownership and declaration ranges, document-local declaration IDs,
 and typed undoable commands. A successful command resolves a replacement `TypeGraph`; a command
 which fails validation leaves both the draft and its last valid graph unchanged. The document is
 the foundation for source-preserving LispB serialization and must remain in `lispb-schema` rather
 than becoming planner-owned state.
+Renames and namespace moves repair explicit declaration references through the shared schema
+reference visitor. Deletion checks include declaration-only users and generated storage types.
+Registry-bound types retain the existing restriction on renaming/moving across namespaces until
+source-aware registry editing is available; references from module configuration also prevent
+those operations rather than silently becoming external types.

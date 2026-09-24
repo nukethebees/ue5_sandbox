@@ -86,6 +86,15 @@ auto graph_kind(TypeDefinition const& definition) -> char const* {
     if (std::holds_alternative<TaggedUnionType>(definition)) {
         return "tagged union";
     }
+    if (std::holds_alternative<StaticTableType>(definition)) {
+        return "static table";
+    }
+    if (std::holds_alternative<FacadeType>(definition)) {
+        return "facade";
+    }
+    if (std::holds_alternative<HomogeneousStorageType>(definition)) {
+        return "homogeneous storage";
+    }
     return "SoA";
 }
 
@@ -254,6 +263,15 @@ auto edge_label(TypeGraph const& types, TypeId const user, TypeId const dependen
         for (auto const& alternative : tagged->alternatives) {
             if (alternative.semantic_type.type == dependency) {
                 append_edge_label(result, alternative.name + " [" + alternative.tag + "]");
+            }
+        }
+    }
+    if (result.empty()) {
+        auto const& node{types.type(user)};
+        auto const owner{node.owning_declaration.value_or(node.identity)};
+        for (auto const& use : types.type_uses()) {
+            if (use.declaration == owner && use.target.type == dependency) {
+                append_edge_label(result, use.role);
             }
         }
     }
@@ -476,7 +494,19 @@ void PlannerUi::draw_graph_panel() {
         ImGui::MarkIniSettingsDirty();
     }
 
-    auto const types{analysis_session_.inputs.workspace.types().types()};
+    auto const& graph{analysis_session_.inputs.workspace.types()};
+    auto const types{graph.types()};
+    auto graph_selection{analysis_session_.inputs.selection.type};
+    if (!graph_selection.has_value() && analysis_session_.inputs.selection.identity().has_value()) {
+        auto const generated{
+            graph.types_for_declaration(*analysis_session_.inputs.selection.identity())};
+        if (!generated.empty()) {
+            graph_selection = generated.front();
+            ImGui::TextWrapped("Declaration %s: focusing its first generated storage type, %s.",
+                               analysis_session_.inputs.selection.identity()->name.c_str(),
+                               graph.type(*graph_selection).cpp_spelling.c_str());
+        }
+    }
 
     if (ImGui::Button("Reset view")) {
         graph_pan_x_ = 32.0F;
@@ -501,7 +531,7 @@ void PlannerUi::draw_graph_panel() {
         graph_fit_all_ = true;
     }
     ImGui::SameLine();
-    ImGui::BeginDisabled(!analysis_session_.inputs.selection.type.has_value());
+    ImGui::BeginDisabled(!graph_selection.has_value());
     if (ImGui::Button("Focus selection")) {
         graph_focus_selected_ = true;
     }
@@ -540,10 +570,9 @@ void PlannerUi::draw_graph_panel() {
 
     if ((search_submitted || next_match_requested) && !search_matches.empty()) {
         auto match{search_matches.begin()};
-        if (analysis_session_.inputs.selection.type.has_value()) {
-            auto const current{std::find(search_matches.begin(),
-                                         search_matches.end(),
-                                         *analysis_session_.inputs.selection.type)};
+        if (graph_selection.has_value()) {
+            auto const current{
+                std::find(search_matches.begin(), search_matches.end(), *graph_selection)};
             if (current != search_matches.end()) {
                 match = std::next(current);
                 if (match == search_matches.end()) {
@@ -553,11 +582,11 @@ void PlannerUi::draw_graph_panel() {
         }
 
         select_type(*match);
+        graph_selection = *match;
         graph_focus_selected_ = true;
     }
 
-    if (analysis_session_.inputs.selection.type.has_value() &&
-        analysis_session_.inputs.selection.type->value < types.size()) {
+    if (graph_selection.has_value() && graph_selection->value < types.size()) {
         ImGui::ColorButton("graph-dependency-color",
                            ImVec4{0.21F, 0.51F, 0.41F, 1.0F},
                            ImGuiColorEditFlags_NoTooltip,
@@ -665,11 +694,10 @@ void PlannerUi::draw_graph_panel() {
             graph_fit_all_ = false;
         }
 
-        if (graph_focus_selected_ && analysis_session_.inputs.selection.type.has_value() &&
-            analysis_session_.inputs.selection.type->value < positions.size()) {
-            auto const center{
-                add(positions[analysis_session_.inputs.selection.type->value],
-                    multiply(node_sizes[analysis_session_.inputs.selection.type->value], 0.5F))};
+        if (graph_focus_selected_ && graph_selection.has_value() &&
+            graph_selection->value < positions.size()) {
+            auto const center{add(positions[graph_selection->value],
+                                  multiply(node_sizes[graph_selection->value], 0.5F))};
             graph_pan_x_ = canvas_size.x * 0.5F - center.x * graph_zoom_;
             graph_pan_y_ = canvas_size.y * 0.5F - center.y * graph_zoom_;
             graph_focus_selected_ = false;
@@ -687,20 +715,19 @@ void PlannerUi::draw_graph_panel() {
                                io.MousePos.y >= minimum.y && io.MousePos.y <= maximum.y;
         }
         auto edge_hover_claimed{false};
-        auto const neighborhood_active{analysis_session_.inputs.selection.type.has_value() &&
-                                       analysis_session_.inputs.selection.type->value <
-                                           types.size()};
+        auto const neighborhood_active{graph_selection.has_value() &&
+                                       graph_selection->value < types.size()};
         std::vector<bool> dependency_nodes(types.size());
         std::vector<bool> user_nodes(types.size());
         if (neighborhood_active) {
-            for (auto const dependency : analysis_session_.inputs.workspace.types().dependencies_of(
-                     *analysis_session_.inputs.selection.type)) {
+            for (auto const dependency :
+                 analysis_session_.inputs.workspace.types().dependencies_of(*graph_selection)) {
                 if (dependency.value < dependency_nodes.size()) {
                     dependency_nodes[dependency.value] = true;
                 }
             }
-            for (auto const user : analysis_session_.inputs.workspace.types().users_of(
-                     *analysis_session_.inputs.selection.type)) {
+            for (auto const user :
+                 analysis_session_.inputs.workspace.types().users_of(*graph_selection)) {
                 if (user.value < user_nodes.size()) {
                     user_nodes[user.value] = true;
                 }
@@ -731,10 +758,9 @@ void PlannerUi::draw_graph_panel() {
                 auto const screen_start{screen_position(start)};
                 auto const screen_end{screen_position(end)};
                 auto const selected_is_user{neighborhood_active &&
-                                            analysis_session_.inputs.selection.type->value ==
-                                                user_index};
-                auto const selected_is_dependency{
-                    neighborhood_active && *analysis_session_.inputs.selection.type == dependency};
+                                            graph_selection->value == user_index};
+                auto const selected_is_dependency{neighborhood_active &&
+                                                  *graph_selection == dependency};
                 auto const edge_color{selected_is_user && selected_is_dependency
                                           ? IM_COL32(184, 126, 232, 255)
                                       : selected_is_user       ? IM_COL32(91, 202, 161, 255)
@@ -835,7 +861,7 @@ void PlannerUi::draw_graph_panel() {
                 ImGui::SetItemTooltip(
                     "%s\n%s", types[index].identity.name.c_str(), node_details[index].c_str());
             }
-            auto const selected{analysis_session_.inputs.selection.type == id};
+            auto const selected{graph_selection == id};
             draw_list->AddRectFilled(
                 minimum,
                 maximum,
