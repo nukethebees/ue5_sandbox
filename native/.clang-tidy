@@ -55,6 +55,7 @@ Checks:
   - bugprone-forwarding-reference-overload
   - bugprone-implicit-widening-of-multiplication-result
   - bugprone-inc-dec-in-conditions
+  - bugprone-incorrect-enable-if
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
