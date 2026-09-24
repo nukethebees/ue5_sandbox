@@ -1299,72 +1299,47 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ImGui::TextDisabled("Creates a shared floating-like encoding for this width.");
         }
 
-        separator_text_with_tooltip(
-            "Semantic relationship",
-            "Describe how the selected field relates to another semantic type.");
-        if (selected_linear_quantized != nullptr) {
-            ImGui::TextDisabled(
-                "This placement inherits semantic meaning through the quantizer's source scalar.");
-        } else if (selected_fixed_point != nullptr) {
-            ImGui::TextDisabled(
-                "This fixed-point placement owns its scaled numerical representation.");
-        } else if (selected_mini_float != nullptr) {
-            ImGui::TextDisabled("This mini-float placement owns its numerical encoding.");
-        }
-        ImGui::BeginDisabled(selected_linear_quantized != nullptr ||
-                             selected_fixed_point != nullptr || selected_mini_float != nullptr);
-        ImGui::SetNextItemWidth(180.0F);
-        auto const current_kind{semantic_relationship_kinds[static_cast<std::size_t>(
-            std::clamp(packed_relationship_kind_,
-                       0,
-                       static_cast<int>(semantic_relationship_kinds.size() - 1)))]};
-        auto const current_unit{semantic_relationship_units[static_cast<std::size_t>(
-            std::clamp(packed_relationship_unit_,
-                       0,
-                       static_cast<int>(semantic_relationship_units.size() - 1)))]};
-        if (ImGui::BeginCombo("Kind", codegen::semantic_relation_kind_name(current_kind).data())) {
-            for (std::size_t kind_index{}; kind_index < semantic_relationship_kinds.size();
-                 ++kind_index) {
-                auto const kind{semantic_relationship_kinds[kind_index]};
-                auto const chosen{packed_relationship_kind_ == static_cast<int>(kind_index)};
-                if (ImGui::Selectable(codegen::semantic_relation_kind_name(kind).data(), chosen)) {
-                    packed_relationship_kind_ = static_cast<int>(kind_index);
-                    if (selected_schema_field->relationship.has_value()) {
-                        auto replacement{*schema};
-                        auto& relationship{*std::get<codegen::PackedFieldSchema>(
-                                                replacement.segments[*selected_index])
-                                                .relationship};
-                        relationship.kind = kind;
-                        relationship.unit = kind == codegen::SemanticRelationKind::offset_into
-                                              ? std::optional{current_unit}
-                                              : std::nullopt;
-                        if (apply_document_edit(ReplacePackedValue{
-                                .declaration = *declaration, .schema = std::move(replacement)})) {
-                            analysis_session_.inputs.selection.field = selected_segment_name;
-                            return true;
-                        }
-                    }
-                }
+        if (section_with_tooltip(
+                "Semantic relationship",
+                "Describe how the selected field relates to another semantic type.")) {
+            if (selected_linear_quantized != nullptr) {
+                ImGui::TextDisabled("This placement inherits semantic meaning through the "
+                                    "quantizer's source scalar.");
+            } else if (selected_fixed_point != nullptr) {
+                ImGui::TextDisabled(
+                    "This fixed-point placement owns its scaled numerical representation.");
+            } else if (selected_mini_float != nullptr) {
+                ImGui::TextDisabled("This mini-float placement owns its numerical encoding.");
             }
-            ImGui::EndCombo();
-        }
-
-        if (current_kind == codegen::SemanticRelationKind::offset_into) {
+            ImGui::BeginDisabled(selected_linear_quantized != nullptr ||
+                                 selected_fixed_point != nullptr || selected_mini_float != nullptr);
             ImGui::SetNextItemWidth(180.0F);
-            if (ImGui::BeginCombo("Unit",
-                                  codegen::semantic_relation_unit_name(current_unit).data())) {
-                for (std::size_t unit_index{}; unit_index < semantic_relationship_units.size();
-                     ++unit_index) {
-                    auto const unit{semantic_relationship_units[unit_index]};
-                    auto const chosen{packed_relationship_unit_ == static_cast<int>(unit_index)};
-                    if (ImGui::Selectable(codegen::semantic_relation_unit_name(unit).data(),
+            auto const current_kind{semantic_relationship_kinds[static_cast<std::size_t>(
+                std::clamp(packed_relationship_kind_,
+                           0,
+                           static_cast<int>(semantic_relationship_kinds.size() - 1)))]};
+            auto const current_unit{semantic_relationship_units[static_cast<std::size_t>(
+                std::clamp(packed_relationship_unit_,
+                           0,
+                           static_cast<int>(semantic_relationship_units.size() - 1)))]};
+            if (ImGui::BeginCombo("Kind",
+                                  codegen::semantic_relation_kind_name(current_kind).data())) {
+                for (std::size_t kind_index{}; kind_index < semantic_relationship_kinds.size();
+                     ++kind_index) {
+                    auto const kind{semantic_relationship_kinds[kind_index]};
+                    auto const chosen{packed_relationship_kind_ == static_cast<int>(kind_index)};
+                    if (ImGui::Selectable(codegen::semantic_relation_kind_name(kind).data(),
                                           chosen)) {
-                        packed_relationship_unit_ = static_cast<int>(unit_index);
+                        packed_relationship_kind_ = static_cast<int>(kind_index);
                         if (selected_schema_field->relationship.has_value()) {
                             auto replacement{*schema};
-                            std::get<codegen::PackedFieldSchema>(
-                                replacement.segments[*selected_index])
-                                .relationship->unit = unit;
+                            auto& relationship{*std::get<codegen::PackedFieldSchema>(
+                                                    replacement.segments[*selected_index])
+                                                    .relationship};
+                            relationship.kind = kind;
+                            relationship.unit = kind == codegen::SemanticRelationKind::offset_into
+                                                  ? std::optional{current_unit}
+                                                  : std::nullopt;
                             if (apply_document_edit(
                                     ReplacePackedValue{.declaration = *declaration,
                                                        .schema = std::move(replacement)})) {
@@ -1376,87 +1351,75 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 }
                 ImGui::EndCombo();
             }
-        }
 
-        ImGui::SetNextItemWidth(std::max(80.0F, ImGui::GetContentRegionAvail().x - 132.0F));
-        auto const target_submitted{ImGui::InputText("Target",
-                                                     packed_relationship_target_.data(),
-                                                     packed_relationship_target_.size(),
-                                                     ImGuiInputTextFlags_EnterReturnsTrue)};
-        if (selected_schema_field->relationship.has_value() &&
-            (target_submitted || ImGui::IsItemDeactivatedAfterEdit())) {
-            if (packed_relationship_target_.front() == '\0') {
-                schema_edit_message_ = "Relationship target cannot be empty.";
-            } else {
-                auto replacement{*schema};
-                std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
-                    .relationship->target.name = packed_relationship_target_.data();
-                if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+            if (current_kind == codegen::SemanticRelationKind::offset_into) {
+                ImGui::SetNextItemWidth(180.0F);
+                if (ImGui::BeginCombo("Unit",
+                                      codegen::semantic_relation_unit_name(current_unit).data())) {
+                    for (std::size_t unit_index{}; unit_index < semantic_relationship_units.size();
+                         ++unit_index) {
+                        auto const unit{semantic_relationship_units[unit_index]};
+                        auto const chosen{packed_relationship_unit_ ==
+                                          static_cast<int>(unit_index)};
+                        if (ImGui::Selectable(codegen::semantic_relation_unit_name(unit).data(),
+                                              chosen)) {
+                            packed_relationship_unit_ = static_cast<int>(unit_index);
+                            if (selected_schema_field->relationship.has_value()) {
+                                auto replacement{*schema};
+                                std::get<codegen::PackedFieldSchema>(
+                                    replacement.segments[*selected_index])
+                                    .relationship->unit = unit;
+                                if (apply_document_edit(
+                                        ReplacePackedValue{.declaration = *declaration,
                                                            .schema = std::move(replacement)})) {
-                    analysis_session_.inputs.selection.field = selected_segment_name;
-                    return true;
+                                    analysis_session_.inputs.selection.field =
+                                        selected_segment_name;
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                    ImGui::EndCombo();
                 }
             }
-        }
-        ImGui::SameLine();
-        ImGui::PushID("relationship-target");
-        auto picked_relationship_target{draw_type_picker(node.identity.module_name, node.identity)};
-        ImGui::PopID();
-        if (picked_relationship_target.has_value()) {
-            std::snprintf(packed_relationship_target_.data(),
-                          packed_relationship_target_.size(),
-                          "%s",
-                          picked_relationship_target->c_str());
-            auto replacement{*schema};
-            auto& relationship{
-                std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
-                    .relationship};
-            relationship = codegen::SemanticRelationSchema{
-                .kind = current_kind,
-                .target = codegen::TypeRef{.name = *picked_relationship_target,
-                                           .suffix = {},
-                                           .nested = std::nullopt},
-                .unit = current_kind == codegen::SemanticRelationKind::offset_into
-                          ? std::optional{current_unit}
-                          : std::nullopt};
-            if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
-                                                       .schema = std::move(replacement)})) {
-                analysis_session_.inputs.selection.field = selected_segment_name;
-                return true;
-            }
-        }
-        ImGui::SameLine();
-        if (selected_schema_field->relationship.has_value()) {
-            if (ImGui::SmallButton("Clear")) {
-                auto replacement{*schema};
-                std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
-                    .relationship.reset();
-                if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
-                                                           .schema = std::move(replacement)})) {
-                    analysis_session_.inputs.selection.field = selected_segment_name;
-                    return true;
+
+            ImGui::SetNextItemWidth(std::max(80.0F, ImGui::GetContentRegionAvail().x - 132.0F));
+            auto const target_submitted{ImGui::InputText("Target",
+                                                         packed_relationship_target_.data(),
+                                                         packed_relationship_target_.size(),
+                                                         ImGuiInputTextFlags_EnterReturnsTrue)};
+            if (selected_schema_field->relationship.has_value() &&
+                (target_submitted || ImGui::IsItemDeactivatedAfterEdit())) {
+                if (packed_relationship_target_.front() == '\0') {
+                    schema_edit_message_ = "Relationship target cannot be empty.";
+                } else {
+                    auto replacement{*schema};
+                    std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
+                        .relationship->target.name = packed_relationship_target_.data();
+                    if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+                                                               .schema = std::move(replacement)})) {
+                        analysis_session_.inputs.selection.field = selected_segment_name;
+                        return true;
+                    }
                 }
             }
             ImGui::SameLine();
-            if (selected_resolved_field != nullptr &&
-                selected_resolved_field->relationship.has_value() &&
-                detail::semantic_type_navigation_button()) {
-                select_type(selected_resolved_field->relationship->target.type);
-                analysis_session_.inputs.selection.field.clear();
-                analysis_session_.inputs.selection.packed_access_fields.clear();
-                analysis_session_.inputs.selection.packed_access_set_explicit = false;
-                analysis_session_.inputs.selection.record_access_members.clear();
-                analysis_session_.inputs.selection.record_access_set_explicit = false;
-                return true;
-            }
-        } else {
-            ImGui::BeginDisabled(packed_relationship_target_.front() == '\0');
-            if (ImGui::SmallButton("Add")) {
+            ImGui::PushID("relationship-target");
+            auto picked_relationship_target{
+                draw_type_picker(node.identity.module_name, node.identity)};
+            ImGui::PopID();
+            if (picked_relationship_target.has_value()) {
+                std::snprintf(packed_relationship_target_.data(),
+                              packed_relationship_target_.size(),
+                              "%s",
+                              picked_relationship_target->c_str());
                 auto replacement{*schema};
-                std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
-                    .relationship = codegen::SemanticRelationSchema{
+                auto& relationship{
+                    std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
+                        .relationship};
+                relationship = codegen::SemanticRelationSchema{
                     .kind = current_kind,
-                    .target = codegen::TypeRef{.name = packed_relationship_target_.data(),
+                    .target = codegen::TypeRef{.name = *picked_relationship_target,
                                                .suffix = {},
                                                .nested = std::nullopt},
                     .unit = current_kind == codegen::SemanticRelationKind::offset_into
@@ -1468,92 +1431,146 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                     return true;
                 }
             }
-            ImGui::EndDisabled();
-        }
-        ImGui::EndDisabled();
-        ImGui::TextDisabled(
-            "Relationships are semantic graph edges; session capacity analysis does not change "
-            "durable source widths.");
-        layout::PackedFieldAnalysis const* analysis_field{};
-        if (analysis_session_.results().active_packed.has_value()) {
-            auto const found{std::ranges::find(analysis_session_.results().active_packed->fields,
-                                               selected_segment_name,
-                                               &layout::PackedFieldAnalysis::name)};
-            if (found != analysis_session_.results().active_packed->fields.end()) {
-                analysis_field = &*found;
+            ImGui::SameLine();
+            if (selected_schema_field->relationship.has_value()) {
+                if (ImGui::SmallButton("Clear")) {
+                    auto replacement{*schema};
+                    std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
+                        .relationship.reset();
+                    if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+                                                               .schema = std::move(replacement)})) {
+                        analysis_session_.inputs.selection.field = selected_segment_name;
+                        return true;
+                    }
+                }
+                ImGui::SameLine();
+                if (selected_resolved_field != nullptr &&
+                    selected_resolved_field->relationship.has_value() &&
+                    detail::semantic_type_navigation_button()) {
+                    select_type(selected_resolved_field->relationship->target.type);
+                    analysis_session_.inputs.selection.field.clear();
+                    analysis_session_.inputs.selection.packed_access_fields.clear();
+                    analysis_session_.inputs.selection.packed_access_set_explicit = false;
+                    analysis_session_.inputs.selection.record_access_members.clear();
+                    analysis_session_.inputs.selection.record_access_set_explicit = false;
+                    return true;
+                }
+            } else {
+                ImGui::BeginDisabled(packed_relationship_target_.front() == '\0');
+                if (ImGui::SmallButton("Add")) {
+                    auto replacement{*schema};
+                    std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
+                        .relationship = codegen::SemanticRelationSchema{
+                        .kind = current_kind,
+                        .target = codegen::TypeRef{.name = packed_relationship_target_.data(),
+                                                   .suffix = {},
+                                                   .nested = std::nullopt},
+                        .unit = current_kind == codegen::SemanticRelationKind::offset_into
+                                  ? std::optional{current_unit}
+                                  : std::nullopt};
+                    if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+                                                               .schema = std::move(replacement)})) {
+                        analysis_session_.inputs.selection.field = selected_segment_name;
+                        return true;
+                    }
+                }
+                ImGui::EndDisabled();
             }
-        }
-        if (analysis_field != nullptr && analysis_field->relationship_target_extent.has_value()) {
-            auto const kind{*analysis_field->relationship_kind};
-            auto const term{detail::relationship_extent_term(kind)};
-            auto const unit{
-                detail::relationship_extent_unit(kind, analysis_field->relationship_unit)};
-            auto const heading{"Session " + std::string{term} + " requirement"};
-            ImGui::SeparatorText(heading.c_str());
-            ImGui::Text(
-                "Target %s: %llu %s",
-                term.data(),
-                static_cast<unsigned long long>(*analysis_field->relationship_target_extent),
-                unit.data());
-            ImGui::Text(
-                "Live values: %s",
-                analysis_field->relationship_live_value_count.has_value()
-                    ? detail::format_code_count(*analysis_field->relationship_live_value_count)
-                          .c_str()
-                    : "Unknown");
-            auto const required_codes{
-                analysis_field->relationship_required_code_count.has_value()
-                    ? detail::format_code_count(*analysis_field->relationship_required_code_count)
-                : analysis_field->relationship_minimum_required_bits.value_or(0) > 64
-                    ? std::string{"> 2^64"}
-                    : std::string{"Unknown"}};
-            ImGui::Text("Required codes: %s", required_codes.c_str());
-            ImGui::Text("Minimum width: %s",
+            ImGui::EndDisabled();
+            ImGui::TextDisabled(
+                "Relationships are semantic graph edges; session capacity analysis does not change "
+                "durable source widths.");
+            layout::PackedFieldAnalysis const* analysis_field{};
+            if (analysis_session_.results().active_packed.has_value()) {
+                auto const found{
+                    std::ranges::find(analysis_session_.results().active_packed->fields,
+                                      selected_segment_name,
+                                      &layout::PackedFieldAnalysis::name)};
+                if (found != analysis_session_.results().active_packed->fields.end()) {
+                    analysis_field = &*found;
+                }
+            }
+            if (analysis_field != nullptr &&
+                analysis_field->relationship_target_extent.has_value()) {
+                auto const kind{*analysis_field->relationship_kind};
+                auto const term{detail::relationship_extent_term(kind)};
+                auto const unit{
+                    detail::relationship_extent_unit(kind, analysis_field->relationship_unit)};
+                auto const heading{"Session " + std::string{term} + " requirement"};
+                if (detail::section(heading.c_str())) {
+                    ImGui::Text("Target %s: %llu %s",
+                                term.data(),
+                                static_cast<unsigned long long>(
+                                    *analysis_field->relationship_target_extent),
+                                unit.data());
+                    ImGui::Text("Live values: %s",
+                                analysis_field->relationship_live_value_count.has_value()
+                                    ? detail::format_code_count(
+                                          *analysis_field->relationship_live_value_count)
+                                          .c_str()
+                                    : "Unknown");
+                    auto const required_codes{
+                        analysis_field->relationship_required_code_count.has_value()
+                            ? detail::format_code_count(
+                                  *analysis_field->relationship_required_code_count)
+                        : analysis_field->relationship_minimum_required_bits.value_or(0) > 64
+                            ? std::string{"> 2^64"}
+                            : std::string{"Unknown"}};
+                    ImGui::Text("Required codes: %s", required_codes.c_str());
+                    ImGui::Text(
+                        "Minimum width: %s",
                         analysis_field->relationship_minimum_required_bits.has_value()
                             ? (std::to_string(*analysis_field->relationship_minimum_required_bits) +
                                " bits")
                                   .c_str()
                             : "Unknown");
-            ImGui::Text("Current planning width fits: %s",
+                    ImGui::Text(
+                        "Current planning width fits: %s",
                         analysis_field->relationship_width_sufficient.has_value()
                             ? (*analysis_field->relationship_width_sufficient ? "Yes" : "No")
                             : "Unknown");
-            ImGui::Text(
-                "Code-space %s limit: %s",
-                term.data(),
-                detail::format_number(analysis_field->relationship_code_space_capacity_limit)
-                    .c_str());
-            ImGui::Text(
-                "Code-space %s headroom: %s",
-                term.data(),
-                detail::format_number(analysis_field->relationship_capacity_headroom).c_str());
-            ImGui::Text("Semantic-range %s limit: %s",
+                    ImGui::Text("Code-space %s limit: %s",
+                                term.data(),
+                                detail::format_number(
+                                    analysis_field->relationship_code_space_capacity_limit)
+                                    .c_str());
+                    ImGui::Text(
+                        "Code-space %s headroom: %s",
+                        term.data(),
+                        detail::format_number(analysis_field->relationship_capacity_headroom)
+                            .c_str());
+                    ImGui::Text(
+                        "Semantic-range %s limit: %s",
                         term.data(),
                         detail::format_number(analysis_field->relationship_semantic_capacity_limit)
                             .c_str());
-            ImGui::Text("Sentinel-placement %s limit: %s",
+                    ImGui::Text(
+                        "Sentinel-placement %s limit: %s",
                         term.data(),
                         detail::format_number(analysis_field->relationship_sentinel_capacity_limit)
                             .c_str());
-            ImGui::Text("Effective valid %s limit: %s",
+                    ImGui::Text(
+                        "Effective valid %s limit: %s",
                         term.data(),
                         detail::format_number(analysis_field->relationship_effective_capacity_limit)
                             .c_str());
-            ImGui::Text(
-                "Effective valid %s headroom: %s",
-                term.data(),
-                detail::format_number(analysis_field->relationship_effective_capacity_headroom)
-                    .c_str());
-            if (kind == codegen::SemanticRelationKind::count_of) {
-                ImGui::TextDisabled(
-                    "Live counts include 0 through capacity; named sentinels add code states.");
-            } else if (kind == codegen::SemanticRelationKind::offset_into) {
-                ImGui::TextDisabled(
-                    "Live offsets span 0 through extent-1 in the declared unit; named sentinels "
-                    "add code states.");
-            } else {
-                ImGui::TextDisabled(
-                    "Live indices span 0 through capacity-1; named sentinels add code states.");
+                    ImGui::Text("Effective valid %s headroom: %s",
+                                term.data(),
+                                detail::format_number(
+                                    analysis_field->relationship_effective_capacity_headroom)
+                                    .c_str());
+                    if (kind == codegen::SemanticRelationKind::count_of) {
+                        ImGui::TextDisabled("Live counts include 0 through capacity; named "
+                                            "sentinels add code states.");
+                    } else if (kind == codegen::SemanticRelationKind::offset_into) {
+                        ImGui::TextDisabled("Live offsets span 0 through extent-1 in the declared "
+                                            "unit; named sentinels "
+                                            "add code states.");
+                    } else {
+                        ImGui::TextDisabled("Live indices span 0 through capacity-1; named "
+                                            "sentinels add code states.");
+                    }
+                }
             }
         }
     }
@@ -1561,116 +1578,125 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
     auto selected_code_after_edit{selected_packed_code_};
     if (!pending.has_value() && selected_schema_field != nullptr &&
         selected_integer_scalar != nullptr && selected_resolved_field != nullptr) {
-        ImGui::SeparatorText("Shared scalar domain");
-        ImGui::TextDisabled(
-            "Range, signedness, and named codes are authored on the referenced integer scalar.");
-        for (auto const& code : selected_resolved_field->named_codes) {
-            auto const value{codegen::format_packed_integer(code.value)};
-            ImGui::BulletText(
-                "%s = %s%s", code.name.c_str(), value.c_str(), code.sentinel ? " (sentinel)" : "");
+        if (detail::section("Shared scalar domain")) {
+            ImGui::TextDisabled("Range, signedness, and named codes are authored on the referenced "
+                                "integer scalar.");
+            for (auto const& code : selected_resolved_field->named_codes) {
+                auto const value{codegen::format_packed_integer(code.value)};
+                ImGui::BulletText("%s = %s%s",
+                                  code.name.c_str(),
+                                  value.c_str(),
+                                  code.sentinel ? " (sentinel)" : "");
+            }
         }
     } else if (!pending.has_value() && selected_schema_field != nullptr &&
                selected_linear_quantized != nullptr) {
-        ImGui::SeparatorText("Linear quantization");
-        layout::LinearQuantizedAnalysis const* quantization{};
-        if (analysis_session_.results().active_packed.has_value()) {
-            auto const analyzed_field{
-                std::ranges::find(analysis_session_.results().active_packed->fields,
-                                  analysis_session_.inputs.selection.field,
-                                  &layout::PackedFieldAnalysis::name)};
-            if (analyzed_field != analysis_session_.results().active_packed->fields.end() &&
-                analyzed_field->linear_quantized.has_value()) {
-                quantization = &*analyzed_field->linear_quantized;
+        if (detail::section("Linear quantization")) {
+            layout::LinearQuantizedAnalysis const* quantization{};
+            if (analysis_session_.results().active_packed.has_value()) {
+                auto const analyzed_field{
+                    std::ranges::find(analysis_session_.results().active_packed->fields,
+                                      analysis_session_.inputs.selection.field,
+                                      &layout::PackedFieldAnalysis::name)};
+                if (analyzed_field != analysis_session_.results().active_packed->fields.end() &&
+                    analyzed_field->linear_quantized.has_value()) {
+                    quantization = &*analyzed_field->linear_quantized;
+                }
             }
+            if (quantization != nullptr) {
+                auto const source_minimum{
+                    codegen::format_packed_integer(quantization->source_minimum)};
+                auto const source_maximum{
+                    codegen::format_packed_integer(quantization->source_maximum)};
+                ImGui::Text("Source range: %s..%s", source_minimum.c_str(), source_maximum.c_str());
+                ImGui::Text("Encoded width: %u bits", quantization->encoded_storage_bits);
+                ImGui::Text("Usable codes: %s",
+                            detail::format_code_count(quantization->usable_code_count).c_str());
+                ImGui::Text("Reserved codes: %llu",
+                            static_cast<unsigned long long>(quantization->reserved_code_count));
+                ImGui::Text("Resolution: %.9Lg", quantization->resolution);
+                ImGui::Text("Maximum rounding error: %.9Lg", quantization->maximum_rounding_error);
+                ImGui::Text("Clipping: %s",
+                            codegen::quantization_clipping_name(quantization->clipping).data());
+            } else {
+                ImGui::TextDisabled("Quantization analysis is unavailable.");
+            }
+            ImGui::TextDisabled("Generated packed APIs expose encoded codes; decoding remains "
+                                "representation policy.");
         }
-        if (quantization != nullptr) {
-            auto const source_minimum{codegen::format_packed_integer(quantization->source_minimum)};
-            auto const source_maximum{codegen::format_packed_integer(quantization->source_maximum)};
-            ImGui::Text("Source range: %s..%s", source_minimum.c_str(), source_maximum.c_str());
-            ImGui::Text("Encoded width: %u bits", quantization->encoded_storage_bits);
-            ImGui::Text("Usable codes: %s",
-                        detail::format_code_count(quantization->usable_code_count).c_str());
-            ImGui::Text("Reserved codes: %llu",
-                        static_cast<unsigned long long>(quantization->reserved_code_count));
-            ImGui::Text("Resolution: %.9Lg", quantization->resolution);
-            ImGui::Text("Maximum rounding error: %.9Lg", quantization->maximum_rounding_error);
-            ImGui::Text("Clipping: %s",
-                        codegen::quantization_clipping_name(quantization->clipping).data());
-        } else {
-            ImGui::TextDisabled("Quantization analysis is unavailable.");
-        }
-        ImGui::TextDisabled(
-            "Generated packed APIs expose encoded codes; decoding remains representation policy.");
     } else if (!pending.has_value() && selected_schema_field != nullptr &&
                selected_fixed_point != nullptr) {
-        ImGui::SeparatorText("Fixed point");
-        layout::FixedPointAnalysis const* fixed{};
-        if (analysis_session_.results().active_packed.has_value()) {
-            auto const analyzed_field{
-                std::ranges::find(analysis_session_.results().active_packed->fields,
-                                  analysis_session_.inputs.selection.field,
-                                  &layout::PackedFieldAnalysis::name)};
-            if (analyzed_field != analysis_session_.results().active_packed->fields.end() &&
-                analyzed_field->fixed_point.has_value()) {
-                fixed = &*analyzed_field->fixed_point;
+        if (detail::section("Fixed point")) {
+            layout::FixedPointAnalysis const* fixed{};
+            if (analysis_session_.results().active_packed.has_value()) {
+                auto const analyzed_field{
+                    std::ranges::find(analysis_session_.results().active_packed->fields,
+                                      analysis_session_.inputs.selection.field,
+                                      &layout::PackedFieldAnalysis::name)};
+                if (analyzed_field != analysis_session_.results().active_packed->fields.end() &&
+                    analyzed_field->fixed_point.has_value()) {
+                    fixed = &*analyzed_field->fixed_point;
+                }
             }
+            if (fixed != nullptr) {
+                auto const minimum_raw{codegen::format_packed_integer(fixed->minimum_raw_value)};
+                auto const maximum_raw{codegen::format_packed_integer(fixed->maximum_raw_value)};
+                ImGui::Text("Raw range: %s..%s", minimum_raw.c_str(), maximum_raw.c_str());
+                ImGui::Text(
+                    "Numerical range: %.9Lg..%.9Lg", fixed->minimum_value, fixed->maximum_value);
+                ImGui::Text("Allowed range: %.9Lg..%.9Lg",
+                            fixed->minimum_allowed_value,
+                            fixed->maximum_allowed_value);
+                ImGui::Text("Width: %u total / %u whole / %u fractional bits",
+                            fixed->total_bits,
+                            fixed->whole_bits,
+                            fixed->fractional_bits);
+                ImGui::Text("Scale: %.9Lg", fixed->scale);
+                ImGui::Text("Resolution: %.9Lg", fixed->resolution);
+                ImGui::Text("Maximum rounding error: %.9Lg", fixed->maximum_rounding_error);
+                ImGui::Text("Rounding: %s",
+                            codegen::fixed_point_rounding_name(fixed->rounding).data());
+            } else {
+                ImGui::TextDisabled("Fixed-point analysis is unavailable.");
+            }
+            ImGui::TextDisabled(
+                "Generated packed APIs expose raw codes and checked double conversion.");
         }
-        if (fixed != nullptr) {
-            auto const minimum_raw{codegen::format_packed_integer(fixed->minimum_raw_value)};
-            auto const maximum_raw{codegen::format_packed_integer(fixed->maximum_raw_value)};
-            ImGui::Text("Raw range: %s..%s", minimum_raw.c_str(), maximum_raw.c_str());
-            ImGui::Text(
-                "Numerical range: %.9Lg..%.9Lg", fixed->minimum_value, fixed->maximum_value);
-            ImGui::Text("Allowed range: %.9Lg..%.9Lg",
-                        fixed->minimum_allowed_value,
-                        fixed->maximum_allowed_value);
-            ImGui::Text("Width: %u total / %u whole / %u fractional bits",
-                        fixed->total_bits,
-                        fixed->whole_bits,
-                        fixed->fractional_bits);
-            ImGui::Text("Scale: %.9Lg", fixed->scale);
-            ImGui::Text("Resolution: %.9Lg", fixed->resolution);
-            ImGui::Text("Maximum rounding error: %.9Lg", fixed->maximum_rounding_error);
-            ImGui::Text("Rounding: %s", codegen::fixed_point_rounding_name(fixed->rounding).data());
-        } else {
-            ImGui::TextDisabled("Fixed-point analysis is unavailable.");
-        }
-        ImGui::TextDisabled(
-            "Generated packed APIs expose raw codes and checked double conversion.");
     } else if (!pending.has_value() && selected_schema_field != nullptr &&
                selected_mini_float != nullptr) {
-        ImGui::SeparatorText("Mini float");
-        layout::MiniFloatAnalysis const* mini{};
-        if (analysis_session_.results().active_packed.has_value()) {
-            auto const analyzed_field{
-                std::ranges::find(analysis_session_.results().active_packed->fields,
-                                  analysis_session_.inputs.selection.field,
-                                  &layout::PackedFieldAnalysis::name)};
-            if (analyzed_field != analysis_session_.results().active_packed->fields.end() &&
-                analyzed_field->mini_float.has_value()) {
-                mini = &*analyzed_field->mini_float;
+        if (detail::section("Mini float")) {
+            layout::MiniFloatAnalysis const* mini{};
+            if (analysis_session_.results().active_packed.has_value()) {
+                auto const analyzed_field{
+                    std::ranges::find(analysis_session_.results().active_packed->fields,
+                                      analysis_session_.inputs.selection.field,
+                                      &layout::PackedFieldAnalysis::name)};
+                if (analyzed_field != analysis_session_.results().active_packed->fields.end() &&
+                    analyzed_field->mini_float.has_value()) {
+                    mini = &*analyzed_field->mini_float;
+                }
             }
-        }
-        if (mini != nullptr) {
-            ImGui::Text("Width: %u sign / %u exponent / %u significand bits",
-                        mini->sign_bits,
-                        mini->exponent_bits,
-                        mini->significand_bits);
-            ImGui::Text("Exponent bias: %d", mini->exponent_bias);
-            if (mini->minimum_finite.has_value() && mini->maximum_finite.has_value()) {
-                ImGui::Text(
-                    "Finite range: %.9Lg..%.9Lg", *mini->minimum_finite, *mini->maximum_finite);
+            if (mini != nullptr) {
+                ImGui::Text("Width: %u sign / %u exponent / %u significand bits",
+                            mini->sign_bits,
+                            mini->exponent_bits,
+                            mini->significand_bits);
+                ImGui::Text("Exponent bias: %d", mini->exponent_bias);
+                if (mini->minimum_finite.has_value() && mini->maximum_finite.has_value()) {
+                    ImGui::Text(
+                        "Finite range: %.9Lg..%.9Lg", *mini->minimum_finite, *mini->maximum_finite);
+                } else {
+                    ImGui::TextDisabled("Finite range: Unknown");
+                }
+                ImGui::Text("Zero / infinity / NaN codes: %llu / %llu / %llu",
+                            static_cast<unsigned long long>(mini->zero_code_count),
+                            static_cast<unsigned long long>(mini->infinity_code_count),
+                            static_cast<unsigned long long>(mini->nan_code_count));
             } else {
-                ImGui::TextDisabled("Finite range: Unknown");
+                ImGui::TextDisabled("Mini-float analysis is unavailable.");
             }
-            ImGui::Text("Zero / infinity / NaN codes: %llu / %llu / %llu",
-                        static_cast<unsigned long long>(mini->zero_code_count),
-                        static_cast<unsigned long long>(mini->infinity_code_count),
-                        static_cast<unsigned long long>(mini->nan_code_count));
-        } else {
-            ImGui::TextDisabled("Mini-float analysis is unavailable.");
+            ImGui::TextDisabled("Generated packed APIs expose encoded bits, not decoded values.");
         }
-        ImGui::TextDisabled("Generated packed APIs expose encoded bits, not decoded values.");
     } else if (!pending.has_value() && selected_schema_field != nullptr &&
                selected_index.has_value() && selected_linear_quantized == nullptr &&
                selected_fixed_point == nullptr && selected_mini_float == nullptr) {
@@ -1687,7 +1713,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 : std::optional<std::size_t>{static_cast<std::size_t>(
                       selected_code - selected_schema_field->named_codes.begin())}};
 
-        if (ImGui::CollapsingHeader("Named codes", ImGuiTreeNodeFlags_DefaultOpen)) {
+        if (detail::section("Named codes")) {
             ImGui::TextDisabled("Named codes remain ordinary integer values; sentinels sit outside "
                                 "the live range.");
             ImGui::BeginDisabled(!named_value.has_value());

@@ -521,11 +521,10 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         ImGui::EndTable();
     }
 
-    if (selected_index.has_value()) {
+    if (selected_index.has_value() && detail::section("Selected column details")) {
         auto const& member{schema->members[*selected_index]};
         auto const* resolved_column{
             *selected_index < soa.columns.size() ? &soa.columns[*selected_index] : nullptr};
-        ImGui::SeparatorText("Selected column details");
         if (member.kind == codegen::SoaMemberKind::nested) {
             detail::prepare_property_input("Fixed schema (optional)");
             auto const fixed_submitted{ImGui::InputText("##Fixed schema (optional)",
@@ -645,52 +644,26 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 std::clamp(soa_relationship_unit_,
                            0,
                            static_cast<int>(semantic_relationship_units.size() - 1)))]};
-            separator_text_with_tooltip(
-                "Selected column relationship",
-                "Describe how this SoA column relates to another semantic type.");
-            ImGui::SetNextItemWidth(180.0F);
-            if (ImGui::BeginCombo("Kind##soa-column-relationship",
-                                  codegen::semantic_relation_kind_name(current_kind).data())) {
-                for (std::size_t kind_index{}; kind_index < semantic_relationship_kinds.size();
-                     ++kind_index) {
-                    auto const kind{semantic_relationship_kinds[kind_index]};
-                    auto const chosen{soa_relationship_kind_ == static_cast<int>(kind_index)};
-                    if (ImGui::Selectable(codegen::semantic_relation_kind_name(kind).data(),
-                                          chosen)) {
-                        soa_relationship_kind_ = static_cast<int>(kind_index);
-                        if (member.relationship.has_value()) {
-                            auto replacement{*schema};
-                            replacement.members[*selected_index].relationship->kind = kind;
-                            replacement.members[*selected_index].relationship->unit =
-                                kind == codegen::SemanticRelationKind::offset_into
-                                    ? std::optional{current_unit}
-                                    : std::nullopt;
-                            if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
-                                                               .schema = std::move(replacement)})) {
-                                soa_editor_declaration_.reset();
-                                analysis_session_.inputs.selection.field = member.name;
-                                ImGui::EndCombo();
-                                return true;
-                            }
-                        }
-                    }
-                }
-                ImGui::EndCombo();
-            }
-            if (current_kind == codegen::SemanticRelationKind::offset_into) {
+            if (section_with_tooltip(
+                    "Selected column relationship",
+                    "Describe how this SoA column relates to another semantic type.")) {
                 ImGui::SetNextItemWidth(180.0F);
-                if (ImGui::BeginCombo("Unit##soa-column-relationship",
-                                      codegen::semantic_relation_unit_name(current_unit).data())) {
-                    for (std::size_t unit_index{}; unit_index < semantic_relationship_units.size();
-                         ++unit_index) {
-                        auto const unit{semantic_relationship_units[unit_index]};
-                        auto const chosen{soa_relationship_unit_ == static_cast<int>(unit_index)};
-                        if (ImGui::Selectable(codegen::semantic_relation_unit_name(unit).data(),
+                if (ImGui::BeginCombo("Kind##soa-column-relationship",
+                                      codegen::semantic_relation_kind_name(current_kind).data())) {
+                    for (std::size_t kind_index{}; kind_index < semantic_relationship_kinds.size();
+                         ++kind_index) {
+                        auto const kind{semantic_relationship_kinds[kind_index]};
+                        auto const chosen{soa_relationship_kind_ == static_cast<int>(kind_index)};
+                        if (ImGui::Selectable(codegen::semantic_relation_kind_name(kind).data(),
                                               chosen)) {
-                            soa_relationship_unit_ = static_cast<int>(unit_index);
+                            soa_relationship_kind_ = static_cast<int>(kind_index);
                             if (member.relationship.has_value()) {
                                 auto replacement{*schema};
-                                replacement.members[*selected_index].relationship->unit = unit;
+                                replacement.members[*selected_index].relationship->kind = kind;
+                                replacement.members[*selected_index].relationship->unit =
+                                    kind == codegen::SemanticRelationKind::offset_into
+                                        ? std::optional{current_unit}
+                                        : std::nullopt;
                                 if (apply_document_edit(
                                         ReplaceSoa{.declaration = *declaration,
                                                    .schema = std::move(replacement)})) {
@@ -704,76 +677,70 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                     }
                     ImGui::EndCombo();
                 }
-            }
-
-            ImGui::SetNextItemWidth(std::max(80.0F, ImGui::GetContentRegionAvail().x - 132.0F));
-            auto const target_submitted{ImGui::InputText("Target##soa-column-relationship",
-                                                         soa_relationship_target_.data(),
-                                                         soa_relationship_target_.size(),
-                                                         ImGuiInputTextFlags_EnterReturnsTrue)};
-            if (member.relationship.has_value() &&
-                (target_submitted || ImGui::IsItemDeactivatedAfterEdit())) {
-                if (soa_relationship_target_.front() == '\0') {
-                    schema_edit_message_ = "Relationship target cannot be empty.";
-                } else {
-                    auto replacement{*schema};
-                    replacement.members[*selected_index].relationship->target.name =
-                        soa_relationship_target_.data();
-                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                if (current_kind == codegen::SemanticRelationKind::offset_into) {
+                    ImGui::SetNextItemWidth(180.0F);
+                    if (ImGui::BeginCombo(
+                            "Unit##soa-column-relationship",
+                            codegen::semantic_relation_unit_name(current_unit).data())) {
+                        for (std::size_t unit_index{};
+                             unit_index < semantic_relationship_units.size();
+                             ++unit_index) {
+                            auto const unit{semantic_relationship_units[unit_index]};
+                            auto const chosen{soa_relationship_unit_ ==
+                                              static_cast<int>(unit_index)};
+                            if (ImGui::Selectable(codegen::semantic_relation_unit_name(unit).data(),
+                                                  chosen)) {
+                                soa_relationship_unit_ = static_cast<int>(unit_index);
+                                if (member.relationship.has_value()) {
+                                    auto replacement{*schema};
+                                    replacement.members[*selected_index].relationship->unit = unit;
+                                    if (apply_document_edit(
+                                            ReplaceSoa{.declaration = *declaration,
                                                        .schema = std::move(replacement)})) {
-                        soa_editor_declaration_.reset();
-                        analysis_session_.inputs.selection.field = member.name;
-                        return true;
+                                        soa_editor_declaration_.reset();
+                                        analysis_session_.inputs.selection.field = member.name;
+                                        ImGui::EndCombo();
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                        ImGui::EndCombo();
                     }
                 }
-            }
-            ImGui::SameLine();
-            ImGui::PushID("soa-column-relationship-target");
-            auto picked_relationship_target{
-                draw_type_picker(node.identity.module_name, node.identity)};
-            ImGui::PopID();
-            if (picked_relationship_target.has_value()) {
-                auto replacement{*schema};
-                replacement.members[*selected_index].relationship = codegen::SemanticRelationSchema{
-                    .kind = current_kind,
-                    .target = codegen::TypeRef{.name = *picked_relationship_target,
-                                               .suffix = {},
-                                               .nested = std::nullopt},
-                    .unit = current_kind == codegen::SemanticRelationKind::offset_into
-                              ? std::optional{current_unit}
-                              : std::nullopt};
-                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
-                                                   .schema = std::move(replacement)})) {
-                    soa_editor_declaration_.reset();
-                    analysis_session_.inputs.selection.field = member.name;
-                    return true;
-                }
-            }
-            ImGui::SameLine();
-            if (member.relationship.has_value()) {
-                if (ImGui::SmallButton("Clear##soa-column-relationship")) {
-                    auto replacement{*schema};
-                    replacement.members[*selected_index].relationship.reset();
-                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
-                                                       .schema = std::move(replacement)})) {
-                        soa_editor_declaration_.reset();
-                        analysis_session_.inputs.selection.field = member.name;
-                        return true;
+
+                ImGui::SetNextItemWidth(std::max(80.0F, ImGui::GetContentRegionAvail().x - 132.0F));
+                auto const target_submitted{ImGui::InputText("Target##soa-column-relationship",
+                                                             soa_relationship_target_.data(),
+                                                             soa_relationship_target_.size(),
+                                                             ImGuiInputTextFlags_EnterReturnsTrue)};
+                if (member.relationship.has_value() &&
+                    (target_submitted || ImGui::IsItemDeactivatedAfterEdit())) {
+                    if (soa_relationship_target_.front() == '\0') {
+                        schema_edit_message_ = "Relationship target cannot be empty.";
+                    } else {
+                        auto replacement{*schema};
+                        replacement.members[*selected_index].relationship->target.name =
+                            soa_relationship_target_.data();
+                        if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                           .schema = std::move(replacement)})) {
+                            soa_editor_declaration_.reset();
+                            analysis_session_.inputs.selection.field = member.name;
+                            return true;
+                        }
                     }
                 }
                 ImGui::SameLine();
-                if (resolved_column != nullptr && resolved_column->relationship.has_value() &&
-                    ImGui::SmallButton(">##soa-column-relationship")) {
-                    navigate_to = resolved_column->relationship->target.type;
-                }
-            } else {
-                ImGui::BeginDisabled(soa_relationship_target_.front() == '\0');
-                if (ImGui::SmallButton("Add##soa-column-relationship")) {
+                ImGui::PushID("soa-column-relationship-target");
+                auto picked_relationship_target{
+                    draw_type_picker(node.identity.module_name, node.identity)};
+                ImGui::PopID();
+                if (picked_relationship_target.has_value()) {
                     auto replacement{*schema};
                     replacement.members[*selected_index].relationship =
                         codegen::SemanticRelationSchema{
                             .kind = current_kind,
-                            .target = codegen::TypeRef{.name = soa_relationship_target_.data(),
+                            .target = codegen::TypeRef{.name = *picked_relationship_target,
                                                        .suffix = {},
                                                        .nested = std::nullopt},
                             .unit = current_kind == codegen::SemanticRelationKind::offset_into
@@ -786,11 +753,49 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                         return true;
                     }
                 }
-                ImGui::EndDisabled();
+                ImGui::SameLine();
+                if (member.relationship.has_value()) {
+                    if (ImGui::SmallButton("Clear##soa-column-relationship")) {
+                        auto replacement{*schema};
+                        replacement.members[*selected_index].relationship.reset();
+                        if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                           .schema = std::move(replacement)})) {
+                            soa_editor_declaration_.reset();
+                            analysis_session_.inputs.selection.field = member.name;
+                            return true;
+                        }
+                    }
+                    ImGui::SameLine();
+                    if (resolved_column != nullptr && resolved_column->relationship.has_value() &&
+                        ImGui::SmallButton(">##soa-column-relationship")) {
+                        navigate_to = resolved_column->relationship->target.type;
+                    }
+                } else {
+                    ImGui::BeginDisabled(soa_relationship_target_.front() == '\0');
+                    if (ImGui::SmallButton("Add##soa-column-relationship")) {
+                        auto replacement{*schema};
+                        replacement.members[*selected_index].relationship =
+                            codegen::SemanticRelationSchema{
+                                .kind = current_kind,
+                                .target = codegen::TypeRef{.name = soa_relationship_target_.data(),
+                                                           .suffix = {},
+                                                           .nested = std::nullopt},
+                                .unit = current_kind == codegen::SemanticRelationKind::offset_into
+                                          ? std::optional{current_unit}
+                                          : std::nullopt};
+                        if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                           .schema = std::move(replacement)})) {
+                            soa_editor_declaration_.reset();
+                            analysis_session_.inputs.selection.field = member.name;
+                            return true;
+                        }
+                    }
+                    ImGui::EndDisabled();
+                }
+                ImGui::TextDisabled(
+                    "The relationship is durable semantic metadata; SoA storage, capacity, and "
+                    "allocator placement remain separate physical/session concerns.");
             }
-            ImGui::TextDisabled(
-                "The relationship is durable semantic metadata; SoA storage, capacity, and "
-                "allocator placement remain separate physical/session concerns.");
         }
 
         auto const mask_configured{schema->field_mask_name.has_value() &&
@@ -881,8 +886,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             }
         }
 
-        if (member.mask_field) {
-            ImGui::SeparatorText("Mask dimensions");
+        if (member.mask_field && detail::section("Mask dimensions")) {
             if (ImGui::Button("+ Dimension")) {
                 auto replacement{*schema};
                 auto& dimensions{replacement.members[*selected_index].mask_dimensions};
@@ -1038,612 +1042,406 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         }
     }
 
-    ImGui::SeparatorText("Storage operations");
-    auto const all_storage_operations{codegen::all_storage_operations()};
-    auto const all_operations_enabled{
-        std::ranges::all_of(all_storage_operations, [&](auto const operation) {
-            return has_storage_operation(schema->operations, operation);
-        })};
-    ImGui::BeginDisabled(pending.has_value() || all_operations_enabled);
-    auto const enable_all_operations{ImGui::Button("Enable all operations")};
-    ImGui::EndDisabled();
-    if (enable_all_operations) {
-        auto replacement{*schema};
-        replacement.operations = all_storage_operations;
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            return true;
-        }
-    }
-    ImGui::SameLine();
-    ImGui::BeginDisabled(pending.has_value() || schema->operations.empty());
-    auto const disable_all_operations{ImGui::Button("Disable all operations")};
-    ImGui::EndDisabled();
-    if (disable_all_operations) {
-        auto replacement{*schema};
-        replacement.operations.clear();
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            return true;
-        }
-    }
-    auto operation_applied{false};
-    ImGui::BeginDisabled(pending.has_value());
-    if (ImGui::BeginTable("soa-storage-operations", 2, ImGuiTableFlags_SizingStretchSame)) {
-        for (auto const operation : all_storage_operations) {
-            auto const descriptor{storage_operation_descriptor(operation)};
-            ImGui::TableNextColumn();
-            auto enabled{has_storage_operation(schema->operations, operation)};
-            auto const toggled{ImGui::Checkbox(descriptor.source_name, &enabled)};
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%s", descriptor.description);
-            }
-            if (toggled) {
-                auto replacement{*schema};
-                replacement.operations =
-                    with_storage_operation(schema->operations, operation, enabled);
-                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
-                                                   .schema = std::move(replacement)})) {
-                    operation_applied = true;
-                    break;
-                }
+    if (detail::section("Storage operations")) {
+        auto const all_storage_operations{codegen::all_storage_operations()};
+        auto const all_operations_enabled{
+            std::ranges::all_of(all_storage_operations, [&](auto const operation) {
+                return has_storage_operation(schema->operations, operation);
+            })};
+        ImGui::BeginDisabled(pending.has_value() || all_operations_enabled);
+        auto const enable_all_operations{ImGui::Button("Enable all operations")};
+        ImGui::EndDisabled();
+        if (enable_all_operations) {
+            auto replacement{*schema};
+            replacement.operations = all_storage_operations;
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                return true;
             }
         }
-        ImGui::EndTable();
-    }
-    ImGui::EndDisabled();
-    if (operation_applied) {
-        return true;
-    }
-
-    ImGui::SeparatorText("Generation policy");
-    detail::prepare_property_input("Export specifier (optional)");
-    auto const export_submitted{ImGui::InputText("##Export specifier (optional)",
-                                                 soa_export_specifier_.data(),
-                                                 soa_export_specifier_.size(),
-                                                 ImGuiInputTextFlags_EnterReturnsTrue)};
-    if (export_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-        if (!pending.has_value()) {
-            pending = *schema;
-        }
-        pending->export_specifier = optional_text(soa_export_specifier_);
-    }
-
-    ImGui::TextUnformatted("Equivalent row type (optional)");
-    ImGui::SetNextItemWidth(std::max(60.0F, ImGui::GetContentRegionAvail().x - 58.0F));
-    auto const equivalent_submitted{ImGui::InputText("##soa-equivalent-type",
-                                                     soa_equivalent_type_.data(),
-                                                     soa_equivalent_type_.size(),
-                                                     ImGuiInputTextFlags_EnterReturnsTrue)};
-    if (equivalent_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-        if (!pending.has_value()) {
-            pending = *schema;
-        }
-        if (soa_equivalent_type_.front() == '\0') {
-            pending->equivalent_type.reset();
-        } else if (pending->equivalent_type.has_value()) {
-            pending->equivalent_type->name = soa_equivalent_type_.data();
-        } else {
-            pending->equivalent_type = codegen::TypeRef{
-                .name = soa_equivalent_type_.data(), .suffix = {}, .nested = std::nullopt};
-        }
-    }
-    ImGui::SameLine();
-    ImGui::PushID("soa-equivalent-type");
-    if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
-        if (!pending.has_value()) {
-            pending = *schema;
-        }
-        if (pending->equivalent_type.has_value()) {
-            pending->equivalent_type->name = *picked;
-        } else {
-            pending->equivalent_type =
-                codegen::TypeRef{.name = *picked, .suffix = {}, .nested = std::nullopt};
-        }
-    }
-    ImGui::PopID();
-    ImGui::SameLine();
-    ImGui::BeginDisabled(pending.has_value() || !soa.equivalent_type.has_value());
-    if (ImGui::SmallButton(">##equivalent-type")) {
-        navigate_to = soa.equivalent_type->type;
-    }
-    ImGui::EndDisabled();
-
-    auto layout_only{schema->layout_only};
-    ImGui::BeginDisabled(pending.has_value());
-    auto const layout_only_toggled{ImGui::Checkbox("Layout only", &layout_only)};
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Keep this declaration available as a nested layout without emitting its "
-                          "standalone storage/view API.");
-    }
-    ImGui::EndDisabled();
-    if (layout_only_toggled) {
-        auto replacement{*schema};
-        replacement.layout_only = layout_only;
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            return true;
-        }
-    }
-    auto copy_element_memberwise{schema->copy_element_memberwise};
-    ImGui::BeginDisabled(pending.has_value());
-    auto const copy_memberwise_toggled{
-        ImGui::Checkbox("Copy elements memberwise", &copy_element_memberwise)};
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Generate direct member assignment for copy-element; this has no effect "
-                          "unless the copy-element storage operation is enabled.");
-    }
-    ImGui::EndDisabled();
-    if (copy_memberwise_toggled) {
-        auto replacement{*schema};
-        replacement.copy_element_memberwise = copy_element_memberwise;
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            return true;
-        }
-    }
-
-    ImGui::SeparatorText("Using declarations");
-    ImGui::BeginDisabled(pending.has_value());
-    auto const add_using_declaration{ImGui::Button("+ Using declaration")};
-    ImGui::EndDisabled();
-    if (add_using_declaration) {
-        auto replacement{*schema};
-        replacement.using_declarations.push_back(
-            unique_soa_using_declaration(replacement.using_declarations));
-        auto const new_index{replacement.using_declarations.size() - 1};
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            soa_using_declaration_index_ = new_index;
-            soa_editor_declaration_.reset();
-            return true;
-        }
-    }
-    ImGui::SameLine();
-    auto const using_index{soa_using_declaration_index_};
-    auto const has_using{using_index.has_value() &&
-                         *using_index < schema->using_declarations.size()};
-    ImGui::BeginDisabled(pending.has_value() || !has_using || *using_index == 0);
-    auto const move_using_up{ImGui::Button("Using up")};
-    ImGui::EndDisabled();
-    if (move_using_up) {
-        auto replacement{*schema};
-        std::swap(replacement.using_declarations[*using_index],
-                  replacement.using_declarations[*using_index - 1]);
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            soa_using_declaration_index_ = *using_index - 1;
-            soa_editor_declaration_.reset();
-            return true;
-        }
-    }
-    ImGui::SameLine();
-    ImGui::BeginDisabled(pending.has_value() || !has_using ||
-                         *using_index + 1 >= schema->using_declarations.size());
-    auto const move_using_down{ImGui::Button("Using down")};
-    ImGui::EndDisabled();
-    if (move_using_down) {
-        auto replacement{*schema};
-        std::swap(replacement.using_declarations[*using_index],
-                  replacement.using_declarations[*using_index + 1]);
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            soa_using_declaration_index_ = *using_index + 1;
-            soa_editor_declaration_.reset();
-            return true;
-        }
-    }
-    ImGui::SameLine();
-    ImGui::BeginDisabled(pending.has_value() || !has_using);
-    auto const delete_using{ImGui::Button("Delete using")};
-    ImGui::EndDisabled();
-    if (delete_using) {
-        auto replacement{*schema};
-        replacement.using_declarations.erase(replacement.using_declarations.begin() +
-                                             static_cast<std::ptrdiff_t>(*using_index));
-        auto const next_index{
-            replacement.using_declarations.empty()
-                ? std::optional<std::size_t>{}
-                : std::optional{std::min(*using_index, replacement.using_declarations.size() - 1)}};
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            soa_using_declaration_index_ = next_index;
-            soa_editor_declaration_.reset();
-            return true;
-        }
-    }
-
-    ImGui::BeginDisabled(pending.has_value());
-    if (soa_using_declarations_.size() == schema->using_declarations.size() &&
-        detail::begin_editable_table(
-            "soa-using-declarations", 2, schema->using_declarations.size())) {
-        detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
-        detail::editable_table_column("Declaration after 'using'");
-        ImGui::TableHeadersRow();
-        for (std::size_t index{}; index < schema->using_declarations.size(); ++index) {
-            ImGui::PushID(static_cast<int>(index));
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn();
-            auto const row_selected{soa_using_declaration_index_ == index};
-            if (detail::editable_table_row_handle(row_selected)) {
-                soa_using_declaration_index_ = index;
+        ImGui::SameLine();
+        ImGui::BeginDisabled(pending.has_value() || schema->operations.empty());
+        auto const disable_all_operations{ImGui::Button("Disable all operations")};
+        ImGui::EndDisabled();
+        if (disable_all_operations) {
+            auto replacement{*schema};
+            replacement.operations.clear();
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                return true;
             }
-            if (ImGui::BeginDragDropSource()) {
-                ImGui::SetDragDropPayload("SOA_USING_DECLARATION_ROW", &index, sizeof(index));
-                ImGui::Text("Move %s", schema->using_declarations[index].c_str());
-                ImGui::EndDragDropSource();
-            }
-            if (ImGui::BeginDragDropTarget()) {
-                if (auto const* payload{
-                        ImGui::AcceptDragDropPayload("SOA_USING_DECLARATION_ROW")}) {
-                    auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
-                    if (source_index < schema->using_declarations.size() && source_index != index) {
-                        pending = *schema;
-                        move_element(pending->using_declarations, source_index, index);
-                        soa_using_declaration_index_ = index;
-                    }
-                }
-                ImGui::EndDragDropTarget();
-            }
-
-            ImGui::TableNextColumn();
-            ImGui::SetNextItemWidth(-1.0F);
-            auto const submitted{ImGui::InputText("##declaration",
-                                                  soa_using_declarations_[index].data(),
-                                                  soa_using_declarations_[index].size(),
-                                                  ImGuiInputTextFlags_EnterReturnsTrue)};
-            if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-                if (!pending.has_value()) {
-                    pending = *schema;
-                }
-                pending->using_declarations[index] = soa_using_declarations_[index].data();
-            }
-            ImGui::PopID();
         }
-        ImGui::EndTable();
-    }
-    ImGui::EndDisabled();
-
-    ImGui::SeparatorText("Custom functions");
-    ImGui::BeginDisabled(pending.has_value());
-    auto const add_function{ImGui::Button("+ Function")};
-    ImGui::EndDisabled();
-    if (add_function) {
-        auto replacement{*schema};
-        auto function{codegen::FunctionSchema{}};
-        function.name = unique_soa_function_name(replacement.functions, "custom_function");
-        function.return_type =
-            codegen::TypeRef{.name = "void", .suffix = {}, .nested = std::nullopt};
-        function.is_inline = true;
-        replacement.functions.push_back(std::move(function));
-        auto const new_index{replacement.functions.size() - 1};
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            soa_function_index_ = new_index;
-            soa_editor_declaration_.reset();
-            return true;
-        }
-    }
-    ImGui::SameLine();
-    auto const function_index{soa_function_index_};
-    auto const has_function{function_index.has_value() &&
-                            *function_index < schema->functions.size()};
-    ImGui::BeginDisabled(pending.has_value() || !has_function);
-    auto const duplicate_function{ImGui::Button("Duplicate function")};
-    ImGui::EndDisabled();
-    if (duplicate_function) {
-        auto replacement{*schema};
-        auto copy{replacement.functions[*function_index]};
-        copy.name = unique_soa_function_name(replacement.functions, copy.name + "_copy");
-        replacement.functions.insert(replacement.functions.begin() +
-                                         static_cast<std::ptrdiff_t>(*function_index + 1),
-                                     std::move(copy));
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            soa_function_index_ = *function_index + 1;
-            soa_editor_declaration_.reset();
-            return true;
-        }
-    }
-    ImGui::SameLine();
-    ImGui::BeginDisabled(pending.has_value() || !has_function || *function_index == 0);
-    auto const move_function_up{ImGui::Button("Function up")};
-    ImGui::EndDisabled();
-    if (move_function_up) {
-        auto replacement{*schema};
-        std::swap(replacement.functions[*function_index],
-                  replacement.functions[*function_index - 1]);
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            soa_function_index_ = *function_index - 1;
-            soa_editor_declaration_.reset();
-            return true;
-        }
-    }
-    ImGui::SameLine();
-    ImGui::BeginDisabled(pending.has_value() || !has_function ||
-                         *function_index + 1 >= schema->functions.size());
-    auto const move_function_down{ImGui::Button("Function down")};
-    ImGui::EndDisabled();
-    if (move_function_down) {
-        auto replacement{*schema};
-        std::swap(replacement.functions[*function_index],
-                  replacement.functions[*function_index + 1]);
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            soa_function_index_ = *function_index + 1;
-            soa_editor_declaration_.reset();
-            return true;
-        }
-    }
-    ImGui::SameLine();
-    ImGui::BeginDisabled(pending.has_value() || !has_function);
-    auto const delete_function{ImGui::Button("Delete function")};
-    ImGui::EndDisabled();
-    if (delete_function) {
-        auto replacement{*schema};
-        replacement.functions.erase(replacement.functions.begin() +
-                                    static_cast<std::ptrdiff_t>(*function_index));
-        auto const next_index{
-            replacement.functions.empty()
-                ? std::optional<std::size_t>{}
-                : std::optional{std::min(*function_index, replacement.functions.size() - 1)}};
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            soa_function_index_ = next_index;
-            soa_editor_declaration_.reset();
-            return true;
-        }
-    }
-
-    ImGui::BeginDisabled(pending.has_value());
-    if (soa_function_names_.size() == schema->functions.size() &&
-        soa_function_return_types_.size() == schema->functions.size() &&
-        detail::begin_editable_table("soa-functions", 8, schema->functions.size())) {
-        detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
-        detail::editable_table_column("Name");
-        detail::editable_table_column("Return");
-        detail::editable_table_column("const", ImGuiTableColumnFlags_WidthFixed);
-        detail::editable_table_column("noexcept", ImGuiTableColumnFlags_WidthFixed);
-        detail::editable_table_column("static", ImGuiTableColumnFlags_WidthFixed);
-        detail::editable_table_column("inline", ImGuiTableColumnFlags_WidthFixed);
-        detail::editable_table_column("source", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableHeadersRow();
-        for (std::size_t index{}; index < schema->functions.size(); ++index) {
-            auto const& function{schema->functions[index]};
-            ImGui::PushID(static_cast<int>(index));
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn();
-            auto const row_selected{soa_function_index_ == index};
-            if (detail::editable_table_row_handle(row_selected)) {
-                soa_function_index_ = index;
-                soa_editor_declaration_.reset();
-            }
-            if (ImGui::BeginDragDropSource()) {
-                ImGui::SetDragDropPayload("SOA_FUNCTION_ROW", &index, sizeof(index));
-                ImGui::Text("Move %s", function.name.c_str());
-                ImGui::EndDragDropSource();
-            }
-            if (ImGui::BeginDragDropTarget()) {
-                if (auto const* payload{ImGui::AcceptDragDropPayload("SOA_FUNCTION_ROW")}) {
-                    auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
-                    if (source_index < schema->functions.size() && source_index != index) {
-                        pending = *schema;
-                        move_element(pending->functions, source_index, index);
-                        soa_function_index_ = index;
-                    }
-                }
-                ImGui::EndDragDropTarget();
-            }
-
-            ImGui::TableNextColumn();
-            ImGui::SetNextItemWidth(-1.0F);
-            auto const name_submitted{ImGui::InputText("##name",
-                                                       soa_function_names_[index].data(),
-                                                       soa_function_names_[index].size(),
-                                                       ImGuiInputTextFlags_EnterReturnsTrue)};
-            if (name_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-                if (!pending.has_value()) {
-                    pending = *schema;
-                }
-                pending->functions[index].name = soa_function_names_[index].data();
-            }
-
-            ImGui::TableNextColumn();
-            ImGui::SetNextItemWidth(-1.0F);
-            auto const return_submitted{ImGui::InputText("##return",
-                                                         soa_function_return_types_[index].data(),
-                                                         soa_function_return_types_[index].size(),
-                                                         ImGuiInputTextFlags_EnterReturnsTrue)};
-            if (return_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-                if (!pending.has_value()) {
-                    pending = *schema;
-                }
-                pending->functions[index].return_type.name =
-                    soa_function_return_types_[index].data();
-            }
-
-            auto edit_flag = [&](char const* label, bool const current, auto&& apply) {
+        auto operation_applied{false};
+        ImGui::BeginDisabled(pending.has_value());
+        if (ImGui::BeginTable("soa-storage-operations", 2, ImGuiTableFlags_SizingStretchSame)) {
+            for (auto const operation : all_storage_operations) {
+                auto const descriptor{storage_operation_descriptor(operation)};
                 ImGui::TableNextColumn();
-                auto value{current};
-                if (ImGui::Checkbox(label, &value)) {
-                    if (!pending.has_value()) {
-                        pending = *schema;
+                auto enabled{has_storage_operation(schema->operations, operation)};
+                auto const toggled{ImGui::Checkbox(descriptor.source_name, &enabled)};
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("%s", descriptor.description);
+                }
+                if (toggled) {
+                    auto replacement{*schema};
+                    replacement.operations =
+                        with_storage_operation(schema->operations, operation, enabled);
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        operation_applied = true;
+                        break;
                     }
-                    apply(pending->functions[index], value);
                 }
-            };
-            edit_flag("##const", function.is_const, [](auto& edited, bool const value) {
-                edited.is_const = value;
-                if (value) {
-                    edited.is_static = false;
-                }
-            });
-            edit_flag("##noexcept", function.is_noexcept, [](auto& edited, bool const value) {
-                edited.is_noexcept = value;
-            });
-            edit_flag("##static", function.is_static, [](auto& edited, bool const value) {
-                edited.is_static = value;
-                if (value) {
-                    edited.is_const = false;
-                }
-            });
-            edit_flag("##inline", function.is_inline, [](auto& edited, bool const value) {
-                edited.is_inline = value;
-                if (value) {
-                    edited.definition_in_source = false;
-                }
-            });
-            edit_flag(
-                "##source", function.definition_in_source, [](auto& edited, bool const value) {
-                    edited.definition_in_source = value;
-                    if (value) {
-                        edited.is_inline = false;
-                    }
-                });
-            ImGui::PopID();
+            }
+            ImGui::EndTable();
         }
-        ImGui::EndTable();
+        ImGui::EndDisabled();
+        if (operation_applied) {
+            return true;
+        }
     }
-    ImGui::EndDisabled();
 
-    if (has_function) {
-        auto const& function{schema->functions[*function_index]};
+    if (detail::section("Generation policy")) {
+        detail::prepare_property_input("Export specifier (optional)");
+        auto const export_submitted{ImGui::InputText("##Export specifier (optional)",
+                                                     soa_export_specifier_.data(),
+                                                     soa_export_specifier_.size(),
+                                                     ImGuiInputTextFlags_EnterReturnsTrue)};
+        if (export_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+            if (!pending.has_value()) {
+                pending = *schema;
+            }
+            pending->export_specifier = optional_text(soa_export_specifier_);
+        }
 
-        ImGui::TextUnformatted("Parameters");
+        ImGui::TextUnformatted("Equivalent row type (optional)");
+        ImGui::SetNextItemWidth(std::max(60.0F, ImGui::GetContentRegionAvail().x - 58.0F));
+        auto const equivalent_submitted{ImGui::InputText("##soa-equivalent-type",
+                                                         soa_equivalent_type_.data(),
+                                                         soa_equivalent_type_.size(),
+                                                         ImGuiInputTextFlags_EnterReturnsTrue)};
+        if (equivalent_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+            if (!pending.has_value()) {
+                pending = *schema;
+            }
+            if (soa_equivalent_type_.front() == '\0') {
+                pending->equivalent_type.reset();
+            } else if (pending->equivalent_type.has_value()) {
+                pending->equivalent_type->name = soa_equivalent_type_.data();
+            } else {
+                pending->equivalent_type = codegen::TypeRef{
+                    .name = soa_equivalent_type_.data(), .suffix = {}, .nested = std::nullopt};
+            }
+        }
+        ImGui::SameLine();
+        ImGui::PushID("soa-equivalent-type");
+        if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
+            if (!pending.has_value()) {
+                pending = *schema;
+            }
+            if (pending->equivalent_type.has_value()) {
+                pending->equivalent_type->name = *picked;
+            } else {
+                pending->equivalent_type =
+                    codegen::TypeRef{.name = *picked, .suffix = {}, .nested = std::nullopt};
+            }
+        }
+        ImGui::PopID();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(pending.has_value() || !soa.equivalent_type.has_value());
+        if (ImGui::SmallButton(">##equivalent-type")) {
+            navigate_to = soa.equivalent_type->type;
+        }
+        ImGui::EndDisabled();
+
+        auto layout_only{schema->layout_only};
         ImGui::BeginDisabled(pending.has_value());
-        auto const add_parameter{ImGui::Button("+ Parameter")};
+        auto const layout_only_toggled{ImGui::Checkbox("Layout only", &layout_only)};
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Keep this declaration available as a nested layout without emitting its "
+                "standalone storage/view API.");
+        }
         ImGui::EndDisabled();
-        if (add_parameter) {
+        if (layout_only_toggled) {
             auto replacement{*schema};
-            auto& parameters{replacement.functions[*function_index].parameters};
-            auto parameter{codegen::ParameterSchema{}};
-            parameter.name = unique_function_parameter_name(parameters, "parameter");
-            parameter.type =
-                codegen::TypeRef{.name = "std::uint32_t", .suffix = {}, .nested = std::nullopt};
-            if (std::ranges::any_of(parameters, [](auto const& value) {
-                    return value.default_value.has_value();
-                })) {
-                parameter.default_value = "{}";
-            }
-            parameters.push_back(std::move(parameter));
-            auto const new_index{parameters.size() - 1};
+            replacement.layout_only = layout_only;
             if (apply_document_edit(
                     ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_parameter_index_ = new_index;
+                return true;
+            }
+        }
+        auto copy_element_memberwise{schema->copy_element_memberwise};
+        ImGui::BeginDisabled(pending.has_value());
+        auto const copy_memberwise_toggled{
+            ImGui::Checkbox("Copy elements memberwise", &copy_element_memberwise)};
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip(
+                "Generate direct member assignment for copy-element; this has no effect "
+                "unless the copy-element storage operation is enabled.");
+        }
+        ImGui::EndDisabled();
+        if (copy_memberwise_toggled) {
+            auto replacement{*schema};
+            replacement.copy_element_memberwise = copy_element_memberwise;
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                return true;
+            }
+        }
+    }
+
+    if (detail::section("Using declarations")) {
+        ImGui::BeginDisabled(pending.has_value());
+        auto const add_using_declaration{ImGui::Button("+ Using declaration")};
+        ImGui::EndDisabled();
+        if (add_using_declaration) {
+            auto replacement{*schema};
+            replacement.using_declarations.push_back(
+                unique_soa_using_declaration(replacement.using_declarations));
+            auto const new_index{replacement.using_declarations.size() - 1};
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_using_declaration_index_ = new_index;
                 soa_editor_declaration_.reset();
                 return true;
             }
         }
         ImGui::SameLine();
-        auto const parameter_index{soa_parameter_index_};
-        auto const has_parameter{parameter_index.has_value() &&
-                                 *parameter_index < function.parameters.size()};
-        ImGui::BeginDisabled(pending.has_value() || !has_parameter);
-        auto const duplicate_parameter{ImGui::Button("Duplicate parameter")};
+        auto const using_index{soa_using_declaration_index_};
+        auto const has_using{using_index.has_value() &&
+                             *using_index < schema->using_declarations.size()};
+        ImGui::BeginDisabled(pending.has_value() || !has_using || *using_index == 0);
+        auto const move_using_up{ImGui::Button("Using up")};
         ImGui::EndDisabled();
-        if (duplicate_parameter) {
+        if (move_using_up) {
             auto replacement{*schema};
-            auto& parameters{replacement.functions[*function_index].parameters};
-            auto copy{parameters[*parameter_index]};
-            copy.name = unique_function_parameter_name(parameters, copy.name + "_copy");
-            parameters.insert(parameters.begin() +
-                                  static_cast<std::ptrdiff_t>(*parameter_index + 1),
-                              std::move(copy));
+            std::swap(replacement.using_declarations[*using_index],
+                      replacement.using_declarations[*using_index - 1]);
             if (apply_document_edit(
                     ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_parameter_index_ = *parameter_index + 1;
+                soa_using_declaration_index_ = *using_index - 1;
                 soa_editor_declaration_.reset();
                 return true;
             }
         }
         ImGui::SameLine();
-        ImGui::BeginDisabled(pending.has_value() || !has_parameter || *parameter_index == 0);
-        auto const move_parameter_up{ImGui::Button("Parameter up")};
+        ImGui::BeginDisabled(pending.has_value() || !has_using ||
+                             *using_index + 1 >= schema->using_declarations.size());
+        auto const move_using_down{ImGui::Button("Using down")};
         ImGui::EndDisabled();
-        if (move_parameter_up) {
+        if (move_using_down) {
             auto replacement{*schema};
-            auto& parameters{replacement.functions[*function_index].parameters};
-            std::swap(parameters[*parameter_index], parameters[*parameter_index - 1]);
+            std::swap(replacement.using_declarations[*using_index],
+                      replacement.using_declarations[*using_index + 1]);
             if (apply_document_edit(
                     ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_parameter_index_ = *parameter_index - 1;
+                soa_using_declaration_index_ = *using_index + 1;
                 soa_editor_declaration_.reset();
                 return true;
             }
         }
         ImGui::SameLine();
-        ImGui::BeginDisabled(pending.has_value() || !has_parameter ||
-                             *parameter_index + 1 >= function.parameters.size());
-        auto const move_parameter_down{ImGui::Button("Parameter down")};
+        ImGui::BeginDisabled(pending.has_value() || !has_using);
+        auto const delete_using{ImGui::Button("Delete using")};
         ImGui::EndDisabled();
-        if (move_parameter_down) {
+        if (delete_using) {
             auto replacement{*schema};
-            auto& parameters{replacement.functions[*function_index].parameters};
-            std::swap(parameters[*parameter_index], parameters[*parameter_index + 1]);
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_parameter_index_ = *parameter_index + 1;
-                soa_editor_declaration_.reset();
-                return true;
-            }
-        }
-        ImGui::SameLine();
-        ImGui::BeginDisabled(pending.has_value() || !has_parameter);
-        auto const delete_parameter{ImGui::Button("Delete parameter")};
-        ImGui::EndDisabled();
-        if (delete_parameter) {
-            auto replacement{*schema};
-            auto& parameters{replacement.functions[*function_index].parameters};
-            parameters.erase(parameters.begin() + static_cast<std::ptrdiff_t>(*parameter_index));
+            replacement.using_declarations.erase(replacement.using_declarations.begin() +
+                                                 static_cast<std::ptrdiff_t>(*using_index));
             auto const next_index{
-                parameters.empty()
+                replacement.using_declarations.empty()
                     ? std::optional<std::size_t>{}
-                    : std::optional{std::min(*parameter_index, parameters.size() - 1)}};
+                    : std::optional{
+                          std::min(*using_index, replacement.using_declarations.size() - 1)}};
             if (apply_document_edit(
                     ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_parameter_index_ = next_index;
+                soa_using_declaration_index_ = next_index;
                 soa_editor_declaration_.reset();
                 return true;
             }
         }
 
         ImGui::BeginDisabled(pending.has_value());
-        if (soa_parameter_names_.size() == function.parameters.size() &&
-            soa_parameter_types_.size() == function.parameters.size() &&
-            soa_parameter_defaults_.size() == function.parameters.size() &&
+        if (soa_using_declarations_.size() == schema->using_declarations.size() &&
             detail::begin_editable_table(
-                "soa-function-parameters", 5, function.parameters.size())) {
+                "soa-using-declarations", 2, schema->using_declarations.size())) {
             detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
-            detail::editable_table_column("Name");
-            detail::editable_table_column("Type");
-            detail::editable_table_column("Pick", ImGuiTableColumnFlags_WidthFixed);
-            detail::editable_table_column("Default");
+            detail::editable_table_column("Declaration after 'using'");
             ImGui::TableHeadersRow();
-            for (std::size_t index{}; index < function.parameters.size(); ++index) {
-                auto const& parameter{function.parameters[index]};
+            for (std::size_t index{}; index < schema->using_declarations.size(); ++index) {
                 ImGui::PushID(static_cast<int>(index));
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                auto const row_selected{soa_parameter_index_ == index};
+                auto const row_selected{soa_using_declaration_index_ == index};
                 if (detail::editable_table_row_handle(row_selected)) {
-                    soa_parameter_index_ = index;
+                    soa_using_declaration_index_ = index;
                 }
                 if (ImGui::BeginDragDropSource()) {
-                    ImGui::SetDragDropPayload("SOA_FUNCTION_PARAMETER_ROW", &index, sizeof(index));
-                    ImGui::Text("Move %s", parameter.name.c_str());
+                    ImGui::SetDragDropPayload("SOA_USING_DECLARATION_ROW", &index, sizeof(index));
+                    ImGui::Text("Move %s", schema->using_declarations[index].c_str());
                     ImGui::EndDragDropSource();
                 }
                 if (ImGui::BeginDragDropTarget()) {
                     if (auto const* payload{
-                            ImGui::AcceptDragDropPayload("SOA_FUNCTION_PARAMETER_ROW")}) {
+                            ImGui::AcceptDragDropPayload("SOA_USING_DECLARATION_ROW")}) {
                         auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
-                        if (source_index < function.parameters.size() && source_index != index) {
+                        if (source_index < schema->using_declarations.size() &&
+                            source_index != index) {
                             pending = *schema;
-                            move_element(pending->functions[*function_index].parameters,
-                                         source_index,
-                                         index);
-                            soa_parameter_index_ = index;
+                            move_element(pending->using_declarations, source_index, index);
+                            soa_using_declaration_index_ = index;
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-1.0F);
+                auto const submitted{ImGui::InputText("##declaration",
+                                                      soa_using_declarations_[index].data(),
+                                                      soa_using_declarations_[index].size(),
+                                                      ImGuiInputTextFlags_EnterReturnsTrue)};
+                if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                    if (!pending.has_value()) {
+                        pending = *schema;
+                    }
+                    pending->using_declarations[index] = soa_using_declarations_[index].data();
+                }
+                ImGui::PopID();
+            }
+            ImGui::EndTable();
+        }
+        ImGui::EndDisabled();
+    }
+
+    if (detail::section("Custom functions")) {
+        ImGui::BeginDisabled(pending.has_value());
+        auto const add_function{ImGui::Button("+ Function")};
+        ImGui::EndDisabled();
+        if (add_function) {
+            auto replacement{*schema};
+            auto function{codegen::FunctionSchema{}};
+            function.name = unique_soa_function_name(replacement.functions, "custom_function");
+            function.return_type =
+                codegen::TypeRef{.name = "void", .suffix = {}, .nested = std::nullopt};
+            function.is_inline = true;
+            replacement.functions.push_back(std::move(function));
+            auto const new_index{replacement.functions.size() - 1};
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_function_index_ = new_index;
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::SameLine();
+        auto const function_index{soa_function_index_};
+        auto const has_function{function_index.has_value() &&
+                                *function_index < schema->functions.size()};
+        ImGui::BeginDisabled(pending.has_value() || !has_function);
+        auto const duplicate_function{ImGui::Button("Duplicate function")};
+        ImGui::EndDisabled();
+        if (duplicate_function) {
+            auto replacement{*schema};
+            auto copy{replacement.functions[*function_index]};
+            copy.name = unique_soa_function_name(replacement.functions, copy.name + "_copy");
+            replacement.functions.insert(replacement.functions.begin() +
+                                             static_cast<std::ptrdiff_t>(*function_index + 1),
+                                         std::move(copy));
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_function_index_ = *function_index + 1;
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::SameLine();
+        ImGui::BeginDisabled(pending.has_value() || !has_function || *function_index == 0);
+        auto const move_function_up{ImGui::Button("Function up")};
+        ImGui::EndDisabled();
+        if (move_function_up) {
+            auto replacement{*schema};
+            std::swap(replacement.functions[*function_index],
+                      replacement.functions[*function_index - 1]);
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_function_index_ = *function_index - 1;
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::SameLine();
+        ImGui::BeginDisabled(pending.has_value() || !has_function ||
+                             *function_index + 1 >= schema->functions.size());
+        auto const move_function_down{ImGui::Button("Function down")};
+        ImGui::EndDisabled();
+        if (move_function_down) {
+            auto replacement{*schema};
+            std::swap(replacement.functions[*function_index],
+                      replacement.functions[*function_index + 1]);
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_function_index_ = *function_index + 1;
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::SameLine();
+        ImGui::BeginDisabled(pending.has_value() || !has_function);
+        auto const delete_function{ImGui::Button("Delete function")};
+        ImGui::EndDisabled();
+        if (delete_function) {
+            auto replacement{*schema};
+            replacement.functions.erase(replacement.functions.begin() +
+                                        static_cast<std::ptrdiff_t>(*function_index));
+            auto const next_index{
+                replacement.functions.empty()
+                    ? std::optional<std::size_t>{}
+                    : std::optional{std::min(*function_index, replacement.functions.size() - 1)}};
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_function_index_ = next_index;
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+
+        ImGui::BeginDisabled(pending.has_value());
+        if (soa_function_names_.size() == schema->functions.size() &&
+            soa_function_return_types_.size() == schema->functions.size() &&
+            detail::begin_editable_table("soa-functions", 8, schema->functions.size())) {
+            detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("Name");
+            detail::editable_table_column("Return");
+            detail::editable_table_column("const", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("noexcept", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("static", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("inline", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("source", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableHeadersRow();
+            for (std::size_t index{}; index < schema->functions.size(); ++index) {
+                auto const& function{schema->functions[index]};
+                ImGui::PushID(static_cast<int>(index));
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                auto const row_selected{soa_function_index_ == index};
+                if (detail::editable_table_row_handle(row_selected)) {
+                    soa_function_index_ = index;
+                    soa_editor_declaration_.reset();
+                }
+                if (ImGui::BeginDragDropSource()) {
+                    ImGui::SetDragDropPayload("SOA_FUNCTION_ROW", &index, sizeof(index));
+                    ImGui::Text("Move %s", function.name.c_str());
+                    ImGui::EndDragDropSource();
+                }
+                if (ImGui::BeginDragDropTarget()) {
+                    if (auto const* payload{ImGui::AcceptDragDropPayload("SOA_FUNCTION_ROW")}) {
+                        auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
+                        if (source_index < schema->functions.size() && source_index != index) {
+                            pending = *schema;
+                            move_element(pending->functions, source_index, index);
+                            soa_function_index_ = index;
                         }
                     }
                     ImGui::EndDragDropTarget();
@@ -1652,621 +1450,891 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-1.0F);
                 auto const name_submitted{ImGui::InputText("##name",
-                                                           soa_parameter_names_[index].data(),
-                                                           soa_parameter_names_[index].size(),
+                                                           soa_function_names_[index].data(),
+                                                           soa_function_names_[index].size(),
                                                            ImGuiInputTextFlags_EnterReturnsTrue)};
                 if (name_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
                     if (!pending.has_value()) {
                         pending = *schema;
                     }
-                    pending->functions[*function_index].parameters[index].name =
-                        soa_parameter_names_[index].data();
+                    pending->functions[index].name = soa_function_names_[index].data();
                 }
 
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-1.0F);
-                auto const type_submitted{ImGui::InputText("##type",
-                                                           soa_parameter_types_[index].data(),
-                                                           soa_parameter_types_[index].size(),
-                                                           ImGuiInputTextFlags_EnterReturnsTrue)};
-                if (type_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                auto const return_submitted{
+                    ImGui::InputText("##return",
+                                     soa_function_return_types_[index].data(),
+                                     soa_function_return_types_[index].size(),
+                                     ImGuiInputTextFlags_EnterReturnsTrue)};
+                if (return_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
                     if (!pending.has_value()) {
                         pending = *schema;
                     }
-                    pending->functions[*function_index].parameters[index].type.name =
-                        soa_parameter_types_[index].data();
+                    pending->functions[index].return_type.name =
+                        soa_function_return_types_[index].data();
                 }
 
-                ImGui::TableNextColumn();
-                ImGui::PushID("type-picker");
-                if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
-                    if (!pending.has_value()) {
-                        pending = *schema;
-                    }
-                    pending->functions[*function_index].parameters[index].type.name = *picked;
-                }
-                ImGui::PopID();
-
-                ImGui::TableNextColumn();
-                auto has_default{parameter.default_value.has_value()};
-                if (ImGui::Checkbox("##has-default", &has_default)) {
-                    if (!pending.has_value()) {
-                        pending = *schema;
-                    }
-                    auto& edited{
-                        pending->functions[*function_index].parameters[index].default_value};
-                    edited = has_default ? std::optional<std::string>{"{}"} : std::nullopt;
-                }
-                if (parameter.default_value.has_value()) {
-                    ImGui::SameLine();
-                    ImGui::SetNextItemWidth(-1.0F);
-                    auto const default_submitted{
-                        ImGui::InputText("##default",
-                                         soa_parameter_defaults_[index].data(),
-                                         soa_parameter_defaults_[index].size(),
-                                         ImGuiInputTextFlags_EnterReturnsTrue)};
-                    if (default_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                auto edit_flag = [&](char const* label, bool const current, auto&& apply) {
+                    ImGui::TableNextColumn();
+                    auto value{current};
+                    if (ImGui::Checkbox(label, &value)) {
                         if (!pending.has_value()) {
                             pending = *schema;
                         }
-                        pending->functions[*function_index].parameters[index].default_value =
-                            soa_parameter_defaults_[index].data();
+                        apply(pending->functions[index], value);
                     }
-                }
-                ImGui::PopID();
-            }
-            ImGui::EndTable();
-        }
-        ImGui::EndDisabled();
-
-        ImGui::PushID(static_cast<int>(*function_index));
-        ImGui::SeparatorText("Body fragments");
-        ImGui::BeginDisabled(pending.has_value());
-        auto const add_body_line{ImGui::Button("+ Body fragment")};
-        ImGui::EndDisabled();
-        if (add_body_line) {
-            auto replacement{*schema};
-            auto& body_lines{replacement.functions[*function_index].body_lines};
-            body_lines.emplace_back("// TODO");
-            auto const new_index{body_lines.size() - 1};
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_function_body_index_ = new_index;
-                soa_editor_declaration_.reset();
-                ImGui::PopID();
-                return true;
-            }
-        }
-        ImGui::SameLine();
-        auto const body_index{soa_function_body_index_};
-        auto const has_body_line{body_index.has_value() &&
-                                 *body_index < function.body_lines.size()};
-        ImGui::BeginDisabled(pending.has_value() || !has_body_line);
-        auto const duplicate_body_line{ImGui::Button("Duplicate body")};
-        ImGui::EndDisabled();
-        if (duplicate_body_line) {
-            auto replacement{*schema};
-            auto& body_lines{replacement.functions[*function_index].body_lines};
-            body_lines.insert(body_lines.begin() + static_cast<std::ptrdiff_t>(*body_index + 1),
-                              body_lines[*body_index]);
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_function_body_index_ = *body_index + 1;
-                soa_editor_declaration_.reset();
-                ImGui::PopID();
-                return true;
-            }
-        }
-        ImGui::SameLine();
-        ImGui::BeginDisabled(pending.has_value() || !has_body_line || *body_index == 0);
-        auto const move_body_up{ImGui::Button("Body up")};
-        ImGui::EndDisabled();
-        if (move_body_up) {
-            auto replacement{*schema};
-            auto& body_lines{replacement.functions[*function_index].body_lines};
-            std::swap(body_lines[*body_index], body_lines[*body_index - 1]);
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_function_body_index_ = *body_index - 1;
-                soa_editor_declaration_.reset();
-                ImGui::PopID();
-                return true;
-            }
-        }
-        ImGui::SameLine();
-        ImGui::BeginDisabled(pending.has_value() || !has_body_line ||
-                             *body_index + 1 >= function.body_lines.size());
-        auto const move_body_down{ImGui::Button("Body down")};
-        ImGui::EndDisabled();
-        if (move_body_down) {
-            auto replacement{*schema};
-            auto& body_lines{replacement.functions[*function_index].body_lines};
-            std::swap(body_lines[*body_index], body_lines[*body_index + 1]);
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_function_body_index_ = *body_index + 1;
-                soa_editor_declaration_.reset();
-                ImGui::PopID();
-                return true;
-            }
-        }
-        ImGui::SameLine();
-        ImGui::BeginDisabled(pending.has_value() || !has_body_line);
-        auto const delete_body_line{ImGui::Button("Delete body")};
-        ImGui::EndDisabled();
-        if (delete_body_line) {
-            auto replacement{*schema};
-            auto& body_lines{replacement.functions[*function_index].body_lines};
-            body_lines.erase(body_lines.begin() + static_cast<std::ptrdiff_t>(*body_index));
-            auto const next_index{
-                body_lines.empty() ? std::optional<std::size_t>{}
-                                   : std::optional{std::min(*body_index, body_lines.size() - 1)}};
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_function_body_index_ = next_index;
-                soa_editor_declaration_.reset();
-                ImGui::PopID();
-                return true;
-            }
-        }
-
-        ImGui::BeginDisabled(pending.has_value());
-        if (soa_function_body_lines_.size() == function.body_lines.size() &&
-            detail::begin_editable_table("function-body-lines", 2, function.body_lines.size())) {
-            detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
-            detail::editable_table_column("C++ fragment");
-            ImGui::TableHeadersRow();
-            for (std::size_t index{}; index < function.body_lines.size(); ++index) {
-                ImGui::PushID(static_cast<int>(index));
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                auto const row_selected{soa_function_body_index_ == index};
-                if (detail::editable_table_row_handle(row_selected)) {
-                    soa_function_body_index_ = index;
-                }
-                if (ImGui::BeginDragDropSource()) {
-                    ImGui::SetDragDropPayload("SOA_FUNCTION_BODY_ROW", &index, sizeof(index));
-                    ImGui::TextUnformatted("Move body fragment");
-                    ImGui::EndDragDropSource();
-                }
-                if (ImGui::BeginDragDropTarget()) {
-                    if (auto const* payload{
-                            ImGui::AcceptDragDropPayload("SOA_FUNCTION_BODY_ROW")}) {
-                        auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
-                        if (source_index < function.body_lines.size() && source_index != index) {
-                            pending = *schema;
-                            move_element(pending->functions[*function_index].body_lines,
-                                         source_index,
-                                         index);
-                            soa_function_body_index_ = index;
+                };
+                edit_flag("##const", function.is_const, [](auto& edited, bool const value) {
+                    edited.is_const = value;
+                    if (value) {
+                        edited.is_static = false;
+                    }
+                });
+                edit_flag("##noexcept", function.is_noexcept, [](auto& edited, bool const value) {
+                    edited.is_noexcept = value;
+                });
+                edit_flag("##static", function.is_static, [](auto& edited, bool const value) {
+                    edited.is_static = value;
+                    if (value) {
+                        edited.is_const = false;
+                    }
+                });
+                edit_flag("##inline", function.is_inline, [](auto& edited, bool const value) {
+                    edited.is_inline = value;
+                    if (value) {
+                        edited.definition_in_source = false;
+                    }
+                });
+                edit_flag(
+                    "##source", function.definition_in_source, [](auto& edited, bool const value) {
+                        edited.definition_in_source = value;
+                        if (value) {
+                            edited.is_inline = false;
                         }
-                    }
-                    ImGui::EndDragDropTarget();
-                }
-
-                ImGui::TableNextColumn();
-                input_text_multiline("##body",
-                                     soa_function_body_lines_[index],
-                                     ImVec2{-1.0F, ImGui::GetTextLineHeight() * 2.5F});
-                if (ImGui::IsItemDeactivatedAfterEdit()) {
-                    if (!pending.has_value()) {
-                        pending = *schema;
-                    }
-                    pending->functions[*function_index].body_lines[index] =
-                        soa_function_body_lines_[index];
-                }
+                    });
                 ImGui::PopID();
             }
             ImGui::EndTable();
         }
         ImGui::EndDisabled();
 
-        ImGui::SeparatorText("Declared dependencies");
-        ImGui::SetNextItemWidth(220.0F);
-        ImGui::BeginDisabled(pending.has_value());
-        input_text("Dependency key", soa_new_function_dependency_);
-        ImGui::SameLine();
-        auto const add_dependency{ImGui::Button("+ Dependency")};
-        ImGui::EndDisabled();
-        if (add_dependency) {
-            if (soa_new_function_dependency_.find_first_not_of(" \t\r\n") == std::string::npos) {
-                schema_edit_message_ = "SoA function dependency key cannot be empty.";
-                ImGui::PopID();
-                return false;
-            }
-            auto replacement{*schema};
-            auto& dependencies{replacement.functions[*function_index].dependencies};
-            dependencies.push_back(soa_new_function_dependency_);
-            auto const new_index{dependencies.size() - 1};
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_new_function_dependency_.clear();
-                soa_function_dependency_index_ = new_index;
-                soa_editor_declaration_.reset();
-                ImGui::PopID();
-                return true;
-            }
-        }
-        auto const dependency_index{soa_function_dependency_index_};
-        auto const has_dependency{dependency_index.has_value() &&
-                                  *dependency_index < function.dependencies.size()};
-        ImGui::BeginDisabled(pending.has_value() || !has_dependency);
-        auto const duplicate_dependency{ImGui::Button("Duplicate dependency")};
-        ImGui::EndDisabled();
-        if (duplicate_dependency) {
-            auto replacement{*schema};
-            auto& dependencies{replacement.functions[*function_index].dependencies};
-            dependencies.insert(dependencies.begin() +
-                                    static_cast<std::ptrdiff_t>(*dependency_index + 1),
-                                dependencies[*dependency_index]);
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_function_dependency_index_ = *dependency_index + 1;
-                soa_editor_declaration_.reset();
-                ImGui::PopID();
-                return true;
-            }
-        }
-        ImGui::SameLine();
-        ImGui::BeginDisabled(pending.has_value() || !has_dependency || *dependency_index == 0);
-        auto const move_dependency_up{ImGui::Button("Dependency up")};
-        ImGui::EndDisabled();
-        if (move_dependency_up) {
-            auto replacement{*schema};
-            auto& dependencies{replacement.functions[*function_index].dependencies};
-            std::swap(dependencies[*dependency_index], dependencies[*dependency_index - 1]);
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_function_dependency_index_ = *dependency_index - 1;
-                soa_editor_declaration_.reset();
-                ImGui::PopID();
-                return true;
-            }
-        }
-        ImGui::SameLine();
-        ImGui::BeginDisabled(pending.has_value() || !has_dependency ||
-                             *dependency_index + 1 >= function.dependencies.size());
-        auto const move_dependency_down{ImGui::Button("Dependency down")};
-        ImGui::EndDisabled();
-        if (move_dependency_down) {
-            auto replacement{*schema};
-            auto& dependencies{replacement.functions[*function_index].dependencies};
-            std::swap(dependencies[*dependency_index], dependencies[*dependency_index + 1]);
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_function_dependency_index_ = *dependency_index + 1;
-                soa_editor_declaration_.reset();
-                ImGui::PopID();
-                return true;
-            }
-        }
-        ImGui::SameLine();
-        ImGui::BeginDisabled(pending.has_value() || !has_dependency);
-        auto const delete_dependency{ImGui::Button("Delete dependency")};
-        ImGui::EndDisabled();
-        if (delete_dependency) {
-            auto replacement{*schema};
-            auto& dependencies{replacement.functions[*function_index].dependencies};
-            dependencies.erase(dependencies.begin() +
-                               static_cast<std::ptrdiff_t>(*dependency_index));
-            auto const next_index{
-                dependencies.empty()
-                    ? std::optional<std::size_t>{}
-                    : std::optional{std::min(*dependency_index, dependencies.size() - 1)}};
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_function_dependency_index_ = next_index;
-                soa_editor_declaration_.reset();
-                ImGui::PopID();
-                return true;
-            }
-        }
+        if (has_function) {
+            auto const& function{schema->functions[*function_index]};
 
-        ImGui::BeginDisabled(pending.has_value());
-        if (soa_function_dependencies_.size() == function.dependencies.size() &&
-            detail::begin_editable_table(
-                "function-dependencies", 2, function.dependencies.size())) {
-            detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
-            detail::editable_table_column("Registered dependency key");
-            ImGui::TableHeadersRow();
-            for (std::size_t index{}; index < function.dependencies.size(); ++index) {
-                ImGui::PushID(static_cast<int>(index));
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                auto const row_selected{soa_function_dependency_index_ == index};
-                if (detail::editable_table_row_handle(row_selected)) {
-                    soa_function_dependency_index_ = index;
+            ImGui::TextUnformatted("Parameters");
+            ImGui::BeginDisabled(pending.has_value());
+            auto const add_parameter{ImGui::Button("+ Parameter")};
+            ImGui::EndDisabled();
+            if (add_parameter) {
+                auto replacement{*schema};
+                auto& parameters{replacement.functions[*function_index].parameters};
+                auto parameter{codegen::ParameterSchema{}};
+                parameter.name = unique_function_parameter_name(parameters, "parameter");
+                parameter.type =
+                    codegen::TypeRef{.name = "std::uint32_t", .suffix = {}, .nested = std::nullopt};
+                if (std::ranges::any_of(parameters, [](auto const& value) {
+                        return value.default_value.has_value();
+                    })) {
+                    parameter.default_value = "{}";
                 }
-                if (ImGui::BeginDragDropSource()) {
-                    ImGui::SetDragDropPayload("SOA_FUNCTION_DEPENDENCY_ROW", &index, sizeof(index));
-                    ImGui::Text("Move %s", function.dependencies[index].c_str());
-                    ImGui::EndDragDropSource();
+                parameters.push_back(std::move(parameter));
+                auto const new_index{parameters.size() - 1};
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_parameter_index_ = new_index;
+                    soa_editor_declaration_.reset();
+                    return true;
                 }
-                if (ImGui::BeginDragDropTarget()) {
-                    if (auto const* payload{
-                            ImGui::AcceptDragDropPayload("SOA_FUNCTION_DEPENDENCY_ROW")}) {
-                        auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
-                        if (source_index < function.dependencies.size() && source_index != index) {
-                            pending = *schema;
-                            move_element(pending->functions[*function_index].dependencies,
-                                         source_index,
-                                         index);
-                            soa_function_dependency_index_ = index;
-                        }
-                    }
-                    ImGui::EndDragDropTarget();
-                }
-
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(-1.0F);
-                auto const submitted{input_text("##dependency",
-                                                soa_function_dependencies_[index],
-                                                ImGuiInputTextFlags_EnterReturnsTrue)};
-                if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-                    if (!pending.has_value()) {
-                        pending = *schema;
-                    }
-                    pending->functions[*function_index].dependencies[index] =
-                        soa_function_dependencies_[index];
-                }
-                ImGui::PopID();
-            }
-            ImGui::EndTable();
-        }
-        ImGui::EndDisabled();
-
-        ImGui::SeparatorText("Advanced signature");
-        auto has_trailing_return{function.trailing_return_type.has_value()};
-        ImGui::BeginDisabled(pending.has_value());
-        auto const trailing_toggled{
-            ImGui::Checkbox("Use trailing return type", &has_trailing_return)};
-        ImGui::EndDisabled();
-        if (trailing_toggled) {
-            auto replacement{*schema};
-            auto& edited{replacement.functions[*function_index]};
-            if (has_trailing_return) {
-                edited.trailing_return_type =
-                    edited.return_type.name == "auto"
-                        ? codegen::TypeRef{.name = "void", .suffix = {}, .nested = std::nullopt}
-                        : edited.return_type;
-                edited.return_type =
-                    codegen::TypeRef{.name = "auto", .suffix = {}, .nested = std::nullopt};
-            } else {
-                edited.return_type = *edited.trailing_return_type;
-                edited.trailing_return_type.reset();
-            }
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_editor_declaration_.reset();
-                ImGui::PopID();
-                return true;
-            }
-        }
-        if (function.trailing_return_type.has_value()) {
-            ImGui::SetNextItemWidth(220.0F);
-            auto const submitted{input_text("Trailing return type",
-                                            soa_function_trailing_return_type_,
-                                            ImGuiInputTextFlags_EnterReturnsTrue)};
-            if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-                if (!pending.has_value()) {
-                    pending = *schema;
-                }
-                pending->functions[*function_index].trailing_return_type->name =
-                    soa_function_trailing_return_type_;
             }
             ImGui::SameLine();
-            ImGui::PushID("trailing-return-picker");
-            if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
-                if (!pending.has_value()) {
-                    pending = *schema;
+            auto const parameter_index{soa_parameter_index_};
+            auto const has_parameter{parameter_index.has_value() &&
+                                     *parameter_index < function.parameters.size()};
+            ImGui::BeginDisabled(pending.has_value() || !has_parameter);
+            auto const duplicate_parameter{ImGui::Button("Duplicate parameter")};
+            ImGui::EndDisabled();
+            if (duplicate_parameter) {
+                auto replacement{*schema};
+                auto& parameters{replacement.functions[*function_index].parameters};
+                auto copy{parameters[*parameter_index]};
+                copy.name = unique_function_parameter_name(parameters, copy.name + "_copy");
+                parameters.insert(parameters.begin() +
+                                      static_cast<std::ptrdiff_t>(*parameter_index + 1),
+                                  std::move(copy));
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_parameter_index_ = *parameter_index + 1;
+                    soa_editor_declaration_.reset();
+                    return true;
                 }
-                pending->functions[*function_index].trailing_return_type->name = *picked;
+            }
+            ImGui::SameLine();
+            ImGui::BeginDisabled(pending.has_value() || !has_parameter || *parameter_index == 0);
+            auto const move_parameter_up{ImGui::Button("Parameter up")};
+            ImGui::EndDisabled();
+            if (move_parameter_up) {
+                auto replacement{*schema};
+                auto& parameters{replacement.functions[*function_index].parameters};
+                std::swap(parameters[*parameter_index], parameters[*parameter_index - 1]);
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_parameter_index_ = *parameter_index - 1;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+            ImGui::SameLine();
+            ImGui::BeginDisabled(pending.has_value() || !has_parameter ||
+                                 *parameter_index + 1 >= function.parameters.size());
+            auto const move_parameter_down{ImGui::Button("Parameter down")};
+            ImGui::EndDisabled();
+            if (move_parameter_down) {
+                auto replacement{*schema};
+                auto& parameters{replacement.functions[*function_index].parameters};
+                std::swap(parameters[*parameter_index], parameters[*parameter_index + 1]);
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_parameter_index_ = *parameter_index + 1;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+            ImGui::SameLine();
+            ImGui::BeginDisabled(pending.has_value() || !has_parameter);
+            auto const delete_parameter{ImGui::Button("Delete parameter")};
+            ImGui::EndDisabled();
+            if (delete_parameter) {
+                auto replacement{*schema};
+                auto& parameters{replacement.functions[*function_index].parameters};
+                parameters.erase(parameters.begin() +
+                                 static_cast<std::ptrdiff_t>(*parameter_index));
+                auto const next_index{
+                    parameters.empty()
+                        ? std::optional<std::size_t>{}
+                        : std::optional{std::min(*parameter_index, parameters.size() - 1)}};
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_parameter_index_ = next_index;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+
+            ImGui::BeginDisabled(pending.has_value());
+            if (soa_parameter_names_.size() == function.parameters.size() &&
+                soa_parameter_types_.size() == function.parameters.size() &&
+                soa_parameter_defaults_.size() == function.parameters.size() &&
+                detail::begin_editable_table(
+                    "soa-function-parameters", 5, function.parameters.size())) {
+                detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
+                detail::editable_table_column("Name");
+                detail::editable_table_column("Type");
+                detail::editable_table_column("Pick", ImGuiTableColumnFlags_WidthFixed);
+                detail::editable_table_column("Default");
+                ImGui::TableHeadersRow();
+                for (std::size_t index{}; index < function.parameters.size(); ++index) {
+                    auto const& parameter{function.parameters[index]};
+                    ImGui::PushID(static_cast<int>(index));
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    auto const row_selected{soa_parameter_index_ == index};
+                    if (detail::editable_table_row_handle(row_selected)) {
+                        soa_parameter_index_ = index;
+                    }
+                    if (ImGui::BeginDragDropSource()) {
+                        ImGui::SetDragDropPayload(
+                            "SOA_FUNCTION_PARAMETER_ROW", &index, sizeof(index));
+                        ImGui::Text("Move %s", parameter.name.c_str());
+                        ImGui::EndDragDropSource();
+                    }
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (auto const* payload{
+                                ImGui::AcceptDragDropPayload("SOA_FUNCTION_PARAMETER_ROW")}) {
+                            auto const source_index{
+                                *static_cast<std::size_t const*>(payload->Data)};
+                            if (source_index < function.parameters.size() &&
+                                source_index != index) {
+                                pending = *schema;
+                                move_element(pending->functions[*function_index].parameters,
+                                             source_index,
+                                             index);
+                                soa_parameter_index_ = index;
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1.0F);
+                    auto const name_submitted{
+                        ImGui::InputText("##name",
+                                         soa_parameter_names_[index].data(),
+                                         soa_parameter_names_[index].size(),
+                                         ImGuiInputTextFlags_EnterReturnsTrue)};
+                    if (name_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                        if (!pending.has_value()) {
+                            pending = *schema;
+                        }
+                        pending->functions[*function_index].parameters[index].name =
+                            soa_parameter_names_[index].data();
+                    }
+
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1.0F);
+                    auto const type_submitted{
+                        ImGui::InputText("##type",
+                                         soa_parameter_types_[index].data(),
+                                         soa_parameter_types_[index].size(),
+                                         ImGuiInputTextFlags_EnterReturnsTrue)};
+                    if (type_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                        if (!pending.has_value()) {
+                            pending = *schema;
+                        }
+                        pending->functions[*function_index].parameters[index].type.name =
+                            soa_parameter_types_[index].data();
+                    }
+
+                    ImGui::TableNextColumn();
+                    ImGui::PushID("type-picker");
+                    if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
+                        if (!pending.has_value()) {
+                            pending = *schema;
+                        }
+                        pending->functions[*function_index].parameters[index].type.name = *picked;
+                    }
+                    ImGui::PopID();
+
+                    ImGui::TableNextColumn();
+                    auto has_default{parameter.default_value.has_value()};
+                    if (ImGui::Checkbox("##has-default", &has_default)) {
+                        if (!pending.has_value()) {
+                            pending = *schema;
+                        }
+                        auto& edited{
+                            pending->functions[*function_index].parameters[index].default_value};
+                        edited = has_default ? std::optional<std::string>{"{}"} : std::nullopt;
+                    }
+                    if (parameter.default_value.has_value()) {
+                        ImGui::SameLine();
+                        ImGui::SetNextItemWidth(-1.0F);
+                        auto const default_submitted{
+                            ImGui::InputText("##default",
+                                             soa_parameter_defaults_[index].data(),
+                                             soa_parameter_defaults_[index].size(),
+                                             ImGuiInputTextFlags_EnterReturnsTrue)};
+                        if (default_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                            if (!pending.has_value()) {
+                                pending = *schema;
+                            }
+                            pending->functions[*function_index].parameters[index].default_value =
+                                soa_parameter_defaults_[index].data();
+                        }
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::EndTable();
+            }
+            ImGui::EndDisabled();
+
+            ImGui::PushID(static_cast<int>(*function_index));
+            if (detail::section("Body fragments")) {
+                ImGui::BeginDisabled(pending.has_value());
+                auto const add_body_line{ImGui::Button("+ Body fragment")};
+                ImGui::EndDisabled();
+                if (add_body_line) {
+                    auto replacement{*schema};
+                    auto& body_lines{replacement.functions[*function_index].body_lines};
+                    body_lines.emplace_back("// TODO");
+                    auto const new_index{body_lines.size() - 1};
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_function_body_index_ = new_index;
+                        soa_editor_declaration_.reset();
+                        ImGui::PopID();
+                        return true;
+                    }
+                }
+                ImGui::SameLine();
+                auto const body_index{soa_function_body_index_};
+                auto const has_body_line{body_index.has_value() &&
+                                         *body_index < function.body_lines.size()};
+                ImGui::BeginDisabled(pending.has_value() || !has_body_line);
+                auto const duplicate_body_line{ImGui::Button("Duplicate body")};
+                ImGui::EndDisabled();
+                if (duplicate_body_line) {
+                    auto replacement{*schema};
+                    auto& body_lines{replacement.functions[*function_index].body_lines};
+                    body_lines.insert(body_lines.begin() +
+                                          static_cast<std::ptrdiff_t>(*body_index + 1),
+                                      body_lines[*body_index]);
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_function_body_index_ = *body_index + 1;
+                        soa_editor_declaration_.reset();
+                        ImGui::PopID();
+                        return true;
+                    }
+                }
+                ImGui::SameLine();
+                ImGui::BeginDisabled(pending.has_value() || !has_body_line || *body_index == 0);
+                auto const move_body_up{ImGui::Button("Body up")};
+                ImGui::EndDisabled();
+                if (move_body_up) {
+                    auto replacement{*schema};
+                    auto& body_lines{replacement.functions[*function_index].body_lines};
+                    std::swap(body_lines[*body_index], body_lines[*body_index - 1]);
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_function_body_index_ = *body_index - 1;
+                        soa_editor_declaration_.reset();
+                        ImGui::PopID();
+                        return true;
+                    }
+                }
+                ImGui::SameLine();
+                ImGui::BeginDisabled(pending.has_value() || !has_body_line ||
+                                     *body_index + 1 >= function.body_lines.size());
+                auto const move_body_down{ImGui::Button("Body down")};
+                ImGui::EndDisabled();
+                if (move_body_down) {
+                    auto replacement{*schema};
+                    auto& body_lines{replacement.functions[*function_index].body_lines};
+                    std::swap(body_lines[*body_index], body_lines[*body_index + 1]);
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_function_body_index_ = *body_index + 1;
+                        soa_editor_declaration_.reset();
+                        ImGui::PopID();
+                        return true;
+                    }
+                }
+                ImGui::SameLine();
+                ImGui::BeginDisabled(pending.has_value() || !has_body_line);
+                auto const delete_body_line{ImGui::Button("Delete body")};
+                ImGui::EndDisabled();
+                if (delete_body_line) {
+                    auto replacement{*schema};
+                    auto& body_lines{replacement.functions[*function_index].body_lines};
+                    body_lines.erase(body_lines.begin() + static_cast<std::ptrdiff_t>(*body_index));
+                    auto const next_index{
+                        body_lines.empty()
+                            ? std::optional<std::size_t>{}
+                            : std::optional{std::min(*body_index, body_lines.size() - 1)}};
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_function_body_index_ = next_index;
+                        soa_editor_declaration_.reset();
+                        ImGui::PopID();
+                        return true;
+                    }
+                }
+
+                ImGui::BeginDisabled(pending.has_value());
+                if (soa_function_body_lines_.size() == function.body_lines.size() &&
+                    detail::begin_editable_table(
+                        "function-body-lines", 2, function.body_lines.size())) {
+                    detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
+                    detail::editable_table_column("C++ fragment");
+                    ImGui::TableHeadersRow();
+                    for (std::size_t index{}; index < function.body_lines.size(); ++index) {
+                        ImGui::PushID(static_cast<int>(index));
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        auto const row_selected{soa_function_body_index_ == index};
+                        if (detail::editable_table_row_handle(row_selected)) {
+                            soa_function_body_index_ = index;
+                        }
+                        if (ImGui::BeginDragDropSource()) {
+                            ImGui::SetDragDropPayload(
+                                "SOA_FUNCTION_BODY_ROW", &index, sizeof(index));
+                            ImGui::TextUnformatted("Move body fragment");
+                            ImGui::EndDragDropSource();
+                        }
+                        if (ImGui::BeginDragDropTarget()) {
+                            if (auto const* payload{
+                                    ImGui::AcceptDragDropPayload("SOA_FUNCTION_BODY_ROW")}) {
+                                auto const source_index{
+                                    *static_cast<std::size_t const*>(payload->Data)};
+                                if (source_index < function.body_lines.size() &&
+                                    source_index != index) {
+                                    pending = *schema;
+                                    move_element(pending->functions[*function_index].body_lines,
+                                                 source_index,
+                                                 index);
+                                    soa_function_body_index_ = index;
+                                }
+                            }
+                            ImGui::EndDragDropTarget();
+                        }
+
+                        ImGui::TableNextColumn();
+                        input_text_multiline("##body",
+                                             soa_function_body_lines_[index],
+                                             ImVec2{-1.0F, ImGui::GetTextLineHeight() * 2.5F});
+                        if (ImGui::IsItemDeactivatedAfterEdit()) {
+                            if (!pending.has_value()) {
+                                pending = *schema;
+                            }
+                            pending->functions[*function_index].body_lines[index] =
+                                soa_function_body_lines_[index];
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::EndTable();
+                }
+                ImGui::EndDisabled();
+            }
+
+            if (detail::section("Declared dependencies")) {
+                ImGui::SetNextItemWidth(220.0F);
+                ImGui::BeginDisabled(pending.has_value());
+                input_text("Dependency key", soa_new_function_dependency_);
+                ImGui::SameLine();
+                auto const add_dependency{ImGui::Button("+ Dependency")};
+                ImGui::EndDisabled();
+                if (add_dependency) {
+                    if (soa_new_function_dependency_.find_first_not_of(" \t\r\n") ==
+                        std::string::npos) {
+                        schema_edit_message_ = "SoA function dependency key cannot be empty.";
+                        ImGui::PopID();
+                        return false;
+                    }
+                    auto replacement{*schema};
+                    auto& dependencies{replacement.functions[*function_index].dependencies};
+                    dependencies.push_back(soa_new_function_dependency_);
+                    auto const new_index{dependencies.size() - 1};
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_new_function_dependency_.clear();
+                        soa_function_dependency_index_ = new_index;
+                        soa_editor_declaration_.reset();
+                        ImGui::PopID();
+                        return true;
+                    }
+                }
+                auto const dependency_index{soa_function_dependency_index_};
+                auto const has_dependency{dependency_index.has_value() &&
+                                          *dependency_index < function.dependencies.size()};
+                ImGui::BeginDisabled(pending.has_value() || !has_dependency);
+                auto const duplicate_dependency{ImGui::Button("Duplicate dependency")};
+                ImGui::EndDisabled();
+                if (duplicate_dependency) {
+                    auto replacement{*schema};
+                    auto& dependencies{replacement.functions[*function_index].dependencies};
+                    dependencies.insert(dependencies.begin() +
+                                            static_cast<std::ptrdiff_t>(*dependency_index + 1),
+                                        dependencies[*dependency_index]);
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_function_dependency_index_ = *dependency_index + 1;
+                        soa_editor_declaration_.reset();
+                        ImGui::PopID();
+                        return true;
+                    }
+                }
+                ImGui::SameLine();
+                ImGui::BeginDisabled(pending.has_value() || !has_dependency ||
+                                     *dependency_index == 0);
+                auto const move_dependency_up{ImGui::Button("Dependency up")};
+                ImGui::EndDisabled();
+                if (move_dependency_up) {
+                    auto replacement{*schema};
+                    auto& dependencies{replacement.functions[*function_index].dependencies};
+                    std::swap(dependencies[*dependency_index], dependencies[*dependency_index - 1]);
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_function_dependency_index_ = *dependency_index - 1;
+                        soa_editor_declaration_.reset();
+                        ImGui::PopID();
+                        return true;
+                    }
+                }
+                ImGui::SameLine();
+                ImGui::BeginDisabled(pending.has_value() || !has_dependency ||
+                                     *dependency_index + 1 >= function.dependencies.size());
+                auto const move_dependency_down{ImGui::Button("Dependency down")};
+                ImGui::EndDisabled();
+                if (move_dependency_down) {
+                    auto replacement{*schema};
+                    auto& dependencies{replacement.functions[*function_index].dependencies};
+                    std::swap(dependencies[*dependency_index], dependencies[*dependency_index + 1]);
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_function_dependency_index_ = *dependency_index + 1;
+                        soa_editor_declaration_.reset();
+                        ImGui::PopID();
+                        return true;
+                    }
+                }
+                ImGui::SameLine();
+                ImGui::BeginDisabled(pending.has_value() || !has_dependency);
+                auto const delete_dependency{ImGui::Button("Delete dependency")};
+                ImGui::EndDisabled();
+                if (delete_dependency) {
+                    auto replacement{*schema};
+                    auto& dependencies{replacement.functions[*function_index].dependencies};
+                    dependencies.erase(dependencies.begin() +
+                                       static_cast<std::ptrdiff_t>(*dependency_index));
+                    auto const next_index{
+                        dependencies.empty()
+                            ? std::optional<std::size_t>{}
+                            : std::optional{std::min(*dependency_index, dependencies.size() - 1)}};
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_function_dependency_index_ = next_index;
+                        soa_editor_declaration_.reset();
+                        ImGui::PopID();
+                        return true;
+                    }
+                }
+
+                ImGui::BeginDisabled(pending.has_value());
+                if (soa_function_dependencies_.size() == function.dependencies.size() &&
+                    detail::begin_editable_table(
+                        "function-dependencies", 2, function.dependencies.size())) {
+                    detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
+                    detail::editable_table_column("Registered dependency key");
+                    ImGui::TableHeadersRow();
+                    for (std::size_t index{}; index < function.dependencies.size(); ++index) {
+                        ImGui::PushID(static_cast<int>(index));
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        auto const row_selected{soa_function_dependency_index_ == index};
+                        if (detail::editable_table_row_handle(row_selected)) {
+                            soa_function_dependency_index_ = index;
+                        }
+                        if (ImGui::BeginDragDropSource()) {
+                            ImGui::SetDragDropPayload(
+                                "SOA_FUNCTION_DEPENDENCY_ROW", &index, sizeof(index));
+                            ImGui::Text("Move %s", function.dependencies[index].c_str());
+                            ImGui::EndDragDropSource();
+                        }
+                        if (ImGui::BeginDragDropTarget()) {
+                            if (auto const* payload{
+                                    ImGui::AcceptDragDropPayload("SOA_FUNCTION_DEPENDENCY_ROW")}) {
+                                auto const source_index{
+                                    *static_cast<std::size_t const*>(payload->Data)};
+                                if (source_index < function.dependencies.size() &&
+                                    source_index != index) {
+                                    pending = *schema;
+                                    move_element(pending->functions[*function_index].dependencies,
+                                                 source_index,
+                                                 index);
+                                    soa_function_dependency_index_ = index;
+                                }
+                            }
+                            ImGui::EndDragDropTarget();
+                        }
+
+                        ImGui::TableNextColumn();
+                        ImGui::SetNextItemWidth(-1.0F);
+                        auto const submitted{input_text("##dependency",
+                                                        soa_function_dependencies_[index],
+                                                        ImGuiInputTextFlags_EnterReturnsTrue)};
+                        if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                            if (!pending.has_value()) {
+                                pending = *schema;
+                            }
+                            pending->functions[*function_index].dependencies[index] =
+                                soa_function_dependencies_[index];
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::EndTable();
+                }
+                ImGui::EndDisabled();
+            }
+
+            if (detail::section("Advanced signature")) {
+                auto has_trailing_return{function.trailing_return_type.has_value()};
+                ImGui::BeginDisabled(pending.has_value());
+                auto const trailing_toggled{
+                    ImGui::Checkbox("Use trailing return type", &has_trailing_return)};
+                ImGui::EndDisabled();
+                if (trailing_toggled) {
+                    auto replacement{*schema};
+                    auto& edited{replacement.functions[*function_index]};
+                    if (has_trailing_return) {
+                        edited.trailing_return_type = edited.return_type.name == "auto"
+                                                        ? codegen::TypeRef{.name = "void",
+                                                                           .suffix = {},
+                                                                           .nested = std::nullopt}
+                                                        : edited.return_type;
+                        edited.return_type =
+                            codegen::TypeRef{.name = "auto", .suffix = {}, .nested = std::nullopt};
+                    } else {
+                        edited.return_type = *edited.trailing_return_type;
+                        edited.trailing_return_type.reset();
+                    }
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_editor_declaration_.reset();
+                        ImGui::PopID();
+                        return true;
+                    }
+                }
+                if (function.trailing_return_type.has_value()) {
+                    ImGui::SetNextItemWidth(220.0F);
+                    auto const submitted{input_text("Trailing return type",
+                                                    soa_function_trailing_return_type_,
+                                                    ImGuiInputTextFlags_EnterReturnsTrue)};
+                    if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                        if (!pending.has_value()) {
+                            pending = *schema;
+                        }
+                        pending->functions[*function_index].trailing_return_type->name =
+                            soa_function_trailing_return_type_;
+                    }
+                    ImGui::SameLine();
+                    ImGui::PushID("trailing-return-picker");
+                    if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
+                        if (!pending.has_value()) {
+                            pending = *schema;
+                        }
+                        pending->functions[*function_index].trailing_return_type->name = *picked;
+                    }
+                    ImGui::PopID();
+                }
+
+                auto has_template_parameters{function.template_parameters.has_value()};
+                ImGui::BeginDisabled(pending.has_value());
+                auto const template_toggled{
+                    ImGui::Checkbox("Template parameters", &has_template_parameters)};
+                ImGui::EndDisabled();
+                if (template_toggled) {
+                    auto replacement{*schema};
+                    replacement.functions[*function_index].template_parameters =
+                        has_template_parameters ? std::optional<std::string>{"typename T"}
+                                                : std::nullopt;
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_editor_declaration_.reset();
+                        ImGui::PopID();
+                        return true;
+                    }
+                }
+                if (function.template_parameters.has_value()) {
+                    ImGui::SetNextItemWidth(-1.0F);
+                    auto const submitted{input_text("Template parameter text",
+                                                    soa_function_template_parameters_,
+                                                    ImGuiInputTextFlags_EnterReturnsTrue)};
+                    if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                        if (!pending.has_value()) {
+                            pending = *schema;
+                        }
+                        pending->functions[*function_index].template_parameters =
+                            soa_function_template_parameters_;
+                    }
+                }
+
+                auto has_requires_clause{function.requires_clause.has_value()};
+                ImGui::BeginDisabled(pending.has_value());
+                auto const requires_toggled{
+                    ImGui::Checkbox("Requires clause", &has_requires_clause)};
+                ImGui::EndDisabled();
+                if (requires_toggled) {
+                    auto replacement{*schema};
+                    replacement.functions[*function_index].requires_clause =
+                        has_requires_clause ? std::optional<std::string>{"true"} : std::nullopt;
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_editor_declaration_.reset();
+                        ImGui::PopID();
+                        return true;
+                    }
+                }
+                if (function.requires_clause.has_value()) {
+                    ImGui::SetNextItemWidth(-1.0F);
+                    auto const submitted{input_text("Requires expression",
+                                                    soa_function_requires_clause_,
+                                                    ImGuiInputTextFlags_EnterReturnsTrue)};
+                    if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                        if (!pending.has_value()) {
+                            pending = *schema;
+                        }
+                        pending->functions[*function_index].requires_clause =
+                            soa_function_requires_clause_;
+                    }
+                }
             }
             ImGui::PopID();
         }
+    }
 
-        auto has_template_parameters{function.template_parameters.has_value()};
-        ImGui::BeginDisabled(pending.has_value());
-        auto const template_toggled{
-            ImGui::Checkbox("Template parameters", &has_template_parameters)};
-        ImGui::EndDisabled();
-        if (template_toggled) {
+    if (detail::section("View types")) {
+        auto explicit_view_name{schema->view_name.has_value()};
+        if (ImGui::Checkbox("Explicit mutable view type", &explicit_view_name)) {
             auto replacement{*schema};
-            replacement.functions[*function_index].template_parameters =
-                has_template_parameters ? std::optional<std::string>{"typename T"} : std::nullopt;
+            replacement.view_name =
+                explicit_view_name ? std::optional{schema->name + "View"} : std::nullopt;
             if (apply_document_edit(
                     ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
                 soa_editor_declaration_.reset();
-                ImGui::PopID();
                 return true;
             }
         }
-        if (function.template_parameters.has_value()) {
-            ImGui::SetNextItemWidth(-1.0F);
-            auto const submitted{input_text("Template parameter text",
-                                            soa_function_template_parameters_,
-                                            ImGuiInputTextFlags_EnterReturnsTrue)};
+        if (schema->view_name.has_value()) {
+            detail::prepare_property_input("Mutable view type");
+            auto const submitted{ImGui::InputText("##Mutable view type",
+                                                  soa_view_name_.data(),
+                                                  soa_view_name_.size(),
+                                                  ImGuiInputTextFlags_EnterReturnsTrue)};
             if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-                if (!pending.has_value()) {
-                    pending = *schema;
+                if (soa_view_name_.front() == '\0') {
+                    schema_edit_message_ =
+                        "Explicit mutable view type cannot be empty; disable it to "
+                        "use the derived name.";
+                    return false;
                 }
-                pending->functions[*function_index].template_parameters =
-                    soa_function_template_parameters_;
-            }
-        }
-
-        auto has_requires_clause{function.requires_clause.has_value()};
-        ImGui::BeginDisabled(pending.has_value());
-        auto const requires_toggled{ImGui::Checkbox("Requires clause", &has_requires_clause)};
-        ImGui::EndDisabled();
-        if (requires_toggled) {
-            auto replacement{*schema};
-            replacement.functions[*function_index].requires_clause =
-                has_requires_clause ? std::optional<std::string>{"true"} : std::nullopt;
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_editor_declaration_.reset();
-                ImGui::PopID();
-                return true;
-            }
-        }
-        if (function.requires_clause.has_value()) {
-            ImGui::SetNextItemWidth(-1.0F);
-            auto const submitted{input_text("Requires expression",
-                                            soa_function_requires_clause_,
-                                            ImGuiInputTextFlags_EnterReturnsTrue)};
-            if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-                if (!pending.has_value()) {
-                    pending = *schema;
-                }
-                pending->functions[*function_index].requires_clause = soa_function_requires_clause_;
-            }
-        }
-        ImGui::PopID();
-    }
-
-    ImGui::SeparatorText("View types");
-    auto explicit_view_name{schema->view_name.has_value()};
-    if (ImGui::Checkbox("Explicit mutable view type", &explicit_view_name)) {
-        auto replacement{*schema};
-        replacement.view_name =
-            explicit_view_name ? std::optional{schema->name + "View"} : std::nullopt;
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            soa_editor_declaration_.reset();
-            return true;
-        }
-    }
-    if (schema->view_name.has_value()) {
-        detail::prepare_property_input("Mutable view type");
-        auto const submitted{ImGui::InputText("##Mutable view type",
-                                              soa_view_name_.data(),
-                                              soa_view_name_.size(),
-                                              ImGuiInputTextFlags_EnterReturnsTrue)};
-        if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-            if (soa_view_name_.front() == '\0') {
-                schema_edit_message_ = "Explicit mutable view type cannot be empty; disable it to "
-                                       "use the derived name.";
-                return false;
-            }
-            auto replacement{*schema};
-            replacement.view_name = soa_view_name_.data();
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_editor_declaration_.reset();
-                return true;
-            }
-        }
-    } else {
-        ImGui::TextDisabled("Derived mutable view: %sView", schema->name.c_str());
-    }
-
-    auto explicit_const_view_name{schema->const_view_name.has_value()};
-    if (ImGui::Checkbox("Explicit const view type", &explicit_const_view_name)) {
-        auto replacement{*schema};
-        replacement.const_view_name =
-            explicit_const_view_name ? std::optional{schema->name + "ConstView"} : std::nullopt;
-        if (apply_document_edit(
-                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-            soa_editor_declaration_.reset();
-            return true;
-        }
-    }
-    if (schema->const_view_name.has_value()) {
-        detail::prepare_property_input("Const view type");
-        auto const submitted{ImGui::InputText("##Const view type",
-                                              soa_const_view_name_.data(),
-                                              soa_const_view_name_.size(),
-                                              ImGuiInputTextFlags_EnterReturnsTrue)};
-        if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-            if (soa_const_view_name_.front() == '\0') {
-                schema_edit_message_ =
-                    "Explicit const view type cannot be empty; disable it to use the derived name.";
-                return false;
-            }
-            auto replacement{*schema};
-            replacement.const_view_name = soa_const_view_name_.data();
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_editor_declaration_.reset();
-                return true;
-            }
-        }
-    } else {
-        ImGui::TextDisabled("Derived const view: %sConstView", schema->name.c_str());
-    }
-
-    ImGui::SeparatorText("Fixed layout");
-    if (!schema->fixed.has_value()) {
-        if (ImGui::Button("Enable fixed layout")) {
-            auto storage_name{document_->unique_soa_generated_type_name(
-                *declaration, schema->name + "FixedStorage")};
-            if (!storage_name.has_value()) {
-                schema_edit_message_ = storage_name.error().message;
-                return false;
-            }
-            auto replacement{*schema};
-            replacement.fixed =
-                codegen::FixedSoaSchema{.storage_name = std::move(*storage_name), .containers = {}};
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_editor_declaration_.reset();
-                return true;
-            }
-        }
-    } else {
-        detail::prepare_property_input("Storage type");
-        auto const storage_submitted{ImGui::InputText("##Storage type",
-                                                      soa_fixed_storage_name_.data(),
-                                                      soa_fixed_storage_name_.size(),
-                                                      ImGuiInputTextFlags_EnterReturnsTrue)};
-        if (storage_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-            if (soa_fixed_storage_name_.front() == '\0') {
-                schema_edit_message_ = "Fixed-layout storage type cannot be empty.";
-                return false;
-            }
-            auto replacement{*schema};
-            replacement.fixed->storage_name = soa_fixed_storage_name_.data();
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_editor_declaration_.reset();
-                return true;
-            }
-        }
-
-        if (ImGui::Button("+ Fixed container")) {
-            auto container_name{
-                document_->unique_soa_generated_type_name(*declaration, schema->name + "Fixed")};
-            if (!container_name.has_value()) {
-                schema_edit_message_ = container_name.error().message;
-                return false;
-            }
-            auto replacement{*schema};
-            replacement.fixed->containers.push_back(std::move(*container_name));
-            auto const new_index{replacement.fixed->containers.size() - 1};
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_fixed_container_index_ = new_index;
-                soa_editor_declaration_.reset();
-                return true;
-            }
-        }
-        ImGui::SameLine();
-        auto const container_index{soa_fixed_container_index_};
-        auto const has_container{container_index.has_value() &&
-                                 *container_index < schema->fixed->containers.size()};
-        ImGui::BeginDisabled(!has_container);
-        if (ImGui::Button("Duplicate fixed container")) {
-            auto container_name{document_->unique_soa_generated_type_name(
-                *declaration, schema->fixed->containers[*container_index] + "_copy")};
-            if (!container_name.has_value()) {
-                schema_edit_message_ = container_name.error().message;
-            } else {
                 auto replacement{*schema};
-                replacement.fixed->containers.insert(
-                    replacement.fixed->containers.begin() +
-                        static_cast<std::ptrdiff_t>(*container_index + 1),
-                    std::move(*container_name));
+                replacement.view_name = soa_view_name_.data();
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+        } else {
+            ImGui::TextDisabled("Derived mutable view: %sView", schema->name.c_str());
+        }
+
+        auto explicit_const_view_name{schema->const_view_name.has_value()};
+        if (ImGui::Checkbox("Explicit const view type", &explicit_const_view_name)) {
+            auto replacement{*schema};
+            replacement.const_view_name =
+                explicit_const_view_name ? std::optional{schema->name + "ConstView"} : std::nullopt;
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+        if (schema->const_view_name.has_value()) {
+            detail::prepare_property_input("Const view type");
+            auto const submitted{ImGui::InputText("##Const view type",
+                                                  soa_const_view_name_.data(),
+                                                  soa_const_view_name_.size(),
+                                                  ImGuiInputTextFlags_EnterReturnsTrue)};
+            if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                if (soa_const_view_name_.front() == '\0') {
+                    schema_edit_message_ = "Explicit const view type cannot be empty; disable it "
+                                           "to use the derived name.";
+                    return false;
+                }
+                auto replacement{*schema};
+                replacement.const_view_name = soa_const_view_name_.data();
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+        } else {
+            ImGui::TextDisabled("Derived const view: %sConstView", schema->name.c_str());
+        }
+    }
+
+    if (detail::section("Fixed layout")) {
+        if (!schema->fixed.has_value()) {
+            if (ImGui::Button("Enable fixed layout")) {
+                auto storage_name{document_->unique_soa_generated_type_name(
+                    *declaration, schema->name + "FixedStorage")};
+                if (!storage_name.has_value()) {
+                    schema_edit_message_ = storage_name.error().message;
+                    return false;
+                }
+                auto replacement{*schema};
+                replacement.fixed = codegen::FixedSoaSchema{
+                    .storage_name = std::move(*storage_name), .containers = {}};
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+        } else {
+            detail::prepare_property_input("Storage type");
+            auto const storage_submitted{ImGui::InputText("##Storage type",
+                                                          soa_fixed_storage_name_.data(),
+                                                          soa_fixed_storage_name_.size(),
+                                                          ImGuiInputTextFlags_EnterReturnsTrue)};
+            if (storage_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                if (soa_fixed_storage_name_.front() == '\0') {
+                    schema_edit_message_ = "Fixed-layout storage type cannot be empty.";
+                    return false;
+                }
+                auto replacement{*schema};
+                replacement.fixed->storage_name = soa_fixed_storage_name_.data();
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+
+            if (ImGui::Button("+ Fixed container")) {
+                auto container_name{document_->unique_soa_generated_type_name(
+                    *declaration, schema->name + "Fixed")};
+                if (!container_name.has_value()) {
+                    schema_edit_message_ = container_name.error().message;
+                    return false;
+                }
+                auto replacement{*schema};
+                replacement.fixed->containers.push_back(std::move(*container_name));
+                auto const new_index{replacement.fixed->containers.size() - 1};
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_fixed_container_index_ = new_index;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+            ImGui::SameLine();
+            auto const container_index{soa_fixed_container_index_};
+            auto const has_container{container_index.has_value() &&
+                                     *container_index < schema->fixed->containers.size()};
+            ImGui::BeginDisabled(!has_container);
+            if (ImGui::Button("Duplicate fixed container")) {
+                auto container_name{document_->unique_soa_generated_type_name(
+                    *declaration, schema->fixed->containers[*container_index] + "_copy")};
+                if (!container_name.has_value()) {
+                    schema_edit_message_ = container_name.error().message;
+                } else {
+                    auto replacement{*schema};
+                    replacement.fixed->containers.insert(
+                        replacement.fixed->containers.begin() +
+                            static_cast<std::ptrdiff_t>(*container_index + 1),
+                        std::move(*container_name));
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_fixed_container_index_ = *container_index + 1;
+                        soa_editor_declaration_.reset();
+                        return true;
+                    }
+                }
+            }
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!has_container || *container_index == 0);
+            if (ImGui::Button("Fixed container up")) {
+                auto replacement{*schema};
+                std::swap(replacement.fixed->containers[*container_index],
+                          replacement.fixed->containers[*container_index - 1]);
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_fixed_container_index_ = *container_index - 1;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!has_container ||
+                                 *container_index + 1 >= schema->fixed->containers.size());
+            if (ImGui::Button("Fixed container down")) {
+                auto replacement{*schema};
+                std::swap(replacement.fixed->containers[*container_index],
+                          replacement.fixed->containers[*container_index + 1]);
                 if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
                                                    .schema = std::move(replacement)})) {
                     soa_fixed_container_index_ = *container_index + 1;
@@ -2274,208 +2342,214 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                     return true;
                 }
             }
-        }
-        ImGui::SameLine();
-        ImGui::BeginDisabled(!has_container || *container_index == 0);
-        if (ImGui::Button("Fixed container up")) {
-            auto replacement{*schema};
-            std::swap(replacement.fixed->containers[*container_index],
-                      replacement.fixed->containers[*container_index - 1]);
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_fixed_container_index_ = *container_index - 1;
-                soa_editor_declaration_.reset();
-                return true;
-            }
-        }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        ImGui::BeginDisabled(!has_container ||
-                             *container_index + 1 >= schema->fixed->containers.size());
-        if (ImGui::Button("Fixed container down")) {
-            auto replacement{*schema};
-            std::swap(replacement.fixed->containers[*container_index],
-                      replacement.fixed->containers[*container_index + 1]);
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_fixed_container_index_ = *container_index + 1;
-                soa_editor_declaration_.reset();
-                return true;
-            }
-        }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        if (ImGui::Button("Delete fixed container")) {
-            auto replacement{*schema};
-            replacement.fixed->containers.erase(replacement.fixed->containers.begin() +
-                                                static_cast<std::ptrdiff_t>(*container_index));
-            auto const next_index{
-                replacement.fixed->containers.empty()
-                    ? std::optional<std::size_t>{}
-                    : std::optional{
-                          std::min(*container_index, replacement.fixed->containers.size() - 1)}};
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_fixed_container_index_ = next_index;
-                soa_editor_declaration_.reset();
-                return true;
-            }
-        }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        if (ImGui::Button("Disable fixed layout")) {
-            auto replacement{*schema};
-            replacement.fixed.reset();
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_fixed_container_index_.reset();
-                soa_editor_declaration_.reset();
-                return true;
-            }
-        }
-
-        if (soa_fixed_container_names_.size() == schema->fixed->containers.size() &&
-            detail::begin_editable_table(
-                "soa-fixed-containers", 2, schema->fixed->containers.size())) {
-            detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
-            detail::editable_table_column("Container type");
-            ImGui::TableHeadersRow();
-            for (std::size_t index{}; index < schema->fixed->containers.size(); ++index) {
-                ImGui::PushID(static_cast<int>(index));
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                auto const row_selected{soa_fixed_container_index_ == index};
-                if (detail::editable_table_row_handle(row_selected)) {
-                    soa_fixed_container_index_ = index;
-                }
-                if (ImGui::BeginDragDropSource()) {
-                    ImGui::SetDragDropPayload("SOA_FIXED_CONTAINER_ROW", &index, sizeof(index));
-                    ImGui::Text("Move %s", schema->fixed->containers[index].c_str());
-                    ImGui::EndDragDropSource();
-                }
-                if (ImGui::BeginDragDropTarget()) {
-                    if (auto const* payload{
-                            ImGui::AcceptDragDropPayload("SOA_FIXED_CONTAINER_ROW")}) {
-                        auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
-                        if (source_index < schema->fixed->containers.size() &&
-                            source_index != index) {
-                            pending = *schema;
-                            move_element(pending->fixed->containers, source_index, index);
-                            soa_fixed_container_index_ = index;
-                        }
-                    }
-                    ImGui::EndDragDropTarget();
-                }
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(-1.0F);
-                auto const name_submitted{ImGui::InputText("##name",
-                                                           soa_fixed_container_names_[index].data(),
-                                                           soa_fixed_container_names_[index].size(),
-                                                           ImGuiInputTextFlags_EnterReturnsTrue)};
-                if (name_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-                    if (!pending.has_value()) {
-                        pending = *schema;
-                    }
-                    pending->fixed->containers[index] = soa_fixed_container_names_[index].data();
-                }
-                ImGui::PopID();
-            }
-            ImGui::EndTable();
-        }
-    }
-
-    ImGui::SeparatorText("Single allocation");
-    if (!schema->single_allocation.has_value()) {
-        if (ImGui::Button("Enable single allocation")) {
-            auto owner_name{
-                document_->unique_soa_storage_owner_name(*declaration, schema->name + "Single")};
-            if (!owner_name.has_value()) {
-                schema_edit_message_ = owner_name.error().message;
-                return false;
-            }
-            auto replacement{*schema};
-            replacement.single_allocation = std::move(*owner_name);
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_editor_declaration_.reset();
-                return true;
-            }
-        }
-    } else {
-        detail::prepare_property_input("Owner type");
-        auto const submitted{ImGui::InputText("##Owner type",
-                                              soa_single_allocation_name_.data(),
-                                              soa_single_allocation_name_.size(),
-                                              ImGuiInputTextFlags_EnterReturnsTrue)};
-        if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-            if (soa_single_allocation_name_.front() == '\0') {
-                schema_edit_message_ = "Single-allocation owner type cannot be empty.";
-                return false;
-            }
-            auto replacement{*schema};
-            replacement.single_allocation = soa_single_allocation_name_.data();
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_editor_declaration_.reset();
-                return true;
-            }
-        }
-        ImGui::Text("Generated storage: %sStorage", schema->single_allocation->c_str());
-        ImGui::TextUnformatted("New variant allocator");
-        ImGui::SetNextItemWidth(std::max(120.0F, ImGui::GetContentRegionAvail().x - 120.0F));
-        ImGui::InputText("##new-variant-allocator",
-                         soa_new_single_allocation_allocator_.data(),
-                         soa_new_single_allocation_allocator_.size());
-        ImGui::SameLine();
-        if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
-            std::snprintf(soa_new_single_allocation_allocator_.data(),
-                          soa_new_single_allocation_allocator_.size(),
-                          "%s",
-                          picked->c_str());
-        }
-        ImGui::SameLine();
-        ImGui::BeginDisabled(soa_new_single_allocation_allocator_.front() == '\0');
-        if (ImGui::Button("+ Variant")) {
-            auto variant_name{document_->unique_soa_storage_owner_name(
-                *declaration, schema->name + "SingleVariant")};
-            if (!variant_name.has_value()) {
-                schema_edit_message_ = variant_name.error().message;
-            } else {
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::Button("Delete fixed container")) {
                 auto replacement{*schema};
-                replacement.single_allocation_variants.push_back(codegen::SingleAllocationVariant{
-                    .name = std::move(*variant_name),
-                    .allocator =
-                        codegen::TypeRef{.name = soa_new_single_allocation_allocator_.data(),
-                                         .suffix = {},
-                                         .nested = std::nullopt}});
-                auto const new_index{replacement.single_allocation_variants.size() - 1};
+                replacement.fixed->containers.erase(replacement.fixed->containers.begin() +
+                                                    static_cast<std::ptrdiff_t>(*container_index));
+                auto const next_index{
+                    replacement.fixed->containers.empty()
+                        ? std::optional<std::size_t>{}
+                        : std::optional{std::min(*container_index,
+                                                 replacement.fixed->containers.size() - 1)}};
                 if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
                                                    .schema = std::move(replacement)})) {
-                    soa_single_allocation_variant_index_ = new_index;
+                    soa_fixed_container_index_ = next_index;
                     soa_editor_declaration_.reset();
                     return true;
                 }
             }
-        }
-        ImGui::EndDisabled();
-
-        auto const variant_index{soa_single_allocation_variant_index_};
-        auto const has_variant{variant_index.has_value() &&
-                               *variant_index < schema->single_allocation_variants.size()};
-        ImGui::BeginDisabled(!has_variant);
-        if (ImGui::Button("Duplicate variant")) {
-            auto variant_name{document_->unique_soa_storage_owner_name(
-                *declaration, schema->single_allocation_variants[*variant_index].name + "_copy")};
-            if (!variant_name.has_value()) {
-                schema_edit_message_ = variant_name.error().message;
-            } else {
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::Button("Disable fixed layout")) {
                 auto replacement{*schema};
-                auto copy{replacement.single_allocation_variants[*variant_index]};
-                copy.name = std::move(*variant_name);
-                replacement.single_allocation_variants.insert(
-                    replacement.single_allocation_variants.begin() +
-                        static_cast<std::ptrdiff_t>(*variant_index + 1),
-                    std::move(copy));
+                replacement.fixed.reset();
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_fixed_container_index_.reset();
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+
+            if (soa_fixed_container_names_.size() == schema->fixed->containers.size() &&
+                detail::begin_editable_table(
+                    "soa-fixed-containers", 2, schema->fixed->containers.size())) {
+                detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
+                detail::editable_table_column("Container type");
+                ImGui::TableHeadersRow();
+                for (std::size_t index{}; index < schema->fixed->containers.size(); ++index) {
+                    ImGui::PushID(static_cast<int>(index));
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    auto const row_selected{soa_fixed_container_index_ == index};
+                    if (detail::editable_table_row_handle(row_selected)) {
+                        soa_fixed_container_index_ = index;
+                    }
+                    if (ImGui::BeginDragDropSource()) {
+                        ImGui::SetDragDropPayload("SOA_FIXED_CONTAINER_ROW", &index, sizeof(index));
+                        ImGui::Text("Move %s", schema->fixed->containers[index].c_str());
+                        ImGui::EndDragDropSource();
+                    }
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (auto const* payload{
+                                ImGui::AcceptDragDropPayload("SOA_FIXED_CONTAINER_ROW")}) {
+                            auto const source_index{
+                                *static_cast<std::size_t const*>(payload->Data)};
+                            if (source_index < schema->fixed->containers.size() &&
+                                source_index != index) {
+                                pending = *schema;
+                                move_element(pending->fixed->containers, source_index, index);
+                                soa_fixed_container_index_ = index;
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1.0F);
+                    auto const name_submitted{
+                        ImGui::InputText("##name",
+                                         soa_fixed_container_names_[index].data(),
+                                         soa_fixed_container_names_[index].size(),
+                                         ImGuiInputTextFlags_EnterReturnsTrue)};
+                    if (name_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                        if (!pending.has_value()) {
+                            pending = *schema;
+                        }
+                        pending->fixed->containers[index] =
+                            soa_fixed_container_names_[index].data();
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::EndTable();
+            }
+        }
+    }
+
+    if (detail::section("Single allocation")) {
+        if (!schema->single_allocation.has_value()) {
+            if (ImGui::Button("Enable single allocation")) {
+                auto owner_name{document_->unique_soa_storage_owner_name(*declaration,
+                                                                         schema->name + "Single")};
+                if (!owner_name.has_value()) {
+                    schema_edit_message_ = owner_name.error().message;
+                    return false;
+                }
+                auto replacement{*schema};
+                replacement.single_allocation = std::move(*owner_name);
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+        } else {
+            detail::prepare_property_input("Owner type");
+            auto const submitted{ImGui::InputText("##Owner type",
+                                                  soa_single_allocation_name_.data(),
+                                                  soa_single_allocation_name_.size(),
+                                                  ImGuiInputTextFlags_EnterReturnsTrue)};
+            if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                if (soa_single_allocation_name_.front() == '\0') {
+                    schema_edit_message_ = "Single-allocation owner type cannot be empty.";
+                    return false;
+                }
+                auto replacement{*schema};
+                replacement.single_allocation = soa_single_allocation_name_.data();
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+            ImGui::Text("Generated storage: %sStorage", schema->single_allocation->c_str());
+            ImGui::TextUnformatted("New variant allocator");
+            ImGui::SetNextItemWidth(std::max(120.0F, ImGui::GetContentRegionAvail().x - 120.0F));
+            ImGui::InputText("##new-variant-allocator",
+                             soa_new_single_allocation_allocator_.data(),
+                             soa_new_single_allocation_allocator_.size());
+            ImGui::SameLine();
+            if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
+                std::snprintf(soa_new_single_allocation_allocator_.data(),
+                              soa_new_single_allocation_allocator_.size(),
+                              "%s",
+                              picked->c_str());
+            }
+            ImGui::SameLine();
+            ImGui::BeginDisabled(soa_new_single_allocation_allocator_.front() == '\0');
+            if (ImGui::Button("+ Variant")) {
+                auto variant_name{document_->unique_soa_storage_owner_name(
+                    *declaration, schema->name + "SingleVariant")};
+                if (!variant_name.has_value()) {
+                    schema_edit_message_ = variant_name.error().message;
+                } else {
+                    auto replacement{*schema};
+                    replacement.single_allocation_variants.push_back(
+                        codegen::SingleAllocationVariant{
+                            .name = std::move(*variant_name),
+                            .allocator = codegen::TypeRef{
+                                .name = soa_new_single_allocation_allocator_.data(),
+                                .suffix = {},
+                                .nested = std::nullopt}});
+                    auto const new_index{replacement.single_allocation_variants.size() - 1};
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_single_allocation_variant_index_ = new_index;
+                        soa_editor_declaration_.reset();
+                        return true;
+                    }
+                }
+            }
+            ImGui::EndDisabled();
+
+            auto const variant_index{soa_single_allocation_variant_index_};
+            auto const has_variant{variant_index.has_value() &&
+                                   *variant_index < schema->single_allocation_variants.size()};
+            ImGui::BeginDisabled(!has_variant);
+            if (ImGui::Button("Duplicate variant")) {
+                auto variant_name{document_->unique_soa_storage_owner_name(
+                    *declaration,
+                    schema->single_allocation_variants[*variant_index].name + "_copy")};
+                if (!variant_name.has_value()) {
+                    schema_edit_message_ = variant_name.error().message;
+                } else {
+                    auto replacement{*schema};
+                    auto copy{replacement.single_allocation_variants[*variant_index]};
+                    copy.name = std::move(*variant_name);
+                    replacement.single_allocation_variants.insert(
+                        replacement.single_allocation_variants.begin() +
+                            static_cast<std::ptrdiff_t>(*variant_index + 1),
+                        std::move(copy));
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_single_allocation_variant_index_ = *variant_index + 1;
+                        soa_editor_declaration_.reset();
+                        return true;
+                    }
+                }
+            }
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!has_variant || *variant_index == 0);
+            if (ImGui::Button("Variant up")) {
+                auto replacement{*schema};
+                std::swap(replacement.single_allocation_variants[*variant_index],
+                          replacement.single_allocation_variants[*variant_index - 1]);
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_single_allocation_variant_index_ = *variant_index - 1;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!has_variant ||
+                                 *variant_index + 1 >= schema->single_allocation_variants.size());
+            if (ImGui::Button("Variant down")) {
+                auto replacement{*schema};
+                std::swap(replacement.single_allocation_variants[*variant_index],
+                          replacement.single_allocation_variants[*variant_index + 1]);
                 if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
                                                    .schema = std::move(replacement)})) {
                     soa_single_allocation_variant_index_ = *variant_index + 1;
@@ -2483,157 +2557,137 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                     return true;
                 }
             }
-        }
-        ImGui::SameLine();
-        ImGui::BeginDisabled(!has_variant || *variant_index == 0);
-        if (ImGui::Button("Variant up")) {
-            auto replacement{*schema};
-            std::swap(replacement.single_allocation_variants[*variant_index],
-                      replacement.single_allocation_variants[*variant_index - 1]);
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_single_allocation_variant_index_ = *variant_index - 1;
-                soa_editor_declaration_.reset();
-                return true;
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::Button("Delete variant")) {
+                auto replacement{*schema};
+                replacement.single_allocation_variants.erase(
+                    replacement.single_allocation_variants.begin() +
+                    static_cast<std::ptrdiff_t>(*variant_index));
+                auto const next_index{
+                    replacement.single_allocation_variants.empty()
+                        ? std::optional<std::size_t>{}
+                        : std::optional{std::min(
+                              *variant_index, replacement.single_allocation_variants.size() - 1)}};
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_single_allocation_variant_index_ = next_index;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
             }
-        }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        ImGui::BeginDisabled(!has_variant ||
-                             *variant_index + 1 >= schema->single_allocation_variants.size());
-        if (ImGui::Button("Variant down")) {
-            auto replacement{*schema};
-            std::swap(replacement.single_allocation_variants[*variant_index],
-                      replacement.single_allocation_variants[*variant_index + 1]);
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_single_allocation_variant_index_ = *variant_index + 1;
-                soa_editor_declaration_.reset();
-                return true;
-            }
-        }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        if (ImGui::Button("Delete variant")) {
-            auto replacement{*schema};
-            replacement.single_allocation_variants.erase(
-                replacement.single_allocation_variants.begin() +
-                static_cast<std::ptrdiff_t>(*variant_index));
-            auto const next_index{
-                replacement.single_allocation_variants.empty()
-                    ? std::optional<std::size_t>{}
-                    : std::optional{std::min(*variant_index,
-                                             replacement.single_allocation_variants.size() - 1)}};
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_single_allocation_variant_index_ = next_index;
-                soa_editor_declaration_.reset();
-                return true;
-            }
-        }
-        ImGui::EndDisabled();
+            ImGui::EndDisabled();
 
-        if (soa_single_allocation_variant_names_.size() ==
-                schema->single_allocation_variants.size() &&
-            soa_single_allocation_variant_allocators_.size() ==
-                schema->single_allocation_variants.size() &&
-            detail::begin_editable_table(
-                "soa-single-allocation-variants", 3, schema->single_allocation_variants.size())) {
-            detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
-            detail::editable_table_column("Owner type");
-            detail::editable_table_column("Allocator type");
-            ImGui::TableHeadersRow();
-            for (std::size_t index{}; index < schema->single_allocation_variants.size(); ++index) {
-                ImGui::PushID(static_cast<int>(index));
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                auto const row_selected{soa_single_allocation_variant_index_ == index};
-                if (detail::editable_table_row_handle(row_selected)) {
-                    soa_single_allocation_variant_index_ = index;
-                }
-                if (ImGui::BeginDragDropSource()) {
-                    ImGui::SetDragDropPayload(
-                        "SOA_SINGLE_ALLOCATION_VARIANT_ROW", &index, sizeof(index));
-                    ImGui::Text("Move %s", schema->single_allocation_variants[index].name.c_str());
-                    ImGui::EndDragDropSource();
-                }
-                if (ImGui::BeginDragDropTarget()) {
-                    if (auto const* payload{
-                            ImGui::AcceptDragDropPayload("SOA_SINGLE_ALLOCATION_VARIANT_ROW")}) {
-                        auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
-                        if (source_index < schema->single_allocation_variants.size() &&
-                            source_index != index) {
-                            pending = *schema;
-                            move_element(pending->single_allocation_variants, source_index, index);
-                            soa_single_allocation_variant_index_ = index;
+            if (soa_single_allocation_variant_names_.size() ==
+                    schema->single_allocation_variants.size() &&
+                soa_single_allocation_variant_allocators_.size() ==
+                    schema->single_allocation_variants.size() &&
+                detail::begin_editable_table("soa-single-allocation-variants",
+                                             3,
+                                             schema->single_allocation_variants.size())) {
+                detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
+                detail::editable_table_column("Owner type");
+                detail::editable_table_column("Allocator type");
+                ImGui::TableHeadersRow();
+                for (std::size_t index{}; index < schema->single_allocation_variants.size();
+                     ++index) {
+                    ImGui::PushID(static_cast<int>(index));
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    auto const row_selected{soa_single_allocation_variant_index_ == index};
+                    if (detail::editable_table_row_handle(row_selected)) {
+                        soa_single_allocation_variant_index_ = index;
+                    }
+                    if (ImGui::BeginDragDropSource()) {
+                        ImGui::SetDragDropPayload(
+                            "SOA_SINGLE_ALLOCATION_VARIANT_ROW", &index, sizeof(index));
+                        ImGui::Text("Move %s",
+                                    schema->single_allocation_variants[index].name.c_str());
+                        ImGui::EndDragDropSource();
+                    }
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (auto const* payload{ImGui::AcceptDragDropPayload(
+                                "SOA_SINGLE_ALLOCATION_VARIANT_ROW")}) {
+                            auto const source_index{
+                                *static_cast<std::size_t const*>(payload->Data)};
+                            if (source_index < schema->single_allocation_variants.size() &&
+                                source_index != index) {
+                                pending = *schema;
+                                move_element(
+                                    pending->single_allocation_variants, source_index, index);
+                                soa_single_allocation_variant_index_ = index;
+                            }
                         }
+                        ImGui::EndDragDropTarget();
                     }
-                    ImGui::EndDragDropTarget();
-                }
 
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(-1.0F);
-                auto const name_submitted{
-                    ImGui::InputText("##name",
-                                     soa_single_allocation_variant_names_[index].data(),
-                                     soa_single_allocation_variant_names_[index].size(),
-                                     ImGuiInputTextFlags_EnterReturnsTrue)};
-                if (name_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-                    if (!pending.has_value()) {
-                        pending = *schema;
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1.0F);
+                    auto const name_submitted{
+                        ImGui::InputText("##name",
+                                         soa_single_allocation_variant_names_[index].data(),
+                                         soa_single_allocation_variant_names_[index].size(),
+                                         ImGuiInputTextFlags_EnterReturnsTrue)};
+                    if (name_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                        if (!pending.has_value()) {
+                            pending = *schema;
+                        }
+                        pending->single_allocation_variants[index].name =
+                            soa_single_allocation_variant_names_[index].data();
                     }
-                    pending->single_allocation_variants[index].name =
-                        soa_single_allocation_variant_names_[index].data();
-                }
 
-                ImGui::TableNextColumn();
-                ImGui::SetNextItemWidth(std::max(60.0F, ImGui::GetContentRegionAvail().x - 28.0F));
-                auto const allocator_submitted{
-                    ImGui::InputText("##allocator",
-                                     soa_single_allocation_variant_allocators_[index].data(),
-                                     soa_single_allocation_variant_allocators_[index].size(),
-                                     ImGuiInputTextFlags_EnterReturnsTrue)};
-                if (allocator_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
-                    if (!pending.has_value()) {
-                        pending = *schema;
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(
+                        std::max(60.0F, ImGui::GetContentRegionAvail().x - 28.0F));
+                    auto const allocator_submitted{
+                        ImGui::InputText("##allocator",
+                                         soa_single_allocation_variant_allocators_[index].data(),
+                                         soa_single_allocation_variant_allocators_[index].size(),
+                                         ImGuiInputTextFlags_EnterReturnsTrue)};
+                    if (allocator_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                        if (!pending.has_value()) {
+                            pending = *schema;
+                        }
+                        pending->single_allocation_variants[index].allocator.name =
+                            soa_single_allocation_variant_allocators_[index].data();
                     }
-                    pending->single_allocation_variants[index].allocator.name =
-                        soa_single_allocation_variant_allocators_[index].data();
-                }
-                ImGui::SameLine();
-                if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
-                    if (!pending.has_value()) {
-                        pending = *schema;
+                    ImGui::SameLine();
+                    if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
+                        if (!pending.has_value()) {
+                            pending = *schema;
+                        }
+                        pending->single_allocation_variants[index].allocator.name =
+                            std::move(*picked);
                     }
-                    pending->single_allocation_variants[index].allocator.name = std::move(*picked);
+                    ImGui::PopID();
                 }
-                ImGui::PopID();
+                ImGui::EndTable();
             }
-            ImGui::EndTable();
-        }
 
-        ImGui::BeginDisabled(!schema->single_allocation_variants.empty());
-        if (ImGui::Button("Disable single allocation")) {
-            auto replacement{*schema};
-            replacement.single_allocation.reset();
-            if (apply_document_edit(
-                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
-                soa_editor_declaration_.reset();
-                return true;
+            ImGui::BeginDisabled(!schema->single_allocation_variants.empty());
+            if (ImGui::Button("Disable single allocation")) {
+                auto replacement{*schema};
+                replacement.single_allocation.reset();
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+            ImGui::EndDisabled();
+            if (!schema->single_allocation_variants.empty()) {
+                ImGui::TextDisabled(
+                    "Remove allocator variants before disabling single allocation.");
             }
         }
-        ImGui::EndDisabled();
-        if (!schema->single_allocation_variants.empty()) {
-            ImGui::TextDisabled("Remove allocator variants before disabling single allocation.");
-        }
-    }
 
-    if (navigate_to.has_value()) {
-        select_type(*navigate_to);
-        analysis_session_.inputs.selection.field.clear();
-        analysis_session_.inputs.selection.record_access_members.clear();
-        analysis_session_.inputs.selection.record_access_set_explicit = false;
-        return true;
+        if (navigate_to.has_value()) {
+            select_type(*navigate_to);
+            analysis_session_.inputs.selection.field.clear();
+            analysis_session_.inputs.selection.record_access_members.clear();
+            analysis_session_.inputs.selection.record_access_set_explicit = false;
+            return true;
+        }
     }
 
     if (pending.has_value()) {

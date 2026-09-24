@@ -1026,50 +1026,26 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
             std::clamp(record_relationship_unit_,
                        0,
                        static_cast<int>(semantic_relationship_units.size() - 1)))]};
-        separator_text_with_tooltip(
-            "Selected member relationship",
-            "Describe how this record member relates to another semantic type.");
-        ImGui::SetNextItemWidth(180.0F);
-        if (ImGui::BeginCombo("Kind", codegen::semantic_relation_kind_name(current_kind).data())) {
-            for (std::size_t kind_index{}; kind_index < semantic_relationship_kinds.size();
-                 ++kind_index) {
-                auto const kind{semantic_relationship_kinds[kind_index]};
-                auto const chosen{record_relationship_kind_ == static_cast<int>(kind_index)};
-                if (ImGui::Selectable(codegen::semantic_relation_kind_name(kind).data(), chosen)) {
-                    record_relationship_kind_ = static_cast<int>(kind_index);
-                    if (member.relationship.has_value()) {
-                        auto replacement{*schema};
-                        replacement.members[*selected_index].relationship->kind = kind;
-                        replacement.members[*selected_index].relationship->unit =
-                            kind == codegen::SemanticRelationKind::offset_into
-                                ? std::optional{current_unit}
-                                : std::nullopt;
-                        if (apply_document_edit(ReplaceRecord{.declaration = *declaration,
-                                                              .schema = std::move(replacement)})) {
-                            record_editor_declaration_.reset();
-                            analysis_session_.inputs.selection.field = member_name;
-                            ImGui::EndCombo();
-                            return true;
-                        }
-                    }
-                }
-            }
-            ImGui::EndCombo();
-        }
-        if (current_kind == codegen::SemanticRelationKind::offset_into) {
+        if (section_with_tooltip(
+                "Selected member relationship",
+                "Describe how this record member relates to another semantic type.")) {
             ImGui::SetNextItemWidth(180.0F);
-            if (ImGui::BeginCombo("Unit",
-                                  codegen::semantic_relation_unit_name(current_unit).data())) {
-                for (std::size_t unit_index{}; unit_index < semantic_relationship_units.size();
-                     ++unit_index) {
-                    auto const unit{semantic_relationship_units[unit_index]};
-                    auto const chosen{record_relationship_unit_ == static_cast<int>(unit_index)};
-                    if (ImGui::Selectable(codegen::semantic_relation_unit_name(unit).data(),
+            if (ImGui::BeginCombo("Kind",
+                                  codegen::semantic_relation_kind_name(current_kind).data())) {
+                for (std::size_t kind_index{}; kind_index < semantic_relationship_kinds.size();
+                     ++kind_index) {
+                    auto const kind{semantic_relationship_kinds[kind_index]};
+                    auto const chosen{record_relationship_kind_ == static_cast<int>(kind_index)};
+                    if (ImGui::Selectable(codegen::semantic_relation_kind_name(kind).data(),
                                           chosen)) {
-                        record_relationship_unit_ = static_cast<int>(unit_index);
+                        record_relationship_kind_ = static_cast<int>(kind_index);
                         if (member.relationship.has_value()) {
                             auto replacement{*schema};
-                            replacement.members[*selected_index].relationship->unit = unit;
+                            replacement.members[*selected_index].relationship->kind = kind;
+                            replacement.members[*selected_index].relationship->unit =
+                                kind == codegen::SemanticRelationKind::offset_into
+                                    ? std::optional{current_unit}
+                                    : std::nullopt;
                             if (apply_document_edit(
                                     ReplaceRecord{.declaration = *declaration,
                                                   .schema = std::move(replacement)})) {
@@ -1083,74 +1059,67 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
                 }
                 ImGui::EndCombo();
             }
-        }
-
-        ImGui::SetNextItemWidth(std::max(80.0F, ImGui::GetContentRegionAvail().x - 132.0F));
-        auto const target_submitted{ImGui::InputText("Target",
-                                                     record_relationship_target_.data(),
-                                                     record_relationship_target_.size(),
-                                                     ImGuiInputTextFlags_EnterReturnsTrue)};
-        if (member.relationship.has_value() &&
-            (target_submitted || ImGui::IsItemDeactivatedAfterEdit())) {
-            if (record_relationship_target_.front() == '\0') {
-                schema_edit_message_ = "Relationship target cannot be empty.";
-            } else {
-                auto replacement{*schema};
-                replacement.members[*selected_index].relationship->target.name =
-                    record_relationship_target_.data();
-                if (apply_document_edit(ReplaceRecord{.declaration = *declaration,
+            if (current_kind == codegen::SemanticRelationKind::offset_into) {
+                ImGui::SetNextItemWidth(180.0F);
+                if (ImGui::BeginCombo("Unit",
+                                      codegen::semantic_relation_unit_name(current_unit).data())) {
+                    for (std::size_t unit_index{}; unit_index < semantic_relationship_units.size();
+                         ++unit_index) {
+                        auto const unit{semantic_relationship_units[unit_index]};
+                        auto const chosen{record_relationship_unit_ ==
+                                          static_cast<int>(unit_index)};
+                        if (ImGui::Selectable(codegen::semantic_relation_unit_name(unit).data(),
+                                              chosen)) {
+                            record_relationship_unit_ = static_cast<int>(unit_index);
+                            if (member.relationship.has_value()) {
+                                auto replacement{*schema};
+                                replacement.members[*selected_index].relationship->unit = unit;
+                                if (apply_document_edit(
+                                        ReplaceRecord{.declaration = *declaration,
                                                       .schema = std::move(replacement)})) {
-                    record_editor_declaration_.reset();
-                    analysis_session_.inputs.selection.field = member_name;
-                    return true;
+                                    record_editor_declaration_.reset();
+                                    analysis_session_.inputs.selection.field = member_name;
+                                    ImGui::EndCombo();
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                    ImGui::EndCombo();
                 }
             }
-        }
-        ImGui::SameLine();
-        ImGui::PushID("record-relationship-target");
-        auto picked_relationship_target{draw_type_picker(node.identity.module_name, node.identity)};
-        ImGui::PopID();
-        if (picked_relationship_target.has_value()) {
-            auto replacement{*schema};
-            replacement.members[*selected_index].relationship = codegen::SemanticRelationSchema{
-                .kind = current_kind,
-                .target = codegen::TypeRef{.name = *picked_relationship_target,
-                                           .suffix = {},
-                                           .nested = std::nullopt},
-                .unit = current_kind == codegen::SemanticRelationKind::offset_into
-                          ? std::optional{current_unit}
-                          : std::nullopt};
-            if (apply_document_edit(
-                    ReplaceRecord{.declaration = *declaration, .schema = std::move(replacement)})) {
-                record_editor_declaration_.reset();
-                analysis_session_.inputs.selection.field = member_name;
-                return true;
-            }
-        }
-        ImGui::SameLine();
-        if (member.relationship.has_value()) {
-            if (ImGui::SmallButton("Clear")) {
-                auto replacement{*schema};
-                replacement.members[*selected_index].relationship.reset();
-                if (apply_document_edit(ReplaceRecord{.declaration = *declaration,
-                                                      .schema = std::move(replacement)})) {
-                    record_editor_declaration_.reset();
-                    analysis_session_.inputs.selection.field = member_name;
-                    return true;
+
+            ImGui::SetNextItemWidth(std::max(80.0F, ImGui::GetContentRegionAvail().x - 132.0F));
+            auto const target_submitted{ImGui::InputText("Target",
+                                                         record_relationship_target_.data(),
+                                                         record_relationship_target_.size(),
+                                                         ImGuiInputTextFlags_EnterReturnsTrue)};
+            if (member.relationship.has_value() &&
+                (target_submitted || ImGui::IsItemDeactivatedAfterEdit())) {
+                if (record_relationship_target_.front() == '\0') {
+                    schema_edit_message_ = "Relationship target cannot be empty.";
+                } else {
+                    auto replacement{*schema};
+                    replacement.members[*selected_index].relationship->target.name =
+                        record_relationship_target_.data();
+                    if (apply_document_edit(ReplaceRecord{.declaration = *declaration,
+                                                          .schema = std::move(replacement)})) {
+                        record_editor_declaration_.reset();
+                        analysis_session_.inputs.selection.field = member_name;
+                        return true;
+                    }
                 }
             }
             ImGui::SameLine();
-            if (resolved_member != nullptr && resolved_member->relationship.has_value() &&
-                detail::semantic_type_navigation_button()) {
-                navigate_to = resolved_member->relationship->target.type;
-            }
-        } else {
-            ImGui::BeginDisabled(record_relationship_target_.front() == '\0');
-            if (ImGui::SmallButton("Add")) {
+            ImGui::PushID("record-relationship-target");
+            auto picked_relationship_target{
+                draw_type_picker(node.identity.module_name, node.identity)};
+            ImGui::PopID();
+            if (picked_relationship_target.has_value()) {
                 auto replacement{*schema};
                 replacement.members[*selected_index].relationship = codegen::SemanticRelationSchema{
                     .kind = current_kind,
-                    .target = codegen::TypeRef{.name = record_relationship_target_.data(),
+                    .target = codegen::TypeRef{.name = *picked_relationship_target,
                                                .suffix = {},
                                                .nested = std::nullopt},
                     .unit = current_kind == codegen::SemanticRelationKind::offset_into
@@ -1163,11 +1132,49 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
                     return true;
                 }
             }
-            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (member.relationship.has_value()) {
+                if (ImGui::SmallButton("Clear")) {
+                    auto replacement{*schema};
+                    replacement.members[*selected_index].relationship.reset();
+                    if (apply_document_edit(ReplaceRecord{.declaration = *declaration,
+                                                          .schema = std::move(replacement)})) {
+                        record_editor_declaration_.reset();
+                        analysis_session_.inputs.selection.field = member_name;
+                        return true;
+                    }
+                }
+                ImGui::SameLine();
+                if (resolved_member != nullptr && resolved_member->relationship.has_value() &&
+                    detail::semantic_type_navigation_button()) {
+                    navigate_to = resolved_member->relationship->target.type;
+                }
+            } else {
+                ImGui::BeginDisabled(record_relationship_target_.front() == '\0');
+                if (ImGui::SmallButton("Add")) {
+                    auto replacement{*schema};
+                    replacement.members[*selected_index].relationship =
+                        codegen::SemanticRelationSchema{
+                            .kind = current_kind,
+                            .target = codegen::TypeRef{.name = record_relationship_target_.data(),
+                                                       .suffix = {},
+                                                       .nested = std::nullopt},
+                            .unit = current_kind == codegen::SemanticRelationKind::offset_into
+                                      ? std::optional{current_unit}
+                                      : std::nullopt};
+                    if (apply_document_edit(ReplaceRecord{.declaration = *declaration,
+                                                          .schema = std::move(replacement)})) {
+                        record_editor_declaration_.reset();
+                        analysis_session_.inputs.selection.field = member_name;
+                        return true;
+                    }
+                }
+                ImGui::EndDisabled();
+            }
+            ImGui::TextDisabled("The relationship is durable semantic metadata; record offsets and "
+                                "ABI layout still "
+                                "come only from the member type, count, and target profile.");
         }
-        ImGui::TextDisabled(
-            "The relationship is durable semantic metadata; record offsets and ABI layout still "
-            "come only from the member type, count, and target profile.");
     }
 
     if (navigate_to.has_value()) {

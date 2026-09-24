@@ -583,172 +583,179 @@ void PlannerUi::use_builtin_comparison_target_profile() {
 auto PlannerUi::draw_target_profile() -> bool {
     draw_target_profile_summary(analysis_session_.primary_abi());
 
-    ImGui::SeparatorText("Generated target profile");
-    ImGui::TextDisabled(
-        "Loads explicit compiler/configuration facts for this analysis session; it never modifies "
-        "LispB.");
-    ImGui::TextWrapped("Profile: %s",
-                       target_profile_path_.front() == '\0' ? "None" : target_profile_path_.data());
-
     bool changed{};
-    if (ImGui::Button("Load profile")) {
-        auto chosen{file_dialog_->open_file(target_profile_path_.data(), "")};
-        if (!chosen.has_value()) {
-            target_profile_load_error_ = chosen.error();
-        } else if (chosen->has_value()) {
-            changed = load_target_profile(**chosen, true);
-        }
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Use built-in profile")) {
-        use_builtin_target_profile(true);
-        changed = true;
-    }
-    if (!target_profile_load_error_.empty()) {
-        ImGui::TextColored(
-            ImVec4{0.95F, 0.45F, 0.35F, 1.0F}, "%s", target_profile_load_error_.c_str());
-    }
+    if (detail::section("Generated target profile")) {
+        ImGui::TextDisabled("Loads explicit compiler/configuration facts for this analysis "
+                            "session; it never modifies "
+                            "LispB.");
+        ImGui::TextWrapped("Profile: %s",
+                           target_profile_path_.front() == '\0' ? "None"
+                                                                : target_profile_path_.data());
 
-    ImGui::SeparatorText("Project memory facts");
-    ImGui::TextDisabled(
-        "Applied values are saved for this project and used only for analysis. Empty fields are "
-        "Unknown; line/page sizes must be non-zero.");
-    constexpr auto flags{ImGuiInputTextFlags_CharsDecimal};
-    ImGui::SetNextItemWidth(180.0F);
-    ImGui::InputText("Cache-line bytes",
-                     target_cache_line_bytes_.data(),
-                     target_cache_line_bytes_.size(),
-                     flags);
-    ImGui::SetNextItemWidth(180.0F);
-    ImGui::InputText("Page bytes", target_page_bytes_.data(), target_page_bytes_.size(), flags);
-    auto draw_cache_input = [&](char const* label, auto& buffer, int& unit) {
-        ImGui::TextUnformatted(label);
-        ImGui::SetNextItemWidth(180.0F);
-        auto const input_id{std::string{"##value-"} + label};
-        ImGui::InputText(input_id.c_str(), buffer.data(), buffer.size(), flags);
+        if (ImGui::Button("Load profile")) {
+            auto chosen{file_dialog_->open_file(target_profile_path_.data(), "")};
+            if (!chosen.has_value()) {
+                target_profile_load_error_ = chosen.error();
+            } else if (chosen->has_value()) {
+                changed = load_target_profile(**chosen, true);
+            }
+        }
         ImGui::SameLine();
-        ImGui::SetNextItemWidth(85.0F);
-        auto selected_unit{unit};
-        auto const unit_id{std::string{"##unit-"} + label};
-        if (ImGui::Combo(unit_id.c_str(), &selected_unit, "B\0KiB\0MiB\0GiB\0")) {
-            auto const bytes{buffer.front() == '\0' ? std::optional<std::uint64_t>{}
-                                                    : parse_cache_capacity(buffer.data(), unit)};
-            if (buffer.front() != '\0' && !bytes.has_value()) {
-                target_memory_fact_error_ =
-                    std::string{label} + " must represent a whole number of bytes.";
-                return;
+        if (ImGui::Button("Use built-in profile")) {
+            use_builtin_target_profile(true);
+            changed = true;
+        }
+        if (!target_profile_load_error_.empty()) {
+            ImGui::TextColored(
+                ImVec4{0.95F, 0.45F, 0.35F, 1.0F}, "%s", target_profile_load_error_.c_str());
+        }
+    }
+
+    if (detail::section("Project memory facts")) {
+        ImGui::TextDisabled("Applied values are saved for this project and used only for analysis. "
+                            "Empty fields are "
+                            "Unknown; line/page sizes must be non-zero.");
+        constexpr auto flags{ImGuiInputTextFlags_CharsDecimal};
+        ImGui::SetNextItemWidth(180.0F);
+        ImGui::InputText("Cache-line bytes",
+                         target_cache_line_bytes_.data(),
+                         target_cache_line_bytes_.size(),
+                         flags);
+        ImGui::SetNextItemWidth(180.0F);
+        ImGui::InputText("Page bytes", target_page_bytes_.data(), target_page_bytes_.size(), flags);
+        auto draw_cache_input = [&](char const* label, auto& buffer, int& unit) {
+            ImGui::TextUnformatted(label);
+            ImGui::SetNextItemWidth(180.0F);
+            auto const input_id{std::string{"##value-"} + label};
+            ImGui::InputText(input_id.c_str(), buffer.data(), buffer.size(), flags);
+            ImGui::SameLine();
+            ImGui::SetNextItemWidth(85.0F);
+            auto selected_unit{unit};
+            auto const unit_id{std::string{"##unit-"} + label};
+            if (ImGui::Combo(unit_id.c_str(), &selected_unit, "B\0KiB\0MiB\0GiB\0")) {
+                auto const bytes{buffer.front() == '\0'
+                                     ? std::optional<std::uint64_t>{}
+                                     : parse_cache_capacity(buffer.data(), unit)};
+                if (buffer.front() != '\0' && !bytes.has_value()) {
+                    target_memory_fact_error_ =
+                        std::string{label} + " must represent a whole number of bytes.";
+                    return;
+                }
+                unit = selected_unit;
+                if (bytes.has_value()) {
+                    auto const text{format_cache_capacity(*bytes, unit)};
+                    std::snprintf(buffer.data(), buffer.size(), "%s", text.c_str());
+                }
             }
-            unit = selected_unit;
-            if (bytes.has_value()) {
-                auto const text{format_cache_capacity(*bytes, unit)};
-                std::snprintf(buffer.data(), buffer.size(), "%s", text.c_str());
+        };
+        draw_cache_input("L1 data cache", target_l1_data_cache_bytes_, target_l1_data_cache_unit_);
+        draw_cache_input("L2 cache", target_l2_cache_bytes_, target_l2_cache_unit_);
+        draw_cache_input("L3 cache", target_l3_cache_bytes_, target_l3_cache_unit_);
+
+        if (ImGui::Button("Apply memory facts")) {
+            MemoryFacts candidate;
+            auto parse_value = [&](char const* const text,
+                                   char const* const label,
+                                   bool const require_non_zero,
+                                   std::optional<std::uint64_t>& output) {
+                auto const value{std::string_view{text}};
+                if (value.empty()) {
+                    output.reset();
+                    return true;
+                }
+                std::uint64_t parsed{};
+                auto const [end, error]{
+                    std::from_chars(value.data(), value.data() + value.size(), parsed)};
+                if (error != std::errc{} || end != value.data() + value.size()) {
+                    target_memory_fact_error_ =
+                        std::string{label} + " must be an unsigned integer.";
+                    return false;
+                }
+                if (require_non_zero && parsed == 0) {
+                    target_memory_fact_error_ = std::string{label} + " must be non-zero or empty.";
+                    return false;
+                }
+                output = parsed;
+                return true;
+            };
+            auto parse_cache = [&](char const* const text,
+                                   char const* const label,
+                                   int const unit,
+                                   std::optional<std::uint64_t>& output) {
+                if (*text == '\0') {
+                    output.reset();
+                    return true;
+                }
+                output = parse_cache_capacity(text, unit);
+                if (!output.has_value()) {
+                    target_memory_fact_error_ =
+                        std::string{label} +
+                        " must represent a whole number of bytes within uint64.";
+                    return false;
+                }
+                return true;
+            };
+            auto const valid{
+                parse_value(target_cache_line_bytes_.data(),
+                            "Cache-line bytes",
+                            true,
+                            candidate.cache_line_bytes) &&
+                parse_value(target_page_bytes_.data(), "Page bytes", true, candidate.page_bytes) &&
+                parse_cache(target_l1_data_cache_bytes_.data(),
+                            "L1 data cache",
+                            target_l1_data_cache_unit_,
+                            candidate.l1_data_cache_bytes) &&
+                parse_cache(target_l2_cache_bytes_.data(),
+                            "L2 cache",
+                            target_l2_cache_unit_,
+                            candidate.l2_cache_bytes) &&
+                parse_cache(target_l3_cache_bytes_.data(),
+                            "L3 cache",
+                            target_l3_cache_unit_,
+                            candidate.l3_cache_bytes)};
+            if (valid) {
+                auto const matches_defaults{
+                    candidate.cache_line_bytes == target_memory_fact_defaults_.cache_line_bytes &&
+                    candidate.page_bytes == target_memory_fact_defaults_.page_bytes &&
+                    candidate.l1_data_cache_bytes ==
+                        target_memory_fact_defaults_.l1_data_cache_bytes &&
+                    candidate.l2_cache_bytes == target_memory_fact_defaults_.l2_cache_bytes &&
+                    candidate.l3_cache_bytes == target_memory_fact_defaults_.l3_cache_bytes};
+                candidate.provenance =
+                    matches_defaults ? target_memory_fact_defaults_.provenance : "Project override";
+                if (candidate != analysis_session_.primary_abi().memory_facts()) {
+                    auto profile{analysis_session_.primary_abi()};
+                    profile.set_memory_facts(candidate);
+                    analysis_session_.set_primary_abi(std::move(profile));
+                    changed = true;
+                }
+                auto const key{graph_project_key(project_path_)};
+                if (matches_defaults) {
+                    persisted_target_memory_facts_.erase(key);
+                } else {
+                    persisted_target_memory_facts_.insert_or_assign(key, candidate);
+                }
+                ImGui::MarkIniSettingsDirty();
+                target_memory_fact_error_.clear();
             }
         }
-    };
-    draw_cache_input("L1 data cache", target_l1_data_cache_bytes_, target_l1_data_cache_unit_);
-    draw_cache_input("L2 cache", target_l2_cache_bytes_, target_l2_cache_unit_);
-    draw_cache_input("L3 cache", target_l3_cache_bytes_, target_l3_cache_unit_);
-
-    if (ImGui::Button("Apply memory facts")) {
-        MemoryFacts candidate;
-        auto parse_value = [&](char const* const text,
-                               char const* const label,
-                               bool const require_non_zero,
-                               std::optional<std::uint64_t>& output) {
-            auto const value{std::string_view{text}};
-            if (value.empty()) {
-                output.reset();
-                return true;
-            }
-            std::uint64_t parsed{};
-            auto const [end,
-                        error]{std::from_chars(value.data(), value.data() + value.size(), parsed)};
-            if (error != std::errc{} || end != value.data() + value.size()) {
-                target_memory_fact_error_ = std::string{label} + " must be an unsigned integer.";
-                return false;
-            }
-            if (require_non_zero && parsed == 0) {
-                target_memory_fact_error_ = std::string{label} + " must be non-zero or empty.";
-                return false;
-            }
-            output = parsed;
-            return true;
-        };
-        auto parse_cache = [&](char const* const text,
-                               char const* const label,
-                               int const unit,
-                               std::optional<std::uint64_t>& output) {
-            if (*text == '\0') {
-                output.reset();
-                return true;
-            }
-            output = parse_cache_capacity(text, unit);
-            if (!output.has_value()) {
-                target_memory_fact_error_ =
-                    std::string{label} + " must represent a whole number of bytes within uint64.";
-                return false;
-            }
-            return true;
-        };
-        auto const valid{
-            parse_value(target_cache_line_bytes_.data(),
-                        "Cache-line bytes",
-                        true,
-                        candidate.cache_line_bytes) &&
-            parse_value(target_page_bytes_.data(), "Page bytes", true, candidate.page_bytes) &&
-            parse_cache(target_l1_data_cache_bytes_.data(),
-                        "L1 data cache",
-                        target_l1_data_cache_unit_,
-                        candidate.l1_data_cache_bytes) &&
-            parse_cache(target_l2_cache_bytes_.data(),
-                        "L2 cache",
-                        target_l2_cache_unit_,
-                        candidate.l2_cache_bytes) &&
-            parse_cache(target_l3_cache_bytes_.data(),
-                        "L3 cache",
-                        target_l3_cache_unit_,
-                        candidate.l3_cache_bytes)};
-        if (valid) {
-            auto const matches_defaults{
-                candidate.cache_line_bytes == target_memory_fact_defaults_.cache_line_bytes &&
-                candidate.page_bytes == target_memory_fact_defaults_.page_bytes &&
-                candidate.l1_data_cache_bytes == target_memory_fact_defaults_.l1_data_cache_bytes &&
-                candidate.l2_cache_bytes == target_memory_fact_defaults_.l2_cache_bytes &&
-                candidate.l3_cache_bytes == target_memory_fact_defaults_.l3_cache_bytes};
-            candidate.provenance =
-                matches_defaults ? target_memory_fact_defaults_.provenance : "Project override";
-            if (candidate != analysis_session_.primary_abi().memory_facts()) {
+        ImGui::SameLine();
+        if (ImGui::Button("Restore profile facts")) {
+            if (analysis_session_.primary_abi().memory_facts() != target_memory_fact_defaults_) {
                 auto profile{analysis_session_.primary_abi()};
-                profile.set_memory_facts(candidate);
+                profile.set_memory_facts(target_memory_fact_defaults_);
                 analysis_session_.set_primary_abi(std::move(profile));
                 changed = true;
             }
-            auto const key{graph_project_key(project_path_)};
-            if (matches_defaults) {
-                persisted_target_memory_facts_.erase(key);
-            } else {
-                persisted_target_memory_facts_.insert_or_assign(key, candidate);
+            if (persisted_target_memory_facts_.erase(graph_project_key(project_path_)) != 0) {
+                ImGui::MarkIniSettingsDirty();
             }
-            ImGui::MarkIniSettingsDirty();
-            target_memory_fact_error_.clear();
+            sync_target_memory_fact_inputs();
         }
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Restore profile facts")) {
-        if (analysis_session_.primary_abi().memory_facts() != target_memory_fact_defaults_) {
-            auto profile{analysis_session_.primary_abi()};
-            profile.set_memory_facts(target_memory_fact_defaults_);
-            analysis_session_.set_primary_abi(std::move(profile));
-            changed = true;
+        if (!target_memory_fact_error_.empty()) {
+            ImGui::TextColored(
+                ImVec4{0.95F, 0.45F, 0.35F, 1.0F}, "%s", target_memory_fact_error_.c_str());
         }
-        if (persisted_target_memory_facts_.erase(graph_project_key(project_path_)) != 0) {
-            ImGui::MarkIniSettingsDirty();
-        }
-        sync_target_memory_fact_inputs();
-    }
-    if (!target_memory_fact_error_.empty()) {
-        ImGui::TextColored(
-            ImVec4{0.95F, 0.45F, 0.35F, 1.0F}, "%s", target_memory_fact_error_.c_str());
     }
     return changed;
 }
@@ -1786,8 +1793,7 @@ void PlannerUi::draw_diagnostics_panel() {
         if (ImGui::Button("Copy all")) {
             ImGui::SetClipboardText(copy_text.c_str());
         }
-        if (!schema_warning_message_.empty()) {
-            ImGui::SeparatorText("Warning");
+        if (!schema_warning_message_.empty() && detail::section("Warning")) {
             ImGui::PushStyleColor(ImGuiCol_Text,
                                   detail::diagnostic_color(DiagnosticSeverity::warning));
             ImGui::InputTextMultiline("##schema-warning",
@@ -1798,13 +1804,17 @@ void PlannerUi::draw_diagnostics_panel() {
             ImGui::PopStyleColor();
         }
         std::string previous_label;
+        auto group_open{false};
         for (std::size_t index{}; index < entries.size(); ++index) {
             auto const& entry{entries[index]};
-            ImGui::PushID(static_cast<int>(index));
             if (entry.label != previous_label) {
-                ImGui::SeparatorText(entry.label.c_str());
+                group_open = detail::section(entry.label.c_str());
                 previous_label = entry.label;
             }
+            if (!group_open) {
+                continue;
+            }
+            ImGui::PushID(static_cast<int>(index));
             ImGui::PushStyleColor(ImGuiCol_Text, detail::diagnostic_color(entry.severity));
             ImGui::TextWrapped("%s", entry.message.c_str());
             ImGui::PopStyleColor();
@@ -2351,205 +2361,12 @@ void PlannerUi::draw_layout_panel() {
                std::holds_alternative<EnumType>(definition)) {
         auto const& analysis{*analysis_session_.results().enum_domain};
         auto const& aggregate{analysis.aggregate};
-        ImGui::SeparatorText("Standalone C++ backing scale");
-        if (draw_element_count()) {
-            ImGui::End();
-            return;
-        }
-        if (ImGui::BeginTable("enum-backing-aggregate",
-                              2,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_SizingStretchProp)) {
-            auto draw_stat{[](char const* const label, std::string const& value) {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(label);
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(value.c_str());
-            }};
-            draw_stat("C++ backing", analysis.backing_type);
-            draw_stat("Physical backing / value",
-                      detail::format_bytes(analysis.backing_facts.transform(
-                          [](TypeFacts const& facts) { return facts.size_bytes; })));
-            draw_stat("Total standalone backing storage",
-                      detail::format_bytes(aggregate.total_storage_bytes));
-            draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
-            draw_stat("Complete standalone values / cache line",
-                      detail::format_number(aggregate.complete_elements_per_cache_line));
-            draw_stat("Values crossing cache-line boundaries",
-                      detail::format_number(aggregate.cache_line_straddling_elements));
-            draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
-            draw_stat("Complete standalone values / page",
-                      detail::format_number(aggregate.complete_elements_per_page));
-            draw_stat("Values crossing page boundaries",
-                      detail::format_number(aggregate.page_straddling_elements));
-            draw_stat("Fits L1 data cache",
-                      detail::format_fit(aggregate.cache_capacity.fits_l1_data));
-            draw_stat("Fits L2 cache", detail::format_fit(aggregate.cache_capacity.fits_l2));
-            draw_stat("Fits L3 cache", detail::format_fit(aggregate.cache_capacity.fits_l3));
-            ImGui::EndTable();
-        }
-        ImGui::TextDisabled(
-            "This is a contiguous array of the generated standalone C++ backing at a cache-line/"
-            "page-aligned origin. Semantic width is not sizeof, and packed-field uses are not "
-            "included.");
-        draw_diagnostics(analysis.diagnostics);
-    } else if (auto const* packed = std::get_if<PackedType>(&definition)) {
-        draw_packed_layout(*packed, *analysis_session_.results().baseline_packed);
-    } else if (auto const* soa{std::get_if<SoaType>(&definition)};
-               soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
-        draw_soa_layout(*soa, *analysis_session_.results().baseline_soa);
-    } else if (std::holds_alternative<RecordType>(definition)) {
-        draw_record_layout(*analysis_session_.results().record_analysis);
-    } else if (std::holds_alternative<UnionType>(definition)) {
-        auto const& analysis{*analysis_session_.results().union_analysis};
-        ImGui::SeparatorText("Analysis scale");
-        if (draw_element_count()) {
-            ImGui::End();
-            return;
-        }
-        auto const& aggregate{analysis.aggregate};
-        if (ImGui::BeginTable("union-aggregate",
-                              2,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_SizingStretchProp)) {
-            auto draw_stat{[](char const* const label, std::string const& value) {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(label);
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(value.c_str());
-            }};
-            draw_stat("Physical storage", detail::format_bytes(aggregate.total_storage_bytes));
-            draw_stat("Tail padding", detail::format_bytes(aggregate.total_tail_padding_bytes));
-            draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
-            draw_stat("Complete elements / cache line",
-                      detail::format_number(aggregate.complete_elements_per_cache_line));
-            draw_stat("Elements crossing cache-line boundaries",
-                      detail::format_number(aggregate.cache_line_straddling_elements));
-            draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
-            draw_stat("Complete elements / page",
-                      detail::format_number(aggregate.complete_elements_per_page));
-            draw_stat("Elements crossing page boundaries",
-                      detail::format_number(aggregate.page_straddling_elements));
-            draw_stat("Fits L1 data cache",
-                      detail::format_fit(aggregate.cache_capacity.fits_l1_data));
-            draw_stat("Fits L2 cache", detail::format_fit(aggregate.cache_capacity.fits_l2));
-            draw_stat("Fits L3 cache", detail::format_fit(aggregate.cache_capacity.fits_l3));
-            ImGui::EndTable();
-        }
-        ImGui::TextDisabled(
-            "Boundary crossing assumes a contiguous array whose base is cache-line/page aligned.");
-        ImGui::Text("Size: %s", detail::format_bytes(analysis.size_bytes).c_str());
-        ImGui::Text("Alignment: %s", detail::format_bytes(analysis.alignment_bytes).c_str());
-        ImGui::Text("Largest alternative: %s",
-                    detail::format_bytes(analysis.largest_alternative_bytes).c_str());
-        ImGui::Text("Tail padding: %s", detail::format_bytes(analysis.tail_padding_bytes).c_str());
-        if (analysis.size_bytes.has_value() && *analysis.size_bytes != 0) {
-            ImGui::SeparatorText("Object map");
-            auto const width{std::max(1.0F, ImGui::GetContentRegionAvail().x)};
-            constexpr auto bar_height{34.0F};
-            for (std::size_t index{}; index < analysis.alternatives.size(); ++index) {
-                auto const& alternative{analysis.alternatives[index]};
-                if (!alternative.extent_bytes.has_value()) {
-                    continue;
-                }
-                ImGui::PushID(static_cast<int>(index));
-                ImGui::TextUnformatted(alternative.name.c_str());
-                auto const origin{ImGui::GetCursorScreenPos()};
-                auto* const draw_list{ImGui::GetWindowDrawList()};
-                draw_list->AddRectFilled(origin,
-                                         {origin.x + width, origin.y + bar_height},
-                                         ImGui::GetColorU32(ImVec4{0.20F, 0.22F, 0.25F, 1.0F}),
-                                         3.0F);
-                auto const extent_width{width * static_cast<float>(*alternative.extent_bytes) /
-                                        static_cast<float>(*analysis.size_bytes)};
-                auto const selected{analysis_session_.inputs.selection.field == alternative.name};
-                auto const extent_color{selected ? ImVec4{0.24F, 0.65F, 0.90F, 1.0F}
-                                                 : ImVec4{0.62F, 0.39F, 0.20F, 1.0F}};
-                draw_list->AddRectFilled(origin,
-                                         {origin.x + extent_width, origin.y + bar_height},
-                                         ImGui::GetColorU32(extent_color),
-                                         3.0F);
-                if (*alternative.extent_bytes < *analysis.size_bytes) {
-                    auto const range{std::to_string(*alternative.extent_bytes) + ".." +
-                                     std::to_string(*analysis.size_bytes - 1)};
-                    detail::draw_labeled_gap(draw_list,
-                                             {origin.x + extent_width, origin.y},
-                                             {origin.x + width, origin.y + bar_height},
-                                             "slack " + range,
-                                             range);
-                }
-                draw_list->AddRect(origin,
-                                   {origin.x + width, origin.y + bar_height},
-                                   ImGui::GetColorU32(ImGuiCol_Border),
-                                   3.0F);
-                auto const extent_label{std::to_string(*alternative.extent_bytes) + " B extent"};
-                draw_list->AddText({origin.x + 5.0F, origin.y + 8.0F},
-                                   ImGui::GetColorU32(ImGuiCol_Text),
-                                   extent_label.c_str());
-                ImGui::InvisibleButton("##union-alternative-map", {width, bar_height});
-                if (ImGui::IsItemClicked()) {
-                    analysis_session_.inputs.selection.field = alternative.name;
-                }
-                if (ImGui::IsItemHovered()) {
-                    if (*alternative.extent_bytes == 0) {
-                        ImGui::SetTooltip(
-                            "%s: zero-byte extent; bytes 0..%llu are slack",
-                            alternative.name.c_str(),
-                            static_cast<unsigned long long>(*analysis.size_bytes - 1));
-                    } else if (*alternative.extent_bytes < *analysis.size_bytes) {
-                        ImGui::SetTooltip(
-                            "%s: bytes 0..%llu occupied; bytes %llu..%llu are slack",
-                            alternative.name.c_str(),
-                            static_cast<unsigned long long>(*alternative.extent_bytes - 1),
-                            static_cast<unsigned long long>(*alternative.extent_bytes),
-                            static_cast<unsigned long long>(*analysis.size_bytes - 1));
-                    } else {
-                        ImGui::SetTooltip("%s: all %llu bytes occupied; no slack",
-                                          alternative.name.c_str(),
-                                          static_cast<unsigned long long>(*analysis.size_bytes));
-                    }
-                }
-                if (*alternative.extent_bytes < *analysis.size_bytes) {
-                    ImGui::TextWrapped("Slack: bytes %llu..%llu",
-                                       static_cast<unsigned long long>(*alternative.extent_bytes),
-                                       static_cast<unsigned long long>(*analysis.size_bytes - 1));
-                }
-                ImGui::PopID();
+        if (detail::section("Standalone C++ backing scale")) {
+            if (draw_element_count()) {
+                ImGui::End();
+                return;
             }
-            ImGui::TextWrapped("Hatched bytes are inactive union storage, including any tail "
-                               "alignment.");
-        }
-        if (ImGui::BeginTable("union-layout",
-                              5,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_SizingStretchProp)) {
-            ImGui::TableSetupColumn("Alternative");
-            ImGui::TableSetupColumn("Count");
-            ImGui::TableSetupColumn("Extent");
-            ImGui::TableSetupColumn("Slack / object");
-            ImGui::TableSetupColumn("Slack at count");
-            ImGui::TableHeadersRow();
-            for (auto const& alternative : analysis.alternatives) {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(alternative.name.c_str());
-                ImGui::TableNextColumn();
-                ImGui::Text("%llu", static_cast<unsigned long long>(alternative.element_count));
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(detail::format_bytes(alternative.extent_bytes).c_str());
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(detail::format_bytes(alternative.slack_bytes).c_str());
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(detail::format_bytes(alternative.total_slack_bytes).c_str());
-            }
-            ImGui::EndTable();
-        }
-        if (analysis_session_.results().union_distribution_analysis.has_value()) {
-            auto const& distribution{*analysis_session_.results().union_distribution_analysis};
-            ImGui::SeparatorText("Explicit session workload");
-            if (ImGui::BeginTable("union-distribution-summary",
+            if (ImGui::BeginTable("enum-backing-aggregate",
                                   2,
                                   ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                       ImGuiTableFlags_SizingStretchProp)) {
@@ -2560,287 +2377,526 @@ void PlannerUi::draw_layout_panel() {
                     ImGui::TableNextColumn();
                     ImGui::TextUnformatted(value.c_str());
                 }};
-                draw_stat("Sample weight", detail::format_number(distribution.total_weight));
-                draw_stat("Sample active extent",
-                          detail::format_bytes(distribution.total_extent_bytes));
-                draw_stat("Sample conditional slack",
-                          detail::format_bytes(distribution.total_slack_bytes));
-                auto format_decimal{[](std::optional<long double> const value) {
-                    if (!value.has_value()) {
-                        return std::string{"Unknown"};
-                    }
-                    std::array<char, 64> text{};
-                    std::snprintf(
-                        text.data(), text.size(), "%.8g bytes", static_cast<double>(*value));
-                    return std::string{text.data()};
-                }};
-                draw_stat("Expected active extent / value",
-                          format_decimal(distribution.expected_extent_bytes_per_value));
-                draw_stat("Expected conditional slack / value",
-                          format_decimal(distribution.expected_slack_bytes_per_value));
-                draw_stat("Expected active extent at selected count",
-                          format_decimal(distribution.expected_selected_extent_bytes));
-                draw_stat("Expected conditional slack at selected count",
-                          format_decimal(distribution.expected_selected_slack_bytes));
-                ImGui::EndTable();
-            }
-            if (ImGui::BeginTable("union-distribution-entries",
-                                  6,
-                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                      ImGuiTableFlags_SizingStretchProp)) {
-                ImGui::TableSetupColumn("Alternative");
-                ImGui::TableSetupColumn("Weight");
-                ImGui::TableSetupColumn("Extent");
-                ImGui::TableSetupColumn("Slack");
-                ImGui::TableSetupColumn("Weighted extent");
-                ImGui::TableSetupColumn("Weighted slack");
-                ImGui::TableHeadersRow();
-                for (auto const& entry : distribution.entries) {
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(entry.alternative_name.c_str());
-                    ImGui::TableNextColumn();
-                    ImGui::Text("%llu", static_cast<unsigned long long>(entry.weight));
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(detail::format_bytes(entry.extent_bytes).c_str());
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(detail::format_bytes(entry.slack_bytes).c_str());
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(
-                        detail::format_bytes(entry.weighted_extent_bytes).c_str());
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(
-                        detail::format_bytes(entry.weighted_slack_bytes).c_str());
-                }
+                draw_stat("C++ backing", analysis.backing_type);
+                draw_stat("Physical backing / value",
+                          detail::format_bytes(analysis.backing_facts.transform(
+                              [](TypeFacts const& facts) { return facts.size_bytes; })));
+                draw_stat("Total standalone backing storage",
+                          detail::format_bytes(aggregate.total_storage_bytes));
+                draw_stat("Minimum cache lines",
+                          detail::format_number(aggregate.minimum_cache_lines));
+                draw_stat("Complete standalone values / cache line",
+                          detail::format_number(aggregate.complete_elements_per_cache_line));
+                draw_stat("Values crossing cache-line boundaries",
+                          detail::format_number(aggregate.cache_line_straddling_elements));
+                draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
+                draw_stat("Complete standalone values / page",
+                          detail::format_number(aggregate.complete_elements_per_page));
+                draw_stat("Values crossing page boundaries",
+                          detail::format_number(aggregate.page_straddling_elements));
+                draw_stat("Fits L1 data cache",
+                          detail::format_fit(aggregate.cache_capacity.fits_l1_data));
+                draw_stat("Fits L2 cache", detail::format_fit(aggregate.cache_capacity.fits_l2));
+                draw_stat("Fits L3 cache", detail::format_fit(aggregate.cache_capacity.fits_l3));
                 ImGui::EndTable();
             }
             ImGui::TextDisabled(
-                "Expected values are conditional on the explicit session weights; a raw union "
-                "stores no runtime tag and the workload is not persisted to LispB.");
-            draw_diagnostics(distribution.diagnostics);
+                "This is a contiguous array of the generated standalone C++ backing at a "
+                "cache-line/"
+                "page-aligned origin. Semantic width is not sizeof, and packed-field uses are not "
+                "included.");
+            draw_diagnostics(analysis.diagnostics);
         }
-        ImGui::TextDisabled(
-            "Each scaled slack value assumes every object uses that alternative; no tag "
-            "distribution is implied.");
-        draw_diagnostics(analysis.diagnostics);
+    } else if (auto const* packed = std::get_if<PackedType>(&definition)) {
+        draw_packed_layout(*packed, *analysis_session_.results().baseline_packed);
+    } else if (auto const* soa{std::get_if<SoaType>(&definition)};
+               soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
+        draw_soa_layout(*soa, *analysis_session_.results().baseline_soa);
+    } else if (std::holds_alternative<RecordType>(definition)) {
+        draw_record_layout(*analysis_session_.results().record_analysis);
+    } else if (std::holds_alternative<UnionType>(definition)) {
+        auto const& analysis{*analysis_session_.results().union_analysis};
+        if (detail::section("Analysis scale")) {
+            if (draw_element_count()) {
+                ImGui::End();
+                return;
+            }
+            auto const& aggregate{analysis.aggregate};
+            if (ImGui::BeginTable("union-aggregate",
+                                  2,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                      ImGuiTableFlags_SizingStretchProp)) {
+                auto draw_stat{[](char const* const label, std::string const& value) {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(label);
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(value.c_str());
+                }};
+                draw_stat("Physical storage", detail::format_bytes(aggregate.total_storage_bytes));
+                draw_stat("Tail padding", detail::format_bytes(aggregate.total_tail_padding_bytes));
+                draw_stat("Minimum cache lines",
+                          detail::format_number(aggregate.minimum_cache_lines));
+                draw_stat("Complete elements / cache line",
+                          detail::format_number(aggregate.complete_elements_per_cache_line));
+                draw_stat("Elements crossing cache-line boundaries",
+                          detail::format_number(aggregate.cache_line_straddling_elements));
+                draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
+                draw_stat("Complete elements / page",
+                          detail::format_number(aggregate.complete_elements_per_page));
+                draw_stat("Elements crossing page boundaries",
+                          detail::format_number(aggregate.page_straddling_elements));
+                draw_stat("Fits L1 data cache",
+                          detail::format_fit(aggregate.cache_capacity.fits_l1_data));
+                draw_stat("Fits L2 cache", detail::format_fit(aggregate.cache_capacity.fits_l2));
+                draw_stat("Fits L3 cache", detail::format_fit(aggregate.cache_capacity.fits_l3));
+                ImGui::EndTable();
+            }
+            ImGui::TextDisabled("Boundary crossing assumes a contiguous array whose base is "
+                                "cache-line/page aligned.");
+            ImGui::Text("Size: %s", detail::format_bytes(analysis.size_bytes).c_str());
+            ImGui::Text("Alignment: %s", detail::format_bytes(analysis.alignment_bytes).c_str());
+            ImGui::Text("Largest alternative: %s",
+                        detail::format_bytes(analysis.largest_alternative_bytes).c_str());
+            ImGui::Text("Tail padding: %s",
+                        detail::format_bytes(analysis.tail_padding_bytes).c_str());
+            if (analysis.size_bytes.has_value() && *analysis.size_bytes != 0) {
+                if (detail::section("Object map")) {
+                    auto const width{std::max(1.0F, ImGui::GetContentRegionAvail().x)};
+                    constexpr auto bar_height{34.0F};
+                    for (std::size_t index{}; index < analysis.alternatives.size(); ++index) {
+                        auto const& alternative{analysis.alternatives[index]};
+                        if (!alternative.extent_bytes.has_value()) {
+                            continue;
+                        }
+                        ImGui::PushID(static_cast<int>(index));
+                        ImGui::TextUnformatted(alternative.name.c_str());
+                        auto const origin{ImGui::GetCursorScreenPos()};
+                        auto* const draw_list{ImGui::GetWindowDrawList()};
+                        draw_list->AddRectFilled(
+                            origin,
+                            {origin.x + width, origin.y + bar_height},
+                            ImGui::GetColorU32(ImVec4{0.20F, 0.22F, 0.25F, 1.0F}),
+                            3.0F);
+                        auto const extent_width{width *
+                                                static_cast<float>(*alternative.extent_bytes) /
+                                                static_cast<float>(*analysis.size_bytes)};
+                        auto const selected{analysis_session_.inputs.selection.field ==
+                                            alternative.name};
+                        auto const extent_color{selected ? ImVec4{0.24F, 0.65F, 0.90F, 1.0F}
+                                                         : ImVec4{0.62F, 0.39F, 0.20F, 1.0F}};
+                        draw_list->AddRectFilled(origin,
+                                                 {origin.x + extent_width, origin.y + bar_height},
+                                                 ImGui::GetColorU32(extent_color),
+                                                 3.0F);
+                        if (*alternative.extent_bytes < *analysis.size_bytes) {
+                            auto const range{std::to_string(*alternative.extent_bytes) + ".." +
+                                             std::to_string(*analysis.size_bytes - 1)};
+                            detail::draw_labeled_gap(draw_list,
+                                                     {origin.x + extent_width, origin.y},
+                                                     {origin.x + width, origin.y + bar_height},
+                                                     "slack " + range,
+                                                     range);
+                        }
+                        draw_list->AddRect(origin,
+                                           {origin.x + width, origin.y + bar_height},
+                                           ImGui::GetColorU32(ImGuiCol_Border),
+                                           3.0F);
+                        auto const extent_label{std::to_string(*alternative.extent_bytes) +
+                                                " B extent"};
+                        draw_list->AddText({origin.x + 5.0F, origin.y + 8.0F},
+                                           ImGui::GetColorU32(ImGuiCol_Text),
+                                           extent_label.c_str());
+                        ImGui::InvisibleButton("##union-alternative-map", {width, bar_height});
+                        if (ImGui::IsItemClicked()) {
+                            analysis_session_.inputs.selection.field = alternative.name;
+                        }
+                        if (ImGui::IsItemHovered()) {
+                            if (*alternative.extent_bytes == 0) {
+                                ImGui::SetTooltip(
+                                    "%s: zero-byte extent; bytes 0..%llu are slack",
+                                    alternative.name.c_str(),
+                                    static_cast<unsigned long long>(*analysis.size_bytes - 1));
+                            } else if (*alternative.extent_bytes < *analysis.size_bytes) {
+                                ImGui::SetTooltip(
+                                    "%s: bytes 0..%llu occupied; bytes %llu..%llu are slack",
+                                    alternative.name.c_str(),
+                                    static_cast<unsigned long long>(*alternative.extent_bytes - 1),
+                                    static_cast<unsigned long long>(*alternative.extent_bytes),
+                                    static_cast<unsigned long long>(*analysis.size_bytes - 1));
+                            } else {
+                                ImGui::SetTooltip(
+                                    "%s: all %llu bytes occupied; no slack",
+                                    alternative.name.c_str(),
+                                    static_cast<unsigned long long>(*analysis.size_bytes));
+                            }
+                        }
+                        if (*alternative.extent_bytes < *analysis.size_bytes) {
+                            ImGui::TextWrapped(
+                                "Slack: bytes %llu..%llu",
+                                static_cast<unsigned long long>(*alternative.extent_bytes),
+                                static_cast<unsigned long long>(*analysis.size_bytes - 1));
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::TextWrapped(
+                        "Hatched bytes are inactive union storage, including any tail "
+                        "alignment.");
+                }
+            }
+            if (ImGui::BeginTable("union-layout",
+                                  5,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                      ImGuiTableFlags_SizingStretchProp)) {
+                ImGui::TableSetupColumn("Alternative");
+                ImGui::TableSetupColumn("Count");
+                ImGui::TableSetupColumn("Extent");
+                ImGui::TableSetupColumn("Slack / object");
+                ImGui::TableSetupColumn("Slack at count");
+                ImGui::TableHeadersRow();
+                for (auto const& alternative : analysis.alternatives) {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(alternative.name.c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%llu", static_cast<unsigned long long>(alternative.element_count));
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(detail::format_bytes(alternative.extent_bytes).c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(detail::format_bytes(alternative.slack_bytes).c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(
+                        detail::format_bytes(alternative.total_slack_bytes).c_str());
+                }
+                ImGui::EndTable();
+            }
+            if (analysis_session_.results().union_distribution_analysis.has_value()) {
+                auto const& distribution{*analysis_session_.results().union_distribution_analysis};
+                if (detail::section("Explicit session workload")) {
+                    if (ImGui::BeginTable("union-distribution-summary",
+                                          2,
+                                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                              ImGuiTableFlags_SizingStretchProp)) {
+                        auto draw_stat{[](char const* const label, std::string const& value) {
+                            ImGui::TableNextRow();
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted(label);
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted(value.c_str());
+                        }};
+                        draw_stat("Sample weight",
+                                  detail::format_number(distribution.total_weight));
+                        draw_stat("Sample active extent",
+                                  detail::format_bytes(distribution.total_extent_bytes));
+                        draw_stat("Sample conditional slack",
+                                  detail::format_bytes(distribution.total_slack_bytes));
+                        auto format_decimal{[](std::optional<long double> const value) {
+                            if (!value.has_value()) {
+                                return std::string{"Unknown"};
+                            }
+                            std::array<char, 64> text{};
+                            std::snprintf(text.data(),
+                                          text.size(),
+                                          "%.8g bytes",
+                                          static_cast<double>(*value));
+                            return std::string{text.data()};
+                        }};
+                        draw_stat("Expected active extent / value",
+                                  format_decimal(distribution.expected_extent_bytes_per_value));
+                        draw_stat("Expected conditional slack / value",
+                                  format_decimal(distribution.expected_slack_bytes_per_value));
+                        draw_stat("Expected active extent at selected count",
+                                  format_decimal(distribution.expected_selected_extent_bytes));
+                        draw_stat("Expected conditional slack at selected count",
+                                  format_decimal(distribution.expected_selected_slack_bytes));
+                        ImGui::EndTable();
+                    }
+                    if (ImGui::BeginTable("union-distribution-entries",
+                                          6,
+                                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                              ImGuiTableFlags_SizingStretchProp)) {
+                        ImGui::TableSetupColumn("Alternative");
+                        ImGui::TableSetupColumn("Weight");
+                        ImGui::TableSetupColumn("Extent");
+                        ImGui::TableSetupColumn("Slack");
+                        ImGui::TableSetupColumn("Weighted extent");
+                        ImGui::TableSetupColumn("Weighted slack");
+                        ImGui::TableHeadersRow();
+                        for (auto const& entry : distribution.entries) {
+                            ImGui::TableNextRow();
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted(entry.alternative_name.c_str());
+                            ImGui::TableNextColumn();
+                            ImGui::Text("%llu", static_cast<unsigned long long>(entry.weight));
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted(
+                                detail::format_bytes(entry.extent_bytes).c_str());
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted(detail::format_bytes(entry.slack_bytes).c_str());
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted(
+                                detail::format_bytes(entry.weighted_extent_bytes).c_str());
+                            ImGui::TableNextColumn();
+                            ImGui::TextUnformatted(
+                                detail::format_bytes(entry.weighted_slack_bytes).c_str());
+                        }
+                        ImGui::EndTable();
+                    }
+                    ImGui::TextDisabled(
+                        "Expected values are conditional on the explicit session weights; a raw "
+                        "union "
+                        "stores no runtime tag and the workload is not persisted to LispB.");
+                    draw_diagnostics(distribution.diagnostics);
+                }
+            }
+            ImGui::TextDisabled(
+                "Each scaled slack value assumes every object uses that alternative; no tag "
+                "distribution is implied.");
+            draw_diagnostics(analysis.diagnostics);
+        }
     } else if (auto const* tagged{std::get_if<TaggedUnionType>(&definition)}) {
         auto const& analysis{*analysis_session_.results().tagged_union_analysis};
-        ImGui::SeparatorText("Analysis scale");
-        if (draw_element_count()) {
-            ImGui::End();
-            return;
-        }
-        ImGui::Text("Tagged union: %s",
-                    analysis_session_.inputs.workspace.types()
-                        .type(*analysis_session_.inputs.selection.type)
-                        .identity.name.c_str());
-        ImGui::Text("Discriminant: %s",
-                    analysis_session_.inputs.workspace.types()
-                        .type(tagged->discriminant.type)
-                        .identity.name.c_str());
-        ImGui::SeparatorText("Discriminant coverage");
-        ImGui::Text("Mapped live tags: %llu",
-                    static_cast<unsigned long long>(analysis.mapped_live_tags.size()));
-        for (auto const& tag : analysis.mapped_live_tags) {
-            ImGui::BulletText("%s -> payload", tag.c_str());
-        }
-        ImGui::Text("Unmapped live tags: %llu",
-                    static_cast<unsigned long long>(analysis.unmapped_live_tags.size()));
-        for (auto const& tag : analysis.unmapped_live_tags) {
-            ImGui::BulletText("%s -> no payload alternative", tag.c_str());
-        }
-        ImGui::Text("Named sentinel tags: %llu",
-                    static_cast<unsigned long long>(analysis.sentinel_tags.size()));
-        for (auto const& tag : analysis.sentinel_tags) {
-            ImGui::BulletText("%s -> reserved sentinel", tag.c_str());
-        }
-        if (analysis.count_sentinel_tag.has_value()) {
-            ImGui::Text("Count sentinel: %s", analysis.count_sentinel_tag->c_str());
-        } else {
-            ImGui::TextDisabled("Count sentinel: None");
-        }
-        ImGui::TextDisabled("Tag roles are semantic code-space facts, not allocated byte waste.");
-        auto const& aggregate{analysis.aggregate};
-        if (ImGui::BeginTable("tagged-union-aggregate",
-                              2,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_SizingStretchProp)) {
-            auto draw_stat{[](char const* const label, std::string const& value) {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(label);
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(value.c_str());
-            }};
-            draw_stat("Physical storage", detail::format_bytes(aggregate.total_storage_bytes));
-            draw_stat("Discriminant storage",
-                      detail::format_bytes(aggregate.total_discriminant_bytes));
-            draw_stat("Payload-union storage", detail::format_bytes(aggregate.total_payload_bytes));
-            draw_stat("Padding", detail::format_bytes(aggregate.total_internal_padding_bytes));
-            draw_stat("Tail padding", detail::format_bytes(aggregate.total_tail_padding_bytes));
-            draw_stat("Total padding", detail::format_bytes(aggregate.total_padding_bytes));
-            draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
-            draw_stat("Complete elements / cache line",
-                      detail::format_number(aggregate.complete_elements_per_cache_line));
-            draw_stat("Elements crossing cache-line boundaries",
-                      detail::format_number(aggregate.cache_line_straddling_elements));
-            draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
-            draw_stat("Complete elements / page",
-                      detail::format_number(aggregate.complete_elements_per_page));
-            draw_stat("Elements crossing page boundaries",
-                      detail::format_number(aggregate.page_straddling_elements));
-            draw_stat("Fits L1 data cache",
-                      detail::format_fit(aggregate.cache_capacity.fits_l1_data));
-            draw_stat("Fits L2 cache", detail::format_fit(aggregate.cache_capacity.fits_l2));
-            draw_stat("Fits L3 cache", detail::format_fit(aggregate.cache_capacity.fits_l3));
-            ImGui::EndTable();
-        }
-        ImGui::TextDisabled(
-            "Boundary crossing assumes a contiguous array whose base is cache-line/page aligned.");
-        if (ImGui::BeginTable("tagged-union-target-layout",
-                              2,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_SizingStretchProp)) {
-            auto draw_stat{[](char const* const label, std::string const& value) {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(label);
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(value.c_str());
-            }};
-            draw_stat("Discriminant storage",
-                      analysis.discriminant_facts.has_value()
-                          ? detail::format_bytes(analysis.discriminant_facts->size_bytes)
-                          : "Unknown");
-            draw_stat("Payload offset", detail::format_bytes(analysis.payload_offset_bytes));
-            draw_stat("Payload storage", detail::format_bytes(analysis.payload_size_bytes));
-            draw_stat("Padding", detail::format_bytes(analysis.internal_padding_bytes));
-            draw_stat("Tail padding", detail::format_bytes(analysis.tail_padding_bytes));
-            draw_stat("Object size", detail::format_bytes(analysis.size_bytes));
-            draw_stat("Object alignment", detail::format_bytes(analysis.alignment_bytes));
-            ImGui::EndTable();
-        }
-        if (analysis.size_bytes.has_value() && *analysis.size_bytes != 0 &&
-            analysis.discriminant_facts.has_value() && analysis.payload_offset_bytes.has_value() &&
-            analysis.payload_size_bytes.has_value()) {
-            ImGui::SeparatorText("Object map");
-            auto const width{std::max(1.0F, ImGui::GetContentRegionAvail().x)};
-            constexpr auto bar_height{38.0F};
-            auto const origin{ImGui::GetCursorScreenPos()};
-            auto* const draw_list{ImGui::GetWindowDrawList()};
-            auto const total{static_cast<float>(*analysis.size_bytes)};
-            auto const tag_end{width * static_cast<float>(analysis.discriminant_facts->size_bytes) /
-                               total};
-            auto const payload_begin{width * static_cast<float>(*analysis.payload_offset_bytes) /
-                                     total};
-            auto const payload_end{
-                width *
-                static_cast<float>(*analysis.payload_offset_bytes + *analysis.payload_size_bytes) /
-                total};
-            draw_list->AddRectFilled(origin,
-                                     {origin.x + width, origin.y + bar_height},
-                                     ImGui::GetColorU32(ImVec4{0.20F, 0.22F, 0.25F, 1.0F}),
-                                     3.0F);
-            draw_list->AddRectFilled(origin,
-                                     {origin.x + tag_end, origin.y + bar_height},
-                                     ImGui::GetColorU32(ImVec4{0.25F, 0.58F, 0.86F, 1.0F}),
-                                     3.0F);
-            draw_list->AddRectFilled({origin.x + payload_begin, origin.y},
-                                     {origin.x + payload_end, origin.y + bar_height},
-                                     ImGui::GetColorU32(ImVec4{0.62F, 0.39F, 0.20F, 1.0F}),
-                                     3.0F);
-            auto const tag_bytes{analysis.discriminant_facts->size_bytes};
-            auto const payload_offset{*analysis.payload_offset_bytes};
-            auto const payload_end_bytes{payload_offset + *analysis.payload_size_bytes};
-            if (tag_bytes < payload_offset) {
-                auto const range{std::to_string(tag_bytes) + ".." +
-                                 std::to_string(payload_offset - 1)};
-                detail::draw_labeled_gap(draw_list,
-                                         {origin.x + tag_end, origin.y},
-                                         {origin.x + payload_begin, origin.y + bar_height},
-                                         "padding " + range,
-                                         "pad " + range);
+        if (detail::section("Analysis scale")) {
+            if (draw_element_count()) {
+                ImGui::End();
+                return;
             }
-            if (payload_end_bytes < *analysis.size_bytes) {
-                auto const range{std::to_string(payload_end_bytes) + ".." +
-                                 std::to_string(*analysis.size_bytes - 1)};
-                detail::draw_labeled_gap(draw_list,
-                                         {origin.x + payload_end, origin.y},
-                                         {origin.x + width, origin.y + bar_height},
-                                         "tail padding " + range,
-                                         "tail " + range);
-            }
-            draw_list->AddRect(origin,
-                               {origin.x + width, origin.y + bar_height},
-                               ImGui::GetColorU32(ImGuiCol_Border),
-                               3.0F);
-            if (tag_end > ImGui::CalcTextSize("tag").x + 10.0F) {
-                draw_list->AddText(
-                    {origin.x + 5.0F, origin.y + 10.0F}, ImGui::GetColorU32(ImGuiCol_Text), "tag");
-            }
-            if (payload_end - payload_begin > ImGui::CalcTextSize("payload union").x + 10.0F) {
-                draw_list->AddText({origin.x + payload_begin + 5.0F, origin.y + 10.0F},
-                                   ImGui::GetColorU32(ImGuiCol_Text),
-                                   "payload union");
-            }
-            ImGui::InvisibleButton("##tagged-union-object-map", {width, bar_height});
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip(
-                    "Tag: %s; alignment gap: %s; payload: %s; tail padding: %s",
-                    detail::format_bytes(analysis.discriminant_facts->size_bytes).c_str(),
-                    detail::format_bytes(analysis.internal_padding_bytes).c_str(),
-                    detail::format_bytes(analysis.payload_size_bytes).c_str(),
-                    detail::format_bytes(analysis.tail_padding_bytes).c_str());
-            }
-            if (tag_bytes < payload_offset) {
-                ImGui::TextWrapped("Alignment padding: bytes %llu..%llu",
-                                   static_cast<unsigned long long>(tag_bytes),
-                                   static_cast<unsigned long long>(payload_offset - 1));
-            }
-            if (payload_end_bytes < *analysis.size_bytes) {
-                ImGui::TextWrapped("Tail padding: bytes %llu..%llu",
-                                   static_cast<unsigned long long>(payload_end_bytes),
-                                   static_cast<unsigned long long>(*analysis.size_bytes - 1));
+            ImGui::Text("Tagged union: %s",
+                        analysis_session_.inputs.workspace.types()
+                            .type(*analysis_session_.inputs.selection.type)
+                            .identity.name.c_str());
+            ImGui::Text("Discriminant: %s",
+                        analysis_session_.inputs.workspace.types()
+                            .type(tagged->discriminant.type)
+                            .identity.name.c_str());
+            if (detail::section("Discriminant coverage")) {
+                ImGui::Text("Mapped live tags: %llu",
+                            static_cast<unsigned long long>(analysis.mapped_live_tags.size()));
+                for (auto const& tag : analysis.mapped_live_tags) {
+                    ImGui::BulletText("%s -> payload", tag.c_str());
+                }
+                ImGui::Text("Unmapped live tags: %llu",
+                            static_cast<unsigned long long>(analysis.unmapped_live_tags.size()));
+                for (auto const& tag : analysis.unmapped_live_tags) {
+                    ImGui::BulletText("%s -> no payload alternative", tag.c_str());
+                }
+                ImGui::Text("Named sentinel tags: %llu",
+                            static_cast<unsigned long long>(analysis.sentinel_tags.size()));
+                for (auto const& tag : analysis.sentinel_tags) {
+                    ImGui::BulletText("%s -> reserved sentinel", tag.c_str());
+                }
+                if (analysis.count_sentinel_tag.has_value()) {
+                    ImGui::Text("Count sentinel: %s", analysis.count_sentinel_tag->c_str());
+                } else {
+                    ImGui::TextDisabled("Count sentinel: None");
+                }
+                ImGui::TextDisabled(
+                    "Tag roles are semantic code-space facts, not allocated byte waste.");
+                auto const& aggregate{analysis.aggregate};
+                if (ImGui::BeginTable("tagged-union-aggregate",
+                                      2,
+                                      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                          ImGuiTableFlags_SizingStretchProp)) {
+                    auto draw_stat{[](char const* const label, std::string const& value) {
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(label);
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(value.c_str());
+                    }};
+                    draw_stat("Physical storage",
+                              detail::format_bytes(aggregate.total_storage_bytes));
+                    draw_stat("Discriminant storage",
+                              detail::format_bytes(aggregate.total_discriminant_bytes));
+                    draw_stat("Payload-union storage",
+                              detail::format_bytes(aggregate.total_payload_bytes));
+                    draw_stat("Padding",
+                              detail::format_bytes(aggregate.total_internal_padding_bytes));
+                    draw_stat("Tail padding",
+                              detail::format_bytes(aggregate.total_tail_padding_bytes));
+                    draw_stat("Total padding", detail::format_bytes(aggregate.total_padding_bytes));
+                    draw_stat("Minimum cache lines",
+                              detail::format_number(aggregate.minimum_cache_lines));
+                    draw_stat("Complete elements / cache line",
+                              detail::format_number(aggregate.complete_elements_per_cache_line));
+                    draw_stat("Elements crossing cache-line boundaries",
+                              detail::format_number(aggregate.cache_line_straddling_elements));
+                    draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
+                    draw_stat("Complete elements / page",
+                              detail::format_number(aggregate.complete_elements_per_page));
+                    draw_stat("Elements crossing page boundaries",
+                              detail::format_number(aggregate.page_straddling_elements));
+                    draw_stat("Fits L1 data cache",
+                              detail::format_fit(aggregate.cache_capacity.fits_l1_data));
+                    draw_stat("Fits L2 cache",
+                              detail::format_fit(aggregate.cache_capacity.fits_l2));
+                    draw_stat("Fits L3 cache",
+                              detail::format_fit(aggregate.cache_capacity.fits_l3));
+                    ImGui::EndTable();
+                }
+                ImGui::TextDisabled("Boundary crossing assumes a contiguous array whose base is "
+                                    "cache-line/page aligned.");
+                if (ImGui::BeginTable("tagged-union-target-layout",
+                                      2,
+                                      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                          ImGuiTableFlags_SizingStretchProp)) {
+                    auto draw_stat{[](char const* const label, std::string const& value) {
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(label);
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(value.c_str());
+                    }};
+                    draw_stat("Discriminant storage",
+                              analysis.discriminant_facts.has_value()
+                                  ? detail::format_bytes(analysis.discriminant_facts->size_bytes)
+                                  : "Unknown");
+                    draw_stat("Payload offset",
+                              detail::format_bytes(analysis.payload_offset_bytes));
+                    draw_stat("Payload storage", detail::format_bytes(analysis.payload_size_bytes));
+                    draw_stat("Padding", detail::format_bytes(analysis.internal_padding_bytes));
+                    draw_stat("Tail padding", detail::format_bytes(analysis.tail_padding_bytes));
+                    draw_stat("Object size", detail::format_bytes(analysis.size_bytes));
+                    draw_stat("Object alignment", detail::format_bytes(analysis.alignment_bytes));
+                    ImGui::EndTable();
+                }
+                if (analysis.size_bytes.has_value() && *analysis.size_bytes != 0 &&
+                    analysis.discriminant_facts.has_value() &&
+                    analysis.payload_offset_bytes.has_value() &&
+                    analysis.payload_size_bytes.has_value()) {
+                    if (detail::section("Object map")) {
+                        auto const width{std::max(1.0F, ImGui::GetContentRegionAvail().x)};
+                        constexpr auto bar_height{38.0F};
+                        auto const origin{ImGui::GetCursorScreenPos()};
+                        auto* const draw_list{ImGui::GetWindowDrawList()};
+                        auto const total{static_cast<float>(*analysis.size_bytes)};
+                        auto const tag_end{
+                            width * static_cast<float>(analysis.discriminant_facts->size_bytes) /
+                            total};
+                        auto const payload_begin{
+                            width * static_cast<float>(*analysis.payload_offset_bytes) / total};
+                        auto const payload_end{width *
+                                               static_cast<float>(*analysis.payload_offset_bytes +
+                                                                  *analysis.payload_size_bytes) /
+                                               total};
+                        draw_list->AddRectFilled(
+                            origin,
+                            {origin.x + width, origin.y + bar_height},
+                            ImGui::GetColorU32(ImVec4{0.20F, 0.22F, 0.25F, 1.0F}),
+                            3.0F);
+                        draw_list->AddRectFilled(
+                            origin,
+                            {origin.x + tag_end, origin.y + bar_height},
+                            ImGui::GetColorU32(ImVec4{0.25F, 0.58F, 0.86F, 1.0F}),
+                            3.0F);
+                        draw_list->AddRectFilled(
+                            {origin.x + payload_begin, origin.y},
+                            {origin.x + payload_end, origin.y + bar_height},
+                            ImGui::GetColorU32(ImVec4{0.62F, 0.39F, 0.20F, 1.0F}),
+                            3.0F);
+                        auto const tag_bytes{analysis.discriminant_facts->size_bytes};
+                        auto const payload_offset{*analysis.payload_offset_bytes};
+                        auto const payload_end_bytes{payload_offset + *analysis.payload_size_bytes};
+                        if (tag_bytes < payload_offset) {
+                            auto const range{std::to_string(tag_bytes) + ".." +
+                                             std::to_string(payload_offset - 1)};
+                            detail::draw_labeled_gap(
+                                draw_list,
+                                {origin.x + tag_end, origin.y},
+                                {origin.x + payload_begin, origin.y + bar_height},
+                                "padding " + range,
+                                "pad " + range);
+                        }
+                        if (payload_end_bytes < *analysis.size_bytes) {
+                            auto const range{std::to_string(payload_end_bytes) + ".." +
+                                             std::to_string(*analysis.size_bytes - 1)};
+                            detail::draw_labeled_gap(draw_list,
+                                                     {origin.x + payload_end, origin.y},
+                                                     {origin.x + width, origin.y + bar_height},
+                                                     "tail padding " + range,
+                                                     "tail " + range);
+                        }
+                        draw_list->AddRect(origin,
+                                           {origin.x + width, origin.y + bar_height},
+                                           ImGui::GetColorU32(ImGuiCol_Border),
+                                           3.0F);
+                        if (tag_end > ImGui::CalcTextSize("tag").x + 10.0F) {
+                            draw_list->AddText({origin.x + 5.0F, origin.y + 10.0F},
+                                               ImGui::GetColorU32(ImGuiCol_Text),
+                                               "tag");
+                        }
+                        if (payload_end - payload_begin >
+                            ImGui::CalcTextSize("payload union").x + 10.0F) {
+                            draw_list->AddText({origin.x + payload_begin + 5.0F, origin.y + 10.0F},
+                                               ImGui::GetColorU32(ImGuiCol_Text),
+                                               "payload union");
+                        }
+                        ImGui::InvisibleButton("##tagged-union-object-map", {width, bar_height});
+                        if (ImGui::IsItemHovered()) {
+                            ImGui::SetTooltip(
+                                "Tag: %s; alignment gap: %s; payload: %s; tail padding: %s",
+                                detail::format_bytes(analysis.discriminant_facts->size_bytes)
+                                    .c_str(),
+                                detail::format_bytes(analysis.internal_padding_bytes).c_str(),
+                                detail::format_bytes(analysis.payload_size_bytes).c_str(),
+                                detail::format_bytes(analysis.tail_padding_bytes).c_str());
+                        }
+                        if (tag_bytes < payload_offset) {
+                            ImGui::TextWrapped("Alignment padding: bytes %llu..%llu",
+                                               static_cast<unsigned long long>(tag_bytes),
+                                               static_cast<unsigned long long>(payload_offset - 1));
+                        }
+                        if (payload_end_bytes < *analysis.size_bytes) {
+                            ImGui::TextWrapped(
+                                "Tail padding: bytes %llu..%llu",
+                                static_cast<unsigned long long>(payload_end_bytes),
+                                static_cast<unsigned long long>(*analysis.size_bytes - 1));
+                        }
+                    }
+                }
+                if (ImGui::BeginTable("tagged-union-semantic-layout",
+                                      7,
+                                      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                          ImGuiTableFlags_SizingStretchProp)) {
+                    ImGui::TableSetupColumn("Tag");
+                    ImGui::TableSetupColumn("Alternative");
+                    ImGui::TableSetupColumn("Semantic type");
+                    ImGui::TableSetupColumn("Count");
+                    ImGui::TableSetupColumn("Extent");
+                    ImGui::TableSetupColumn("Payload slack");
+                    ImGui::TableSetupColumn("Slack at count");
+                    ImGui::TableHeadersRow();
+                    for (auto const& alternative : analysis.alternatives) {
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(alternative.tag.c_str());
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(alternative.name.c_str());
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(analysis_session_.inputs.workspace.types()
+                                                   .type(alternative.semantic_type)
+                                                   .cpp_spelling.c_str());
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%llu",
+                                    static_cast<unsigned long long>(alternative.element_count));
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(
+                            detail::format_bytes(alternative.extent_bytes).c_str());
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(
+                            detail::format_bytes(alternative.payload_slack_bytes).c_str());
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(
+                            detail::format_bytes(alternative.total_payload_slack_bytes).c_str());
+                    }
+                    ImGui::EndTable();
+                }
+                ImGui::TextDisabled(
+                    "Payload slack is conditional on the active tag; it is not allocated "
+                    "outside the shared payload union.");
+                draw_diagnostics(analysis.diagnostics);
             }
         }
-        if (ImGui::BeginTable("tagged-union-semantic-layout",
-                              7,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_SizingStretchProp)) {
-            ImGui::TableSetupColumn("Tag");
-            ImGui::TableSetupColumn("Alternative");
-            ImGui::TableSetupColumn("Semantic type");
-            ImGui::TableSetupColumn("Count");
-            ImGui::TableSetupColumn("Extent");
-            ImGui::TableSetupColumn("Payload slack");
-            ImGui::TableSetupColumn("Slack at count");
-            ImGui::TableHeadersRow();
-            for (auto const& alternative : analysis.alternatives) {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(alternative.tag.c_str());
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(alternative.name.c_str());
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(analysis_session_.inputs.workspace.types()
-                                           .type(alternative.semantic_type)
-                                           .cpp_spelling.c_str());
-                ImGui::TableNextColumn();
-                ImGui::Text("%llu", static_cast<unsigned long long>(alternative.element_count));
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(detail::format_bytes(alternative.extent_bytes).c_str());
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(
-                    detail::format_bytes(alternative.payload_slack_bytes).c_str());
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(
-                    detail::format_bytes(alternative.total_payload_slack_bytes).c_str());
-            }
-            ImGui::EndTable();
-        }
-        ImGui::TextDisabled("Payload slack is conditional on the active tag; it is not allocated "
-                            "outside the shared payload union.");
-        draw_diagnostics(analysis.diagnostics);
     } else if (std::holds_alternative<EnumType>(definition)) {
         ImGui::TextDisabled("Enums have semantic metadata but no standalone aggregate layout.");
     } else if (std::holds_alternative<IntegerScalarType>(definition)) {
@@ -2916,122 +2972,128 @@ void PlannerUi::draw_layout_panel() {
         ImGui::TextDisabled(
             "Encoded bits are representation facts, not a standalone ABI sizeof/alignment.");
     } else if (std::holds_alternative<IntegerVarintType>(definition)) {
-        ImGui::SeparatorText("Analysis scale");
-        if (draw_element_count()) {
-            ImGui::End();
-            return;
+        if (detail::section("Analysis scale")) {
+            if (draw_element_count()) {
+                ImGui::End();
+                return;
+            }
+            auto const& analysis{*analysis_session_.results().integer_varint_analysis};
+            ImGui::Text("Encoded size: %u .. %u bytes/value",
+                        analysis.minimum_encoded_bytes,
+                        analysis.maximum_encoded_bytes);
+            ImGui::Text("At %llu values: %s .. %s",
+                        static_cast<unsigned long long>(analysis.element_count),
+                        detail::format_bytes(analysis.minimum_total_bytes).c_str(),
+                        detail::format_bytes(analysis.maximum_total_bytes).c_str());
+            ImGui::TextDisabled(
+                "Variable-length size is a range; expected size requires a value distribution.");
         }
-        auto const& analysis{*analysis_session_.results().integer_varint_analysis};
-        ImGui::Text("Encoded size: %u .. %u bytes/value",
-                    analysis.minimum_encoded_bytes,
-                    analysis.maximum_encoded_bytes);
-        ImGui::Text("At %llu values: %s .. %s",
-                    static_cast<unsigned long long>(analysis.element_count),
-                    detail::format_bytes(analysis.minimum_total_bytes).c_str(),
-                    detail::format_bytes(analysis.maximum_total_bytes).c_str());
-        ImGui::TextDisabled(
-            "Variable-length size is a range; expected size requires a value distribution.");
     } else if (std::holds_alternative<FixedPointType>(definition)) {
         draw_fixed_point_bit_layout(*analysis_session_.results().fixed_point_analysis);
-        ImGui::SeparatorText("Analysis scale");
-        if (draw_element_count()) {
-            ImGui::End();
-            return;
+        if (detail::section("Analysis scale")) {
+            if (draw_element_count()) {
+                ImGui::End();
+                return;
+            }
+            auto const& analysis{*analysis_session_.results().fixed_point_analysis};
+            ImGui::Text("Encoded width: %u bits/value", analysis.total_bits);
+            ImGui::Text("At %llu values: %s bits",
+                        static_cast<unsigned long long>(analysis.element_count),
+                        detail::format_number(analysis.total_encoded_bits).c_str());
+            ImGui::Text("Resolution: %.12g", static_cast<double>(analysis.resolution));
+            ImGui::Text("Representable range: %.12g .. %.12g",
+                        static_cast<double>(analysis.minimum_value),
+                        static_cast<double>(analysis.maximum_value));
+            ImGui::Text("Allowed range: %.12g .. %.12g",
+                        static_cast<double>(analysis.minimum_allowed_value),
+                        static_cast<double>(analysis.maximum_allowed_value));
+            ImGui::TextDisabled("Encoded payload bits are not a standalone ABI sizeof/alignment or "
+                                "allocation size.");
+            draw_diagnostics(analysis.diagnostics);
         }
-        auto const& analysis{*analysis_session_.results().fixed_point_analysis};
-        ImGui::Text("Encoded width: %u bits/value", analysis.total_bits);
-        ImGui::Text("At %llu values: %s bits",
-                    static_cast<unsigned long long>(analysis.element_count),
-                    detail::format_number(analysis.total_encoded_bits).c_str());
-        ImGui::Text("Resolution: %.12g", static_cast<double>(analysis.resolution));
-        ImGui::Text("Representable range: %.12g .. %.12g",
-                    static_cast<double>(analysis.minimum_value),
-                    static_cast<double>(analysis.maximum_value));
-        ImGui::Text("Allowed range: %.12g .. %.12g",
-                    static_cast<double>(analysis.minimum_allowed_value),
-                    static_cast<double>(analysis.maximum_allowed_value));
-        ImGui::TextDisabled(
-            "Encoded payload bits are not a standalone ABI sizeof/alignment or allocation size.");
-        draw_diagnostics(analysis.diagnostics);
     } else if (std::holds_alternative<MiniFloatType>(definition)) {
-        ImGui::SeparatorText("Analysis scale");
-        if (draw_element_count()) {
-            ImGui::End();
-            return;
+        if (detail::section("Analysis scale")) {
+            if (draw_element_count()) {
+                ImGui::End();
+                return;
+            }
+            auto const& analysis{*analysis_session_.results().mini_float_analysis};
+            ImGui::Text("Encoded width: %u bits/value", analysis.total_bits);
+            ImGui::Text("At %llu values: %s bits",
+                        static_cast<unsigned long long>(analysis.element_count),
+                        detail::format_number(analysis.total_encoded_bits).c_str());
+            ImGui::Text("Normal exponent range: %d .. %d",
+                        analysis.minimum_normal_exponent,
+                        analysis.maximum_normal_exponent);
+            if (analysis.minimum_positive_normal.has_value()) {
+                ImGui::Text("Minimum positive normal: %.12g",
+                            static_cast<double>(*analysis.minimum_positive_normal));
+            } else {
+                ImGui::TextDisabled("Minimum positive normal: Unknown");
+            }
+            if (analysis.maximum_finite.has_value()) {
+                ImGui::Text("Maximum finite: %.12g", static_cast<double>(*analysis.maximum_finite));
+            } else {
+                ImGui::TextDisabled("Maximum finite: Unknown");
+            }
+            ImGui::TextDisabled("Encoded payload bits are not a standalone ABI sizeof/alignment or "
+                                "allocation size.");
+            draw_diagnostics(analysis.diagnostics);
         }
-        auto const& analysis{*analysis_session_.results().mini_float_analysis};
-        ImGui::Text("Encoded width: %u bits/value", analysis.total_bits);
-        ImGui::Text("At %llu values: %s bits",
-                    static_cast<unsigned long long>(analysis.element_count),
-                    detail::format_number(analysis.total_encoded_bits).c_str());
-        ImGui::Text("Normal exponent range: %d .. %d",
-                    analysis.minimum_normal_exponent,
-                    analysis.maximum_normal_exponent);
-        if (analysis.minimum_positive_normal.has_value()) {
-            ImGui::Text("Minimum positive normal: %.12g",
-                        static_cast<double>(*analysis.minimum_positive_normal));
-        } else {
-            ImGui::TextDisabled("Minimum positive normal: Unknown");
-        }
-        if (analysis.maximum_finite.has_value()) {
-            ImGui::Text("Maximum finite: %.12g", static_cast<double>(*analysis.maximum_finite));
-        } else {
-            ImGui::TextDisabled("Maximum finite: Unknown");
-        }
-        ImGui::TextDisabled(
-            "Encoded payload bits are not a standalone ABI sizeof/alignment or allocation size.");
-        draw_diagnostics(analysis.diagnostics);
     } else if (std::holds_alternative<OptionalSentinelType>(definition)) {
-        ImGui::SeparatorText("Analysis scale");
-        if (draw_element_count()) {
-            ImGui::End();
-            return;
+        if (detail::section("Analysis scale")) {
+            if (draw_element_count()) {
+                ImGui::End();
+                return;
+            }
+            auto const& analysis{*analysis_session_.results().optional_sentinel_analysis};
+            ImGui::Text("Encoded width: %u bits/value", analysis.encoded_storage_bits);
+            ImGui::Text("Present values: %s",
+                        detail::format_number(analysis.present_value_count).c_str());
+            ImGui::Text("Absence codes: %llu",
+                        static_cast<unsigned long long>(analysis.absence_code_count));
+            ImGui::Text("Other sentinel codes: %llu",
+                        static_cast<unsigned long long>(analysis.other_sentinel_code_count));
+            ImGui::Text("Unused codes: %s",
+                        detail::format_number(analysis.unused_code_count).c_str());
+            ImGui::Text("At %llu values: %s encoded bits",
+                        static_cast<unsigned long long>(analysis.element_count),
+                        detail::format_number(analysis.total_encoded_bits).c_str());
+            ImGui::TextDisabled(
+                "Encoded payload bits are not a standalone ABI sizeof or allocation size.");
+            draw_diagnostics(analysis.diagnostics);
         }
-        auto const& analysis{*analysis_session_.results().optional_sentinel_analysis};
-        ImGui::Text("Encoded width: %u bits/value", analysis.encoded_storage_bits);
-        ImGui::Text("Present values: %s",
-                    detail::format_number(analysis.present_value_count).c_str());
-        ImGui::Text("Absence codes: %llu",
-                    static_cast<unsigned long long>(analysis.absence_code_count));
-        ImGui::Text("Other sentinel codes: %llu",
-                    static_cast<unsigned long long>(analysis.other_sentinel_code_count));
-        ImGui::Text("Unused codes: %s", detail::format_number(analysis.unused_code_count).c_str());
-        ImGui::Text("At %llu values: %s encoded bits",
-                    static_cast<unsigned long long>(analysis.element_count),
-                    detail::format_number(analysis.total_encoded_bits).c_str());
-        ImGui::TextDisabled(
-            "Encoded payload bits are not a standalone ABI sizeof or allocation size.");
-        draw_diagnostics(analysis.diagnostics);
     } else if (std::holds_alternative<OptionalPresenceBitType>(definition)) {
-        ImGui::SeparatorText("Analysis scale");
-        if (draw_element_count()) {
-            ImGui::End();
-            return;
+        if (detail::section("Analysis scale")) {
+            if (draw_element_count()) {
+                ImGui::End();
+                return;
+            }
+            auto const& analysis{*analysis_session_.results().optional_presence_bit_analysis};
+            ImGui::Text("Encoded width: %u bits/value (%u presence + %u payload)",
+                        analysis.encoded_storage_bits,
+                        analysis.presence_bits,
+                        analysis.payload_bits);
+            ImGui::Text("Present values: %s",
+                        detail::format_number(analysis.present_value_count).c_str());
+            ImGui::Text("Canonical absence states: %llu",
+                        static_cast<unsigned long long>(analysis.canonical_absence_state_count));
+            ImGui::Text("Source sentinel codes: %llu",
+                        static_cast<unsigned long long>(analysis.source_sentinel_code_count));
+            ImGui::Text("Source unused payload codes: %s",
+                        detail::format_number(analysis.source_unused_payload_codes).c_str());
+            ImGui::Text("Noncanonical absence bit patterns: %s",
+                        detail::format_number(analysis.noncanonical_absence_patterns).c_str());
+            ImGui::Text("At %llu values: %s encoded bits",
+                        static_cast<unsigned long long>(analysis.element_count),
+                        detail::format_number(analysis.total_encoded_bits).c_str());
+            ImGui::TextDisabled(
+                "Ignored payload patterns when absent are redundant encodings, not additional "
+                "semantic absence states or allocated byte waste.");
+            ImGui::TextDisabled(
+                "Encoded payload bits are not a standalone ABI sizeof or allocation size.");
+            draw_diagnostics(analysis.diagnostics);
         }
-        auto const& analysis{*analysis_session_.results().optional_presence_bit_analysis};
-        ImGui::Text("Encoded width: %u bits/value (%u presence + %u payload)",
-                    analysis.encoded_storage_bits,
-                    analysis.presence_bits,
-                    analysis.payload_bits);
-        ImGui::Text("Present values: %s",
-                    detail::format_number(analysis.present_value_count).c_str());
-        ImGui::Text("Canonical absence states: %llu",
-                    static_cast<unsigned long long>(analysis.canonical_absence_state_count));
-        ImGui::Text("Source sentinel codes: %llu",
-                    static_cast<unsigned long long>(analysis.source_sentinel_code_count));
-        ImGui::Text("Source unused payload codes: %s",
-                    detail::format_number(analysis.source_unused_payload_codes).c_str());
-        ImGui::Text("Noncanonical absence bit patterns: %s",
-                    detail::format_number(analysis.noncanonical_absence_patterns).c_str());
-        ImGui::Text("At %llu values: %s encoded bits",
-                    static_cast<unsigned long long>(analysis.element_count),
-                    detail::format_number(analysis.total_encoded_bits).c_str());
-        ImGui::TextDisabled(
-            "Ignored payload patterns when absent are redundant encodings, not additional "
-            "semantic absence states or allocated byte waste.");
-        ImGui::TextDisabled(
-            "Encoded payload bits are not a standalone ABI sizeof or allocation size.");
-        draw_diagnostics(analysis.diagnostics);
     } else {
         ImGui::TextDisabled("This type is not supported by the layout analyzer.");
     }

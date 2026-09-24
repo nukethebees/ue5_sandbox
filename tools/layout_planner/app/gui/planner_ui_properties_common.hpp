@@ -233,9 +233,10 @@ inline void draw_override_note(bool const overridden) {
     }
 }
 
-inline void separator_text_with_tooltip(char const* title, char const* description) {
-    ImGui::SeparatorText(title);
+[[nodiscard]] inline auto section_with_tooltip(char const* title, char const* description) -> bool {
+    auto const open{detail::section(title)};
     ImGui::SetItemTooltip("%s", description);
+    return open;
 }
 
 inline void text_disabled_wrapped(char const* text) {

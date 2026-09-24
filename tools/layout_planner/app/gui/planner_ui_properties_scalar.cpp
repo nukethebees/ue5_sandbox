@@ -174,7 +174,7 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
                         "separate lowering choice.");
     ImGui::PopTextWrapPos();
 
-    if (ImGui::CollapsingHeader("Generation policy", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (detail::section("Generation policy")) {
         auto reflection_index{static_cast<int>(
             std::ranges::find(enum_reflections, schema->reflection) - enum_reflections.begin())};
         if (reflection_index < 0 || reflection_index >= static_cast<int>(enum_reflections.size())) {
@@ -247,7 +247,7 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
             return;
         }
     }
-    if (ImGui::CollapsingHeader("Unreal projection")) {
+    if (detail::section("Unreal projection", false)) {
         std::optional<codegen::EnumSchema> projection_edit;
         auto const projection_exists{schema->unreal_projection.has_value()};
         auto edit_projection_text = [&](char const* label, auto& buffer, auto&& assign) {
@@ -365,7 +365,7 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
         ImGui::PopTextWrapPos();
     }
 
-    if (ImGui::CollapsingHeader("Generated conversions")) {
+    if (detail::section("Generated conversions", false)) {
         if (ImGui::BeginTable("enum-conversions", 2, ImGuiTableFlags_SizingStretchSame)) {
             for (auto const conversion : enum_conversions) {
                 auto const descriptor{enum_conversion_descriptor(conversion)};
@@ -387,7 +387,7 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
             ImGui::EndTable();
         }
     }
-    if (ImGui::CollapsingHeader("Enumerators", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (detail::section("Enumerators")) {
         if (ImGui::Button("+ Enumerator")) {
             auto replacement{*schema};
             auto suffix{replacement.values.size()};
@@ -854,7 +854,7 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
     text_disabled_wrapped(
         "This is a semantic domain. A packed field or future representation chooses storage.");
 
-    if (ImGui::CollapsingHeader("C++ output policy")) {
+    if (detail::section("C++ output policy", false)) {
         auto emit_cpp_constants{schema->cpp_emission != codegen::IntegerScalarCppEmission::none};
         ImGui::BeginDisabled(schema->named_codes.empty() && !emit_cpp_constants);
         if (ImGui::Checkbox("Emit named constants", &emit_cpp_constants)) {
@@ -922,7 +922,7 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
             text_disabled_wrapped("No C++ scalar type or constants are emitted for this domain.");
         }
     }
-    if (ImGui::CollapsingHeader("Semantic relationship")) {
+    if (detail::section("Semantic relationship", false)) {
         auto const current_kind{semantic_relationship_kinds[static_cast<std::size_t>(
             std::clamp(integer_scalar_relationship_kind_,
                        0,
@@ -1092,67 +1092,69 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
             auto const term{detail::relationship_extent_term(kind)};
             auto const unit{detail::relationship_extent_unit(kind, analysis.relationship_unit)};
             auto const heading{"Session " + std::string{term} + " requirement"};
-            separator_text_with_tooltip(heading.c_str(),
-                                        "Shows how the current target extent affects the required "
-                                        "integer range and width.");
-            ImGui::PushTextWrapPos(0.0F);
-            ImGui::Text("Target %s: %llu %s",
-                        term.data(),
-                        static_cast<unsigned long long>(*analysis.relationship_target_extent),
-                        unit.data());
-            ImGui::Text(
-                "Live values: %s",
-                analysis.relationship_live_value_count.has_value()
-                    ? detail::format_code_count(*analysis.relationship_live_value_count).c_str()
-                    : "Unknown");
-            auto const required_codes{
-                analysis.relationship_required_code_count.has_value()
-                    ? detail::format_code_count(*analysis.relationship_required_code_count)
-                : analysis.relationship_minimum_required_bits.value_or(0) > 64
-                    ? std::string{"> 2^64"}
-                    : std::string{"Unknown"}};
-            ImGui::Text("Required codes: %s", required_codes.c_str());
-            ImGui::Text("Minimum width: %u bits", *analysis.relationship_minimum_required_bits);
-            ImGui::Text("Current semantic width fits: %s",
-                        *analysis.relationship_width_sufficient ? "Yes" : "No");
-            ImGui::Text(
-                "Code-space %s limit: %s",
-                term.data(),
-                detail::format_number(analysis.relationship_code_space_capacity_limit).c_str());
-            ImGui::Text("Code-space %s headroom: %s",
-                        term.data(),
-                        detail::format_number(analysis.relationship_capacity_headroom).c_str());
-            ImGui::Text(
-                "Semantic-range %s limit: %s",
-                term.data(),
-                detail::format_number(analysis.relationship_semantic_capacity_limit).c_str());
-            ImGui::Text(
-                "Sentinel-placement %s limit: %s",
-                term.data(),
-                detail::format_number(analysis.relationship_sentinel_capacity_limit).c_str());
-            ImGui::Text(
-                "Effective valid %s limit: %s",
-                term.data(),
-                detail::format_number(analysis.relationship_effective_capacity_limit).c_str());
-            ImGui::Text(
-                "Effective valid %s headroom: %s",
-                term.data(),
-                detail::format_number(analysis.relationship_effective_capacity_headroom).c_str());
-            if (kind == codegen::SemanticRelationKind::count_of) {
-                text_disabled_wrapped(
-                    "Live counts include 0 through capacity; named sentinels add code states.");
-            } else if (kind == codegen::SemanticRelationKind::offset_into) {
-                text_disabled_wrapped("Live offsets span 0 through extent-1 in the declared unit; "
-                                      "named sentinels add "
-                                      "code states.");
-            } else {
-                text_disabled_wrapped(
-                    "Live indices span 0 through capacity-1; named sentinels add code states.");
+            if (section_with_tooltip(heading.c_str(),
+                                     "Shows how the current target extent affects the required "
+                                     "integer range and width.")) {
+                ImGui::PushTextWrapPos(0.0F);
+                ImGui::Text("Target %s: %llu %s",
+                            term.data(),
+                            static_cast<unsigned long long>(*analysis.relationship_target_extent),
+                            unit.data());
+                ImGui::Text(
+                    "Live values: %s",
+                    analysis.relationship_live_value_count.has_value()
+                        ? detail::format_code_count(*analysis.relationship_live_value_count).c_str()
+                        : "Unknown");
+                auto const required_codes{
+                    analysis.relationship_required_code_count.has_value()
+                        ? detail::format_code_count(*analysis.relationship_required_code_count)
+                    : analysis.relationship_minimum_required_bits.value_or(0) > 64
+                        ? std::string{"> 2^64"}
+                        : std::string{"Unknown"}};
+                ImGui::Text("Required codes: %s", required_codes.c_str());
+                ImGui::Text("Minimum width: %u bits", *analysis.relationship_minimum_required_bits);
+                ImGui::Text("Current semantic width fits: %s",
+                            *analysis.relationship_width_sufficient ? "Yes" : "No");
+                ImGui::Text(
+                    "Code-space %s limit: %s",
+                    term.data(),
+                    detail::format_number(analysis.relationship_code_space_capacity_limit).c_str());
+                ImGui::Text("Code-space %s headroom: %s",
+                            term.data(),
+                            detail::format_number(analysis.relationship_capacity_headroom).c_str());
+                ImGui::Text(
+                    "Semantic-range %s limit: %s",
+                    term.data(),
+                    detail::format_number(analysis.relationship_semantic_capacity_limit).c_str());
+                ImGui::Text(
+                    "Sentinel-placement %s limit: %s",
+                    term.data(),
+                    detail::format_number(analysis.relationship_sentinel_capacity_limit).c_str());
+                ImGui::Text(
+                    "Effective valid %s limit: %s",
+                    term.data(),
+                    detail::format_number(analysis.relationship_effective_capacity_limit).c_str());
+                ImGui::Text("Effective valid %s headroom: %s",
+                            term.data(),
+                            detail::format_number(analysis.relationship_effective_capacity_headroom)
+                                .c_str());
+                if (kind == codegen::SemanticRelationKind::count_of) {
+                    text_disabled_wrapped(
+                        "Live counts include 0 through capacity; named sentinels add code states.");
+                } else if (kind == codegen::SemanticRelationKind::offset_into) {
+                    text_disabled_wrapped(
+                        "Live offsets span 0 through extent-1 in the declared unit; "
+                        "named sentinels add "
+                        "code states.");
+                } else {
+                    text_disabled_wrapped(
+                        "Live indices span 0 through capacity-1; named sentinels add code states.");
+                }
+                ImGui::PopTextWrapPos();
             }
-            ImGui::PopTextWrapPos();
         }
     }
-    if (ImGui::CollapsingHeader("Named codes", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (detail::section("Named codes")) {
         auto const code_width{schema->bit_width.value_or(64)};
         auto const named_value{first_available_scalar_code(*schema, code_width, false)};
         auto const sentinel_value{first_available_scalar_code(*schema, code_width, true)};
