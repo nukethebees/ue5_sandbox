@@ -199,6 +199,43 @@ Checks:
   - modernize-min-max-use-initializer-list
   - modernize-raw-string-literal
   - modernize-use-scoped-lock
+  - performance-avoid-endl
+  - performance-faster-string-find
+  - performance-inefficient-algorithm
+  - performance-noexcept-destructor
+  - performance-noexcept-move-constructor
+  - performance-noexcept-swap
+  - performance-trivially-destructible
+  - portability-std-allocator-const
+  - portability-template-virtual-member-function
+  - readability-ambiguous-smartptr-reset-call
+  - readability-avoid-const-params-in-decls
+  - readability-avoid-return-with-void-value
+  - readability-avoid-unconditional-preprocessor-if
+  - readability-const-return-type
+  - readability-container-contains
+  - readability-container-data-pointer
+  - readability-container-size-empty
+  - readability-delete-null-pointer
+  - readability-duplicate-include
+  - readability-else-after-return
+  - readability-enum-initial-value
+  - readability-misleading-indentation
+  - readability-misplaced-array-index
+  - readability-operators-representation
+  - readability-redundant-access-specifiers
+  - readability-redundant-declaration
+  - readability-redundant-function-ptr-dereference
+  - readability-redundant-inline-specifier
+  - readability-redundant-preprocessor
+  - readability-redundant-smartptr-get
+  - readability-redundant-string-cstr
+  - readability-reference-to-constructed-temporary
+  - readability-simplify-subscript-expr
+  - readability-static-definition-in-anonymous-namespace
+  - readability-string-compare
+  - readability-suspicious-call-argument
+  - readability-uniqueptr-delete-release
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
