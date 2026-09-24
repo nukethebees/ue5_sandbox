@@ -96,6 +96,7 @@ Checks:
   - bugprone-tagged-union-member-count
   - bugprone-terminating-continue
   - bugprone-throw-keyword-missing
+  - bugprone-too-small-loop-variable
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
