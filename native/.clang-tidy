@@ -1,3 +1,6 @@
+# performance-inefficient-vector-operation is intentionally disabled: its 27
+# reserve() suggestions were mostly generator/test setup, including tiny component
+# lists. The benefit does not justify spreading allocation tuning through that code.
 Checks:
   - '-*'
   - modernize-use-nullptr
