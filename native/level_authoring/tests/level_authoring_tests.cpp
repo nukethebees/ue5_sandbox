@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string_view>
+#include <system_error>
 
 namespace ml::level_authoring {
 namespace {
@@ -43,7 +44,10 @@ class TemporaryLevelDirectory final {
                 ("sandbox-level-reader-" + std::to_string(suffix));
         std::filesystem::create_directories(path_ / "Libraries");
     }
-    ~TemporaryLevelDirectory() { std::filesystem::remove_all(path_); }
+    ~TemporaryLevelDirectory() {
+        std::error_code ignored{};
+        std::filesystem::remove_all(path_, ignored);
+    }
 
     auto path() const -> std::filesystem::path const& { return path_; }
   private:

@@ -9,6 +9,7 @@
 #include <initializer_list>
 #include <limits>
 #include <string>
+#include <system_error>
 #include <vector>
 
 namespace ml::simulation_benchmark::tests {
@@ -21,7 +22,10 @@ class TemporaryFile final {
                 ("sandbox-benchmark-cli-" + std::to_string(suffix) + ".scm");
         std::ofstream{path_} << "(level)";
     }
-    ~TemporaryFile() { std::filesystem::remove(path_); }
+    ~TemporaryFile() {
+        std::error_code ignored{};
+        std::filesystem::remove(path_, ignored);
+    }
 
     auto path() const -> std::filesystem::path const& { return path_; }
   private:

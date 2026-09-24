@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <system_error>
 
 namespace ml::s7::tests {
 class TestContext final {
@@ -32,7 +33,10 @@ class TemporaryLibrary final {
                 ("sandbox-s7-library-" + std::to_string(unique_suffix));
         std::filesystem::create_directories(path_);
     }
-    ~TemporaryLibrary() { std::filesystem::remove_all(path_); }
+    ~TemporaryLibrary() {
+        std::error_code ignored{};
+        std::filesystem::remove_all(path_, ignored);
+    }
 
     TemporaryLibrary(TemporaryLibrary const&) = delete;
     auto operator=(TemporaryLibrary const&) -> TemporaryLibrary& = delete;
