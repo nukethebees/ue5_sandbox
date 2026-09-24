@@ -97,6 +97,7 @@ Checks:
   - bugprone-terminating-continue
   - bugprone-throw-keyword-missing
   - bugprone-too-small-loop-variable
+  - bugprone-undelegated-constructor
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
