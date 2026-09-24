@@ -75,6 +75,7 @@ Checks:
   - bugprone-optional-value-conversion
   - bugprone-parent-virtual-call
   - bugprone-pointer-arithmetic-on-polymorphic-object
+  - bugprone-posix-return
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
