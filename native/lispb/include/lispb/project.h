@@ -121,6 +121,7 @@ class EditableProjectDocument {
     auto apply(ProjectEditCommand command) -> std::expected<bool, ProjectEditError>;
     auto undo() -> std::expected<bool, ProjectEditError>;
     auto redo() -> std::expected<bool, ProjectEditError>;
+    void discard_redo_history();
     [[nodiscard]] auto preview_source_updates() const
         -> std::expected<std::vector<ProjectSourceUpdate>, ProjectEditError>;
     auto save() -> std::expected<bool, ProjectEditError>;

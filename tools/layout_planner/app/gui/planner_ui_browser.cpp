@@ -172,10 +172,7 @@ void PlannerUi::draw_project_panel() {
         if (project_history_active()) {
             ImGui::PushTextWrapPos(0.0F);
             ImGui::TextDisabled(
-                project_document_->dirty()
-                    ? "Project source-list draft active; schema editing resumes after Save or "
-                      "discard."
-                    : "Project source-list draft is fully undone; Redo it or discard its history.");
+                "Project source-list draft active; schema editing resumes after Save or discard.");
             ImGui::PopTextWrapPos();
             if (ImGui::SmallButton("Discard project source draft")) {
                 auto loaded{load_lispb_schema(project_path_, target_name_)};

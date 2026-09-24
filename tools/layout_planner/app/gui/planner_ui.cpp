@@ -1240,7 +1240,9 @@ auto PlannerUi::draw_file_menu() -> bool {
         return false;
     }
     auto const has_document{document_.has_value()};
-    auto const use_project_history{project_history_active()};
+    auto const use_project_history{
+        project_document_.has_value() &&
+        (project_document_->can_undo() || project_document_->can_redo())};
     auto const can_undo{use_project_history ? project_document_->can_undo()
                                             : has_document && document_->can_undo()};
     auto const can_redo{use_project_history ? project_document_->can_redo()
@@ -1825,8 +1827,7 @@ void PlannerUi::draw_close_confirmation() {
 }
 
 auto PlannerUi::project_history_active() const -> bool {
-    return project_document_.has_value() &&
-           (project_document_->can_undo() || project_document_->can_redo());
+    return project_document_.has_value() && project_document_->dirty();
 }
 
 auto PlannerUi::has_dirty_changes() const -> bool {
@@ -1952,8 +1953,9 @@ auto PlannerUi::apply_document_edit(SchemaEditCommand command,
         return false;
     }
     if (project_history_active()) {
-        schema_edit_message_ = "Save, redo, or discard the project source-list draft before "
-                               "editing schema declarations.";
+        schema_edit_message_ =
+            "Save, undo, or discard the project source-list draft before editing schema "
+            "declarations.";
         return false;
     }
     if (!selection.has_value() && analysis_session_.inputs.selection.type.has_value()) {
@@ -1968,6 +1970,9 @@ auto PlannerUi::apply_document_edit(SchemaEditCommand command,
     }
     if (!*result) {
         return false;
+    }
+    if (project_document_.has_value() && project_document_->can_redo()) {
+        project_document_->discard_redo_history();
     }
     schema_edit_message_.clear();
     sync_document_graph(std::move(selection));

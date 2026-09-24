@@ -771,6 +771,10 @@ auto EditableProjectDocument::redo() -> std::expected<bool, ProjectEditError> {
     return true;
 }
 
+void EditableProjectDocument::discard_redo_history() {
+    history_.resize(history_position_);
+}
+
 auto EditableProjectDocument::preview_source_updates() const
     -> std::expected<std::vector<ProjectSourceUpdate>, ProjectEditError> {
     struct Replacement {
