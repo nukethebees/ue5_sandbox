@@ -59,6 +59,7 @@ Checks:
   - bugprone-incorrect-enable-shared-from-this
   - bugprone-infinite-loop
   - bugprone-lambda-function-name
+  - bugprone-macro-parentheses
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
