@@ -78,6 +78,7 @@ Checks:
   - bugprone-posix-return
   - bugprone-redundant-branch-condition
   - bugprone-shared-ptr-array-mismatch
+  - bugprone-sizeof-container
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
