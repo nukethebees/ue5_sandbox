@@ -99,6 +99,7 @@ Checks:
   - bugprone-too-small-loop-variable
   - bugprone-undelegated-constructor
   - bugprone-unhandled-self-assignment
+  - bugprone-unintended-char-ostream-output
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
