@@ -63,6 +63,7 @@ Checks:
   - bugprone-macro-repeated-side-effects
   - bugprone-misleading-setter-of-reference
   - bugprone-misplaced-operator-in-strlen-in-alloc
+  - bugprone-misplaced-pointer-arithmetic-in-alloc
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
