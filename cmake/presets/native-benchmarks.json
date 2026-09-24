@@ -34,14 +34,14 @@
       "displayName": "Native kernel benchmark plots",
       "inherits": "kernel-benchmark",
       "cacheVariables": {
-        "SANDBOX_KERNEL_BENCHMARK_PLOTS": true
+        "IOJ_KERNEL_BENCHMARK_PLOTS": true
       }
     },
     {
       "name": "native-soa",
       "inherits": "win-x64-clangcl-release-unity",
       "cacheVariables": {
-        "SANDBOX_NATIVE_SOA_BENCHMARKS": true,
+        "IOJ_NATIVE_SOA_BENCHMARKS": true,
         "UE_CONFIGURATION": "Development"
       }
     },

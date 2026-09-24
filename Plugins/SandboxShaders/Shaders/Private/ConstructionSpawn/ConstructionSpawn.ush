@@ -1,7 +1,7 @@
 #ifndef SANDBOX_SHADERS_CONSTRUCTION_SPAWN
 #define SANDBOX_SHADERS_CONSTRUCTION_SPAWN
 
-#ifdef SANDBOX_STANDALONE_DXC
+#ifdef IOJ_STANDALONE_DXC
 #include "../../Common/ProceduralNoise.ush"
 #else
 #include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"

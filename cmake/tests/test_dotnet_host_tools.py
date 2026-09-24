@@ -48,9 +48,8 @@ class DotnetHostToolTests(unittest.TestCase):
                         "cmake_minimum_required(VERSION 4.4.2)",
                         "project(DotnetHostToolFixture LANGUAGES NONE)",
                         f'include("{helper_path}")',
-                        "add_custom_target(csharp-host-tools)",
                         "sandbox_add_dotnet_host_tool(architecture-checks-host "
-                        "SANDBOX_ARCHITECTURE_CHECKS "
+                        "IOJ_ARCHITECTURE_CHECKS "
                         '"${CMAKE_CURRENT_SOURCE_DIR}/tools/ArchitectureChecks/ArchitectureChecks.csproj")',
                         "",
                     ]

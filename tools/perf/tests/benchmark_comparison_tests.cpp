@@ -251,7 +251,7 @@ TEST(Application, RejectsNonemptyExplicitOutputDirectoryWithoutSubmittingAJob) {
 TEST(Process, WritesStructuredFailureWhenBenchmarkExitsBeforeProfilerReady) {
     TemporaryDirectory directory;
     auto const root{directory.path()};
-    auto const helper{std::filesystem::path{SANDBOX_PERF_TEST_HELPER_PATH}};
+    auto const helper{std::filesystem::path{IOJ_PERF_TEST_HELPER_PATH}};
     auto const benchmark{root / "out" / "build" / "a" / "bin" / "native-simulation-benchmark.exe"};
     auto const capture{root / "out" / "build" / "tracy-tools" / "bin" / "tracy-capture.exe"};
     auto const exporter{root / "out" / "build" / "tracy-tools" / "bin" / "tracy-csvexport.exe"};
@@ -302,7 +302,7 @@ TEST(Process, WritesStructuredFailureWhenBenchmarkExitsBeforeProfilerReady) {
 TEST(Process, StopsCaptureBeforeJoiningReadersWhenBenchmarkTimesOut) {
     TemporaryDirectory directory;
     auto const root{directory.path()};
-    auto const helper{std::filesystem::path{SANDBOX_PERF_TEST_HELPER_PATH}};
+    auto const helper{std::filesystem::path{IOJ_PERF_TEST_HELPER_PATH}};
     auto const benchmark{root / "out" / "build" / "a" / "bin" / "native-simulation-benchmark.exe"};
     auto const capture{root / "out" / "build" / "tracy-tools" / "bin" / "tracy-capture.exe"};
     auto const exporter{root / "out" / "build" / "tracy-tools" / "bin" / "tracy-csvexport.exe"};

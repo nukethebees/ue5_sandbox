@@ -24,7 +24,7 @@ public class NativeS7 : ModuleRules
 
         string repositoryRoot = Path.GetFullPath(
             Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
-        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
+        string nativeToolchain = Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN") ?? "clang-cl";
         string includeDirectory = Path.Combine(repositoryRoot, "native", "s7", "lib", "include");
         PublicSystemIncludePaths.Add(includeDirectory);
         if (!Target.bGenerateProjectFiles)

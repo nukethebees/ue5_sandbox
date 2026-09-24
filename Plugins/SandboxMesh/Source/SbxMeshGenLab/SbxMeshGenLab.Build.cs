@@ -21,7 +21,7 @@ public class SbxMeshGenLab : ModuleRules
         }
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
-        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
+        string nativeToolchain = Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN") ?? "clang-cl";
         string nativeMeshRoot = Path.Combine(repositoryRoot, "native", "mesh_gen");
         string nativeMeshLibrary = Path.Combine(
             repositoryRoot,

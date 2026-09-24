@@ -23,7 +23,7 @@ Each registration supplies its own target profile. Compute, vertex, and pixel en
 make `cs_6_0` a default for future shaders.
 
 Unreal 5.8 requires global shader sources to include `Platform.ush`, even where these shaders use no
-definitions from it. `SANDBOX_STANDALONE_DXC` guards only that mandatory include. SandboxShaders
+definitions from it. `IOJ_STANDALONE_DXC` guards only that mandatory include. SandboxShaders
 libraries with Unreal virtual includes select the same authoritative dependency through a relative
 path under standalone DXC. No algorithm source is copied. Direct compilation also exposed two
 existing implicit float3-to-float2 conversions; explicit `.xy` selection preserves their behavior
@@ -57,7 +57,7 @@ CTest launches DXC directly, so missing entry points, include failures, warnings
 appear in the normal failing-test output. The effective invocation for each registration is:
 
 ```text
-dxc.exe -T <profile> [-E <entry-point>] -DSANDBOX_STANDALONE_DXC=1 -WX \
+dxc.exe -T <profile> [-E <entry-point>] -DIOJ_STANDALONE_DXC=1 -WX \
   -Fo <native-build>/<test-name>.dxil <authoritative-source>
 ```
 
@@ -72,7 +72,7 @@ cmake --preset native -B out/build/native-no-dxc `
 Configuration stopped with:
 
 ```text
-Could not find SANDBOX_DXC_EXECUTABLE using the following names: dxc, dxc.exe
+Could not find IOJ_DXC_EXECUTABLE using the following names: dxc, dxc.exe
 ```
 
 ## HeatmapRDG proof baseline

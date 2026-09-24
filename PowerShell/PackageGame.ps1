@@ -52,7 +52,7 @@ function Configure-PackagePreset {
     Invoke-CMake @(
         '--preset',
         $Preset,
-        "-DSANDBOX_GAME_ARTIFACT_ROOT=$artifact_root"
+        "-DIOJ_GAME_ARTIFACT_ROOT=$artifact_root"
     )
 }
 

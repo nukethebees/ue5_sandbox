@@ -27,7 +27,7 @@
 #include <sbx/memory.h>
 #endif
 
-#if defined(SANDBOX_WITH_TRACY)
+#if defined(IOJ_WITH_TRACY)
 #include <sandbox/profiling/memory.h>
 #endif
 
@@ -144,7 +144,7 @@ inline auto allocate(std::size_t const bytes, std::uint32_t const alignment) -> 
     }
 #else
     auto* const allocation{::operator new(bytes, std::align_val_t{alignment})};
-#if defined(SANDBOX_WITH_TRACY)
+#if defined(IOJ_WITH_TRACY)
     ml::profiling::record_memory_allocation(
         ml::profiling::MemoryDomain::NativeSoa, allocation, bytes);
 #endif
@@ -159,7 +159,7 @@ inline void free(std::byte* data, std::size_t alignment) noexcept {
     (void)alignment;
     sbx::memory::free(data);
 #else
-#if defined(SANDBOX_WITH_TRACY)
+#if defined(IOJ_WITH_TRACY)
     ml::profiling::record_memory_free(ml::profiling::MemoryDomain::NativeSoa, data);
 #endif
     ::operator delete(data, std::align_val_t{alignment});

@@ -30,7 +30,7 @@ public class SandboxCore : ModuleRules
         }
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
-        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
+        string nativeToolchain = Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN") ?? "clang-cl";
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "core", "include"));
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "simulation", "include"));
         PublicSystemIncludePaths.Add(
@@ -102,7 +102,7 @@ public class SandboxCore : ModuleRules
                 Path.Combine(repositoryRoot, "native", "third_party", "tracy", "public"));
             PrivateDefinitions.AddRange(new string[]
             {
-                "SANDBOX_WITH_TRACY",
+                "IOJ_WITH_TRACY",
                 "TRACY_ENABLE",
                 "TRACY_IMPORTS",
                 "TRACY_MANUAL_LIFETIME",

@@ -33,6 +33,18 @@ class NativeWorkflowTests(unittest.TestCase):
             configure_presets["native-common"]["cacheVariables"]["IOJ_WITH_UNREAL"]
         )
 
+        for path in PRESET_DIRECTORY.glob("*.json"):
+            document = json.loads(path.read_text(encoding="utf-8"))
+            for preset in document.get("configurePresets", []):
+                with self.subTest(file=path.name, preset=preset["name"]):
+                    self.assertFalse(
+                        any(
+                            key.startswith("SANDBOX_")
+                            for key in preset.get("cacheVariables", {})
+                        ),
+                        "Project build cache keys must use the IOJ_ prefix",
+                    )
+
     def test_native_workflows_build_and_run_native_only_validation(self) -> None:
         build_presets = {preset["name"]: preset for preset in self.presets["buildPresets"]}
         test_presets = {preset["name"]: preset for preset in self.presets["testPresets"]}
@@ -93,7 +105,7 @@ class NativeWorkflowTests(unittest.TestCase):
                 "Ninja",
                 "-DCMAKE_BUILD_TYPE=Debug",
                 "-DCMAKE_UNITY_BUILD=ON",
-                "-DSANDBOX_WITH_UNREAL=OFF",
+                "-DIOJ_WITH_UNREAL=OFF",
             )
 
             cache = (build_directory / "CMakeCache.txt").read_text(encoding="utf-8")

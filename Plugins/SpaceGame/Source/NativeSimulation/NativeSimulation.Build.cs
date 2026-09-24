@@ -27,7 +27,7 @@ public class NativeSimulation : ModuleRules
         string repositoryRoot = Path.GetFullPath(
             Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
         string nativeToolchain =
-            Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
+            Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN") ?? "clang-cl";
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "simulation", "include"));
         PublicSystemIncludePaths.Add(

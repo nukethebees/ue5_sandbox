@@ -24,7 +24,7 @@ public class CpuFeatures : ModuleRules
         }
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
-        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
+        string nativeToolchain = Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN") ?? "clang-cl";
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "third_party", "cpu_features", "include"));
         PublicDefinitions.Add("STACK_LINE_READER_BUFFER_SIZE=1024");

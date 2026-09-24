@@ -42,22 +42,22 @@ public sealed class UnrealBuildOrchestratorTests
     public void Build_preserves_spaced_paths_and_scopes_the_toolchain_to_the_child()
     {
         using var fixture = new UnrealBuildFixture();
-        var original_toolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN");
-        Environment.SetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN", "parent-toolchain");
+        var original_toolchain = Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN");
+        Environment.SetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN", "parent-toolchain");
         try
         {
             new UnrealBuildOrchestrator().Build(fixture.CreateRequest());
 
-            Assert.AreEqual("parent-toolchain", Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN"));
+            Assert.AreEqual("parent-toolchain", Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN"));
         }
         finally
         {
-            Environment.SetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN", original_toolchain);
+            Environment.SetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN", original_toolchain);
         }
 
         StringAssert.Contains(fixture.ReadBuildArguments(), fixture.ProjectPath);
-        StringAssert.Contains(fixture.ReadBuildEnvironment(), "SANDBOX_NATIVE_TOOLCHAIN=fixture-toolchain");
-        Assert.AreEqual(original_toolchain, Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN"));
+        StringAssert.Contains(fixture.ReadBuildEnvironment(), "IOJ_NATIVE_TOOLCHAIN=fixture-toolchain");
+        Assert.AreEqual(original_toolchain, Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN"));
     }
 
     [TestMethod]

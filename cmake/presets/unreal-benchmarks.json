@@ -12,11 +12,11 @@
       "displayName": "Spark renderer benchmark",
       "inherits": "development",
       "cacheVariables": {
-        "SANDBOX_SPARK_BENCHMARK_SECONDS": "10",
-        "SANDBOX_SPARK_BENCHMARK_CAPACITY": "50000",
-        "SANDBOX_SPARK_BENCHMARK_SPARKS_PER_HIT": "96",
-        "SANDBOX_SPARK_BENCHMARK_IMPACTS_PER_FRAME": "100",
-        "SANDBOX_SPARK_BENCHMARK_WARMUP_FRAMES": "60"
+        "IOJ_SPARK_BENCHMARK_SECONDS": "10",
+        "IOJ_SPARK_BENCHMARK_CAPACITY": "50000",
+        "IOJ_SPARK_BENCHMARK_SPARKS_PER_HIT": "96",
+        "IOJ_SPARK_BENCHMARK_IMPACTS_PER_FRAME": "100",
+        "IOJ_SPARK_BENCHMARK_WARMUP_FRAMES": "60"
       }
     },
     {

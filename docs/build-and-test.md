@@ -23,6 +23,10 @@ Alternatively, set `UE_ROOT` in the ignored `CMakeUserPresets.json` using a loca
 that inherits from `development`. CMake builds pinned native dependencies from source; no package
 manager configuration is needed.
 
+Project-owned build options and compile definitions use the `IOJ_` prefix. CMake passes
+`IOJ_NATIVE_TOOLCHAIN` to UnrealBuildTools, project-file generation, and UAT; Unreal module rules
+read that same environment variable. Set `IOJ_WITH_UNREAL=OFF` for standalone native builds.
+
 ## Development validation
 
 Use the cheapest tier that validates the changed boundary. Native code is the normal inner loop;

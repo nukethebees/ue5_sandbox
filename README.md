@@ -18,6 +18,7 @@ The leading dot keeps the commands available in the current session. Run `dev-he
 available navigation and build commands. Native C++ work normally starts with
 `cmake --workflow --preset native-tests`; use `cplay debug-game` for an Editor-ready
 configuration and `debug-game-unit-tests` only for explicit Unreal-enabled integration validation.
+Native presets set `IOJ_WITH_UNREAL=OFF`.
 
 For complete setup, build, testing, debugging, and packaging instructions, see
 [Build and test](docs/build-and-test.md).

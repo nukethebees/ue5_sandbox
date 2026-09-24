@@ -1,4 +1,4 @@
-#ifndef SANDBOX_STANDALONE_DXC
+#ifndef IOJ_STANDALONE_DXC
 #include "/Engine/Public/Platform.ush"
 #endif
 

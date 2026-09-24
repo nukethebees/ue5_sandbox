@@ -793,13 +793,13 @@ def make_native_benchmark_document() -> dict[str, Any]:
             "name": "kernel-benchmark-plots",
             "displayName": "Native kernel benchmark plots",
             "inherits": "kernel-benchmark",
-            "cacheVariables": {"SANDBOX_KERNEL_BENCHMARK_PLOTS": True},
+            "cacheVariables": {"IOJ_KERNEL_BENCHMARK_PLOTS": True},
         },
         {
             "name": "native-soa",
             "inherits": BENCHMARK_CONFIGURATION,
             "cacheVariables": {
-                "SANDBOX_NATIVE_SOA_BENCHMARKS": True,
+                "IOJ_NATIVE_SOA_BENCHMARKS": True,
                 "UE_CONFIGURATION": "Development",
             },
         },

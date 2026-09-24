@@ -195,7 +195,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         }
     }
 
-#if defined(SANDBOX_WITH_TRACY)
+#if defined(IOJ_WITH_TRACY)
     ZoneScopedN("Fighter simulation benchmark");
     if (options.fighter_stress_cap.has_value()) {
         ZoneNameF("Fighter simulation benchmark: %d fighters", *options.fighter_stress_cap);

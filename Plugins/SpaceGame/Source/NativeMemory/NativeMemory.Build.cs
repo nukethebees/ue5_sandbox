@@ -24,7 +24,7 @@ public class NativeMemory : ModuleRules
 
         string repositoryRoot = Path.GetFullPath(
             Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
-        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
+        string nativeToolchain = Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN") ?? "clang-cl";
         string includeDirectory = Path.Combine(repositoryRoot, "native", "memory", "include");
         PublicSystemIncludePaths.Add(includeDirectory);
         if (!Target.bGenerateProjectFiles)

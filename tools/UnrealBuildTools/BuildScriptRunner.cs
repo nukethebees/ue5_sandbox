@@ -74,7 +74,7 @@ public sealed class BuildScriptRunner
             }
         }
 
-        start_info.Environment["SANDBOX_NATIVE_TOOLCHAIN"] = native_toolchain;
+        start_info.Environment["IOJ_NATIVE_TOOLCHAIN"] = native_toolchain;
         return start_info;
     }
 

@@ -1,7 +1,7 @@
 #ifndef SANDBOX_SHADERS_NEBULA_VOLUME
 #define SANDBOX_SHADERS_NEBULA_VOLUME
 
-#ifdef SANDBOX_STANDALONE_DXC
+#ifdef IOJ_STANDALONE_DXC
 #include "NebulaCommon.ush"
 #else
 #include "/Plugin/SandboxShaders/Private/Nebula/NebulaCommon.ush"

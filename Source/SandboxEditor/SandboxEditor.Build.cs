@@ -22,7 +22,7 @@ public class SandboxEditor : ModuleRules
         }
 
         string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", ".."));
-        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
+        string nativeToolchain = Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN") ?? "clang-cl";
         string nativeMaterialGenRoot = Path.Combine(repositoryRoot, "native", "lispb", "material");
         string nativeMaterialGenLibrary = Path.Combine(
             repositoryRoot,
