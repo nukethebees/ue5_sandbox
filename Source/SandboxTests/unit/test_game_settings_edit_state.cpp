@@ -101,29 +101,36 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
 
     TEST_METHOD(AxisInversionUsesControlsTransaction)
     {
-        ml::ioj::FGameSettingsState initial{};
-        ml::ioj::FGameSettingsEditState state;
-        state.begin(initial, initial);
-        state.set_setting(ml::ioj::EGameSetting::InvertGamepadPitch,
-                          ml::ioj::FGameSettingValue{true});
-        TestRunner->TestTrue(TEXT("Pitch inversion previews as a controls edit"),
-                             state.pending().invert_gamepad_pitch &&
-                                 state.is_dirty(ml::ioj::EGameSettingCategory::Controls));
-        state.cancel();
-        TestRunner->TestFalse(TEXT("Cancel restores inversion"),
-                              state.pending().invert_gamepad_pitch);
-
-        state.set_setting(ml::ioj::EGameSetting::InvertGamepadYaw,
-                          ml::ioj::FGameSettingValue{true});
-        state.commit_all();
-        TestRunner->TestTrue(TEXT("Apply commits inversion"),
-                             state.pending().invert_gamepad_yaw && !state.is_dirty());
-        state.reset_category(ml::ioj::EGameSettingCategory::Controls);
-        TestRunner->TestFalse(TEXT("Reset previews default inversion"),
-                              state.pending().invert_gamepad_yaw);
-        state.commit_all();
-        TestRunner->TestFalse(TEXT("Reset plus Apply commits default inversion"),
-                              state.pending().invert_gamepad_yaw || state.is_dirty());
+        using ml::ioj::EGameSetting;
+        using ml::ioj::FGameSettingValue;
+        for (auto const setting : {EGameSetting::InvertMousePitch,
+                                   EGameSetting::InvertMouseYaw,
+                                   EGameSetting::InvertGamepadPitch,
+                                   EGameSetting::InvertGamepadYaw,
+                                   EGameSetting::InvertGamepadRoll}) {
+            ml::ioj::FGameSettingsState initial{};
+            ml::ioj::FGameSettingsEditState state;
+            state.begin(initial, initial);
+            state.set_setting(setting, FGameSettingValue{true});
+            TestRunner->TestTrue(TEXT("Inversion previews as a controls edit"),
+                                 state.value(setting) == FGameSettingValue{true} &&
+                                     state.is_dirty(ml::ioj::EGameSettingCategory::Controls));
+            state.cancel();
+            TestRunner->TestTrue(TEXT("Cancel restores inversion"),
+                                 state.value(setting) == FGameSettingValue{false});
+            state.set_setting(setting, FGameSettingValue{true});
+            state.commit_all();
+            TestRunner->TestTrue(TEXT("Apply commits inversion"),
+                                 state.value(setting) == FGameSettingValue{true} &&
+                                     !state.is_dirty());
+            state.reset_category(ml::ioj::EGameSettingCategory::Controls);
+            TestRunner->TestTrue(TEXT("Reset previews default inversion"),
+                                 state.value(setting) == FGameSettingValue{false});
+            state.commit_all();
+            TestRunner->TestTrue(TEXT("Reset plus Apply commits default inversion"),
+                                 state.value(setting) == FGameSettingValue{false} &&
+                                     !state.is_dirty());
+        }
     }
 
     TEST_METHOD(GraphicsPresetUpdatesOnlyItsQualityGroups)

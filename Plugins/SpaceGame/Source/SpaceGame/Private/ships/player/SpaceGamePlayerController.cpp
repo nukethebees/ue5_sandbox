@@ -130,6 +130,14 @@ bool ASpaceGamePlayerController::InputKey(FInputKeyEventArgs const& event_args) 
                *contexts,
                *actions);
     }
+    if (event_args.Viewport != nullptr && !event_args.IsSimulatedInput() &&
+        event_args.Event == IE_Axis && event_args.Key == EKeys::Gamepad_RightY) {
+        // FSceneViewport::OnAnalogValueChanged negates RightY, but not LeftY.
+        // Restore physical stick-up = positive before remapping and semantic inversion.
+        auto normalized_args{event_args};
+        normalized_args.AmountDepressed = -normalized_args.AmountDepressed;
+        return Super::InputKey(normalized_args);
+    }
     return Super::InputKey(event_args);
 }
 

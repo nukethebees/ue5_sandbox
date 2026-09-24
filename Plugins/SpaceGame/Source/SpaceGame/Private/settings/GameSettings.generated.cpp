@@ -463,7 +463,8 @@ static TArray<FGameSettingDescriptor> const descriptors{
      EGameSettingAvailabilityProvider::Always,
      TEXT("invert_mouse_pitch"),
      FText::FromString(TEXT("Invert Mouse Pitch")),
-     FText::FromString(TEXT("Invert vertical mouse turning.")),
+     FText::FromString(
+         TEXT("Reverse mouse pitch in every flight style. Independent of controller inversion.")),
      0,
      0,
      0,
@@ -479,7 +480,8 @@ static TArray<FGameSettingDescriptor> const descriptors{
      EGameSettingAvailabilityProvider::Always,
      TEXT("invert_mouse_yaw"),
      FText::FromString(TEXT("Invert Mouse Yaw")),
-     FText::FromString(TEXT("Invert horizontal mouse turning.")),
+     FText::FromString(
+         TEXT("Reverse mouse yaw in every flight style. Independent of controller inversion.")),
      0,
      0,
      0,
@@ -495,7 +497,8 @@ static TArray<FGameSettingDescriptor> const descriptors{
      EGameSettingAvailabilityProvider::Always,
      TEXT("invert_gamepad_pitch"),
      FText::FromString(TEXT("Invert Controller Pitch")),
-     FText::FromString(TEXT("Invert vertical controller turning.")),
+     FText::FromString(TEXT("Reverse controller pitch in every flight style. Off: stick up pitches "
+                            "up. On: stick up pitches down.")),
      0,
      0,
      0,
@@ -511,7 +514,8 @@ static TArray<FGameSettingDescriptor> const descriptors{
      EGameSettingAvailabilityProvider::Always,
      TEXT("invert_gamepad_yaw"),
      FText::FromString(TEXT("Invert Controller Yaw")),
-     FText::FromString(TEXT("Invert horizontal controller turning.")),
+     FText::FromString(
+         TEXT("Reverse controller yaw in every flight style, regardless of which stick is bound.")),
      0,
      0,
      0,
@@ -527,7 +531,8 @@ static TArray<FGameSettingDescriptor> const descriptors{
      EGameSettingAvailabilityProvider::Always,
      TEXT("invert_gamepad_roll"),
      FText::FromString(TEXT("Invert Controller Roll")),
-     FText::FromString(TEXT("Invert controller roll input.")),
+     FText::FromString(TEXT("Reverse controller roll in every flight style with a roll binding. "
+                            "Keyboard roll bindings are unchanged.")),
      0,
      0,
      0,

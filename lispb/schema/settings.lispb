@@ -243,7 +243,7 @@
       :max 0.5
       :step 0.01))
   (setting invert_mouse_pitch "Invert Mouse Pitch"
-    :tooltip "Invert vertical mouse turning."
+    :tooltip "Reverse mouse pitch in every flight style. Independent of controller inversion."
     :category controls
     :value-type bool
     :backend enhanced_input_user_settings
@@ -251,7 +251,7 @@
     :device keyboard-mouse
     (control toggle))
   (setting invert_mouse_yaw "Invert Mouse Yaw"
-    :tooltip "Invert horizontal mouse turning."
+    :tooltip "Reverse mouse yaw in every flight style. Independent of controller inversion."
     :category controls
     :value-type bool
     :backend enhanced_input_user_settings
@@ -259,7 +259,7 @@
     :device keyboard-mouse
     (control toggle))
   (setting invert_gamepad_pitch "Invert Controller Pitch"
-    :tooltip "Invert vertical controller turning."
+    :tooltip "Reverse controller pitch in every flight style. Off: stick up pitches up. On: stick up pitches down."
     :category controls
     :value-type bool
     :backend enhanced_input_user_settings
@@ -267,7 +267,7 @@
     :device controller
     (control toggle))
   (setting invert_gamepad_yaw "Invert Controller Yaw"
-    :tooltip "Invert horizontal controller turning."
+    :tooltip "Reverse controller yaw in every flight style, regardless of which stick is bound."
     :category controls
     :value-type bool
     :backend enhanced_input_user_settings
@@ -275,7 +275,7 @@
     :device controller
     (control toggle))
   (setting invert_gamepad_roll "Invert Controller Roll"
-    :tooltip "Invert controller roll input."
+    :tooltip "Reverse controller roll in every flight style with a roll binding. Keyboard roll bindings are unchanged."
     :category controls
     :value-type bool
     :backend enhanced_input_user_settings
