@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <cstring>
 #include <exception>
+#include <fstream>
 #include <iterator>
 #include <set>
 #include <string_view>
@@ -1538,8 +1539,23 @@ void PlannerUi::draw_source_panel() {
     if (std::exchange(focus_source_view_, false)) {
         ImGui::SetNextWindowFocus();
     }
+    auto const reveal{std::exchange(reveal_source_view_, false)};
+    if (reveal) {
+        ImGui::SetNextWindowCollapsed(false);
+        if (auto* window{ImGui::FindWindowByName("Source")}) {
+            ImGui::BringWindowToDisplayFront(window->RootWindowDockTree);
+            if (window->DockNode != nullptr && window->DockNode->TabBar != nullptr) {
+                // Reveal the dock tab without transferring keyboard focus from the source list.
+                window->DockNode->TabBar->SelectedTabId = window->TabId;
+                window->DockNode->SelectedTabId = window->TabId;
+                ImGui::MarkIniSettingsDirty();
+            }
+        }
+    }
     auto const was_open{source_view_open_};
-    if (!ImGui::Begin("Source", &source_view_open_, ImGuiWindowFlags_HorizontalScrollbar)) {
+    auto const flags{ImGuiWindowFlags_HorizontalScrollbar |
+                     (reveal ? ImGuiWindowFlags_NoFocusOnAppearing : ImGuiWindowFlags_None)};
+    if (!ImGui::Begin("Source", &source_view_open_, flags)) {
         ImGui::End();
         persist_view_visibility(was_open, source_view_open_);
         return;
@@ -1555,6 +1571,7 @@ void PlannerUi::draw_source_panel() {
         std::string const* loaded{};
         std::string original;
         std::optional<std::string> updated;
+        std::filesystem::path read_path;
     };
     std::vector<SourceViewFile> files;
     if (project_document_.has_value()) {
@@ -1603,6 +1620,35 @@ void PlannerUi::draw_source_panel() {
         for (auto& update : *schema_updates) {
             apply_update(
                 std::move(update.path), std::move(update.original), std::move(update.updated));
+        }
+    }
+    if (project_document_.has_value()) {
+        auto const& project{project_document_->project()};
+        auto const target_found{project.targets.find(target_name_)};
+        auto const* target{target_found == project.targets.end()
+                               ? nullptr
+                               : std::get_if<lispb::CppSchemaTarget>(&target_found->second)};
+        if (target != nullptr) {
+            for (auto const& source : target->sources) {
+                auto const path{(project.root / source).lexically_normal()};
+                if (std::ranges::any_of(files, [&](auto const& file) {
+                        return file.path.lexically_normal() == path;
+                    })) {
+                    continue;
+                }
+                auto const original_path{
+                    (project.root /
+                     project_document_->renamed_source_original(source).value_or(source))
+                        .lexically_normal()};
+                auto const original{std::ranges::find_if(files, [&](auto const& file) {
+                    return file.path.lexically_normal() == original_path;
+                })};
+                if (original != files.end()) {
+                    original->path = path;
+                } else {
+                    files.push_back({.path = path, .read_path = original_path});
+                }
+            }
         }
     }
     if (!preview_error.empty()) {
@@ -1671,6 +1717,22 @@ void PlannerUi::draw_source_panel() {
                     draw_text("current-source", *file.loaded);
                     ImGui::EndTabItem();
                 }
+            } else if (ImGui::BeginTabItem("Current")) {
+                std::ifstream input{file.read_path, std::ios::binary};
+                if (!input) {
+                    ImGui::TextWrapped("Could not read source: %s",
+                                       file.read_path.string().c_str());
+                } else {
+                    auto const contents{std::string{std::istreambuf_iterator<char>{input},
+                                                    std::istreambuf_iterator<char>{}}};
+                    if (input.bad()) {
+                        ImGui::TextWrapped("Could not read source: %s",
+                                           file.read_path.string().c_str());
+                    } else {
+                        draw_text("current-source", contents);
+                    }
+                }
+                ImGui::EndTabItem();
             }
             ImGui::EndTabBar();
         }

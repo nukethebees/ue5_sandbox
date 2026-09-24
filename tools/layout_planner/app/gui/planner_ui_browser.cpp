@@ -59,8 +59,8 @@ void PlannerUi::draw_project_panel() {
                                 : "Unregister this file. The file remains on disk.");
                     }
                     ImGui::SameLine();
-                    ImGui::BeginDisabled(pending || schema_dirty);
                     if (rename_project_source_ == source) {
+                        ImGui::BeginDisabled(pending || schema_dirty);
                         if (focus_rename_project_source_) {
                             ImGui::SetKeyboardFocusHere();
                             focus_rename_project_source_ = false;
@@ -91,23 +91,42 @@ void PlannerUi::draw_project_panel() {
                         } else if (deactivated) {
                             rename_project_source_.reset();
                         }
+                        ImGui::EndDisabled();
                     } else {
-                        ImGui::TextWrapped("%s", source_display.c_str());
-                        if (ImGui::IsItemHovered()) {
-                            ImGui::SetTooltip(
-                                "Double-click to rename. Enter applies; Escape cancels.");
-                            if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-                                rename_project_source_ = source;
-                                std::snprintf(rename_project_source_path_.data(),
-                                              rename_project_source_path_.size(),
-                                              "%s",
-                                              source_label.c_str());
-                                schema_edit_message_.clear();
-                                focus_rename_project_source_ = true;
+                        auto const source_path{
+                            (project_document_->project().root / source).lexically_normal()};
+                        auto const selected{selected_source_view_path_ == source_path};
+                        if (ImGui::Selectable(source_display.c_str(), selected)) {
+                            selected_source_view_path_ = source_path;
+                            auto const source_was_open{source_view_open_};
+                            source_view_open_ = true;
+                            reveal_source_view_ = true;
+                            persist_view_visibility(source_was_open, source_view_open_);
+                        }
+                        ImGui::SetItemTooltip(
+                            "%s",
+                            pending ? "Click to view the pending source. Save before renaming."
+                            : schema_dirty
+                                ? "Click to view source. Save or undo schema edits before renaming."
+                                : "Click to view source. Right-click or F2 to rename.");
+                        auto begin_rename{ImGui::IsItemFocused() &&
+                                          ImGui::IsKeyPressed(ImGuiKey_F2, false)};
+                        if (ImGui::BeginPopupContextItem("source-actions")) {
+                            if (ImGui::MenuItem("Rename", "F2", false, !pending && !schema_dirty)) {
+                                begin_rename = true;
                             }
+                            ImGui::EndPopup();
+                        }
+                        if (begin_rename && !pending && !schema_dirty) {
+                            rename_project_source_ = source;
+                            std::snprintf(rename_project_source_path_.data(),
+                                          rename_project_source_path_.size(),
+                                          "%s",
+                                          source_label.c_str());
+                            schema_edit_message_.clear();
+                            focus_rename_project_source_ = true;
                         }
                     }
-                    ImGui::EndDisabled();
                     ImGui::PopID();
                 }
             }
@@ -121,6 +140,12 @@ void PlannerUi::draw_project_panel() {
                 rename_project_source_.reset();
             } else if (rename_source.has_value()) {
                 if (apply_project_edit(*rename_source)) {
+                    auto const& root{project_document_->project().root};
+                    if (selected_source_view_path_ ==
+                        (root / rename_source->source).lexically_normal()) {
+                        selected_source_view_path_ =
+                            (root / rename_source->destination).lexically_normal();
+                    }
                     if (rename_project_source_ == rename_source->source) {
                         rename_project_source_.reset();
                         rename_project_source_path_.fill('\0');

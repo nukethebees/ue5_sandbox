@@ -503,6 +503,7 @@ class PlannerUi {
     bool diagnostics_view_open_{true};
     bool focus_diagnostics_view_{};
     bool focus_source_view_{};
+    bool reveal_source_view_{};
     bool open_project_dialog_{};
     bool open_new_project_dialog_{};
     bool open_save_as_dialog_{};

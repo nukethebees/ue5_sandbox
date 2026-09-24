@@ -86,6 +86,11 @@ Use the **...** menu at the top-right of a pane to **Collapse all sections** or 
 sections**. These actions include nested sections and affect only that pane. Individual sections
 can still be opened or closed afterward.
 
+Single-click a file in **Project sources** to show it in **Source**. The highlighted row follows
+the file shown there. Viewing remains available while edits are pending. To rename a source,
+right-click its row and choose **Rename**, or focus the row and press **F2**; Enter applies the
+name and Escape cancels.
+
 ## Getting started
 
 1. Start the planner from the repository root. The Project / Schema panel lists LispB enums,
