@@ -10,5 +10,6 @@ Checks:
   - bugprone-use-after-move
   - performance-unnecessary-copy-initialization
   - bugprone-dangling-handle
+  - bugprone-inaccurate-erase
 ExtraArgsBefore:
   - /EHsc
