@@ -12,7 +12,7 @@
 #include <InputMappingContext.h>
 
 namespace spacegame::input_trace {
-auto enabled() -> bool {
+auto is_enabled() -> bool {
     auto const* const variable{
         IConsoleManager::Get().FindConsoleVariable(TEXT("spacegame.InputTrace"))};
     return variable != nullptr && variable->GetInt() != 0;
@@ -280,7 +280,7 @@ void FShipControlContext::set_right_input(FInputActionValue const& value) {
 }
 void FShipControlContext::set_up_input(FInputActionValue const& value) {
     if (auto* const ship{get_ship()}) {
-        if (spacegame::input_trace::enabled()) {
+        if (spacegame::input_trace::is_enabled()) {
             UE_LOG(LogSandboxController,
                    Warning,
                    TEXT("[InputTrace] IA_Ship_TranslateUp -> native vertical intent %.3f"),
@@ -291,7 +291,7 @@ void FShipControlContext::set_up_input(FInputActionValue const& value) {
 }
 void FShipControlContext::set_pitch_input(FInputActionValue const& value) {
     if (auto* const ship{get_ship()}) {
-        if (spacegame::input_trace::enabled()) {
+        if (spacegame::input_trace::is_enabled()) {
             UE_LOG(LogSandboxController,
                    Warning,
                    TEXT("[InputTrace] IA_Ship_Pitch -> native pitch intent %.3f"),
@@ -382,7 +382,7 @@ void FShipControlContext::stop_emergency_brake() {
 }
 void FShipControlContext::start_fire_primary() {
     if (auto* const ship{get_ship()}) {
-        if (spacegame::input_trace::enabled()) {
+        if (spacegame::input_trace::is_enabled()) {
             UE_LOG(LogSandboxController,
                    Warning,
                    TEXT("[InputTrace] IA_Ship_FirePrimary -> start_fire_laser"));
