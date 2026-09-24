@@ -927,6 +927,9 @@ auto render_packed_segment(codegen::PackedSegmentSchema const& segment) -> std::
                 if (value.range_helper) {
                     output << " :range-helper true";
                 }
+                if (value.default_value.has_value()) {
+                    output << " :default " << format_packed_integer(*value.default_value);
+                }
                 if (value.minimum_value.has_value()) {
                     output << " :minimum " << format_packed_integer(*value.minimum_value);
                 }
@@ -1308,7 +1311,8 @@ auto patch_source_packed_segment(codegen::PackedSegmentSchema const& segment,
                 source_segment.children[2], render_type_ref(field->type), original, replacements)) {
             return false;
         }
-        auto const field_properties{std::array<SourceProperty, 5>{
+        auto const field_properties{std::array<SourceProperty, 6>{
+            std::pair{"default", field->default_value.transform(codegen::format_packed_integer)},
             std::pair{"bits",
                       std::optional{field->bits.has_value() ? std::to_string(*field->bits)
                                                             : std::string{"auto"}}},
@@ -1410,8 +1414,13 @@ auto packed_segment_matches_except_name(Form const& source_segment,
             2,
             "maximum",
             field->maximum_value.transform(codegen::format_packed_integer))};
-        if (!structural_match || !type_match || !bits_match || !kind_match || !range_match ||
-            !minimum_match || !maximum_match) {
+        auto const default_match{source_property_matches(
+            source_segment,
+            2,
+            "default",
+            field->default_value.transform(codegen::format_packed_integer))};
+        if (!default_match || !structural_match || !type_match || !bits_match || !kind_match ||
+            !range_match || !minimum_match || !maximum_match) {
             return false;
         }
 
@@ -4321,6 +4330,19 @@ auto EditableSchemaDocument::types() const -> TypeGraph const& {
 
 auto EditableSchemaDocument::source_files() const -> std::span<SchemaSourceFile const> {
     return source_files_;
+}
+
+auto EditableSchemaDocument::module_source_file(std::size_t const module_index) const
+    -> std::optional<std::size_t> {
+    if (auto const pending{pending_module_sources_.find(module_index)};
+        pending != pending_module_sources_.end()) {
+        return pending->second;
+    }
+    if (module_index < module_source_ranges_.size() &&
+        module_source_ranges_[module_index].has_value()) {
+        return module_source_ranges_[module_index]->source_file_index;
+    }
+    return std::nullopt;
 }
 
 auto EditableSchemaDocument::registered_type_source(std::string_view const name) const

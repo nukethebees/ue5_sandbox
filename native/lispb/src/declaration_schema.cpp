@@ -247,6 +247,9 @@ auto generated_cpp_names(DeclarationSchema const& declaration, NormalModuleSchem
                 return {value.name};
             } else if constexpr (std::is_same_v<T, IntegerScalarSchema>) {
                 std::vector<std::string> result;
+                if (value.cpp_emission == IntegerScalarCppEmission::alias) {
+                    return {value.name};
+                }
                 if (value.cpp_emission != IntegerScalarCppEmission::none) {
                     for (auto const& code : value.named_codes) {
                         result.push_back(value.name + "_" + code.name);

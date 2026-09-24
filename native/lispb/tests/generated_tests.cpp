@@ -25,6 +25,29 @@ namespace {
 
 using namespace codegen_compile_fixture;
 
+TEST(GeneratedScalarAlias, UsesConfiguredCppType) {
+    static_assert(std::is_same_v<Health, std::uint16_t>);
+    Health const health{1000};
+    EXPECT_EQ(health, 1000);
+}
+
+TEST(GeneratedPackedDefaults, ConstructsDefaultsAndSupportsPartialRawConstruction) {
+    static_assert(std::is_default_constructible_v<Defaults>);
+    static_assert(!std::is_default_constructible_v<PartialDefaults>);
+    constexpr Defaults value{};
+    static_assert(value.low() == 5 && value.delta() == -3);
+    EXPECT_EQ(value.raw_value(), 5U | (29U << 5));
+    constexpr DefaultsMsb msb{};
+    static_assert(msb.low() == 5 && msb.delta() == -3);
+    EXPECT_EQ(msb.raw_value(), (5U << 13) | (29U << 6));
+    auto partial{PartialDefaults::from_raw(0)};
+    EXPECT_TRUE(PartialDefaults::try_make(2, 1, 0, partial));
+    EXPECT_EQ(partial.first(), 2);
+    EXPECT_EQ(partial.gap(), 1);
+    EXPECT_EQ(partial.last(), 0);
+    EXPECT_EQ((PartialDefaults{1, 2, 3}).last(), 3);
+}
+
 TEST(GeneratedMixedModule, ResolvesForwardPhysicalDependenciesAcrossDeclarationKinds) {
     mixed::Event const event{
         .tag = mixed::Kind::Data,

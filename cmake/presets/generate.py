@@ -203,7 +203,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
         {
             "name": LAYOUT_PLANNER_CONFIGURATION,
             "configurePreset": "win-x64-clangcl-debug",
-            "targets": ["layout-planner", "native-layout-tests"],
+            "targets": ["layout-planner", "native-layout-tests", "layout-planner-ui-tests"],
         },
     ]
     document["testPresets"] = [

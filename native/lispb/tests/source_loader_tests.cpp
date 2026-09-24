@@ -59,6 +59,92 @@ auto schema_at(Manifest const& manifest,
     return std::get<Schema>(module.declarations.at(declaration_index));
 }
 
+TEST(SourceLoader, AliasEmissionKeepsSemanticIdentityAndDependencies) {
+    TemporaryManifest files;
+    files.write_root(
+        R"((module vitals :header "Vitals.h" :namespace fixture :backend standard-library
+      (record Vessel (member health Health))
+      (struct Fleet (member healths array Health))
+      (packed-value PackedHealth :storage std::uint16_t (field health @health :bits auto))
+      (integer-scalar Health :signed false :minimum 0 :maximum 65534 :bit-width 16
+        :cpp-type @native_uint16 :cpp-emission alias
+        (code Invalid :value 65535 :sentinel true)
+        (relation references Vessel)))
+      (module consumers :header "Consumers.h" :namespace fixture
+        (record Other (member health @health))))");
+    files.write("types.lispb", R"(
+      (type native_uint16 :spelling "std::uint16_t" :header "cstdint" :pass-by value)
+      (type health :spelling "fixture::Health" :header "Vitals.h" :pass-by value))");
+    auto const manifest{files.load()};
+    auto const& scalar{schema_at<IntegerScalarSchema>(manifest, 0, 3)};
+    EXPECT_EQ(scalar.cpp_emission, IntegerScalarCppEmission::alias);
+    auto const graph{lispb::schema::resolve_type_graph(manifest)};
+    auto const health{*graph.find_declared("vitals", "Health")};
+    auto const& semantic{std::get<lispb::schema::IntegerScalarType>(graph.type(health).definition)};
+    EXPECT_EQ(semantic.bit_width, 16);
+    EXPECT_EQ(semantic.maximum_value, PackedIntegerValue{65534});
+    ASSERT_TRUE(semantic.cpp_representation.has_value());
+    EXPECT_EQ(semantic.cpp_representation->cpp_type.spelling, "std::uint16_t");
+    ASSERT_TRUE(semantic.relationship.has_value());
+    EXPECT_EQ(semantic.named_codes.size(), 1);
+    EXPECT_EQ(graph.find_registered("health"), health);
+    auto const vessel{*graph.find_declared("vitals", "Vessel")};
+    auto const& record{std::get<lispb::schema::RecordType>(graph.type(vessel).definition)};
+    EXPECT_EQ(record.members[0].semantic_type.type, health);
+    auto const packed{*graph.find_declared("vitals", "PackedHealth")};
+    auto const& field{std::get<lispb::schema::PackedField>(
+        std::get<lispb::schema::PackedType>(graph.type(packed).definition).segments[0])};
+    EXPECT_EQ(field.semantic_type.type, health);
+    for (auto const consumer : {vessel,
+                                packed,
+                                *graph.find_declared("vitals", "Fleet"),
+                                *graph.find_declared("consumers", "Other")}) {
+        EXPECT_NE(std::ranges::find(graph.dependencies_of(consumer), health),
+                  graph.dependencies_of(consumer).end());
+        EXPECT_NE(std::ranges::find(graph.users_of(health), consumer),
+                  graph.users_of(health).end());
+    }
+    auto const generated{render_modules(lower_modules(manifest))};
+    auto const& header{generated.front().content};
+    EXPECT_NE(header.find("using Health = std::uint16_t;"), std::string::npos);
+    EXPECT_NE(header.find("#include <cstdint>"), std::string::npos);
+    EXPECT_LT(header.find("using Health ="), header.find("struct Vessel"));
+    EXPECT_LT(header.find("using Health ="), header.find("struct Fleet"));
+    EXPECT_EQ(header.find("Health_Invalid"), std::string::npos);
+}
+
+TEST(SourceLoader, PackedDefaultsAreValidatedWithoutChangingImplicitSentinels) {
+    TemporaryManifest files;
+    files.write_root(R"((module orders :header "Orders.h"
+      (packed-value Order :storage std::uint8_t
+        (field task std::uint8_t :bits 1 :default 1)
+        (field target std::uint8_t :bits 1 :default 0))
+      (packed-value Partial :storage std::uint8_t
+        (field task std::uint8_t :bits 1 :default 1)
+        (field target std::uint8_t :bits 1))
+      (packed-value Implicit :storage std::uint8_t
+        (field task std::uint8_t :bits 1))
+      (packed-value Invalid :storage std::uint8_t :invalid-value 255
+        (field task std::uint8_t :bits 1))))");
+    auto const manifest{files.load()};
+    EXPECT_EQ(std::get<PackedFieldSchema>(schema_at<PackedValueSchema>(manifest, 0).segments[0])
+                  .default_value,
+              PackedIntegerValue{1});
+    auto const graph{lispb::schema::resolve_type_graph(manifest)};
+    auto default_raw = [&](char const* name) {
+        return std::get<lispb::schema::PackedType>(
+                   graph.type(*graph.find_declared("orders", name)).definition)
+            .default_raw_value;
+    };
+    EXPECT_EQ(default_raw("Order"), 1);
+    EXPECT_EQ(default_raw("Partial"), std::nullopt);
+    EXPECT_EQ(default_raw("Implicit"), 0);
+    EXPECT_EQ(default_raw("Invalid"), 255);
+    auto const header{render_modules(lower_modules(manifest)).front().content};
+    EXPECT_NE(header.find("Partial() noexcept = delete"), std::string::npos);
+    EXPECT_NE(header.find("return Partial{RawTag{}, raw}"), std::string::npos);
+}
+
 TEST(SourceLoader, IncludedExternalScalarsRetainExternalIdentityAndEnrichPlainReferences) {
     TemporaryManifest files;
     files.write_root(R"((module example :header "Example.h"

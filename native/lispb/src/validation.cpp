@@ -671,7 +671,10 @@ void validate_packed_value(PackedValueSchema const& value,
         }
         if (*segment_bits > *storage_width - used_bits) {
             throw std::invalid_argument{segment_context + " does not fit in " +
-                                        std::to_string(*storage_width) + "-bit storage"};
+                                        std::to_string(*storage_width) + "-bit storage: requires " +
+                                        std::to_string(*segment_bits) + " bits, " +
+                                        std::to_string(used_bits) + " already used, " +
+                                        std::to_string(*storage_width - used_bits) + " remaining"};
         }
         used_bits += *segment_bits;
 
@@ -993,6 +996,10 @@ void validate_packed_value(PackedValueSchema const& value,
             }
         }
     }
+    if (!packed_default_value(value, types, modules).has_value() &&
+        generated_names.contains("RawTag")) {
+        throw std::invalid_argument{context + " collides with generated API name: RawTag"};
+    }
 }
 
 void validate_record(RecordSchema const& record, TypeRegistry const& types) {
@@ -1150,24 +1157,23 @@ void validate_integer_scalar(IntegerScalarSchema const& scalar, TypeRegistry con
 
     if (scalar.cpp_emission == IntegerScalarCppEmission::none) {
         if (scalar.cpp_type.has_value()) {
-            throw std::invalid_argument{context +
-                                        " C++ type requires the constants emission policy"};
+            throw std::invalid_argument{context + " C++ type requires an emission policy"};
         }
         return;
     }
     if (!scalar.cpp_type.has_value()) {
-        throw std::invalid_argument{context + " constants emission requires an explicit C++ type"};
+        throw std::invalid_argument{context + " C++ emission requires an explicit C++ type"};
     }
-    if (scalar.named_codes.empty()) {
+    if (scalar.cpp_emission != IntegerScalarCppEmission::alias && scalar.named_codes.empty()) {
         throw std::invalid_argument{context +
                                     " constants emission requires at least one named code"};
     }
-    validate_type(*scalar.cpp_type, types, context + " C++ constants type");
+    validate_type(*scalar.cpp_type, types, context + " C++ representation");
     auto const cpp_type{resolve_type(*scalar.cpp_type, types)};
     auto const storage_domain{enum_storage_domain(cpp_type.spelling)};
     if (!storage_domain.has_value()) {
         throw std::invalid_argument{context +
-                                    " has unsupported C++ constants type: " + cpp_type.spelling};
+                                    " has unsupported C++ representation: " + cpp_type.spelling};
     }
     auto const fits = [&](PackedIntegerValue const value) {
         return storage_domain->is_unsigned
@@ -1175,7 +1181,7 @@ void validate_integer_scalar(IntegerScalarSchema const& scalar, TypeRegistry con
                  : packed_integer_fits_signed(value, storage_domain->bit_width);
     };
     if (!fits(required_minimum) || !fits(required_maximum)) {
-        throw std::invalid_argument{context + " domain does not fit C++ constants type '" +
+        throw std::invalid_argument{context + " domain does not fit C++ representation '" +
                                     cpp_type.spelling + "'"};
     }
 }

@@ -14,6 +14,255 @@
 #include <type_traits>
 
 namespace codegen_compile_fixture {
+struct Defaults {
+    using storage_type = std::uint16_t;
+    static_assert(ml::valid_packed_storage<storage_type, 16>());
+    using low_type = std::uint8_t;
+    using low_field = ml::PackedField<storage_type, low_type, 0, 3>;
+    using delta_type = std::int8_t;
+    static_assert(std::is_signed_v<delta_type>);
+    static_assert(std::numeric_limits<delta_type>::digits + 1 >= 5);
+    using delta_field = ml::PackedField<storage_type, delta_type, 5, 5>;
+    inline static constexpr delta_type delta_minimum{static_cast<delta_type>(-16)};
+    inline static constexpr delta_type delta_maximum{static_cast<delta_type>(15)};
+
+    constexpr Defaults() noexcept = default;
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> Defaults {
+        Defaults result;
+        result.value_ = raw;
+        return result;
+    }
+
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+
+    [[nodiscard]] static constexpr auto try_make(low_type const low_value,
+                                                 delta_type const delta_value,
+                                                 Defaults& out_result) noexcept -> bool {
+        auto result{from_raw(storage_type{0})};
+        if (!result.try_set_low(low_value)) {
+            return false;
+        }
+        if (!result.try_set_delta(delta_value)) {
+            return false;
+        }
+        if (!result.is_valid()) {
+            return false;
+        }
+        out_result = result;
+        return true;
+    }
+
+    explicit constexpr Defaults(low_type const low_value, delta_type const delta_value) noexcept {
+        [[maybe_unused]] auto const success{try_make(low_value, delta_value, *this)};
+        assert(success && "Packed field value does not fit.");
+    }
+
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
+    [[nodiscard]] constexpr auto operator<=>(Defaults const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto low() const noexcept -> low_type {
+        return ml::packed_extract<low_field>(value_);
+    }
+
+    [[nodiscard]] constexpr auto try_set_low(low_type const value) noexcept -> bool {
+        if (value > static_cast<low_type>(low_field::value_mask)) {
+            return false;
+        }
+        value_ = ml::packed_insert<low_field>(value_, value);
+        return true;
+    }
+
+    constexpr void set_low(low_type const value) noexcept {
+        if (!try_set_low(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+
+    [[nodiscard]] constexpr auto delta() const noexcept -> delta_type {
+        return ml::packed_extract<delta_field>(value_);
+    }
+
+    [[nodiscard]] constexpr auto try_set_delta(delta_type const value) noexcept -> bool {
+        if (value < delta_minimum || value > delta_maximum) {
+            return false;
+        }
+        value_ = ml::packed_insert<delta_field>(value_, value);
+        return true;
+    }
+
+    constexpr void set_delta(delta_type const value) noexcept {
+        if (!try_set_delta(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+  private:
+    storage_type value_{0x3a5};
+};
+static_assert(sizeof(Defaults) == sizeof(Defaults::storage_type));
+static_assert(std::is_trivially_copyable_v<Defaults>);
+static_assert(std::is_standard_layout_v<Defaults>);
+
+struct DefaultsMsb {
+    using storage_type = std::uint16_t;
+    static_assert(ml::valid_packed_storage<storage_type, 16>());
+    using low_type = std::uint8_t;
+    using low_field = ml::PackedField<storage_type, low_type, 13, 3>;
+    using delta_type = std::int8_t;
+    static_assert(std::is_signed_v<delta_type>);
+    static_assert(std::numeric_limits<delta_type>::digits + 1 >= 5);
+    using delta_field = ml::PackedField<storage_type, delta_type, 6, 5>;
+    inline static constexpr delta_type delta_minimum{static_cast<delta_type>(-16)};
+    inline static constexpr delta_type delta_maximum{static_cast<delta_type>(15)};
+
+    constexpr DefaultsMsb() noexcept = default;
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> DefaultsMsb {
+        DefaultsMsb result;
+        result.value_ = raw;
+        return result;
+    }
+
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+
+    explicit constexpr DefaultsMsb(low_type const low_value,
+                                   delta_type const delta_value) noexcept {
+        assert(low_value <= static_cast<low_type>(low_field::value_mask));
+        assert(delta_value >= delta_minimum && delta_value <= delta_maximum);
+        value_ = static_cast<storage_type>(ml::packed_pack<low_field>(low_value) |
+                                           ml::packed_pack<delta_field>(delta_value));
+    }
+
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
+    [[nodiscard]] constexpr auto operator<=>(DefaultsMsb const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto low() const noexcept -> low_type {
+        return ml::packed_extract<low_field>(value_);
+    }
+
+    [[nodiscard]] constexpr auto delta() const noexcept -> delta_type {
+        return ml::packed_extract<delta_field>(value_);
+    }
+  private:
+    storage_type value_{0xa740};
+};
+static_assert(sizeof(DefaultsMsb) == sizeof(DefaultsMsb::storage_type));
+static_assert(std::is_trivially_copyable_v<DefaultsMsb>);
+static_assert(std::is_standard_layout_v<DefaultsMsb>);
+
+struct PartialDefaults {
+    using storage_type = std::uint8_t;
+    static_assert(ml::valid_packed_storage<storage_type, 8>());
+    using first_type = std::uint8_t;
+    using first_field = ml::PackedField<storage_type, first_type, 0, 2>;
+    using gap_type = std::uint8_t;
+    using gap_field = ml::PackedField<storage_type, gap_type, 2, 2>;
+    using last_type = std::uint8_t;
+    using last_field = ml::PackedField<storage_type, last_type, 4, 2>;
+
+    constexpr PartialDefaults() noexcept = delete;
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
+        -> PartialDefaults {
+        return PartialDefaults{RawTag{}, raw};
+    }
+
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+
+    [[nodiscard]] static constexpr auto try_make(first_type const first_value,
+                                                 gap_type const gap_value,
+                                                 last_type const last_value,
+                                                 PartialDefaults& out_result) noexcept -> bool {
+        auto result{from_raw(storage_type{0})};
+        if (!result.try_set_first(first_value)) {
+            return false;
+        }
+        if (!result.try_set_gap(gap_value)) {
+            return false;
+        }
+        if (!result.try_set_last(last_value)) {
+            return false;
+        }
+        if (!result.is_valid()) {
+            return false;
+        }
+        out_result = result;
+        return true;
+    }
+
+    explicit constexpr PartialDefaults(first_type const first_value,
+                                       gap_type const gap_value,
+                                       last_type const last_value) noexcept {
+        [[maybe_unused]] auto const success{try_make(first_value, gap_value, last_value, *this)};
+        assert(success && "Packed field value does not fit.");
+    }
+
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
+    [[nodiscard]] constexpr auto operator<=>(PartialDefaults const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto first() const noexcept -> first_type {
+        return ml::packed_extract<first_field>(value_);
+    }
+
+    [[nodiscard]] constexpr auto try_set_first(first_type const value) noexcept -> bool {
+        if (value > static_cast<first_type>(first_field::value_mask)) {
+            return false;
+        }
+        value_ = ml::packed_insert<first_field>(value_, value);
+        return true;
+    }
+
+    constexpr void set_first(first_type const value) noexcept {
+        if (!try_set_first(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+
+    [[nodiscard]] constexpr auto gap() const noexcept -> gap_type {
+        return ml::packed_extract<gap_field>(value_);
+    }
+
+    [[nodiscard]] constexpr auto try_set_gap(gap_type const value) noexcept -> bool {
+        if (value > static_cast<gap_type>(gap_field::value_mask)) {
+            return false;
+        }
+        value_ = ml::packed_insert<gap_field>(value_, value);
+        return true;
+    }
+
+    constexpr void set_gap(gap_type const value) noexcept {
+        if (!try_set_gap(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+
+    [[nodiscard]] constexpr auto last() const noexcept -> last_type {
+        return ml::packed_extract<last_field>(value_);
+    }
+
+    [[nodiscard]] constexpr auto try_set_last(last_type const value) noexcept -> bool {
+        if (value > static_cast<last_type>(last_field::value_mask)) {
+            return false;
+        }
+        value_ = ml::packed_insert<last_field>(value_, value);
+        return true;
+    }
+
+    constexpr void set_last(last_type const value) noexcept {
+        if (!try_set_last(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+  private:
+    struct RawTag {};
+    constexpr PartialDefaults(RawTag, storage_type const raw) noexcept
+        : value_{raw} {}
+    storage_type value_{0x0};
+};
+static_assert(sizeof(PartialDefaults) == sizeof(PartialDefaults::storage_type));
+static_assert(std::is_trivially_copyable_v<PartialDefaults>);
+static_assert(std::is_standard_layout_v<PartialDefaults>);
+
 struct PackedSingle {
     using storage_type = std::uint8_t;
     static_assert(ml::valid_packed_storage<storage_type, 8>());

@@ -56,6 +56,17 @@ auto resolve_type(TypeRef const& reference, TypeRegistry const& types) -> CppTyp
         result = found->second.cpp_type;
     } else {
         result = CppType{reference.name};
+        constexpr std::array fixed_width_integers{"std::int8_t",
+                                                  "std::uint8_t",
+                                                  "std::int16_t",
+                                                  "std::uint16_t",
+                                                  "std::int32_t",
+                                                  "std::uint32_t",
+                                                  "std::int64_t",
+                                                  "std::uint64_t"};
+        if (std::ranges::find(fixed_width_integers, reference.name) != fixed_width_integers.end()) {
+            result.dependencies.push_back({reference.name, "cstdint", {}});
+        }
     }
     if (reference.nested.has_value()) {
         result.spelling += "::" + *reference.nested;

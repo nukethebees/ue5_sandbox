@@ -127,6 +127,7 @@ void editable_table_content_hint(std::string_view const text, float const traili
     auto& content_max_x{table->IsUnfrozenRows ? column.ContentMaxXUnfrozen
                                               : column.ContentMaxXFrozen};
     content_max_x = std::max(content_max_x, column.WorkMinX + width);
+    table->InnerWindow->DC.CursorMaxPos.x = column.WorkMinX + width;
 }
 
 auto prepare_editable_type_input() -> bool {
@@ -214,11 +215,11 @@ auto format_fit(std::optional<bool> const fits) -> std::string {
 auto access_operation_name(layout::AccessOperation const operation) -> char const* {
     switch (operation) {
         case layout::AccessOperation::read:
-            return "Read";
+            return "R";
         case layout::AccessOperation::write:
-            return "Write";
+            return "W";
         case layout::AccessOperation::read_write:
-            return "Read + write";
+            return "RW";
     }
     return "Unknown";
 }

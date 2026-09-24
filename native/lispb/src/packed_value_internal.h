@@ -9,6 +9,11 @@ namespace codegen::detail {
 
 auto packed_unsigned_width(std::string_view spelling) -> std::optional<int>;
 auto packed_signed_width(std::string_view spelling) -> std::optional<int>;
+
+// Requires a validated layout. An incomplete explicit default set has no default value.
+auto packed_default_value(PackedValueSchema const& schema,
+                          TypeRegistry const& types,
+                          std::vector<ModuleSchema> const& modules) -> std::optional<std::uint64_t>;
 auto find_packed_enum(TypeRef const& type,
                       TypeRegistry const& types,
                       std::vector<ModuleSchema> const& modules) -> EnumSchema const*;

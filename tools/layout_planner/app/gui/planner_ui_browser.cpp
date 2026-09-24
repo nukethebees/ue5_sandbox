@@ -17,6 +17,29 @@ void PlannerUi::draw_project_panel() {
         ImGui::TextDisabled("%s", project_path_.string().c_str());
         ImGui::PopTextWrapPos();
     }
+    ImGui::BeginDisabled(project_path_.empty());
+    if (ImGui::Button("Refresh project")) {
+        if (has_dirty_changes()) {
+            ImGui::OpenPopup("Discard edits and refresh?");
+        } else {
+            refresh_project();
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::SetItemTooltip("Reload the project and its LispB sources after external edits.");
+    if (ImGui::BeginPopupModal(
+            "Discard edits and refresh?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("Refreshing discards unsaved schema and project edits.");
+        if (ImGui::Button("Discard and refresh")) {
+            refresh_project();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
     if (project_document_.has_value()) {
         if (detail::section("Project sources")) {
             ImGui::PushTextWrapPos(0.0F);
@@ -240,13 +263,42 @@ void PlannerUi::draw_project_panel() {
             ImGui::TextDisabled("No schema loaded.");
         }
 
+        auto view{schema_file_view_ ? 1 : 0};
+        ImGui::SetNextItemWidth(-1.0F);
+        if (ImGui::Combo("##schema-browser-view", &view, "Modules\0Files\0")) {
+            schema_file_view_ = view == 1;
+        }
         auto const filter{std::string_view{schema_filter_.data()}};
         auto const modules{document_.has_value() ? std::span{document_->manifest().modules}
                                                  : std::span<codegen::ModuleSchema const>{}};
         std::optional<std::size_t> create_record_in_module;
         std::optional<std::size_t> requested_delete_module;
         std::optional<std::pair<DeclarationId, std::string>> rename_record;
-        for (std::size_t module_index{}; module_index < modules.size(); ++module_index) {
+        std::vector<std::size_t> module_order;
+        auto source_label = [&](std::size_t const index) {
+            auto const source{document_->module_source_file(index)};
+            return source.has_value() ? document_->source_files()[*source]
+                                            .path.lexically_relative(project_path_.parent_path())
+                                            .generic_string()
+                                      : std::string{"Unsaved modules"};
+        };
+        for (std::size_t index{}; index < modules.size(); ++index) {
+            if (std::holds_alternative<codegen::NormalModuleSchema>(modules[index])) {
+                module_order.push_back(index);
+            }
+        }
+        std::ranges::sort(module_order, [&](auto const left, auto const right) {
+            auto const left_source{schema_file_view_ ? source_label(left) : std::string{}};
+            auto const right_source{schema_file_view_ ? source_label(right) : std::string{}};
+            if (left_source != right_source) {
+                return left_source < right_source;
+            }
+            return std::get<codegen::NormalModuleSchema>(modules[left]).settings.name <
+                   std::get<codegen::NormalModuleSchema>(modules[right]).settings.name;
+        });
+        std::optional<std::string> current_source;
+        auto source_open{false};
+        for (auto const module_index : module_order) {
             auto const& module{modules[module_index]};
             auto const* normal{std::get_if<codegen::NormalModuleSchema>(&module)};
             if (normal == nullptr) {
@@ -278,10 +330,26 @@ void PlannerUi::draw_project_panel() {
             if (declarations.empty() && !filter.empty()) {
                 continue;
             }
-            std::ranges::sort(declarations, {}, &DeclarationInfo::declaration_index);
+            std::ranges::sort(declarations, {}, [](auto const* declaration) {
+                return declaration->identity.name;
+            });
+            if (schema_file_view_) {
+                auto const source{source_label(module_index)};
+                if (current_source != source) {
+                    if (source_open) {
+                        ImGui::TreePop();
+                    }
+                    current_source = source;
+                    source_open = ImGui::TreeNodeEx(source.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+                    ImGui::SetItemTooltip("%s", source.c_str());
+                }
+                if (!source_open) {
+                    continue;
+                }
+            }
 
             auto const label{module_label(modules[module_index])};
-            ImGui::PushID(static_cast<int>(module_index));
+            ImGui::PushID(normal->settings.name.c_str());
             ImGui::BeginDisabled(project_history_active());
             if (ImGui::SmallButton("+")) {
                 ImGui::OpenPopup("add-declaration");
@@ -522,6 +590,10 @@ void PlannerUi::draw_project_panel() {
                 ImGui::TreePop();
             }
             ImGui::PopID();
+        }
+
+        if (source_open) {
+            ImGui::TreePop();
         }
 
         if (requested_delete_module.has_value()) {

@@ -2176,6 +2176,28 @@ auto PlannerUi::load_project(std::filesystem::path const& path,
     return true;
 }
 
+void PlannerUi::refresh_project() {
+    auto loaded{load_lispb_schema(project_path_, target_name_)};
+    if (!loaded.loaded) {
+        schema_edit_message_ = loaded.diagnostics.empty() ? "Could not refresh the project."
+                                                          : loaded.diagnostics.front().message;
+        return;
+    }
+
+    auto inputs{analysis_session_.inputs};
+    auto const identity{inputs.selection.identity()};
+    auto const primary_abi{analysis_session_.primary_abi()};
+    auto const comparison_abi{analysis_session_.comparison_abi()};
+    adopt_loaded_schema(std::move(loaded));
+    analysis_session_.inputs = std::move(inputs);
+    analysis_session_.replace_types(*document_, identity);
+    static_cast<void>(analysis_session_.set_primary_abi(primary_abi));
+    static_cast<void>(analysis_session_.set_comparison_abi(comparison_abi));
+    sync_variant_name();
+    refresh_analysis();
+    schema_edit_message_ = "Refreshed project from disk.";
+}
+
 void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     structural_draft_.reset();
     structural_creation_draft_.reset();

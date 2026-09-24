@@ -328,6 +328,49 @@ auto optional_presence_bit_type(EditableSchemaDocument const& document,
     return std::get<OptionalPresenceBitType>(document.types().type(*type).definition);
 }
 
+TEST(EditableSchemaDocument, RoundTripsScalarAliasAndPartialPackedDefaults) {
+    TemporarySchema files;
+    files.write_source("types.lispb", "");
+    files.write_source("modules.lispb", R"((module values :header "Values.h"
+      ; Keep this scalar note.
+      (integer-scalar Health :signed false :minimum 0 :maximum 65535 :bit-width 16)
+      (packed-value Order :storage std::uint8_t
+        (field task std::uint8_t :bits 1) ; Keep the field note.
+        (field target std::uint8_t :bits 1))))");
+    auto document{files.load()};
+    auto const health{document.declarations()[0].id};
+    auto const order{document.declarations()[1].id};
+    auto scalar{*document.integer_scalar_schema(health)};
+    scalar.cpp_emission = codegen::IntegerScalarCppEmission::alias;
+    scalar.cpp_type = codegen::TypeRef{"std::uint16_t"};
+    ASSERT_TRUE(document.apply(ReplaceIntegerScalar{health, scalar}).has_value());
+    auto packed{*document.packed_value_schema(order)};
+    std::get<codegen::PackedFieldSchema>(packed.segments[1]).default_value = 1;
+    ASSERT_TRUE(document.apply(ReplacePackedValue{order, packed}).has_value());
+    ASSERT_TRUE(document.undo().has_value());
+    EXPECT_FALSE(
+        std::get<codegen::PackedFieldSchema>(document.packed_value_schema(order)->segments[1])
+            .default_value.has_value());
+    ASSERT_TRUE(document.redo().has_value());
+    ASSERT_TRUE(document.save().has_value());
+    auto const source{files.read_source("modules.lispb")};
+    EXPECT_NE(source.find(":cpp-emission alias"), std::string::npos);
+    EXPECT_NE(source.find(":default 1"), std::string::npos);
+    EXPECT_NE(source.find("Keep the field note."), std::string::npos);
+    EXPECT_NE(source.find("Keep this scalar note."), std::string::npos);
+    auto const reloaded{files.load()};
+    EXPECT_EQ(reloaded.integer_scalar_schema(reloaded.declarations()[0].id)->cpp_emission,
+              codegen::IntegerScalarCppEmission::alias);
+    auto const& restored{*reloaded.packed_value_schema(reloaded.declarations()[1].id)};
+    EXPECT_FALSE(
+        std::get<codegen::PackedFieldSchema>(restored.segments[0]).default_value.has_value());
+    EXPECT_EQ(std::get<codegen::PackedFieldSchema>(restored.segments[1]).default_value,
+              codegen::PackedIntegerValue{1});
+    ASSERT_TRUE(reloaded.module_source_file(0).has_value());
+    EXPECT_EQ(reloaded.source_files()[*reloaded.module_source_file(0)].path,
+              files.path("modules.lispb"));
+}
+
 TEST(EditableSchemaDocument, RetainsDeclarationSourceOwnershipAndRanges) {
     auto const document{fixture_document()};
     auto const id{declaration_id(document, "plain_enum_fixture", "EPlainFixture")};

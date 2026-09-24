@@ -655,12 +655,18 @@ auto packed_value_text(PackedValueSchema const& source_schema,
                   hex_value(*schema.invalid_value) + "}};\n";
     }
 
-    output += "\n    constexpr " + schema.name + "() noexcept = default;\n";
+    output += "\n    constexpr " + schema.name +
+              "() noexcept = " + (packed.default_raw_value.has_value() ? "default" : "delete") +
+              ";\n";
     output +=
         "    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept -> " +
         schema.name + " {\n";
-    output += "        " + schema.name + " result;\n";
-    output += "        result.value_ = raw;\n        return result;\n    }\n\n";
+    if (packed.default_raw_value.has_value()) {
+        output += "        " + schema.name + " result;\n";
+        output += "        result.value_ = raw;\n        return result;\n    }\n\n";
+    } else {
+        output += "        return " + schema.name + "{RawTag{}, raw};\n    }\n\n";
+    }
     output += "    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type {\n";
     output += "        return value_;\n    }\n\n";
     if (schema.mutable_value) {
@@ -884,8 +890,17 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         }
     }
 
-    output += "  private:\n    storage_type value_{";
-    output += schema.invalid_value.has_value() ? "invalid_value" : "";
+    output += "  private:\n";
+    if (!packed.default_raw_value.has_value()) {
+        output += "    struct RawTag {};\n    constexpr " + schema.name +
+                  "(RawTag, storage_type const raw) noexcept : value_{raw} {}\n";
+    }
+    output += "    storage_type value_{";
+    auto const explicit_defaults{std::ranges::any_of(
+        fields, [](auto const* field) { return field->default_value.has_value(); })};
+    output += explicit_defaults                ? hex_value(packed.default_raw_value.value_or(0))
+            : schema.invalid_value.has_value() ? "invalid_value"
+                                               : "";
     output += "};\n};\n";
     output += "static_assert(sizeof(" + schema.name + ") == sizeof(" + schema.name +
               "::storage_type));\n";

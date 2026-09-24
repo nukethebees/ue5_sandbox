@@ -356,7 +356,8 @@
       "configurePreset": "win-x64-clangcl-debug",
       "targets": [
         "layout-planner",
-        "native-layout-tests"
+        "native-layout-tests",
+        "layout-planner-ui-tests"
       ]
     }
   ],

@@ -253,6 +253,32 @@ auto valid_static_table_module() -> NormalModuleSchema {
         }}};
 }
 
+TEST(Validation, IntegerAliasRequiresAUsableRepresentationButNoNamedCodes) {
+    IntegerScalarSchema scalar{.name = "Health",
+                               .minimum_value = 0,
+                               .maximum_value = 65535,
+                               .bit_width = 16,
+                               .cpp_emission = IntegerScalarCppEmission::alias,
+                               .cpp_type = TypeRef{"std::uint16_t"}};
+    auto make_manifest = [&] {
+        return manifest_with(NormalModuleSchema{
+            .settings = {.name = "health", .header = "Health.h"}, .declarations = {scalar}});
+    };
+    EXPECT_NO_THROW(validate_manifest(make_manifest()));
+    for (auto const* representation : {"", "@missing", "float", "std::uint8_t", "std::uint16_t*"}) {
+        scalar.cpp_type = TypeRef{representation};
+        EXPECT_THROW(validate_manifest(make_manifest()), std::invalid_argument) << representation;
+    }
+    scalar.cpp_type.reset();
+    EXPECT_THROW(validate_manifest(make_manifest()), std::invalid_argument);
+    scalar.cpp_type = TypeRef{"std::uint16_t"};
+    scalar.minimum_value = -1;
+    EXPECT_THROW(validate_manifest(make_manifest()), std::invalid_argument);
+    scalar.minimum_value = 0;
+    scalar.bit_width = 8;
+    EXPECT_THROW(validate_manifest(make_manifest()), std::invalid_argument);
+}
+
 TEST(Validation, RejectsEmptyModuleNames) {
     auto module{valid_soa_module()};
     module.settings.name.clear();

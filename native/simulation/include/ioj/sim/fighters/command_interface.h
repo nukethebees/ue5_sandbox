@@ -9,6 +9,8 @@
 #include "ioj/sim/fighters/sim.h"
 #include "ioj/sim/health_table.h"
 
+#include <cstdint>
+
 namespace ioj::sim::fighters {
 class CommandInterface {
   public:

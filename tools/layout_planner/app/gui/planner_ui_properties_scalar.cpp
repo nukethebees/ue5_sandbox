@@ -855,72 +855,51 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
         "This is a semantic domain. A packed field or future representation chooses storage.");
 
     if (detail::section("C++ output policy", false)) {
-        auto emit_cpp_constants{schema->cpp_emission != codegen::IntegerScalarCppEmission::none};
-        ImGui::BeginDisabled(schema->named_codes.empty() && !emit_cpp_constants);
-        if (ImGui::Checkbox("Emit named constants", &emit_cpp_constants)) {
+        auto emission{static_cast<int>(schema->cpp_emission)};
+        ImGui::SetNextItemWidth(-1.0F);
+        if (ImGui::Combo(
+                "##cpp-emission", &emission, "None\0Constants\0Constants with names\0Alias\0")) {
             auto replacement{*schema};
-            replacement.cpp_emission = emit_cpp_constants
-                                         ? codegen::IntegerScalarCppEmission::constants
-                                         : codegen::IntegerScalarCppEmission::none;
-            replacement.cpp_type =
-                emit_cpp_constants
-                    ? std::optional{codegen::TypeRef{.name = schema->signedness ? "std::int64_t"
-                                                                                : "std::uint64_t",
-                                                     .suffix = {},
-                                                     .nested = std::nullopt}}
-                    : std::nullopt;
-            if (apply_document_edit(ReplaceIntegerScalar{.declaration = *declaration,
-                                                         .schema = std::move(replacement)})) {
-                integer_scalar_editor_declaration_.reset();
-                ImGui::EndDisabled();
-                return true;
-            }
-        }
-        ImGui::EndDisabled();
-        if (schema->named_codes.empty()) {
-            text_disabled_wrapped("Add a named code before enabling C++ constants.");
-        }
-        if (emit_cpp_constants) {
-            ImGui::SetNextItemWidth(220.0F);
-            auto const submitted{ImGui::InputText("Constants type",
-                                                  integer_scalar_cpp_type_.data(),
-                                                  integer_scalar_cpp_type_.size(),
-                                                  ImGuiInputTextFlags_EnterReturnsTrue)};
-            if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+            replacement.cpp_emission = static_cast<codegen::IntegerScalarCppEmission>(emission);
+            if (replacement.cpp_emission == codegen::IntegerScalarCppEmission::none) {
+                replacement.cpp_type.reset();
+            } else if (!replacement.cpp_type.has_value()) {
                 if (integer_scalar_cpp_type_.front() == '\0') {
-                    schema_edit_message_ = "C++ constants type cannot be empty.";
-                } else if (!schema->cpp_type.has_value() ||
-                           schema->cpp_type->name != integer_scalar_cpp_type_.data()) {
-                    auto replacement{*schema};
+                    schema_edit_message_ = "Enter a C++ representation before enabling emission.";
+                } else {
                     replacement.cpp_type = codegen::TypeRef{.name = integer_scalar_cpp_type_.data(),
                                                             .suffix = {},
                                                             .nested = std::nullopt};
-                    if (apply_document_edit(ReplaceIntegerScalar{
-                            .declaration = *declaration, .schema = std::move(replacement)})) {
-                        integer_scalar_editor_declaration_.reset();
-                        return true;
-                    }
                 }
             }
-            auto emit_name_lookup{schema->cpp_emission ==
-                                  codegen::IntegerScalarCppEmission::constants_with_names};
-            if (ImGui::Checkbox("Emit value-to-name lookup", &emit_name_lookup)) {
-                auto replacement{*schema};
-                replacement.cpp_emission =
-                    emit_name_lookup ? codegen::IntegerScalarCppEmission::constants_with_names
-                                     : codegen::IntegerScalarCppEmission::constants;
+            if (replacement.cpp_emission == codegen::IntegerScalarCppEmission::none ||
+                replacement.cpp_type.has_value()) {
                 if (apply_document_edit(ReplaceIntegerScalar{.declaration = *declaration,
                                                              .schema = std::move(replacement)})) {
                     integer_scalar_editor_declaration_.reset();
                     return true;
                 }
             }
-            text_disabled_wrapped(
-                "Named codes emit as <Scalar>_<Code>; lookup returns an empty view "
-                "for unnamed values.");
-        } else {
-            text_disabled_wrapped("No C++ scalar type or constants are emitted for this domain.");
         }
+        detail::prepare_property_input("C++ representation");
+        auto const submitted{ImGui::InputText("##scalar-cpp-representation",
+                                              integer_scalar_cpp_type_.data(),
+                                              integer_scalar_cpp_type_.size(),
+                                              ImGuiInputTextFlags_EnterReturnsTrue)};
+        if ((submitted || ImGui::IsItemDeactivatedAfterEdit()) &&
+            schema->cpp_emission != codegen::IntegerScalarCppEmission::none) {
+            auto replacement{*schema};
+            replacement.cpp_type = codegen::TypeRef{
+                .name = integer_scalar_cpp_type_.data(), .suffix = {}, .nested = std::nullopt};
+            if (apply_document_edit(ReplaceIntegerScalar{.declaration = *declaration,
+                                                         .schema = std::move(replacement)})) {
+                integer_scalar_editor_declaration_.reset();
+                return true;
+            }
+        }
+        text_disabled_wrapped(
+            "Alias emits using Scalar = Representation; it does not create a distinct C++ type. "
+            "Constants modes require named codes. LispB scalar identity is unchanged.");
     }
     if (detail::section("Semantic relationship", false)) {
         auto const current_kind{semantic_relationship_kinds[static_cast<std::size_t>(

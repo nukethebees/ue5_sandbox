@@ -477,6 +477,9 @@ class TypeGraphBuilder {
                     type.bit_width =
                         source.bit_width.value_or(*codegen::minimum_packed_integer_bits(
                             required_minimum, required_maximum, source.signedness));
+                    if (source.cpp_type.has_value()) {
+                        type.cpp_representation = resolve_ref(*source.cpp_type, module_name);
+                    }
                     if (source.relationship.has_value()) {
                         auto target{resolve_ref(source.relationship->target, module_name)};
                         if (graph_.types_[target.type.value].identity.origin !=
@@ -562,7 +565,9 @@ class TypeGraphBuilder {
                                     .invalid_raw_value = source.invalid_value,
                                     .byte_order = source.byte_order,
                                     .bit_order = source.bit_order.value_or(
-                                        codegen::PackedBitOrder::least_significant_first)};
+                                        codegen::PackedBitOrder::least_significant_first),
+                                    .default_raw_value = codegen::detail::packed_default_value(
+                                        source, manifest_.types, manifest_.modules)};
                     type.segments.reserve(source.segments.size());
                     for (auto const& segment : source.segments) {
                         std::visit(
@@ -587,7 +592,8 @@ class TypeGraphBuilder {
                                                            ? std::optional{scalar->maximum_value}
                                                            : value.maximum_value,
                                         .named_codes = {},
-                                        .relationship = std::nullopt};
+                                        .relationship = std::nullopt,
+                                        .default_value = value.default_value};
                                     auto const& codes{scalar.has_value() ? scalar->named_codes
                                                                          : value.named_codes};
                                     for (auto const& code : codes) {
@@ -958,6 +964,9 @@ class TypeGraphBuilder {
                             add_dependency(node, input.type);
                         }
                     } else if constexpr (std::is_same_v<Definition, IntegerScalarType>) {
+                        if (definition.cpp_representation.has_value()) {
+                            add_dependency(node, definition.cpp_representation->type);
+                        }
                         if (definition.relationship.has_value()) {
                             add_dependency(node, definition.relationship->target.type);
                         }

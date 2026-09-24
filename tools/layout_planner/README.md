@@ -3,6 +3,15 @@
 The memory layout planner inspects and compares physical memory layouts derived from LispB schemas.
 It is a standalone Windows application and does not depend on Unreal Engine, Qt, or C#.
 
+Use **Refresh project** after editing LispB files externally. Unsaved edits require confirmation
+before replacement; a failed reload keeps the current document. The declaration browser offers
+alphabetical **Modules** and **Files** views, with files expanded into modules and declarations.
+
+Packed tables use **R/W/RW** access labels and explain their columns on hover. Field defaults are
+editable in **Default**: blank defaults imply zero (or the packed invalid sentinel) when none are
+specified. Once any default is explicit, every field needs one for default construction; defaults
+after a gap remain editable in grey. Integer scalars offer **Alias** in their C++ output policy.
+
 See [architecture](ARCHITECTURE.md) for implementation and dependency details.
 See the [roadmap](ROADMAP.md) for the path from inspection and experiments to full LispB type
 authoring.

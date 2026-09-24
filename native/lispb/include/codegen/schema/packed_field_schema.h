@@ -29,6 +29,7 @@ struct PackedFieldSchema {
     std::optional<PackedIntegerValue> maximum_value;
     std::vector<PackedNamedCodeSchema> named_codes;
     std::optional<SemanticRelationSchema> relationship;
+    std::optional<PackedIntegerValue> default_value{};
 };
 
 } // namespace codegen

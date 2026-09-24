@@ -174,6 +174,7 @@ class PlannerUi {
                       bool use_recent_target = false,
                       std::optional<std::string> selected_target = std::nullopt) -> bool;
     void adopt_loaded_schema(layout::SchemaLoadResult loaded);
+    void refresh_project();
     void remember_recent_project(std::filesystem::path const& path);
     void refresh_analysis();
     void select_type(std::optional<lispb::schema::TypeId> type);
@@ -340,6 +341,7 @@ class PlannerUi {
     std::array<char, 128> packed_field_type_{};
     std::array<char, 32> packed_field_minimum_{};
     std::array<char, 32> packed_field_maximum_{};
+    std::array<char, 32> packed_field_default_{};
     std::array<char, 128> packed_code_name_{};
     std::array<char, 32> packed_code_value_{};
     std::array<char, 128> packed_relationship_target_{};
@@ -521,6 +523,7 @@ class PlannerUi {
     bool focus_source_view_{};
     bool reveal_source_view_{};
     bool open_project_dialog_{};
+    bool schema_file_view_{};
     bool open_new_project_dialog_{};
     bool open_save_as_dialog_{};
     bool open_export_build_root_dialog_{};
