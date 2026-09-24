@@ -98,6 +98,7 @@ Checks:
   - bugprone-throw-keyword-missing
   - bugprone-too-small-loop-variable
   - bugprone-undelegated-constructor
+  - bugprone-unhandled-self-assignment
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
