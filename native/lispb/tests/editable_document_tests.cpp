@@ -8917,6 +8917,12 @@ TEST(EditableDocument, PendingNormalModuleSerializesSpecializedDeclarations) {
     ASSERT_TRUE(edited.apply(ReplaceDeclaration{layout_id, layout}).has_value());
     ASSERT_TRUE(edited.undo().value());
     ASSERT_TRUE(edited.redo().value());
+    auto internal_reference{layout};
+    internal_reference.value_types.back().input_types.push_back(codegen::TypeRef{"FPairsf"});
+    ASSERT_TRUE(edited.apply(ReplaceDeclaration{layout_id, internal_reference}).has_value());
+    internal_reference.value_types.erase(internal_reference.value_types.begin());
+    EXPECT_FALSE(edited.apply(ReplaceDeclaration{layout_id, internal_reference}).has_value());
+    ASSERT_TRUE(edited.undo().value());
     auto const consumer_id{edited.allocate_declaration_id()};
     ASSERT_TRUE(
         edited

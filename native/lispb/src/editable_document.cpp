@@ -5230,7 +5230,16 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                             }
                         }
                         for (auto const& use : types_.type_uses()) {
-                            if (use.target.type == owned && use.declaration != info->identity) {
+                            auto const retained_local_reference{
+                                use.declaration == info->identity &&
+                                std::ranges::any_of(
+                                    candidate_types.type_uses(), [&](auto const& candidate_use) {
+                                        return candidate_use.declaration == info->identity &&
+                                               candidate_use.target.cpp_type.spelling ==
+                                                   use.target.cpp_type.spelling;
+                                    })};
+                            if (use.target.type == owned &&
+                                (use.declaration != info->identity || retained_local_reference)) {
                                 throw std::invalid_argument{
                                     "Cannot remove or rename generated type '" +
                                     types_.type(owned).cpp_spelling + "'; it is used by '" +
