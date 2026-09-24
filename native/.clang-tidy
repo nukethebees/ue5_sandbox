@@ -101,6 +101,7 @@ Checks:
   - bugprone-unhandled-self-assignment
   - bugprone-unintended-char-ostream-output
   - bugprone-unique-ptr-array-mismatch
+  - bugprone-unsafe-functions
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
