@@ -27,7 +27,6 @@ Unreal Engine 5.8 project.
   * Finish the coherent implementation and required cleanup
   * Format and review it
   * Run the smallest useful native/focused validation
-  * For native C++ changes, run the clang-tidy workflow and resolve every finding
   * Fix with focused checks then report ready
   * Only build and run what is needed.
 * A feature is **ready for integration** when its implementation is formatted, reviewed, and given
