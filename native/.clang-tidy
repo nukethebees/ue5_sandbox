@@ -252,6 +252,7 @@ Checks:
   - readability-uniqueptr-delete-release
   - performance-no-automatic-move
   - performance-no-int-to-ptr
+  - readability-braces-around-statements
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:

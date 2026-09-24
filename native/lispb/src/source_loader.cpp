@@ -1283,23 +1283,57 @@ auto parse_vector_soa(Form const& form) -> VectorSoaSchema {
 
 auto parse_normal_declaration(Form const& form) -> DeclarationSchema {
     auto const head{form.head()};
-    if (head == "enum") return parse_enum(form);
-    if (head == "integer-scalar") return parse_integer_scalar(form);
-    if (head == "linear-quantized") return parse_linear_quantized(form);
-    if (head == "integer-varint") return parse_integer_varint(form);
-    if (head == "fixed-point") return parse_fixed_point(form);
-    if (head == "mini-float") return parse_mini_float(form);
-    if (head == "optional-sentinel") return parse_optional_sentinel(form);
-    if (head == "optional-presence-bit") return parse_optional_presence_bit(form);
-    if (head == "packed-value") return parse_packed_value(form);
-    if (head == "record") return parse_record(form);
-    if (head == "union") return parse_union(form);
-    if (head == "tagged-union") return parse_tagged_union(form);
-    if (head == "struct") return parse_soa(form);
-    if (head == "vector-soa") return parse_vector_soa(form);
-    if (head == "layout") return parse_layout(form);
-    if (head == "table") return parse_table(form);
-    if (head == "facade") return parse_facade(form);
+    if (head == "enum") {
+        return parse_enum(form);
+    }
+    if (head == "integer-scalar") {
+        return parse_integer_scalar(form);
+    }
+    if (head == "linear-quantized") {
+        return parse_linear_quantized(form);
+    }
+    if (head == "integer-varint") {
+        return parse_integer_varint(form);
+    }
+    if (head == "fixed-point") {
+        return parse_fixed_point(form);
+    }
+    if (head == "mini-float") {
+        return parse_mini_float(form);
+    }
+    if (head == "optional-sentinel") {
+        return parse_optional_sentinel(form);
+    }
+    if (head == "optional-presence-bit") {
+        return parse_optional_presence_bit(form);
+    }
+    if (head == "packed-value") {
+        return parse_packed_value(form);
+    }
+    if (head == "record") {
+        return parse_record(form);
+    }
+    if (head == "union") {
+        return parse_union(form);
+    }
+    if (head == "tagged-union") {
+        return parse_tagged_union(form);
+    }
+    if (head == "struct") {
+        return parse_soa(form);
+    }
+    if (head == "vector-soa") {
+        return parse_vector_soa(form);
+    }
+    if (head == "layout") {
+        return parse_layout(form);
+    }
+    if (head == "table") {
+        return parse_table(form);
+    }
+    if (head == "facade") {
+        return parse_facade(form);
+    }
     fail(form.token.span, "unknown normal module declaration '" + std::string{head} + "'");
 }
 
