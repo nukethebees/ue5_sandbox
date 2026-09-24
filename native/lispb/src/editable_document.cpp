@@ -4190,6 +4190,8 @@ void repair_semantic_references(codegen::Manifest& manifest,
                                 LocalSoaReferencePolicy const local_soa_policy,
                                 std::string_view const new_local_name,
                                 std::size_t const destination_module_index) {
+    auto const& target_node{types.type(target)};
+    auto const target_owner{target_node.owning_declaration.value_or(target_node.identity)};
     auto const requires_local_spelling{std::ranges::any_of(types.types(), [&](auto const& node) {
         return node.identity.origin == TypeOrigin::declaration &&
                node.identity != types.type(target).identity && node.cpp_spelling == new_spelling;
@@ -4221,13 +4223,15 @@ void repair_semantic_references(codegen::Manifest& manifest,
             continue;
         }
         auto& declaration{normal->declarations.at(user_info.declaration_index)};
+        auto const effective_user_module_index{
+            user_info.identity == target_owner ? destination_module_index : user_info.module_index};
         codegen::visit_type_references(
             declaration, [&](std::string const& role, codegen::TypeRef& reference) {
                 auto const found{std::ranges::find_if(types.type_uses(), [&](auto const& use) {
                     return use.declaration == user_info.identity && use.role == role;
                 })};
                 if (found != types.type_uses().end()) {
-                    repair_ref(reference, found->target.type, user_info.module_index);
+                    repair_ref(reference, found->target.type, effective_user_module_index);
                 }
             });
 

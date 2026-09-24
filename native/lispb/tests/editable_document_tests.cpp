@@ -9053,6 +9053,83 @@ TEST(EditableDocument, GeneratedFamilyMoveAndRenamePreserveSpecializedUsers) {
     check_bindings(files.load(), "B", "Coordinates");
 }
 
+TEST(EditableDocument, SameNamespaceMoveKeepsOwnedReferencesLocalDespiteAmbiguousCppSpelling) {
+    TemporarySchema files;
+    files.write_source("modules.lispb", R"(
+(module A :header "A.h" :source "A.cpp" :namespace game
+  (layout Pairs :components (xs ys)
+    (value-type double d :input-types (FPairsf))
+    (value-type float f :input-types (FPairsf))))
+(module B :header "B.h" :source "B.cpp" :namespace game
+  (record Anchor (member value int32)))
+(module C :header "C.h" :namespace game
+  (record FPairsf (member value int32)))
+)");
+    auto document{files.load()};
+    auto const layout{declaration_id(document, "A", "Pairs", "game")};
+    auto check_binding = [&](EditableSchemaDocument const& current, std::string const& module) {
+        auto const& graph{current.types()};
+        auto const owner{
+            current.declaration(declaration_id(current, module, "Pairs", "game"))->identity};
+        auto const target{graph.find_declared(module, "FPairsf")};
+        auto const sibling{graph.find_declared(module, "FPairsd")};
+        auto const other{graph.find_declared("C", "FPairsf")};
+        ASSERT_TRUE(target.has_value());
+        ASSERT_TRUE(sibling.has_value());
+        ASSERT_TRUE(other.has_value());
+        EXPECT_NE(*target, *other);
+        EXPECT_NE(graph.type(*target).identity, owner);
+        EXPECT_EQ(graph.type(*target).owning_declaration, owner);
+        EXPECT_EQ(graph.type(*target).identity.origin, TypeOrigin::declaration);
+        EXPECT_EQ(graph.types_for_declaration(owner).size(), 2U);
+        EXPECT_FALSE(graph.find_reference({"game::FPairsf"}, module).has_value());
+
+        for (auto const id : {*target, *sibling}) {
+            auto const& storage{std::get<HomogeneousStorageType>(graph.type(id).definition)};
+            ASSERT_EQ(storage.input_types.size(), 1U);
+            EXPECT_EQ(storage.input_types.front().type, *target);
+            EXPECT_EQ(storage.input_types.front().cpp_type.spelling, "FPairsf");
+        }
+        auto const users{graph.users_of(*target)};
+        ASSERT_EQ(users.size(), 1U);
+        EXPECT_EQ(users.front(), *sibling);
+        EXPECT_TRUE(graph.users_of(*other).empty());
+        auto input_uses{std::size_t{}};
+        for (auto const& use : graph.type_uses()) {
+            if (use.declaration == owner && use.role.ends_with(" input 0")) {
+                EXPECT_EQ(use.module_name, module);
+                EXPECT_EQ(use.target.type, *target);
+                ++input_uses;
+            }
+        }
+        EXPECT_EQ(input_uses, 2U);
+    };
+    check_binding(document, "A");
+
+    auto const moved{document.apply(MoveDeclaration{layout, 1})};
+    ASSERT_TRUE(moved.has_value()) << moved.error().message;
+    ASSERT_TRUE(*moved);
+    EXPECT_EQ(declaration_id(document, "B", "Pairs", "game"), layout);
+    check_binding(document, "B");
+    auto const undone{document.undo()};
+    ASSERT_TRUE(undone.has_value()) << undone.error().message;
+    ASSERT_TRUE(*undone);
+    EXPECT_EQ(declaration_id(document, "A", "Pairs", "game"), layout);
+    check_binding(document, "A");
+    auto const redone{document.redo()};
+    ASSERT_TRUE(redone.has_value()) << redone.error().message;
+    ASSERT_TRUE(*redone);
+    check_binding(document, "B");
+    auto const preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated.find("game::FPairsf"), std::string::npos);
+    auto const saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    check_binding(document, "B");
+    check_binding(files.load(), "B");
+}
+
 TEST(EditableDocument, SameNamespaceMovePreservesRegisteredAliases) {
     TemporarySchema files;
     files.write_source("types.lispb", R"((type foo :spelling "game::Foo" :header "A.h"))");
