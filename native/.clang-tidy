@@ -92,6 +92,7 @@ Checks:
   - bugprone-suspicious-realloc-usage
   - bugprone-suspicious-semicolon
   - bugprone-suspicious-string-compare
+  - bugprone-swapped-arguments
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
