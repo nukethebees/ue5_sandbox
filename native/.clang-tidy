@@ -11,5 +11,6 @@ Checks:
   - performance-unnecessary-copy-initialization
   - bugprone-dangling-handle
   - bugprone-inaccurate-erase
+  - bugprone-undefined-memory-manipulation
 ExtraArgsBefore:
   - /EHsc
