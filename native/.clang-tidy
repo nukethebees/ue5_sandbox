@@ -15,5 +15,6 @@ Checks:
   - bugprone-suspicious-memset-usage
   - bugprone-sizeof-expression
   - bugprone-unused-raii
+  - performance-for-range-copy
 ExtraArgsBefore:
   - /EHsc
