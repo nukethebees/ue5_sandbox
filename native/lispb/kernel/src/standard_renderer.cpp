@@ -9,7 +9,7 @@ namespace {
 
 auto parameter_type(ExpandedVariant const& expanded, std::size_t const operand_index)
     -> std::string {
-    auto const type{standard_type(expanded.type)};
+    auto type{standard_type(expanded.type)};
     if (expanded.storage[operand_index] == StorageKind::scalar) {
         return type;
     }
@@ -66,7 +66,7 @@ auto signature_key(ExpandedVariant const& expanded) -> std::string {
 
 auto raw_parameter_type(ExpandedVariant const& expanded, std::size_t const operand_index)
     -> std::string {
-    auto const type{standard_type(expanded.type)};
+    auto type{standard_type(expanded.type)};
     if (expanded.storage[operand_index] == StorageKind::scalar) {
         return type;
     }

@@ -773,9 +773,9 @@ class Analyzer {
             fail(path_form.token.span, "texture path must be quoted");
             return std::nullopt;
         }
-        auto const resolved{resolver_.resolve == nullptr
-                                ? std::nullopt
-                                : resolver_.resolve(resolver_.context, path_form.token.text)};
+        auto resolved{resolver_.resolve == nullptr
+                          ? std::nullopt
+                          : resolver_.resolve(resolver_.context, path_form.token.text)};
         if (!resolved) {
             fail(path_form.token.span, "unresolved texture asset '" + path_form.token.text + "'");
             return std::nullopt;
