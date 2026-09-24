@@ -91,6 +91,7 @@ Checks:
   - bugprone-suspicious-missing-comma
   - bugprone-suspicious-realloc-usage
   - bugprone-suspicious-semicolon
+  - bugprone-suspicious-string-compare
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
