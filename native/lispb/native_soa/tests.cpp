@@ -338,7 +338,7 @@ TEST(NativeSoa, CompactViewsAndBulkAppend) {
     EXPECT_EQ(destination.num(), 2 * first);
     auto self{destination.slice(63, 65)};
     destination.append_from(self);
-    EXPECT_EQ(destination.get_view().healths()[2 * first], 63);
+    EXPECT_EQ(destination.get_view().healths()[2 * static_cast<std::size_t>(first)], 63);
     EXPECT_EQ(destination.append_from(destination.left(0)), destination.num());
     source.get_view().healths()[0] = -1;
     EXPECT_EQ(destination.get_view().healths()[0], 0);

@@ -44,13 +44,13 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     AgentAccessor agents{indexes, health_table};
     SpatialQueryManager spatial_queries{agents};
     lasers::Sim lasers{clock, combat_events, spatial_queries};
-    GameMemory game_memory{{.root_capacity_bytes = 2u * 1024u * 1024u}};
+    GameMemory game_memory{{.root_capacity_bytes = std::size_t{2} * 1024 * 1024}};
     LevelTelemetryManager telemetry_manager{
         clock,
         entity_ledger,
         lasers,
         game_memory,
-        {.block_bytes = 100u * 1024u},
+        {.block_bytes = std::size_t{100} * 1024},
     };
 
     telemetry_manager.initialise();

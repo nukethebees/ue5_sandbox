@@ -204,7 +204,7 @@ auto generate_signed_distance_field(GeneratedImage const& mask_image,
     }};
     auto const build_distances{[&](bool const target_inside) {
         std::vector<float> distances;
-        distances.resize(padded_width * padded_height);
+        distances.resize(static_cast<std::size_t>(padded_width64 * padded_height64));
         for (std::int32_t y{0}; y < padded_height; ++y) {
             auto const source_y{y - padding};
             for (std::int32_t x{0}; x < padded_width; ++x) {

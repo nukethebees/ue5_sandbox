@@ -42,5 +42,9 @@ Checks:
   - bugprone-fold-init-type
   - bugprone-forward-declaration-namespace
   - bugprone-forwarding-reference-overload
+  - bugprone-implicit-widening-of-multiplication-result
 ExtraArgsBefore:
   - /EHsc
+CheckOptions:
+  # Preserve checks on runtime products without flagging constants proven to fit.
+  bugprone-implicit-widening-of-multiplication-result.IgnoreConstantIntExpr: true
