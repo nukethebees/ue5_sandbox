@@ -17,5 +17,6 @@ Checks:
   - bugprone-unused-raii
   - performance-for-range-copy
   - performance-implicit-conversion-in-loop
+  - performance-move-constructor-init
 ExtraArgsBefore:
   - /EHsc
