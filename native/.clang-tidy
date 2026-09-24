@@ -16,5 +16,6 @@ Checks:
   - bugprone-sizeof-expression
   - bugprone-unused-raii
   - performance-for-range-copy
+  - performance-implicit-conversion-in-loop
 ExtraArgsBefore:
   - /EHsc
