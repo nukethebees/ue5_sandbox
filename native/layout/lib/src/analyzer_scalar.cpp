@@ -10,12 +10,13 @@ auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
                             std::uint64_t const element_count) -> EnumDomainAnalysis {
     auto const& enumeration{std::get<lispb::schema::EnumType>(types.type(type).definition)};
     auto const backing_type{enumeration.underlying_type.has_value()
-                                ? physical_type_spelling(types, enumeration.underlying_type->type)
+                                ? physical_type_spelling(types, *enumeration.underlying_type)
                                       .value_or(enumeration.underlying_type->cpp_type.spelling)
                                 : derived_enum_backing_type(enumeration).value_or("Unknown")};
+    auto physical{PhysicalFactsResolver{types, abi}.resolve(type)};
     EnumDomainAnalysis result{.type = type,
                               .backing_type = backing_type,
-                              .backing_facts = abi.find(backing_type),
+                              .backing_facts = physical.facts,
                               .backing_bits = std::nullopt,
                               .live_value_count = 0,
                               .reserved_value_count = 0,
@@ -31,7 +32,7 @@ auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
                               .backing_can_represent_domain = std::nullopt,
                               .unused_backing_codes = std::nullopt,
                               .enumerators = {},
-                              .diagnostics = {},
+                              .diagnostics = std::move(physical.diagnostics),
                               .aggregate = {.element_count = element_count,
                                             .total_storage_bytes = std::nullopt,
                                             .cache_line_bytes = std::nullopt,

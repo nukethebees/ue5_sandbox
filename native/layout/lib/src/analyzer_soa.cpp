@@ -57,22 +57,22 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
         result.diagnostics.push_back(
             {DiagnosticSeverity::error, "ABI profile page size must be non-zero."});
     }
-    std::uint64_t row_bytes{};
-    std::uint64_t total_bytes{};
+    std::optional<std::uint64_t> row_bytes{0};
+    std::optional<std::uint64_t> total_bytes{0};
     std::uint64_t total_pages{};
-    bool complete{true};
+
     bool pages_complete{has_page_size};
-    bool allocation_complete{true};
-    std::uint64_t allocation_offset{};
-    std::uint64_t allocation_padding{};
-    std::uint64_t allocation_alignment{1};
+    PhysicalFactsResolver resolver{types, abi, &variant};
+    std::optional<std::uint64_t> allocation_offset{0};
+    std::optional<std::uint64_t> allocation_padding{0};
+    std::optional<std::uint64_t> allocation_alignment{1};
     result.columns.reserve(soa.columns.size());
 
     for (auto const& column : soa.columns) {
         SoaColumnAnalysis column_result{
             .name = column.name,
             .semantic_type = column.semantic_type.type,
-            .schema_type = types.type(column.semantic_type.type).cpp_spelling,
+            .schema_type = column.semantic_type.cpp_type.spelling,
             .physical_type = effective_column_type(types, type, column, variant),
             .overridden = variant.overrides.soa_column_types.contains(
                 FieldOverrideId{.type = type, .field_name = column.name}),
@@ -85,11 +85,33 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
             .minimum_pages = std::nullopt,
             .complete_elements_per_page = std::nullopt,
             .cache_line_tiling = std::nullopt};
-        column_result.type_facts = abi.find(column_result.physical_type);
+        auto const physical_use{column_result.overridden ? codegen::classify_physical_type_use(
+                                                               column_result.physical_type)
+                                                         : column.semantic_type.physical};
+        if (column.kind != codegen::SoaMemberKind::array ||
+            soa.backend != codegen::SoaBackend::standard_library || physical_use.cv_qualified) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::warning,
+                 "SoA column '" + column.name +
+                     "' has an unsupported owning-storage representation."});
+        } else {
+            auto resolved{column_result.overridden
+                              ? resolver.resolve_spelling(column_result.physical_type,
+                                                          types.type(type).identity.module_name)
+                              : resolver.resolve(column.semantic_type)};
+            column_result.type_facts = resolved.facts;
+            for (auto& diagnostic : resolved.diagnostics) {
+                diagnostic.message = "SoA column '" + column.name + "': " + diagnostic.message;
+                result.diagnostics.push_back(std::move(diagnostic));
+            }
+        }
         if (!column_result.type_facts.has_value()) {
-            complete = false;
+            total_bytes.reset();
             pages_complete = false;
-            allocation_complete = false;
+            allocation_offset.reset();
+            allocation_padding.reset();
+            allocation_alignment.reset();
+            row_bytes.reset();
             result.diagnostics.push_back({DiagnosticSeverity::warning,
                                           "Unknown physical facts for SoA column '" + column.name +
                                               "' type '" + column_result.physical_type + "'."});
@@ -100,9 +122,12 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
         auto const size{column_result.type_facts->size_bytes};
         auto const alignment{column_result.type_facts->alignment_bytes};
         if (size == 0 || alignment == 0) {
-            complete = false;
+            total_bytes.reset();
             pages_complete = false;
-            allocation_complete = false;
+            allocation_offset.reset();
+            allocation_padding.reset();
+            allocation_alignment.reset();
+            row_bytes.reset();
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
                  "SoA column '" + column.name + "' has a zero-byte size or zero-byte alignment."});
@@ -111,7 +136,7 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
         }
         column_result.total_bytes = checked_multiply(size, capacity);
         if (!column_result.total_bytes.has_value()) {
-            complete = false;
+            total_bytes.reset();
             pages_complete = false;
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
@@ -142,62 +167,57 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
             }
         }
 
-        auto const next_row_bytes{checked_add(row_bytes, size)};
-        if (!next_row_bytes.has_value()) {
-            complete = false;
+        auto const row_known{row_bytes.has_value()};
+        row_bytes = row_bytes.and_then([&](auto const value) { return checked_add(value, size); });
+        if (row_known && !row_bytes.has_value()) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error, "SoA bytes per logical element overflow uint64."});
-        } else {
-            row_bytes = *next_row_bytes;
         }
-        if (column_result.total_bytes.has_value()) {
-            auto const next_total{checked_add(total_bytes, *column_result.total_bytes)};
-            if (!next_total.has_value()) {
-                complete = false;
-                result.diagnostics.push_back(
-                    {DiagnosticSeverity::error, "SoA total payload bytes overflow uint64."});
-            } else {
-                total_bytes = *next_total;
-            }
+        auto const total_known{total_bytes.has_value()};
+        total_bytes = total_bytes.and_then([&](auto const value) {
+            return column_result.total_bytes.and_then(
+                [&](auto const extent) { return checked_add(value, extent); });
+        });
+        if (total_known && !total_bytes.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "SoA total payload bytes overflow uint64."});
+        }
+        if (allocation_alignment.has_value()) {
+            allocation_alignment = std::max(*allocation_alignment, alignment);
         }
         if (allocation_strategy == SoaAllocationStrategy::aligned_contiguous) {
-            auto const aligned{align_up(allocation_offset, alignment)};
-            if (!aligned.has_value() || !column_result.total_bytes.has_value()) {
-                allocation_complete = false;
+            auto const aligned{allocation_offset.and_then(
+                [&](auto const value) { return align_up(value, alignment); })};
+            if (aligned.has_value()) {
+                column_result.allocation_offset_bytes = *aligned;
+                column_result.padding_before_bytes = *aligned - *allocation_offset;
+                allocation_padding = allocation_padding.and_then([&](auto const padding) {
+                    return checked_add(padding, *column_result.padding_before_bytes);
+                });
+            } else {
+                allocation_padding.reset();
+            }
+            auto const previous_known{allocation_offset.has_value()};
+            allocation_offset = aligned.and_then([&](auto const value) {
+                return column_result.total_bytes.and_then(
+                    [&](auto const extent) { return checked_add(value, extent); });
+            });
+            if (!allocation_offset.has_value() && previous_known) {
                 result.diagnostics.push_back(
                     {DiagnosticSeverity::error,
                      "Aligned contiguous allocation arithmetic overflows at SoA column '" +
                          column.name + "'."});
-            } else {
-                column_result.allocation_offset_bytes = *aligned;
-                column_result.padding_before_bytes = *aligned - allocation_offset;
-                auto const next_padding{
-                    checked_add(allocation_padding, *column_result.padding_before_bytes)};
-                auto const next_offset{checked_add(*aligned, *column_result.total_bytes)};
-                if (!next_padding.has_value() || !next_offset.has_value()) {
-                    allocation_complete = false;
-                    result.diagnostics.push_back(
-                        {DiagnosticSeverity::error,
-                         "Aligned contiguous allocation total overflows at SoA column '" +
-                             column.name + "'."});
-                } else {
-                    allocation_padding = *next_padding;
-                    allocation_offset = *next_offset;
-                    allocation_alignment = std::max(allocation_alignment, alignment);
-                }
             }
         }
         result.columns.push_back(std::move(column_result));
     }
 
-    if (complete) {
-        result.bytes_per_logical_element = row_bytes;
-        result.total_payload_bytes = total_bytes;
-    }
+    result.bytes_per_logical_element = row_bytes;
+    result.total_payload_bytes = total_bytes;
     if (allocation_strategy == SoaAllocationStrategy::separate_columns) {
         result.total_allocation_bytes = result.total_payload_bytes;
         result.total_alignment_padding_bytes = 0;
-    } else if (allocation_complete) {
+    } else {
         result.total_allocation_bytes = allocation_offset;
         result.total_alignment_padding_bytes = allocation_padding;
         result.allocation_alignment_bytes = allocation_alignment;
@@ -207,7 +227,7 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
     if (allocation_strategy == SoaAllocationStrategy::aligned_contiguous &&
         result.total_allocation_bytes.has_value() && has_page_size) {
         result.minimum_pages = minimum_regions(*result.total_allocation_bytes, *result.page_bytes);
-    } else if (pages_complete) {
+    } else if (pages_complete && allocation_strategy == SoaAllocationStrategy::separate_columns) {
         result.minimum_pages = total_pages;
     }
     return result;

@@ -1458,5 +1458,8 @@ class Analyzer {
 
 auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema::TypeId type)
     -> std::optional<std::string>;
+auto physical_type_spelling(lispb::schema::TypeGraph const& types,
+                            lispb::schema::ResolvedTypeRef const& use)
+    -> std::optional<std::string>;
 
 } // namespace ioj::layout

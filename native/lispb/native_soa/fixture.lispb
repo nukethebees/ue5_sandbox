@@ -2,6 +2,22 @@
   :header "native_soa_types.h"
   :backend standard-library
   :namespace ml::native_soa_fixture
+  (record Pair
+    (member x float)
+    (member y float))
+  (record Node
+    (member next (type-ref Node :suffix "*"))
+    (member weight float))
+  (record First (member other (type-ref Second :suffix "*")))
+  (record Second (member other (type-ref First :suffix "*")))
+  (record Envelope
+    (member pairs Pair :count 3)
+    (member node Node)
+    (member aligned @aligned32))
+  (struct PairRows
+    :operations (all)
+    (member pairs array Pair)
+    (member pointers array (type-ref Node :suffix "*")))
   (struct Vectors
     :operations (all)
     :vector-components (xs ys zs)

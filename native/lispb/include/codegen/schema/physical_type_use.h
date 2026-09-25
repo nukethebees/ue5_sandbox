@@ -20,6 +20,7 @@ struct PhysicalTypeUse {
     std::string object_spelling;
     std::string diagnostic;
     bool names_semantic_type{};
+    bool cv_qualified{};
 
     auto contains_value() const -> bool {
         return form == PhysicalTypeForm::value && names_semantic_type;

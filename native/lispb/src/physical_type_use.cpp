@@ -87,11 +87,15 @@ auto classify_physical_type_use(std::string_view spelling) -> PhysicalTypeUse {
                            .object_spelling = std::string{object},
                            .diagnostic = {},
                            .names_semantic_type = false};
+    result.cv_qualified = object != trim(text.substr(0, modifier));
     auto suffix{trim(text.substr(modifier))};
     while (suffix.starts_with('*')) {
         result.form = PhysicalTypeForm::object_pointer;
+        result.cv_qualified = false;
         suffix.remove_prefix(1);
-        while (consume_cv(suffix)) {}
+        while (consume_cv(suffix)) {
+            result.cv_qualified = true;
+        }
     }
     if (suffix == "&") {
         result.form = PhysicalTypeForm::lvalue_reference;

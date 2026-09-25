@@ -3,6 +3,115 @@
 namespace ioj::layout {
 namespace {
 
+TEST(SoaAnalyzer, UnknownMiddleColumnInvalidatesOnlyDependentOffsets) {
+    auto const fixture{soa_type({{"first", "float"}, {"unknown", "Opaque"}, {"last", "double"}})};
+    auto const result{Analyzer::analyze_soa(fixture.types,
+                                            fixture.type,
+                                            Variant{},
+                                            AbiProfile::host_common(),
+                                            3,
+                                            SoaAllocationStrategy::aligned_contiguous)};
+    EXPECT_EQ(result.columns[0].allocation_offset_bytes, 0);
+    EXPECT_FALSE(result.columns[1].allocation_offset_bytes.has_value());
+    EXPECT_FALSE(result.columns[2].allocation_offset_bytes.has_value());
+    EXPECT_FALSE(result.columns[2].padding_before_bytes.has_value());
+    ASSERT_TRUE(result.columns[2].type_facts.has_value());
+    EXPECT_EQ(result.columns[2].type_facts->size_bytes, sizeof(double));
+    EXPECT_EQ(result.columns[2].total_bytes, 3 * sizeof(double));
+}
+
+TEST(SoaAnalyzer, DerivesGeneratedRecordColumnFacts) {
+    codegen::NormalModuleSchema module{};
+    module.settings.name = "records";
+    module.settings.header = "Records.h";
+    module.soa_backend = codegen::SoaBackend::standard_library;
+    codegen::RecordSchema pair{};
+    pair.name = "Pair";
+    codegen::RecordMemberSchema coordinate{};
+    coordinate.type.name = "float";
+    coordinate.name = "x";
+    pair.members.push_back(coordinate);
+    coordinate.name = "y";
+    pair.members.push_back(coordinate);
+    module.declarations.emplace_back(pair);
+    codegen::SoaSchema rows{};
+    rows.name = "Rows";
+    codegen::SoaMemberSchema member{};
+    member.name = "pairs";
+    member.kind = codegen::SoaMemberKind::array;
+    member.type.name = "Pair";
+    rows.members.push_back(member);
+    module.declarations.emplace_back(rows);
+    codegen::Manifest manifest{};
+    manifest.schema_version = codegen::manifest_schema_version;
+    manifest.modules.push_back(module);
+    auto const types{lispb::schema::resolve_type_graph(manifest)};
+    auto const result{Analyzer::analyze_soa(
+        types, *types.find_declared("records", "Rows"), Variant{}, AbiProfile::host_common(), 3)};
+    EXPECT_EQ(result.total_payload_bytes, 24);
+    ASSERT_TRUE(result.columns.front().type_facts.has_value());
+    EXPECT_EQ(result.columns.front().type_facts->alignment_bytes, alignof(float));
+}
+
+TEST(SoaAnalyzer, PreservesKnownPrefixesForUnknownAndOverflowAtEveryPosition) {
+    for (auto const overflow : {false, true}) {
+        for (std::size_t uncertain{}; uncertain < 3; ++uncertain) {
+            SCOPED_TRACE(uncertain);
+            SCOPED_TRACE(overflow);
+            std::vector<std::pair<std::string, std::string>> columns{
+                {"first", "float"}, {"middle", "float"}, {"last", "float"}};
+            columns[uncertain].second = "Uncertain";
+            auto const fixture{soa_type(columns)};
+            auto profile{AbiProfile::host_common()};
+            if (overflow) {
+                TypeFacts facts{};
+                facts.size_bytes = std::numeric_limits<std::uint64_t>::max();
+                facts.alignment_bytes = 1;
+                profile.set("Uncertain", facts);
+            }
+            auto const result{Analyzer::analyze_soa(fixture.types,
+                                                    fixture.type,
+                                                    Variant{},
+                                                    profile,
+                                                    2,
+                                                    SoaAllocationStrategy::aligned_contiguous)};
+            EXPECT_FALSE(result.total_allocation_bytes.has_value());
+            for (std::size_t index{}; index < result.columns.size(); ++index) {
+                auto const& column{result.columns[index]};
+                if (index < uncertain) {
+                    EXPECT_EQ(column.allocation_offset_bytes, index * 8);
+                } else if (index > uncertain) {
+                    EXPECT_FALSE(column.allocation_offset_bytes.has_value());
+                    EXPECT_FALSE(column.padding_before_bytes.has_value());
+                    EXPECT_EQ(column.total_bytes, 8);
+                    ASSERT_TRUE(column.type_facts.has_value());
+                    EXPECT_EQ(column.type_facts->alignment_bytes, alignof(float));
+                }
+            }
+        }
+    }
+}
+
+TEST(SoaAnalyzer, CursorAdditionOverflowDoesNotInventFollowingOffsets) {
+    auto const fixture{soa_type({{"huge", "Huge"}, {"overflow", "double"}, {"last", "float"}})};
+    auto profile{AbiProfile::host_common()};
+    TypeFacts facts{};
+    facts.size_bytes = std::numeric_limits<std::uint64_t>::max() - 7;
+    facts.alignment_bytes = 8;
+    profile.set("Huge", facts);
+    auto const result{Analyzer::analyze_soa(fixture.types,
+                                            fixture.type,
+                                            Variant{},
+                                            profile,
+                                            1,
+                                            SoaAllocationStrategy::aligned_contiguous)};
+    EXPECT_EQ(result.columns[0].allocation_offset_bytes, 0);
+    EXPECT_EQ(result.columns[1].allocation_offset_bytes, facts.size_bytes);
+    EXPECT_FALSE(result.columns[2].allocation_offset_bytes.has_value());
+    EXPECT_EQ(result.columns[2].total_bytes, sizeof(float));
+    EXPECT_FALSE(result.total_allocation_bytes.has_value());
+}
+
 TEST(SoaAnalyzer, ReportsSixFloatPayloadAcrossCapacities) {
     auto const fixture{soa_type()};
     auto const abi{AbiProfile::host_common()};

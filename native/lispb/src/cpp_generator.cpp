@@ -106,6 +106,10 @@ auto declaration_emission_order(NormalModuleSchema const& module,
                         for (auto const& member : value.members) {
                             dependency(member.semantic_type);
                         }
+                    } else if constexpr (std::is_same_v<T, lispb::schema::SoaType>) {
+                        for (auto const& column : value.columns) {
+                            dependency(column.semantic_type);
+                        }
                     } else if constexpr (std::is_same_v<T, lispb::schema::UnionType> ||
                                          std::is_same_v<T, lispb::schema::TaggedUnionType>) {
                         if constexpr (std::is_same_v<T, lispb::schema::TaggedUnionType>) {

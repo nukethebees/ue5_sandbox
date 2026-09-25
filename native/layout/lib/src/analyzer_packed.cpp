@@ -10,7 +10,7 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                               std::span<RelationshipTargetFacts const> const relationship_targets)
     -> PackedAnalysis {
     auto const& packed{std::get<lispb::schema::PackedType>(types.type(type).definition)};
-    auto const schema_storage{physical_type_spelling(types, packed.storage_type.type)
+    auto const schema_storage{physical_type_spelling(types, packed.storage_type)
                                   .value_or(packed.storage_type.cpp_type.spelling)};
     PackedAnalysis result{.type = type,
                           .schema_storage_type = schema_storage,
@@ -43,7 +43,9 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                                         .complete_elements_per_page = std::nullopt,
                                         .page_straddling_elements = std::nullopt,
                                         .cache_capacity = {}}};
-    result.storage_facts = abi.find(result.storage_type);
+    auto physical{PhysicalFactsResolver{types, abi, &variant}.resolve(type)};
+    result.storage_facts = physical.facts;
+    result.diagnostics = std::move(physical.diagnostics);
     if (!result.storage_facts.has_value()) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::warning,

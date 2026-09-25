@@ -3,6 +3,21 @@
 namespace ioj::layout {
 namespace {
 
+TEST(RecordAnalyzer, PointerUseHasPointerFactsRatherThanPointeeFacts) {
+    codegen::RecordSchema record{};
+    record.name = "Record";
+    codegen::RecordMemberSchema member{};
+    member.name = "pointer";
+    member.type = {"float", "*", std::nullopt};
+    record.members.push_back(member);
+    auto const fixture{record_type({record})};
+    auto const result{
+        Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common())};
+    ASSERT_TRUE(result.members.front().element_facts.has_value());
+    EXPECT_EQ(result.members.front().element_facts->size_bytes, sizeof(float*));
+    EXPECT_EQ(result.size_bytes, sizeof(float*));
+}
+
 TEST(RecordAnalyzer, IntegerScalarAliasUsesRepresentationWithoutLosingIdentity) {
     codegen::IntegerScalarSchema scalar_schema{};
     scalar_schema.name = "Health";

@@ -6,7 +6,7 @@ auto Analyzer::analyze_record(lispb::schema::TypeGraph const& types,
                               lispb::schema::TypeId const type,
                               AbiProfile const& abi,
                               std::uint64_t const element_count) -> RecordAnalysis {
-    auto result{AggregateLayoutAnalyzer{types, abi}.analyze_record(type)};
+    auto result{PhysicalFactsResolver{types, abi}.analyze_record(type)};
     result.aggregate.element_count = element_count;
 
     auto scale = [&](std::optional<std::uint64_t> const value,
@@ -210,7 +210,7 @@ auto Analyzer::analyze_union(lispb::schema::TypeGraph const& types,
                              lispb::schema::TypeId const type,
                              AbiProfile const& abi,
                              std::uint64_t const element_count) -> UnionAnalysis {
-    auto result{AggregateLayoutAnalyzer{types, abi}.analyze_union(type)};
+    auto result{PhysicalFactsResolver{types, abi}.analyze_union(type)};
     result.aggregate.element_count = element_count;
 
     auto scale = [&](std::optional<std::uint64_t> const value,
@@ -399,7 +399,7 @@ auto Analyzer::analyze_tagged_union(lispb::schema::TypeGraph const& types,
                                     lispb::schema::TypeId const type,
                                     AbiProfile const& abi,
                                     std::uint64_t const element_count) -> TaggedUnionAnalysis {
-    auto result{AggregateLayoutAnalyzer{types, abi}.analyze_tagged_union(type)};
+    auto result{PhysicalFactsResolver{types, abi}.analyze_tagged_union(type)};
     result.aggregate.element_count = element_count;
 
     auto scale = [&](std::optional<std::uint64_t> const value,
