@@ -567,7 +567,7 @@ class PlannerUi {
     bool comparison_view_open_{true};
     bool graph_view_open_{true};
     bool graph_focus_selected_{};
-    bool graph_fit_all_{};
+    bool graph_fit_all_{true};
 };
 
 } // namespace ioj::layout_planner

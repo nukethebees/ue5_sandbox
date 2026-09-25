@@ -103,8 +103,11 @@ auto analyze_external_type(lispb::schema::TypeGraph const& types,
         if (std::ranges::any_of(diagnostics, [&](auto const& diagnostic) {
                 return diagnostic.missing_physical_type == spelling;
             })) {
-            result.blocked_declarations.push_back(
-                candidate.owning_declaration.value_or(candidate.identity));
+            auto const owner{candidate.owning_declaration.value_or(candidate.identity)};
+            if (std::ranges::find(result.blocked_declarations, owner) ==
+                result.blocked_declarations.end()) {
+                result.blocked_declarations.push_back(owner);
+            }
         }
     }
     return result;
@@ -317,6 +320,10 @@ auto declaration_status(lispb::schema::TypeGraph const& types,
         return LayoutStatus::error;
     }
     auto const& definition{types.type(type).definition};
+    if (std::holds_alternative<lispb::schema::ExternalType>(definition)) {
+        auto const physical{PhysicalFactsResolver{types, abi, &variant}.resolve(type)};
+        return status(physical.diagnostics, physical.facts.has_value());
+    }
     if (!declaration_capabilities(types.type(type)).physical_analysis_available) {
         return LayoutStatus::unknown;
     }
@@ -348,9 +355,6 @@ auto declaration_status(lispb::schema::TypeGraph const& types,
         auto const analysis{Analyzer::analyze_soa(
             types, type, variant, abi, default_capacity, allocation_strategy)};
         return status(analysis.diagnostics, analysis.total_payload_bytes.has_value());
-    }
-    if (std::holds_alternative<lispb::schema::ExternalType>(definition)) {
-        return LayoutStatus::unknown;
     }
     if (std::holds_alternative<lispb::schema::IntegerScalarType>(definition)) {
         return status(

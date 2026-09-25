@@ -32,7 +32,7 @@ struct GraphViewport {
     GraphPoint pan{};
 };
 
-auto graph_edge_labels(lispb::schema::TypeGraph const& graph,
+auto graph_edge_labels(lispb::schema::TypeGraph const& types,
                        lispb::schema::TypeId user,
                        lispb::schema::TypeId dependency) -> std::vector<std::string>;
 auto graph_label_summary(std::span<std::string const> labels) -> std::string;

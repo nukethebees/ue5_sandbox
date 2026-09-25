@@ -52,8 +52,7 @@ TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternal
     PairRows generated;
     generated.set_num(7);
     EXPECT_EQ(rows.columns[0].total_bytes, generated.pairs.size() * sizeof(generated.pairs[0]));
-    EXPECT_EQ(rows.columns[1].total_bytes,
-              generated.pointers.size() * sizeof(generated.pointers[0]));
+    EXPECT_EQ(rows.columns[1].total_bytes, generated.pointers.size() * sizeof(Node*));
 }
 
 TEST(PhysicalFacts, MissingPointeeFactsDoNotBlockPointersAndProfilesStaySeparate) {
@@ -85,6 +84,22 @@ TEST(PhysicalFacts, UnsupportedUsesAndReferenceStorageRemainUnknown) {
     profile.set("Owner", owner);
     PhysicalFactsResolver nested{types, profile};
     EXPECT_FALSE(nested.resolve_spelling("Owner::Inner").facts.has_value());
+}
+
+TEST(PhysicalFacts, PointerPolicyRetainsManualEvidence) {
+    auto const types{physical_fixture()};
+    AbiProfile profile{"assumed target"};
+    TypeFacts pointer{};
+    pointer.size_bytes = 8;
+    pointer.alignment_bytes = 8;
+    pointer.origin = FactOrigin::manual_assumption;
+    pointer.provenance = "Unverified SDK assumption";
+    profile.set("void*", pointer);
+    profile.set_object_pointer_representation("void*");
+    auto const result{PhysicalFactsResolver{types, profile}.resolve_spelling("Opaque*")};
+    ASSERT_TRUE(result.facts);
+    EXPECT_EQ(result.facts->origin, FactOrigin::manual_assumption);
+    EXPECT_TRUE(result.facts->provenance.contains(pointer.provenance));
 }
 
 TEST(PhysicalFacts, SuppliedFactsCannotSilentlyReplaceGeneratedLayout) {

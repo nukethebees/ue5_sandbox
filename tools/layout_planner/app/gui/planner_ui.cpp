@@ -2539,6 +2539,23 @@ void PlannerUi::draw_layout_panel() {
             analysis_session_.inputs.selection.declaration.has_value()
                 ? "This declaration has no semantic type or physical layout analysis."
                 : "Select a schema.");
+    } else if (auto const& external{analysis_session_.results().external_type};
+               external.has_value()) {
+        ImGui::TextWrapped("External semantic description: %s",
+                           external->semantics_known ? "known" : "unknown");
+        if (auto const& facts{external->physical.facts}; facts.has_value()) {
+            ImGui::TextWrapped("Complete-object size: %s; alignment: %s",
+                               detail::format_bytes(facts->size_bytes).c_str(),
+                               detail::format_bytes(facts->alignment_bytes).c_str());
+            ImGui::TextWrapped("Evidence: %s; source: %s",
+                               fact_origin_name(facts->origin).data(),
+                               facts->provenance.c_str());
+            ImGui::TextWrapped(
+                "Internal member layout is not described by these complete-object facts.");
+        } else {
+            draw_diagnostics(external->physical.diagnostics);
+        }
+        ImGui::TextWrapped("Inspect or supply external facts in Properties.");
     } else if (!can_analyze) {
         auto const& node{analysis_session_.inputs.workspace.types().type(*selected_type)};
         ImGui::TextWrapped("Physical layout analysis is not available for %s.",

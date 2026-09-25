@@ -187,7 +187,8 @@ auto project_graph(TypeGraph const& graph, GraphScope const& scope) -> GraphProj
 auto layout_graph(GraphProjection const& graph, std::span<GraphPoint const> sizes)
     -> std::vector<GraphPoint> {
     auto const count{graph.nodes.size()};
-    std::vector<std::vector<std::size_t>> dependencies(count), users(count);
+    std::vector<std::vector<std::size_t>> dependencies(count);
+    std::vector<std::vector<std::size_t>> users(count);
     for (auto const& edge : graph.edges) {
         dependencies[edge.user].push_back(edge.dependency);
         users[edge.dependency].push_back(edge.user);

@@ -113,7 +113,9 @@ auto PhysicalFactsResolver::facts_for(lispb::schema::ResolvedTypeRef const& use,
         if (abi_.object_pointer_representation().has_value()) {
             auto facts{abi_.find(*abi_.object_pointer_representation())};
             if (facts.has_value() && !facts->integer_signed.has_value()) {
-                facts->origin = FactOrigin::target_abi;
+                if (facts->origin != FactOrigin::manual_assumption) {
+                    facts->origin = FactOrigin::target_abi;
+                }
                 facts->provenance = "Object-pointer ABI policy for '" + abi_.name() + "' using " +
                                   *abi_.object_pointer_representation() + ": " + facts->provenance;
                 return facts;

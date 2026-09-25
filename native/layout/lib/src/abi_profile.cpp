@@ -205,6 +205,7 @@ void AbiProfile::set(std::string spelling, TypeFacts const& facts) {
     if (auto const valid{validate_type_facts(facts)}; !valid) {
         throw std::invalid_argument{"Type '" + spelling + "': " + valid.error()};
     }
+    representations_.erase(spelling);
     types_.insert_or_assign(std::move(spelling), facts);
 }
 
@@ -222,6 +223,7 @@ auto AbiProfile::object_pointer_representation() const -> std::optional<std::str
 }
 
 void AbiProfile::set_representation(std::string spelling, std::string represented_by) {
+    types_.erase(spelling);
     representations_.insert_or_assign(std::move(spelling), std::move(represented_by));
 }
 

@@ -2,9 +2,31 @@
 #include <codegen/schema/schema_version.h>
 #include <gtest/gtest.h>
 #include <ioj/layout/graph_view.hpp>
+#include <ioj/layout/schema_loader.hpp>
 
 namespace ioj::layout {
 namespace {
+
+TEST(GraphView, RealProjectModuleProjectionReducesScopeAndKeepsBoundaries) {
+    auto const loaded{load_lispb_schema(
+        std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb", "sandbox-code")};
+    ASSERT_TRUE(loaded.loaded);
+    auto const& types{loaded.document->types()};
+    auto const project{project_graph(types, {})};
+    GraphScope scope{};
+    scope.module = "native_world_aabbs";
+    auto const module{project_graph(types, scope)};
+    ASSERT_FALSE(module.nodes.empty());
+    EXPECT_LT(module.nodes.size() * 10, project.nodes.size());
+    EXPECT_TRUE(std::ranges::any_of(module.nodes, [](auto const& node) { return node.boundary; }));
+    std::vector<GraphPoint> sizes(project.nodes.size(), {240.0F, 60.0F});
+    auto const positions{layout_graph(project, sizes)};
+    auto const fit{fit_graph(positions, sizes, {1200.0F, 800.0F})};
+    for (std::size_t index{}; index < positions.size(); ++index) {
+        EXPECT_GE(positions[index][0] * fit.zoom + fit.pan[0], 0.0F);
+        EXPECT_LE((positions[index][1] + sizes[index][1]) * fit.zoom + fit.pan[1], 800.0F);
+    }
+}
 auto graph_fixture() -> lispb::schema::TypeGraph {
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;

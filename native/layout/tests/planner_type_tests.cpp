@@ -38,6 +38,9 @@ TEST(PlannerType, OpaqueExternalFactsUnblockOnlyValueDependenciesOnTheActiveTarg
     ASSERT_EQ(dependencies.size(), 1);
     auto const external{dependencies.front().types.front()};
     PlannerAnalysisSession session{types};
+    auto aliased_profile{session.primary_abi()};
+    aliased_profile.set_representation("OpaqueVector", "MissingSdkRepresentation");
+    session.set_primary_abi(std::move(aliased_profile));
     session.inputs.selection.select_type(types, external);
     ASSERT_TRUE(session.refresh(nullptr));
     ASSERT_TRUE(session.results().external_type.has_value());
@@ -61,6 +64,7 @@ TEST(PlannerType, OpaqueExternalFactsUnblockOnlyValueDependenciesOnTheActiveTarg
     EXPECT_EQ(after.physical.facts->origin, FactOrigin::manual_assumption);
     EXPECT_EQ(after.physical.facts->provenance, "SDK assumption");
     EXPECT_TRUE(after.blocked_declarations.empty());
+    EXPECT_EQ(session.status(external), LayoutStatus::available);
     auto const inventory{external_dependencies(types, &session.primary_abi())};
     EXPECT_TRUE(inventory.front().physical_facts.has_value());
     EXPECT_FALSE(inventory.front().semantics_known);
