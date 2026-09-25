@@ -6,5 +6,12 @@
 #include <cstdint>
 
 namespace ioj::sim {
-using SimTick = std::uint64_t;
+using LevelEventCount = std::uint8_t;
+
+enum class LevelMissionEventType : std::uint8_t {
+    MustSurvive = 0,
+    RequiredKill = 1,
+    IncreaseKillTarget = 2,
+};
+
 } // namespace ioj::sim

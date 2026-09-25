@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ioj/sim/collision_scalar_types.h"
 #include "ioj/sim/vectors3f.h"
 
 #include <cstdint>
@@ -8,9 +9,6 @@
 
 namespace ioj::sim::collision {
 using Vec3f = Vector3f;
-using CellIndex = std::int32_t;
-using GridCellCount = std::int32_t;
-using SphereInBoundsResult = std::uint8_t;
 
 inline constexpr float no_trace_hit{std::numeric_limits<float>::infinity()};
 

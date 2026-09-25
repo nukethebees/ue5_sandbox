@@ -1,0 +1,10 @@
+(module fighter_navigation_types
+  :header "native/simulation/include/ioj/sim/fighter_navigation_types.h"
+  :backend standard-library
+  :namespace ioj::sim::fighters
+  (enum NavigationRiskTier @native_uint8
+    (value Clear :value "0")
+    (value Nearby :value "1")
+    (value Active :value "2")
+    (value Immediate :value "3")
+    (value Count :value "4")))

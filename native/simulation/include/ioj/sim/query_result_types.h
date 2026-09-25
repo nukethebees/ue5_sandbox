@@ -6,5 +6,7 @@
 #include <cstdint>
 
 namespace ioj::sim {
-using SimTick = std::uint64_t;
+using TraceHit = std::uint8_t;
+
+using LineQueryResult = std::uint8_t;
 } // namespace ioj::sim

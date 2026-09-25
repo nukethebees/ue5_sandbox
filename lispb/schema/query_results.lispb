@@ -1,0 +1,18 @@
+(module query_results
+  :header "native/simulation/include/ioj/sim/query_result_types.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (integer-scalar TraceHit
+    :signed false
+    :minimum 0
+    :maximum 1
+    :bit-width 1
+    :cpp-type @native_uint8
+    :cpp-emission alias)
+  (integer-scalar LineQueryResult
+    :signed false
+    :minimum 0
+    :maximum 1
+    :bit-width 1
+    :cpp-type @native_uint8
+    :cpp-emission alias))

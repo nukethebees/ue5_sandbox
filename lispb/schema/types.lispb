@@ -80,6 +80,11 @@
   :header "cstdint"
   :pass-by value)
 
+(type native_uint64
+  :spelling "std::uint64_t"
+  :header "cstdint"
+  :pass-by value)
+
 (type native_level_mission_event_type
   :spelling "LevelMissionEventType"
   :header "ioj/sim/level_event_types.h"

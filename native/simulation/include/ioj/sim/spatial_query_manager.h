@@ -5,6 +5,7 @@
 #include <ioj/sim/entity_type_radii.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/line_traces.h>
+#include <ioj/sim/query_result_types.h>
 #include <span>
 
 #include <ioj/sim/query_thread_buffer_pool.h>
@@ -18,7 +19,6 @@ namespace ioj::sim {
 class AgentAccessor;
 struct SpatialQueryManager;
 struct SpatialQueryManagerTestAccess;
-using LineQueryResult = std::uint8_t;
 }
 
 namespace ml {

@@ -2,6 +2,7 @@
 
 #include "ioj/sim/collision_types.h"
 #include "ioj/sim/entity_unique_id.h"
+#include "ioj/sim/query_result_types.h"
 #include "ioj/sim/vector_types.h"
 #include "ioj/sim/vectors3f.h"
 #include "sandbox/core/native_soa/storage.h"
@@ -12,8 +13,6 @@
 #include <utility>
 
 namespace ioj::sim {
-using TraceHit = std::uint8_t;
-
 struct LineTraceResult {
     Vector3f location{};
     EntityUniqueId entity;

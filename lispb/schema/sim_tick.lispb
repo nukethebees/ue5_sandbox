@@ -1,0 +1,11 @@
+(module sim_tick
+  :header "native/simulation/include/ioj/sim/sim_tick.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (integer-scalar SimTick
+    :signed false
+    :minimum 0
+    :maximum 18446744073709551615
+    :bit-width 64
+    :cpp-type @native_uint64
+    :cpp-emission alias))

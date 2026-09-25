@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ioj/sim/collision_grid.h"
+#include "ioj/sim/fighter_navigation_types.h"
 #include "ioj/sim/trace_hits.h"
 
 #include "ioj/sim/entity_unique_id.h"
@@ -15,14 +16,6 @@
 namespace ioj::sim::fighters {
 inline constexpr std::int8_t avoidance_direction_count{8};
 inline constexpr std::int32_t separation_neighbour_limit{32};
-
-enum class NavigationRiskTier : std::uint8_t {
-    Clear,
-    Nearby,
-    Active,
-    Immediate,
-    Count,
-};
 
 struct AvoidanceFrame {
     Vector3f preferred_direction;

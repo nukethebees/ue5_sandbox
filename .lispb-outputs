@@ -31,6 +31,7 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/L
 native/simulation/include/ioj/sim/capital_entity_data.h
 native/simulation/include/ioj/sim/capital_ships/phase_interface.h
 native/simulation/include/ioj/sim/capital_spawn_data.h
+native/simulation/include/ioj/sim/collision_scalar_types.h
 native/simulation/include/ioj/sim/direct_damage_events.h
 native/simulation/include/ioj/sim/entity_cell_data.h
 native/simulation/include/ioj/sim/entity_death_info.h
@@ -40,6 +41,7 @@ native/simulation/include/ioj/sim/entity_overlaps.h
 native/simulation/include/ioj/sim/entity_type.h
 native/simulation/include/ioj/sim/entity_unique_id.h
 native/simulation/include/ioj/sim/fighter_entity_data.h
+native/simulation/include/ioj/sim/fighter_navigation_types.h
 native/simulation/include/ioj/sim/fighter_order_queue.h
 native/simulation/include/ioj/sim/fighter_orders.h
 native/simulation/include/ioj/sim/fighter_spawn_queue.h
@@ -49,6 +51,7 @@ native/simulation/include/ioj/sim/health_type.h
 native/simulation/include/ioj/sim/laser_hit_details.h
 native/simulation/include/ioj/sim/laser_soa.h
 native/simulation/include/ioj/sim/lasers/phase_interface.h
+native/simulation/include/ioj/sim/level_event_values.h
 native/simulation/include/ioj/sim/levels/level_runtime_events.h
 native/simulation/include/ioj/sim/missions/mission_fail_reason.h
 native/simulation/include/ioj/sim/missions/mission_mode.h
@@ -59,7 +62,9 @@ native/simulation/include/ioj/sim/player/laser_firing_state.h
 native/simulation/include/ioj/sim/player/phase_interface.h
 native/simulation/include/ioj/sim/player/ship_laser_mode.h
 native/simulation/include/ioj/sim/player/space_ship_common.h
+native/simulation/include/ioj/sim/query_result_types.h
 native/simulation/include/ioj/sim/rotators3f.h
+native/simulation/include/ioj/sim/sim_tick.h
 native/simulation/include/ioj/sim/spinner_entity_data.h
 native/simulation/include/ioj/sim/spinners/phase_interface.h
 native/simulation/include/ioj/sim/team.h

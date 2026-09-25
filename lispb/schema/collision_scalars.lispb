@@ -1,0 +1,34 @@
+(module collision_scalars
+  :header "native/simulation/include/ioj/sim/collision_scalar_types.h"
+  :backend standard-library
+  :namespace ioj::sim::collision
+  (integer-scalar StaticGeometryIndex
+    :signed true
+    :minimum 0
+    :maximum 2147483647
+    :bit-width 32
+    :cpp-type @native_int32
+    :cpp-emission alias
+    (code Invalid :value -1 :sentinel true))
+  (integer-scalar CellIndex
+    :signed true
+    :minimum 0
+    :maximum 2147483647
+    :bit-width 32
+    :cpp-type @native_int32
+    :cpp-emission alias
+    (code Invalid :value -1 :sentinel true))
+  (integer-scalar GridCellCount
+    :signed true
+    :minimum 0
+    :maximum 2147483647
+    :bit-width 32
+    :cpp-type @native_int32
+    :cpp-emission alias)
+  (integer-scalar SphereInBoundsResult
+    :signed false
+    :minimum 0
+    :maximum 1
+    :bit-width 1
+    :cpp-type @native_uint8
+    :cpp-emission alias))

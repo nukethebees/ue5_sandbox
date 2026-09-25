@@ -1,9 +1,7 @@
 #pragma once
 
-#include <cstdint>
+#include "ioj/sim/collision_scalar_types.h"
 
 namespace ioj::sim::collision {
-using StaticGeometryIndex = std::int32_t;
-
 inline constexpr StaticGeometryIndex invalid_static_geometry_index{-1};
 } // namespace ioj::sim::collision
