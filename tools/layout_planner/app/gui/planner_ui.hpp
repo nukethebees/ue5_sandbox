@@ -199,6 +199,8 @@ class PlannerUi {
     void draw_union_target_comparison();
     void draw_tagged_union_target_comparison();
     void draw_graph_panel();
+    void export_external_probe(lispb::schema::TypeNode const& node);
+    std::array<char, 512> external_probe_header_{};
     auto draw_element_count() -> bool;
     auto draw_access_operation() -> bool;
     void draw_packed_layout(lispb::schema::PackedType const& packed,

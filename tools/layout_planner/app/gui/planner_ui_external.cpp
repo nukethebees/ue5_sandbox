@@ -1,8 +1,49 @@
+#include <fstream>
 #include <imgui_internal.h>
+#include <ioj/layout/profile_probe.hpp>
 #include "../platform/file_dialog.hpp"
 #include "planner_ui_properties_common.hpp"
 
 namespace ioj::layout_planner {
+
+void PlannerUi::export_external_probe(TypeNode const& node) {
+    auto const& external{std::get<ExternalType>(node.definition)};
+    std::vector<std::string> headers;
+    auto const collect{[&](auto const& self, auto const& dependencies) -> void {
+        for (auto const& dependency : dependencies) {
+            if (dependency.header.has_value()) {
+                headers.push_back(*dependency.header);
+            }
+            self(self, dependency.dependencies);
+        }
+    }};
+    collect(collect, external.cpp_type.dependencies);
+    if (external_probe_header_.front() != '\0') {
+        headers.emplace_back(external_probe_header_.data());
+    }
+    auto const source{
+        profile_probe_source(std::array{codegen::native_spelling(node.cpp_spelling)}, headers)};
+    if (!source) {
+        external_facts_error_ = source.error();
+        return;
+    }
+    if (file_dialog_ == nullptr) {
+        external_facts_error_ = "Probe export requires a file dialog.";
+        return;
+    }
+    auto const chosen{file_dialog_->save_file("layout_probe.cpp", "cpp")};
+    if (!chosen) {
+        external_facts_error_ = chosen.error();
+    } else if (chosen->has_value()) {
+        std::ofstream output{**chosen, std::ios::binary | std::ios::trunc};
+        output << *source;
+        output.close();
+        external_facts_error_ = output ? "Probe source exported. Compile with the target SDK and "
+                                         "flags; run with platform, architecture and configuration "
+                                         "arguments. Import its stdout as a target profile."
+                                       : "Unable to write probe source.";
+    }
+}
 
 auto PlannerUi::export_target_profile() -> bool {
     if (file_dialog_ == nullptr) {
@@ -128,6 +169,14 @@ void PlannerUi::draw_external_facts(TypeNode const& node) {
     if (buttons.button("Export profile")) {
         static_cast<void>(export_target_profile());
     }
+    detail::prepare_property_input("Additional probe header");
+    ImGui::InputText(
+        "Additional probe header", external_probe_header_.data(), external_probe_header_.size());
+    if (ImGui::Button("Export compiler probe source")) {
+        export_external_probe(node);
+    }
+    ImGui::TextWrapped("The probe uses registered headers plus this optional SDK header. Compile "
+                       "it in the target environment, then import its profile output.");
     if (!external_facts_error_.empty()) {
         ImGui::TextWrapped("%s", external_facts_error_.c_str());
     }
