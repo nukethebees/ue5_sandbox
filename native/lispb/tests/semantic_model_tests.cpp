@@ -598,6 +598,40 @@ TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
+TEST(SemanticTypeGraph, PointerSelfReferenceIsNotByValueRecursion) {
+    codegen::Manifest const manifest{
+        .schema_version = codegen::manifest_schema_version,
+        .modules = {codegen::NormalModuleSchema{
+            .settings = codegen::ModuleSettings{.name = "records", .header = "Records.h"},
+            .declarations = {codegen::RecordSchema{
+                .name = "Node",
+                .members = {{.name = "next", .type = codegen::TypeRef{"Node", "*"}}}}}}}};
+    EXPECT_NO_THROW(static_cast<void>(resolve_type_graph(manifest)));
+}
+
+TEST(SemanticTypeGraph, ClassifiesBoundedUsesWithoutDiscardingSpelling) {
+    auto const pointer{codegen::resolve_type_use(codegen::TypeRef{"float", " const* const*"}, {})};
+    EXPECT_EQ(pointer.cpp_type.spelling, "float const* const*");
+    EXPECT_EQ(pointer.physical.form, codegen::PhysicalTypeForm::object_pointer);
+    EXPECT_EQ(pointer.physical.object_spelling, "float");
+    EXPECT_FALSE(pointer.physical.contains_value());
+    auto const value{codegen::resolve_type_use(codegen::TypeRef{"float", " const"}, {})};
+    EXPECT_TRUE(value.physical.contains_value());
+    for (auto const suffix : {"&", "&&", "* const&"}) {
+        auto const reference{codegen::resolve_type_use(codegen::TypeRef{"float", suffix}, {})};
+        EXPECT_FALSE(reference.physical.contains_value());
+        EXPECT_NE(reference.physical.form, codegen::PhysicalTypeForm::value);
+    }
+    for (auto const suffix : {"[4]", "(*)()", " Owner::*", "*[]"}) {
+        auto const unsupported{codegen::resolve_type_use(codegen::TypeRef{"float", suffix}, {})};
+        EXPECT_EQ(unsupported.physical.form, codegen::PhysicalTypeForm::unsupported) << suffix;
+        EXPECT_FALSE(unsupported.physical.diagnostic.empty());
+    }
+    auto const nested{codegen::resolve_type_use(codegen::TypeRef{"Owner", "", "Inner"}, {})};
+    EXPECT_EQ(nested.physical.object_spelling, "Owner::Inner");
+    EXPECT_FALSE(nested.physical.contains_value());
+}
+
 TEST(SemanticTypeGraph, ResolvesRawUnionAlternativesAndDependencies) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,

@@ -83,5 +83,23 @@ TEST(RecordLowering, EmitsByValueDependenciesBeforeTheirUsers) {
     EXPECT_LT(output.find("struct Position"), output.find("struct Sample"));
 }
 
+TEST(RecordLowering, ForwardDeclaresMutuallyReferringPointerRecords) {
+    Manifest const manifest{
+        .schema_version = manifest_schema_version,
+        .modules = {NormalModuleSchema{
+            .settings = ModuleSettings{.name = "records", .header = "Records.h"},
+            .declarations = {
+                RecordSchema{.name = "First",
+                             .members = {{.name = "next", .type = TypeRef{"Second", "*"}}}},
+                RecordSchema{.name = "Second",
+                             .members = {{.name = "next", .type = TypeRef{"First", "*"}}}}}}}};
+    auto const files{render_modules(lower_modules(manifest))};
+    auto const& output{files.front().content};
+    EXPECT_NE(output.find("struct First;"), std::string::npos);
+    EXPECT_NE(output.find("struct Second;"), std::string::npos);
+    EXPECT_NE(output.find("Second* next;"), std::string::npos);
+    EXPECT_NE(output.find("First* next;"), std::string::npos);
+}
+
 } // namespace
 } // namespace codegen

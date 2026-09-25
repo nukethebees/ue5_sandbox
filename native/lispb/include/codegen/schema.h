@@ -28,6 +28,7 @@
 #include <codegen/schema/packed_order.h>
 #include <codegen/schema/packed_value_schema.h>
 #include <codegen/schema/parameter_schema.h>
+#include <codegen/schema/physical_type_use.h>
 #include <codegen/schema/record_member_schema.h>
 #include <codegen/schema/record_schema.h>
 #include <codegen/schema/schema_version.h>
@@ -56,6 +57,7 @@
 namespace codegen {
 
 auto resolve_type(TypeRef const& reference, TypeRegistry const& types) -> CppType;
+auto resolve_type_use(TypeRef const& reference, TypeRegistry const& types) -> ResolvedCppTypeUse;
 auto native_spelling(std::string const& spelling) -> std::string;
 auto all_storage_operations() -> std::vector<StorageOperation>;
 

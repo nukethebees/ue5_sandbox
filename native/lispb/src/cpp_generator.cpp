@@ -21,6 +21,41 @@ namespace {
 template <typename>
 inline constexpr bool unlowered_declaration_schema{false};
 
+auto uses_forward_declaration(lispb::schema::ResolvedTypeRef const& reference,
+                              lispb::schema::TypeGraph const& graph) -> bool {
+    auto const form{reference.physical.form};
+    auto const& definition{graph.type(reference.type).definition};
+    return reference.physical.names_semantic_type &&
+           (form == PhysicalTypeForm::object_pointer ||
+            form == PhysicalTypeForm::lvalue_reference ||
+            form == PhysicalTypeForm::rvalue_reference) &&
+           (std::holds_alternative<lispb::schema::RecordType>(definition) ||
+            std::holds_alternative<lispb::schema::UnionType>(definition) ||
+            std::holds_alternative<lispb::schema::TaggedUnionType>(definition));
+}
+
+auto aggregate_forward_declarations(NormalModuleSchema const& module,
+                                    lispb::schema::TypeGraph const& graph)
+    -> detail::DeclarationEmission {
+    std::set<lispb::schema::TypeId> targets;
+    for (auto const& use : graph.type_uses()) {
+        if (use.module_name == module.settings.name &&
+            uses_forward_declaration(use.target, graph) &&
+            graph.type(use.target.type).identity.module_name == module.settings.name) {
+            targets.insert(use.target.type);
+        }
+    }
+    NodeListBuilder declarations;
+    for (auto const target : targets) {
+        auto const& node{graph.type(target)};
+        auto const keyword{std::holds_alternative<lispb::schema::UnionType>(node.definition)
+                               ? "union "
+                               : "struct "};
+        declarations.add(raw(keyword + node.identity.name + ";"));
+    }
+    return {.header = declarations.build(), .source_dependencies = false};
+}
+
 auto declaration_emission_order(NormalModuleSchema const& module,
                                 lispb::schema::TypeGraph const& graph) -> std::vector<std::size_t> {
     std::map<lispb::schema::TypeId, std::size_t> declarations;
@@ -56,6 +91,9 @@ auto declaration_emission_order(NormalModuleSchema const& module,
                 }
             }
             auto dependency = [&](lispb::schema::ResolvedTypeRef const& reference) {
+                if (uses_forward_declaration(reference, graph)) {
+                    return;
+                }
                 if (auto const found{declarations.find(reference.type)};
                     found != declarations.end()) {
                     self(self, found->second);
@@ -193,6 +231,7 @@ auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
                 if constexpr (std::is_same_v<T, NormalModuleSchema>) {
                     std::vector<detail::DeclarationEmission> emissions;
                     emissions.reserve(module.declarations.size());
+                    emissions.push_back(aggregate_forward_declarations(module, type_graph));
                     for (auto const index : declaration_emission_order(module, type_graph)) {
                         auto const& declaration{module.declarations[index]};
                         emissions.push_back(std::visit(

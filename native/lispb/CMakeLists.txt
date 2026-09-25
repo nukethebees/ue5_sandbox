@@ -28,6 +28,7 @@ target_sources(lispb-schema PRIVATE
   src/fixed_point_value.cpp
   src/packed_value_internal.cpp
   src/schema.cpp
+  src/physical_type_use.cpp
   src/soa_allocator_variants.cpp
   src/source_loader.cpp
   src/type_graph.cpp

@@ -38,6 +38,7 @@ struct TypeId {
 struct ResolvedTypeRef {
     TypeId type;
     codegen::CppType cpp_type;
+    codegen::PhysicalTypeUse physical{};
 };
 
 struct TypeUse {

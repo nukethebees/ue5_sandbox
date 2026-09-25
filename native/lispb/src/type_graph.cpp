@@ -344,14 +344,16 @@ class TypeGraphBuilder {
 
     auto resolve_ref(codegen::TypeRef const& reference, std::string const& module_name)
         -> ResolvedTypeRef {
-        auto const cpp_type{codegen::resolve_type(reference, manifest_.types)};
+        auto const resolved{codegen::resolve_type_use(reference, manifest_.types)};
         if (auto const found{graph_.find_reference(reference, module_name)}) {
-            return {.type = *found, .cpp_type = cpp_type};
+            return {.type = *found, .cpp_type = resolved.cpp_type, .physical = resolved.physical};
         }
         if (reference.name.starts_with('@')) {
             throw std::invalid_argument{"Unknown semantic type reference: " + reference.name};
         }
-        return {.type = raw_external(reference.name), .cpp_type = cpp_type};
+        return {.type = raw_external(reference.name),
+                .cpp_type = resolved.cpp_type,
+                .physical = resolved.physical};
     }
 
     auto local_declaration(std::string const& module_name, std::string const& name) const
@@ -877,6 +879,9 @@ class TypeGraphBuilder {
                 using Aggregate = std::decay_t<decltype(aggregate)>;
                 if constexpr (std::is_same_v<Aggregate, RecordType>) {
                     for (auto const& member : aggregate.members) {
+                        if (!member.semantic_type.physical.contains_value()) {
+                            continue;
+                        }
                         auto const& definition{graph_.type(member.semantic_type.type).definition};
                         if (std::holds_alternative<RecordType>(definition) ||
                             std::holds_alternative<UnionType>(definition) ||
@@ -887,6 +892,9 @@ class TypeGraphBuilder {
                     }
                 } else if constexpr (std::is_same_v<Aggregate, UnionType>) {
                     for (auto const& alternative : aggregate.alternatives) {
+                        if (!alternative.semantic_type.physical.contains_value()) {
+                            continue;
+                        }
                         auto const& definition{
                             graph_.type(alternative.semantic_type.type).definition};
                         if (std::holds_alternative<RecordType>(definition) ||
@@ -898,6 +906,9 @@ class TypeGraphBuilder {
                     }
                 } else if constexpr (std::is_same_v<Aggregate, TaggedUnionType>) {
                     for (auto const& alternative : aggregate.alternatives) {
+                        if (!alternative.semantic_type.physical.contains_value()) {
+                            continue;
+                        }
                         auto const& definition{
                             graph_.type(alternative.semantic_type.type).definition};
                         if (std::holds_alternative<RecordType>(definition) ||
@@ -909,7 +920,9 @@ class TypeGraphBuilder {
                     }
                 } else if constexpr (std::is_same_v<Aggregate, StaticTableType>) {
                     for (auto const& column : aggregate.columns) {
-                        validate_aggregate_cycle(column.semantic_type.type, states, path);
+                        if (column.semantic_type.physical.contains_value()) {
+                            validate_aggregate_cycle(column.semantic_type.type, states, path);
+                        }
                     }
                 }
             },

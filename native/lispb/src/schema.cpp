@@ -45,7 +45,7 @@ auto external_scalar_schema(TypeRegistry const& types, std::string const& spelli
     return result;
 }
 
-auto resolve_type(TypeRef const& reference, TypeRegistry const& types) -> CppType {
+auto resolve_type_use(TypeRef const& reference, TypeRegistry const& types) -> ResolvedCppTypeUse {
     CppType result;
     if (reference.name.starts_with('@')) {
         auto const key{reference.name.substr(1)};
@@ -68,11 +68,20 @@ auto resolve_type(TypeRef const& reference, TypeRegistry const& types) -> CppTyp
             result.dependencies.push_back({reference.name, "cstdint", {}});
         }
     }
+    auto const base{classify_physical_type_use(result.spelling)};
     if (reference.nested.has_value()) {
         result.spelling += "::" + *reference.nested;
     }
     result.spelling += reference.suffix;
-    return result;
+    auto physical{classify_physical_type_use(result.spelling)};
+    physical.names_semantic_type = !reference.nested.has_value() &&
+                                   physical.object_spelling == base.object_spelling &&
+                                   base.form == PhysicalTypeForm::value;
+    return {.cpp_type = std::move(result), .physical = std::move(physical)};
+}
+
+auto resolve_type(TypeRef const& reference, TypeRegistry const& types) -> CppType {
+    return resolve_type_use(reference, types).cpp_type;
 }
 
 auto native_spelling(std::string const& spelling) -> std::string {
