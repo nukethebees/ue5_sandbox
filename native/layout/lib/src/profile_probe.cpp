@@ -26,35 +26,52 @@ auto probe_error(std::string const& spelling, codegen::PhysicalTypeUse const& us
 
 } // namespace
 
-auto external_probe_types(lispb::schema::TypeGraph const& types, lispb::schema::TypeId selected)
-    -> ExternalProbeTypes {
-    ExternalProbeTypes result;
+auto external_probe_request(lispb::schema::TypeGraph const& types, lispb::schema::TypeId selected)
+    -> ExternalProbeRequest {
+    ExternalProbeRequest result;
     auto const& node{types.type(selected)};
-    if (!std::holds_alternative<lispb::schema::ExternalType>(node.definition)) {
+    auto const* external{std::get_if<lispb::schema::ExternalType>(&node.definition)};
+    if (external == nullptr) {
         result.diagnostics.push_back("Compiler probe selection must be an external type.");
         return result;
     }
     std::set<std::string> spellings;
+    std::set<std::string> headers;
     std::set<std::string> diagnostics;
-    auto const collect{[&](std::string const& spelling, codegen::PhysicalTypeUse const& use) {
-        if (auto const error{probe_error(spelling, use)}) {
-            diagnostics.insert(*error);
-        } else {
-            spellings.insert(codegen::native_spelling(spelling));
+    auto const collect_headers{[&](auto const& self, auto const& dependencies) -> void {
+        for (auto const& dependency : dependencies) {
+            if (dependency.header.has_value()) {
+                headers.insert(*dependency.header);
+            }
+            self(self, dependency.dependencies);
         }
     }};
-    collect(node.cpp_spelling, codegen::classify_physical_type_use(node.cpp_spelling));
+    auto const collect{[&](codegen::CppType const& cpp_type, codegen::PhysicalTypeUse const& use) {
+        if (auto const error{probe_error(cpp_type.spelling, use)}) {
+            diagnostics.insert(*error);
+        } else {
+            spellings.insert(codegen::native_spelling(cpp_type.spelling));
+            collect_headers(collect_headers, cpp_type.dependencies);
+        }
+    }};
+    collect_headers(collect_headers, external->cpp_type.dependencies);
+    collect(external->cpp_type, codegen::classify_physical_type_use(node.cpp_spelling));
     for (auto const& dependency : external_dependencies(types)) {
         if (std::ranges::find(dependency.types, selected) == dependency.types.end()) {
             continue;
         }
+        for (auto const type : dependency.types) {
+            auto const& grouped{std::get<lispb::schema::ExternalType>(types.type(type).definition)};
+            collect_headers(collect_headers, grouped.cpp_type.dependencies);
+        }
         for (auto const index : dependency.uses) {
             auto const& use{types.type_uses()[index]};
-            collect(use.target.cpp_type.spelling, use.target.physical);
+            collect(use.target.cpp_type, use.target.physical);
         }
         break;
     }
     result.spellings.assign(spellings.begin(), spellings.end());
+    result.headers.assign(headers.begin(), headers.end());
     result.diagnostics.assign(diagnostics.begin(), diagnostics.end());
     return result;
 }

@@ -7,23 +7,12 @@
 namespace ioj::layout_planner {
 
 void PlannerUi::export_external_probe(TypeNode const& node) {
-    auto const& external{std::get<ExternalType>(node.definition)};
-    std::vector<std::string> headers;
-    auto const collect{[&](auto const& self, auto const& dependencies) -> void {
-        for (auto const& dependency : dependencies) {
-            if (dependency.header.has_value()) {
-                headers.push_back(*dependency.header);
-            }
-            self(self, dependency.dependencies);
-        }
-    }};
-    collect(collect, external.cpp_type.dependencies);
-    if (external_probe_header_.front() != '\0') {
-        headers.emplace_back(external_probe_header_.data());
-    }
     auto const& types{analysis_session_.inputs.workspace.types()};
-    auto const probe{external_probe_types(types, *types.find(node.identity))};
-    auto const source{profile_probe_source(probe.spellings, headers)};
+    auto probe{external_probe_request(types, *types.find(node.identity))};
+    if (external_probe_header_.front() != '\0') {
+        probe.headers.emplace_back(external_probe_header_.data());
+    }
+    auto const source{profile_probe_source(probe.spellings, probe.headers)};
     if (!source) {
         external_facts_error_ = source.error();
         return;

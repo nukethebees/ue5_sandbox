@@ -20,6 +20,8 @@ auto main(int argc, char** argv) -> int {
         codegen::RegisteredTypeSchema registered{};
         registered.cpp_type = codegen::CppType{"std::array<float, 3>"};
         manifest.types.emplace("external", registered);
+        registered.cpp_type = codegen::CppType{"std::array<float, 3>", "array"};
+        manifest.types.emplace("external_sdk", registered);
         codegen::NormalModuleSchema module{};
         module.settings.name = "probe";
         module.settings.header = "probe.h";
@@ -28,16 +30,15 @@ auto main(int argc, char** argv) -> int {
         for (auto const suffix : {"", "*", "**", " const*"}) {
             codegen::RecordMemberSchema member{};
             member.name = "value" + std::to_string(record.members.size());
-            member.type = codegen::TypeRef{"@external", suffix, std::nullopt};
+            member.type = codegen::TypeRef{"@external_sdk", suffix, std::nullopt};
             record.members.push_back(member);
         }
         module.declarations.push_back(record);
         manifest.modules.emplace_back(module);
         auto const graph{lispb::schema::resolve_type_graph(manifest)};
         auto const selected{graph.find_registered("external")};
-        auto const probe{ioj::layout::external_probe_types(graph, *selected)};
-        auto const source{
-            ioj::layout::profile_probe_source(probe.spellings, std::array{std::string{"array"}})};
+        auto const probe{ioj::layout::external_probe_request(graph, *selected)};
+        auto const source{ioj::layout::profile_probe_source(probe.spellings, probe.headers)};
         if (!source) {
             std::cerr << source.error();
             return 1;

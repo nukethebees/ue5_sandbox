@@ -52,7 +52,7 @@ TEST(ProfileProbe, CollectsExactExternalUsesWithoutLosingCvOrUnsupportedDiagnost
     manifest.modules.emplace_back(module);
     auto const types{lispb::schema::resolve_type_graph(manifest)};
     auto const selected{*types.find_registered("external")};
-    auto const probe{external_probe_types(types, selected)};
+    auto const probe{external_probe_request(types, selected)};
     EXPECT_EQ(probe.spellings,
               (std::vector<std::string>{"sdk::ExternalValue",
                                         "sdk::ExternalValue const*",
@@ -71,7 +71,7 @@ TEST(ProfileProbe, CollectsExactExternalUsesWithoutLosingCvOrUnsupportedDiagnost
     })};
     ASSERT_NE(external, inventory.end());
     EXPECT_EQ(external->uses.size(), 13);
-    auto const repeated{external_probe_types(types, selected)};
+    auto const repeated{external_probe_request(types, selected)};
     EXPECT_EQ(repeated.spellings, probe.spellings);
     EXPECT_EQ(repeated.diagnostics, probe.diagnostics);
 }
@@ -88,6 +88,97 @@ TEST(ProfileProbe, UnsupportedCompleteObjectSubjectsAreRejectedBeforeExport) {
         auto const result{profile_probe_source(std::array{std::string{spelling}}, {})};
         ASSERT_FALSE(result) << spelling;
         EXPECT_TRUE(result.error().contains(spelling));
+    }
+}
+
+TEST(ProfileProbe, UnionsHeadersAcrossAlternateRegistrationsAndNestedDependencies) {
+    codegen::Manifest manifest{};
+    manifest.schema_version = codegen::manifest_schema_version;
+    codegen::RegisteredTypeSchema registered{};
+    registered.cpp_type = codegen::CppType{"sdk::ExternalValue"};
+    manifest.types.emplace("external_a", registered);
+    registered.cpp_type.dependencies = {
+        {"sdk::ExternalValue",
+         "sdk/external_value.hpp",
+         {{"support", std::nullopt, {{"config", "sdk/config.hpp", {}}}},
+          {"duplicate", "sdk/external_value.hpp", {}}}}};
+    manifest.types.emplace("external_b", registered);
+    registered.cpp_type.dependencies = {{"extra", "sdk/Extra Detail.hpp", {}}};
+    manifest.types.emplace("external_unused", registered);
+    registered.cpp_type = codegen::CppType{"sdk::Unrelated", "unrelated.hpp"};
+    manifest.types.emplace("unrelated", registered);
+    codegen::NormalModuleSchema module{};
+    module.settings.name = "probe";
+    module.settings.header = "probe.h";
+    codegen::RecordSchema record{};
+    record.name = "Uses";
+    codegen::RecordMemberSchema member{};
+    member.name = "pointer";
+    member.type = codegen::TypeRef{"@external_b", "*", std::nullopt};
+    record.members.push_back(member);
+    module.declarations.push_back(record);
+    manifest.modules.emplace_back(module);
+    auto const types{lispb::schema::resolve_type_graph(manifest)};
+    auto const selected{*types.find_registered("external_a")};
+    EXPECT_TRUE(std::get<lispb::schema::ExternalType>(types.type(selected).definition)
+                    .cpp_type.dependencies.empty());
+    ASSERT_EQ(types.type_uses().size(), 1);
+    EXPECT_FALSE(types.type_uses().front().target.cpp_type.dependencies.empty());
+    auto const request{external_probe_request(types, selected)};
+    EXPECT_EQ(request.spellings,
+              (std::vector<std::string>{"sdk::ExternalValue", "sdk::ExternalValue*"}));
+    EXPECT_EQ(request.headers,
+              (std::vector<std::string>{
+                  "sdk/Extra Detail.hpp", "sdk/config.hpp", "sdk/external_value.hpp"}));
+    EXPECT_TRUE(request.diagnostics.empty());
+    for (auto const name : {"external_a", "external_b", "external_unused"}) {
+        auto const repeated{external_probe_request(types, *types.find_registered(name))};
+        EXPECT_EQ(repeated.spellings, request.spellings);
+        EXPECT_EQ(repeated.headers, request.headers);
+        EXPECT_EQ(repeated.diagnostics, request.diagnostics);
+    }
+    auto headers{request.headers};
+    headers.push_back("sdk/external_value.hpp"); // A repeated manually supplied header.
+    auto const source{profile_probe_source(request.spellings, headers)};
+    ASSERT_TRUE(source);
+    for (auto const& header : request.headers) {
+        auto const include{"#include \"" + header + "\""};
+        auto const first{source->find(include)};
+        ASSERT_NE(first, std::string::npos);
+        EXPECT_EQ(source->find(include, first + include.size()), std::string::npos);
+    }
+}
+
+TEST(ProfileProbe, IncludesHeadersIntroducedByResolvedUses) {
+    codegen::Manifest manifest{};
+    manifest.schema_version = codegen::manifest_schema_version;
+    codegen::NormalModuleSchema module{};
+    module.settings.name = "probe";
+    module.settings.header = "probe.h";
+    codegen::RecordSchema record{};
+    record.name = "Uses";
+    codegen::RecordMemberSchema member{};
+    member.name = "pointer";
+    member.type = codegen::TypeRef{"std::uint16_t", "*", std::nullopt};
+    record.members.push_back(member);
+    module.declarations.push_back(record);
+    manifest.modules.emplace_back(module);
+    auto const types{lispb::schema::resolve_type_graph(manifest)};
+    auto const& use{types.type_uses().front()};
+    EXPECT_TRUE(std::get<lispb::schema::ExternalType>(types.type(use.target.type).definition)
+                    .cpp_type.dependencies.empty());
+    ASSERT_FALSE(use.target.cpp_type.dependencies.empty());
+    auto const request{external_probe_request(types, use.target.type)};
+    EXPECT_EQ(request.headers, (std::vector<std::string>{"cstdint"}));
+    EXPECT_EQ(request.spellings, (std::vector<std::string>{"std::uint16_t", "std::uint16_t*"}));
+}
+
+TEST(ProfileProbe, RejectsInvalidHeaderMetadataAtSourceEmission) {
+    for (auto const header :
+         {"", "sdk/\"bad.hpp", "<sdk/value.hpp>", "sdk/value.hpp\n#error bad"}) {
+        auto const source{profile_probe_source({}, std::array{std::string{header}})};
+        ASSERT_FALSE(source) << header;
+        EXPECT_TRUE(source.error().contains("Probe headers must be plain include paths"));
     }
 }
 
