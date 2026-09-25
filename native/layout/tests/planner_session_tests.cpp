@@ -4,6 +4,10 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
+#include <filesystem>
+#include <fstream>
+
 namespace ioj::layout {
 namespace {
 
@@ -353,6 +357,231 @@ TEST(PlannerSession, GraphEditsAndUndoRedoReconcileDistributionRows) {
     ASSERT_TRUE(document.redo().value());
     session.replace_types(document, raw_identity);
     EXPECT_FALSE(session.tagged_union_distributions().at(tagged_declaration).contains("Small"));
+}
+
+TEST(PlannerSession, DistributionWeightTransitionsRefreshCachedAnalysis) {
+    auto document{lispb::schema::EditableSchemaDocument::from_manifest(distribution_manifest())};
+    PlannerAnalysisSession session{document.types()};
+    for (auto const tagged : {false, true}) {
+        auto const& types{session.inputs.workspace.types()};
+        auto const type{*types.find_declared("unions", tagged ? "Tagged" : "Raw")};
+        auto const declaration{*document.find_declaration(types.type(type).identity)};
+        auto const first{std::string{tagged ? "Small" : "small"}};
+        auto const second{std::string{tagged ? "Large" : "large"}};
+        auto set = [&](std::string name, std::uint64_t const weight) {
+            return tagged
+                     ? session.set_tagged_union_distribution_weight(
+                           declaration, std::move(name), weight)
+                     : session.set_union_distribution_weight(declaration, std::move(name), weight);
+        };
+        auto weights = [&]() -> PlannerAnalysisSession::DistributionWeights const* {
+            return tagged ? session.tagged_union_distribution(declaration)
+                          : session.union_distribution(declaration);
+        };
+        auto total = [&]() -> std::optional<std::uint64_t> {
+            auto const& result{session.results()};
+            if (tagged) {
+                return result.tagged_union_distribution_analysis.has_value()
+                         ? result.tagged_union_distribution_analysis->total_weight
+                         : std::nullopt;
+            }
+            return result.union_distribution_analysis.has_value()
+                     ? result.union_distribution_analysis->total_weight
+                     : std::nullopt;
+        };
+
+        session.inputs.selection.select_type(types, type);
+        session.refresh(&document);
+        EXPECT_FALSE(set(first, 0));
+        EXPECT_EQ(weights(), nullptr);
+        EXPECT_FALSE(session.refresh(&document));
+        EXPECT_TRUE(set(first, 1));
+        EXPECT_TRUE(session.refresh(&document));
+        EXPECT_EQ(total(), 1);
+        EXPECT_FALSE(set(first, 1));
+        EXPECT_FALSE(session.refresh(&document));
+        EXPECT_TRUE(set(second, 2));
+        EXPECT_TRUE(session.refresh(&document));
+        EXPECT_EQ(total(), 3);
+        EXPECT_FALSE(set("absent", 0));
+        ASSERT_NE(weights(), nullptr);
+        EXPECT_EQ(weights()->size(), 2U);
+        EXPECT_FALSE(session.refresh(&document));
+        EXPECT_TRUE(set(first, 0));
+        ASSERT_NE(weights(), nullptr);
+        EXPECT_FALSE(weights()->contains(first));
+        EXPECT_EQ(weights()->at(second), 2);
+        EXPECT_TRUE(session.refresh(&document));
+        EXPECT_EQ(total(), 2);
+        EXPECT_TRUE(set(second, 0));
+        EXPECT_EQ(weights(), nullptr);
+        EXPECT_TRUE(session.refresh(&document));
+        EXPECT_FALSE(total().has_value());
+        EXPECT_FALSE(set(second, 0));
+        EXPECT_FALSE(session.refresh(&document));
+    }
+}
+
+class TemporaryPlannerSchema {
+  public:
+    TemporaryPlannerSchema() {
+        static int sequence{};
+        directory_ = std::filesystem::temp_directory_path() /
+                     ("planner-save-schema-" + std::to_string(++sequence));
+        std::filesystem::create_directories(directory_);
+        std::ofstream{directory_ / "types.lispb", std::ios::binary};
+        std::ofstream output{directory_ / "modules.lispb", std::ios::binary};
+        output << R"((module unions
+  :header "Unions.h"
+  (enum Kind std::uint8_t
+    (value Small :value "0")
+    (value Large :value "1"))
+  (union Earlier
+    (alternative small std::uint8_t)
+    (alternative large std::uint32_t))
+  (union Later
+    (alternative small std::uint8_t)
+    (alternative large std::uint32_t))
+  (tagged-union TaggedEarlier
+    :discriminant Kind
+    (alternative small std::uint8_t :tag Small)
+    (alternative large std::uint32_t :tag Large))
+  (tagged-union TaggedLater
+    :discriminant Kind
+    (alternative small std::uint8_t :tag Small)
+    (alternative large std::uint32_t :tag Large)))
+)";
+        std::ofstream destination{directory_ / "destination.lispb", std::ios::binary};
+        destination << R"((module destination
+  :header "Destination.h"))";
+    }
+    ~TemporaryPlannerSchema() {
+        std::error_code ignored;
+        std::filesystem::remove_all(directory_, ignored);
+    }
+    auto load() const -> lispb::schema::EditableSchemaDocument {
+        auto const modules{std::array{directory_ / "modules.lispb"}};
+        return lispb::schema::load_editable_schema_document(directory_ / "types.lispb", modules);
+    }
+    auto load_with_destination() const -> lispb::schema::EditableSchemaDocument {
+        auto const modules{
+            std::array{directory_ / "modules.lispb", directory_ / "destination.lispb"}};
+        return lispb::schema::load_editable_schema_document(directory_ / "types.lispb", modules);
+    }
+    void append_external_edit() const {
+        std::ofstream output{directory_ / "modules.lispb", std::ios::binary | std::ios::app};
+        output << "\n; external edit\n";
+    }
+  private:
+    std::filesystem::path directory_;
+};
+
+TEST(PlannerSession, SavePreservesDistributionOwnersAfterEarlierDeclarationsAreDeleted) {
+    TemporaryPlannerSchema files;
+    auto document{files.load()};
+    auto const earlier{*document.find_declaration(
+        document.types().type(*document.types().find_declared("unions", "Earlier")).identity)};
+    auto const later{*document.find_declaration(
+        document.types().type(*document.types().find_declared("unions", "Later")).identity)};
+    auto const tagged_earlier{*document.find_declaration(
+        document.types()
+            .type(*document.types().find_declared("unions", "TaggedEarlier"))
+            .identity)};
+    auto const tagged_later{*document.find_declaration(
+        document.types().type(*document.types().find_declared("unions", "TaggedLater")).identity)};
+    auto const later_identity{document.declaration(later)->identity};
+    PlannerAnalysisSession session{document.types()};
+    session.inputs.selection.select_type(
+        session.inputs.workspace.types(),
+        *session.inputs.workspace.types().find_declared("unions", "Later"));
+    session.set_union_distribution_weight(earlier, "small", 3);
+    session.set_union_distribution_weight(later, "small", 7);
+    session.set_tagged_union_distribution_weight(tagged_earlier, "Small", 5);
+    session.set_tagged_union_distribution_weight(tagged_later, "Small", 11);
+
+    ASSERT_TRUE(document.apply(lispb::schema::DeleteUnion{.declaration = earlier}).value());
+    ASSERT_TRUE(
+        document.apply(lispb::schema::DeleteTaggedUnion{.declaration = tagged_earlier}).value());
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    session.replace_types(document, later_identity);
+
+    EXPECT_FALSE(session.union_distributions().contains(earlier));
+    EXPECT_FALSE(session.tagged_union_distributions().contains(tagged_earlier));
+    EXPECT_EQ(session.union_distributions().at(later).at("small"), 7);
+    EXPECT_EQ(session.tagged_union_distributions().at(tagged_later).at("Small"), 11);
+    EXPECT_TRUE(session.refresh(&document));
+    ASSERT_TRUE(session.results().union_distribution_analysis.has_value());
+    EXPECT_EQ(session.results().union_distribution_analysis->total_weight, 7);
+
+    auto const& types{session.inputs.workspace.types()};
+    session.inputs.selection.select_type(types, *types.find_declared("unions", "TaggedLater"));
+    EXPECT_TRUE(session.refresh(&document));
+    ASSERT_TRUE(session.results().tagged_union_distribution_analysis.has_value());
+    EXPECT_EQ(session.results().tagged_union_distribution_analysis->total_weight, 11);
+}
+
+TEST(PlannerSession, FailedSaveKeepsSelectionDistributionAndCachedResult) {
+    TemporaryPlannerSchema files;
+    auto document{files.load()};
+    auto const type{*document.types().find_declared("unions", "Later")};
+    auto const identity{document.types().type(type).identity};
+    auto const declaration{*document.find_declaration(identity)};
+    PlannerAnalysisSession session{document.types()};
+    session.inputs.selection.select_type(session.inputs.workspace.types(), type);
+    ASSERT_TRUE(session.set_union_distribution_weight(declaration, "small", 9));
+    ASSERT_TRUE(session.refresh(&document));
+    ASSERT_TRUE(session.results().union_distribution_analysis.has_value());
+    EXPECT_EQ(session.results().union_distribution_analysis->total_weight, 9);
+
+    ASSERT_TRUE(document
+                    .apply(lispb::schema::RenameDeclaration{.declaration = declaration,
+                                                            .new_name = "RenamedLater"})
+                    .value());
+    auto const revision{document.revision()};
+    auto const preview{document.preview_source_updates().value()};
+    files.append_external_edit();
+    auto saved{document.save()};
+    ASSERT_FALSE(saved.has_value());
+    EXPECT_EQ(document.revision(), revision);
+    EXPECT_TRUE(document.can_undo());
+    EXPECT_EQ(document.declaration(declaration)->identity.name, "RenamedLater");
+    EXPECT_EQ(document.preview_source_updates().value()[0].updated, preview[0].updated);
+    EXPECT_EQ(session.inputs.workspace.types().type(*session.inputs.selection.type).identity,
+              identity);
+    EXPECT_EQ(session.union_distributions().at(declaration).at("small"), 9);
+    EXPECT_FALSE(session.refresh(&document));
+    ASSERT_TRUE(session.results().union_distribution_analysis.has_value());
+    EXPECT_EQ(session.results().union_distribution_analysis->total_weight, 9);
+}
+
+TEST(PlannerSession, SavedMovePreservesSelectionReferenceAndDistribution) {
+    TemporaryPlannerSchema files;
+    auto document{files.load_with_destination()};
+    auto const type{*document.types().find_declared("unions", "TaggedLater")};
+    auto const declaration{*document.find_declaration(document.types().type(type).identity)};
+    PlannerAnalysisSession session{document.types()};
+    session.inputs.selection.select_type(session.inputs.workspace.types(), type);
+    ASSERT_TRUE(session.set_tagged_union_distribution_weight(declaration, "Small", 13));
+    auto moved{document.apply(lispb::schema::MoveDeclaration{
+        .declaration = declaration, .module_index = 1, .insertion_index = std::nullopt})};
+    ASSERT_TRUE(moved.has_value()) << moved.error().message;
+    ASSERT_TRUE(*moved);
+    auto const moved_identity{document.declaration(declaration)->identity};
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    session.replace_types(document, moved_identity);
+    EXPECT_TRUE(session.refresh(&document));
+
+    auto const& types{session.inputs.workspace.types()};
+    ASSERT_TRUE(session.inputs.selection.type.has_value());
+    EXPECT_EQ(types.type(*session.inputs.selection.type).identity, moved_identity);
+    EXPECT_EQ(session.tagged_union_distributions().at(declaration).at("Small"), 13);
+    ASSERT_TRUE(session.results().tagged_union_distribution_analysis.has_value());
+    EXPECT_EQ(session.results().tagged_union_distribution_analysis->total_weight, 13);
+    auto const& tagged{std::get<lispb::schema::TaggedUnionType>(
+        types.type(*session.inputs.selection.type).definition)};
+    EXPECT_EQ(types.type(tagged.discriminant.type).identity.name, "Kind");
 }
 
 } // namespace

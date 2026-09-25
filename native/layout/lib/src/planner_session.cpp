@@ -44,6 +44,34 @@ auto reconcile_weight_keys(std::map<std::string, std::uint64_t>& weights,
     return changed || weights.size() != previous_size;
 }
 
+auto set_distribution_weight(PlannerAnalysisSession::DistributionTable& distributions,
+                             DeclarationId const declaration,
+                             std::string name,
+                             std::uint64_t const weight) -> bool {
+    auto const entry{distributions.find(declaration)};
+    if (weight == 0) {
+        if (entry == distributions.end()) {
+            return false;
+        }
+        if (entry->second.erase(name) == 0) {
+            return false;
+        }
+        if (entry->second.empty()) {
+            distributions.erase(entry);
+        }
+        return true;
+    }
+
+    if (entry != distributions.end()) {
+        auto const found{entry->second.find(name)};
+        if (found != entry->second.end() && found->second == weight) {
+            return false;
+        }
+    }
+    distributions[declaration].insert_or_assign(std::move(name), weight);
+    return true;
+}
+
 } // namespace
 
 PlannerAnalysisSession::PlannerAnalysisSession(TypeGraph types) {
@@ -99,22 +127,8 @@ auto PlannerAnalysisSession::tagged_union_distribution(DeclarationId const decla
 auto PlannerAnalysisSession::set_union_distribution_weight(DeclarationId const declaration,
                                                            std::string name,
                                                            std::uint64_t const weight) -> bool {
-    auto& weights{union_distributions_[declaration]};
-    auto const found{weights.find(name)};
-    if (found != weights.end() && found->second == weight) {
+    if (!set_distribution_weight(union_distributions_, declaration, std::move(name), weight)) {
         return false;
-    }
-    if (weight == 0) {
-        if (found == weights.end()) {
-            union_distributions_.erase(declaration);
-            return false;
-        }
-        weights.erase(found);
-        if (weights.empty()) {
-            union_distributions_.erase(declaration);
-        }
-    } else {
-        weights.insert_or_assign(std::move(name), weight);
     }
     ++union_distribution_revision_;
     return true;
@@ -124,22 +138,9 @@ auto PlannerAnalysisSession::set_tagged_union_distribution_weight(DeclarationId 
                                                                   std::string name,
                                                                   std::uint64_t const weight)
     -> bool {
-    auto& weights{tagged_union_distributions_[declaration]};
-    auto const found{weights.find(name)};
-    if (found != weights.end() && found->second == weight) {
+    if (!set_distribution_weight(
+            tagged_union_distributions_, declaration, std::move(name), weight)) {
         return false;
-    }
-    if (weight == 0) {
-        if (found == weights.end()) {
-            tagged_union_distributions_.erase(declaration);
-            return false;
-        }
-        weights.erase(found);
-        if (weights.empty()) {
-            tagged_union_distributions_.erase(declaration);
-        }
-    } else {
-        weights.insert_or_assign(std::move(name), weight);
     }
     ++tagged_distribution_revision_;
     return true;

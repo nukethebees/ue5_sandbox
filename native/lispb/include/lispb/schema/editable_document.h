@@ -429,6 +429,8 @@ class EditableSchemaDocument {
     void mark_saved();
     auto preview_source_updates() const
         -> std::expected<std::vector<SchemaSourceUpdate>, SchemaEditError>;
+    // Multi-file publication rolls back failures but is not crash-atomic. External writers can
+    // still change a source after the final content check.
     auto save() -> std::expected<std::vector<std::filesystem::path>, SchemaEditError>;
   private:
     friend auto load_editable_schema_document(std::filesystem::path const& types_path,
@@ -470,5 +472,17 @@ class EditableSchemaDocument {
 auto load_editable_schema_document(std::filesystem::path const& types_path,
                                    std::span<std::filesystem::path const> module_paths)
     -> EditableSchemaDocument;
+
+namespace detail {
+
+using SaveReplaceFile = void (*)(std::filesystem::path const&, std::filesystem::path const&);
+using SaveReplacementHook = void (*)(std::filesystem::path const&,
+                                     std::filesystem::path const&,
+                                     SaveReplaceFile);
+
+auto set_save_replacement_hook_for_testing(SaveReplacementHook hook) noexcept
+    -> SaveReplacementHook;
+
+} // namespace detail
 
 } // namespace lispb::schema

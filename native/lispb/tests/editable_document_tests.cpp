@@ -6,6 +6,7 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <set>
 #include <stdexcept>
 #include <string_view>
 #include <utility>
@@ -9575,6 +9576,314 @@ TEST(EditableDocument, VectorDeclarationEditsPreserveModuleSource) {
         std::get<codegen::NormalModuleSchema>(reloaded.manifest().modules.back())};
     auto const& vector{std::get<codegen::VectorSoaSchema>(reloaded_module.declarations.front())};
     EXPECT_EQ(vector.components, (std::vector<std::string>{"xs", "zs"}));
+}
+
+class SaveReplacementFailure {
+  public:
+    explicit SaveReplacementFailure(std::set<int> failed_calls)
+        : previous_{detail::set_save_replacement_hook_for_testing(&replace)} {
+        failed_calls_ = std::move(failed_calls);
+        calls_ = 0;
+    }
+    ~SaveReplacementFailure() { detail::set_save_replacement_hook_for_testing(previous_); }
+  private:
+    static void replace(std::filesystem::path const& source,
+                        std::filesystem::path const& destination,
+                        detail::SaveReplaceFile const real_replace) {
+        if (failed_calls_.contains(++calls_)) {
+            throw std::runtime_error{"Injected replacement failure"};
+        }
+        real_replace(source, destination);
+    }
+
+    inline static std::set<int> failed_calls_;
+    inline static int calls_{};
+    detail::SaveReplacementHook previous_{};
+};
+
+auto move_scalar_to_second_file(EditableSchemaDocument& document) -> DeclarationId {
+    auto const scalar{declaration_id(document, "authored_scalars", "OtherScalar", "authored")};
+    auto const modules{document.manifest().modules};
+    auto const destination{std::ranges::find_if(modules, [](auto const& module) {
+        return std::visit([](auto const& schema) { return schema.settings.name == "destination"; },
+                          module);
+    })};
+    EXPECT_NE(destination, modules.end());
+    auto moved{document.apply(
+        MoveDeclaration{.declaration = scalar,
+                        .module_index = static_cast<std::size_t>(destination - modules.begin()),
+                        .insertion_index = std::nullopt})};
+    EXPECT_TRUE(moved.has_value());
+    EXPECT_TRUE(moved.has_value() && *moved);
+    return scalar;
+}
+
+TEST(EditableSchemaDocument, SaveRestoresBothFilesWhenSecondPublicationFails) {
+    TemporarySchema files;
+    files.write_source("destination.lispb", R"((module destination
+  :header "Destination.h"
+  :namespace authored))");
+    auto document{files.load_with_module_source("destination.lispb")};
+    auto const original_source{files.read_source("modules.lispb")};
+    auto const original_destination{files.read_source("destination.lispb")};
+    auto const scalar{move_scalar_to_second_file(document)};
+    auto const revision{document.revision()};
+    auto const preview{document.preview_source_updates().value()};
+    ASSERT_EQ(preview.size(), 2U);
+
+    SaveReplacementFailure failure{{2}};
+    auto saved{document.save()};
+    ASSERT_FALSE(saved.has_value());
+    EXPECT_NE(saved.error().message.find("Injected replacement failure"), std::string::npos);
+    EXPECT_EQ(files.read_source("modules.lispb"), original_source);
+    EXPECT_EQ(files.read_source("destination.lispb"), original_destination);
+    EXPECT_EQ(document.declaration(scalar)->identity.module_name, "destination");
+    EXPECT_EQ(document.revision(), revision);
+    EXPECT_TRUE(document.can_undo());
+    EXPECT_EQ(document.preview_source_updates().value()[0].updated, preview[0].updated);
+    EXPECT_EQ(document.preview_source_updates().value()[1].updated, preview[1].updated);
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(scalar)->identity.module_name, "authored_scalars");
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_EQ(document.declaration(scalar)->identity.module_name, "destination");
+}
+
+TEST(EditableSchemaDocument, SaveRetainsRecoveryWhenRollbackFails) {
+    TemporarySchema files;
+    files.write_source("destination.lispb", R"((module destination
+  :header "Destination.h"
+  :namespace authored))");
+    auto document{files.load_with_module_source("destination.lispb")};
+    auto const original_source{files.read_source("modules.lispb")};
+    move_scalar_to_second_file(document);
+    auto const recovery{files.path("modules.lispb.layout-planner-recovery-1")};
+
+    SaveReplacementFailure failure{{2, 3}};
+    auto saved{document.save()};
+    ASSERT_FALSE(saved.has_value());
+    EXPECT_NE(saved.error().message.find("cannot restore"), std::string::npos);
+    EXPECT_NE(saved.error().message.find(recovery.string()), std::string::npos);
+    EXPECT_TRUE(std::filesystem::exists(recovery / "original"));
+    {
+        std::ifstream input{recovery / "original", std::ios::binary};
+        EXPECT_EQ(
+            (std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}}),
+            original_source);
+    }
+    auto retry{document.save()};
+    ASSERT_FALSE(retry.has_value());
+    EXPECT_NE(retry.error().message.find("modules.lispb"), std::string::npos);
+    EXPECT_TRUE(std::filesystem::exists(recovery / "original"));
+    files.write_source("modules.lispb", original_source);
+    ASSERT_TRUE(document.save().has_value());
+    EXPECT_TRUE(std::filesystem::exists(recovery / "original"));
+    EXPECT_FALSE(std::filesystem::exists(files.path("modules.lispb.layout-planner-recovery-2")));
+}
+
+TEST(EditableSchemaDocument, SaveRejectsExternalChangesToEveryLoadedSource) {
+    for (auto const& target : {"modules.lispb",
+                               "destination.lispb",
+                               "untouched.lispb",
+                               "types.lispb",
+                               "included.lispb",
+                               "deleted",
+                               "line-endings"}) {
+        TemporarySchema files;
+        files.write_source("destination.lispb", R"((module destination
+  :header "Destination.h"
+  :namespace authored))");
+        files.write_source("untouched.lispb", R"((module untouched
+  :header "Untouched.h"
+  :namespace authored))");
+        files.write_source("included.lispb", R"((type included
+  :spelling "authored::Included"
+  :header "Included.h"))");
+        files.write_source("types.lispb",
+                           files.read_source("types.lispb") + "\n(include \"included.lispb\")\n");
+        auto const modules{std::array{files.path("modules.lispb"),
+                                      files.path("destination.lispb"),
+                                      files.path("untouched.lispb")}};
+        auto document{load_editable_schema_document(files.path("types.lispb"), modules)};
+        auto const scalar{move_scalar_to_second_file(document)};
+        auto const revision{document.revision()};
+        auto const preview{document.preview_source_updates().value()};
+        auto const source_before{files.read_source("modules.lispb")};
+        auto const destination_before{files.read_source("destination.lispb")};
+
+        auto changed{std::string{target}};
+        if (changed == "deleted") {
+            changed = "untouched.lispb";
+            std::filesystem::remove(files.path(changed));
+        } else if (changed == "line-endings") {
+            changed = "untouched.lispb";
+            auto text{files.read_source(changed)};
+            auto const newline{text.find('\n')};
+            ASSERT_NE(newline, std::string::npos);
+            text.insert(newline, "\r");
+            files.write_source(changed, text);
+        } else {
+            files.write_source(changed, files.read_source(changed) + "\n; external edit\n");
+        }
+        auto const changed_bytes{changed == "untouched.lispb" &&
+                                         target == std::string_view{"deleted"}
+                                     ? std::string{}
+                                     : files.read_source(changed)};
+
+        auto saved{document.save()};
+        ASSERT_FALSE(saved.has_value()) << target;
+        EXPECT_NE(saved.error().message.find(changed), std::string::npos) << target;
+        EXPECT_EQ(document.revision(), revision);
+        EXPECT_TRUE(document.can_undo());
+        EXPECT_EQ(document.declaration(scalar)->identity.module_name, "destination");
+        EXPECT_EQ(document.preview_source_updates().value()[0].updated, preview[0].updated);
+        EXPECT_EQ(files.read_source("modules.lispb"),
+                  changed == "modules.lispb" ? changed_bytes : source_before);
+        EXPECT_EQ(files.read_source("destination.lispb"),
+                  changed == "destination.lispb" ? changed_bytes : destination_before);
+        if (target != std::string_view{"deleted"}) {
+            EXPECT_EQ(files.read_source(changed), changed_bytes);
+        }
+    }
+}
+
+TEST(EditableSchemaDocument, SaveKeepsDraftIdsAcrossDeletionCreationRenameAndMove) {
+    TemporarySchema files;
+    files.write_source("destination.lispb", R"((module destination
+  :header "Destination.h"
+  :namespace authored))");
+    auto document{files.load_with_module_source("destination.lispb")};
+    auto const old_id{declaration_id(document, "authored_scalars", "OtherScalar", "authored")};
+    auto const fixed_id{declaration_id(document, "authored_scalars", "SignedScalar", "authored")};
+    auto schema{*document.integer_scalar_schema(old_id)};
+    ASSERT_TRUE(document.apply(DeleteIntegerScalar{.declaration = old_id}).value());
+    auto const recreated{document.allocate_declaration_id()};
+    ASSERT_NE(recreated, old_id);
+    ASSERT_TRUE(
+        document
+            .apply(CreateIntegerScalar{.declaration = recreated,
+                                       .module_index = document.manifest().modules.size() - 1,
+                                       .schema = std::move(schema),
+                                       .insertion_index = std::nullopt})
+            .value());
+    ASSERT_TRUE(document.save().has_value());
+    EXPECT_EQ(document.declaration(old_id), nullptr);
+    EXPECT_EQ(document.declaration(recreated)->identity.module_name, "destination");
+    EXPECT_EQ(document.declaration(fixed_id)->id, fixed_id);
+    EXPECT_FALSE(document.dirty());
+    EXPECT_FALSE(document.can_undo());
+
+    ASSERT_TRUE(
+        document.apply(RenameDeclaration{.declaration = recreated, .new_name = "RecreatedScalar"})
+            .value());
+    ASSERT_TRUE(document.save().has_value());
+    EXPECT_EQ(document.declaration(recreated)->identity.name, "RecreatedScalar");
+    ASSERT_TRUE(document
+                    .apply(MoveDeclaration{
+                        .declaration = recreated, .module_index = 2, .insertion_index = 0})
+                    .has_value());
+    ASSERT_TRUE(document.save().has_value());
+    EXPECT_EQ(document.declaration(recreated)->identity.module_name, "authored_scalars");
+    auto const next{document.allocate_declaration_id()};
+    EXPECT_GT(next.value, recreated.value);
+    EXPECT_GT(next.value, old_id.value);
+}
+
+TEST(EditableSchemaDocument, SaveLeavesPreexistingRecoveryArtifactsUntouched) {
+    TemporarySchema files;
+    auto const artifact{files.path("modules.lispb.layout-planner-recovery-1")};
+    std::filesystem::create_directory(artifact);
+    files.write_source("modules.lispb.layout-planner-recovery-1/sentinel", "keep recovery");
+    files.write_source("modules.lispb.layout-planner.tmp", "keep temporary");
+    auto document{files.load()};
+    auto const scalar{declaration_id(document, "authored_scalars", "OtherScalar", "authored")};
+    ASSERT_TRUE(
+        document.apply(RenameDeclaration{.declaration = scalar, .new_name = "RenamedOtherScalar"})
+            .value());
+    ASSERT_TRUE(document.save().has_value());
+    EXPECT_EQ(files.read_source("modules.lispb.layout-planner-recovery-1/sentinel"),
+              "keep recovery");
+    EXPECT_EQ(files.read_source("modules.lispb.layout-planner.tmp"), "keep temporary");
+    EXPECT_FALSE(std::filesystem::exists(files.path("modules.lispb.layout-planner-recovery-2")));
+}
+
+TEST(EditableSchemaDocument, SaveKeepsSameNamesInDifferentModulesDistinct) {
+    TemporarySchema files;
+    files.write_source("destination.lispb", R"((module destination
+  :header "Destination.h"
+  :namespace authored))");
+    auto document{files.load_with_module_source("destination.lispb")};
+    auto const original{declaration_id(document, "authored_scalars", "OtherScalar", "authored")};
+    auto const created{document.allocate_declaration_id()};
+    auto schema{*document.integer_scalar_schema(original)};
+    ASSERT_TRUE(
+        document
+            .apply(CreateIntegerScalar{.declaration = created,
+                                       .module_index = document.manifest().modules.size() - 1,
+                                       .schema = std::move(schema),
+                                       .insertion_index = std::nullopt})
+            .value());
+    ASSERT_TRUE(document.save().has_value());
+    EXPECT_EQ(document.declaration(original)->identity.module_name, "authored_scalars");
+    EXPECT_EQ(document.declaration(created)->identity.module_name, "destination");
+    ASSERT_TRUE(document.apply(DeleteIntegerScalar{.declaration = original}).value());
+    ASSERT_TRUE(document.save().has_value());
+    EXPECT_EQ(document.declaration(original), nullptr);
+    EXPECT_EQ(document.declaration(created)->id, created);
+}
+
+TEST(EditableSchemaDocument, SavePrunesOldIdWhenDeclarationKindChanges) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const old_id{declaration_id(document, "authored_scalars", "OtherScalar", "authored")};
+    auto const module_index{document.declaration(old_id)->module_index};
+    ASSERT_TRUE(document.apply(DeleteIntegerScalar{.declaration = old_id}).value());
+    auto const new_id{document.allocate_declaration_id()};
+    ASSERT_TRUE(
+        document
+            .apply(CreateRecord{
+                .declaration = new_id,
+                .module_index = module_index,
+                .schema =
+                    codegen::RecordSchema{
+                        .name = "OtherScalar",
+                        .members = {{.name = "value", .type = codegen::TypeRef{"std::uint8_t"}}}},
+                .insertion_index = std::nullopt})
+            .value());
+    ASSERT_TRUE(document.save().has_value());
+    EXPECT_EQ(document.declaration(old_id), nullptr);
+    EXPECT_NE(document.record_schema(new_id), nullptr);
+    EXPECT_EQ(document.integer_scalar_schema(new_id), nullptr);
+}
+
+TEST(EditableSchemaDocument, SavePreservesCrLfAndVerifiesCleanDocuments) {
+    TemporarySchema files;
+    auto source{files.read_source("modules.lispb")};
+    std::string crlf;
+    for (auto const character : source) {
+        if (character == '\n') {
+            crlf += '\r';
+        }
+        crlf += character;
+    }
+    files.write_source("modules.lispb", crlf);
+    auto document{files.load()};
+    auto const scalar{declaration_id(document, "authored_scalars", "OtherScalar", "authored")};
+    ASSERT_TRUE(
+        document.apply(RenameDeclaration{.declaration = scalar, .new_name = "RenamedOtherScalar"})
+            .value());
+    ASSERT_TRUE(document.save().has_value());
+    auto const saved{files.read_source("modules.lispb")};
+    for (std::size_t index{}; index < saved.size(); ++index) {
+        if (saved[index] == '\n') {
+            EXPECT_GT(index, 0U);
+            EXPECT_EQ(saved[index - 1], '\r');
+        }
+    }
+    EXPECT_EQ(document.declaration(scalar)->identity.name, "RenamedOtherScalar");
+    files.write_source("modules.lispb", saved + "; external edit\r\n");
+    auto const clean_save{document.save()};
+    ASSERT_FALSE(clean_save.has_value());
+    EXPECT_NE(clean_save.error().message.find("modules.lispb"), std::string::npos);
 }
 
 } // namespace

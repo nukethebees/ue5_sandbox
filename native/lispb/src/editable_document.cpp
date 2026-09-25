@@ -4083,6 +4083,57 @@ void replace_file(std::filesystem::path const& source, std::filesystem::path con
 #endif
 }
 
+} // namespace
+
+namespace detail {
+
+namespace {
+SaveReplacementHook replacement_hook{};
+}
+
+auto set_save_replacement_hook_for_testing(SaveReplacementHook const hook) noexcept
+    -> SaveReplacementHook {
+    auto const previous{replacement_hook};
+    replacement_hook = hook;
+    return previous;
+}
+
+} // namespace detail
+
+namespace {
+
+void publish_file(std::filesystem::path const& source, std::filesystem::path const& destination) {
+    if (detail::replacement_hook != nullptr) {
+        detail::replacement_hook(source, destination, replace_file);
+    } else {
+        replace_file(source, destination);
+    }
+}
+
+auto create_recovery_directory(std::filesystem::path const& destination) -> std::filesystem::path {
+    for (std::uint64_t suffix{1};; ++suffix) {
+        auto directory{destination};
+        directory += ".layout-planner-recovery-" + std::to_string(suffix);
+        std::error_code error;
+        if (std::filesystem::create_directory(directory, error)) {
+            return directory;
+        }
+        if (error) {
+            throw std::filesystem::filesystem_error{
+                "Cannot create LispB recovery directory", directory, error};
+        }
+    }
+}
+
+void write_recovery_file(std::filesystem::path const& path, std::string const& bytes) {
+    std::ofstream output{path, std::ios::binary | std::ios::trunc};
+    output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    output.close();
+    if (!output) {
+        throw std::runtime_error{"Cannot write LispB recovery file: " + path.string()};
+    }
+}
+
 auto declaration_count(codegen::ModuleSchema const& module) -> std::size_t {
     auto const* normal{std::get_if<codegen::NormalModuleSchema>(&module)};
     return normal == nullptr ? 0 : normal->declarations.size();
@@ -5078,7 +5129,25 @@ auto EditableSchemaDocument::preview_source_updates() const
             updated.replace(
                 replacement.begin, replacement.end - replacement.begin, replacement.text);
         }
-        if (updated == source_files_[source_index].text) {
+        auto const& original{source_files_[source_index].text};
+        if (original.find("\r\n") != std::string::npos) {
+            auto const has_bare_line_feed{[&] {
+                for (std::size_t index{}; index < original.size(); ++index) {
+                    if (original[index] == '\n' && (index == 0 || original[index - 1] != '\r')) {
+                        return true;
+                    }
+                }
+                return false;
+            }()};
+            if (!has_bare_line_feed) {
+                for (std::size_t index{}; index < updated.size(); ++index) {
+                    if (updated[index] == '\n' && (index == 0 || updated[index - 1] != '\r')) {
+                        updated.insert(index++, 1, '\r');
+                    }
+                }
+            }
+        }
+        if (updated == original) {
             continue;
         }
         updates.push_back({.path = source_files_[source_index].path,
@@ -5094,53 +5163,148 @@ auto EditableSchemaDocument::save()
     if (!updates.has_value()) {
         return std::unexpected{std::move(updates.error())};
     }
-    if (updates->empty()) {
-        return std::vector<std::filesystem::path>{};
-    }
-
-    std::map<std::filesystem::path, std::filesystem::path> temporary_paths;
+    struct RecoveryFile {
+        std::filesystem::path destination;
+        std::filesystem::path directory;
+        std::filesystem::path staged;
+        std::filesystem::path original;
+    };
+    std::vector<RecoveryFile> recovery;
+    recovery.reserve(updates->size());
     auto cleanup{[&] {
-        std::error_code ignored;
-        for (auto const& [path, temporary] : temporary_paths) {
-            static_cast<void>(path);
-            std::filesystem::remove(temporary, ignored);
+        for (auto const& file : recovery) {
+            std::error_code ignored;
+            std::filesystem::remove_all(file.directory, ignored);
+        }
+    }};
+    auto verify_snapshots{[&] {
+        for (auto const& source : source_files_) {
+            std::error_code status_error;
+            auto const exists{std::filesystem::exists(source.path, status_error)};
+            if (status_error) {
+                throw std::runtime_error{"Cannot verify LispB source '" + source.path.string() +
+                                         "': " + status_error.message()};
+            }
+            if (!exists) {
+                throw std::runtime_error{"LispB source changed or deleted: " +
+                                         source.path.string()};
+            }
+            std::ifstream input{source.path, std::ios::binary};
+            if (!input) {
+                throw std::runtime_error{"Cannot verify LispB source '" + source.path.string() +
+                                         "': cannot open file"};
+            }
+            auto const current{std::string{std::istreambuf_iterator<char>{input},
+                                           std::istreambuf_iterator<char>{}}};
+            if (input.bad()) {
+                throw std::runtime_error{"Cannot verify LispB source '" + source.path.string() +
+                                         "': cannot read file"};
+            }
+            if (current != source.text) {
+                throw std::runtime_error{"LispB source changed externally: " +
+                                         source.path.string()};
+            }
         }
     }};
     try {
+        verify_snapshots();
+        if (updates->empty()) {
+            return std::vector<std::filesystem::path>{};
+        }
         for (auto const& update : *updates) {
-            auto temporary{update.path};
-            temporary += ".layout-planner.tmp";
-            std::error_code ignored;
-            std::filesystem::remove(temporary, ignored);
-            std::ofstream output{temporary, std::ios::binary | std::ios::trunc};
-            output.write(update.updated.data(),
-                         static_cast<std::streamsize>(update.updated.size()));
-            output.close();
-            if (!output) {
-                throw std::runtime_error{"Cannot write temporary LispB source: " +
-                                         temporary.string()};
-            }
-            temporary_paths.emplace(update.path, std::move(temporary));
+            auto directory{create_recovery_directory(update.path)};
+            recovery.push_back({.destination = update.path,
+                                .directory = directory,
+                                .staged = directory / "staged",
+                                .original = directory / "original"});
+            write_recovery_file(recovery.back().staged, update.updated);
+            write_recovery_file(recovery.back().original, update.original);
         }
 
         std::vector<std::filesystem::path> validation_modules;
         validation_modules.reserve(module_paths_.size());
         for (auto const& path : module_paths_) {
-            auto const temporary{temporary_paths.find(path)};
-            validation_modules.push_back(temporary == temporary_paths.end() ? path
-                                                                            : temporary->second);
+            auto const staged{std::ranges::find(recovery, path, &RecoveryFile::destination)};
+            validation_modules.push_back(staged == recovery.end() ? path : staged->staged);
         }
-        auto const validated{codegen::load_sources(types_path_, validation_modules)};
-        static_cast<void>(resolve_type_graph(validated));
+        auto prepared{load_editable_schema_document(types_path_, validation_modules)};
+        for (auto& source : prepared.source_files_) {
+            auto const staged{std::ranges::find(recovery, source.path, &RecoveryFile::staged)};
+            if (staged != recovery.end()) {
+                source.path = staged->destination;
+            }
+        }
+        prepared.module_paths_ = module_paths_;
+
+        using DeclarationKey = std::pair<TypeIdentity, std::size_t>;
+        auto declaration_key = [](EditableSchemaDocument const& document,
+                                  DeclarationInfo const& info) -> DeclarationKey {
+            auto const& module{std::get<codegen::NormalModuleSchema>(
+                document.manifest_.modules.at(info.module_index))};
+            return {info.identity, module.declarations.at(info.declaration_index).index()};
+        };
+        std::map<DeclarationKey, DeclarationId> draft_ids;
+        for (auto const& info : declarations_) {
+            if (!draft_ids.emplace(declaration_key(*this, info), info.id).second) {
+                throw std::logic_error{"Ambiguous draft declaration identity during save"};
+            }
+        }
+        if (prepared.declarations_.size() != draft_ids.size()) {
+            throw std::logic_error{"Saved declarations do not match the current draft"};
+        }
+        for (auto& info : prepared.declarations_) {
+            auto const found{draft_ids.find(declaration_key(prepared, info))};
+            if (found == draft_ids.end()) {
+                throw std::logic_error{"Saved declaration does not match the current draft"};
+            }
+            info.id = found->second;
+            draft_ids.erase(found);
+        }
+        if (!draft_ids.empty()) {
+            throw std::logic_error{"Saved declarations do not match the current draft"};
+        }
+        prepared.next_declaration_id_ = next_declaration_id_;
 
         std::vector<std::filesystem::path> saved;
-        saved.reserve(updates->size());
-        for (auto const& update : *updates) {
-            replace_file(temporary_paths.at(update.path), update.path);
-            saved.push_back(update.path);
+        saved.reserve(recovery.size());
+        for (auto const& file : recovery) {
+            saved.push_back(file.destination);
         }
-        auto reloaded{load_editable_schema_document(types_path_, module_paths_)};
-        *this = std::move(reloaded);
+
+        verify_snapshots();
+        std::size_t published{};
+        try {
+            for (auto const& file : recovery) {
+                publish_file(file.staged, file.destination);
+                ++published;
+            }
+        } catch (std::exception const& publication_error) {
+            auto message{std::string{"Cannot publish LispB source: "} + publication_error.what()};
+            auto rollback_failed{false};
+            while (published > 0) {
+                auto const& file{recovery[--published]};
+                try {
+                    publish_file(file.original, file.destination);
+                } catch (std::exception const& restoration_error) {
+                    rollback_failed = true;
+                    message += "; cannot restore '" + file.destination.string() +
+                               "': " + restoration_error.what();
+                }
+            }
+            if (rollback_failed) {
+                for (auto const& file : recovery) {
+                    message += "; recovery for '" + file.destination.string() +
+                               "': " + file.directory.string();
+                }
+            } else {
+                cleanup();
+            }
+            return std::unexpected{SchemaEditError{std::move(message)}};
+        }
+
+        static_assert(std::is_nothrow_move_assignable_v<EditableSchemaDocument>);
+        *this = std::move(prepared);
+        cleanup();
         return saved;
     } catch (std::exception const& error) {
         cleanup();
