@@ -52,6 +52,7 @@ Unreal Engine 5.8 project.
   to use the minimal alternative; do not repeatedly retry the broken helper.
 * You have permission to kill stale/hung processes that you spawned or were spawned in your worktree
 * Avoid chaining CLI commands that may trigger an approval request when they wouldn't individually
+* Make commits for each discrete chunk of work. Use good judgement.
 
 # Builds
 
