@@ -7,6 +7,7 @@ target_sources(native-layout-tests PRIVATE
   analyzer_soa_tests.cpp
   analyzer_common_tests.cpp
   physical_facts_tests.cpp
+  profile_probe_tests.cpp
   frame_pacer_tests.cpp
   graph_view_tests.cpp
   planner_type_tests.cpp

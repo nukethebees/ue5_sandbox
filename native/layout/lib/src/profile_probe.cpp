@@ -2,12 +2,62 @@
 
 #include <codegen/schema/physical_type_use.h>
 #include <ioj/layout/abi_profile.hpp>
+#include <ioj/layout/planner_type.hpp>
 
+#include <algorithm>
 #include <iomanip>
 #include <set>
 #include <sstream>
 
 namespace ioj::layout {
+namespace {
+
+auto probe_error(std::string const& spelling, codegen::PhysicalTypeUse const& use)
+    -> std::optional<std::string> {
+    if ((use.form != codegen::PhysicalTypeForm::value &&
+         use.form != codegen::PhysicalTypeForm::object_pointer) ||
+        (use.form == codegen::PhysicalTypeForm::value && use.object_spelling == "void") ||
+        use.object_spelling == "auto" ||
+        spelling.find_first_of(";{}\r\n\"#") != std::string::npos) {
+        return "Cannot probe unsupported complete-object spelling: " + spelling;
+    }
+    return std::nullopt;
+}
+
+} // namespace
+
+auto external_probe_types(lispb::schema::TypeGraph const& types, lispb::schema::TypeId selected)
+    -> ExternalProbeTypes {
+    ExternalProbeTypes result;
+    auto const& node{types.type(selected)};
+    if (!std::holds_alternative<lispb::schema::ExternalType>(node.definition)) {
+        result.diagnostics.push_back("Compiler probe selection must be an external type.");
+        return result;
+    }
+    std::set<std::string> spellings;
+    std::set<std::string> diagnostics;
+    auto const collect{[&](std::string const& spelling, codegen::PhysicalTypeUse const& use) {
+        if (auto const error{probe_error(spelling, use)}) {
+            diagnostics.insert(*error);
+        } else {
+            spellings.insert(codegen::native_spelling(spelling));
+        }
+    }};
+    collect(node.cpp_spelling, codegen::classify_physical_type_use(node.cpp_spelling));
+    for (auto const& dependency : external_dependencies(types)) {
+        if (std::ranges::find(dependency.types, selected) == dependency.types.end()) {
+            continue;
+        }
+        for (auto const index : dependency.uses) {
+            auto const& use{types.type_uses()[index]};
+            collect(use.target.cpp_type.spelling, use.target.physical);
+        }
+        break;
+    }
+    result.spellings.assign(spellings.begin(), spellings.end());
+    result.diagnostics.assign(diagnostics.begin(), diagnostics.end());
+    return result;
+}
 
 auto profile_probe_source(std::span<std::string const> types, std::span<std::string const> headers)
     -> std::expected<std::string, std::string> {
@@ -78,12 +128,8 @@ int main(int argc, char** argv) {
     measured.insert(types.begin(), types.end());
     for (auto const& spelling : measured) {
         auto const use{codegen::classify_physical_type_use(spelling)};
-        if ((use.form != codegen::PhysicalTypeForm::value &&
-             use.form != codegen::PhysicalTypeForm::object_pointer) ||
-            spelling == "void" || spelling == "auto" ||
-            spelling.find_first_of(";{}\r\n\"#") != std::string::npos) {
-            return std::unexpected{"Cannot probe unsupported complete-object spelling: " +
-                                   spelling};
+        if (auto const error{probe_error(spelling, use)}) {
+            return std::unexpected{*error};
         }
         source << "    emit_type<" << spelling << ">(" << std::quoted(spelling) << ");\n";
     }

@@ -21,8 +21,9 @@ void PlannerUi::export_external_probe(TypeNode const& node) {
     if (external_probe_header_.front() != '\0') {
         headers.emplace_back(external_probe_header_.data());
     }
-    auto const source{
-        profile_probe_source(std::array{codegen::native_spelling(node.cpp_spelling)}, headers)};
+    auto const& types{analysis_session_.inputs.workspace.types()};
+    auto const probe{external_probe_types(types, *types.find(node.identity))};
+    auto const source{profile_probe_source(probe.spellings, headers)};
     if (!source) {
         external_facts_error_ = source.error();
         return;
@@ -42,6 +43,11 @@ void PlannerUi::export_external_probe(TypeNode const& node) {
                                          "flags; run with platform, architecture and configuration "
                                          "arguments. Import its stdout as a target profile."
                                        : "Unable to write probe source.";
+        if (output) {
+            for (auto const& diagnostic : probe.diagnostics) {
+                external_facts_error_ += "\n" + diagnostic;
+            }
+        }
     }
 }
 
