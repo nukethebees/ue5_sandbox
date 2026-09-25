@@ -32,6 +32,53 @@ TEST(AbiProfile, ResolvesSchemaRepresentationsWithoutGuessingCycles) {
     EXPECT_FALSE(abi.find("Unknown").has_value());
 }
 
+TEST(AbiProfile, RejectsImpossibleCompleteObjectsWithoutReplacingFacts) {
+    AbiProfile profile{"test"};
+    TypeFacts facts{};
+    facts.size_bytes = 4;
+    facts.alignment_bytes = 4;
+    profile.set("Value", facts);
+    facts.size_bytes = 3;
+    EXPECT_THROW(profile.set("Value", facts), std::invalid_argument);
+    EXPECT_EQ(profile.find("Value")->size_bytes, 4);
+    auto const parsed{parse_abi_profile("ioj-layout-profile 1\nname \"test\"\ntype \"Value\" 3 4 "
+                                        "non-integer unknown \"import\"\n")};
+    EXPECT_FALSE(parsed.has_value());
+}
+
+TEST(AbiProfile, RoundTripsExtendedAlignmentOriginsAndExplicitPointerPolicy) {
+    auto profile{AbiProfile::host_common()};
+    TypeFacts aligned{};
+    aligned.size_bytes = 128;
+    aligned.alignment_bytes = 64;
+    aligned.origin = FactOrigin::manual_assumption;
+    aligned.provenance = "vendor documentation, not measured";
+    profile.set("Aligned", aligned);
+    auto const parsed{parse_abi_profile(serialize_abi_profile(profile))};
+    ASSERT_TRUE(parsed.has_value()) << parsed.error().message;
+    EXPECT_EQ(parsed->find("Aligned"), aligned);
+    EXPECT_EQ(parsed->object_pointer_representation(), profile.object_pointer_representation());
+    EXPECT_EQ(parsed->find("float")->origin, FactOrigin::compiler_probe);
+    EXPECT_THROW(profile.set_object_pointer_representation("missing"), std::invalid_argument);
+    EXPECT_THROW(profile.set_object_pointer_representation("std::uint64_t"), std::invalid_argument);
+}
+
+TEST(AbiProfile, ValidatesIntegerMetadataOnBothEntryPaths) {
+    AbiProfile profile{"test"};
+    TypeFacts facts{};
+    facts.size_bytes = 1;
+    facts.alignment_bytes = 1;
+    facts.unsigned_value_bits = 9;
+    EXPECT_THROW(profile.set("Value", facts), std::invalid_argument);
+    facts.integer_signed = false;
+    EXPECT_THROW(profile.set("Value", facts), std::invalid_argument);
+    facts.unsigned_value_bits.reset();
+    profile.set("Value", facts);
+    auto const parsed{parse_abi_profile(serialize_abi_profile(profile))};
+    ASSERT_TRUE(parsed.has_value()) << parsed.error().message;
+    EXPECT_EQ(parsed->find("Value"), facts);
+}
+
 TEST(AbiProfile, ExposesExplicitX86MemoryFactsWithProvenance) {
     auto const abi{AbiProfile::host_common()};
 

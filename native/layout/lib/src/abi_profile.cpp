@@ -7,6 +7,7 @@
 #include <limits>
 #include <set>
 #include <sstream>
+#include <stdexcept>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -22,7 +23,8 @@ auto integer_facts() -> TypeFacts {
                     .alignment_bytes = alignof(T),
                     .integer_signed = std::is_signed_v<T>,
                     .unsigned_value_bits = std::nullopt,
-                    .provenance = compiler_fact_provenance};
+                    .provenance = compiler_fact_provenance,
+                    .origin = FactOrigin::compiler_probe};
     if constexpr (std::is_unsigned_v<T>) {
         facts.unsigned_value_bits = std::numeric_limits<T>::digits;
     }
@@ -35,7 +37,8 @@ auto value_facts() -> TypeFacts {
             .alignment_bytes = alignof(T),
             .integer_signed = std::nullopt,
             .unsigned_value_bits = std::nullopt,
-            .provenance = compiler_fact_provenance};
+            .provenance = compiler_fact_provenance,
+            .origin = FactOrigin::compiler_probe};
 }
 
 auto parse_error(std::size_t const line, std::string message)
@@ -109,6 +112,42 @@ void write_memory_fact(std::ostringstream& output,
 
 } // namespace
 
+auto fact_origin_name(FactOrigin const origin) -> std::string_view {
+    switch (origin) {
+        case FactOrigin::unspecified:
+            return "unspecified";
+        case FactOrigin::target_abi:
+            return "target-abi";
+        case FactOrigin::compiler_probe:
+            return "compiler-probe";
+        case FactOrigin::manual_assumption:
+            return "manual-assumption";
+        case FactOrigin::derived:
+            return "derived";
+    }
+    return "unspecified";
+}
+
+auto validate_type_facts(TypeFacts const& facts) -> std::expected<void, std::string> {
+    if (facts.size_bytes == 0 || !is_power_of_two(facts.alignment_bytes)) {
+        return std::unexpected{
+            "Complete-object size must be nonzero and alignment a nonzero power of two."};
+    }
+    if (facts.size_bytes % facts.alignment_bytes != 0) {
+        return std::unexpected{
+            "Complete-object size must be a multiple of alignment (include tail padding)."};
+    }
+    if (facts.unsigned_value_bits.has_value()) {
+        auto const bits{*facts.unsigned_value_bits};
+        if (facts.integer_signed != false || bits == 0 ||
+            facts.size_bytes < (static_cast<std::uint64_t>(bits) + 7) / 8) {
+            return std::unexpected{
+                "Unsigned value bits require an unsigned integer and must fit its physical width."};
+        }
+    }
+    return {};
+}
+
 AbiProfile::AbiProfile(std::string name, AbiProfileIdentity identity)
     : name_{std::move(name)}
     , identity_{std::move(identity)} {}
@@ -145,17 +184,41 @@ auto AbiProfile::host_common() -> AbiProfile {
     result.set("std::int64_t", integer_facts<std::int64_t>());
     result.set("float", value_facts<float>());
     result.set("double", value_facts<double>());
+    result.set("void*", value_facts<void*>());
+#if defined(_M_X64) || defined(_M_IX86) || defined(__x86_64__) || defined(__i386__)
+    result.set_object_pointer_representation("void*");
+#endif
     result.set("bool",
                TypeFacts{.size_bytes = sizeof(bool),
                          .alignment_bytes = alignof(bool),
                          .integer_signed = false,
                          .unsigned_value_bits = 1,
-                         .provenance = compiler_fact_provenance});
+                         .provenance = compiler_fact_provenance,
+                         .origin = FactOrigin::compiler_probe});
     return result;
 }
 
 void AbiProfile::set(std::string spelling, TypeFacts const& facts) {
+    if (spelling.empty()) {
+        throw std::invalid_argument{"Physical type spelling must be nonempty."};
+    }
+    if (auto const valid{validate_type_facts(facts)}; !valid) {
+        throw std::invalid_argument{"Type '" + spelling + "': " + valid.error()};
+    }
     types_.insert_or_assign(std::move(spelling), facts);
+}
+
+void AbiProfile::set_object_pointer_representation(std::string spelling) {
+    auto const facts{find(spelling)};
+    if (!facts.has_value() || facts->integer_signed.has_value()) {
+        throw std::invalid_argument{
+            "Object-pointer representation requires known non-integer complete-object facts."};
+    }
+    object_pointer_representation_ = std::move(spelling);
+}
+
+auto AbiProfile::object_pointer_representation() const -> std::optional<std::string> const& {
+    return object_pointer_representation_;
 }
 
 void AbiProfile::set_representation(std::string spelling, std::string represented_by) {
@@ -214,6 +277,8 @@ auto parse_abi_profile(std::string_view const source)
     bool saw_header{};
     bool saw_name{};
     bool saw_memory_provenance{};
+    bool version_two{};
+    std::optional<std::string> object_pointer_representation;
     std::string profile_name;
     AbiProfileIdentity identity;
     std::set<std::string, std::less<>> identity_fields;
@@ -235,9 +300,12 @@ auto parse_abi_profile(std::string_view const source)
         if (!saw_header) {
             std::string version;
             if (directive != "ioj-layout-profile" || !read_token(input, version) ||
-                version != "1" || has_trailing_input(input)) {
-                return parse_error(line_number, "Expected 'ioj-layout-profile 1' header.");
+                (version != "1" && version != "2") || has_trailing_input(input)) {
+                return parse_error(
+                    line_number,
+                    "Expected 'ioj-layout-profile 1' or 'ioj-layout-profile 2' header.");
             }
+            version_two = version == "2";
             saw_header = true;
             continue;
         }
@@ -288,10 +356,11 @@ auto parse_abi_profile(std::string_view const source)
             std::string kind;
             std::string bits_token;
             std::string provenance;
+            std::string origin{"unspecified"};
             if (!read_quoted(input, spelling) || !read_token(input, size_token) ||
                 !read_token(input, alignment_token) || !read_token(input, kind) ||
                 !read_token(input, bits_token) || !read_quoted(input, provenance) ||
-                has_trailing_input(input)) {
+                (version_two && !read_token(input, origin)) || has_trailing_input(input)) {
                 return parse_error(line_number,
                                    "Type requires quoted spelling, size, alignment, integer kind, "
                                    "value bits, and quoted provenance.");
@@ -324,12 +393,15 @@ auto parse_abi_profile(std::string_view const source)
             } else if (kind == "unsigned") {
                 facts.integer_signed = false;
                 auto const bits{parse_unsigned(bits_token)};
-                if (!bits.has_value() || *bits == 0 ||
-                    *bits > std::numeric_limits<std::uint32_t>::max() || *size < (*bits + 7) / 8) {
+                if (bits_token != "unknown" && (!bits.has_value() || *bits == 0 ||
+                                                *bits > std::numeric_limits<std::uint32_t>::max() ||
+                                                *size < (*bits + 7) / 8)) {
                     return parse_error(
                         line_number, "Unsigned value bits must be within the physical type width.");
                 }
-                facts.unsigned_value_bits = static_cast<std::uint32_t>(*bits);
+                if (bits.has_value()) {
+                    facts.unsigned_value_bits = static_cast<std::uint32_t>(*bits);
+                }
             } else if (kind == "non-integer") {
                 if (bits_token != "unknown") {
                     return parse_error(line_number,
@@ -338,7 +410,37 @@ auto parse_abi_profile(std::string_view const source)
             } else {
                 return parse_error(line_number, "Unknown integer kind '" + kind + "'.");
             }
+            bool recognized_origin{};
+            for (auto const candidate : {FactOrigin::unspecified,
+                                         FactOrigin::target_abi,
+                                         FactOrigin::compiler_probe,
+                                         FactOrigin::manual_assumption,
+                                         FactOrigin::derived}) {
+                if (origin == fact_origin_name(candidate)) {
+                    facts.origin = candidate;
+                    recognized_origin = true;
+                    break;
+                }
+            }
+            if (!recognized_origin) {
+                return parse_error(line_number, "Unknown fact origin '" + origin + "'.");
+            }
+            if (auto const valid{validate_type_facts(facts)}; !valid) {
+                return parse_error(line_number, "Type '" + spelling + "': " + valid.error());
+            }
             types.emplace(std::move(spelling), std::move(facts));
+            continue;
+        }
+
+        if (version_two && directive == "object-pointers") {
+            std::string spelling;
+            if (object_pointer_representation.has_value() || !read_quoted(input, spelling) ||
+                spelling.empty() || has_trailing_input(input)) {
+                return parse_error(
+                    line_number,
+                    "Object-pointer policy requires one unique quoted representation spelling.");
+            }
+            object_pointer_representation = std::move(spelling);
             continue;
         }
 
@@ -426,6 +528,14 @@ auto parse_abi_profile(std::string_view const source)
         result.set_representation(spelling, represented_by);
     }
     result.set_memory_facts(std::move(memory));
+    if (object_pointer_representation.has_value()) {
+        auto const facts{result.find(*object_pointer_representation)};
+        if (!facts.has_value() || facts->integer_signed.has_value()) {
+            return parse_error(
+                0, "Object-pointer policy requires known non-integer complete-object facts.");
+        }
+        result.set_object_pointer_representation(*object_pointer_representation);
+    }
     return result;
 }
 
@@ -445,7 +555,7 @@ auto load_abi_profile(std::filesystem::path const& path)
 
 auto serialize_abi_profile(AbiProfile const& profile) -> std::string {
     std::ostringstream output;
-    output << "ioj-layout-profile 1\n";
+    output << "ioj-layout-profile 2\n";
     output << "name " << std::quoted(profile.name()) << '\n';
     auto const& identity{profile.identity()};
     write_identity(output, "platform", identity.platform);
@@ -464,10 +574,15 @@ auto serialize_abi_profile(AbiProfile const& profile) -> std::string {
         } else {
             output << "unknown";
         }
-        output << ' ' << std::quoted(facts.provenance) << '\n';
+        output << ' ' << std::quoted(facts.provenance) << ' ' << fact_origin_name(facts.origin)
+               << '\n';
     }
     for (auto const& [spelling, represented_by] : profile.representations()) {
         output << "representation " << std::quoted(spelling) << ' ' << std::quoted(represented_by)
+               << '\n';
+    }
+    if (profile.object_pointer_representation().has_value()) {
+        output << "object-pointers " << std::quoted(*profile.object_pointer_representation())
                << '\n';
     }
     auto const& memory{profile.memory_facts()};

@@ -21,15 +21,23 @@ struct AbiProfileIdentity {
     auto operator==(AbiProfileIdentity const&) const -> bool = default;
 };
 
+enum class FactOrigin { unspecified, target_abi, compiler_probe, manual_assumption, derived };
+
+auto fact_origin_name(FactOrigin origin) -> std::string_view;
+
 struct TypeFacts {
+    // Complete-object sizeof, including tail padding; also the stride in an array.
     std::uint64_t size_bytes{};
     std::uint64_t alignment_bytes{};
     std::optional<bool> integer_signed;
     std::optional<std::uint32_t> unsigned_value_bits;
     std::string provenance;
+    FactOrigin origin{FactOrigin::unspecified};
 
     auto operator==(TypeFacts const&) const -> bool = default;
 };
+
+auto validate_type_facts(TypeFacts const& facts) -> std::expected<void, std::string>;
 
 struct MemoryFacts {
     std::optional<std::uint64_t> cache_line_bytes;
@@ -59,6 +67,8 @@ class AbiProfile {
     void set_representation(std::string spelling, std::string represented_by);
     void set_memory_facts(MemoryFacts facts);
     void set_identity(AbiProfileIdentity identity);
+    void set_object_pointer_representation(std::string spelling);
+    auto object_pointer_representation() const -> std::optional<std::string> const&;
     auto find(std::string const& spelling) const -> std::optional<TypeFacts>;
     auto name() const -> std::string const&;
     auto identity() const -> AbiProfileIdentity const&;
@@ -71,6 +81,7 @@ class AbiProfile {
     std::map<std::string, TypeFacts, std::less<>> types_;
     std::map<std::string, std::string, std::less<>> representations_;
     MemoryFacts memory_facts_;
+    std::optional<std::string> object_pointer_representation_;
 };
 
 auto parse_abi_profile(std::string_view source) -> std::expected<AbiProfile, AbiProfileParseError>;

@@ -15,7 +15,8 @@ namespace {
 auto same_profile(AbiProfile const& first, AbiProfile const& second) -> bool {
     return first.name() == second.name() && first.identity() == second.identity() &&
            first.types() == second.types() && first.representations() == second.representations() &&
-           first.memory_facts() == second.memory_facts();
+           first.memory_facts() == second.memory_facts() &&
+           first.object_pointer_representation() == second.object_pointer_representation();
 }
 
 auto reconcile_weight_keys(std::map<std::string, std::uint64_t>& weights,
