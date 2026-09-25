@@ -2,6 +2,7 @@
 
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/physical_facts.hpp>
 #include <ioj/layout/workspace.hpp>
 
 #include <lispb/schema/type_graph.h>
@@ -50,10 +51,24 @@ struct ExternalDependency {
     std::vector<lispb::schema::TypeIdentity> declarations;
     std::vector<std::string> modules;
     bool semantics_known{};
+    std::optional<TypeFacts> physical_facts{};
 };
 
-auto external_dependencies(lispb::schema::TypeGraph const& types)
+auto external_dependencies(lispb::schema::TypeGraph const& types, AbiProfile const* abi = nullptr)
     -> std::vector<ExternalDependency>;
+
+struct ExternalTypeAnalysis {
+    bool semantics_known{};
+    PhysicalFactsResult physical;
+    std::vector<lispb::schema::TypeIdentity> blocked_declarations;
+};
+
+auto analyze_external_type(lispb::schema::TypeGraph const& types,
+                           lispb::schema::TypeId type,
+                           Variant const& variant,
+                           AbiProfile const& abi,
+                           std::uint64_t capacity,
+                           SoaAllocationStrategy allocation_strategy) -> ExternalTypeAnalysis;
 
 auto integer_source_reference(lispb::schema::TypeNode const& node) -> std::string;
 

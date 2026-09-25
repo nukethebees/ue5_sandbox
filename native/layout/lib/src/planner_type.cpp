@@ -8,7 +8,7 @@
 
 namespace ioj::layout {
 
-auto external_dependencies(lispb::schema::TypeGraph const& types)
+auto external_dependencies(lispb::schema::TypeGraph const& types, AbiProfile const* const abi)
     -> std::vector<ExternalDependency> {
     std::map<std::string, ExternalDependency> grouped;
     auto append_unique = [](auto& values, auto const& value) {
@@ -29,6 +29,10 @@ auto external_dependencies(lispb::schema::TypeGraph const& types)
         auto& entry{grouped[codegen::native_spelling(node.cpp_spelling)]};
         entry.cpp_spelling = codegen::native_spelling(node.cpp_spelling);
         entry.types.push_back(lispb::schema::TypeId{static_cast<std::uint32_t>(index)});
+        if (abi != nullptr) {
+            entry.physical_facts =
+                PhysicalFactsResolver{types, *abi}.resolve(entry.types.back()).facts;
+        }
         entry.semantics_known =
             entry.semantics_known || !std::holds_alternative<std::monostate>(external->semantics);
         for (auto const& name : external->registered_names) {
@@ -59,6 +63,50 @@ auto external_dependencies(lispb::schema::TypeGraph const& types)
     std::ranges::stable_sort(result, [](auto const& left, auto const& right) {
         return left.declarations.size() > right.declarations.size();
     });
+    return result;
+}
+
+auto analyze_external_type(lispb::schema::TypeGraph const& types,
+                           lispb::schema::TypeId const type,
+                           Variant const& variant,
+                           AbiProfile const& abi,
+                           std::uint64_t const capacity,
+                           SoaAllocationStrategy const allocation_strategy)
+    -> ExternalTypeAnalysis {
+    auto const& node{types.type(type)};
+    auto const& external{std::get<lispb::schema::ExternalType>(node.definition)};
+    PhysicalFactsResolver resolver{types, abi, &variant};
+    ExternalTypeAnalysis result{.semantics_known =
+                                    !std::holds_alternative<std::monostate>(external.semantics),
+                                .physical = resolver.resolve(type),
+                                .blocked_declarations = {}};
+    if (result.physical.facts.has_value()) {
+        return result;
+    }
+    auto const spelling{codegen::native_spelling(node.cpp_spelling)};
+    auto const count{types.types().size()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const id{lispb::schema::TypeId{static_cast<std::uint32_t>(index)}};
+        auto const& candidate{types.type(id)};
+        if (candidate.identity.origin != lispb::schema::TypeOrigin::declaration) {
+            continue;
+        }
+        std::vector<Diagnostic> diagnostics;
+        if (auto const* soa{std::get_if<lispb::schema::SoaType>(&candidate.definition)};
+            soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
+            diagnostics =
+                Analyzer::analyze_soa(types, id, variant, abi, capacity, allocation_strategy)
+                    .diagnostics;
+        } else {
+            diagnostics = resolver.resolve(id).diagnostics;
+        }
+        if (std::ranges::any_of(diagnostics, [&](auto const& diagnostic) {
+                return diagnostic.missing_physical_type == spelling;
+            })) {
+            result.blocked_declarations.push_back(
+                candidate.owning_declaration.value_or(candidate.identity));
+        }
+    }
     return result;
 }
 

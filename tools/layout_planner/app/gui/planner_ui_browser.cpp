@@ -688,7 +688,8 @@ void PlannerUi::draw_project_panel() {
     }
 
     draw_new_structural_dialog();
-    auto const dependencies{external_dependencies(analysis_session_.inputs.workspace.types())};
+    auto const dependencies{external_dependencies(analysis_session_.inputs.workspace.types(),
+                                                  &analysis_session_.primary_abi())};
     auto const external_label{"External dependencies (" + std::to_string(dependencies.size()) +
                               ")###external-dependencies"};
     if (detail::section(external_label.c_str())) {
@@ -745,8 +746,7 @@ void PlannerUi::draw_project_panel() {
             if (ImGui::Selectable(label.c_str(), selected)) {
                 select_type(entry.types.front());
             }
-            auto const layout_known{
-                analysis_session_.primary_abi().find(entry.cpp_spelling).has_value()};
+            auto const layout_known{entry.physical_facts.has_value()};
             auto tooltip{searchable +
                          "\nTarget size/alignment: " + (layout_known ? "known" : "unknown")};
             if (entry.uses.empty()) {

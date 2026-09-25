@@ -16,6 +16,67 @@
 namespace ioj::layout {
 namespace {
 
+TEST(PlannerType, OpaqueExternalFactsUnblockOnlyValueDependenciesOnTheActiveTarget) {
+    codegen::Manifest manifest{};
+    manifest.schema_version = codegen::manifest_schema_version;
+    codegen::NormalModuleSchema module{};
+    module.settings.name = "external_users";
+    module.settings.header = "external_users.hpp";
+    for (auto const pointer : {false, true}) {
+        codegen::RecordSchema record{};
+        record.name = pointer ? "Pointer" : "Value";
+        codegen::RecordMemberSchema member{};
+        member.name = "value";
+        member.type.name = "OpaqueVector";
+        member.type.suffix = pointer ? "*" : "";
+        record.members.push_back(member);
+        module.declarations.push_back(record);
+    }
+    manifest.modules.emplace_back(module);
+    auto const types{lispb::schema::resolve_type_graph(manifest)};
+    auto const dependencies{external_dependencies(types)};
+    ASSERT_EQ(dependencies.size(), 1);
+    auto const external{dependencies.front().types.front()};
+    PlannerAnalysisSession session{types};
+    session.inputs.selection.select_type(types, external);
+    ASSERT_TRUE(session.refresh(nullptr));
+    ASSERT_TRUE(session.results().external_type.has_value());
+    auto const& before{*session.results().external_type};
+    EXPECT_FALSE(before.semantics_known);
+    EXPECT_FALSE(before.physical.facts.has_value());
+    ASSERT_EQ(before.blocked_declarations.size(), 1);
+    EXPECT_EQ(before.blocked_declarations.front().name, "Value");
+    TypeFacts facts{};
+    facts.size_bytes = 3;
+    facts.alignment_bytes = 4;
+    EXPECT_FALSE(session.set_external_type_facts(external, facts));
+    facts.size_bytes = 12;
+    facts.origin = FactOrigin::compiler_probe;
+    facts.provenance = "SDK assumption";
+    ASSERT_TRUE(session.set_external_type_facts(external, facts));
+    ASSERT_TRUE(session.refresh(nullptr));
+    auto const& after{*session.results().external_type};
+    EXPECT_FALSE(after.semantics_known);
+    ASSERT_TRUE(after.physical.facts.has_value());
+    EXPECT_EQ(after.physical.facts->origin, FactOrigin::manual_assumption);
+    EXPECT_EQ(after.physical.facts->provenance, "SDK assumption");
+    EXPECT_TRUE(after.blocked_declarations.empty());
+    auto const inventory{external_dependencies(types, &session.primary_abi())};
+    EXPECT_TRUE(inventory.front().physical_facts.has_value());
+    EXPECT_FALSE(inventory.front().semantics_known);
+    EXPECT_FALSE(session.comparison_abi().find("OpaqueVector").has_value());
+    auto const imported{parse_abi_profile(serialize_abi_profile(session.primary_abi()))};
+    ASSERT_TRUE(imported);
+    EXPECT_EQ(imported->find("OpaqueVector"), after.physical.facts);
+    auto const value{*types.find_declared("external_users", "Value")};
+    auto const resolved{PhysicalFactsResolver{types, *imported}.resolve(value)};
+    ASSERT_TRUE(resolved.facts.has_value());
+    EXPECT_EQ(resolved.facts->size_bytes, 12);
+    session.set_primary_abi(AbiProfile::host_common());
+    ASSERT_TRUE(session.refresh(nullptr));
+    EXPECT_FALSE(session.results().external_type->physical.facts.has_value());
+}
+
 TEST(PlannerType, ClassifiesInspectableAndPhysicalDeclarations) {
     auto const project{std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb"};
     auto loaded{load_lispb_schema(project, "sandbox-code")};

@@ -31,6 +31,7 @@ struct PlannerAnalysisInputs {
 };
 
 struct PlannerAnalysisResults {
+    std::optional<ExternalTypeAnalysis> external_type;
     std::optional<EnumDomainAnalysis> enum_domain;
     std::optional<EnumTargetComparison> enum_target_comparison;
     std::optional<IntegerScalarAnalysis> integer_scalar_analysis;
@@ -90,6 +91,8 @@ class PlannerAnalysisSession {
     auto primary_abi() const -> AbiProfile const&;
     auto comparison_abi() const -> AbiProfile const&;
     auto set_primary_abi(AbiProfile abi) -> bool;
+    auto set_external_type_facts(lispb::schema::TypeId type, TypeFacts facts)
+        -> std::expected<bool, std::string>;
     auto set_comparison_abi(AbiProfile abi) -> bool;
     auto union_distributions() const -> DistributionTable const&;
     auto tagged_union_distributions() const -> DistributionTable const&;

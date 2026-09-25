@@ -1271,16 +1271,7 @@ void PlannerUi::draw_properties_panel() {
             } else {
                 ImGui::TextDisabled("Scalar semantics are not declared in LispB.");
             }
-            ImGui::SeparatorText("Target ABI facts");
-            if (auto const facts{analysis_session_.primary_abi().find(
-                    codegen::native_spelling(external->cpp_type.spelling))}) {
-                ImGui::Text("Size: %llu bytes; alignment: %llu bytes",
-                            static_cast<unsigned long long>(facts->size_bytes),
-                            static_cast<unsigned long long>(facts->alignment_bytes));
-                ImGui::TextWrapped("Source: %s", facts->provenance.c_str());
-            } else {
-                ImGui::TextUnformatted("Physical size and alignment are unknown for this target.");
-            }
+            draw_external_facts(node);
         }
     } else {
         if (auto const* packed{std::get_if<PackedType>(&node.definition)}) {

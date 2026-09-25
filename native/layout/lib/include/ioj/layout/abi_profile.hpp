@@ -88,5 +88,7 @@ auto parse_abi_profile(std::string_view source) -> std::expected<AbiProfile, Abi
 auto load_abi_profile(std::filesystem::path const& path)
     -> std::expected<AbiProfile, AbiProfileParseError>;
 auto serialize_abi_profile(AbiProfile const& profile) -> std::string;
+auto save_abi_profile(std::filesystem::path const& path, AbiProfile const& profile)
+    -> std::expected<void, std::string>;
 
 } // namespace ioj::layout

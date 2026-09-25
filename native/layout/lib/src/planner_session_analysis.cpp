@@ -33,7 +33,14 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
                                                               inputs.workspace.default_capacity(),
                                                               inputs.soa_allocation_strategy);
         }};
-    if (std::holds_alternative<EnumType>(definition)) {
+    if (std::holds_alternative<ExternalType>(definition)) {
+        results_.external_type = analyze_external_type(inputs.workspace.types(),
+                                                       *inputs.selection.type,
+                                                       active,
+                                                       primary_abi_,
+                                                       inputs.workspace.default_capacity(),
+                                                       inputs.soa_allocation_strategy);
+    } else if (std::holds_alternative<EnumType>(definition)) {
         if (reuse_primary && previous.enum_domain.has_value()) {
             results_.enum_domain = std::move(previous.enum_domain);
         } else {

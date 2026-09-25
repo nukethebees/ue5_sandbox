@@ -216,6 +216,9 @@ class PlannerUi {
     void use_builtin_target_profile(bool clear_persisted);
     auto load_comparison_target_profile(std::filesystem::path const& path) -> bool;
     void use_builtin_comparison_target_profile();
+    void draw_external_facts(lispb::schema::TypeNode const& node);
+    auto export_target_profile() -> bool;
+    void discard_target_profile_edits();
     void create_variant_for_selected_schema();
 
     std::filesystem::path project_path_;
@@ -237,6 +240,14 @@ class PlannerUi {
     std::string external_module_filter_;
     bool external_show_described_{};
     bool external_show_unreferenced_{};
+    std::optional<layout::AbiProfile> unedited_target_profile_;
+    std::optional<lispb::schema::TypeIdentity> external_facts_identity_;
+    std::optional<layout::TypeFacts> external_facts_source_;
+    std::array<char, 32> external_size_{};
+    std::array<char, 32> external_alignment_{};
+    std::array<char, 512> external_provenance_{};
+    std::string external_facts_error_;
+    bool open_profile_close_confirmation_{};
     std::optional<codegen::DeclarationSchema> structural_draft_;
     std::optional<lispb::schema::TypeIdentity> structural_draft_identity_;
     std::uint64_t structural_draft_revision_{};

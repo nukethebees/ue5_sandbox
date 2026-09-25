@@ -3,6 +3,7 @@ target_sources(layout-planner PRIVATE
   application.cpp
   platform/file_dialog.cpp
   gui/planner_ui.cpp
+  gui/planner_ui_external.cpp
   gui/planner_ui_browser.cpp
   gui/planner_ui_browser_representations.cpp
   gui/planner_ui_browser_aggregates.cpp

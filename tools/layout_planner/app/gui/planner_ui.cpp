@@ -505,6 +505,11 @@ void PlannerUi::restore_saved_target_memory_facts() {
 }
 
 auto PlannerUi::load_target_profile(std::filesystem::path const& path, bool const persist) -> bool {
+    if (unedited_target_profile_.has_value()) {
+        target_profile_load_error_ =
+            "Export or discard the edited target facts before loading another profile.";
+        return false;
+    }
     auto loaded{load_abi_profile(path)};
     if (!loaded.has_value()) {
         target_profile_load_error_ =
@@ -539,6 +544,11 @@ auto PlannerUi::load_target_profile(std::filesystem::path const& path, bool cons
 }
 
 void PlannerUi::use_builtin_target_profile(bool const clear_persisted) {
+    if (unedited_target_profile_.has_value()) {
+        target_profile_load_error_ =
+            "Export or discard the edited target facts before replacing the profile.";
+        return;
+    }
     analysis_session_.set_primary_abi(AbiProfile::host_common());
     target_memory_fact_defaults_ = analysis_session_.primary_abi().memory_facts();
     sync_target_memory_fact_inputs();
@@ -587,6 +597,18 @@ auto PlannerUi::draw_target_profile() -> bool {
     draw_target_profile_summary(analysis_session_.primary_abi());
 
     bool changed{};
+    detail::WrappingButtonRow profile_buttons;
+    if (profile_buttons.button("Export profile")) {
+        static_cast<void>(export_target_profile());
+    }
+    if (unedited_target_profile_.has_value()) {
+        if (profile_buttons.button("Discard fact edits")) {
+            discard_target_profile_edits();
+            changed = true;
+        }
+        ImGui::TextWrapped(
+            "This profile has unsaved manual facts. Export or discard them before replacing it.");
+    }
     if (detail::section("Generated target profile")) {
         ImGui::TextDisabled("Loads explicit compiler/configuration facts for this analysis "
                             "session; it never modifies "
@@ -815,6 +837,10 @@ void PlannerUi::remember_window_size(WindowSize const size) {
 }
 
 void PlannerUi::request_close() {
+    if (unedited_target_profile_.has_value()) {
+        open_profile_close_confirmation_ = true;
+        return;
+    }
     if (!has_dirty_changes()) {
         close_confirmed_ = true;
         return;
@@ -1894,6 +1920,31 @@ void PlannerUi::draw_diagnostics_panel() {
 }
 
 void PlannerUi::draw_close_confirmation() {
+    if (open_profile_close_confirmation_) {
+        ImGui::OpenPopup("Unsaved target facts");
+        open_profile_close_confirmation_ = false;
+    }
+    if (ImGui::BeginPopupModal(
+            "Unsaved target facts", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextWrapped("Export the edited target profile before closing?");
+        detail::WrappingButtonRow buttons;
+        if (buttons.button("Export and continue") && export_target_profile()) {
+            ImGui::CloseCurrentPopup();
+            request_close();
+        }
+        if (buttons.button("Discard and continue")) {
+            discard_target_profile_edits();
+            ImGui::CloseCurrentPopup();
+            request_close();
+        }
+        if (buttons.button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+        if (!target_profile_load_error_.empty()) {
+            ImGui::TextWrapped("%s", target_profile_load_error_.c_str());
+        }
+        ImGui::EndPopup();
+    }
     if (open_close_confirmation_) {
         ImGui::OpenPopup("Unsaved LispB changes");
         open_close_confirmation_ = false;
@@ -2128,6 +2179,13 @@ auto PlannerUi::load_project(std::filesystem::path const& path,
                              bool const allow_dirty,
                              bool const use_recent_target,
                              std::optional<std::string> selected_target) -> bool {
+    if (unedited_target_profile_.has_value()) {
+        schema_edit_message_ =
+            "Export or discard the edited target facts before changing projects.";
+        target_profile_view_open_ = true;
+        focus_target_profile_view_ = true;
+        return false;
+    }
     if (!allow_dirty && has_dirty_changes()) {
         schema_edit_message_ =
             "Save or undo the current LispB changes before opening another project.";

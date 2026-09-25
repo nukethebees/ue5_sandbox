@@ -83,6 +83,24 @@ auto PlannerAnalysisSession::primary_abi() const -> AbiProfile const& {
     return primary_abi_;
 }
 
+auto PlannerAnalysisSession::set_external_type_facts(TypeId const type, TypeFacts facts)
+    -> std::expected<bool, std::string> {
+    auto const& node{inputs.workspace.types().type(type)};
+    if (!std::holds_alternative<ExternalType>(node.definition)) {
+        return std::unexpected{"Manual facts can only be supplied for external types."};
+    }
+    if (auto const valid{validate_type_facts(facts)}; !valid) {
+        return std::unexpected{valid.error()};
+    }
+    facts.origin = FactOrigin::manual_assumption;
+    if (facts.provenance.empty()) {
+        facts.provenance = "Entered in Memory Layout Planner";
+    }
+    auto profile{primary_abi_};
+    profile.set(codegen::native_spelling(node.cpp_spelling), facts);
+    return set_primary_abi(std::move(profile));
+}
+
 auto PlannerAnalysisSession::comparison_abi() const -> AbiProfile const& {
     return comparison_abi_;
 }

@@ -595,4 +595,16 @@ auto serialize_abi_profile(AbiProfile const& profile) -> std::string {
     return output.str();
 }
 
+auto save_abi_profile(std::filesystem::path const& path, AbiProfile const& profile)
+    -> std::expected<void, std::string> {
+    auto const contents{serialize_abi_profile(profile)};
+    std::ofstream output{path, std::ios::binary | std::ios::trunc};
+    output << contents;
+    output.close();
+    if (!output) {
+        return std::unexpected{"Unable to export target profile to '" + path.string() + "'."};
+    }
+    return {};
+}
+
 } // namespace ioj::layout
