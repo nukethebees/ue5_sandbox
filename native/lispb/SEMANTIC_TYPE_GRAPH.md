@@ -35,6 +35,14 @@ not independently create storage. ABI and layout consumers follow physical type 
 derive sizes; they do not replace an enum or packed value with its storage type in the semantic
 model. `dependencies_of` and `users_of` expose the resulting directed graph.
 
+Each `ResolvedTypeRef` also retains the shared `PhysicalTypeUse` classification of that particular
+use. A `Node*` member navigates to canonical `Node`, while its physical form is an object pointer.
+Only value containment participates in aggregate cycle validation. C++ dependency ordering uses
+the same classification and emits local aggregate forward declarations for indirection.
+The bounded classifier preserves original C++ spelling for lowering; unsupported declarators are
+explicit rather than silently reduced to the base type. `native-layout::PhysicalFactsResolver`
+combines these uses, derived declaration layouts and target-profile facts without a second schema.
+
 `StaticTableType` describes rows, typed fixed-count columns and group result types. `FacadeType`
 describes its target binding and method signatures; target dependencies do not imply by-value
 storage. Homogeneous storage nodes resolve element, equivalent and input types. These semantic

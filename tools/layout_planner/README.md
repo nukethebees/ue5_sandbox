@@ -686,3 +686,16 @@ major views can be shown or hidden from View; docking and visibility are persist
 the loaded files and keeps each affected file's Updated/Original text available in tabs, while
 Diagnostics consolidates project-load, document-operation, and active-analysis messages without
 owning semantic state.
+
+Use **External Dependencies** to select an imported type and inspect its semantic description,
+size, alignment, target and evidence. **Apply manual facts** marks an assumption for the active
+profile; **Export profile** saves it. Alternatively, **Export compiler probe source**, compile the
+source with the target SDK/flags, then run `probe platform architecture configuration > target.profile`
+and import that file in **Target Profile**. Known size/alignment does not require semantic structure.
+
+In **Graph**, choose **Entire project** or a module in **Scope**. Outgoing dependencies remain as
+compact boundary nodes. Selection in another panel keeps normal colours; **Focus selection** or a
+node click enables neighbourhood highlighting. **Clear focus**, Escape or a background click clears
+highlighting while retaining selection. **Fit all** includes the full current scope, even at very
+small zoom. Hover an edge for full relationship labels. **Expand all modules** and **Collapse all
+modules** apply throughout the Project / Schema tree, including collapsed source groups.

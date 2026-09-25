@@ -54,24 +54,53 @@ IDs and source ownership. Preview removes the entire original top-level LispB fo
 overlapping edits to its children); saving validates and reloads the remaining registered source
 files without deleting a file from disk.
 
-The Graph view renders only `TypeGraph::dependencies_of` edges and derives labels from the resolved
-definition; it owns no relationship records. Edge-label hover/click state is transient presentation
-state, and navigation writes the same selected `TypeId` used by node clicks and the other views.
-Search derives a fresh ordered `TypeId` match set from the current graph each frame, so it stores no
-parallel topology or stale match index; Enter and **Next match** reuse selection and focus state.
-Selected-neighborhood styling likewise derives direct dependencies and users from the current graph
-each frame. Outgoing, incoming, bidirectional, and unrelated presentation roles are transient; they
-do not duplicate relationship state or constrain cyclic/general graphs.
-Manual graph positions are presentation-only world coordinates keyed by `TypeIdentity`. Graph
-replacement therefore retains positions for surviving identities and gives new nodes the ordinary
-column layout; adopting another project clears the map. Dragging does not create semantic commands,
-dirty LispB, or alter dependency topology. Fit/focus consume the effective manual/automatic
-positions, and **Automatic layout** explicitly clears the manual map.
-The existing ImGui settings handler persists manual positions by normalized project path plus a
-percent-escaped complete `TypeIdentity` and finite bounded world coordinates. Parsing rejects bad
-escapes, origins, arity, numbers, and extreme coordinates. The active map restores only identities
-present in the adopted graph; stale rows cannot create nodes or semantic state. Drag/reset marks the
-ordinary ImGui settings dirty, so no separate planner project format is introduced.
+## Physical facts and graph views
+
+`ResolvedTypeRef` retains both canonical semantic `TypeId` and the shared `PhysicalTypeUse`
+classification alongside C++ spelling. Schema validation and generator dependency ordering use
+by-value containment; object pointers and references keep navigation edges without introducing
+aggregate containment cycles. Local aggregate indirection generates forward declarations.
+The bounded classifier supports named values (including opaque template names), cv qualifiers,
+object-pointer chains and reference classification. Reference-member storage, array declarator
+suffixes, function/member pointers and unrecognized declarators produce Unknown. Fixed arrays
+use existing explicit member counts. This is deliberately not a general C++ parser.
+
+`PhysicalFactsResolver` is the single physical-facts path for aggregates, enum/packed backing and
+supported standard-library SoA columns. It recursively derives record/union/tagged-union facts,
+resolves external and builtin facts through the active profile, and guards representation cycles.
+Pointers use exact supplied facts or an explicit target object-pointer policy; they never borrow
+pointee size. Conflicting supplied facts cannot replace a known generated layout silently.
+Derived facts include declaration/profile provenance. Profile facts describe complete-object
+`sizeof`, including tail padding and array stride, rather than payload bytes.
+
+Sequential allocation uses an optional cursor. Unknown extents and arithmetic overflow invalidate
+later absolute offsets and cursor-dependent padding. Known prefixes and independent element
+facts/extents remain available. Unsupported owning containers, Unreal backends and nested SoAs
+remain Unknown. A known column payload is not a claim about a vector control object or allocator
+bookkeeping. Contiguous allocation is an analysis scenario, not the generated default storage.
+
+`GraphProjection` references canonical types through visual occurrence indices, with a scope
+membership layer separate from semantic ownership. The current UI exposes entire-project and
+stable explicit module scopes. A module includes its generated types and direct outgoing
+dependencies as compact boundary nodes, without recursively expanding those boundaries. The
+membership representation also accepts types from multiple modules without adding another type
+identity. It does not constrain future views to one occurrence per definition.
+
+Headless geometry groups strongly connected dependencies, ranks the resulting DAG, and wraps
+large ranks into bounded-height columns. The renderer caches projection, labels, node dimensions
+and automatic positions by graph revision, scope and font size. Dragging updates presentation
+coordinates; it does not rerun automatic layout. Graph-local focus controls neighbourhood dimming;
+shared selection supplies navigation and an outline. Clear focus, Escape or background click keeps
+the declaration selected. Exact edge-label tokens are deduplicated; the canvas shows at most two
+abbreviated tokens, suppressing labels below 65% zoom. Edge hover retains wrapped full information,
+including when labels are hidden. Fit All computes zoom from effective bounds without a lower
+zoom clamp, while wheel interaction retains a practical floor without jumping from a fitted view.
+
+Project-view manual positions retain existing identity-keyed ImGui persistence. Module positions
+are session-local and independent of project positions. Adopting another project clears scope,
+focus and cached geometry. Module expansion uses the same revision-command mechanism as section
+expansion, in a separate domain: hidden source groups/modules consume the latest command when
+next submitted, and individual toggles after that command remain effective.
 
 ## Target profiles
 
@@ -83,16 +112,16 @@ target B picker. The `layout-profile-probe` executable serializes those exact fa
 deterministic versioned text profile; running a probe built for another target produces an explicit
 file the planner can load for the session. Loading never edits LispB or document history.
 
-The version-one format is line-oriented so generated facts stay inspectable and diffable:
+The version-two format (with version-one import support) is line-oriented so generated facts stay inspectable and diffable:
 
 ```text
-ioj-layout-profile 1
+ioj-layout-profile 2
 name "Windows x64 Debug"
 identity platform "Windows"
 identity architecture "AMD64"
 identity compiler "Clang 21.1.0"
 identity build-configuration "Debug"
-type "std::uint32_t" 4 4 unsigned 32 "compiler probe"
+type "std::uint32_t" 4 4 unsigned 32 "compiler probe" compiler-probe
 representation "EntityId" "std::uint32_t"
 memory cache-line 64
 memory page 4096
@@ -100,8 +129,9 @@ memory-provenance "selected machine profile"
 ```
 
 Identity and memory rows are optional; omission means Unknown. Each type row carries spelling,
-nonzero byte size, power-of-two alignment, integer classification, unsigned value bits (or
-`unknown`), and its own provenance. Representation aliases may chain to a known fact or an unknown
+nonzero byte size divisible by its power-of-two alignment, integer classification, unsigned value bits (or
+`unknown`), and its own provenance plus evidence origin. Parsed and programmatic facts share validation.
+Version-one evidence stays unspecified; free-text provenance is never reclassified as proof. Representation aliases may chain to a known fact or an unknown
 external spelling, but cycles and duplicate owners are invalid. The loader builds a candidate
 profile privately and publishes it only after the whole file validates, so malformed input cannot
 partially replace the active target. Session memory overrides remain layered on the selected
@@ -841,3 +871,14 @@ declaration family, subject to the destination module's validated configuration.
 dialog chooses the SoA backend explicitly, with Unreal as the default. Standard-library SoA
 authoring selects modules with that backend. Settings and umbrella forms remain separate because
 they describe coordinated settings integration and header aggregation respectively.
+
+External Dependencies distinguishes semantic descriptions from physical knowledge. Selected external
+facts resolve through the same resolver, and structured missing-fact diagnostics identify blocked
+value analyses without counting pointer-only dependencies. Manual edits always become
+`manual-assumption`; profile export persists them, discard restores the previous profile, and
+closing prompts for pending edits. Primary and comparison targets keep independent fact sets.
+The UI can export standalone C++17 probe source using registered dependencies and an optional SDK
+header. Compile it with the target flags/SDK, run with platform/architecture/configuration arguments,
+and import stdout. The emitted profile records compiler identity and compilation timestamp;
+measurements are `compiler-probe`, not values copied from the planner's host. A compile-and-import
+fixture checks this boundary. No compiler process runs inside the planner.
