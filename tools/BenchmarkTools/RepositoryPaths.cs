@@ -24,6 +24,12 @@ internal sealed record RepositoryPaths(string Root)
 
     public string BenchmarkExecutable(string build_preset)
     {
-        return Path.Combine(Root, "out", "build", build_preset, "bin", "native-simulation-benchmark.exe");
+        return Path.Combine(Root, "out", "build", NativeSimulationConfigurePreset(build_preset), "bin", "native-simulation-benchmark.exe");
     }
+
+    public static string NativeSimulationConfigurePreset(string build_preset) => build_preset switch
+    {
+        "native-simulation-benchmark" or "frame-memory-level-benchmark" => "native-benchmark",
+        _ => build_preset,
+    };
 }

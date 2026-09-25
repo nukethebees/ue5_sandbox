@@ -43,25 +43,68 @@ public sealed class BenchmarkToolsApplicationTests
         Assert.AreEqual(@"C:\jobserver\jobserver.exe", process_runner.Requests[0].FileName);
     }
 
-    [TestMethod]
-    public async Task RunAsync_reentry_runs_benchmark_without_reacquiring_the_jobserver()
+    [DataTestMethod]
+    [DataRow("native-simulation-benchmark", "native-benchmark")]
+    [DataRow("frame-memory-level-benchmark", "native-benchmark")]
+    [DataRow("custom preset", "custom preset")]
+    public async Task RunAsync_reentry_runs_benchmark_without_reacquiring_the_jobserver(string build_preset, string configure_preset)
     {
         using var repository = new TemporaryRepository();
-        repository.CreateBenchmarkExecutable("native-simulation-benchmark");
+        repository.CreateBenchmarkExecutable(configure_preset);
         var process_runner = new FakeProcessRunner(23);
         var application = CreateApplication(process_runner, new FakeEnvironment("job-123"));
 
         var exit_code = await application.RunAsync(
-            ["native-simulation", "--level", repository.LevelPath, "--seconds", "1", "--skip-build"],
+            ["native-simulation", "--level", repository.LevelPath, "--seconds", "1", "--build-preset", build_preset, "--skip-build"],
             repository.Root);
 
         Assert.AreEqual(23, exit_code);
         Assert.AreEqual(1, process_runner.Requests.Count);
         AssertProcess(
             process_runner.Requests[0],
-            repository.BenchmarkExecutablePath("native-simulation-benchmark"),
+            repository.BenchmarkExecutablePath(configure_preset),
             ["--level", repository.LevelPath, "--seconds", "1", "--game-speed", "1"],
             repository.Root);
+    }
+
+    [DataTestMethod]
+    [DataRow("native-simulation-benchmark")]
+    [DataRow("frame-memory-level-benchmark")]
+    public async Task RunAsync_uses_the_shared_native_configuration_for_benchmark_builds(string build_preset)
+    {
+        using var repository = new TemporaryRepository();
+        var process_runner = new FakeProcessRunner(0, 0, 0);
+        var application = CreateApplication(process_runner, new FakeEnvironment());
+
+        var exit_code = await application.RunAsync(
+            ["native-simulation", "--level", repository.LevelPath, "--seconds", "1", "--build-preset", build_preset],
+            repository.Root);
+
+        Assert.AreEqual(0, exit_code);
+        Assert.AreEqual(3, process_runner.Requests.Count);
+        AssertProcess(process_runner.Requests[0], "cmake", ["--preset", "native-benchmark"], repository.Root);
+        AssertProcess(process_runner.Requests[1], "cmake", ["--build", "--preset", build_preset], repository.Root);
+    }
+
+    [DataTestMethod]
+    [DataRow(0)]
+    [DataRow(1)]
+    public async Task RunAsync_reports_configure_and_build_failures_without_starting_a_benchmark(int failed_step)
+    {
+        using var repository = new TemporaryRepository();
+        var process_runner = new BuildFailureRunner(failed_step);
+        var standard_output = new StringWriter();
+        var standard_error = new StringWriter();
+        var application = new BenchmarkToolsApplication(process_runner, new FakeJobserverLocator(),
+            new FakeEnvironment(), standard_output, standard_error, @"C:\tools\BenchmarkTools.exe");
+
+        var exit_code = await application.RunAsync(
+            ["native-simulation", "--level", repository.LevelPath, "--seconds", "1"], repository.Root);
+
+        Assert.AreEqual(19, exit_code);
+        Assert.AreEqual(failed_step + 1, process_runner.Calls);
+        StringAssert.Contains(standard_output.ToString(), "build progress");
+        StringAssert.Contains(standard_error.ToString(), "CMake diagnostic");
     }
 
     [TestMethod]
@@ -119,6 +162,18 @@ public sealed class BenchmarkToolsApplicationTests
     private sealed class FakeJobserverLocator : IJobserverLocator
     {
         public string Locate() => @"C:\jobserver\jobserver.exe";
+    }
+
+    private sealed class BuildFailureRunner(int failed_step) : IProcessRunner
+    {
+        public int Calls { get; private set; }
+
+        public Task<ProcessResult> RunAsync(ProcessRequest request, CancellationToken cancellation_token)
+        {
+            return Task.FromResult(Calls++ == failed_step
+                ? new ProcessResult(19, "build progress", "CMake diagnostic")
+                : new ProcessResult(0));
+        }
     }
 
     private sealed class FakeEnvironment(string? job_id = null) : IEnvironment

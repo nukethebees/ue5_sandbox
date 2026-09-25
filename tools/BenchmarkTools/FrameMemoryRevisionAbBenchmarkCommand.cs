@@ -100,7 +100,7 @@ internal static class FrameMemoryRevisionAbBenchmarkCommand
     private static async Task BuildAsync(BenchmarkToolsApplication application, string root, CancellationToken cancellation_token)
     {
         await GitSuccessAsync(application, root, ["-C", root, "submodule", "update", "--init", "--depth", "1", "native/third_party/googletest", "native/third_party/cpu_features", "native/third_party/tracy", "native/third_party/cli11"], cancellation_token);
-        await ProcessSuccessAsync(application, new ProcessRequest("cmake", ["--preset", "frame-memory-level-benchmark"], root), cancellation_token);
+        await ProcessSuccessAsync(application, new ProcessRequest("cmake", ["--preset", RepositoryPaths.NativeSimulationConfigurePreset("frame-memory-level-benchmark")], root), cancellation_token);
         await ProcessSuccessAsync(application, new ProcessRequest("cmake", ["--build", "--preset", "frame-memory-level-benchmark"], root), cancellation_token);
     }
 
