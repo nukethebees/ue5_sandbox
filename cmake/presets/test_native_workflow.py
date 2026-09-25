@@ -4,13 +4,26 @@ import argparse
 import json
 import os
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
 import unittest
 
+from matrix import validate_preset_references
 
 PRESET_DIRECTORY = Path(__file__).resolve().parent
+TIDY_SCOPES = {
+    "core": ("core", "profiling"),
+    "simulation": ("simulation", "simulation_benchmark"),
+    "layout": ("layout",),
+    "lispb": ("lispb",),
+    "memory": ("memory",),
+    "level-authoring": ("level_authoring",),
+    "s7": ("s7",),
+    "image": ("image",),
+    "mesh-gen": ("mesh_gen",),
+}
 
 
 class NativeWorkflowTests(unittest.TestCase):
@@ -21,6 +34,153 @@ class NativeWorkflowTests(unittest.TestCase):
     unreal_presets = json.loads(
         (PRESET_DIRECTORY / "unreal.json").read_text(encoding="utf-8")
     )
+
+    def test_tidy_presets_share_one_configure_tree(self) -> None:
+        validate_preset_references(self.presets)
+        configure_name = "win-x64-clangcl-debug-tidy"
+        configure_presets = self.presets["configurePresets"]
+        self.assertEqual(
+            [preset["name"] for preset in configure_presets if "tidy" in preset["name"]],
+            [configure_name],
+        )
+        tidy_configuration = next(
+            preset for preset in configure_presets if preset["name"] == configure_name
+        )
+        self.assertEqual(
+            tidy_configuration["binaryDir"],
+            "${sourceDir}/out/build/win-x64-clangcl-debug/clang-tidy",
+        )
+        self.assertEqual(
+            tidy_configuration["cacheVariables"],
+            {
+                "IOJ_ENABLE_CLANG_TIDY": True,
+                "CMAKE_DISABLE_PRECOMPILE_HEADERS": True,
+                "CMAKE_CXX_SCAN_FOR_MODULES": False,
+                "CMAKE_EXPORT_COMPILE_COMMANDS": True,
+            },
+        )
+        build_presets = {preset["name"]: preset for preset in self.presets["buildPresets"]}
+        workflows = {preset["name"]: preset for preset in self.presets["workflowPresets"]}
+        targets = {configure_name: "native-clang-tidy"}
+        targets.update(
+            (f"clang-tidy-{scope}", f"native-clang-tidy-{scope}")
+            for scope in TIDY_SCOPES
+        )
+        self.assertEqual(
+            {name for name in build_presets if "tidy" in name}, set(targets)
+        )
+        self.assertEqual({name for name in workflows if "tidy" in name}, set(targets))
+        for name, target in targets.items():
+            with self.subTest(preset=name):
+                self.assertEqual(build_presets[name]["configurePreset"], configure_name)
+                self.assertEqual(build_presets[name]["targets"], [target])
+                self.assertEqual(
+                    workflows[name]["steps"],
+                    [
+                        {"type": "configure", "name": configure_name},
+                        {"type": "build", "name": name},
+                    ],
+                )
+
+    def test_tidy_targets_and_source_filters(self) -> None:
+        # Exercise the real CMake targets, capturing their runner arguments without
+        # requiring LLVM or configuring the native dependency graph.
+        with tempfile.TemporaryDirectory(prefix="sandbox tidy workflow ") as root:
+            fixture = Path(root)
+            build = fixture / "build with spaces"
+            (fixture / "capture.py").write_text(
+                "import json, pathlib, sys\n"
+                "args = sys.argv[1:]\n"
+                "log = pathlib.Path(args[args.index('-LogFile') + 1])\n"
+                "log.with_suffix('.json').write_text(json.dumps(args), encoding='utf-8')\n",
+                encoding="utf-8",
+            )
+            (fixture / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 3.28)\n"
+                "project(TidyWorkflow NONE)\n"
+                f'set(PROJECT_SOURCE_DIR "{self.source_dir.as_posix()}")\n'
+                "set(IOJ_ENABLE_CLANG_TIDY TRUE)\n"
+                "set(IOJ_IS_CLANG_CL TRUE)\n"
+                f'set(Python3_EXECUTABLE "{Path(sys.executable).as_posix()}")\n'
+                'set(IOJ_CLANG_TIDY_EXECUTABLE "${CMAKE_COMMAND}")\n'
+                'set(IOJ_RUN_CLANG_TIDY_EXECUTABLE "${CMAKE_COMMAND}")\n'
+                'set(IOJ_POWERSHELL_EXECUTABLE "${CMAKE_COMMAND}")\n'
+                "function(sandbox_jobserver_command output)\n"
+                '  set(${output} "${Python3_EXECUTABLE}" '
+                '"${CMAKE_CURRENT_SOURCE_DIR}/capture.py" PARENT_SCOPE)\n'
+                "endfunction()\n"
+                'include("${PROJECT_SOURCE_DIR}/cmake/clang_tidy/CMakeLists.txt")\n'
+                "sandbox_configure_native_clang_tidy()\n"
+                "sandbox_add_native_clang_tidy_target()\n",
+                encoding="utf-8",
+            )
+            self.run_cmake("-S", str(fixture), "-B", str(build), "-G", "Ninja")
+            targets = [
+                target
+                for preset in self.presets["buildPresets"]
+                if "tidy" in preset["name"]
+                for target in preset["targets"]
+            ]
+            self.run_cmake("--build", str(build), "--target", *targets)
+            filters = {}
+            for name in ("clang-tidy", *(f"clang-tidy-{scope}" for scope in TIDY_SCOPES)):
+                args = json.loads((build / f"{name}.json").read_text(encoding="utf-8"))
+                self.assertEqual(Path(args[args.index("-CompilationDatabase") + 1]), build)
+                self.assertEqual(args[args.index("-Jobs") + 1], "0")
+                self.assertEqual(
+                    Path(args[args.index("-File") + 1]),
+                    self.source_dir / "cmake/clang_tidy/run_clang_tidy.ps1",
+                )
+                filters[name] = re.compile(args[args.index("-SourceFilter") + 1])
+
+        full_filter = filters.pop("clang-tidy")
+        included = {
+            f"{directory}/src/example.cpp": scope
+            for scope, directories in TIDY_SCOPES.items()
+            for directory in directories
+        }
+        # File names containing 'generated' alone have never been excluded.
+        included["lispb/tests/generated_tests.cpp"] = "lispb"
+        excluded = (
+            "third_party/example/src/example.cpp",
+            "sbx_mimalloc/src/example.cpp",
+            "s7/lib/src/s7_sandbox.cpp",
+            "lispb/kernel/tests/standard_anchor_tests.cpp",
+            "simulation/src/lasers/phase_interface.cpp",
+            "simulation/src/fighters/phase_interface.cpp",
+            "core/src/generated/example.cpp",
+            "core/src/generated_kernels/example.cpp",
+            "core/tests/compile/example.cpp",
+            "lispb/tests/compile_fixture/example.cpp",
+            "core/tests/static_string_view_reject.cpp",
+            "core/include/example.h",
+        )
+        native_root = self.source_dir / "native"
+        for separator in ("/", "\\"):
+            for relative, scope in included.items():
+                path = (native_root / relative).as_posix().replace("/", separator)
+                with self.subTest(path=path):
+                    self.assertIsNotNone(full_filter.search(path))
+                    self.assertEqual(
+                        [name for name, pattern in filters.items() if pattern.search(path)],
+                        [f"clang-tidy-{scope}"],
+                    )
+            for relative in excluded:
+                path = (native_root / relative).as_posix().replace("/", separator)
+                with self.subTest(path=path):
+                    self.assertIsNone(full_filter.search(path))
+                    self.assertFalse(any(pattern.search(path) for pattern in filters.values()))
+            outside = (self.source_dir / "tools/example.cpp").as_posix().replace("/", separator)
+            self.assertIsNone(full_filter.search(outside))
+            unscoped = (native_root / "core_extra/src/example.cpp").as_posix().replace("/", separator)
+            self.assertIsNotNone(full_filter.search(unscoped))
+            self.assertFalse(any(pattern.search(unscoped) for pattern in filters.values()))
+
+        for source in native_root.rglob("*.cpp"):
+            path = source.as_posix()
+            with self.subTest(source=path):
+                selected = sum(bool(pattern.search(path)) for pattern in filters.values())
+                self.assertEqual(selected, int(bool(full_filter.search(path))))
 
     def test_native_preset_uses_the_unreal_disabled_default(self) -> None:
         configure_presets = {

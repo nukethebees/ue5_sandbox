@@ -31,6 +31,17 @@ DEFAULT_NATIVE_CONFIGURATION = "native"
 CODEGEN_CONFIGURATION = DEFAULT_NATIVE_CONFIGURATION
 BENCHMARK_CONFIGURATION = "native-benchmark"
 CLANG_TIDY_CONFIGURATION = "win-x64-clangcl-debug-tidy"
+CLANG_TIDY_SCOPES = (
+    "core",
+    "simulation",
+    "layout",
+    "lispb",
+    "memory",
+    "level-authoring",
+    "s7",
+    "image",
+    "mesh-gen",
+)
 LAYOUT_PLANNER_CONFIGURATION = "layout-planner"
 IMAGE_LAB_CONFIGURATION = "image-lab"
 
@@ -200,6 +211,14 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "configurePreset": CLANG_TIDY_CONFIGURATION,
             "targets": ["native-clang-tidy"],
         },
+        *(
+            {
+                "name": f"clang-tidy-{scope}",
+                "configurePreset": CLANG_TIDY_CONFIGURATION,
+                "targets": [f"native-clang-tidy-{scope}"],
+            }
+            for scope in CLANG_TIDY_SCOPES
+        ),
         {
             "name": LAYOUT_PLANNER_CONFIGURATION,
             "configurePreset": "win-x64-clangcl-debug",
@@ -321,6 +340,16 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                 {"type": "build", "name": CLANG_TIDY_CONFIGURATION},
             ],
         },
+        *(
+            {
+                "name": f"clang-tidy-{scope}",
+                "steps": [
+                    {"type": "configure", "name": CLANG_TIDY_CONFIGURATION},
+                    {"type": "build", "name": f"clang-tidy-{scope}"},
+                ],
+            }
+            for scope in CLANG_TIDY_SCOPES
+        ),
         {
             "name": LAYOUT_PLANNER_CONFIGURATION,
             "steps": [

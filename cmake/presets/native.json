@@ -352,6 +352,69 @@
       ]
     },
     {
+      "name": "clang-tidy-core",
+      "configurePreset": "win-x64-clangcl-debug-tidy",
+      "targets": [
+        "native-clang-tidy-core"
+      ]
+    },
+    {
+      "name": "clang-tidy-simulation",
+      "configurePreset": "win-x64-clangcl-debug-tidy",
+      "targets": [
+        "native-clang-tidy-simulation"
+      ]
+    },
+    {
+      "name": "clang-tidy-layout",
+      "configurePreset": "win-x64-clangcl-debug-tidy",
+      "targets": [
+        "native-clang-tidy-layout"
+      ]
+    },
+    {
+      "name": "clang-tidy-lispb",
+      "configurePreset": "win-x64-clangcl-debug-tidy",
+      "targets": [
+        "native-clang-tidy-lispb"
+      ]
+    },
+    {
+      "name": "clang-tidy-memory",
+      "configurePreset": "win-x64-clangcl-debug-tidy",
+      "targets": [
+        "native-clang-tidy-memory"
+      ]
+    },
+    {
+      "name": "clang-tidy-level-authoring",
+      "configurePreset": "win-x64-clangcl-debug-tidy",
+      "targets": [
+        "native-clang-tidy-level-authoring"
+      ]
+    },
+    {
+      "name": "clang-tidy-s7",
+      "configurePreset": "win-x64-clangcl-debug-tidy",
+      "targets": [
+        "native-clang-tidy-s7"
+      ]
+    },
+    {
+      "name": "clang-tidy-image",
+      "configurePreset": "win-x64-clangcl-debug-tidy",
+      "targets": [
+        "native-clang-tidy-image"
+      ]
+    },
+    {
+      "name": "clang-tidy-mesh-gen",
+      "configurePreset": "win-x64-clangcl-debug-tidy",
+      "targets": [
+        "native-clang-tidy-mesh-gen"
+      ]
+    },
+    {
       "name": "layout-planner",
       "configurePreset": "win-x64-clangcl-debug",
       "targets": [
@@ -876,6 +939,123 @@
         {
           "type": "build",
           "name": "win-x64-clangcl-debug-tidy"
+        }
+      ]
+    },
+    {
+      "name": "clang-tidy-core",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-tidy"
+        },
+        {
+          "type": "build",
+          "name": "clang-tidy-core"
+        }
+      ]
+    },
+    {
+      "name": "clang-tidy-simulation",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-tidy"
+        },
+        {
+          "type": "build",
+          "name": "clang-tidy-simulation"
+        }
+      ]
+    },
+    {
+      "name": "clang-tidy-layout",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-tidy"
+        },
+        {
+          "type": "build",
+          "name": "clang-tidy-layout"
+        }
+      ]
+    },
+    {
+      "name": "clang-tidy-lispb",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-tidy"
+        },
+        {
+          "type": "build",
+          "name": "clang-tidy-lispb"
+        }
+      ]
+    },
+    {
+      "name": "clang-tidy-memory",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-tidy"
+        },
+        {
+          "type": "build",
+          "name": "clang-tidy-memory"
+        }
+      ]
+    },
+    {
+      "name": "clang-tidy-level-authoring",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-tidy"
+        },
+        {
+          "type": "build",
+          "name": "clang-tidy-level-authoring"
+        }
+      ]
+    },
+    {
+      "name": "clang-tidy-s7",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-tidy"
+        },
+        {
+          "type": "build",
+          "name": "clang-tidy-s7"
+        }
+      ]
+    },
+    {
+      "name": "clang-tidy-image",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-tidy"
+        },
+        {
+          "type": "build",
+          "name": "clang-tidy-image"
+        }
+      ]
+    },
+    {
+      "name": "clang-tidy-mesh-gen",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "win-x64-clangcl-debug-tidy"
+        },
+        {
+          "type": "build",
+          "name": "clang-tidy-mesh-gen"
         }
       ]
     },
