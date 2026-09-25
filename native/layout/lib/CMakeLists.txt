@@ -2,6 +2,7 @@ add_library(native-layout)
 target_sources(native-layout PRIVATE
   src/abi_profile.cpp
   src/profile_probe.cpp
+  src/graph_view.cpp
   src/physical_facts.cpp
   src/analyzer.cpp
   src/analyzer_scalar.cpp

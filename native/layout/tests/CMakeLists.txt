@@ -8,6 +8,7 @@ target_sources(native-layout-tests PRIVATE
   analyzer_common_tests.cpp
   physical_facts_tests.cpp
   frame_pacer_tests.cpp
+  graph_view_tests.cpp
   planner_type_tests.cpp
   planner_selection_tests.cpp
   planner_session_tests.cpp
