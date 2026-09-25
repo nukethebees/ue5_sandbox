@@ -302,6 +302,7 @@ void Sim::think(float const dt, ml::FrameScratch& scratch) {
     auto const n{data.num()};
     std::array<EntityUniqueId, 128> nearby_entities;
     auto const dot_threshold{config.minimum_opportunistic_intercept_deviation_dot_product};
+    bool targets_changed{};
 
     {
         SANDBOX_PROFILE_SCOPE("fighters::Sim::awareness_scan");
@@ -337,12 +338,15 @@ void Sim::think(float const dt, ml::FrameScratch& scratch) {
                 }
             }
 
-            if (selected_target.is_valid()) {
+            if (selected_target.is_valid() && selected_target != target_id) {
                 data.target_ids[i] = selected_target;
+                targets_changed = true;
             }
         }
     }
-    refresh_target_data(scratch);
+    if (targets_changed) {
+        refresh_target_data(scratch);
+    }
     plan_movement(dt, scratch);
 }
 void Sim::plan_movement(float const dt, ml::FrameScratch& scratch) {

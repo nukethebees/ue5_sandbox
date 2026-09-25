@@ -33,6 +33,7 @@ namespace ioj::sim {
 class EntityLedger;
 class CombatEvents;
 struct LevelSim;
+struct LevelSimTestAccess;
 struct SpatialQueryManager;
 }
 
@@ -245,6 +246,7 @@ struct Sim {
     friend class CommandInterface;
     friend class PhaseInterface;
     friend struct sim::LevelSim;
+    friend struct sim::LevelSimTestAccess;
 
     float movement_tick_period_{};
     FighterSimConfig config{};
