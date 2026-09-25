@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -53,6 +54,101 @@ struct MoveOnlyValue {
 
     std::int32_t value{};
 };
+
+struct ConstructionCounts {
+    std::int32_t live{};
+    std::int32_t copies_before_throw{-1};
+    std::int32_t moves_before_throw{-1};
+};
+
+struct ThrowingValue {
+    explicit ThrowingValue(ConstructionCounts& counts)
+        : counts_{counts} {
+        ++counts_.live;
+    }
+
+    ThrowingValue(ThrowingValue const& other)
+        : counts_{other.counts_} {
+        construct(counts_.copies_before_throw);
+    }
+
+    ThrowingValue(ThrowingValue&& other) noexcept(false)
+        : counts_{other.counts_} {
+        construct(counts_.moves_before_throw);
+    }
+
+    ~ThrowingValue() { --counts_.live; }
+  private:
+    void construct(std::int32_t& operations_before_throw) {
+        if (operations_before_throw == 0) {
+            throw std::runtime_error{"element construction failed"};
+        }
+        if (operations_before_throw > 0) {
+            --operations_before_throw;
+        }
+        ++counts_.live;
+    }
+
+    ConstructionCounts& counts_;
+};
+
+static_assert(std::is_nothrow_move_constructible_v<ml::FixedArray<MoveOnlyValue, 3>>);
+static_assert(!std::is_nothrow_move_constructible_v<ml::FixedArray<ThrowingValue, 3>>);
+
+TEST(NativeCoreFixedArray, CleansUpAfterThrowingCopyConstruction) {
+    for (std::int32_t prefix{}; prefix < 3; ++prefix) {
+        SCOPED_TRACE(prefix);
+        ConstructionCounts counts;
+        {
+            ml::FixedArray<ThrowingValue, 3> source;
+            source.emplace_back(counts);
+            source.emplace_back(counts);
+            source.emplace_back(counts);
+            counts.copies_before_throw = prefix;
+
+            EXPECT_THROW((ml::FixedArray<ThrowingValue, 3>{source}), std::runtime_error);
+            EXPECT_EQ(counts.live, 3);
+            EXPECT_EQ(source.num(), 3);
+        }
+        EXPECT_EQ(counts.live, 0);
+    }
+}
+
+TEST(NativeCoreFixedArray, CleansUpAfterThrowingMoveConstruction) {
+    for (std::int32_t prefix{}; prefix < 3; ++prefix) {
+        SCOPED_TRACE(prefix);
+        ConstructionCounts counts;
+        {
+            ml::FixedArray<ThrowingValue, 3> source;
+            source.emplace_back(counts);
+            source.emplace_back(counts);
+            source.emplace_back(counts);
+            counts.moves_before_throw = prefix;
+
+            EXPECT_THROW((ml::FixedArray<ThrowingValue, 3>{std::move(source)}), std::runtime_error);
+            EXPECT_EQ(counts.live, 3);
+            // NOLINTNEXTLINE(bugprone-use-after-move): Check the failed move's source range.
+            EXPECT_EQ(source.num(), 3);
+        }
+        EXPECT_EQ(counts.live, 0);
+    }
+}
+
+TEST(NativeCoreFixedArray, CleansUpAfterThrowingInitializerListConstruction) {
+    for (std::int32_t prefix{}; prefix < 3; ++prefix) {
+        SCOPED_TRACE(prefix);
+        ConstructionCounts counts;
+        {
+            std::initializer_list<ThrowingValue> const source{
+                ThrowingValue{counts}, ThrowingValue{counts}, ThrowingValue{counts}};
+            counts.copies_before_throw = prefix;
+
+            EXPECT_THROW((ml::FixedArray<ThrowingValue, 3>{source}), std::runtime_error);
+            EXPECT_EQ(counts.live, 3);
+        }
+        EXPECT_EQ(counts.live, 0);
+    }
+}
 
 struct alignas(64) OverAlignedValue {
     explicit OverAlignedValue(std::int32_t const initial_value)

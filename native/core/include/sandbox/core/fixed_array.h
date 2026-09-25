@@ -26,7 +26,8 @@ class FixedArray {
 
     FixedArray() = default;
 
-    FixedArray(std::initializer_list<value_type> const values) {
+    FixedArray(std::initializer_list<value_type> const values)
+        : FixedArray{} {
         auto const value_count{static_cast<size_type>(values.size())};
         check_has_sufficient_capacity(value_count);
 
@@ -37,7 +38,7 @@ class FixedArray {
 
     FixedArray(FixedArray const& other)
         requires std::is_copy_constructible_v<value_type>
-    {
+        : FixedArray{} {
         for (value_type const& value : other) {
             add(value);
         }
@@ -49,7 +50,7 @@ class FixedArray {
 
     FixedArray(FixedArray&& other) noexcept(std::is_nothrow_move_constructible_v<value_type>)
         requires std::is_move_constructible_v<value_type>
-    {
+        : FixedArray{} {
         for (value_type& value : other) {
             add(std::move(value));
         }
