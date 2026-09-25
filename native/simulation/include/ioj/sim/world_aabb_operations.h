@@ -6,7 +6,13 @@
 namespace ioj::sim::collision {
 inline void
     set(WorldAABBs& aabbs, std::int32_t const index, Vector3f const min, Vector3f const max) {
-    aabbs.get_view().columns().set(index, min.X, min.Y, min.Z, max.X, max.Y, max.Z);
+    auto const view{aabbs.get_view()};
+    view.min_xs()[index] = min.X;
+    view.min_ys()[index] = min.Y;
+    view.min_zs()[index] = min.Z;
+    view.max_xs()[index] = max.X;
+    view.max_ys()[index] = max.Y;
+    view.max_zs()[index] = max.Z;
 }
 
 inline auto add(WorldAABBs& aabbs, Vector3f const min, Vector3f const max) -> std::int32_t {
@@ -16,15 +22,17 @@ inline auto add(WorldAABBs& aabbs, Vector3f const min, Vector3f const max) -> st
     return index;
 }
 
-[[nodiscard]] inline auto min_at(WorldAABBsColumnsConstView const& aabbs, std::int32_t const index)
+[[nodiscard]] inline auto min_at(WorldAABBs::ConstView const aabbs, std::int32_t const index)
     -> Vector3f {
     auto const element{static_cast<std::size_t>(index)};
-    return ml::make_vector3f(aabbs.min_xs[element], aabbs.min_ys[element], aabbs.min_zs[element]);
+    return ml::make_vector3f(
+        aabbs.min_xs()[element], aabbs.min_ys()[element], aabbs.min_zs()[element]);
 }
 
-[[nodiscard]] inline auto max_at(WorldAABBsColumnsConstView const& aabbs, std::int32_t const index)
+[[nodiscard]] inline auto max_at(WorldAABBs::ConstView const aabbs, std::int32_t const index)
     -> Vector3f {
     auto const element{static_cast<std::size_t>(index)};
-    return ml::make_vector3f(aabbs.max_xs[element], aabbs.max_ys[element], aabbs.max_zs[element]);
+    return ml::make_vector3f(
+        aabbs.max_xs()[element], aabbs.max_ys()[element], aabbs.max_zs()[element]);
 }
 } // namespace ioj::sim::collision

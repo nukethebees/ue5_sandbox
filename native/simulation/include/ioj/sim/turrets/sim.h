@@ -1,8 +1,8 @@
 #pragma once
 #include <cstdint>
 #include <ioj/sim/agent_accessor.h>
+#include <ioj/sim/levels/level_runtime_events.h>
 #include <ioj/sim/system_read_views.h>
-#include <ioj/sim/turret_spawn_data.h>
 #include <sandbox/core/frame_memory_resource.h>
 #include <span>
 #include <vector>
@@ -29,9 +29,7 @@ namespace ioj::sim::turrets {
 class PhaseInterface;
 
 struct Sim {
-    using EntityData = TurretEntityData;
     using EntityStorage = SingleAllocationTurretEntityData;
-    using SpawnData = TurretSpawnData;
 
     Sim(SimClock const& clock,
         EntityLedger& ledger,
@@ -49,10 +47,10 @@ struct Sim {
     // Configuration
     /* **************************************** */
     auto get_read_view() const -> TurretReadView {
-        auto const entity_data{entities.get_const_view().columns()};
+        auto const entity_data{entities.get_const_view()};
         return {entity_data,
-                entity_tables_.health.get_const_view(entity_data.health_indices,
-                                                     entity_data.entity_ids),
+                entity_tables_.health.get_const_view(entity_data.health_indices(),
+                                                     entity_data.entity_ids()),
                 frame_changes_,
                 death_locations_};
     }
@@ -72,7 +70,6 @@ struct Sim {
     /* **************************************** */
     // Checks
     /* **************************************** */
-    void validate_array_sizes() const;
   private:
     /* **************************************** */
     // Sim phases
@@ -90,7 +87,7 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto register_turrets(TurretSpawnDataConstView spawn_data, Rotators3fConstView rotations)
+    auto register_turrets(SingleAllocationLevelTurretSpawnEvents::ConstView const spawn_data)
         -> std::vector<EntityUniqueId>;
 
     /* **************************************** */

@@ -332,9 +332,7 @@ void LevelSim::advance(time_type const dt) {
             // Track new collision entities
             overlap_candidates_.clear();
             auto collect_new = [&](auto const data) {
-                auto const count{data.entity_ids.size()};
-                for (std::size_t index{}; index < count; ++index) {
-                    auto const id{data.entity_ids[index]};
+                for (auto const id : data.entity_ids()) {
                     if (id.index() >=
                         entity_identity_offset(id.entity_type(),
                                                previous_issued_counts[id.entity_type()])) {
@@ -535,10 +533,10 @@ void LevelSim::rebuild_agent_indexes() {
     auto const spinners{spinners_simulation_.get_read_view().entities};
 
     // Bind entity indexes
-    agent_indexes_.bind(EntityType::CapitalShip, capitals.entity_ids);
-    agent_indexes_.bind(EntityType::Fighter, fighters.entity_ids);
-    agent_indexes_.bind(EntityType::Turret, turrets.entity_ids);
-    agent_indexes_.bind(EntityType::TubeSpinner, spinners.entity_ids);
+    agent_indexes_.bind(EntityType::CapitalShip, capitals.entity_ids());
+    agent_indexes_.bind(EntityType::Fighter, fighters.entity_ids());
+    agent_indexes_.bind(EntityType::Turret, turrets.entity_ids());
+    agent_indexes_.bind(EntityType::TubeSpinner, spinners.entity_ids());
 
     // Bind entity-side component mappings while the owning storage is current.
     auto const capital_health_indices{
@@ -547,11 +545,11 @@ void LevelSim::rebuild_agent_indexes() {
         fighters_simulation_.entity_buffers.current().get_view().health_indices()};
     auto const turret_health_indices{turrets_simulation_.entities.get_view().health_indices()};
     entity_tables_.bind_health_indices(
-        EntityType::CapitalShip, capitals.entity_ids, capital_health_indices);
+        EntityType::CapitalShip, capitals.entity_ids(), capital_health_indices);
     entity_tables_.bind_health_indices(
-        EntityType::Fighter, fighters.entity_ids, fighter_health_indices);
+        EntityType::Fighter, fighters.entity_ids(), fighter_health_indices);
     entity_tables_.bind_health_indices(
-        EntityType::Turret, turrets.entity_ids, turret_health_indices);
+        EntityType::Turret, turrets.entity_ids(), turret_health_indices);
 
     // Bind player index
     PlayerAgentView player_view{};

@@ -1,6 +1,7 @@
 #include "worldless_simulation_test.h"
 #include <algorithm>
 #include <cmath>
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 namespace ioj::sim::tests {
 WorldlessSimulationTest::WorldlessSimulationTest(LevelSimInitData data)
@@ -94,14 +95,14 @@ auto add_capital_spawn(LevelSimInitData& data,
     auto const row{storage.num()};
     auto const entity_index{data.level_events.initialisation.entity_count++};
     storage.add_defaulted(1);
-    auto const events{storage.get_view().columns()};
-    events.entity_indices[row] = entity_index;
-    events.target_entity_indices[row] = target_entity_index;
-    events.locations.set(row, location);
-    events.teams[row] = team;
-    events.healths[row] = health == -1 ? data.capital_ships.max_health : health;
-    events.initial_fighter_spawn_delays[row] = initial_spawn_delay;
-    events.fighter_spawn_cooldowns[row] = spawn_cooldown;
+    auto const events{storage.get_view()};
+    events.entity_indices()[row] = entity_index;
+    events.target_entity_indices()[row] = target_entity_index;
+    set_vector(events.view_locations(), row, location);
+    events.teams()[row] = team;
+    events.healths()[row] = health == -1 ? data.capital_ships.max_health : health;
+    events.initial_fighter_spawn_delays()[row] = initial_spawn_delay;
+    events.fighter_spawn_cooldowns()[row] = spawn_cooldown;
     return entity_index;
 }
 auto add_turret_spawn(LevelSimInitData& data,
@@ -114,13 +115,13 @@ auto add_turret_spawn(LevelSimInitData& data,
     auto const row{storage.num()};
     auto const entity_index{data.level_events.initialisation.entity_count++};
     storage.add_defaulted(1);
-    auto const events{storage.get_view().columns()};
-    events.entity_indices[row] = entity_index;
-    events.locations.set(row, location);
-    events.rotations.set(row, rotation);
-    events.teams[row] = team;
-    events.healths[row] = health == -1 ? data.turrets.max_health : health;
-    events.laser_damages[row] = laser_damage == -1 ? data.turrets.laser.damage : laser_damage;
+    auto const events{storage.get_view()};
+    events.entity_indices()[row] = entity_index;
+    set_vector(events.view_locations(), row, location);
+    set_rotation(events.view_rotations(), row, rotation);
+    events.teams()[row] = team;
+    events.healths()[row] = health == -1 ? data.turrets.max_health : health;
+    events.laser_damages()[row] = laser_damage == -1 ? data.turrets.laser.damage : laser_damage;
     return entity_index;
 }
 auto add_spinner_spawn(LevelSimInitData& data,
@@ -131,11 +132,11 @@ auto add_spinner_spawn(LevelSimInitData& data,
     auto const row{storage.num()};
     auto const entity_index{data.level_events.initialisation.entity_count++};
     storage.add_defaulted(1);
-    auto const events{storage.get_view().columns()};
-    events.entity_indices[row] = entity_index;
-    events.locations.set(row, location);
-    events.yaws[row] = yaw;
-    events.initial_fire_point_indices[row] = initial_fire_point_index;
+    auto const events{storage.get_view()};
+    events.entity_indices()[row] = entity_index;
+    set_vector(events.view_locations(), row, location);
+    events.yaws()[row] = yaw;
+    events.initial_fire_point_indices()[row] = initial_fire_point_index;
     return entity_index;
 }
 }

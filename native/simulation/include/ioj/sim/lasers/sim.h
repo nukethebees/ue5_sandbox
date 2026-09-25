@@ -23,8 +23,8 @@ namespace ioj::sim::lasers {
 class PhaseInterface;
 
 struct Sim {
-    using SpawnRequests = lasers::SpawnRequests;
-    using Entities = lasers::Entities;
+    using SingleAllocationLaserSpawnRequests = lasers::SingleAllocationLaserSpawnRequests;
+    using SingleAllocationLaserEntities = lasers::SingleAllocationLaserEntities;
     using SpawnRequestStorage = SingleAllocationLaserSpawnRequests;
     using EntityStorage = SingleAllocationLaserEntities;
 
@@ -40,8 +40,8 @@ struct Sim {
     auto operator=(Sim&&) -> Sim& = delete;
 
     auto get_read_view() const -> LaserReadView {
-        return {entities.get_const_view().columns(),
-                frame_output_.hits.get_const_view().columns(),
+        return {entities.get_const_view(),
+                frame_output_.hits.get_const_view(),
                 frame_output_.hit_ticks,
                 frame_output_.hit_ordinals};
     }
@@ -53,11 +53,11 @@ struct Sim {
     // Spawning and configuration
     /* **************************************** */
     void set_config(LaserSimConfig const& new_config) noexcept;
-    void queue_laser_spawns(SpawnRequestsConstView spawn_data);
-    void queue_laser_spawns(SpawnRequests const& spawn_data) {
-        queue_laser_spawns(spawn_data.get_const_view());
+    template <typename Source>
+        requires SingleAllocationLaserSpawnRequests::accepts_source<Source>
+    void queue_laser_spawns(Source const& spawn_data) {
+        pending_spawns.append_from(spawn_data);
     }
-    void validate_array_sizes() const;
   private:
     /* **************************************** */
     // Tick phases

@@ -30,7 +30,6 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.c
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/LevelDefinitionSoA.h
 native/simulation/include/ioj/sim/capital_entity_data.h
 native/simulation/include/ioj/sim/capital_ships/phase_interface.h
-native/simulation/include/ioj/sim/capital_spawn_data.h
 native/simulation/include/ioj/sim/collision_scalar_types.h
 native/simulation/include/ioj/sim/direct_damage_events.h
 native/simulation/include/ioj/sim/entity_cell_data.h
@@ -71,7 +70,6 @@ native/simulation/include/ioj/sim/team.h
 native/simulation/include/ioj/sim/telemetry/level_telemetry_history.h
 native/simulation/include/ioj/sim/telemetry/level_telemetry_run_end_reason.h
 native/simulation/include/ioj/sim/turret_entity_data.h
-native/simulation/include/ioj/sim/turret_spawn_data.h
 native/simulation/include/ioj/sim/turrets/phase_interface.h
 native/simulation/include/ioj/sim/vectors3f.h
 native/simulation/include/ioj/sim/world_aabbs.h

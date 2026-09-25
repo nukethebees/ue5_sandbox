@@ -540,11 +540,10 @@ auto SpatialQueryManager::get_aabb_overlap_events() const -> collision::AABBOver
     return collision_system_.get_aabb_overlap_events();
 }
 auto SpatialQueryManager::get_entity_collision_bounds() const
-    -> collision::WorldAABBsColumnsConstView {
+    -> collision::EntityCellData::ConstView {
     return collision_system_.get_entity_collision_bounds();
 }
-auto SpatialQueryManager::get_static_collision_bounds() const
-    -> collision::WorldAABBsColumnsConstView {
+auto SpatialQueryManager::get_static_collision_bounds() const -> collision::WorldAABBs::ConstView {
     return collision_system_.get_static_collision_bounds();
 }
 

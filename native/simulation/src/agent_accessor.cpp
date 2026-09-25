@@ -1,4 +1,5 @@
 #include <ioj/sim/agent_accessor.h>
+#include <ioj/sim/column_math.h>
 
 #include <algorithm>
 #include <cassert>
@@ -90,41 +91,46 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
                 });
                 break;
             case EntityType::CapitalShip: {
-                auto const healths{
-                    health_table_.get_const_view(capitals_.health_indices, capitals_.entity_ids)};
+                auto const healths{capitals_healths_};
+                auto const locations{capitals_.view_locations()};
+                auto const teams{capitals_.teams()};
                 gather_group(group, type, [&](std::int32_t const index) {
-                    return agent_accessor_detail::TargetState{capitals_.locations[index],
+                    return agent_accessor_detail::TargetState{vector_at(locations, index),
                                                               {},
-                                                              capitals_.teams[index],
+                                                              teams[index],
                                                               sim::is_alive(healths.health(index))};
                 });
             } break;
             case EntityType::Fighter: {
-                auto const healths{
-                    health_table_.get_const_view(fighters_.health_indices, fighters_.entity_ids)};
+                auto const healths{fighters_healths_};
+                auto const locations{fighters_.view_locations()};
+                auto const velocities{fighters_.view_velocities()};
+                auto const teams{fighters_.teams()};
                 gather_group(group, type, [&](std::int32_t const index) {
-                    return agent_accessor_detail::TargetState{fighters_.locations[index],
-                                                              fighters_.velocities[index],
-                                                              fighters_.teams[index],
+                    return agent_accessor_detail::TargetState{vector_at(locations, index),
+                                                              vector_at(velocities, index),
+                                                              teams[index],
                                                               sim::is_alive(healths.health(index))};
                 });
             } break;
             case EntityType::Turret: {
-                auto const healths{
-                    health_table_.get_const_view(turrets_.health_indices, turrets_.entity_ids)};
+                auto const healths{turrets_healths_};
+                auto const locations{turrets_.view_locations()};
+                auto const teams{turrets_.teams()};
                 gather_group(group, type, [&](std::int32_t const index) {
-                    return agent_accessor_detail::TargetState{turrets_.locations[index],
+                    return agent_accessor_detail::TargetState{vector_at(locations, index),
                                                               {},
-                                                              turrets_.teams[index],
+                                                              teams[index],
                                                               sim::is_alive(healths.health(index))};
                 });
             } break;
-            case EntityType::TubeSpinner:
+            case EntityType::TubeSpinner: {
+                auto const locations{spinners_.view_locations()};
                 gather_group(group, type, [&](std::int32_t const index) {
                     return agent_accessor_detail::TargetState{
-                        spinners_.locations[index], {}, Team::White, true};
+                        vector_at(locations, index), {}, Team::White, true};
                 });
-                break;
+            } break;
             case EntityType::COUNT:
                 break;
         }

@@ -358,7 +358,8 @@ auto parse_single_allocation(Form const& form, std::vector<SingleAllocationVaria
 
 auto parse_soa(Form const& form) -> SoaSchema {
     Fields const fields{form, "struct", 1};
-    fields.validate({"view-name",
+    fields.validate({"storage",
+                     "view-name",
                      "const-view-name",
                      "operations",
                      "export-specifier",
@@ -403,6 +404,18 @@ auto parse_soa(Form const& form) -> SoaSchema {
     if (auto const* value{fields.optional("equivalent-type")}) {
         equivalent_type = parse_type_ref(*value);
     }
+    std::optional<SoaStorage> storage;
+    if (auto const value{optional_text(fields, "storage")}) {
+        if (*value == "vector") {
+            storage = SoaStorage::vector;
+        } else if (*value == "single-allocation") {
+            storage = SoaStorage::single_allocation;
+        } else if (*value == "both") {
+            storage = SoaStorage::both;
+        } else {
+            fail(form.token.span, "storage must be vector, single-allocation, or both");
+        }
+    }
     return SoaSchema{
         .name = text(fields.positional(0), "struct name"),
         .view_name = optional_text(fields, "view-name"),
@@ -421,6 +434,7 @@ auto parse_soa(Form const& form) -> SoaSchema {
         .field_mask_name = optional_text(fields, "field-mask-name"),
         .field_enum_name = optional_text(fields, "field-enum-name"),
         .vector_components = text_list_or(fields, "vector-components"),
+        .storage = storage,
     };
 }
 

@@ -23,44 +23,44 @@ auto EntityLedger::record_spawn(EntityType const type, Team const team, bool con
     auto const row{history_.num()};
     auto const id{ids_.allocate(type, row)};
     history_.add_defaulted(1);
-    auto const history{history_.get_view().columns()};
-    history.entity_ids[row] = id;
-    history.entity_types[row] = type;
-    history.teams[row] = team;
-    history.life_state[row] = alive ? LifeState::Alive : LifeState::Unknown;
+    auto const history{history_.get_view()};
+    history.entity_ids()[row] = id;
+    history.entity_types()[row] = type;
+    history.teams()[row] = team;
+    history.life_state()[row] = alive ? LifeState::Alive : LifeState::Unknown;
     statistics_.record_spawn(team, type, alive);
     return id;
 }
 void EntityLedger::record_status(EntityUniqueId const id, Team const team, bool const alive) {
     auto const row{require_history_index(id)};
-    auto const history{history_.get_view().columns()};
-    auto const old_alive{history.life_state[row] == LifeState::Alive};
+    auto const history{history_.get_view()};
+    auto const old_alive{history.life_state()[row] == LifeState::Alive};
     statistics_.apply_alive_transition(
-        history.teams[row], team, id.entity_type(), old_alive, alive);
-    history.teams[row] = team;
+        history.teams()[row], team, id.entity_type(), old_alive, alive);
+    history.teams()[row] = team;
     if (alive) {
-        history.life_state[row] = LifeState::Alive;
+        history.life_state()[row] = LifeState::Alive;
     } else if (old_alive) {
-        history.life_state[row] = LifeState::Unknown;
+        history.life_state()[row] = LifeState::Unknown;
     }
 }
 void EntityLedger::record_death(EntityUniqueId const victim,
                                 EntityUniqueId const killer,
                                 DeathReason const reason) {
     auto const row{require_history_index(victim)};
-    auto const history{history_.get_view().columns()};
-    auto const team{history.teams[row]};
-    auto const alive{history.life_state[row] == LifeState::Alive};
+    auto const history{history_.get_view()};
+    auto const team{history.teams()[row]};
+    auto const alive{history.life_state()[row] == LifeState::Alive};
     statistics_.apply_alive_transition(team, team, victim.entity_type(), alive, false);
-    history.life_state[row] = static_cast<LifeState>(reason);
+    history.life_state()[row] = static_cast<LifeState>(reason);
     statistics_.record_destroyed(team, victim.entity_type());
     if (!killer.is_valid()) {
         return;
     }
     auto const killer_row{require_history_index(killer)};
-    history.killed_by[row] = killer;
-    ++history.kills[killer_row];
-    statistics_.record_kill(history.teams[killer_row], killer.entity_type(), team);
+    history.killed_by()[row] = killer;
+    ++history.kills()[killer_row];
+    statistics_.record_kill(history.teams()[killer_row], killer.entity_type(), team);
 }
 void EntityLedger::record_damage(EntityUniqueId const victim,
                                  EntityUniqueId const attacker,
@@ -68,24 +68,25 @@ void EntityLedger::record_damage(EntityUniqueId const victim,
     assert(damage > 0);
     auto const history{get_unique_entities()};
     auto const victim_row{require_history_index(victim)};
-    assert(history.life_state[victim_row] == LifeState::Alive);
+    assert(history.life_state()[victim_row] == LifeState::Alive);
     auto const applied_damage{static_cast<double>(damage)};
     statistics_.record_damage_received(
-        history.teams[victim_row], victim.entity_type(), applied_damage);
+        history.teams()[victim_row], victim.entity_type(), applied_damage);
     if (attacker.is_valid()) {
         auto const attacker_row{require_history_index(attacker)};
-        statistics_.record_hit(history.teams[attacker_row], attacker.entity_type(), applied_damage);
+        statistics_.record_hit(
+            history.teams()[attacker_row], attacker.entity_type(), applied_damage);
     }
 }
 void EntityLedger::record_shots(std::span<EntityUniqueId const> const instigators) {
-    auto const history{get_unique_entities()};
+    auto const teams{get_unique_entities().teams()};
     for (auto const id : instigators) {
         if (id.is_valid()) {
-            statistics_.record_shot(history.teams[require_history_index(id)], id.entity_type());
+            statistics_.record_shot(teams[require_history_index(id)], id.entity_type());
         }
     }
 }
 auto EntityLedger::get_kills(EntityUniqueId const id) const -> std::uint32_t {
-    return get_unique_entities().kills[require_history_index(id)];
+    return get_unique_entities().kills()[require_history_index(id)];
 }
 }

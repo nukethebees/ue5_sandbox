@@ -202,49 +202,6 @@
     (member next_fire_point_indices array int32)
     (single-allocation SingleAllocationSpinnerEntityData)))
 
-(module capital_spawn_data
-  :header "native/simulation/include/ioj/sim/capital_spawn_data.h"
-  :backend standard-library
-  :namespace ioj::sim
-  (struct Vectors3f
-    :layout-only true
-    :vector-components (xs ys zs)
-    (member xs array float)
-    (member ys array float)
-    (member zs array float))
-  (struct Rotators3f
-    :layout-only true
-    (member pitches array float)
-    (member yaws array float)
-    (member rolls array float))
-  (struct CapitalSpawnData
-    :operations (all)
-    (member target_ids array @native_unique_id)
-    (member locations nested @native_vectors_3f :nested-schema Vectors3f)
-    (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
-    (member teams array @native_team)
-    (member healths array @native_health)
-    (member initial_spawn_delays array float)
-    (member spawn_cooldowns array float)
-    (single-allocation SingleAllocationCapitalSpawnData)))
-
-(module turret_spawn_data
-  :header "native/simulation/include/ioj/sim/turret_spawn_data.h"
-  :backend standard-library
-  :namespace ioj::sim
-  (struct Vectors3f
-    :layout-only true
-    :vector-components (xs ys zs)
-    (member xs array float)
-    (member ys array float)
-    (member zs array float))
-  (struct TurretSpawnData
-    :operations (all)
-    (member locations nested @native_vectors_3f :nested-schema Vectors3f)
-    (member teams array @native_team)
-    (member healths array @native_health)
-    (member laser_damages array int32)))
-
 (module laser_hit_details
   :header "native/simulation/include/ioj/sim/laser_hit_details.h"
   :backend standard-library

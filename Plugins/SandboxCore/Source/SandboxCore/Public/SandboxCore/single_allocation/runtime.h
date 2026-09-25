@@ -51,22 +51,6 @@ void default_construct_n(T* const destination, int32 const count) {
     DefaultConstructItems<T>(destination, count);
 }
 
-template <typename Column, typename Predicate>
-auto any_column_value(Column const& column, Predicate const& predicate) -> bool {
-    if constexpr (requires { source_data(column); }) {
-        return predicate(source_data(column));
-    } else {
-        return column.apply_arrays(
-            [&](auto const&... nested) { return (any_column_value(nested, predicate) || ...); });
-    }
-}
-
-template <typename View, typename Predicate>
-auto any_column(View const& view, Predicate predicate) -> bool {
-    return view.apply_arrays(
-        [&](auto const&... columns) { return (any_column_value(columns, predicate) || ...); });
-}
-
 using soa_storage_detail::StorageState;
 template <bool Const>
 using CompactViewState = soa_storage_detail::CompactViewState<Const, require>;

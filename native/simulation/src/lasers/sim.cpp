@@ -1,5 +1,6 @@
 #include "ioj/sim/lasers/sim.h"
 #include <cstdint>
+#include <ioj/sim/column_math.h>
 #include <span>
 #include <vector>
 
@@ -17,32 +18,6 @@
 #include <sandbox/core/generated/array_math_kernels.h>
 
 namespace ioj::sim::lasers {
-namespace {
-void copy_vectors(Vectors3fView const destination, Vectors3fConstView const source) {
-    std::ranges::copy(source.xs_span(), destination.xs);
-    std::ranges::copy(source.ys_span(), destination.ys);
-    std::ranges::copy(source.zs_span(), destination.zs);
-}
-void copy_rotators(Rotators3fView const destination, Rotators3fConstView const source) {
-    std::ranges::copy(source.pitches, destination.pitches.begin());
-    std::ranges::copy(source.yaws, destination.yaws.begin());
-    std::ranges::copy(source.rolls, destination.rolls.begin());
-}
-void append_spawn_requests(SingleAllocationLaserSpawnRequests& destination,
-                           SpawnRequestsConstView const source) {
-    auto const old_count{destination.num()};
-    destination.add_uninitialised(source.num());
-    auto const output{destination.get_view().columns().get_view(old_count, source.num())};
-    copy_vectors(output.locations, source.locations);
-    copy_rotators(output.rotations, source.rotations);
-    copy_vectors(output.base_velocities, source.base_velocities);
-    std::ranges::copy(source.damages, output.damages.begin());
-    std::ranges::copy(source.speeds, output.speeds.begin());
-    std::ranges::copy(source.max_distances, output.max_distances.begin());
-    std::ranges::copy(source.instigator_ids, output.instigator_ids.begin());
-    std::ranges::copy(source.sources, output.sources.begin());
-}
-} // namespace
 
 /* **************************************** */
 // Construction and tick phases
@@ -64,7 +39,6 @@ void Sim::begin_play() {
 
     number_spawned = 0;
     preallocate_instances();
-    validate_array_sizes();
 }
 
 void Sim::commit_spawns() {
@@ -94,7 +68,6 @@ void Sim::simulate(float const dt, ml::FrameScratch& scratch) {
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::finish_action");
     profiling::plot("Sandbox/LaserCount", get_num_instances());
-    validate_array_sizes();
 }
 
 auto Sim::get_num_instances() const noexcept -> std::int32_t {
@@ -105,12 +78,6 @@ auto Sim::get_num_instances() const noexcept -> std::int32_t {
 /* **************************************** */
 // Spawning
 /* **************************************** */
-void Sim::queue_laser_spawns(lasers::SpawnRequestsConstView const spawn_data) {
-    SANDBOX_PROFILE_SCOPE("lasers::Sim::queue_laser_spawns");
-
-    spawn_data.validate_array_sizes();
-    append_spawn_requests(pending_spawns, spawn_data);
-}
 
 void Sim::preallocate_instances() {
     entities.reserve(config.n_preallocated_instances);
@@ -119,7 +86,7 @@ void Sim::preallocate_instances() {
 void Sim::process_pending_spawns() {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::process_pending_spawns");
 
-    pending_spawns.get_const_view().columns().validate_array_sizes();
+    pending_spawns.get_const_view().validate();
     auto const n_to_add{pending_spawns.num()};
     combat_events.record_shots(pending_spawns.get_const_view().instigator_ids());
 
@@ -127,16 +94,36 @@ void Sim::process_pending_spawns() {
         return;
     }
 
-    auto const requests{pending_spawns.get_const_view().columns()};
+    auto const requests{pending_spawns.get_const_view()};
     auto const simulation_time{static_cast<float>(simulation_clock.get_simulation_time())};
     constexpr float fixed_spawn_offset{10.f};
     entities.add_uninitialised(n_to_add);
-    auto const output{entities.get_view().right(n_to_add).columns()};
+    auto const output{entities.get_view().right(n_to_add)};
+    auto const output_active{output.active()};
+    auto const output_locations{output.view_locations()};
+    auto const output_rotations{output.view_rotations()};
+    auto const output_velocities{output.view_velocities()};
+    auto const output_sources{output.sources()};
+    auto const output_damages{output.damages()};
+    auto const output_instigator_ids{output.instigator_ids()};
+    auto const output_lifetimes_remaining{output.lifetimes_remaining()};
+    auto const output_initial_lifetimes{output.initial_lifetimes()};
+    auto const output_spawn_times{output.spawn_times()};
+
+    auto const requests_speeds{requests.speeds()};
+    auto const requests_max_distances{requests.max_distances()};
+    auto const requests_rotations{requests.view_rotations()};
+    auto const requests_locations{requests.view_locations()};
+    auto const requests_base_velocities{requests.view_base_velocities()};
+    auto const requests_sources{requests.sources()};
+    auto const requests_damages{requests.damages()};
+    auto const requests_instigator_ids{requests.instigator_ids()};
+
     for (std::int32_t spawn_index{}; spawn_index < n_to_add; ++spawn_index) {
-        output.active[spawn_index] = 1;
-        auto const speed{requests.speeds[spawn_index]};
-        auto const lifetime{requests.max_distances[spawn_index] / speed};
-        auto const rotation{requests.rotations[spawn_index]};
+        output_active[spawn_index] = 1;
+        auto const speed{requests_speeds[spawn_index]};
+        auto const lifetime{requests_max_distances[spawn_index] / speed};
+        auto const rotation{rotation_at(requests_rotations, spawn_index)};
         auto const pitch{HMM_AngleDeg(rotation.pitch)};
         auto const yaw{HMM_AngleDeg(rotation.yaw)};
         auto const cos_pitch{HMM_CosF(pitch)};
@@ -144,36 +131,40 @@ void Sim::process_pending_spawns() {
             HMM_V3(cos_pitch * HMM_CosF(yaw), cos_pitch * HMM_SinF(yaw), HMM_SinF(pitch))};
         auto const forward_velocity{direction * speed};
 
-        output.locations.set(spawn_index,
-                             requests.locations[spawn_index] + direction * fixed_spawn_offset);
-        output.rotations.set(spawn_index, rotation);
-        output.velocities.set(spawn_index,
-                              requests.base_velocities[spawn_index] + forward_velocity);
-        output.sources[spawn_index] = requests.sources[spawn_index];
-        output.damages[spawn_index] = requests.damages[spawn_index];
-        output.instigator_ids[spawn_index] = requests.instigator_ids[spawn_index];
-        output.lifetimes_remaining[spawn_index] = lifetime;
-        output.initial_lifetimes[spawn_index] = lifetime;
-        output.spawn_times[spawn_index] = simulation_time;
+        set_vector(output_locations,
+                   spawn_index,
+                   vector_at(requests_locations, spawn_index) + direction * fixed_spawn_offset);
+        set_rotation(output_rotations, spawn_index, rotation);
+        set_vector(output_velocities,
+                   spawn_index,
+                   vector_at(requests_base_velocities, spawn_index) + forward_velocity);
+        output_sources[spawn_index] = requests_sources[spawn_index];
+        output_damages[spawn_index] = requests_damages[spawn_index];
+        output_instigator_ids[spawn_index] = requests_instigator_ids[spawn_index];
+        output_lifetimes_remaining[spawn_index] = lifetime;
+        output_initial_lifetimes[spawn_index] = lifetime;
+        output_spawn_times[spawn_index] = simulation_time;
     }
 
     number_spawned += n_to_add;
-    validate_array_sizes();
 }
 
 /* **************************************** */
 // Movement and collision
 /* **************************************** */
 void Sim::expire_instances(float const dt, ml::FrameScratch& scratch) {
-    auto const entities{this->entities.get_view().columns()};
-    ml::subtract_in_place(std::span<float>{entities.lifetimes_remaining}, dt);
+    auto const entities{this->entities.get_view()};
+    auto const lifetimes{entities.lifetimes_remaining()};
+    auto const active{entities.active()};
+
+    ml::subtract_in_place(std::span<float>{lifetimes}, dt);
 
     ml::FrameArray<std::int32_t> expired_indices{&scratch};
     auto const count{entities.num()};
     expired_indices.reserve(count);
     for (std::int32_t index{count - 1}; index >= 0; --index) {
-        if (entities.active[index] != 0 && entities.lifetimes_remaining[index] <= 0.f) {
-            entities.active[index] = 0;
+        if (active[index] != 0 && lifetimes[index] <= 0.f) {
+            active[index] = 0;
             expired_indices.add(index);
         }
     }
@@ -181,13 +172,19 @@ void Sim::expire_instances(float const dt, ml::FrameScratch& scratch) {
         pending_removals_.end(), expired_indices.begin(), expired_indices.end());
 }
 void Sim::update_locations(float const dt) {
-    auto const entities{this->entities.get_view().columns()};
+    auto const entities{this->entities.get_view()};
     auto const count{entities.num()};
+    auto const active{entities.active()};
+    auto const lifetimes{entities.lifetimes_remaining()};
+    auto const locations{entities.view_locations()};
+    auto const velocities{entities.view_velocities()};
+
     for (std::int32_t index{}; index < count; ++index) {
-        if (entities.active[index] != 0) {
-            auto const step{std::min(dt, std::max(0.f, entities.lifetimes_remaining[index]))};
-            entities.locations.set(index,
-                                   entities.locations[index] + entities.velocities[index] * step);
+        if (active[index] != 0) {
+            auto const step{std::min(dt, std::max(0.f, lifetimes[index]))};
+            set_vector(locations,
+                       index,
+                       vector_at(locations, index) + vector_at(velocities, index) * step);
         }
     }
 }
@@ -201,9 +198,9 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
 
     FrameCollisionScratch collision_scratch{scratch};
     collision_scratch.set_num(n);
-    auto const entities{this->entities.get_const_view().columns()};
-    auto const locations{entities.locations.get_const_view()};
-    auto const velocities{entities.velocities.get_const_view()};
+    auto const entities{this->entities.get_const_view()};
+    auto const locations{entities.view_locations().get_const_view()};
+    auto const velocities{entities.view_velocities().get_const_view()};
     assert(config.collision_jobs > 0);
     auto const job_count{std::min(n, config.collision_jobs)};
     auto const updates_per_slice{n / job_count + (n % job_count != 0)};
@@ -211,6 +208,10 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
     jobs.set_num(job_count);
     auto const job_indices{jobs.view()};
     std::iota(job_indices.begin(), job_indices.end(), 0);
+    auto const active_rows{entities.active()};
+    auto const lifetimes{entities.lifetimes_remaining()};
+    auto const instigator_ids{entities.instigator_ids()};
+
     std::for_each(
         std::execution::par,
         job_indices.begin(),
@@ -230,14 +231,13 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
             auto const trace_ends{
                 collision_scratch.trace_ends.get_view().slice(i_start, trace_count)};
             for (std::int32_t trace_index{}; trace_index < trace_count; ++trace_index) {
-                auto const start{trace_locations[trace_index]};
+                auto const start{vector_at(trace_locations, trace_index)};
                 trace_starts.set(trace_index, start);
                 auto const index{i_start + trace_index};
                 auto const step{
-                    entities.active[index] != 0
-                        ? std::min(dt, std::max(0.f, entities.lifetimes_remaining[index]))
-                        : 0.f};
-                trace_ends.set(trace_index, start + trace_velocities[trace_index] * step);
+                    active_rows[index] != 0 ? std::min(dt, std::max(0.f, lifetimes[index])) : 0.f};
+                trace_ends.set(trace_index,
+                               start + vector_at(trace_velocities, trace_index) * step);
             }
 
             auto const trace_starts_view{
@@ -246,8 +246,7 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
                 collision_scratch.trace_ends.get_const_view().slice(i_start, trace_count)};
             auto const hits{collision_scratch.trace_hits.get_view().slice(i_start, trace_count)};
             auto const ignored_entities{
-                std::span<EntityUniqueId const>{entities.instigator_ids}.subspan(i_start,
-                                                                                 trace_count)};
+                std::span<EntityUniqueId const>{instigator_ids}.subspan(i_start, trace_count)};
             query_manager.trace_closest_lines(
                 trace_starts_view, trace_ends_view, hits, ignored_entities);
         });
@@ -261,27 +260,29 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
     to_remove.reserve(hit_count);
     collision_damage_events.reserve(hit_count);
     hit_details.reserve(hit_count);
+    auto const damages{entities.damages()};
+    auto const sources{entities.sources()};
+
     constexpr float safe_normal_tolerance{1.e-8f};
     for (std::int32_t entity_index{}; entity_index < n; ++entity_index) {
         auto const element{static_cast<std::size_t>(entity_index)};
-        if (entities.active[element] == 0 || trace_hits.hits[element] == 0) {
+        if (active_rows[element] == 0 || trace_hits.hits[element] == 0) {
             continue;
         }
 
         to_remove.add(entity_index);
         auto const damaged_entity{trace_hits.entities[element]};
         if (damaged_entity.is_valid()) {
-            auto const instigator{entities.instigator_ids[element]};
-            collision_damage_events.add(damaged_entity, entities.damages[element], instigator);
+            auto const instigator{instigator_ids[element]};
+            collision_damage_events.add(damaged_entity, damages[element], instigator);
         }
 
-        auto const velocity{entities.velocities[entity_index]};
+        auto const velocity{vector_at(velocities, entity_index)};
         auto const length_squared{HMM_LenSqrV3(velocity)};
         auto const emission_direction{length_squared < safe_normal_tolerance
                                           ? HMM_V3(0.f, 0.f, -1.f)
                                           : velocity * (-1.f / std::sqrt(length_squared))};
-        hit_details.add(
-            trace_hits.locations[entity_index], emission_direction, entities.sources[element]);
+        hit_details.add(trace_hits.locations[entity_index], emission_direction, sources[element]);
     }
     std::ranges::sort(to_remove.view(), std::greater{});
     combat_events.queue_damage(collision_damage_events.get_const_view());
@@ -292,14 +293,13 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
         pending_removals_.push_back(index);
     }
 
-    frame_output_.append_hits(hit_details.get_const_view(), simulation_clock.get_completed_ticks());
+    frame_output_.append_hits(hit_details, simulation_clock.get_completed_ticks());
 }
 void Sim::remove_instances(std::span<std::int32_t const> const indices) {
     assert(std::ranges::is_sorted(indices, std::greater{}));
     for (auto const index : indices) {
         entities.remove_at_swap(index, 1);
     }
-    validate_array_sizes();
 }
 
 /* **************************************** */
@@ -309,7 +309,4 @@ void Sim::clear_spawn_buffers() {
     pending_spawns.reset();
 }
 
-void Sim::validate_array_sizes() const {
-    entities.get_const_view().columns().validate_array_sizes();
-}
 } // namespace lasers

@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/sim/column_math.h>
 
 #include <ioj/sim/agent_indexes.h>
 #include <ioj/sim/capital_entity_data.h>
@@ -70,24 +71,29 @@ class AgentAccessor {
     auto display_batches() const -> std::array<AgentDisplayBatch, 4> {
         return {{
             {EntityType::CapitalShip,
-             capitals_.entity_ids,
-             capitals_.locations,
+             capitals_.entity_ids(),
+             capitals_.view_locations(),
              {},
-             health_table_.get_const_view(capitals_.health_indices, capitals_.entity_ids),
-             capitals_.teams},
+             capitals_healths_,
+             capitals_.teams()},
             {EntityType::Fighter,
-             fighters_.entity_ids,
-             fighters_.locations,
-             fighters_.velocities,
-             health_table_.get_const_view(fighters_.health_indices, fighters_.entity_ids),
-             fighters_.teams},
+             fighters_.entity_ids(),
+             fighters_.view_locations(),
+             fighters_.view_velocities(),
+             fighters_healths_,
+             fighters_.teams()},
             {EntityType::Turret,
-             turrets_.entity_ids,
-             turrets_.locations,
+             turrets_.entity_ids(),
+             turrets_.view_locations(),
              {},
-             health_table_.get_const_view(turrets_.health_indices, turrets_.entity_ids),
-             turrets_.teams},
-            {EntityType::TubeSpinner, spinners_.entity_ids, spinners_.locations, {}, {}, {}},
+             turrets_healths_,
+             turrets_.teams()},
+            {EntityType::TubeSpinner,
+             spinners_.entity_ids(),
+             spinners_.view_locations(),
+             {},
+             {},
+             {}},
         }};
     }
 
@@ -101,44 +107,60 @@ class AgentAccessor {
                   to_float(player_.transform->rotator()),
                   *player_.team);
         }
-        auto const capital_healths{
-            health_table_.get_const_view(capitals_.health_indices, capitals_.entity_ids)};
+        auto const capital_healths{capitals_healths_};
+        auto const capital_ids{capitals_.entity_ids()};
+        auto const capital_locations{capitals_.view_locations()};
+        auto const capital_pitches{capitals_.view_rotations().pitches()};
+        auto const capital_yaws{capitals_.view_rotations().yaws()};
+        auto const capital_rolls{capitals_.view_rotations().rolls()};
+        auto const capital_teams{capitals_.teams()};
         auto const capital_count{capitals_.num()};
         for (std::int32_t i{}; i < capital_count; ++i) {
             if (sim::is_alive(capital_healths.health(i))) {
-                visit(capitals_.entity_ids[i],
-                      capitals_.locations[i],
-                      capitals_.rotations[i],
-                      capitals_.teams[i]);
+                visit(capital_ids[i],
+                      vector_at(capital_locations, i),
+                      Rotator3f{capital_pitches[i], capital_yaws[i], capital_rolls[i]},
+                      capital_teams[i]);
             }
         }
-        auto const turret_healths{
-            health_table_.get_const_view(turrets_.health_indices, turrets_.entity_ids)};
+        auto const turret_healths{turrets_healths_};
+        auto const turret_ids{turrets_.entity_ids()};
+        auto const turret_locations{turrets_.view_locations()};
+        auto const turret_pitches{turrets_.view_rotations().pitches()};
+        auto const turret_yaws{turrets_.view_rotations().yaws()};
+        auto const turret_rolls{turrets_.view_rotations().rolls()};
+        auto const turret_teams{turrets_.teams()};
         auto const turret_count{turrets_.num()};
         for (std::int32_t i{}; i < turret_count; ++i) {
             if (sim::is_alive(turret_healths.health(i))) {
-                visit(turrets_.entity_ids[i],
-                      turrets_.locations[i],
-                      turrets_.rotations[i],
-                      turrets_.teams[i]);
+                visit(turret_ids[i],
+                      vector_at(turret_locations, i),
+                      Rotator3f{turret_pitches[i], turret_yaws[i], turret_rolls[i]},
+                      turret_teams[i]);
             }
         }
-        auto const fighter_healths{
-            health_table_.get_const_view(fighters_.health_indices, fighters_.entity_ids)};
+        auto const fighter_healths{fighters_healths_};
+        auto const fighter_ids{fighters_.entity_ids()};
+        auto const fighter_locations{fighters_.view_locations()};
+        auto const fighter_directions{fighters_.view_aim_directions()};
+        auto const fighter_teams{fighters_.teams()};
         auto const fighter_count{fighters_.num()};
         for (std::int32_t i{}; i < fighter_count; ++i) {
             if (sim::is_alive(fighter_healths.health(i))) {
-                visit(fighters_.entity_ids[i],
-                      fighters_.locations[i],
-                      direction_to_rotation(fighters_.aim_directions[i]),
-                      fighters_.teams[i]);
+                visit(fighter_ids[i],
+                      vector_at(fighter_locations, i),
+                      direction_to_rotation(vector_at(fighter_directions, i)),
+                      fighter_teams[i]);
             }
         }
+        auto const spinner_ids{spinners_.entity_ids()};
+        auto const spinner_locations{spinners_.view_locations()};
+        auto const spinner_yaws{spinners_.yaws()};
         auto const spinner_count{spinners_.num()};
         for (std::int32_t i{}; i < spinner_count; ++i) {
-            visit(spinners_.entity_ids[i],
-                  spinners_.locations[i],
-                  Rotator3f{.pitch = 0.f, .yaw = spinners_.yaws[i], .roll = 0.f},
+            visit(spinner_ids[i],
+                  vector_at(spinner_locations, i),
+                  Rotator3f{.pitch = 0.f, .yaw = spinner_yaws[i], .roll = 0.f},
                   Team::White);
         }
     }
@@ -164,25 +186,20 @@ class AgentAccessor {
                                          health_table_.get_health(player_.health_index, player_.id),
                                          *player_.team};
             case EntityType::CapitalShip:
-                return AgentSpatialState{
-                    capitals_.locations[index],
-                    health_table_.get_const_view(capitals_.health_indices, capitals_.entity_ids)
-                        .health(index),
-                    capitals_.teams[index]};
+                return AgentSpatialState{vector_at(capitals_.view_locations(), index),
+                                         capitals_healths_.health(index),
+                                         capitals_.teams()[index]};
             case EntityType::Fighter:
-                return AgentSpatialState{
-                    fighters_.locations[index],
-                    health_table_.get_const_view(fighters_.health_indices, fighters_.entity_ids)
-                        .health(index),
-                    fighters_.teams[index]};
+                return AgentSpatialState{vector_at(fighters_.view_locations(), index),
+                                         fighters_healths_.health(index),
+                                         fighters_.teams()[index]};
             case EntityType::Turret:
-                return AgentSpatialState{
-                    turrets_.locations[index],
-                    health_table_.get_const_view(turrets_.health_indices, turrets_.entity_ids)
-                        .health(index),
-                    turrets_.teams[index]};
+                return AgentSpatialState{vector_at(turrets_.view_locations(), index),
+                                         turrets_healths_.health(index),
+                                         turrets_.teams()[index]};
             case EntityType::TubeSpinner:
-                return AgentSpatialState{spinners_.locations[index], 1000000, Team::White};
+                return AgentSpatialState{
+                    vector_at(spinners_.view_locations(), index), 1000000, Team::White};
             case EntityType::COUNT:
                 return std::nullopt;
         }
@@ -199,17 +216,11 @@ class AgentAccessor {
                 return player_.transform != nullptr && player_.health_index.is_valid() &&
                        sim::is_alive(health_table_.get_health(player_.health_index, player_.id));
             case EntityType::CapitalShip:
-                return sim::is_alive(
-                    health_table_.get_const_view(capitals_.health_indices, capitals_.entity_ids)
-                        .health(index));
+                return sim::is_alive(capitals_healths_.health(index));
             case EntityType::Fighter:
-                return sim::is_alive(
-                    health_table_.get_const_view(fighters_.health_indices, fighters_.entity_ids)
-                        .health(index));
+                return sim::is_alive(fighters_healths_.health(index));
             case EntityType::Turret:
-                return sim::is_alive(
-                    health_table_.get_const_view(turrets_.health_indices, turrets_.entity_ids)
-                        .health(index));
+                return sim::is_alive(turrets_healths_.health(index));
             case EntityType::TubeSpinner:
                 return true;
             case EntityType::COUNT:
@@ -218,16 +229,22 @@ class AgentAccessor {
         return false;
     }
 
-    void bind(CapitalEntityData::ConstView capitals,
-              FighterEntityData::ConstView fighters,
-              TurretEntityData::ConstView turrets,
-              SpinnerEntityData::ConstView spinners,
+    void bind(SingleAllocationCapitalEntityData::ConstView capitals,
+              SingleAllocationFighterEntityData::ConstView fighters,
+              SingleAllocationTurretEntityData::ConstView turrets,
+              SingleAllocationSpinnerEntityData::ConstView spinners,
               PlayerAgentView player = {}) noexcept {
         capitals_ = capitals;
         fighters_ = fighters;
         turrets_ = turrets;
         spinners_ = spinners;
         player_ = player;
+        capitals_healths_ =
+            health_table_.get_const_view(capitals.health_indices(), capitals.entity_ids());
+        fighters_healths_ =
+            health_table_.get_const_view(fighters.health_indices(), fighters.entity_ids());
+        turrets_healths_ =
+            health_table_.get_const_view(turrets.health_indices(), turrets.entity_ids());
     }
 
     [[nodiscard]] auto read(EntityUniqueId const id) const -> std::optional<AgentState> {
@@ -247,33 +264,28 @@ class AgentAccessor {
                                   health_table_.get_health(player_.health_index, player_.id),
                                   *player_.team};
             case EntityType::CapitalShip:
-                return AgentState{
-                    capitals_.locations[index],
-                    {},
-                    capitals_.rotations[index],
-                    health_table_.get_const_view(capitals_.health_indices, capitals_.entity_ids)
-                        .health(index),
-                    capitals_.teams[index]};
+                return AgentState{vector_at(capitals_.view_locations(), index),
+                                  {},
+                                  rotation_at(capitals_.view_rotations(), index),
+                                  capitals_healths_.health(index),
+                                  capitals_.teams()[index]};
             case EntityType::Fighter:
                 return AgentState{
-                    fighters_.locations[index],
-                    fighters_.velocities[index],
-                    direction_to_rotation(fighters_.aim_directions[index]),
-                    health_table_.get_const_view(fighters_.health_indices, fighters_.entity_ids)
-                        .health(index),
-                    fighters_.teams[index]};
+                    vector_at(fighters_.view_locations(), index),
+                    vector_at(fighters_.view_velocities(), index),
+                    direction_to_rotation(vector_at(fighters_.view_aim_directions(), index)),
+                    fighters_healths_.health(index),
+                    fighters_.teams()[index]};
             case EntityType::Turret:
-                return AgentState{
-                    turrets_.locations[index],
-                    {},
-                    turrets_.rotations[index],
-                    health_table_.get_const_view(turrets_.health_indices, turrets_.entity_ids)
-                        .health(index),
-                    turrets_.teams[index]};
-            case EntityType::TubeSpinner:
-                return AgentState{spinners_.locations[index],
+                return AgentState{vector_at(turrets_.view_locations(), index),
                                   {},
-                                  {.pitch = 0.f, .yaw = spinners_.yaws[index], .roll = 0.f},
+                                  rotation_at(turrets_.view_rotations(), index),
+                                  turrets_healths_.health(index),
+                                  turrets_.teams()[index]};
+            case EntityType::TubeSpinner:
+                return AgentState{vector_at(spinners_.view_locations(), index),
+                                  {},
+                                  {.pitch = 0.f, .yaw = spinners_.yaws()[index], .roll = 0.f},
                                   1000000,
                                   Team::White,
                                   false};
@@ -290,10 +302,13 @@ class AgentAccessor {
   private:
     AgentIndices& indexes_;
     HealthTable const& health_table_;
-    CapitalEntityData::ConstView capitals_{};
-    FighterEntityData::ConstView fighters_{};
-    TurretEntityData::ConstView turrets_{};
-    SpinnerEntityData::ConstView spinners_{};
+    SingleAllocationCapitalEntityData::ConstView capitals_{};
+    SingleAllocationFighterEntityData::ConstView fighters_{};
+    SingleAllocationTurretEntityData::ConstView turrets_{};
+    SingleAllocationSpinnerEntityData::ConstView spinners_{};
     PlayerAgentView player_{};
+    HealthConstView capitals_healths_{};
+    HealthConstView fighters_healths_{};
+    HealthConstView turrets_healths_{};
 };
 }

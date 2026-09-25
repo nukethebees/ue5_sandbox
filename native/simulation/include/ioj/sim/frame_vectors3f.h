@@ -28,10 +28,21 @@ struct FrameVectors3f {
     [[nodiscard]] auto get_const_view() const noexcept -> Vectors3fConstView;
     [[nodiscard]] auto num() const noexcept -> size_type;
     [[nodiscard]] auto is_empty() const noexcept -> bool;
-    void validate_array_sizes() const;
 
-    ml::FrameArray<float> xs;
-    ml::FrameArray<float> ys;
-    ml::FrameArray<float> zs;
+    auto xs() -> std::span<float> { return xs_.view(); }
+    auto xs() const -> std::span<float const> { return xs_.view(); }
+    auto ys() -> std::span<float> { return ys_.view(); }
+    auto ys() const -> std::span<float const> { return ys_.view(); }
+    auto zs() -> std::span<float> { return zs_.view(); }
+    auto zs() const -> std::span<float const> { return zs_.view(); }
+    void validate() const {
+        ml::native_soa::require(xs_.num() == num());
+        ml::native_soa::require(ys_.num() == num());
+        ml::native_soa::require(zs_.num() == num());
+    }
+  private:
+    ml::FrameArray<float> xs_;
+    ml::FrameArray<float> ys_;
+    ml::FrameArray<float> zs_;
 };
 } // namespace ioj::sim

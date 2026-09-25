@@ -6,6 +6,8 @@
     :target-storage reference
     (method queue_spawns "std::int32_t"
       (parameter queue @fighter_spawn_queue_const_view))
+    (method queue_spawns "std::int32_t"
+      (parameter queue (type-ref @frame_fighter_spawn_queue :suffix " const&")))
     (method queue_orders void
       (parameter queue (type-ref @fighter_order_queue :suffix " const&")))
     (method get_num_instances "std::int32_t"

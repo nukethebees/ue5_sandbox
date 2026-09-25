@@ -7,357 +7,11 @@
 #include "ioj/sim/entity_type.h"
 #include "ioj/sim/entity_types.h"
 #include "ioj/sim/entity_unique_id.h"
-#include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/native_soa/vector_storage_ops.h"
 
 #include <utility>
 
 namespace ioj::sim {
-struct EntityHistoryColumnsView;
-struct EntityHistoryColumnsConstView;
-struct EntityHistoryColumnsConstView {
-    using View = EntityHistoryColumnsView;
-    using ConstView = EntityHistoryColumnsConstView;
-    using size_type = std::int32_t;
-    std::span<EntityUniqueId const> entity_ids;
-    std::span<ioj::sim::EntityType const> entity_types;
-    std::span<Team const> teams;
-    std::span<std::uint32_t const> kills;
-    std::span<EntityUniqueId const> killed_by;
-    std::span<LifeState const> life_state;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entity_ids);
-        fn(entity_types);
-        fn(teams);
-        fn(kills);
-        fn(killed_by);
-        fn(life_state);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const
-        -> EntityHistoryColumnsConstView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
-        return {
-            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            entity_types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            kills.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            killed_by.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            life_state.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> EntityHistoryColumnsConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> EntityHistoryColumnsConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            entity_ids,
-            entity_types,
-            teams,
-            kills,
-            killed_by,
-            life_state,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> EntityHistoryColumnsConstView {
-        return slice(0, count);
-    }
-    auto right(size_type const count) const -> EntityHistoryColumnsConstView {
-        return slice(num() - count, count);
-    }
-};
-struct EntityHistoryColumnsView {
-    using View = EntityHistoryColumnsView;
-    using ConstView = EntityHistoryColumnsConstView;
-    using size_type = std::int32_t;
-    std::span<EntityUniqueId> entity_ids;
-    std::span<ioj::sim::EntityType> entity_types;
-    std::span<Team> teams;
-    std::span<std::uint32_t> kills;
-    std::span<EntityUniqueId> killed_by;
-    std::span<LifeState> life_state;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entity_ids);
-        fn(entity_types);
-        fn(teams);
-        fn(kills);
-        fn(killed_by);
-        fn(life_state);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> EntityHistoryColumnsView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
-        return {
-            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            entity_types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            kills.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            killed_by.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            life_state.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> EntityHistoryColumnsView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> EntityHistoryColumnsView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            entity_ids,
-            entity_types,
-            teams,
-            kills,
-            killed_by,
-            life_state,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> EntityHistoryColumnsView { return slice(0, count); }
-    auto right(size_type const count) const -> EntityHistoryColumnsView {
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
-             EntityUniqueId const new_entity_ids,
-             ioj::sim::EntityType const new_entity_types,
-             Team const new_teams,
-             std::uint32_t const new_kills,
-             EntityUniqueId const new_killed_by,
-             LifeState const new_life_state) const {
-        ml::native_soa::require(index >= 0 && index < num());
-        entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
-        entity_types[static_cast<std::size_t>(index)] = new_entity_types;
-        teams[static_cast<std::size_t>(index)] = new_teams;
-        kills[static_cast<std::size_t>(index)] = new_kills;
-        killed_by[static_cast<std::size_t>(index)] = new_killed_by;
-        life_state[static_cast<std::size_t>(index)] = new_life_state;
-    }
-};
-struct EntityHistoryColumns {
-    using View = EntityHistoryColumnsView;
-    using ConstView = EntityHistoryColumnsConstView;
-    using size_type = std::int32_t;
-    ml::native_soa::Vector<EntityUniqueId> entity_ids;
-    ml::native_soa::Vector<ioj::sim::EntityType> entity_types;
-    ml::native_soa::Vector<Team> teams;
-    ml::native_soa::Vector<std::uint32_t> kills;
-    ml::native_soa::Vector<EntityUniqueId> killed_by;
-    ml::native_soa::Vector<LifeState> life_state;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(entity_ids);
-        fn(entity_types);
-        fn(teams);
-        fn(kills);
-        fn(killed_by);
-        fn(life_state);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entity_ids);
-        fn(entity_types);
-        fn(teams);
-        fn(kills);
-        fn(killed_by);
-        fn(life_state);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             EntityUniqueId const new_entity_ids,
-             ioj::sim::EntityType const new_entity_types,
-             Team const new_teams,
-             std::uint32_t const new_kills,
-             EntityUniqueId const new_killed_by,
-             LifeState const new_life_state) {
-        get_view().set(index,
-                       new_entity_ids,
-                       new_entity_types,
-                       new_teams,
-                       new_kills,
-                       new_killed_by,
-                       new_life_state);
-    }
-    auto add(EntityUniqueId const new_entity_ids,
-             ioj::sim::EntityType const new_entity_types,
-             Team const new_teams,
-             std::uint32_t const new_kills,
-             EntityUniqueId const new_killed_by,
-             LifeState const new_life_state) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            entity_ids.emplace_back(new_entity_ids);
-            entity_types.emplace_back(new_entity_types);
-            teams.emplace_back(new_teams);
-            kills.emplace_back(new_kills);
-            killed_by.emplace_back(new_killed_by);
-            life_state.emplace_back(new_life_state);
-        });
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
-        }
-        {
-            auto const address{ml::address_cast(source.entity_ids.data())};
-            auto const begin{ml::address_cast(entity_ids.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + entity_ids.size() * sizeof(EntityUniqueId));
-        }
-        {
-            auto const address{ml::address_cast(source.entity_types.data())};
-            auto const begin{ml::address_cast(entity_types.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + entity_types.size() * sizeof(ioj::sim::EntityType));
-        }
-        {
-            auto const address{ml::address_cast(source.teams.data())};
-            auto const begin{ml::address_cast(teams.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + teams.size() * sizeof(Team));
-        }
-        {
-            auto const address{ml::address_cast(source.kills.data())};
-            auto const begin{ml::address_cast(kills.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + kills.size() * sizeof(std::uint32_t));
-        }
-        {
-            auto const address{ml::address_cast(source.killed_by.data())};
-            auto const begin{ml::address_cast(killed_by.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + killed_by.size() * sizeof(EntityUniqueId));
-        }
-        {
-            auto const address{ml::address_cast(source.life_state.data())};
-            auto const begin{ml::address_cast(life_state.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + life_state.size() * sizeof(LifeState));
-        }
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            entity_ids.insert(
-                entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
-            entity_types.insert(
-                entity_types.end(), source.entity_types.data(), source.entity_types.data() + count);
-            teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
-            kills.insert(kills.end(), source.kills.data(), source.kills.data() + count);
-            killed_by.insert(
-                killed_by.end(), source.killed_by.data(), source.killed_by.data() + count);
-            life_state.insert(
-                life_state.end(), source.life_state.data(), source.life_state.data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            entity_ids,
-            entity_types,
-            teams,
-            kills,
-            killed_by,
-            life_state,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            entity_ids,
-            entity_types,
-            teams,
-            kills,
-            killed_by,
-            life_state,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View { return slice(num() - count, count); }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        entity_ids[static_cast<std::size_t>(dst_index)] =
-            other.entity_ids[static_cast<std::size_t>(src_index)];
-        entity_types[static_cast<std::size_t>(dst_index)] =
-            other.entity_types[static_cast<std::size_t>(src_index)];
-        teams[static_cast<std::size_t>(dst_index)] =
-            other.teams[static_cast<std::size_t>(src_index)];
-        kills[static_cast<std::size_t>(dst_index)] =
-            other.kills[static_cast<std::size_t>(src_index)];
-        killed_by[static_cast<std::size_t>(dst_index)] =
-            other.killed_by[static_cast<std::size_t>(src_index)];
-        life_state[static_cast<std::size_t>(dst_index)] =
-            other.life_state[static_cast<std::size_t>(src_index)];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
-    }
-};
 
 struct EntityHistoryColumnsSingleView;
 struct EntityHistoryColumnsSingleConstView;
@@ -418,6 +72,7 @@ struct EntityHistoryColumnsSingleViewImpl : ml::native_soa::CompactViewState<Con
     using Base::column_data;
     using Base::column_data_unchecked;
     using Base::count_;
+    using Base::offset_;
     using Base::state_;
   public:
     auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
@@ -450,36 +105,14 @@ struct EntityHistoryColumnsSingleViewImpl : ml::native_soa::CompactViewState<Con
                     EntityHistoryColumnsSingleLayout::LifeStateColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto columns() const
-        -> std::conditional_t<Const, EntityHistoryColumnsConstView, EntityHistoryColumnsView> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return std::conditional_t<Const, EntityHistoryColumnsConstView, EntityHistoryColumnsView>{
-            {this->template column_data_unchecked<EntityUniqueId>(
-                 EntityHistoryColumnsSingleLayout::EntityIdsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<ioj::sim::EntityType>(
-                 EntityHistoryColumnsSingleLayout::EntityTypesColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<Team>(
-                 EntityHistoryColumnsSingleLayout::TeamsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<std::uint32_t>(
-                 EntityHistoryColumnsSingleLayout::KillsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<EntityUniqueId>(
-                 EntityHistoryColumnsSingleLayout::KilledByColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<LifeState>(
-                 EntityHistoryColumnsSingleLayout::LifeStateColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
     template <typename Func>
     void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
+        func(entity_ids());
+        func(entity_types());
+        func(teams());
+        func(kills());
+        func(killed_by());
+        func(life_state());
     }
 };
 struct EntityHistoryColumnsSingleConstView : EntityHistoryColumnsSingleViewImpl<true> {
@@ -494,8 +127,7 @@ struct EntityHistoryColumnsSingleConstView : EntityHistoryColumnsSingleViewImpl<
         return slice(offset, count);
     }
 };
-static_assert(sizeof(EntityHistoryColumnsSingleConstView) == 16);
-static_assert(std::is_trivially_copyable_v<EntityHistoryColumnsSingleConstView>);
+static_assert(ml::soa_storage_detail::validate_compact_view<EntityHistoryColumnsSingleConstView>());
 struct EntityHistoryColumnsSingleView : EntityHistoryColumnsSingleViewImpl<false> {
     using Base = EntityHistoryColumnsSingleViewImpl<false>;
     using Base::Base;
@@ -507,8 +139,7 @@ struct EntityHistoryColumnsSingleView : EntityHistoryColumnsSingleViewImpl<false
         return slice(offset, count);
     }
 };
-static_assert(sizeof(EntityHistoryColumnsSingleView) == 16);
-static_assert(std::is_trivially_copyable_v<EntityHistoryColumnsSingleView>);
+static_assert(ml::soa_storage_detail::validate_compact_view<EntityHistoryColumnsSingleView>());
 inline EntityHistoryColumnsSingleConstView::EntityHistoryColumnsSingleConstView(
     EntityHistoryColumnsSingleView const& other)
     : Base{other} {}
@@ -527,25 +158,27 @@ struct EntityHistory
     }
     using View = EntityHistoryColumnsSingleView;
     using ConstView = EntityHistoryColumnsSingleConstView;
-    using SchemaConstView = EntityHistoryColumnsConstView;
-    using ml::native_soa::StorageOperations::append_from;
-    auto append_from(EntityHistoryColumnsConstView const& source) -> size_type {
-        source.validate_array_sizes();
-        auto const count{source.num()};
-        auto const first{num_};
-        ml::native_soa::require((count <= max_capacity - first));
-        if (count == 0) {
-            return first;
-        }
-        auto const new_num{first + count};
-        if (new_num > capacity_) {
-            ml::native_soa::require(!ordinary_source_aliases_storage(source));
-            reallocate(ml::native_soa::growth_capacity(new_num, capacity_, capacity_block_bound));
-        }
-        append_columns(source, first, count);
-        num_ = new_num;
-        return first;
-    }
+    template <typename Source>
+    inline static constexpr bool accepts_source = requires(Source const& source) {
+        { source.num() } -> std::convertible_to<size_type>;
+        source.validate();
+        {
+            ml::native_soa::source_data(source.entity_ids())
+        } -> std::convertible_to<EntityUniqueId const*>;
+        {
+            ml::native_soa::source_data(source.entity_types())
+        } -> std::convertible_to<ioj::sim::EntityType const*>;
+        { ml::native_soa::source_data(source.teams()) } -> std::convertible_to<Team const*>;
+        {
+            ml::native_soa::source_data(source.kills())
+        } -> std::convertible_to<std::uint32_t const*>;
+        {
+            ml::native_soa::source_data(source.killed_by())
+        } -> std::convertible_to<EntityUniqueId const*>;
+        {
+            ml::native_soa::source_data(source.life_state())
+        } -> std::convertible_to<LifeState const*>;
+    };
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -667,32 +300,28 @@ struct EntityHistory
                 copy_columns(columns, index, source, count);
             });
     }
-    auto ordinary_source_aliases_storage(EntityHistoryColumnsConstView const& source) const noexcept
-        -> bool {
-        if (data_ == nullptr) {
-            return false;
-        }
-        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
-        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
-        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
-            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
-            return address >= allocation_begin && address < allocation_end;
-        };
-        return ml::native_soa::any_column(source, aliases);
-    }
     template <typename Columns>
-    void append_columns(Columns const& source, size_type first, size_type count) {
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count) {
         auto const destination{get_data(first)};
+        ml::native_soa::copy_n(destination.entity_ids,
+                               ml::native_soa::source_data(source.entity_ids()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.entity_types,
+                               ml::native_soa::source_data(source.entity_types()) + source_first,
+                               count);
         ml::native_soa::copy_n(
-            destination.entity_ids, ml::native_soa::source_data(source.entity_ids), count);
+            destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
         ml::native_soa::copy_n(
-            destination.entity_types, ml::native_soa::source_data(source.entity_types), count);
-        ml::native_soa::copy_n(destination.teams, ml::native_soa::source_data(source.teams), count);
-        ml::native_soa::copy_n(destination.kills, ml::native_soa::source_data(source.kills), count);
-        ml::native_soa::copy_n(
-            destination.killed_by, ml::native_soa::source_data(source.killed_by), count);
-        ml::native_soa::copy_n(
-            destination.life_state, ml::native_soa::source_data(source.life_state), count);
+            destination.kills, ml::native_soa::source_data(source.kills()) + source_first, count);
+        ml::native_soa::copy_n(destination.killed_by,
+                               ml::native_soa::source_data(source.killed_by()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.life_state,
+                               ml::native_soa::source_data(source.life_state()) + source_first,
+                               count);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(

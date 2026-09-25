@@ -1,6 +1,7 @@
 #include "SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h"
 
 #include <ioj/sim/collision_grid.h>
+#include <ioj/sim/entity_cell_data_operations.h>
 #include <ioj/sim/world_aabb_operations.h>
 #include <ioj/sim/world_aabbs.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
@@ -305,8 +306,8 @@ void UCollisionGridVisualizationComponent::configure(
 }
 
 void UCollisionGridVisualizationComponent::update_collision_bounds(
-    ::ioj::sim::collision::WorldAABBsColumnsConstView const entity_aabbs,
-    ::ioj::sim::collision::WorldAABBsColumnsConstView const static_aabbs) {
+    ::ioj::sim::collision::EntityCellData::ConstView const entity_aabbs,
+    ::ioj::sim::collision::WorldAABBs::ConstView const static_aabbs) {
     auto const max_draw_distance{FMath::Max(collision_bounds_max_draw_distance_, 0.f)};
     auto const visible{show_collision_bounds_};
     auto const settings_changed{collision_bounds_visible_ != visible ||
@@ -326,8 +327,8 @@ void UCollisionGridVisualizationComponent::update_collision_bounds(
     entity_bounds_.Reset();
     entity_bounds_.Reserve(entity_count);
     for (int32 i{}; i < entity_count; ++i) {
-        entity_bounds_.Emplace(ml::to_unreal(::ioj::sim::collision::min_at(entity_aabbs, i)),
-                               ml::to_unreal(::ioj::sim::collision::max_at(entity_aabbs, i)));
+        entity_bounds_.Emplace(ml::to_unreal(::ioj::sim::collision::min_point_at(entity_aabbs, i)),
+                               ml::to_unreal(::ioj::sim::collision::max_point_at(entity_aabbs, i)));
     }
 
     auto const static_count{static_aabbs.num()};

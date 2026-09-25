@@ -1,5 +1,6 @@
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/agent_indexes.h>
+#include <ioj/sim/column_math.h>
 
 #include <array>
 #include <gtest/gtest.h>
@@ -9,28 +10,28 @@ namespace ioj::sim::tests {
 TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
     SingleAllocationFighterEntityData fighters;
     fighters.add_defaulted(1);
-    auto data{fighters.get_view().columns()};
+    auto data{fighters.get_view()};
     auto const id{
         EntityUniqueId(entity_identity_offset(EntityType::Fighter, 0), EntityType::Fighter)};
-    data.entity_ids[0] = id;
-    data.locations.set(0, {{10.f, 20.f, 30.f}});
-    data.velocities.set(0, {{1.f, 2.f, 3.f}});
-    data.aim_directions.set(0, {{1.f, 0.f, 0.f}});
-    data.teams[0] = Team::Green;
+    data.entity_ids()[0] = id;
+    set_vector(data.view_locations(), 0, {{10.f, 20.f, 30.f}});
+    set_vector(data.view_velocities(), 0, {{1.f, 2.f, 3.f}});
+    set_vector(data.view_aim_directions(), 0, {{1.f, 0.f, 0.f}});
+    data.teams()[0] = Team::Green;
     HealthTable health_table;
-    health_table.add(std::span<EntityUniqueId const>{data.entity_ids},
+    health_table.add(std::span<EntityUniqueId const>{data.entity_ids()},
                      100,
-                     std::span<HealthIndex>{data.health_indices});
+                     std::span<HealthIndex>{data.health_indices()});
     SimClock clock;
     AgentIndices indexes{clock};
     AgentAccessor agents{indexes, health_table};
-    indexes.bind(EntityType::Fighter, data.entity_ids);
-    agents.bind({}, fighters.get_const_view().columns(), {}, {});
+    indexes.bind(EntityType::Fighter, data.entity_ids());
+    agents.bind({}, fighters.get_const_view(), {}, {});
     clock.phase = SimulationPhase::Thinking;
 
     ASSERT_TRUE(agents.read_alive(id));
     EXPECT_FLOAT_EQ(agents.read(id)->location.X, 10.f);
-    data.locations.xs[0] = 42.f;
+    data.view_locations().xs()[0] = 42.f;
     EXPECT_FLOAT_EQ(agents.read(id)->location.X, 42.f);
     EXPECT_FLOAT_EQ(agents.read(id)->velocity.Y, 2.f);
     EXPECT_EQ(agents.read(id)->team, Team::Green);
@@ -60,7 +61,7 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
         agents.gather_targets({}, {}, {});
     };
     check_bulk();
-    health_table.get_view(data.health_indices, data.entity_ids).health(0) = 0;
+    health_table.get_view(data.health_indices(), data.entity_ids()).health(0) = 0;
     EXPECT_EQ(indexes.find(id), 0);
     EXPECT_TRUE(agents.read(id));
     EXPECT_FALSE(agents.read_alive(id));
@@ -69,10 +70,11 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
     clock.phase = SimulationPhase::Preparation;
     indexes.retire(id);
     std::array const rows{0};
-    health_table.remove_rows(rows, data.health_indices, data.entity_ids, [](HealthMove const&) {});
+    health_table.remove_rows(
+        rows, data.health_indices(), data.entity_ids(), [](HealthMove const&) {});
     fighters.remove_at_swap(0, 1);
     indexes.bind(EntityType::Fighter, fighters.get_const_view().entity_ids());
-    agents.bind({}, fighters.get_const_view().columns(), {}, {});
+    agents.bind({}, fighters.get_const_view(), {}, {});
     clock.phase = SimulationPhase::Thinking;
     EXPECT_FALSE(agents.read(id));
     check_bulk();

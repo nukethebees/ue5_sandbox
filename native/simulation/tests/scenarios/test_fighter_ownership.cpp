@@ -248,7 +248,7 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
                 std::vector<EntityUniqueId>{owned.begin(), owned.end()};
             auto const id{capitals.get_target_id(*main_index)};
             auto const row{harness.get_simulation().get_agent_accessor().indexes().find(id)};
-            harness.queue_kills(std::array{capitals.get_read_view().entities.entity_ids[row]});
+            harness.queue_kills(std::array{capitals.get_read_view().entities.entity_ids()[row]});
         });
         next_time += 0.5;
         harness.timeline.at(next_time, [&] {

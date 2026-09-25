@@ -6,806 +6,11 @@
 #include "ioj/sim/entity_types.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/health_table.h"
-#include "ioj/sim/rotators3f.h"
-#include "ioj/sim/vectors3f.h"
-#include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/native_soa/vector_storage_ops.h"
 
 #include <utility>
 
 namespace ioj::sim {
-struct TurretEntityDataView;
-struct TurretEntityDataConstView;
-struct TurretEntityDataConstView {
-    using View = TurretEntityDataView;
-    using ConstView = TurretEntityDataConstView;
-    using size_type = std::int32_t;
-    std::span<EntityUniqueId const> entity_ids;
-    std::span<std::uint32_t const> integral_biases;
-    Vectors3fConstView locations;
-    Vectors3fConstView fire_point_locations;
-    Rotators3fConstView rotations;
-    std::span<Team const> teams;
-    std::span<std::int16_t const> laser_cooldowns;
-    std::span<std::int32_t const> laser_damages;
-    std::span<std::int16_t const> target_refresh_countdowns_periods;
-    std::span<std::int16_t const> target_refresh_countdowns_remaining_ticks;
-    std::span<EntityUniqueId const> target_ids;
-    Vectors3fConstView target_locations;
-    Vectors3fConstView target_velocities;
-    std::span<HealthIndex const> health_indices;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entity_ids);
-        fn(integral_biases);
-        fn(locations.xs_span());
-        fn(locations.ys_span());
-        fn(locations.zs_span());
-        fn(fire_point_locations.xs_span());
-        fn(fire_point_locations.ys_span());
-        fn(fire_point_locations.zs_span());
-        fn(rotations.pitches);
-        fn(rotations.yaws);
-        fn(rotations.rolls);
-        fn(teams);
-        fn(laser_cooldowns);
-        fn(laser_damages);
-        fn(target_refresh_countdowns_periods);
-        fn(target_refresh_countdowns_remaining_ticks);
-        fn(target_ids);
-        fn(target_locations.xs_span());
-        fn(target_locations.ys_span());
-        fn(target_locations.zs_span());
-        fn(target_velocities.xs_span());
-        fn(target_velocities.ys_span());
-        fn(target_velocities.zs_span());
-        fn(health_indices);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> TurretEntityDataConstView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
-        return {
-            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            integral_biases.subspan(static_cast<std::size_t>(offset),
-                                    static_cast<std::size_t>(count)),
-            locations.slice(offset, count),
-            fire_point_locations.slice(offset, count),
-            rotations.slice(offset, count),
-            teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            laser_cooldowns.subspan(static_cast<std::size_t>(offset),
-                                    static_cast<std::size_t>(count)),
-            laser_damages.subspan(static_cast<std::size_t>(offset),
-                                  static_cast<std::size_t>(count)),
-            target_refresh_countdowns_periods.subspan(static_cast<std::size_t>(offset),
-                                                      static_cast<std::size_t>(count)),
-            target_refresh_countdowns_remaining_ticks.subspan(static_cast<std::size_t>(offset),
-                                                              static_cast<std::size_t>(count)),
-            target_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            target_locations.slice(offset, count),
-            target_velocities.slice(offset, count),
-            health_indices.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> TurretEntityDataConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> TurretEntityDataConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            entity_ids,
-            integral_biases,
-            locations.get_const_view(),
-            fire_point_locations.get_const_view(),
-            rotations.get_const_view(),
-            teams,
-            laser_cooldowns,
-            laser_damages,
-            target_refresh_countdowns_periods,
-            target_refresh_countdowns_remaining_ticks,
-            target_ids,
-            target_locations.get_const_view(),
-            target_velocities.get_const_view(),
-            health_indices,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> TurretEntityDataConstView { return slice(0, count); }
-    auto right(size_type const count) const -> TurretEntityDataConstView {
-        return slice(num() - count, count);
-    }
-};
-struct TurretEntityDataView {
-    using View = TurretEntityDataView;
-    using ConstView = TurretEntityDataConstView;
-    using size_type = std::int32_t;
-    std::span<EntityUniqueId> entity_ids;
-    std::span<std::uint32_t> integral_biases;
-    Vectors3fView locations;
-    Vectors3fView fire_point_locations;
-    Rotators3fView rotations;
-    std::span<Team> teams;
-    std::span<std::int16_t> laser_cooldowns;
-    std::span<std::int32_t> laser_damages;
-    std::span<std::int16_t> target_refresh_countdowns_periods;
-    std::span<std::int16_t> target_refresh_countdowns_remaining_ticks;
-    std::span<EntityUniqueId> target_ids;
-    Vectors3fView target_locations;
-    Vectors3fView target_velocities;
-    std::span<HealthIndex> health_indices;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entity_ids);
-        fn(integral_biases);
-        fn(locations.xs_span());
-        fn(locations.ys_span());
-        fn(locations.zs_span());
-        fn(fire_point_locations.xs_span());
-        fn(fire_point_locations.ys_span());
-        fn(fire_point_locations.zs_span());
-        fn(rotations.pitches);
-        fn(rotations.yaws);
-        fn(rotations.rolls);
-        fn(teams);
-        fn(laser_cooldowns);
-        fn(laser_damages);
-        fn(target_refresh_countdowns_periods);
-        fn(target_refresh_countdowns_remaining_ticks);
-        fn(target_ids);
-        fn(target_locations.xs_span());
-        fn(target_locations.ys_span());
-        fn(target_locations.zs_span());
-        fn(target_velocities.xs_span());
-        fn(target_velocities.ys_span());
-        fn(target_velocities.zs_span());
-        fn(health_indices);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> TurretEntityDataView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
-        return {
-            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            integral_biases.subspan(static_cast<std::size_t>(offset),
-                                    static_cast<std::size_t>(count)),
-            locations.slice(offset, count),
-            fire_point_locations.slice(offset, count),
-            rotations.slice(offset, count),
-            teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            laser_cooldowns.subspan(static_cast<std::size_t>(offset),
-                                    static_cast<std::size_t>(count)),
-            laser_damages.subspan(static_cast<std::size_t>(offset),
-                                  static_cast<std::size_t>(count)),
-            target_refresh_countdowns_periods.subspan(static_cast<std::size_t>(offset),
-                                                      static_cast<std::size_t>(count)),
-            target_refresh_countdowns_remaining_ticks.subspan(static_cast<std::size_t>(offset),
-                                                              static_cast<std::size_t>(count)),
-            target_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            target_locations.slice(offset, count),
-            target_velocities.slice(offset, count),
-            health_indices.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> TurretEntityDataView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> TurretEntityDataView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            entity_ids,
-            integral_biases,
-            locations.get_const_view(),
-            fire_point_locations.get_const_view(),
-            rotations.get_const_view(),
-            teams,
-            laser_cooldowns,
-            laser_damages,
-            target_refresh_countdowns_periods,
-            target_refresh_countdowns_remaining_ticks,
-            target_ids,
-            target_locations.get_const_view(),
-            target_velocities.get_const_view(),
-            health_indices,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> TurretEntityDataView { return slice(0, count); }
-    auto right(size_type const count) const -> TurretEntityDataView {
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
-             EntityUniqueId const new_entity_ids,
-             std::uint32_t const new_integral_biases,
-             float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_fire_point_locations_xs,
-             float const new_fire_point_locations_ys,
-             float const new_fire_point_locations_zs,
-             float const new_rotations_pitches,
-             float const new_rotations_yaws,
-             float const new_rotations_rolls,
-             Team const new_teams,
-             std::int16_t const new_laser_cooldowns,
-             std::int32_t const new_laser_damages,
-             std::int16_t const new_target_refresh_countdowns_periods,
-             std::int16_t const new_target_refresh_countdowns_remaining_ticks,
-             EntityUniqueId const new_target_ids,
-             float const new_target_locations_xs,
-             float const new_target_locations_ys,
-             float const new_target_locations_zs,
-             float const new_target_velocities_xs,
-             float const new_target_velocities_ys,
-             float const new_target_velocities_zs,
-             HealthIndex const new_health_indices) const {
-        ml::native_soa::require(index >= 0 && index < num());
-        entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
-        integral_biases[static_cast<std::size_t>(index)] = new_integral_biases;
-        locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
-        locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
-        locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
-        fire_point_locations.xs[static_cast<std::size_t>(index)] = new_fire_point_locations_xs;
-        fire_point_locations.ys[static_cast<std::size_t>(index)] = new_fire_point_locations_ys;
-        fire_point_locations.zs[static_cast<std::size_t>(index)] = new_fire_point_locations_zs;
-        rotations.pitches[static_cast<std::size_t>(index)] = new_rotations_pitches;
-        rotations.yaws[static_cast<std::size_t>(index)] = new_rotations_yaws;
-        rotations.rolls[static_cast<std::size_t>(index)] = new_rotations_rolls;
-        teams[static_cast<std::size_t>(index)] = new_teams;
-        laser_cooldowns[static_cast<std::size_t>(index)] = new_laser_cooldowns;
-        laser_damages[static_cast<std::size_t>(index)] = new_laser_damages;
-        target_refresh_countdowns_periods[static_cast<std::size_t>(index)] =
-            new_target_refresh_countdowns_periods;
-        target_refresh_countdowns_remaining_ticks[static_cast<std::size_t>(index)] =
-            new_target_refresh_countdowns_remaining_ticks;
-        target_ids[static_cast<std::size_t>(index)] = new_target_ids;
-        target_locations.xs[static_cast<std::size_t>(index)] = new_target_locations_xs;
-        target_locations.ys[static_cast<std::size_t>(index)] = new_target_locations_ys;
-        target_locations.zs[static_cast<std::size_t>(index)] = new_target_locations_zs;
-        target_velocities.xs[static_cast<std::size_t>(index)] = new_target_velocities_xs;
-        target_velocities.ys[static_cast<std::size_t>(index)] = new_target_velocities_ys;
-        target_velocities.zs[static_cast<std::size_t>(index)] = new_target_velocities_zs;
-        health_indices[static_cast<std::size_t>(index)] = new_health_indices;
-    }
-};
-struct TurretEntityData {
-    using View = TurretEntityDataView;
-    using ConstView = TurretEntityDataConstView;
-    using size_type = std::int32_t;
-    ml::native_soa::Vector<EntityUniqueId> entity_ids;
-    ml::native_soa::Vector<std::uint32_t> integral_biases;
-    Vectors3f locations;
-    Vectors3f fire_point_locations;
-    Rotators3f rotations;
-    ml::native_soa::Vector<Team> teams;
-    ml::native_soa::Vector<std::int16_t> laser_cooldowns;
-    ml::native_soa::Vector<std::int32_t> laser_damages;
-    ml::native_soa::Vector<std::int16_t> target_refresh_countdowns_periods;
-    ml::native_soa::Vector<std::int16_t> target_refresh_countdowns_remaining_ticks;
-    ml::native_soa::Vector<EntityUniqueId> target_ids;
-    Vectors3f target_locations;
-    Vectors3f target_velocities;
-    ml::native_soa::Vector<HealthIndex> health_indices;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(entity_ids);
-        fn(integral_biases);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
-        fn(fire_point_locations.xs);
-        fn(fire_point_locations.ys);
-        fn(fire_point_locations.zs);
-        fn(rotations.pitches);
-        fn(rotations.yaws);
-        fn(rotations.rolls);
-        fn(teams);
-        fn(laser_cooldowns);
-        fn(laser_damages);
-        fn(target_refresh_countdowns_periods);
-        fn(target_refresh_countdowns_remaining_ticks);
-        fn(target_ids);
-        fn(target_locations.xs);
-        fn(target_locations.ys);
-        fn(target_locations.zs);
-        fn(target_velocities.xs);
-        fn(target_velocities.ys);
-        fn(target_velocities.zs);
-        fn(health_indices);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entity_ids);
-        fn(integral_biases);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
-        fn(fire_point_locations.xs);
-        fn(fire_point_locations.ys);
-        fn(fire_point_locations.zs);
-        fn(rotations.pitches);
-        fn(rotations.yaws);
-        fn(rotations.rolls);
-        fn(teams);
-        fn(laser_cooldowns);
-        fn(laser_damages);
-        fn(target_refresh_countdowns_periods);
-        fn(target_refresh_countdowns_remaining_ticks);
-        fn(target_ids);
-        fn(target_locations.xs);
-        fn(target_locations.ys);
-        fn(target_locations.zs);
-        fn(target_velocities.xs);
-        fn(target_velocities.ys);
-        fn(target_velocities.zs);
-        fn(health_indices);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             EntityUniqueId const new_entity_ids,
-             std::uint32_t const new_integral_biases,
-             float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_fire_point_locations_xs,
-             float const new_fire_point_locations_ys,
-             float const new_fire_point_locations_zs,
-             float const new_rotations_pitches,
-             float const new_rotations_yaws,
-             float const new_rotations_rolls,
-             Team const new_teams,
-             std::int16_t const new_laser_cooldowns,
-             std::int32_t const new_laser_damages,
-             std::int16_t const new_target_refresh_countdowns_periods,
-             std::int16_t const new_target_refresh_countdowns_remaining_ticks,
-             EntityUniqueId const new_target_ids,
-             float const new_target_locations_xs,
-             float const new_target_locations_ys,
-             float const new_target_locations_zs,
-             float const new_target_velocities_xs,
-             float const new_target_velocities_ys,
-             float const new_target_velocities_zs,
-             HealthIndex const new_health_indices) {
-        get_view().set(index,
-                       new_entity_ids,
-                       new_integral_biases,
-                       new_locations_xs,
-                       new_locations_ys,
-                       new_locations_zs,
-                       new_fire_point_locations_xs,
-                       new_fire_point_locations_ys,
-                       new_fire_point_locations_zs,
-                       new_rotations_pitches,
-                       new_rotations_yaws,
-                       new_rotations_rolls,
-                       new_teams,
-                       new_laser_cooldowns,
-                       new_laser_damages,
-                       new_target_refresh_countdowns_periods,
-                       new_target_refresh_countdowns_remaining_ticks,
-                       new_target_ids,
-                       new_target_locations_xs,
-                       new_target_locations_ys,
-                       new_target_locations_zs,
-                       new_target_velocities_xs,
-                       new_target_velocities_ys,
-                       new_target_velocities_zs,
-                       new_health_indices);
-    }
-    auto add(EntityUniqueId const new_entity_ids,
-             std::uint32_t const new_integral_biases,
-             float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_fire_point_locations_xs,
-             float const new_fire_point_locations_ys,
-             float const new_fire_point_locations_zs,
-             float const new_rotations_pitches,
-             float const new_rotations_yaws,
-             float const new_rotations_rolls,
-             Team const new_teams,
-             std::int16_t const new_laser_cooldowns,
-             std::int32_t const new_laser_damages,
-             std::int16_t const new_target_refresh_countdowns_periods,
-             std::int16_t const new_target_refresh_countdowns_remaining_ticks,
-             EntityUniqueId const new_target_ids,
-             float const new_target_locations_xs,
-             float const new_target_locations_ys,
-             float const new_target_locations_zs,
-             float const new_target_velocities_xs,
-             float const new_target_velocities_ys,
-             float const new_target_velocities_zs,
-             HealthIndex const new_health_indices) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            entity_ids.emplace_back(new_entity_ids);
-            integral_biases.emplace_back(new_integral_biases);
-            locations.xs.emplace_back(new_locations_xs);
-            locations.ys.emplace_back(new_locations_ys);
-            locations.zs.emplace_back(new_locations_zs);
-            fire_point_locations.xs.emplace_back(new_fire_point_locations_xs);
-            fire_point_locations.ys.emplace_back(new_fire_point_locations_ys);
-            fire_point_locations.zs.emplace_back(new_fire_point_locations_zs);
-            rotations.pitches.emplace_back(new_rotations_pitches);
-            rotations.yaws.emplace_back(new_rotations_yaws);
-            rotations.rolls.emplace_back(new_rotations_rolls);
-            teams.emplace_back(new_teams);
-            laser_cooldowns.emplace_back(new_laser_cooldowns);
-            laser_damages.emplace_back(new_laser_damages);
-            target_refresh_countdowns_periods.emplace_back(new_target_refresh_countdowns_periods);
-            target_refresh_countdowns_remaining_ticks.emplace_back(
-                new_target_refresh_countdowns_remaining_ticks);
-            target_ids.emplace_back(new_target_ids);
-            target_locations.xs.emplace_back(new_target_locations_xs);
-            target_locations.ys.emplace_back(new_target_locations_ys);
-            target_locations.zs.emplace_back(new_target_locations_zs);
-            target_velocities.xs.emplace_back(new_target_velocities_xs);
-            target_velocities.ys.emplace_back(new_target_velocities_ys);
-            target_velocities.zs.emplace_back(new_target_velocities_zs);
-            health_indices.emplace_back(new_health_indices);
-        });
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
-        }
-        {
-            auto const address{ml::address_cast(source.entity_ids.data())};
-            auto const begin{ml::address_cast(entity_ids.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + entity_ids.size() * sizeof(EntityUniqueId));
-        }
-        {
-            auto const address{ml::address_cast(source.integral_biases.data())};
-            auto const begin{ml::address_cast(integral_biases.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + integral_biases.size() * sizeof(std::uint32_t));
-        }
-        {
-            auto const address{ml::address_cast(source.locations.xs)};
-            auto const begin{ml::address_cast(locations.xs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + locations.xs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.locations.ys)};
-            auto const begin{ml::address_cast(locations.ys.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + locations.ys.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.locations.zs)};
-            auto const begin{ml::address_cast(locations.zs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + locations.zs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.fire_point_locations.xs)};
-            auto const begin{ml::address_cast(fire_point_locations.xs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + fire_point_locations.xs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.fire_point_locations.ys)};
-            auto const begin{ml::address_cast(fire_point_locations.ys.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + fire_point_locations.ys.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.fire_point_locations.zs)};
-            auto const begin{ml::address_cast(fire_point_locations.zs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + fire_point_locations.zs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.rotations.pitches.data())};
-            auto const begin{ml::address_cast(rotations.pitches.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + rotations.pitches.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.rotations.yaws.data())};
-            auto const begin{ml::address_cast(rotations.yaws.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + rotations.yaws.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.rotations.rolls.data())};
-            auto const begin{ml::address_cast(rotations.rolls.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + rotations.rolls.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.teams.data())};
-            auto const begin{ml::address_cast(teams.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + teams.size() * sizeof(Team));
-        }
-        {
-            auto const address{ml::address_cast(source.laser_cooldowns.data())};
-            auto const begin{ml::address_cast(laser_cooldowns.data())};
-            ml::native_soa::require(address < begin || address >= begin + laser_cooldowns.size() *
-                                                                              sizeof(std::int16_t));
-        }
-        {
-            auto const address{ml::address_cast(source.laser_damages.data())};
-            auto const begin{ml::address_cast(laser_damages.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + laser_damages.size() * sizeof(std::int32_t));
-        }
-        {
-            auto const address{ml::address_cast(source.target_refresh_countdowns_periods.data())};
-            auto const begin{ml::address_cast(target_refresh_countdowns_periods.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + target_refresh_countdowns_periods.size() *
-                                                           sizeof(std::int16_t));
-        }
-        {
-            auto const address{
-                ml::address_cast(source.target_refresh_countdowns_remaining_ticks.data())};
-            auto const begin{ml::address_cast(target_refresh_countdowns_remaining_ticks.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + target_refresh_countdowns_remaining_ticks.size() *
-                                                    sizeof(std::int16_t));
-        }
-        {
-            auto const address{ml::address_cast(source.target_ids.data())};
-            auto const begin{ml::address_cast(target_ids.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + target_ids.size() * sizeof(EntityUniqueId));
-        }
-        {
-            auto const address{ml::address_cast(source.target_locations.xs)};
-            auto const begin{ml::address_cast(target_locations.xs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + target_locations.xs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.target_locations.ys)};
-            auto const begin{ml::address_cast(target_locations.ys.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + target_locations.ys.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.target_locations.zs)};
-            auto const begin{ml::address_cast(target_locations.zs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + target_locations.zs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.target_velocities.xs)};
-            auto const begin{ml::address_cast(target_velocities.xs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + target_velocities.xs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.target_velocities.ys)};
-            auto const begin{ml::address_cast(target_velocities.ys.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + target_velocities.ys.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.target_velocities.zs)};
-            auto const begin{ml::address_cast(target_velocities.zs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + target_velocities.zs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.health_indices.data())};
-            auto const begin{ml::address_cast(health_indices.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + health_indices.size() * sizeof(HealthIndex));
-        }
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            entity_ids.insert(
-                entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
-            integral_biases.insert(integral_biases.end(),
-                                   source.integral_biases.data(),
-                                   source.integral_biases.data() + count);
-            locations.xs.insert(
-                locations.xs.end(), source.locations.xs, source.locations.xs + count);
-            locations.ys.insert(
-                locations.ys.end(), source.locations.ys, source.locations.ys + count);
-            locations.zs.insert(
-                locations.zs.end(), source.locations.zs, source.locations.zs + count);
-            fire_point_locations.xs.insert(fire_point_locations.xs.end(),
-                                           source.fire_point_locations.xs,
-                                           source.fire_point_locations.xs + count);
-            fire_point_locations.ys.insert(fire_point_locations.ys.end(),
-                                           source.fire_point_locations.ys,
-                                           source.fire_point_locations.ys + count);
-            fire_point_locations.zs.insert(fire_point_locations.zs.end(),
-                                           source.fire_point_locations.zs,
-                                           source.fire_point_locations.zs + count);
-            rotations.pitches.insert(rotations.pitches.end(),
-                                     source.rotations.pitches.data(),
-                                     source.rotations.pitches.data() + count);
-            rotations.yaws.insert(rotations.yaws.end(),
-                                  source.rotations.yaws.data(),
-                                  source.rotations.yaws.data() + count);
-            rotations.rolls.insert(rotations.rolls.end(),
-                                   source.rotations.rolls.data(),
-                                   source.rotations.rolls.data() + count);
-            teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
-            laser_cooldowns.insert(laser_cooldowns.end(),
-                                   source.laser_cooldowns.data(),
-                                   source.laser_cooldowns.data() + count);
-            laser_damages.insert(laser_damages.end(),
-                                 source.laser_damages.data(),
-                                 source.laser_damages.data() + count);
-            target_refresh_countdowns_periods.insert(
-                target_refresh_countdowns_periods.end(),
-                source.target_refresh_countdowns_periods.data(),
-                source.target_refresh_countdowns_periods.data() + count);
-            target_refresh_countdowns_remaining_ticks.insert(
-                target_refresh_countdowns_remaining_ticks.end(),
-                source.target_refresh_countdowns_remaining_ticks.data(),
-                source.target_refresh_countdowns_remaining_ticks.data() + count);
-            target_ids.insert(
-                target_ids.end(), source.target_ids.data(), source.target_ids.data() + count);
-            target_locations.xs.insert(target_locations.xs.end(),
-                                       source.target_locations.xs,
-                                       source.target_locations.xs + count);
-            target_locations.ys.insert(target_locations.ys.end(),
-                                       source.target_locations.ys,
-                                       source.target_locations.ys + count);
-            target_locations.zs.insert(target_locations.zs.end(),
-                                       source.target_locations.zs,
-                                       source.target_locations.zs + count);
-            target_velocities.xs.insert(target_velocities.xs.end(),
-                                        source.target_velocities.xs,
-                                        source.target_velocities.xs + count);
-            target_velocities.ys.insert(target_velocities.ys.end(),
-                                        source.target_velocities.ys,
-                                        source.target_velocities.ys + count);
-            target_velocities.zs.insert(target_velocities.zs.end(),
-                                        source.target_velocities.zs,
-                                        source.target_velocities.zs + count);
-            health_indices.insert(health_indices.end(),
-                                  source.health_indices.data(),
-                                  source.health_indices.data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            entity_ids,
-            integral_biases,
-            locations.get_view(),
-            fire_point_locations.get_view(),
-            rotations.get_view(),
-            teams,
-            laser_cooldowns,
-            laser_damages,
-            target_refresh_countdowns_periods,
-            target_refresh_countdowns_remaining_ticks,
-            target_ids,
-            target_locations.get_view(),
-            target_velocities.get_view(),
-            health_indices,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            entity_ids,
-            integral_biases,
-            locations.get_view(),
-            fire_point_locations.get_view(),
-            rotations.get_view(),
-            teams,
-            laser_cooldowns,
-            laser_damages,
-            target_refresh_countdowns_periods,
-            target_refresh_countdowns_remaining_ticks,
-            target_ids,
-            target_locations.get_view(),
-            target_velocities.get_view(),
-            health_indices,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View { return slice(num() - count, count); }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        entity_ids[static_cast<std::size_t>(dst_index)] =
-            other.entity_ids[static_cast<std::size_t>(src_index)];
-        integral_biases[static_cast<std::size_t>(dst_index)] =
-            other.integral_biases[static_cast<std::size_t>(src_index)];
-        locations.copy_element(dst_index, other.locations, src_index);
-        fire_point_locations.copy_element(dst_index, other.fire_point_locations, src_index);
-        rotations.copy_element(dst_index, other.rotations, src_index);
-        teams[static_cast<std::size_t>(dst_index)] =
-            other.teams[static_cast<std::size_t>(src_index)];
-        laser_cooldowns[static_cast<std::size_t>(dst_index)] =
-            other.laser_cooldowns[static_cast<std::size_t>(src_index)];
-        laser_damages[static_cast<std::size_t>(dst_index)] =
-            other.laser_damages[static_cast<std::size_t>(src_index)];
-        target_refresh_countdowns_periods[static_cast<std::size_t>(dst_index)] =
-            other.target_refresh_countdowns_periods[static_cast<std::size_t>(src_index)];
-        target_refresh_countdowns_remaining_ticks[static_cast<std::size_t>(dst_index)] =
-            other.target_refresh_countdowns_remaining_ticks[static_cast<std::size_t>(src_index)];
-        target_ids[static_cast<std::size_t>(dst_index)] =
-            other.target_ids[static_cast<std::size_t>(src_index)];
-        target_locations.copy_element(dst_index, other.target_locations, src_index);
-        target_velocities.copy_element(dst_index, other.target_velocities, src_index);
-        health_indices[static_cast<std::size_t>(dst_index)] =
-            other.health_indices[static_cast<std::size_t>(src_index)];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
-    }
-};
 
 struct TurretEntityDataSingleView;
 struct TurretEntityDataSingleConstView;
@@ -867,6 +72,84 @@ struct TurretEntityDataSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct TurretEntityDataSingleView_rotations;
+struct TurretEntityDataSingleConstView_rotations;
+template <bool Const>
+struct TurretEntityDataSingleView_rotationsImpl : ml::native_soa::CompactViewState<Const> {
+    using Base = ml::native_soa::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = TurretEntityDataSingleView_rotations;
+    using ConstView = TurretEntityDataSingleConstView_rotations;
+    TurretEntityDataSingleView_rotationsImpl() = default;
+    template <bool Enabled = Const>
+    TurretEntityDataSingleView_rotationsImpl(
+        TurretEntityDataSingleView_rotationsImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::offset_;
+    using Base::state_;
+  public:
+    auto pitches() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    TurretEntityDataSingleLayout::RotationsPitchesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto yaws() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    TurretEntityDataSingleLayout::RotationsYawsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto rolls() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    TurretEntityDataSingleLayout::RotationsRollsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(pitches());
+        func(yaws());
+        func(rolls());
+    }
+};
+struct TurretEntityDataSingleConstView_rotations : TurretEntityDataSingleView_rotationsImpl<true> {
+    using Base = TurretEntityDataSingleView_rotationsImpl<true>;
+    using Base::Base;
+    using View = TurretEntityDataSingleView_rotations;
+    using ConstView = TurretEntityDataSingleConstView_rotations;
+    TurretEntityDataSingleConstView_rotations() = default;
+    TurretEntityDataSingleConstView_rotations(TurretEntityDataSingleView_rotations const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(
+    ml::soa_storage_detail::validate_compact_view<TurretEntityDataSingleConstView_rotations>());
+struct TurretEntityDataSingleView_rotations : TurretEntityDataSingleView_rotationsImpl<false> {
+    using Base = TurretEntityDataSingleView_rotationsImpl<false>;
+    using Base::Base;
+    using View = TurretEntityDataSingleView_rotations;
+    using ConstView = TurretEntityDataSingleConstView_rotations;
+    TurretEntityDataSingleView_rotations() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(
+    ml::soa_storage_detail::validate_compact_view<TurretEntityDataSingleView_rotations>());
+inline TurretEntityDataSingleConstView_rotations::TurretEntityDataSingleConstView_rotations(
+    TurretEntityDataSingleView_rotations const& other)
+    : Base{other} {}
 template <bool Const>
 struct TurretEntityDataSingleViewImpl : ml::native_soa::CompactViewState<Const> {
     using Base = ml::native_soa::CompactViewState<Const>;
@@ -887,6 +170,7 @@ struct TurretEntityDataSingleViewImpl : ml::native_soa::CompactViewState<Const> 
     using Base::column_data;
     using Base::column_data_unchecked;
     using Base::count_;
+    using Base::offset_;
     using Base::state_;
   public:
     auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
@@ -925,22 +209,10 @@ struct TurretEntityDataSingleViewImpl : ml::native_soa::CompactViewState<Const> 
                           first};
         return {this->template column_data_unchecked<float>(first), stride, count_};
     }
-    auto view_rotations() const -> std::conditional_t<Const, Rotators3fConstView, Rotators3fView> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return std::conditional_t<Const, Rotators3fConstView, Rotators3fView>{
-            {this->template column_data_unchecked<float>(
-                 TurretEntityDataSingleLayout::RotationsPitchesColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<float>(
-                 TurretEntityDataSingleLayout::RotationsYawsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<float>(
-                 TurretEntityDataSingleLayout::RotationsRollsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
+    auto view_rotations() const -> std::conditional_t<Const,
+                                                      TurretEntityDataSingleConstView_rotations,
+                                                      TurretEntityDataSingleView_rotations> {
+        return {state_, offset_, count_};
     }
     auto teams() const -> std::span<Element<Team>> {
         return {this->template column_data<Team>(
@@ -1008,96 +280,32 @@ struct TurretEntityDataSingleViewImpl : ml::native_soa::CompactViewState<Const> 
                     TurretEntityDataSingleLayout::HealthIndicesColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto columns() const
-        -> std::conditional_t<Const, TurretEntityDataConstView, TurretEntityDataView> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return std::conditional_t<Const, TurretEntityDataConstView, TurretEntityDataView>{
-            {this->template column_data_unchecked<EntityUniqueId>(
-                 TurretEntityDataSingleLayout::EntityIdsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<std::uint32_t>(
-                 TurretEntityDataSingleLayout::IntegralBiasesColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            std::conditional_t<Const, Vectors3fConstView, Vectors3fView>{
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::LocationsXsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::LocationsYsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::LocationsZsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            std::conditional_t<Const, Vectors3fConstView, Vectors3fView>{
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::FirePointLocationsXsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::FirePointLocationsYsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::FirePointLocationsZsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            std::conditional_t<Const, Rotators3fConstView, Rotators3fView>{
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::RotationsPitchesColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::RotationsYawsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::RotationsRollsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            {this->template column_data_unchecked<Team>(
-                 TurretEntityDataSingleLayout::TeamsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<std::int16_t>(
-                 TurretEntityDataSingleLayout::LaserCooldownsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<std::int32_t>(
-                 TurretEntityDataSingleLayout::LaserDamagesColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<std::int16_t>(
-                 TurretEntityDataSingleLayout::TargetRefreshCountdownsPeriodsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<std::int16_t>(
-                 TurretEntityDataSingleLayout::TargetRefreshCountdownsRemainingTicksColumn.offset(
-                     blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<EntityUniqueId>(
-                 TurretEntityDataSingleLayout::TargetIdsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            std::conditional_t<Const, Vectors3fConstView, Vectors3fView>{
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::TargetLocationsXsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::TargetLocationsYsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::TargetLocationsZsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            std::conditional_t<Const, Vectors3fConstView, Vectors3fView>{
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::TargetVelocitiesXsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::TargetVelocitiesYsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     TurretEntityDataSingleLayout::TargetVelocitiesZsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            {this->template column_data_unchecked<HealthIndex>(
-                 TurretEntityDataSingleLayout::HealthIndicesColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
     template <typename Func>
     void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
+        func(entity_ids());
+        func(integral_biases());
+        func(view_locations().xs());
+        func(view_locations().ys());
+        func(view_locations().zs());
+        func(view_fire_point_locations().xs());
+        func(view_fire_point_locations().ys());
+        func(view_fire_point_locations().zs());
+        func(view_rotations().pitches());
+        func(view_rotations().yaws());
+        func(view_rotations().rolls());
+        func(teams());
+        func(laser_cooldowns());
+        func(laser_damages());
+        func(target_refresh_countdowns_periods());
+        func(target_refresh_countdowns_remaining_ticks());
+        func(target_ids());
+        func(view_target_locations().xs());
+        func(view_target_locations().ys());
+        func(view_target_locations().zs());
+        func(view_target_velocities().xs());
+        func(view_target_velocities().ys());
+        func(view_target_velocities().zs());
+        func(health_indices());
     }
 };
 struct TurretEntityDataSingleConstView : TurretEntityDataSingleViewImpl<true> {
@@ -1112,8 +320,7 @@ struct TurretEntityDataSingleConstView : TurretEntityDataSingleViewImpl<true> {
         return slice(offset, count);
     }
 };
-static_assert(sizeof(TurretEntityDataSingleConstView) == 16);
-static_assert(std::is_trivially_copyable_v<TurretEntityDataSingleConstView>);
+static_assert(ml::soa_storage_detail::validate_compact_view<TurretEntityDataSingleConstView>());
 struct TurretEntityDataSingleView : TurretEntityDataSingleViewImpl<false> {
     using Base = TurretEntityDataSingleViewImpl<false>;
     using Base::Base;
@@ -1125,8 +332,7 @@ struct TurretEntityDataSingleView : TurretEntityDataSingleViewImpl<false> {
         return slice(offset, count);
     }
 };
-static_assert(sizeof(TurretEntityDataSingleView) == 16);
-static_assert(std::is_trivially_copyable_v<TurretEntityDataSingleView>);
+static_assert(ml::soa_storage_detail::validate_compact_view<TurretEntityDataSingleView>());
 inline TurretEntityDataSingleConstView::TurretEntityDataSingleConstView(
     TurretEntityDataSingleView const& other)
     : Base{other} {}
@@ -1145,25 +351,81 @@ struct SingleAllocationTurretEntityData
     }
     using View = TurretEntityDataSingleView;
     using ConstView = TurretEntityDataSingleConstView;
-    using SchemaConstView = TurretEntityDataConstView;
-    using ml::native_soa::StorageOperations::append_from;
-    auto append_from(TurretEntityDataConstView const& source) -> size_type {
-        source.validate_array_sizes();
-        auto const count{source.num()};
-        auto const first{num_};
-        ml::native_soa::require((count <= max_capacity - first));
-        if (count == 0) {
-            return first;
-        }
-        auto const new_num{first + count};
-        if (new_num > capacity_) {
-            ml::native_soa::require(!ordinary_source_aliases_storage(source));
-            reallocate(ml::native_soa::growth_capacity(new_num, capacity_, capacity_block_bound));
-        }
-        append_columns(source, first, count);
-        num_ = new_num;
-        return first;
-    }
+    template <typename Source>
+    inline static constexpr bool accepts_source = requires(Source const& source) {
+        { source.num() } -> std::convertible_to<size_type>;
+        source.validate();
+        {
+            ml::native_soa::source_data(source.entity_ids())
+        } -> std::convertible_to<EntityUniqueId const*>;
+        {
+            ml::native_soa::source_data(source.integral_biases())
+        } -> std::convertible_to<std::uint32_t const*>;
+        {
+            ml::native_soa::source_data(source.view_locations().xs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_locations().ys())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_locations().zs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_fire_point_locations().xs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_fire_point_locations().ys())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_fire_point_locations().zs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_rotations().pitches())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_rotations().yaws())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_rotations().rolls())
+        } -> std::convertible_to<float const*>;
+        { ml::native_soa::source_data(source.teams()) } -> std::convertible_to<Team const*>;
+        {
+            ml::native_soa::source_data(source.laser_cooldowns())
+        } -> std::convertible_to<std::int16_t const*>;
+        {
+            ml::native_soa::source_data(source.laser_damages())
+        } -> std::convertible_to<std::int32_t const*>;
+        {
+            ml::native_soa::source_data(source.target_refresh_countdowns_periods())
+        } -> std::convertible_to<std::int16_t const*>;
+        {
+            ml::native_soa::source_data(source.target_refresh_countdowns_remaining_ticks())
+        } -> std::convertible_to<std::int16_t const*>;
+        {
+            ml::native_soa::source_data(source.target_ids())
+        } -> std::convertible_to<EntityUniqueId const*>;
+        {
+            ml::native_soa::source_data(source.view_target_locations().xs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_target_locations().ys())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_target_locations().zs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_target_velocities().xs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_target_velocities().ys())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_target_velocities().zs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.health_indices())
+        } -> std::convertible_to<HealthIndex const*>;
+    };
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -1419,86 +681,101 @@ struct SingleAllocationTurretEntityData
                 copy_columns(columns, index, source, count);
             });
     }
-    auto ordinary_source_aliases_storage(TurretEntityDataConstView const& source) const noexcept
-        -> bool {
-        if (data_ == nullptr) {
-            return false;
-        }
-        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
-        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
-        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
-            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
-            return address >= allocation_begin && address < allocation_end;
-        };
-        return ml::native_soa::any_column(source, aliases);
-    }
     template <typename Columns>
-    void append_columns(Columns const& source, size_type first, size_type count) {
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count) {
         auto const destination{get_data(first)};
-        ml::native_soa::copy_n(
-            destination.entity_ids, ml::native_soa::source_data(source.entity_ids), count);
+        ml::native_soa::copy_n(destination.entity_ids,
+                               ml::native_soa::source_data(source.entity_ids()) + source_first,
+                               count);
         ml::native_soa::copy_n(destination.integral_biases,
-                               ml::native_soa::source_data(source.integral_biases),
+                               ml::native_soa::source_data(source.integral_biases()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.locations_xs,
+                               ml::native_soa::source_data(source.view_locations().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::copy_n(destination.locations_ys,
+                               ml::native_soa::source_data(source.view_locations().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::copy_n(destination.locations_zs,
+                               ml::native_soa::source_data(source.view_locations().zs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(
-            destination.locations_xs, ml::native_soa::source_data(source.locations.xs), count);
+            destination.fire_point_locations_xs,
+            ml::native_soa::source_data(source.view_fire_point_locations().xs()) + source_first,
+            count);
         ml::native_soa::copy_n(
-            destination.locations_ys, ml::native_soa::source_data(source.locations.ys), count);
+            destination.fire_point_locations_ys,
+            ml::native_soa::source_data(source.view_fire_point_locations().ys()) + source_first,
+            count);
         ml::native_soa::copy_n(
-            destination.locations_zs, ml::native_soa::source_data(source.locations.zs), count);
-        ml::native_soa::copy_n(destination.fire_point_locations_xs,
-                               ml::native_soa::source_data(source.fire_point_locations.xs),
-                               count);
-        ml::native_soa::copy_n(destination.fire_point_locations_ys,
-                               ml::native_soa::source_data(source.fire_point_locations.ys),
-                               count);
-        ml::native_soa::copy_n(destination.fire_point_locations_zs,
-                               ml::native_soa::source_data(source.fire_point_locations.zs),
-                               count);
+            destination.fire_point_locations_zs,
+            ml::native_soa::source_data(source.view_fire_point_locations().zs()) + source_first,
+            count);
         ml::native_soa::copy_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(source.rotations.pitches),
+                               ml::native_soa::source_data(source.view_rotations().pitches()) +
+                                   source_first,
                                count);
-        ml::native_soa::copy_n(
-            destination.rotations_yaws, ml::native_soa::source_data(source.rotations.yaws), count);
+        ml::native_soa::copy_n(destination.rotations_yaws,
+                               ml::native_soa::source_data(source.view_rotations().yaws()) +
+                                   source_first,
+                               count);
         ml::native_soa::copy_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(source.rotations.rolls),
-                               count);
-        ml::native_soa::copy_n(destination.teams, ml::native_soa::source_data(source.teams), count);
-        ml::native_soa::copy_n(destination.laser_cooldowns,
-                               ml::native_soa::source_data(source.laser_cooldowns),
+                               ml::native_soa::source_data(source.view_rotations().rolls()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(
-            destination.laser_damages, ml::native_soa::source_data(source.laser_damages), count);
+            destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
+        ml::native_soa::copy_n(destination.laser_cooldowns,
+                               ml::native_soa::source_data(source.laser_cooldowns()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.laser_damages,
+                               ml::native_soa::source_data(source.laser_damages()) + source_first,
+                               count);
         ml::native_soa::copy_n(
             destination.target_refresh_countdowns_periods,
-            ml::native_soa::source_data(source.target_refresh_countdowns_periods),
+            ml::native_soa::source_data(source.target_refresh_countdowns_periods()) + source_first,
             count);
         ml::native_soa::copy_n(
             destination.target_refresh_countdowns_remaining_ticks,
-            ml::native_soa::source_data(source.target_refresh_countdowns_remaining_ticks),
+            ml::native_soa::source_data(source.target_refresh_countdowns_remaining_ticks()) +
+                source_first,
             count);
-        ml::native_soa::copy_n(
-            destination.target_ids, ml::native_soa::source_data(source.target_ids), count);
+        ml::native_soa::copy_n(destination.target_ids,
+                               ml::native_soa::source_data(source.target_ids()) + source_first,
+                               count);
         ml::native_soa::copy_n(destination.target_locations_xs,
-                               ml::native_soa::source_data(source.target_locations.xs),
+                               ml::native_soa::source_data(source.view_target_locations().xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_locations_ys,
-                               ml::native_soa::source_data(source.target_locations.ys),
+                               ml::native_soa::source_data(source.view_target_locations().ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_locations_zs,
-                               ml::native_soa::source_data(source.target_locations.zs),
+                               ml::native_soa::source_data(source.view_target_locations().zs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_velocities_xs,
-                               ml::native_soa::source_data(source.target_velocities.xs),
+                               ml::native_soa::source_data(source.view_target_velocities().xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_velocities_ys,
-                               ml::native_soa::source_data(source.target_velocities.ys),
+                               ml::native_soa::source_data(source.view_target_velocities().ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_velocities_zs,
-                               ml::native_soa::source_data(source.target_velocities.zs),
+                               ml::native_soa::source_data(source.view_target_velocities().zs()) +
+                                   source_first,
                                count);
-        ml::native_soa::copy_n(
-            destination.health_indices, ml::native_soa::source_data(source.health_indices), count);
+        ml::native_soa::copy_n(destination.health_indices,
+                               ml::native_soa::source_data(source.health_indices()) + source_first,
+                               count);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(

@@ -210,29 +210,29 @@ void LevelTelemetryManager::sample_live_series() {
     auto const tick{clock_.get_completed_ticks()};
     auto columns{append_history_row(tick)};
     constexpr std::int32_t row{};
-    columns.validity_masks[row].set(mask);
+    columns.validity_masks()[row].set(mask);
 
     if (mask.has(Field::ActiveEntities)) {
-        columns.active_entities[row] = current_state_.active_entities;
+        columns.active_entities()[row] = current_state_.active_entities;
         active_entity_count_data_.add(tick, current_state_.active_entities);
     }
     for (std::int32_t entity_type_index{}; entity_type_index < entity_type_count;
          ++entity_type_index) {
         if (mask.has(FieldMask::active_entities_by_type_field(entity_type_index))) {
-            columns.active_entities_by_type[row][entity_type_index] =
+            columns.active_entities_by_type()[row][entity_type_index] =
                 active_entities_by_type[entity_type_index];
         }
         for (std::int32_t team_index{}; team_index < team_count; ++team_index) {
             auto const field{
                 FieldMask::active_entities_by_team_and_type_field(team_index, entity_type_index)};
             if (mask.has(field)) {
-                columns.active_entities_by_team_and_type[row][team_index][entity_type_index] =
+                columns.active_entities_by_team_and_type()[row][team_index][entity_type_index] =
                     current_state_.active_entities_by_team_and_type[team_index][entity_type_index];
             }
         }
     }
     if (mask.has(Field::Kills)) {
-        columns.kills[row] = current_state_.kills;
+        columns.kills()[row] = current_state_.kills;
         cumulative_kill_count_data_.add(tick, current_state_.kills);
     }
 
@@ -266,19 +266,19 @@ void LevelTelemetryManager::sample_series() {
     if (!mask.is_empty()) {
         auto columns{append_history_row(clock_.get_completed_ticks())};
         constexpr std::int32_t row{};
-        columns.validity_masks[row].set(mask);
+        columns.validity_masks()[row].set(mask);
 
         if (mask.has(Field::SpawnedEntities)) {
-            columns.spawned_entities[row] = current_state_.spawned_entities;
+            columns.spawned_entities()[row] = current_state_.spawned_entities;
         }
         if (mask.has(Field::DestroyedEntities)) {
-            columns.destroyed_entities[row] = current_state_.destroyed_entities;
+            columns.destroyed_entities()[row] = current_state_.destroyed_entities;
         }
         if (mask.has(Field::ActiveLasers)) {
-            columns.active_lasers[row] = current_state_.active_lasers;
+            columns.active_lasers()[row] = current_state_.active_lasers;
         }
         if (mask.has(Field::LasersFired)) {
-            columns.lasers_fired[row] = current_state_.lasers_fired;
+            columns.lasers_fired()[row] = current_state_.lasers_fired;
         }
     }
 
@@ -290,19 +290,19 @@ void LevelTelemetryManager::sample_series() {
 }
 
 auto LevelTelemetryManager::append_history_row(tick_type const completed_tick)
-    -> telemetry::HistoryRowsView {
+    -> telemetry::SingleAllocationHistoryRows::View {
     auto const row_count{history_.num()};
     if (row_count > 0) {
         auto const completed_ticks{history_.last_const_view().completed_ticks()};
         if (completed_ticks[0] == completed_tick) {
-            return history_.last_view().columns();
+            return history_.last_view();
         }
         assert(completed_ticks[0] < completed_tick);
     }
 
-    auto columns{history_.append_uninitialized().columns()};
-    columns.completed_ticks[0] = completed_tick;
-    columns.validity_masks[0] = {};
+    auto columns{history_.append_uninitialized()};
+    columns.completed_ticks()[0] = completed_tick;
+    columns.validity_masks()[0] = {};
     return columns;
 }
 
@@ -329,8 +329,8 @@ auto LevelTelemetryManager::materialize_tick_series() const -> LevelTelemetryTic
     using namespace level_telemetry_detail;
     std::array<std::int32_t, FieldMask::field_count> sample_counts{};
     history_.for_each_block([&sample_counts](auto const block) {
-        auto const rows{block.columns()};
-        for (auto const mask : rows.validity_masks) {
+        auto const rows{block};
+        for (auto const mask : rows.validity_masks()) {
             auto remaining{mask.value()};
             while (remaining != 0) {
                 auto const field{static_cast<std::int32_t>(std::countr_zero(remaining))};
@@ -362,20 +362,31 @@ auto LevelTelemetryManager::materialize_tick_series() const -> LevelTelemetryTic
     result.lasers_fired.reserve(sample_counts[FieldMask::index(Field::LasersFired)]);
 
     history_.for_each_block([&result](auto const block) {
-        auto const rows{block.columns()};
+        auto const rows{block};
         auto const row_count{rows.num()};
+        auto const completed_ticks{rows.completed_ticks()};
+        auto const validity_masks{rows.validity_masks()};
+        auto const active_entities{rows.active_entities()};
+        auto const active_entities_by_type{rows.active_entities_by_type()};
+        auto const active_entities_by_team_and_type{rows.active_entities_by_team_and_type()};
+        auto const spawned_entities{rows.spawned_entities()};
+        auto const destroyed_entities{rows.destroyed_entities()};
+        auto const kills{rows.kills()};
+        auto const active_lasers{rows.active_lasers()};
+        auto const lasers_fired{rows.lasers_fired()};
+
         for (std::int32_t row{}; row < row_count; ++row) {
-            auto const tick{rows.completed_ticks[row]};
-            auto const mask{rows.validity_masks[row]};
+            auto const tick{completed_ticks[row]};
+            auto const mask{validity_masks[row]};
             if (mask.has(Field::ActiveEntities)) {
-                result.active_entities.add(tick, rows.active_entities[row]);
+                result.active_entities.add(tick, active_entities[row]);
             }
             for (std::int32_t entity_type_index{}; entity_type_index < entity_type_count;
                  ++entity_type_index) {
                 auto const type_field{FieldMask::active_entities_by_type_field(entity_type_index)};
                 if (mask.has(type_field)) {
                     result.active_entities_by_type[entity_type_index].add(
-                        tick, rows.active_entities_by_type[row][entity_type_index]);
+                        tick, active_entities_by_type[row][entity_type_index]);
                 }
                 for (std::int32_t team_index{}; team_index < team_count; ++team_index) {
                     auto const field{FieldMask::active_entities_by_team_and_type_field(
@@ -383,25 +394,24 @@ auto LevelTelemetryManager::materialize_tick_series() const -> LevelTelemetryTic
                     if (mask.has(field)) {
                         result.active_entities_by_team_and_type[team_index][entity_type_index].add(
                             tick,
-                            rows.active_entities_by_team_and_type[row][team_index]
-                                                                 [entity_type_index]);
+                            active_entities_by_team_and_type[row][team_index][entity_type_index]);
                     }
                 }
             }
             if (mask.has(Field::SpawnedEntities)) {
-                result.spawned_entities.add(tick, rows.spawned_entities[row]);
+                result.spawned_entities.add(tick, spawned_entities[row]);
             }
             if (mask.has(Field::DestroyedEntities)) {
-                result.destroyed_entities.add(tick, rows.destroyed_entities[row]);
+                result.destroyed_entities.add(tick, destroyed_entities[row]);
             }
             if (mask.has(Field::Kills)) {
-                result.kills.add(tick, rows.kills[row]);
+                result.kills.add(tick, kills[row]);
             }
             if (mask.has(Field::ActiveLasers)) {
-                result.active_lasers.add(tick, rows.active_lasers[row]);
+                result.active_lasers.add(tick, active_lasers[row]);
             }
             if (mask.has(Field::LasersFired)) {
-                result.lasers_fired.add(tick, rows.lasers_fired[row]);
+                result.lasers_fired.add(tick, lasers_fired[row]);
             }
         }
     });

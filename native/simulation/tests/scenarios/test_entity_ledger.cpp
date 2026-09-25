@@ -74,8 +74,8 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     std::vector<EntityUniqueId> available_targets;
     auto const capitals{harness.get_simulation().get_capital_ships().get_read_view().entities};
     for (std::int32_t index{}; index < capitals.num(); ++index) {
-        if (capitals.teams[index] != player->team) {
-            available_targets.push_back(capitals.entity_ids[index]);
+        if (capitals.teams()[index] != player->team) {
+            available_targets.push_back(capitals.entity_ids()[index]);
         }
     }
     EXPECT_GT(static_cast<std::int32_t>(available_targets.size()), expected_kills - 1)

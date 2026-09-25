@@ -22,7 +22,6 @@ namespace ioj::sim::spinners {
 class PhaseInterface;
 
 struct Sim {
-    using EntityData = SpinnerEntityData;
     using EntityStorage = SingleAllocationSpinnerEntityData;
 
     Sim(SimClock const& clock, EntityLedger& ledger, lasers::Sim& laser_simulation) noexcept;
@@ -34,7 +33,7 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_read_view() const -> SpinnerReadView { return {entities.get_const_view().columns()}; }
+    auto get_read_view() const -> SpinnerReadView { return {entities.get_const_view()}; }
     void set_config(SpinnerSimConfig const& new_config) noexcept;
 
     /* **************************************** */
@@ -46,7 +45,6 @@ struct Sim {
     /* **************************************** */
     // Checks
     /* **************************************** */
-    void validate_array_sizes() const;
   private:
     /* **************************************** */
     // Sim phases

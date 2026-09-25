@@ -1,4 +1,5 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/entity_world_bounds.h>
 #include <ioj/sim/laser_source.h>
@@ -193,19 +194,19 @@ auto FProxyLevelSimBuild::bind_proxy_entities(::ioj::sim::LevelSim const& simula
     auto const capital_count{capital_proxies.Num()};
     auto const capital_entities{simulation.get_capital_ships().get_read_view().entities};
     for (int32 i{}; i < capital_count; ++i) {
-        capital_proxies[i]->set_unique_id(capital_entities.entity_ids[i]);
+        capital_proxies[i]->set_unique_id(capital_entities.entity_ids()[i]);
     }
 
     auto const turret_entities{simulation.get_turrets().get_read_view().entities};
     auto const turret_count{turret_proxies.Num()};
     for (int32 i{}; i < turret_count; ++i) {
-        turret_proxies[i]->set_unique_id(turret_entities.entity_ids[i]);
+        turret_proxies[i]->set_unique_id(turret_entities.entity_ids()[i]);
     }
 
     auto const spinner_entities{simulation.get_spinners().get_read_view().entities};
     auto const spinner_count{spinner_proxies.Num()};
     for (int32 i{}; i < spinner_count; ++i) {
-        spinner_proxies[i]->set_unique_id(spinner_entities.entity_ids[i]);
+        spinner_proxies[i]->set_unique_id(spinner_entities.entity_ids()[i]);
     }
 
     FProxyEntityMap bindings;
@@ -370,18 +371,20 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
         auto const default_spawn_cooldown{config.capital_ships.spawn_delay};
         auto& storage{initial_spawns.capital_spawns};
         storage.add_defaulted(count);
-        auto const events{storage.get_view().columns()};
+        auto const events{storage.get_view()};
         for (int32 i{}; i < count; ++i) {
             auto const* const proxy{build.capital_proxies[i]};
             auto const& transform{proxy->GetActorTransform()};
-            events.entity_indices[i] = allocate_entity_index(*proxy);
-            events.target_entity_indices[i] = INDEX_NONE;
-            events.locations.set(i, ml::to_native(FVector3f{transform.GetLocation()}));
-            events.rotations.set(i, ml::to_native(FRotator3f{transform.Rotator()}));
-            events.teams[i] = ml::to_native(proxy->get_team());
-            events.healths[i] = proxy->get_health().Get(config.capital_ships.max_health);
-            events.initial_fighter_spawn_delays[i] = proxy->get_initial_spawn_delay().Get(0.f);
-            events.fighter_spawn_cooldowns[i] =
+            events.entity_indices()[i] = allocate_entity_index(*proxy);
+            events.target_entity_indices()[i] = INDEX_NONE;
+            ::ioj::sim::set_vector(
+                events.view_locations(), i, ml::to_native(FVector3f{transform.GetLocation()}));
+            ::ioj::sim::set_rotation(
+                events.view_rotations(), i, ml::to_native(FRotator3f{transform.Rotator()}));
+            events.teams()[i] = ml::to_native(proxy->get_team());
+            events.healths()[i] = proxy->get_health().Get(config.capital_ships.max_health);
+            events.initial_fighter_spawn_delays()[i] = proxy->get_initial_spawn_delay().Get(0.f);
+            events.fighter_spawn_cooldowns()[i] =
                 proxy->get_spawn_cooldown().Get(default_spawn_cooldown);
         }
     }
@@ -389,41 +392,44 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
         auto const count{build.turret_proxies.Num()};
         auto& storage{initial_spawns.turret_spawns};
         storage.add_defaulted(count);
-        auto const events{storage.get_view().columns()};
+        auto const events{storage.get_view()};
         build.initial_turret_transforms.Reserve(count);
         for (int32 i{}; i < count; ++i) {
             auto const* const proxy{build.turret_proxies[i]};
             auto const transform{proxy->GetActorTransform()};
             build.initial_turret_transforms.Add(transform);
-            events.entity_indices[i] = allocate_entity_index(*proxy);
-            events.locations.set(i, ml::to_native(FVector3f{transform.GetLocation()}));
-            events.rotations.set(i, ml::to_native(FRotator3f{transform.Rotator()}));
-            events.teams[i] = ml::to_native(proxy->get_team());
-            events.healths[i] = proxy->get_health().Get(config.turrets.max_health);
-            events.laser_damages[i] = proxy->get_laser_damage().Get(config.turrets.laser.damage);
+            events.entity_indices()[i] = allocate_entity_index(*proxy);
+            ::ioj::sim::set_vector(
+                events.view_locations(), i, ml::to_native(FVector3f{transform.GetLocation()}));
+            ::ioj::sim::set_rotation(
+                events.view_rotations(), i, ml::to_native(FRotator3f{transform.Rotator()}));
+            events.teams()[i] = ml::to_native(proxy->get_team());
+            events.healths()[i] = proxy->get_health().Get(config.turrets.max_health);
+            events.laser_damages()[i] = proxy->get_laser_damage().Get(config.turrets.laser.damage);
         }
     }
     {
         auto const count{build.spinner_proxies.Num()};
         auto& storage{initial_spawns.spinner_spawns};
         storage.add_defaulted(count);
-        auto const events{storage.get_view().columns()};
+        auto const events{storage.get_view()};
         for (int32 i{}; i < count; ++i) {
             auto const* const proxy{build.spinner_proxies[i]};
             auto const& transform{proxy->GetActorTransform()};
-            events.entity_indices[i] = allocate_entity_index(*proxy);
-            events.locations.set(i, ml::to_native(FVector3f{transform.GetLocation()}));
-            events.yaws[i] = transform.Rotator().Yaw;
-            events.initial_fire_point_indices[i] = proxy->get_initial_active_fire_point();
+            events.entity_indices()[i] = allocate_entity_index(*proxy);
+            ::ioj::sim::set_vector(
+                events.view_locations(), i, ml::to_native(FVector3f{transform.GetLocation()}));
+            events.yaws()[i] = transform.Rotator().Yaw;
+            events.initial_fire_point_indices()[i] = proxy->get_initial_active_fire_point();
         }
     }
 
-    auto const capital_events{initial_spawns.capital_spawns.get_view().columns()};
+    auto const capital_events{initial_spawns.capital_spawns.get_view()};
     auto const capital_count{capital_events.num()};
     for (int32 i{}; i < capital_count; ++i) {
         auto const* const target{build.capital_proxies[i]->get_target_ship().Get()};
         if (IsValid(target)) {
-            capital_events.target_entity_indices[i] =
+            capital_events.target_entity_indices()[i] =
                 level_simulation_builder::resolve_entity_index(entity_indices, *target);
         }
     }

@@ -22,7 +22,7 @@
 
 
 (type fighter_spawn_queue_const_view
-  :spelling "FighterSpawnQueueConstView"
+  :spelling "SingleAllocationFighterSpawnQueue::ConstView"
   :header "ioj/sim/fighter_spawn_queue.h"
   :pass-by value)
 
@@ -275,3 +275,7 @@
   :spelling "LaserSource"
   :header "ioj/sim/laser_source.h"
   :pass-by value)
+
+(type frame_fighter_spawn_queue
+  :spelling "FrameSpawnQueue"
+  :header "ioj/sim/fighter_frame_spawn_queue.h")

@@ -65,7 +65,7 @@ struct CollisionUniformGrid {
     // Entity collision
     /* **************************************** */
     void rebuild_entity_grid(EntityAABBs const& entity_aabbs);
-    auto get_entity_world_bounds() const -> WorldAABBsColumnsConstView;
+    auto get_entity_world_bounds() const -> EntityCellData::ConstView;
     auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityUniqueId const> {
         auto const dimensions{geometry_.dimensions};
         assert(cell_coord.x >= 0 && cell_coord.x < dimensions.x && cell_coord.y >= 0 &&

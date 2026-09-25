@@ -1,3 +1,4 @@
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/levels/level_compilation.h>
 
 #include <ioj/sim/levels/level_event_schedule.h>
@@ -199,37 +200,41 @@ auto compile_level(LevelDefinition const& definition,
         if (entity.archetype == "capital-ship") {
             auto const row{capital_storage.num()};
             capital_storage.add_uninitialised(1);
-            auto const capital_events{capital_storage.get_view().columns()};
-            capital_events.entity_indices[row] = entity_index_value;
-            capital_events.target_entity_indices[row] = -1;
-            capital_events.locations.set(row,
-                                         ml::make_vector3f(static_cast<float>(entity.position.x),
-                                                           static_cast<float>(entity.position.y),
-                                                           static_cast<float>(entity.position.z)));
-            capital_events.rotations.set(row,
-                                         Rotator3f{static_cast<float>(entity.rotation.pitch),
-                                                   static_cast<float>(entity.rotation.yaw),
-                                                   static_cast<float>(entity.rotation.roll)});
-            capital_events.teams[row] = to_simulation_team(entity.team);
-            capital_events.healths[row] = capital_config.max_health;
-            capital_events.initial_fighter_spawn_delays[row] = 0.0f;
-            capital_events.fighter_spawn_cooldowns[row] = capital_config.spawn_delay;
+            auto const capital_events{capital_storage.get_view()};
+            capital_events.entity_indices()[row] = entity_index_value;
+            capital_events.target_entity_indices()[row] = -1;
+            set_vector(capital_events.view_locations(),
+                       row,
+                       ml::make_vector3f(static_cast<float>(entity.position.x),
+                                         static_cast<float>(entity.position.y),
+                                         static_cast<float>(entity.position.z)));
+            set_rotation(capital_events.view_rotations(),
+                         row,
+                         Rotator3f{static_cast<float>(entity.rotation.pitch),
+                                   static_cast<float>(entity.rotation.yaw),
+                                   static_cast<float>(entity.rotation.roll)});
+            capital_events.teams()[row] = to_simulation_team(entity.team);
+            capital_events.healths()[row] = capital_config.max_health;
+            capital_events.initial_fighter_spawn_delays()[row] = 0.0f;
+            capital_events.fighter_spawn_cooldowns()[row] = capital_config.spawn_delay;
         } else if (entity.archetype == "static-turret") {
             auto const row{turret_storage.num()};
             turret_storage.add_uninitialised(1);
-            auto const turret_events{turret_storage.get_view().columns()};
-            turret_events.entity_indices[row] = entity_index_value;
-            turret_events.locations.set(row,
-                                        ml::make_vector3f(static_cast<float>(entity.position.x),
-                                                          static_cast<float>(entity.position.y),
-                                                          static_cast<float>(entity.position.z)));
-            turret_events.rotations.set(row,
-                                        Rotator3f{static_cast<float>(entity.rotation.pitch),
-                                                  static_cast<float>(entity.rotation.yaw),
-                                                  static_cast<float>(entity.rotation.roll)});
-            turret_events.teams[row] = to_simulation_team(entity.team);
-            turret_events.healths[row] = turret_config.max_health;
-            turret_events.laser_damages[row] = turret_config.laser.damage;
+            auto const turret_events{turret_storage.get_view()};
+            turret_events.entity_indices()[row] = entity_index_value;
+            set_vector(turret_events.view_locations(),
+                       row,
+                       ml::make_vector3f(static_cast<float>(entity.position.x),
+                                         static_cast<float>(entity.position.y),
+                                         static_cast<float>(entity.position.z)));
+            set_rotation(turret_events.view_rotations(),
+                         row,
+                         Rotator3f{static_cast<float>(entity.rotation.pitch),
+                                   static_cast<float>(entity.rotation.yaw),
+                                   static_cast<float>(entity.rotation.roll)});
+            turret_events.teams()[row] = to_simulation_team(entity.team);
+            turret_events.healths()[row] = turret_config.max_health;
+            turret_events.laser_damages()[row] = turret_config.laser.damage;
         }
     };
 

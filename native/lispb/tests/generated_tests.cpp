@@ -190,42 +190,42 @@ TEST(GeneratedSingleAllocationSoa, Ownership) {
 }
 
 TEST(GeneratedSingleAllocationSoa, BulkMutationAndAliasing) {
-    FParents ordinary;
-    ordinary.add_defaulted(3);
-    for (int32 i{}; i < ordinary.num(); ++i) {
-        ordinary.keys[i] = i + 10;
-        ordinary.children.values[i] = i + 20;
+    SingleParents source;
+    source.add_defaulted(3);
+    for (int32 i{}; i < source.num(); ++i) {
+        source.get_view().keys()[i] = i + 10;
+        source.get_view().view_children().values()[i] = i + 20;
     }
-    SingleParents from_ordinary;
-    from_ordinary.set_num(1);
-    EXPECT_EQ(from_ordinary.append_from(ordinary.get_const_view().slice(1, 2)), 1);
-    EXPECT_EQ(from_ordinary.get_const_view().keys()[1], 11);
-    EXPECT_EQ(from_ordinary.get_const_view().view_children().values[1], 21);
+    SingleParents destination;
+    destination.set_num(1);
+    EXPECT_EQ(destination.append_from(source.get_const_view().slice(1, 2)), 1);
+    EXPECT_EQ(destination.get_const_view().keys()[1], 11);
+    EXPECT_EQ(destination.get_const_view().view_children().values()[1], 21);
 
     SingleParents rows;
     rows.set_num(65);
     for (int32 i{}; i < rows.num(); ++i) {
         rows.get_view().keys()[i] = i;
-        rows.get_view().view_children().values[i] = i * 10;
+        rows.get_view().view_children().values()[i] = i * 10;
     }
 
     auto const original_capacity{rows.capacity()};
-    EXPECT_EQ(rows.append_from(rows), 65);
+    EXPECT_EQ(rows.append_from(rows.get_const_view()), 65);
     EXPECT_GT(rows.capacity(), original_capacity);
     EXPECT_EQ(rows.num(), 130);
     EXPECT_EQ(rows.get_view().keys()[129], 64);
-    EXPECT_EQ(rows.get_view().view_children().values[129], 640);
+    EXPECT_EQ(rows.get_view().view_children().values()[129], 640);
 
-    auto const source{rows.slice(1, 3)};
-    EXPECT_EQ(rows.append_from(source), 130);
+    auto const slice{rows.slice(1, 3)};
+    EXPECT_EQ(rows.append_from(slice), 130);
     EXPECT_EQ(rows.get_view().keys()[130], 1);
-    EXPECT_EQ(rows.get_view().view_children().values[132], 30);
+    EXPECT_EQ(rows.get_view().view_children().values()[132], 30);
 
     SingleParents removed;
     removed.set_num(8);
     for (int32 i{}; i < removed.num(); ++i) {
         removed.get_view().keys()[i] = i;
-        removed.get_view().view_children().values[i] = i * 10;
+        removed.get_view().view_children().values()[i] = i * 10;
     }
     std::array<int32, 3> const indices{6, 3, 1};
     removed.remove_at_swap(std::span<int32 const>{indices});
@@ -234,18 +234,39 @@ TEST(GeneratedSingleAllocationSoa, BulkMutationAndAliasing) {
     ASSERT_EQ(removed.num(), static_cast<int32>(expected.size()));
     for (int32 i{}; i < removed.num(); ++i) {
         EXPECT_EQ(removed.get_view().keys()[i], expected[static_cast<std::size_t>(i)]);
-        EXPECT_EQ(removed.get_view().view_children().values[i],
+        EXPECT_EQ(removed.get_view().view_children().values()[i],
                   expected[static_cast<std::size_t>(i)] * 10);
     }
 }
 
-TEST(GeneratedSingleAllocationSoa, RejectsAliasedOrdinaryViewBeforeGrowth) {
+TEST(GeneratedSingleAllocationSoa, NestedViewsFollowReallocation) {
     SingleParents rows;
     rows.set_num(SingleParents::capacity_granularity);
-    auto const source{rows.get_view().columns().get_const_view().left(1)};
-    ASSERT_EQ(rows.num(), rows.capacity());
+    auto children{rows.get_view().view_children().slice(1, 2)};
+    children.values()[0] = 42;
+    rows.reserve(rows.capacity() + 1);
+    EXPECT_EQ(children.values()[0], 42);
+    children.values()[1] = 43;
+    EXPECT_EQ(rows.get_const_view().view_children().values()[2], 43);
+}
 
-    EXPECT_DEATH({ rows.append_from(source); }, "");
+TEST(GeneratedSingleAllocationSoa, AppendsIndependentSourceColumns) {
+    struct Source {
+        std::array<int32, 3> keys_{10, 11, 12};
+        std::array<int32, 3> values_{20, 21, 22};
+        auto num() const -> int32 { return 3; }
+        void validate() const {}
+        auto keys() const { return std::span{keys_}; }
+        auto values() const { return std::span{values_}; }
+        auto view_children() const -> Source const& { return *this; }
+    } source;
+    SingleParents destination;
+    destination.set_num(SingleParents::capacity_granularity);
+    auto const capacity{destination.capacity()};
+    EXPECT_EQ(destination.append_from(source, 1, 2), capacity);
+    EXPECT_GT(destination.capacity(), capacity);
+    EXPECT_EQ(destination.get_const_view().keys()[capacity], 11);
+    EXPECT_EQ(destination.get_const_view().view_children().values()[capacity + 1], 22);
 }
 
 TEST(GeneratedHomogeneousStorage, Operations) {
@@ -992,7 +1013,8 @@ TEST(GeneratedStaticTable, Operations) {
 
 TEST(GeneratedSingleAllocationSoa, LayoutAndAccess) {
     using SingleParents = codegen_compile_fixture::SingleParents;
-    static_assert(sizeof(SingleParents::View) == 16);
+    static_assert(ml::soa_storage_detail::validate_compact_view<SingleParents::View>());
+    static_assert(ml::soa_storage_detail::validate_compact_view<SingleParents::ConstView>());
     static_assert(!std::is_copy_constructible_v<SingleParents>);
     using KeysColumn = std::remove_cvref_t<decltype(SingleParents::Layout::KeysColumn)>;
     static_assert(std::is_same_v<KeysColumn::pointer, int32*>);
@@ -1005,18 +1027,18 @@ TEST(GeneratedSingleAllocationSoa, LayoutAndAccess) {
     static_assert(SingleParents::layout_bytes(1) == 128 * sizeof(int32) + 192);
 
     SingleParents parents;
-    check(parents.get_view().columns().keys.GetData() == nullptr);
+    check(parents.get_view().keys().GetData() == nullptr);
     parents.add_defaulted(65);
-    parents.get_view().columns().children.values[64] = 37;
+    parents.get_view().view_children().values()[64] = 37;
     parents.reserve(129);
     check(parents.capacity() == 192);
-    check(parents.get_const_view().view_children().values[64] == 37);
+    check(parents.get_const_view().view_children().values()[64] == 37);
 
     SingleParents moved{std::move(parents)};
     // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     check(parents.capacity() == 0);
     moved.remove_at_swap(0, 1);
-    check(moved.get_view().columns().children.values[0] == 37);
+    check(moved.get_view().view_children().values()[0] == 37);
 }
 
 } // namespace

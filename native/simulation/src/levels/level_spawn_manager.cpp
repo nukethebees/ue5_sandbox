@@ -20,9 +20,10 @@ LevelSpawnManager::LevelSpawnManager(capital_ships::Sim& capital_ships,
     , turrets_{turrets}
     , spinners_{spinners} {}
 
-void LevelSpawnManager::initialise(std::int32_t const entity_count,
-                                   LevelCapitalSpawnEventsConstView const capital_payloads,
-                                   LevelTurretSpawnEventsConstView const turret_payloads) {
+void LevelSpawnManager::initialise(
+    std::int32_t const entity_count,
+    SingleAllocationLevelCapitalSpawnEvents::ConstView const capital_payloads,
+    SingleAllocationLevelTurretSpawnEvents::ConstView const turret_payloads) {
     capital_payloads_ = capital_payloads;
     turret_payloads_ = turret_payloads;
     entity_ids_.clear();
@@ -35,9 +36,10 @@ void LevelSpawnManager::set_entity_id(std::int32_t const entity_index, EntityUni
     entity_ids_[entity_index] = id;
 }
 
-void LevelSpawnManager::spawn_initial(LevelCapitalSpawnEventsConstView const capital_events,
-                                      LevelTurretSpawnEventsConstView const turret_events,
-                                      LevelSpinnerSpawnEventsConstView const spinner_events) {
+void LevelSpawnManager::spawn_initial(
+    SingleAllocationLevelCapitalSpawnEvents::ConstView const capital_events,
+    SingleAllocationLevelTurretSpawnEvents::ConstView const turret_events,
+    SingleAllocationLevelSpinnerSpawnEvents::ConstView const spinner_events) {
     if (capital_events.num() > 0) {
         spawn_capitals(capital_events);
     }
@@ -80,63 +82,56 @@ void LevelSpawnManager::spawn(LevelSpawnGroupsConstView const groups) {
     }
 }
 
-void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEventsConstView const events) {
+void LevelSpawnManager::spawn_capitals(
+    SingleAllocationLevelCapitalSpawnEvents::ConstView const events) {
     auto const count{events.num()};
-    target_ids_scratch_.resize(static_cast<std::size_t>(count));
-    for (std::int32_t i{}; i < count; ++i) {
-        target_ids_scratch_[i] = {};
-    }
-
-    auto const size{static_cast<std::size_t>(count)};
-    CapitalSpawnDataConstView const spawn_data{
-        .target_ids = {target_ids_scratch_.data(), size},
-        .locations = events.locations,
-        .rotations = events.rotations,
-        .teams = events.teams,
-        .healths = {events.healths.data(), size},
-        .initial_spawn_delays = {events.initial_fighter_spawn_delays.data(), size},
-        .spawn_cooldowns = {events.fighter_spawn_cooldowns.data(), size},
-    };
-    auto const ids{capital_ships_.register_ships(spawn_data)};
+    auto const ids{capital_ships_.register_ships(events)};
     spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
+    auto const entity_indices{events.entity_indices()};
+
     for (std::int32_t i{}; i < count; ++i) {
-        set_entity_id(events.entity_indices[i], ids[i]);
+        set_entity_id(entity_indices[i], ids[i]);
     }
 }
 
-void LevelSpawnManager::resolve_capital_targets(LevelCapitalSpawnEventsConstView const events) {
+void LevelSpawnManager::resolve_capital_targets(
+    SingleAllocationLevelCapitalSpawnEvents::ConstView const events) {
     auto const count{events.num()};
+    auto const entity_indices{events.entity_indices()};
+    auto const target_entity_indices{events.target_entity_indices()};
+
     for (std::int32_t i{}; i < count; ++i) {
-        auto const target_index{events.target_entity_indices[i]};
+        auto const target_index{target_entity_indices[i]};
         if (target_index != -1) {
-            auto const source_id{get_id(events.entity_indices[i])};
+            auto const source_id{get_id(entity_indices[i])};
             capital_ships_.set_target_id(source_id, get_id(target_index));
         }
     }
 }
 
-void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEventsConstView const events) {
-    auto const size{static_cast<std::size_t>(events.num())};
-    TurretSpawnDataConstView const spawn_data{
-        .locations = events.locations,
-        .teams = events.teams,
-        .healths = {events.healths.data(), size},
-        .laser_damages = {events.laser_damages.data(), size},
-    };
-    auto const ids{turrets_.register_turrets(spawn_data, events.rotations)};
+void LevelSpawnManager::spawn_turrets(
+    SingleAllocationLevelTurretSpawnEvents::ConstView const events) {
+    auto const ids{turrets_.register_turrets(events)};
     spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
     auto const count{events.num()};
+    auto const entity_indices{events.entity_indices()};
+
     for (std::int32_t i{}; i < count; ++i) {
-        set_entity_id(events.entity_indices[i], ids[i]);
+        set_entity_id(entity_indices[i], ids[i]);
     }
 }
 
-void LevelSpawnManager::spawn_spinners(LevelSpinnerSpawnEventsConstView const events) {
-    auto const ids{spinners_.spawn_instances(
-        events.locations, events.yaws, events.initial_fire_point_indices)};
+void LevelSpawnManager::spawn_spinners(
+    SingleAllocationLevelSpinnerSpawnEvents::ConstView const events) {
+    auto const locations{events.view_locations()};
+    auto const ids{spinners_.spawn_instances({locations.xs(), locations.ys(), locations.zs()},
+                                             events.yaws(),
+                                             events.initial_fire_point_indices())};
     auto const count{events.num()};
+    auto const entity_indices{events.entity_indices()};
+
     for (std::int32_t i{}; i < count; ++i) {
-        set_entity_id(events.entity_indices[i], ids[i]);
+        set_entity_id(entity_indices[i], ids[i]);
     }
 }
 

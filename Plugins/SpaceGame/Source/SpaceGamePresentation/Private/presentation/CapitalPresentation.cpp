@@ -1,5 +1,6 @@
 #include "SpaceGamePresentation/presentation/CapitalPresentation.h"
 #include <ioj/sim/agent_accessor.h>
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/integration/RotatorConversion.h>
@@ -8,13 +9,11 @@
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGamePresentation/presentation/DelayedNiagaraSpawns.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
-#include <SandboxCore/transforms.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
@@ -116,13 +115,13 @@ void FCapitalPresentation::configure_ismc() {
 }
 
 void FCapitalPresentation::add_initial_visual_instances() {
-    auto const& entities{view().entities};
+    auto const entities{view().entities};
     auto const n_to_add{entities.num()};
     add_visual_instances(0, n_to_add);
 }
 
 void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 const n_to_add) {
-    auto const& entities{view().entities};
+    auto const entities{view().entities};
     if (n_to_add == 0) {
         return;
     }
@@ -131,17 +130,27 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     TArray<float> custom_data;
     custom_data.SetNumUninitialized(n_to_add * n_custom_ismc_floats, EAllowShrinking::No);
+    auto const teams{entities.teams()};
+
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const base{i * n_custom_ismc_floats};
-        auto const& colour{colour_cache[ml::to_unreal(entities.teams[first_index + i])]};
+        auto const& colour{colour_cache[ml::to_unreal(teams[first_index + i])]};
         custom_data[base + 0] = colour.R;
         custom_data[base + 1] = colour.G;
         custom_data[base + 2] = colour.B;
     }
 
-    auto const transforms{
-        ml::make_transforms(entities.locations.get_const_view(first_index, n_to_add),
-                            entities.rotations.get_const_view(first_index, n_to_add))};
+    auto const locations{entities.view_locations()};
+    TArray<FTransform> transforms;
+    transforms.Reserve(n_to_add);
+    auto const pitches{entities.view_rotations().pitches()};
+    auto const yaws{entities.view_rotations().yaws()};
+    auto const rolls{entities.view_rotations().rolls()};
+    for (int32 index{first_index}; index < first_index + n_to_add; ++index) {
+        transforms.Emplace(FRotator{ml::to_unreal(
+                               ::ioj::sim::Rotator3f{pitches[index], yaws[index], rolls[index]})},
+                           FVector{ml::to_unreal(::ioj::sim::vector_at(locations, index))});
+    }
     constexpr bool return_indices{false};
     constexpr bool update_navigation{false};
     instances->AddInstances(transforms, return_indices, is_world_space, update_navigation);
@@ -228,15 +237,19 @@ void FCapitalPresentation::draw_debugging_shapes() const {
     auto const& agents{*capital_simulation.agents};
     auto const n{capital_simulation.get_num_instances()};
     auto const text_offset{actor_config->debug_status_text_offset};
+    auto const locations{entities.view_locations()};
+    auto const targets{entities.target_ids()};
+    auto const ids{entities.entity_ids()};
+
     for (int32 i{0}; i < n; ++i) {
-        FVector const ship_location{ml::to_unreal(entities.locations[i])};
-        auto const target_id{entities.target_ids[i]};
+        FVector const ship_location{ml::to_unreal(::ioj::sim::vector_at(locations, i))};
+        auto const target_id{targets[i]};
         if (auto const target{agents.read_alive(target_id)}) {
             FVector3d const target_location{ml::to_unreal(target->location)};
             debug_drawer.draw_arrow(ship_location, target_location);
         }
 
-        auto const entity_id{entities.entity_ids[i]};
+        auto const entity_id{ids[i]};
         auto const message{FString::Printf(
             TEXT("[%u] HP=%d"), entity_id.raw_value(), capital_simulation.healths.health(i))};
         debug_drawer.draw_string(ship_location + text_offset, message);
@@ -244,7 +257,7 @@ void FCapitalPresentation::draw_debugging_shapes() const {
 }
 
 void FCapitalPresentation::validate_array_sizes() const {
-    view().entities.validate_array_sizes();
+    view().entities.validate();
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(view().get_num_instances()),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),

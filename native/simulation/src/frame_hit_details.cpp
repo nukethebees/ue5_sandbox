@@ -2,28 +2,25 @@
 
 namespace ioj::sim::lasers {
 FrameHitDetails::FrameHitDetails(ml::FrameScratch& scratch)
-    : locations{scratch}
-    , emission_directions{scratch}
-    , sources{&scratch} {}
+    : locations_{scratch}
+    , emission_directions_{scratch}
+    , sources_{&scratch} {}
 
 void FrameHitDetails::reserve(std::int32_t const count) {
-    locations.reserve(count);
-    emission_directions.reserve(count);
-    sources.reserve(count);
+    locations_.reserve(count);
+    emission_directions_.reserve(count);
+    sources_.reserve(count);
 }
 
 void FrameHitDetails::add(Vector3f const location,
                           Vector3f const emission_direction,
                           LaserSource const source) {
-    locations.add(location);
-    emission_directions.add(emission_direction);
-    sources.add(source);
+    locations_.add(location);
+    emission_directions_.add(emission_direction);
+    sources_.add(source);
 }
 
 auto FrameHitDetails::num() const noexcept -> std::int32_t {
-    return locations.num();
-}
-auto FrameHitDetails::get_const_view() const -> LaserHitDetailsConstView {
-    return {locations.get_const_view(), emission_directions.get_const_view(), sources.view()};
+    return locations_.num();
 }
 } // namespace lasers

@@ -141,53 +141,54 @@ struct FLegacyHistory {
     }
 };
 
-void write_new_payload(::ioj::sim::telemetry::HistoryRowsView const& rows,
+void write_new_payload(::ioj::sim::telemetry::SingleAllocationHistoryRows::View rows,
                        int32 const row,
                        int32 const field,
                        uint64 const value) {
     if (field == 0) {
-        rows.active_entities[row] = static_cast<int32>(value);
+        rows.active_entities()[row] = static_cast<int32>(value);
     } else if (field < 6) {
-        rows.active_entities_by_type[row][field - 1] = static_cast<int32>(value);
+        rows.active_entities_by_type()[row][field - 1] = static_cast<int32>(value);
     } else if (field < 36) {
         auto const flat{field - 6};
-        rows.active_entities_by_team_and_type[row][flat / 5][flat % 5] = static_cast<int32>(value);
+        rows.active_entities_by_team_and_type()[row][flat / 5][flat % 5] =
+            static_cast<int32>(value);
     } else if (field == 36) {
-        rows.spawned_entities[row] = static_cast<int32>(value);
+        rows.spawned_entities()[row] = static_cast<int32>(value);
     } else if (field == 37) {
-        rows.destroyed_entities[row] = static_cast<int32>(value);
+        rows.destroyed_entities()[row] = static_cast<int32>(value);
     } else if (field == 38) {
-        rows.kills[row] = static_cast<int32>(value);
+        rows.kills()[row] = static_cast<int32>(value);
     } else if (field == 39) {
-        rows.active_lasers[row] = static_cast<int32>(value);
+        rows.active_lasers()[row] = static_cast<int32>(value);
     } else {
-        rows.lasers_fired[row] = static_cast<int32>(value);
+        rows.lasers_fired()[row] = static_cast<int32>(value);
     }
 }
 
-auto checksum_rows(::ioj::sim::telemetry::HistoryRowsConstView const& rows) -> uint64 {
+auto checksum_rows(::ioj::sim::telemetry::SingleAllocationHistoryRows::ConstView rows) -> uint64 {
     uint64 result{};
     for (int32 row{}; row < rows.num(); ++row) {
-        auto mask{rows.validity_masks[row].value()};
+        auto mask{rows.validity_masks()[row].value()};
         while (mask != 0) {
             auto const field{static_cast<int32>(std::countr_zero(mask))};
             if (field == 0) {
-                result += rows.active_entities[row];
+                result += rows.active_entities()[row];
             } else if (field < 6) {
-                result += rows.active_entities_by_type[row][field - 1];
+                result += rows.active_entities_by_type()[row][field - 1];
             } else if (field < 36) {
                 auto const flat{field - 6};
-                result += rows.active_entities_by_team_and_type[row][flat / 5][flat % 5];
+                result += rows.active_entities_by_team_and_type()[row][flat / 5][flat % 5];
             } else if (field == 36) {
-                result += rows.spawned_entities[row];
+                result += rows.spawned_entities()[row];
             } else if (field == 37) {
-                result += rows.destroyed_entities[row];
+                result += rows.destroyed_entities()[row];
             } else if (field == 38) {
-                result += rows.kills[row];
+                result += rows.kills()[row];
             } else if (field == 39) {
-                result += rows.active_lasers[row];
+                result += rows.active_lasers()[row];
             } else {
-                result += rows.lasers_fired[row];
+                result += rows.lasers_fired()[row];
             }
             mask &= mask - 1;
         }
@@ -196,13 +197,12 @@ auto checksum_rows(::ioj::sim::telemetry::HistoryRowsConstView const& rows) -> u
 }
 
 auto new_checksum(::ioj::sim::telemetry::SingleAllocationHistoryRows const& history) -> uint64 {
-    return checksum_rows(history.get_const_view().columns());
+    return checksum_rows(history.get_const_view());
 }
 
 auto block_checksum(::ioj::sim::LevelTelemetryBlockHistory const& history) -> uint64 {
     uint64 result{};
-    history.for_each_block(
-        [&result](auto const block) { result += checksum_rows(block.columns()); });
+    history.for_each_block([&result](auto const block) { result += checksum_rows(block); });
     return result;
 }
 
@@ -264,9 +264,9 @@ auto benchmark_new(FWorkload const& workload, SIZE_T const reserve_bytes) -> FRe
                 FMath::Max(result.peak_allocated_bytes, history.allocated_bytes());
         }
         auto const row{history.num() - 1};
-        auto rows{history.get_view().columns()};
-        rows.completed_ticks[row] = static_cast<uint64>(tick);
-        rows.validity_masks[row] = FieldMask{static_cast<FieldMask::storage_type>(mask)};
+        auto rows{history.get_view()};
+        rows.completed_ticks()[row] = static_cast<uint64>(tick);
+        rows.validity_masks()[row] = FieldMask{static_cast<FieldMask::storage_type>(mask)};
         auto remaining{mask};
         while (remaining != 0) {
             auto const field{static_cast<int32>(std::countr_zero(remaining))};
@@ -308,9 +308,9 @@ auto benchmark_blocks(FWorkload const& workload, SIZE_T const block_bytes) -> FR
             continue;
         }
         auto const append_started{FPlatformTime::Seconds()};
-        auto rows{history.append_uninitialized().columns()};
-        rows.completed_ticks[0] = static_cast<uint64>(tick);
-        rows.validity_masks[0] = FieldMask{static_cast<FieldMask::storage_type>(mask)};
+        auto rows{history.append_uninitialized()};
+        rows.completed_ticks()[0] = static_cast<uint64>(tick);
+        rows.validity_masks()[0] = FieldMask{static_cast<FieldMask::storage_type>(mask)};
         auto remaining{mask};
         while (remaining != 0) {
             auto const field{static_cast<int32>(std::countr_zero(remaining))};
@@ -389,7 +389,7 @@ auto page_stats(std::span<T const> const values, std::size_t const capacity) -> 
 
 auto owner_page_stats(::ioj::sim::telemetry::SingleAllocationHistoryRows const& history)
     -> FPageStats {
-    auto const columns{history.get_const_view().columns()};
+    auto const columns{history.get_const_view()};
     FPageStats total;
     columns.each_column([&](auto const arrays) {
         auto const stats{page_stats(arrays, history.capacity())};
@@ -415,7 +415,7 @@ void log_column_page_stats(FAutomationTestBase& test,
         TEXT("active_lasers"),
         TEXT("lasers_fired"),
     };
-    auto const columns{history.get_const_view().columns()};
+    auto const columns{history.get_const_view()};
     int32 column_index{};
     columns.each_column([&](auto const arrays) {
         auto const stats{page_stats(arrays, history.capacity())};
@@ -440,9 +440,9 @@ void populate_new(::ioj::sim::telemetry::SingleAllocationHistoryRows& history,
         }
         history.add_uninitialised(1);
         auto const row{history.num() - 1};
-        auto rows{history.get_view().columns()};
-        rows.completed_ticks[row] = static_cast<uint64>(tick);
-        rows.validity_masks[row] = FieldMask{static_cast<FieldMask::storage_type>(mask)};
+        auto rows{history.get_view()};
+        rows.completed_ticks()[row] = static_cast<uint64>(tick);
+        rows.validity_masks()[row] = FieldMask{static_cast<FieldMask::storage_type>(mask)};
         auto remaining{mask};
         while (remaining != 0) {
             auto const field{static_cast<int32>(std::countr_zero(remaining))};

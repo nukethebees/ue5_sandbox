@@ -135,9 +135,11 @@ Registry definitions remain source-authored, with no parallel planner schema or 
 
 ## Single-allocation SoA
 
-The LispB `soa` declaration is validated before lowering. A single-allocation owner is a
-declaration on a normal SoA; nested schemas and flattened column names are checked during semantic
-validation. The explicit `:vector-components (xs ys)` or `(xs ys zs)` annotation requires
+The LispB `struct` declaration selects `:storage vector`, `single-allocation`, or `both`.
+Without an explicit policy, a `(single-allocation OwnerName)` declaration selects only that
+owner; other schemas emit vector-backed owners. `both` explicitly requests both representations.
+Nested schemas and flattened column names are checked during semantic validation.
+The explicit `:vector-components (xs ys)` or `(xs ys zs)` annotation requires
 exactly those ordered arrays with a common resolved element type. The generated compact vector
 view additionally compiler-checks that the C++ element type is arithmetic and non-volatile.
 The resolved `TypeGraph` records the vector meaning and checks a declared vector equivalent's
@@ -157,13 +159,19 @@ compile and materialize. `capacity_block_bound` is deliberately conservative whi
 including same-type adjacent and over-aligned columns.
 
 The generated owner directly holds `StorageState` and inherits small generic
-`StorageOperations`; it contains explicit typed per-column mutations and an alias guard. Native
-and Unreal support provide `copy_n`, `default_construct_n`, `source_data`, and `any_column`,
-so generated code neither repeats byte-count arithmetic nor emits an alias OR per column.
+`StorageOperations`; it contains explicit typed per-column mutations. Native and Unreal support
+provide `copy_n`, `default_construct_n`, and `source_data`. Append accepts a structural source
+with `num()`, `validate()`, scalar column accessors, and `view_member()` nested accessors.
+It validates the source range before growing the destination, then resolves source columns
+after growth. Compact self-append therefore survives reallocation. Independent sources, such as
+frame-backed producers, expose their own columns directly and validate their column lengths.
+Their storage must remain valid through destination growth.
 The owner has no generated `FooStorage` intermediate. Public named mutable and const compact
 views are thin wrappers over one `FooSingleViewImpl<Const>` accessor implementation. They hold a
 stable pointer to owner state plus offset/count, resolve pointers lazily, and remain 16-byte
-trivially copyable handles. A retained compact handle survives allocation growth while the owner
+trivially copyable handles, checked with the shared `validate_compact_view` contract. Non-vector
+nested views share the same owner state and range. Column iteration calls individual accessors;
+there is no schema-wide `columns()` conversion. A retained compact handle survives allocation growth while the owner
 stays in place and its range remains valid; materialized spans and vector views do not. Moving an
 owner is outside the view lifetime contract: move construction leaves handles referring to the
 moved-from state, while move assignment replaces the destination's state and can make its old

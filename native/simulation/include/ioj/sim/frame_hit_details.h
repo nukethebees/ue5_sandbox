@@ -22,10 +22,23 @@ struct FrameHitDetails {
     void reserve(std::int32_t count);
     void add(Vector3f location, Vector3f emission_direction, LaserSource source);
     [[nodiscard]] auto num() const noexcept -> std::int32_t;
-    [[nodiscard]] auto get_const_view() const -> LaserHitDetailsConstView;
 
-    FrameVectors3f locations;
-    FrameVectors3f emission_directions;
-    ml::FrameArray<LaserSource> sources;
+    auto view_locations() -> FrameVectors3f& { return locations_; }
+    auto view_locations() const -> FrameVectors3f const& { return locations_; }
+    auto view_emission_directions() -> FrameVectors3f& { return emission_directions_; }
+    auto view_emission_directions() const -> FrameVectors3f const& { return emission_directions_; }
+    auto sources() -> std::span<LaserSource> { return sources_.view(); }
+    auto sources() const -> std::span<LaserSource const> { return sources_.view(); }
+    void validate() const {
+        locations_.validate();
+        emission_directions_.validate();
+        ml::native_soa::require(locations_.num() == num());
+        ml::native_soa::require(emission_directions_.num() == num());
+        ml::native_soa::require(sources_.num() == num());
+    }
+  private:
+    FrameVectors3f locations_;
+    FrameVectors3f emission_directions_;
+    ml::FrameArray<LaserSource> sources_;
 };
 } // namespace ioj::sim::lasers

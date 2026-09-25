@@ -1,4 +1,5 @@
 #include "SpaceGamePresentation/presentation/SpinnerPresentation.h"
+#include <ioj/sim/column_math.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include <SandboxGameShared/utilities/actor_utils.h>
@@ -71,10 +72,13 @@ void FSpinnerPresentation::update_ismc_transforms() {
     ismc_transforms.Reset();
     ismc_transforms.AddUninitialized(n);
 
+    auto const yaws{entities.yaws()};
+    auto const locations{entities.view_locations()};
+
     for (int32 i{0}; i < n; ++i) {
         ismc_transforms[i] = FTransform{
-            FRotator{0.0, static_cast<double>(entities.yaws[i]), 0.0},
-            FVector{ml::to_unreal(entities.locations[i])},
+            FRotator{0.0, static_cast<double>(yaws[i]), 0.0},
+            FVector{ml::to_unreal(::ioj::sim::vector_at(locations, i))},
         };
     }
 }
@@ -90,7 +94,7 @@ void FSpinnerPresentation::update_ismc() {
 }
 
 void FSpinnerPresentation::validate_array_sizes() const {
-    view().entities.validate_array_sizes();
+    view().entities.validate();
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(view().get_num_instances()),
         SANDBOX_NAMED_NUM(ismc_transforms),

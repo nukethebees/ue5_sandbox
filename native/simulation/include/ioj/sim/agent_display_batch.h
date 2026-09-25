@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/health_table.h>
 #include <ioj/sim/vectors3f.h>
@@ -12,8 +13,8 @@ namespace ioj::sim {
 struct AgentDisplayBatch {
     EntityType type{};
     std::span<EntityUniqueId const> ids;
-    Vectors3fConstView locations;
-    Vectors3fConstView velocities;
+    ml::native_soa::Vector3ConstView<float> locations;
+    ml::native_soa::Vector3ConstView<float> velocities;
     HealthConstView healths;
     std::span<Team const> teams;
 
@@ -25,7 +26,7 @@ struct AgentDisplayBatch {
         return teams.empty() ? Team::White : teams[index];
     }
     auto velocity(std::int32_t index) const -> Vector3f {
-        return velocities.num() == 0 ? Vector3f{} : velocities[index];
+        return velocities.num() == 0 ? Vector3f{} : vector_at(velocities, index);
     }
 };
 inline auto display_entity_count(std::span<AgentDisplayBatch const> batches) -> std::int32_t {

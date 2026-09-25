@@ -84,27 +84,27 @@ struct Vectors3f {
             return;
         }
         {
-            auto const address{ml::address_cast(source.xs)};
+            auto const address{ml::address_cast(source.xs().data())};
             auto const begin{ml::address_cast(xs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + xs.size() * sizeof(float));
         }
         {
-            auto const address{ml::address_cast(source.ys)};
+            auto const address{ml::address_cast(source.ys().data())};
             auto const begin{ml::address_cast(ys.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + ys.size() * sizeof(float));
         }
         {
-            auto const address{ml::address_cast(source.zs)};
+            auto const address{ml::address_cast(source.zs().data())};
             auto const begin{ml::address_cast(zs.data())};
             ml::native_soa::require(address < begin ||
                                     address >= begin + zs.size() * sizeof(float));
         }
         ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            xs.insert(xs.end(), source.xs, source.xs + count);
-            ys.insert(ys.end(), source.ys, source.ys + count);
-            zs.insert(zs.end(), source.zs, source.zs + count);
+            xs.insert(xs.end(), source.xs().data(), source.xs().data() + count);
+            ys.insert(ys.end(), source.ys().data(), source.ys().data() + count);
+            zs.insert(zs.end(), source.zs().data(), source.zs().data() + count);
         });
     }
     auto get_view() -> View {

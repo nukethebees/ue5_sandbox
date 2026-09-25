@@ -18,10 +18,10 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
     LevelTelemetryBlockHistory history{memory, {.block_bytes = block_bytes}};
 
     for (SimTick tick{}; tick < 64; ++tick) {
-        auto columns{history.append_uninitialized().columns()};
-        columns.completed_ticks[0] = tick;
-        columns.validity_masks[0] = active_entities_mask;
-        columns.active_entities[0] = static_cast<std::int32_t>(tick);
+        auto columns{history.append_uninitialized()};
+        columns.completed_ticks()[0] = tick;
+        columns.validity_masks()[0] = active_entities_mask;
+        columns.active_entities()[0] = static_cast<std::int32_t>(tick);
     }
     EXPECT_EQ(history.retained_block_count(), std::int32_t{1})
         << "An exact-capacity fill retains one block";
@@ -30,10 +30,10 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
     auto const* const first_address{history.block_data(0)};
     auto const first_value{history.block_view(0).completed_ticks()[0]};
 
-    auto next{history.append_uninitialized().columns()};
-    next.completed_ticks[0] = 64;
-    next.validity_masks[0] = active_entities_mask;
-    next.active_entities[0] = 64;
+    auto next{history.append_uninitialized()};
+    next.completed_ticks()[0] = 64;
+    next.validity_masks()[0] = active_entities_mask;
+    next.active_entities()[0] = 64;
     EXPECT_EQ(history.retained_block_count(), std::int32_t{2})
         << "One row past capacity acquires exactly one more block";
     EXPECT_EQ(history.block_data(0), first_address)
@@ -53,8 +53,8 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
     history.reset();
     EXPECT_EQ(history.num(), std::int32_t{0}) << "Reset clears logical rows";
     for (SimTick tick{}; tick < 65; ++tick) {
-        auto columns{history.append_uninitialized().columns()};
-        columns.completed_ticks[0] = tick;
+        auto columns{history.append_uninitialized()};
+        columns.completed_ticks()[0] = tick;
     }
     EXPECT_EQ(history.retained_block_count(), std::int32_t{2})
         << "An equivalent second run acquires no blocks";

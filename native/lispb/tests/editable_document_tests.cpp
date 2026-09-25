@@ -6871,6 +6871,7 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSingleAllocationOwners) {
     auto enabled{*document.soa_schema(declaration)};
     enabled.fixed =
         codegen::FixedSoaSchema{.storage_name = "ExistingSoaCombinedStorage", .containers = {}};
+    enabled.storage = codegen::SoaStorage::both;
     enabled.single_allocation = *owner_name;
     enabled.single_allocation_variants = {codegen::SingleAllocationVariant{
         .name = "ExistingSoaPool", .allocator = codegen::TypeRef{"@existing"}}};
@@ -6942,6 +6943,7 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSingleAllocationOwners) {
     auto const* reloaded_schema{reloaded.soa_schema(reloaded_declaration)};
     ASSERT_NE(reloaded_schema, nullptr);
     EXPECT_EQ(reloaded_schema->single_allocation, "ExistingSoaCompact");
+    EXPECT_EQ(reloaded_schema->storage, codegen::SoaStorage::both);
     ASSERT_EQ(reloaded_schema->single_allocation_variants.size(), 2U);
     EXPECT_EQ(reloaded_schema->single_allocation_variants[0].name, "ExistingSoaPool_copy");
     EXPECT_EQ(reloaded_schema->single_allocation_variants[0].allocator.name, "std::uint32_t");
@@ -6949,6 +6951,7 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSingleAllocationOwners) {
     EXPECT_EQ(reloaded_schema->single_allocation_variants[1].allocator.name, "@existing");
 
     auto disabled{*reloaded_schema};
+    disabled.storage = codegen::SoaStorage::vector;
     disabled.single_allocation.reset();
     disabled.single_allocation_variants.clear();
     applied = reloaded.apply(

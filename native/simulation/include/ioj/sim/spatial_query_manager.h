@@ -134,8 +134,8 @@ struct SpatialQueryManager {
                          ml::FrameScratch& scratch) -> collision::DetectedOverlapsView;
     void reset_frame_collision_events();
     auto get_aabb_overlap_events() const -> collision::AABBOverlapEventsView;
-    auto get_entity_collision_bounds() const -> collision::WorldAABBsColumnsConstView;
-    auto get_static_collision_bounds() const -> collision::WorldAABBsColumnsConstView;
+    auto get_entity_collision_bounds() const -> collision::EntityCellData::ConstView;
+    auto get_static_collision_bounds() const -> collision::WorldAABBs::ConstView;
   private:
     /* **************************************** */
     // Thread buffer leasing

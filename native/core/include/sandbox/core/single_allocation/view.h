@@ -2,6 +2,7 @@
 
 #include <sandbox/core/single_allocation/layout.h>
 
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -29,6 +30,15 @@ struct StorageState {
     std::int32_t num_{};
     std::int32_t capacity_{};
 };
+
+template <typename View>
+consteval auto validate_compact_view() -> bool {
+    static_assert(sizeof(View) == sizeof(StorageState),
+                  "Compact view must contain only a state pointer, offset, and count.");
+    static_assert(std::is_trivially_copyable_v<View>,
+                  "Compact view must remain trivially copyable.");
+    return true;
+}
 
 template <bool Const, auto Require>
 struct CompactViewState {

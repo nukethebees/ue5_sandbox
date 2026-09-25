@@ -70,9 +70,9 @@ TEST(NativeSoa, SwapRemovalKeepsTraceHitColumnsAligned) {
 
     ASSERT_EQ(hits.num(), 3);
     auto const columns{hits.get_const_view()};
-    EXPECT_EQ(columns.locations.xs[0], 0.0f);
-    EXPECT_EQ(columns.locations.xs[1], 1.0f);
-    EXPECT_EQ(columns.locations.xs[2], 5.0f);
+    EXPECT_EQ(columns.locations.xs()[0], 0.0f);
+    EXPECT_EQ(columns.locations.xs()[1], 1.0f);
+    EXPECT_EQ(columns.locations.xs()[2], 5.0f);
     EXPECT_EQ(columns.entities[2], EntityUniqueId::from_raw(105));
     EXPECT_EQ(columns.static_geometry_indices[2], 205);
     EXPECT_EQ(columns.hits[2], 6);

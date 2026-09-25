@@ -1,4 +1,5 @@
 #include "SpaceGamePresentation/presentation/RadarSource.h"
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
@@ -200,7 +201,8 @@ auto collect_radar_instances(std::span<::ioj::sim::AgentDisplayBatch const> cons
                     continue;
                 }
 
-                auto const world_delta{ml::to_unreal(batch.locations[index]) - player_origin};
+                auto const world_delta{
+                    ml::to_unreal(::ioj::sim::vector_at(batch.locations, index)) - player_origin};
                 if (world_delta.SizeSquared() >= range_squared) {
                     continue;
                 }

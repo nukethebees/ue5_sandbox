@@ -1,3 +1,4 @@
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/level_sim.h>
 #include <ioj/sim/rotator_math.h>
 #include <map>
@@ -66,10 +67,10 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
         auto const entities{fighters.get_read_view().entities};
         for (std::int32_t index{}; index < entities.num(); ++index) {
             previous_transforms.emplace(
-                entities.entity_ids[index],
-                FighterTransformSnapshot{
-                    .location = entities.locations[index],
-                    .rotation = direction_to_rotation(entities.aim_directions[index])});
+                entities.entity_ids()[index],
+                FighterTransformSnapshot{.location = vector_at(entities.view_locations(), index),
+                                         .rotation = direction_to_rotation(
+                                             vector_at(entities.view_aim_directions(), index))});
         }
     };
     capture_current_transforms(simulation.get_fighters());
@@ -81,10 +82,11 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
         auto const entities{level.get_fighters().get_read_view().entities};
         std::set<EntityUniqueId> expected_moved;
         for (std::int32_t index{}; index < entities.num(); ++index) {
-            auto const id{entities.entity_ids[index]};
+            auto const id{entities.entity_ids()[index]};
             auto const current{FighterTransformSnapshot{
-                .location = entities.locations[index],
-                .rotation = direction_to_rotation(entities.aim_directions[index])}};
+                .location = vector_at(entities.view_locations(), index),
+                .rotation =
+                    direction_to_rotation(vector_at(entities.view_aim_directions(), index))}};
             auto const previous{previous_transforms.find(id)};
             if (previous != previous_transforms.end() && previous->second != current) {
                 expected_moved.insert(id);

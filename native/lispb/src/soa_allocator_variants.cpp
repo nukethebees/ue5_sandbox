@@ -17,9 +17,11 @@ auto is_identifier_prefix(std::string const& prefix) -> bool {
 }
 
 void add_soa_names(std::set<std::string>& names, SoaSchema const& schema) {
-    names.insert(schema.name);
-    names.insert(schema.view_name.value_or(schema.name + "View"));
-    names.insert(schema.const_view_name.value_or(schema.name + "ConstView"));
+    if (schema.emits_vector_storage()) {
+        names.insert(schema.name);
+        names.insert(schema.view_name.value_or(schema.name + "View"));
+        names.insert(schema.const_view_name.value_or(schema.name + "ConstView"));
+    }
     if (schema.single_allocation.has_value()) {
         names.insert(*schema.single_allocation);
     }
@@ -55,6 +57,9 @@ void validate_soa_allocator_variants(SoaBackend const backend,
             throw std::invalid_argument{"Invalid SoA allocator variant prefix: " + variant.prefix};
         }
         for (auto const& schema : schemas) {
+            if (!schema.emits_vector_storage()) {
+                continue;
+            }
             if (schema.fixed.has_value() || schema.field_mask_name.has_value() ||
                 schema.field_enum_name.has_value() || schema.equivalent_type.has_value() ||
                 !schema.functions.empty() || !schema.mutable_view_functions.empty() ||
@@ -95,11 +100,15 @@ auto expand_soa_allocator_variants(SoaBackend const backend,
     std::vector<SoaSchema> expanded{schemas.begin(), schemas.end()};
     for (auto const& variant : variants) {
         for (auto const& schema : schemas) {
+            if (!schema.emits_vector_storage()) {
+                continue;
+            }
             auto copy{schema};
             copy.name = variant.prefix + schema.name;
             copy.view_name = variant.prefix + schema.view_name.value_or(schema.name + "View");
             copy.const_view_name =
                 variant.prefix + schema.const_view_name.value_or(schema.name + "ConstView");
+            copy.storage = SoaStorage::vector;
             copy.single_allocation.reset();
             copy.single_allocation_variants.clear();
             copy.array_allocator = variant.allocator;

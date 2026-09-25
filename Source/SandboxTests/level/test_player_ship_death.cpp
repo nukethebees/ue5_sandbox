@@ -101,7 +101,7 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
                 player_ship_id),
             IsValid(player_ship.Get()),
             unique_entities
-                    .life_state[test_driver->get_ledger().get_history_index(player_ship_id)] ==
+                    .life_state()[test_driver->get_ledger().get_history_index(player_ship_id)] ==
                 ::ioj::sim::LifeState::Alive,
             IsValid(controller) && IsValid(controller->GetPawn()),
             IsValid(controller) &&

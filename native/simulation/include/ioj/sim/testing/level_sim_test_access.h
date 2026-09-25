@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/sim/column_math.h>
 
 #include <ioj/sim/level_sim.h>
 #include <utility>
@@ -6,7 +7,8 @@
 namespace ioj::sim {
 
 struct LevelSimTestAccess {
-    static void queue_fighter_spawns(LevelSim& simulation, FighterSpawnQueueConstView spawns) {
+    static void queue_fighter_spawns(LevelSim& simulation,
+                                     SingleAllocationFighterSpawnQueue::ConstView spawns) {
         fighters::CommandInterface{simulation.fighters_simulation_}.queue_spawns(spawns);
     }
     static void reassign_pending_fighter_spawns(LevelSim& simulation,
@@ -48,12 +50,14 @@ struct LevelSimTestAccess {
         simulation.rebuild_agent_indexes();
         simulation.query_manager_.refresh_spatial_index();
     }
-    static void register_capitals(LevelSim& simulation, CapitalSpawnDataConstView spawns) {
+    static void register_capitals(LevelSim& simulation,
+                                  SingleAllocationLevelCapitalSpawnEvents::ConstView spawns) {
         simulation.clock_.phase = SimulationPhase::Preparation;
         simulation.capital_ships_simulation_.register_ships(spawns);
         simulation.rebuild_agent_indexes();
     }
-    static void commit_fighter_spawns(LevelSim& simulation, FighterSpawnQueueConstView spawns) {
+    static void commit_fighter_spawns(LevelSim& simulation,
+                                      SingleAllocationFighterSpawnQueue::ConstView spawns) {
         simulation.clock_.phase = SimulationPhase::Preparation;
         auto& fighters{simulation.fighters_simulation_};
         auto const dt{static_cast<float>(simulation.clock_.get_tick_period())};
@@ -71,10 +75,10 @@ struct LevelSimTestAccess {
         auto& fighters{simulation.fighters_simulation_};
         auto const index{simulation.agent_indexes_.find(fighter)};
         fighters.set_target_id(fighter, target);
-        auto const data{fighters.entity_buffers.current().get_view().columns()};
-        data.awareness_scan_countdowns[index] = awareness_countdown;
-        data.attack_reposition_countdowns[index] = 0;
-        data.navigation_update_countdowns_remaining_ticks[index] = 1;
+        auto const data{fighters.entity_buffers.current().get_view()};
+        data.awareness_scan_countdowns()[index] = awareness_countdown;
+        data.attack_reposition_countdowns()[index] = 0;
+        data.navigation_update_countdowns_remaining_ticks()[index] = 1;
     }
     static void think_fighters(LevelSim& simulation, ml::FrameScratch& scratch) {
         simulation.clock_.phase = SimulationPhase::Thinking;
@@ -86,10 +90,9 @@ struct LevelSimTestAccess {
                                        Vector3f location,
                                        Vector3f velocity) {
         auto const index{simulation.agent_indexes_.find(fighter)};
-        auto const data{
-            simulation.fighters_simulation_.entity_buffers.current().get_view().columns()};
-        data.locations.set(index, location);
-        data.velocities.set(index, velocity);
+        auto const data{simulation.fighters_simulation_.entity_buffers.current().get_view()};
+        set_vector(data.view_locations(), index, location);
+        set_vector(data.view_velocities(), index, velocity);
         simulation.query_manager_.refresh_spatial_index();
     }
     static void resolve_fighter_damage(LevelSim& simulation, ml::FrameScratch& scratch) {
@@ -119,7 +122,8 @@ struct LevelSimTestAccess {
                                            DirectDamageEventsConstView events) {
         simulation.combat_events_.queue_damage(events);
     }
-    static void queue_laser_spawns(LevelSim& simulation, lasers::SpawnRequestsConstView requests) {
+    static void queue_laser_spawns(LevelSim& simulation,
+                                   lasers::SingleAllocationLaserSpawnRequests::ConstView requests) {
         simulation.lasers_simulation_.queue_laser_spawns(requests);
     }
     static void begin_telemetry_run(LevelSim& simulation, LevelTelemetryRunMetadata metadata) {

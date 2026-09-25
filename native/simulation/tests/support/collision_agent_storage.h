@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/sim/column_math.h>
 
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/combat_events.h>
@@ -22,43 +23,43 @@ struct CollisionAgentStorage {
             case EntityType::CapitalShip: {
                 auto const row{capitals.num()};
                 capitals.add_defaulted(1);
-                auto out{capitals.get_view().columns()};
-                out.entity_ids[row] = id;
-                out.locations.set(row, location);
-                out.rotations.set(row, rotation);
-                add_health(id, out.health_indices[row], health);
-                out.teams[row] = team;
+                auto out{capitals.get_view()};
+                out.entity_ids()[row] = id;
+                set_vector(out.view_locations(), row, location);
+                set_rotation(out.view_rotations(), row, rotation);
+                add_health(id, out.health_indices()[row], health);
+                out.teams()[row] = team;
                 break;
             }
             case EntityType::Fighter: {
                 auto const row{fighters.num()};
                 fighters.add_defaulted(1);
-                auto out{fighters.get_view().columns()};
-                out.entity_ids[row] = id;
-                out.locations.set(row, location);
-                out.aim_directions.set(row, forward_direction(rotation));
-                add_health(id, out.health_indices[row], health);
-                out.teams[row] = team;
+                auto out{fighters.get_view()};
+                out.entity_ids()[row] = id;
+                set_vector(out.view_locations(), row, location);
+                set_vector(out.view_aim_directions(), row, forward_direction(rotation));
+                add_health(id, out.health_indices()[row], health);
+                out.teams()[row] = team;
                 break;
             }
             case EntityType::Turret: {
                 auto const row{turrets.num()};
                 turrets.add_defaulted(1);
-                auto out{turrets.get_view().columns()};
-                out.entity_ids[row] = id;
-                out.locations.set(row, location);
-                out.rotations.set(row, rotation);
-                add_health(id, out.health_indices[row], health);
-                out.teams[row] = team;
+                auto out{turrets.get_view()};
+                out.entity_ids()[row] = id;
+                set_vector(out.view_locations(), row, location);
+                set_rotation(out.view_rotations(), row, rotation);
+                add_health(id, out.health_indices()[row], health);
+                out.teams()[row] = team;
                 break;
             }
             case EntityType::TubeSpinner: {
                 auto const row{spinners.num()};
                 spinners.add_defaulted(1);
-                auto out{spinners.get_view().columns()};
-                out.entity_ids[row] = id;
-                out.locations.set(row, location);
-                out.yaws[row] = rotation.yaw;
+                auto out{spinners.get_view()};
+                out.entity_ids()[row] = id;
+                set_vector(out.view_locations(), row, location);
+                out.yaws()[row] = rotation.yaw;
                 break;
             }
             case EntityType::PlayerShip:
@@ -82,30 +83,30 @@ struct CollisionAgentStorage {
         assert(row >= 0);
         switch (id.entity_type()) {
             case EntityType::CapitalShip: {
-                auto out{capitals.get_view().columns()};
-                out.locations.set(row, location);
-                out.rotations.set(row, rotation);
-                health_table.get_view(out.health_indices, out.entity_ids).health(row) = health;
+                auto out{capitals.get_view()};
+                set_vector(out.view_locations(), row, location);
+                set_rotation(out.view_rotations(), row, rotation);
+                health_table.get_view(out.health_indices(), out.entity_ids()).health(row) = health;
                 break;
             }
             case EntityType::Fighter: {
-                auto out{fighters.get_view().columns()};
-                out.locations.set(row, location);
-                out.aim_directions.set(row, forward_direction(rotation));
-                health_table.get_view(out.health_indices, out.entity_ids).health(row) = health;
+                auto out{fighters.get_view()};
+                set_vector(out.view_locations(), row, location);
+                set_vector(out.view_aim_directions(), row, forward_direction(rotation));
+                health_table.get_view(out.health_indices(), out.entity_ids()).health(row) = health;
                 break;
             }
             case EntityType::Turret: {
-                auto out{turrets.get_view().columns()};
-                out.locations.set(row, location);
-                out.rotations.set(row, rotation);
-                health_table.get_view(out.health_indices, out.entity_ids).health(row) = health;
+                auto out{turrets.get_view()};
+                set_vector(out.view_locations(), row, location);
+                set_rotation(out.view_rotations(), row, rotation);
+                health_table.get_view(out.health_indices(), out.entity_ids()).health(row) = health;
                 break;
             }
             case EntityType::TubeSpinner: {
-                auto out{spinners.get_view().columns()};
-                out.locations.set(row, location);
-                out.yaws[row] = rotation.yaw;
+                auto out{spinners.get_view()};
+                set_vector(out.view_locations(), row, location);
+                out.yaws()[row] = rotation.yaw;
                 break;
             }
             case EntityType::PlayerShip:
@@ -129,15 +130,15 @@ struct CollisionAgentStorage {
         bind_entity_indices();
         switch (id.entity_type()) {
             case EntityType::CapitalShip:
-                remove_health(capitals.get_const_view().columns().health_indices[row], id);
+                remove_health(capitals.get_const_view().health_indices()[row], id);
                 capitals.remove_at_swap(row, 1);
                 break;
             case EntityType::Fighter:
-                remove_health(fighters.get_const_view().columns().health_indices[row], id);
+                remove_health(fighters.get_const_view().health_indices()[row], id);
                 fighters.remove_at_swap(row, 1);
                 break;
             case EntityType::Turret:
-                remove_health(turrets.get_const_view().columns().health_indices[row], id);
+                remove_health(turrets.get_const_view().health_indices()[row], id);
                 turrets.remove_at_swap(row, 1);
                 break;
             case EntityType::TubeSpinner:
@@ -157,10 +158,10 @@ struct CollisionAgentStorage {
     void publish() {
         clock.phase = SimulationPhase::Preparation;
         bind_entity_indices();
-        agents.bind(capitals.get_const_view().columns(),
-                    fighters.get_const_view().columns(),
-                    turrets.get_const_view().columns(),
-                    spinners.get_const_view().columns(),
+        agents.bind(capitals.get_const_view(),
+                    fighters.get_const_view(),
+                    turrets.get_const_view(),
+                    spinners.get_const_view(),
                     player_ids.empty() ? PlayerAgentView{}
                                        : PlayerAgentView{&player_transform,
                                                          &player_velocity,

@@ -1,4 +1,6 @@
 #include "test_laser_lifecycle.h"
+#include <ioj/sim/column_math.h>
+#include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include "../support/simulation_test_support.h"
 
@@ -17,69 +19,6 @@ constexpr std::int32_t projectile_damage{10};
 constexpr float projectile_speed{12000.f};
 constexpr float collision_max_distance{20000.f};
 constexpr float miss_max_distance{500.f};
-}
-
-TEST(NativeSimulation, LaserSpawnRequestRowOperationsKeepColumnsPaired) {
-    lasers::SpawnRequests requests{};
-    auto const instigator{EntityUniqueId(7, EntityType::CapitalShip)};
-    LaserSource const source{Team::Green, EntityType::CapitalShip};
-
-    auto expect_row = [&](std::int32_t const index, float const offset) {
-        EXPECT_FLOAT_EQ(requests.locations.xs[index], offset + 1.f);
-        EXPECT_FLOAT_EQ(requests.locations.ys[index], offset + 2.f);
-        EXPECT_FLOAT_EQ(requests.locations.zs[index], offset + 3.f);
-        EXPECT_FLOAT_EQ(requests.rotations.pitches[index], offset + 4.f);
-        EXPECT_FLOAT_EQ(requests.rotations.yaws[index], offset + 5.f);
-        EXPECT_FLOAT_EQ(requests.rotations.rolls[index], offset + 6.f);
-        EXPECT_FLOAT_EQ(requests.base_velocities.xs[index], offset + 7.f);
-        EXPECT_FLOAT_EQ(requests.base_velocities.ys[index], offset + 8.f);
-        EXPECT_FLOAT_EQ(requests.base_velocities.zs[index], offset + 9.f);
-        EXPECT_EQ(requests.damages[index], static_cast<std::int32_t>(offset) + 10);
-        EXPECT_FLOAT_EQ(requests.speeds[index], offset + 11.f);
-        EXPECT_FLOAT_EQ(requests.max_distances[index], offset + 12.f);
-        EXPECT_EQ(requests.instigator_ids[index], instigator);
-        EXPECT_EQ(requests.sources[index], source);
-    };
-
-    EXPECT_EQ(requests.add({{1.f, 2.f, 3.f}},
-                           {4.f, 5.f, 6.f},
-                           {{7.f, 8.f, 9.f}},
-                           10,
-                           11.f,
-                           12.f,
-                           instigator,
-                           source),
-              0);
-    EXPECT_EQ(requests.add({}, {}, {}, 0, 0.f, 0.f, {}, {}), 1);
-    ASSERT_EQ(requests.num(), 2);
-    requests.validate_array_sizes();
-    expect_row(0, 0.f);
-
-    requests.set(0,
-                 {{21.f, 22.f, 23.f}},
-                 {24.f, 25.f, 26.f},
-                 {{27.f, 28.f, 29.f}},
-                 30,
-                 31.f,
-                 32.f,
-                 instigator,
-                 source);
-    EXPECT_FLOAT_EQ(requests.locations.xs[1], 0.f);
-    EXPECT_EQ(requests.damages[1], 0);
-
-    requests.get_view(1, 1).set(0,
-                                {{1.f, 2.f, 3.f}},
-                                {4.f, 5.f, 6.f},
-                                {{7.f, 8.f, 9.f}},
-                                10,
-                                11.f,
-                                12.f,
-                                instigator,
-                                source);
-    requests.validate_array_sizes();
-
-    expect_row(0, 20.f);
-    expect_row(1, 0.f);
 }
 
 void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
@@ -148,19 +87,20 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
         }
 
         auto const count{scenario == LaserLifecycleScenario::SimultaneousLethalHits ? 2 : 1};
-        lasers::SpawnRequests requests;
+        lasers::SingleAllocationLaserSpawnRequests requests;
         requests.add_uninitialised(count);
         for (std::int32_t i{}; i < count; ++i) {
-            requests.locations.set(i, start);
-            requests.rotations.set(i, direction_to_rotation(fire_direction));
-            requests.base_velocities.set(i, Vector3f{});
-            requests.damages[i] = projectile_damage;
-            requests.speeds[i] = projectile_speed;
-            requests.max_distances[i] = scenario == LaserLifecycleScenario::Miss
-                                          ? miss_max_distance
-                                          : collision_max_distance;
-            requests.instigator_ids[i] = shooter;
-            requests.sources[i] = LaserSource{Team::White, EntityType::TubeSpinner};
+            set_vector(requests.get_view().view_locations(), i, start);
+            set_rotation(
+                requests.get_view().view_rotations(), i, direction_to_rotation(fire_direction));
+            set_vector(requests.get_view().view_base_velocities(), i, Vector3f{});
+            requests.get_view().damages()[i] = projectile_damage;
+            requests.get_view().speeds()[i] = projectile_speed;
+            requests.get_view().max_distances()[i] = scenario == LaserLifecycleScenario::Miss
+                                                       ? miss_max_distance
+                                                       : collision_max_distance;
+            requests.get_view().instigator_ids()[i] = shooter;
+            requests.get_view().sources()[i] = LaserSource{Team::White, EntityType::TubeSpinner};
         }
         LevelSimTestAccess::queue_laser_spawns(harness.get_simulation(), requests.get_const_view());
     });

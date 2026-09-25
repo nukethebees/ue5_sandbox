@@ -1,4 +1,5 @@
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
@@ -160,7 +161,7 @@ auto select_soft_target(std::span<::ioj::sim::AgentDisplayBatch const> const bat
                 continue;
             }
 
-            auto const position{ml::to_unreal(batch.locations[index])};
+            auto const position{ml::to_unreal(::ioj::sim::vector_at(batch.locations, index))};
             auto const objective{objective_roles[output_index] !=
                                  EEntityOverlayObjectiveRole::None};
             if (!objective && FVector3f::DistSquared(context.view.camera_origin, position) >
@@ -325,7 +326,7 @@ auto collect_entity_overlay_instances(
 
             auto const objective_role{objective_roles[output_index]};
             static_cast<void>(collector.try_add_colored(
-                ml::to_unreal(batch.locations[index]),
+                ml::to_unreal(::ioj::sim::vector_at(batch.locations, index)),
                 static_cast<float>(batch.health(index)) * inverse_health,
                 entity_type_radii[entity_type],
                 team_colour(entity_type, ml::to_unreal(batch.team(index)), team_colours),

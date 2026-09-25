@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/sim_config.h>
 #include <optional>
@@ -50,34 +51,36 @@ void Sim::begin_play() {
     profiling::plot("Sandbox/CapitalShipCount", 0);
     assert(static_cast<std::size_t>(config.fighter_spawn_slots) ==
            config.fighter_spawn_slots_relative_transforms.size());
-    validate_array_sizes();
 }
 void Sim::prepare_tick(float const dt) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::prepare_tick");
     clear_tick_buffers();
-    auto const entities{this->entities.get_view().columns()};
-    ml::tick_countdowns(entities.fighter_spawn_timers, dt);
+    auto const entities{this->entities.get_view()};
+    ml::tick_countdowns(entities.fighter_spawn_timers(), dt);
 }
 void Sim::think(float const, ml::FrameScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::think");
 
-    auto const entities{this->entities.get_view().columns()};
-    for (auto& target : entities.target_ids) {
-        if (!agents_.read_alive(target)) {
+    auto const entities{this->entities.get_view()};
+    auto const target_ids{entities.target_ids()};
+    auto const teams{entities.teams()};
+
+    for (auto& target : target_ids) {
+        if (!agents_.is_alive(target)) {
             target = {};
         }
     }
     ml::FrameArray<std::int32_t> indices_without_targets{&scratch};
-    auto const n_capitals{static_cast<std::int32_t>(entities.target_ids.size())};
+    auto const n_capitals{static_cast<std::int32_t>(target_ids.size())};
     indices_without_targets.reserve(n_capitals);
     for (std::int32_t index{}; index < n_capitals; ++index) {
-        if (!entities.target_ids[index].is_valid()) {
+        if (!target_ids[index].is_valid()) {
             indices_without_targets.add(index);
         }
     }
     for (auto const index : indices_without_targets) {
-        entities.target_ids[index] = spatial_query_manager.get_any_non_team_entity(
-            entities.teams[index], EntityType::CapitalShip);
+        target_ids[index] =
+            spatial_query_manager.get_any_non_team_entity(teams[index], EntityType::CapitalShip);
     }
     queue_fighter_spawns(scratch);
     queue_fighter_orders();
@@ -88,19 +91,21 @@ void Sim::resolve_fighters_of_dying_capitals() {
 }
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::resolve_damage_events");
-    auto const entities{this->entities.get_view().columns()};
+    auto const entities{this->entities.get_view()};
     auto const healths{
-        entity_tables_.health.get_view(entities.health_indices, entities.entity_ids)};
+        entity_tables_.health.get_view(entities.health_indices(), entities.entity_ids())};
     batch::resolve_damage_events(combat_events_.events_for(EntityType::CapitalShip),
                                  agents_.indexes(),
-                                 entities.entity_ids,
+                                 entities.entity_ids(),
                                  healths,
                                  local_indices_to_remove,
                                  entity_death_info,
                                  ledger_);
     auto const batch_index{static_cast<std::int32_t>(deaths_.size())};
+    auto const locations{entities.view_locations()};
+
     for (auto const index : local_indices_to_remove) {
-        deaths_.push_back({entities.locations[index], batch_index});
+        deaths_.push_back({vector_at(locations, index), batch_index});
     }
 }
 void Sim::publish_deaths() {
@@ -118,9 +123,9 @@ void Sim::remove_components() {
         return;
     }
 
-    auto const entities{this->entities.get_const_view().columns()};
+    auto const entities{this->entities.get_const_view()};
     entity_tables_.remove_health_rows(
-        local_indices_to_remove, entities.health_indices, entities.entity_ids);
+        local_indices_to_remove, entities.health_indices(), entities.entity_ids());
 }
 void Sim::remove_entities() {
     agents_.indexes().assert_removal_allowed();
@@ -133,7 +138,6 @@ void Sim::remove_entities() {
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::finish_action");
     profiling::plot("Sandbox/CapitalShipCount", get_num_instances());
-    validate_array_sizes();
 }
 
 /* **************************************** */
@@ -148,8 +152,8 @@ auto Sim::is_valid(EntityUniqueId const id) const noexcept -> bool {
 }
 auto Sim::get_fighter_ids(std::int32_t const index) const noexcept
     -> std::span<EntityUniqueId const> {
-    auto const entities{this->entities.get_const_view().columns()};
-    return get_fighter_ids(entities.fighter_id_spans[index]);
+    auto const entities{this->entities.get_const_view()};
+    return get_fighter_ids(entities.fighter_id_spans()[index]);
 }
 auto Sim::get_fighter_ids(IndexSpan const span) const noexcept -> std::span<EntityUniqueId const> {
     return get_fighter_ids().subspan(static_cast<std::size_t>(span.offset),
@@ -163,17 +167,18 @@ auto Sim::get_team(EntityUniqueId const id) const noexcept -> Team {
 auto Sim::get_health(EntityUniqueId const id) const noexcept -> Health {
     auto const index{agents_.indexes().find(id)};
     assert(index >= 0);
-    auto const entity_data{entities.get_const_view().columns()};
-    return entity_tables_.health.get_const_view(entity_data.health_indices, entity_data.entity_ids)
+    auto const entity_data{entities.get_const_view()};
+    return entity_tables_.health
+        .get_const_view(entity_data.health_indices(), entity_data.entity_ids())
         .health(index);
 }
 auto Sim::find_first_index_on_team(Team const team) const noexcept -> std::optional<std::int32_t> {
-    auto const entities{this->entities.get_const_view().columns()};
-    auto const found{std::ranges::find(entities.teams, team)};
-    if (found == entities.teams.end()) {
+    auto const entities{this->entities.get_const_view()};
+    auto const found{std::ranges::find(entities.teams(), team)};
+    if (found == entities.teams().end()) {
         return std::nullopt;
     }
-    return static_cast<std::int32_t>(found - entities.teams.begin());
+    return static_cast<std::int32_t>(found - entities.teams().begin());
 }
 auto Sim::find_first_id_on_team(Team const team) const noexcept -> std::optional<EntityUniqueId> {
     auto const result{find_first_index_on_team(team)};
@@ -184,7 +189,7 @@ auto Sim::find_first_id_on_team(Team const team) const noexcept -> std::optional
 /* **************************************** */
 // Ship spawning
 /* **************************************** */
-auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
+auto Sim::register_ships(SingleAllocationLevelCapitalSpawnEvents::ConstView const spawn_data)
     -> std::vector<EntityUniqueId> {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::register_ships");
     auto const n_to_add{spawn_data.num()};
@@ -198,50 +203,70 @@ auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
 
     std::vector<EntityUniqueId> new_ids;
     new_ids.reserve(static_cast<std::size_t>(n_to_add));
+    auto const spawn_teams{spawn_data.teams()};
+    auto const spawn_healths{spawn_data.healths()};
+
+    auto const new_entity_ids{this->entities.get_view().entity_ids()};
+
     for (std::int32_t i{}; i < n_to_add; ++i) {
         auto const id{ledger_.record_spawn(
-            EntityType::CapitalShip, spawn_data.teams[i], is_alive(spawn_data.healths[i]))};
+            EntityType::CapitalShip, spawn_teams[i], is_alive(spawn_healths[i]))};
         new_ids.push_back(id);
-        this->entities.get_view().entity_ids()[first_new_index + i] = id;
+        new_entity_ids[first_new_index + i] = id;
     }
-    auto const entity_data{entities.get_view().columns()};
+    auto const entity_data{entities.get_view()};
     entity_tables_.health.add(
-        std::span<EntityUniqueId const>{entity_data.entity_ids}.subspan(
+        std::span<EntityUniqueId const>{entity_data.entity_ids()}.subspan(
             static_cast<std::size_t>(first_new_index), static_cast<std::size_t>(n_to_add)),
-        spawn_data.healths,
-        std::span<HealthIndex>{entity_data.health_indices}.subspan(
+        spawn_healths,
+        std::span<HealthIndex>{entity_data.health_indices()}.subspan(
             static_cast<std::size_t>(first_new_index), static_cast<std::size_t>(n_to_add)));
-    validate_array_sizes();
-    auto const entities{this->entities.get_const_view().columns()};
+    auto const entities{this->entities.get_const_view()};
+    auto const locations{entities.view_locations()};
+    auto const rotations{entities.view_rotations()};
+    auto const teams{entities.teams()};
+    auto const entity_ids{entities.entity_ids()};
     for (std::int32_t i{}; i < n_to_add; ++i) {
         auto const index{first_new_index + i};
         frame_changes_.push_back({.kind = EntityFrameChangeKind::Spawn,
                                   .index = index,
-                                  .location = entities.locations[index],
-                                  .rotation = entities.rotations[index],
-                                  .team = entities.teams[index],
-                                  .id = entities.entity_ids[index]});
+                                  .location = vector_at(locations, index),
+                                  .rotation = rotation_at(rotations, index),
+                                  .team = teams[index],
+                                  .id = entity_ids[index]});
     }
-    agents_.indexes().bind(EntityType::CapitalShip, entities.entity_ids);
+    agents_.indexes().bind(EntityType::CapitalShip, entity_ids);
     return new_ids;
 }
-void Sim::spawn_ships(CapitalSpawnDataConstView const spawn_data) {
+void Sim::spawn_ships(SingleAllocationLevelCapitalSpawnEvents::ConstView const spawn_data) {
     agents_.indexes().assert_preparation_mutation_allowed();
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::spawn_ships");
-    spawn_data.validate_array_sizes();
+    spawn_data.validate();
     auto const n_to_add{spawn_data.num()};
 
     entities.add_defaulted(n_to_add);
-    auto const appended{entities.right(n_to_add).columns()};
+    auto const appended{entities.right(n_to_add)};
+    auto const appended_locations{appended.view_locations()};
+    auto const appended_rotations{appended.view_rotations()};
+    auto const appended_fighter_spawn_timers{appended.fighter_spawn_timers()};
+    auto const appended_fighter_spawn_cooldowns{appended.fighter_spawn_cooldowns()};
+    auto const appended_teams{appended.teams()};
+    auto const appended_target_ids{appended.target_ids()};
+
+    auto const spawn_data_locations{spawn_data.view_locations()};
+    auto const spawn_data_rotations{spawn_data.view_rotations()};
+    auto const spawn_data_initial_fighter_spawn_delays{spawn_data.initial_fighter_spawn_delays()};
+    auto const spawn_data_fighter_spawn_cooldowns{spawn_data.fighter_spawn_cooldowns()};
+    auto const spawn_data_teams{spawn_data.teams()};
+
     for (std::int32_t index{}; index < n_to_add; ++index) {
-        appended.locations.set(index, spawn_data.locations[index]);
-        appended.rotations.set(index, spawn_data.rotations[index]);
-        appended.fighter_spawn_timers[index] = spawn_data.initial_spawn_delays[index];
-        appended.fighter_spawn_cooldowns[index] = spawn_data.spawn_cooldowns[index];
-        appended.teams[index] = spawn_data.teams[index];
-        appended.target_ids[index] = spawn_data.target_ids[index];
+        set_vector(appended_locations, index, vector_at(spawn_data_locations, index));
+        set_rotation(appended_rotations, index, rotation_at(spawn_data_rotations, index));
+        appended_fighter_spawn_timers[index] = spawn_data_initial_fighter_spawn_delays[index];
+        appended_fighter_spawn_cooldowns[index] = spawn_data_fighter_spawn_cooldowns[index];
+        appended_teams[index] = spawn_data_teams[index];
+        appended_target_ids[index] = EntityUniqueId{};
     }
-    validate_array_sizes();
 }
 
 /* **************************************** */
@@ -254,18 +279,20 @@ void Sim::queue_fighter_spawns(ml::FrameScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::queue_fighter_spawns");
     if (!diagnostics_enabled_) {}
 
-    auto const entities{this->entities.get_view().columns()};
+    auto const entities{this->entities.get_view()};
 
     auto const n_capital_ships{get_num_instances()};
     ml::FrameArray<std::int32_t> ships_ready_to_spawn_fighters_indices{&scratch};
     ships_ready_to_spawn_fighters_indices.set_num(n_capital_ships);
     ships_ready_to_spawn_fighters_indices.set_num(
-        ml::kernel::collect_indices_less_equal(entities.fighter_spawn_timers.data(),
+        ml::kernel::collect_indices_less_equal(entities.fighter_spawn_timers().data(),
                                                n_capital_ships,
                                                0.f,
                                                ships_ready_to_spawn_fighters_indices.data()));
+    auto const target_ids{entities.target_ids()};
+
     for (auto index{ships_ready_to_spawn_fighters_indices.num() - 1}; index >= 0; --index) {
-        if (!entities.target_ids[ships_ready_to_spawn_fighters_indices[index]].is_valid()) {
+        if (!target_ids[ships_ready_to_spawn_fighters_indices[index]].is_valid()) {
             ships_ready_to_spawn_fighters_indices.remove_at_swap(index);
         }
     }
@@ -277,10 +304,18 @@ void Sim::queue_fighter_spawns(ml::FrameScratch& scratch) {
     fighters::FrameSpawnQueue fighter_spawn_wave{scratch};
     assert(std::in_range<std::int32_t>(relative_transforms.size()));
     fighter_spawn_wave.reserve(static_cast<std::int32_t>(relative_transforms.size()));
+    auto const locations{entities.view_locations()};
+    auto const teams{entities.teams()};
+    auto const entity_ids{entities.entity_ids()};
+    auto const spawn_timers{entities.fighter_spawn_timers()};
+    auto const spawn_cooldowns{entities.fighter_spawn_cooldowns()};
+
+    auto const rotations{entities.view_rotations()};
+
     for (auto const capital_index : ships_ready_to_spawn_fighters_indices) {
         fighter_spawn_wave.clear();
-        auto const base_location{entities.locations[capital_index]};
-        auto const base_rotation{entities.rotations[capital_index]};
+        auto const base_location{vector_at(locations, capital_index)};
+        auto const base_rotation{rotation_at(rotations, capital_index)};
         Transform3d const base_transform{
             to_quaternion(Rotator3d{base_rotation.pitch, base_rotation.yaw, base_rotation.roll}),
             {base_location.X, base_location.Y, base_location.Z},
@@ -290,14 +325,12 @@ void Sim::queue_fighter_spawns(ml::FrameScratch& scratch) {
             auto const new_transform{relative_transform * base_transform};
             fighter_spawn_wave.add(to_float(new_transform.location),
                                    to_float(new_transform.rotator()),
-                                   entities.teams[capital_index],
-                                   entities.entity_ids[capital_index],
-                                   entities.target_ids[capital_index]);
+                                   teams[capital_index],
+                                   entity_ids[capital_index],
+                                   target_ids[capital_index]);
         }
-        auto const spawn_wave{fighter_spawn_wave.get_const_view()};
-        fighters_interface.queue_spawns(spawn_wave);
-        entities.fighter_spawn_timers[capital_index] =
-            entities.fighter_spawn_cooldowns[capital_index];
+        fighters_interface.queue_spawns(fighter_spawn_wave);
+        spawn_timers[capital_index] = spawn_cooldowns[capital_index];
     }
 }
 void Sim::refresh_fighter_ids(ml::FrameScratch& scratch) {
@@ -308,7 +341,7 @@ void Sim::refresh_fighter_ids(ml::FrameScratch& scratch) {
         return;
     }
 
-    auto const entities{this->entities.get_view().columns()};
+    auto const entities{this->entities.get_view()};
     auto const ids{fighters_interface.get_entity_ids()};
     auto const parents{fighters_interface.get_parent_ids()};
     auto const healths{fighters_interface.get_healths()};
@@ -333,10 +366,12 @@ void Sim::refresh_fighter_ids(ml::FrameScratch& scratch) {
             ++counts[owner];
         }
     }
+    auto const fighter_spans{entities.fighter_id_spans()};
+
     std::int32_t offset{};
     for (std::int32_t index{}; index < capital_count; ++index) {
         auto const count{counts[index]};
-        entities.fighter_id_spans[index] = {offset, count};
+        fighter_spans[index] = {offset, count};
         counts[index] = offset;
         offset += count;
     }
@@ -358,11 +393,14 @@ void Sim::queue_fighter_orders() {
 
     auto const n_capitals{get_num_instances()};
     auto const fighter_targets{fighters_interface.get_target_ids()};
-    auto const entities{this->entities.get_const_view().columns()};
+    auto const entities{this->entities.get_const_view()};
     fighter_order_queue.reset();
+    auto const target_ids{entities.target_ids()};
+    auto const fighter_spans{entities.fighter_id_spans()};
+
     for (std::int32_t capital_index{}; capital_index < n_capitals; ++capital_index) {
-        auto const capital_target{entities.target_ids[capital_index]};
-        auto const span{entities.fighter_id_spans[capital_index]};
+        auto const capital_target{target_ids[capital_index]};
+        auto const span{fighter_spans[capital_index]};
         auto const end{span.end()};
         assert(span.offset >= 0 && span.count >= 0);
         assert(static_cast<std::size_t>(end) <= fighter_ids.size());
@@ -378,7 +416,7 @@ void Sim::queue_fighter_orders() {
             auto const fighter_index{agents_.indexes().find(fighter_id)};
             assert(fighter_index >= 0);
             auto const target{fighter_targets[fighter_index]};
-            if (!agents_.read_alive(target)) {
+            if (!agents_.is_alive(target)) {
                 fighter_order_queue.add(fighter_id, FighterOrder{0, 1}, {}, capital_target);
             }
         }
@@ -395,10 +433,10 @@ void Sim::queue_fighter_orders() {
 void Sim::set_target_id(EntityUniqueId const ship_id, EntityUniqueId const target_id) {
     assert(ledger_.is_valid_unique_id(target_id));
     auto const entity_index{agents_.indexes().find(ship_id)};
-    auto const entities{this->entities.get_view().columns()};
+    auto const entities{this->entities.get_view()};
     assert(entity_index >= 0 && entity_index < entities.num());
-    assert(entities.entity_ids[entity_index] == ship_id);
-    entities.target_ids[entity_index] = target_id;
+    assert(entities.entity_ids()[entity_index] == ship_id);
+    entities.target_ids()[entity_index] = target_id;
 }
 
 /* **************************************** */
@@ -410,30 +448,34 @@ void Sim::handle_dead_entities() {
         return;
     }
 
-    auto const entities{this->entities.get_const_view().columns()};
+    auto const entities{this->entities.get_const_view()};
+    auto const entity_ids{entities.entity_ids()};
+
     for (auto const index : local_indices_to_remove) {
-        frame_changes_.push_back({.kind = EntityFrameChangeKind::RemoveSwap,
-                                  .index = index,
-                                  .id = entities.entity_ids[index]});
+        frame_changes_.push_back(
+            {.kind = EntityFrameChangeKind::RemoveSwap, .index = index, .id = entity_ids[index]});
     }
 
     for (auto const index : local_indices_to_remove) {
-        agents_.indexes().retire(entities.entity_ids[index]);
+        agents_.indexes().retire(entity_ids[index]);
     }
     this->entities.remove_at_swap(local_indices_to_remove);
     fighter_ids_current_ = false;
 }
 void Sim::reassign_fighters_of_dying_capital() {
-    auto const entities{this->entities.get_const_view().columns()};
+    auto const entities{this->entities.get_const_view()};
     auto const capital_healths{
-        entity_tables_.health.get_const_view(entities.health_indices, entities.entity_ids)};
+        entity_tables_.health.get_const_view(entities.health_indices(), entities.entity_ids())};
     ml::EnumArray<Team, EntityUniqueId, static_cast<std::size_t>(Team::COUNT)> replacements{};
     auto const count{entities.num()};
+    auto const teams{entities.teams()};
+    auto const entity_ids{entities.entity_ids()};
+
     for (std::int32_t index{}; index < count; ++index) {
-        auto& replacement{replacements[entities.teams[index]]};
+        auto& replacement{replacements[teams[index]]};
         if (is_alive(capital_healths.health(index)) &&
-            (!replacement.is_valid() || entities.entity_ids[index] < replacement)) {
-            replacement = entities.entity_ids[index];
+            (!replacement.is_valid() || entity_ids[index] < replacement)) {
+            replacement = entity_ids[index];
         }
     }
     auto const ids{fighters_interface.get_entity_ids()};
@@ -441,8 +483,8 @@ void Sim::reassign_fighters_of_dying_capital() {
     auto const healths{fighters_interface.get_healths()};
     auto const fighter_count{ids.size()};
     for (auto const dying_index : local_indices_to_remove) {
-        auto const parent{entities.entity_ids[dying_index]};
-        auto const replacement{replacements[entities.teams[dying_index]]};
+        auto const parent{entity_ids[dying_index]};
+        auto const replacement{replacements[teams[dying_index]]};
         for (std::size_t index{}; index < fighter_count; ++index) {
             if (parents[index] != parent ||
                 is_dead(healths.health(static_cast<std::int32_t>(index)))) {
@@ -465,7 +507,4 @@ void Sim::clear_tick_buffers() {
 /* **************************************** */
 // Checks
 /* **************************************** */
-void Sim::validate_array_sizes() const {
-    entities.get_const_view().columns().validate_array_sizes();
-}
 } // namespace capital_ships

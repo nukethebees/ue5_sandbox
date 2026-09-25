@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstdint>
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/player/flight_model_evaluator.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/ship_health.h>
@@ -518,20 +519,20 @@ void Sim::fire_lasers_from(std::span<Transform3d const> const fire_points) {
     lasers::SingleAllocationLaserSpawnRequests new_lasers;
     auto const laser_count{static_cast<std::int32_t>(fire_points.size())};
     new_lasers.add_uninitialised(laser_count);
-    auto const laser_columns{new_lasers.get_view().columns()};
+    auto const laser_columns{new_lasers.get_view()};
 
     for (std::int32_t i{0}; i < laser_count; ++i) {
-        laser_columns.locations.set(i, to_float(fire_points[i].location));
-        laser_columns.rotations.set(i, to_float(fire_points[i].rotator()));
-        laser_columns.base_velocities.set(i, to_float(state_.physical.velocity));
+        set_vector(laser_columns.view_locations(), i, to_float(fire_points[i].location));
+        set_rotation(laser_columns.view_rotations(), i, to_float(fire_points[i].rotator()));
+        set_vector(laser_columns.view_base_velocities(), i, to_float(state_.physical.velocity));
     }
 
-    std::ranges::fill(laser_columns.damages, config.laser.damage);
-    std::ranges::fill(laser_columns.speeds, config.laser.projectile_speed);
-    std::ranges::fill(laser_columns.max_distances, config.laser.max_distance);
-    std::ranges::fill(laser_columns.sources, LaserSource{team, EntityType::PlayerShip});
-    std::ranges::fill(laser_columns.instigator_ids, unique_entity_id);
-    lasers.queue_laser_spawns(new_lasers.get_const_view().columns());
+    std::ranges::fill(laser_columns.damages(), config.laser.damage);
+    std::ranges::fill(laser_columns.speeds(), config.laser.projectile_speed);
+    std::ranges::fill(laser_columns.max_distances(), config.laser.max_distance);
+    std::ranges::fill(laser_columns.sources(), LaserSource{team, EntityType::PlayerShip});
+    std::ranges::fill(laser_columns.instigator_ids(), unique_entity_id);
+    lasers.queue_laser_spawns(new_lasers.get_const_view());
 }
 
 void Sim::upgrade_laser() noexcept {

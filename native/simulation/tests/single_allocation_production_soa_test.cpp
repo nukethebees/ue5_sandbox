@@ -1,7 +1,7 @@
+#include <ioj/sim/column_math.h>
 #include "support/simulation_test_support.h"
 
 #include <ioj/sim/capital_entity_data.h>
-#include <ioj/sim/capital_spawn_data.h>
 #include <ioj/sim/fighter_entity_data.h>
 #include <ioj/sim/fighter_spawn_queue.h>
 #include <ioj/sim/frame_hit_details.h>
@@ -30,7 +30,7 @@ void expect_storage_lifecycle() {
     source.add_defaulted(1);
     source.add_uninitialised(3);
     EXPECT_EQ(source.num(), 4) << "Storage grows through production add paths";
-    source.get_const_view().columns().validate_array_sizes();
+    source.get_const_view().validate();
 
     Storage moved{std::move(source)};
     EXPECT_EQ(moved.num(), 4) << "Move construction preserves rows";
@@ -51,7 +51,6 @@ TEST(NativeSimulation, ProductionSingleAllocationSoaLifecycle) {
     expect_storage_lifecycle<lasers::SingleAllocationLaserEntities>();
     expect_storage_lifecycle<lasers::SingleAllocationLaserSpawnRequests>();
     expect_storage_lifecycle<SingleAllocationCapitalEntityData>();
-    expect_storage_lifecycle<SingleAllocationCapitalSpawnData>();
     expect_storage_lifecycle<SingleAllocationFighterSpawnQueue>();
     expect_storage_lifecycle<SingleAllocationSpinnerEntityData>();
     expect_storage_lifecycle<SingleAllocationLaserHitDetails>();
@@ -63,64 +62,67 @@ TEST(NativeSimulation, ProductionSingleAllocationSoaLifecycle) {
 TEST(NativeSimulation, ProductionSingleAllocationNestedViewsAndAppend) {
     SingleAllocationFighterEntityData fighters;
     fighters.add_defaulted(2);
-    auto fighter_columns{fighters.get_view().columns()};
-    fighter_columns.locations.set(0, HMM_V3(1.f, 2.f, 3.f));
-    fighter_columns.locations.set(1, HMM_V3(4.f, 5.f, 6.f));
-    fighter_columns.integral_biases[0] = 11;
-    fighter_columns.integral_biases[1] = 22;
+    auto fighter_columns{fighters.get_view()};
+    set_vector(fighter_columns.view_locations(), 0, HMM_V3(1.f, 2.f, 3.f));
+    set_vector(fighter_columns.view_locations(), 1, HMM_V3(4.f, 5.f, 6.f));
+    fighter_columns.integral_biases()[0] = 11;
+    fighter_columns.integral_biases()[1] = 22;
 
     SingleAllocationFighterEntityData appended;
     appended.append_from(fighters.get_const_view());
-    auto const appended_columns{appended.get_const_view().columns()};
-    EXPECT_EQ(appended_columns.locations[1].Z, 6.f) << "Nested vectors append";
-    EXPECT_EQ(appended_columns.integral_biases[1], 22u) << "Scalar columns append";
+    auto const appended_columns{appended.get_const_view()};
+    EXPECT_EQ(vector_at(appended_columns.view_locations(), 1).Z, 6.f) << "Nested vectors append";
+    EXPECT_EQ(appended_columns.integral_biases()[1], 22u) << "Scalar columns append";
 
     lasers::SingleAllocationLaserEntities lasers;
     lasers.add_defaulted(2);
-    auto laser_columns{lasers.get_view().columns()};
-    laser_columns.locations.set(0, HMM_V3(10.f, 20.f, 30.f));
-    laser_columns.rotations.set(0, Rotator3f{1.f, 2.f, 3.f});
-    laser_columns.damages[0] = 40;
+    auto laser_columns{lasers.get_view()};
+    set_vector(laser_columns.view_locations(), 0, HMM_V3(10.f, 20.f, 30.f));
+    set_rotation(laser_columns.view_rotations(), 0, Rotator3f{1.f, 2.f, 3.f});
+    laser_columns.damages()[0] = 40;
     lasers.remove_at_swap(0, 1);
     EXPECT_EQ(lasers.num(), 1) << "Laser swap removal keeps columns synchronized";
-    lasers.get_const_view().columns().validate_array_sizes();
+    lasers.get_const_view().validate();
 }
 
 TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
     SingleAllocationSpinnerEntityData spinners;
     spinners.add_defaulted(65);
-    auto spinner_columns{spinners.get_view().columns()};
+    auto spinner_columns{spinners.get_view()};
     for (std::int32_t index{}; index < spinners.num(); ++index) {
-        spinner_columns.locations.set(index, HMM_V3(static_cast<float>(index), 2.f, 3.f));
-        spinner_columns.yaws[index] = static_cast<float>(index * 2);
-        spinner_columns.next_fire_point_indices[index] = index;
+        set_vector(
+            spinner_columns.view_locations(), index, HMM_V3(static_cast<float>(index), 2.f, 3.f));
+        spinner_columns.yaws()[index] = static_cast<float>(index * 2);
+        spinner_columns.next_fire_point_indices()[index] = index;
     }
 
     SingleAllocationSpinnerEntityData appended_spinners;
     appended_spinners.append_from(spinners.get_const_view());
     appended_spinners.remove_at_swap(1, 1);
-    auto const appended_spinner_columns{appended_spinners.get_const_view().columns()};
-    EXPECT_EQ(appended_spinner_columns.locations.xs[1], 64.f)
+    auto const appended_spinner_columns{appended_spinners.get_const_view()};
+    EXPECT_EQ(appended_spinner_columns.view_locations().xs()[1], 64.f)
         << "Spinner nested locations follow swap removal";
-    EXPECT_EQ(appended_spinner_columns.yaws[1], 128.f)
+    EXPECT_EQ(appended_spinner_columns.yaws()[1], 128.f)
         << "Spinner scalar columns follow swap removal";
-    EXPECT_EQ(appended_spinner_columns.next_fire_point_indices[1], 64)
+    EXPECT_EQ(appended_spinner_columns.next_fire_point_indices()[1], 64)
         << "Spinner fire points follow swap removal";
 
     SingleAllocationLaserHitDetails hits;
     hits.add_defaulted(65);
-    auto hit_columns{hits.get_view().columns()};
+    auto hit_columns{hits.get_view()};
     for (std::int32_t index{}; index < hits.num(); ++index) {
-        hit_columns.locations.set(index, HMM_V3(static_cast<float>(index), 4.f, 5.f));
-        hit_columns.emission_directions.set(index, HMM_V3(0.f, 1.f, 0.f));
-        hit_columns.sources[index] = {Team::Blue, EntityType::Turret};
+        set_vector(
+            hit_columns.view_locations(), index, HMM_V3(static_cast<float>(index), 4.f, 5.f));
+        set_vector(hit_columns.view_emission_directions(), index, HMM_V3(0.f, 1.f, 0.f));
+        hit_columns.sources()[index] = {Team::Blue, EntityType::Turret};
     }
 
     SingleAllocationLaserHitDetails appended_hits;
     appended_hits.append_from(hits.get_const_view());
-    auto const appended_hit_columns{appended_hits.get_const_view().columns()};
-    EXPECT_EQ(appended_hit_columns.locations.xs[64], 64.f) << "Laser hit nested locations append";
-    EXPECT_TRUE((appended_hit_columns.sources[64] == LaserSource{Team::Blue, EntityType::Turret}))
+    auto const appended_hit_columns{appended_hits.get_const_view()};
+    EXPECT_EQ(appended_hit_columns.view_locations().xs()[64], 64.f)
+        << "Laser hit nested locations append";
+    EXPECT_TRUE((appended_hit_columns.sources()[64] == LaserSource{Team::Blue, EntityType::Turret}))
         << "Laser hit sources append";
 }
 
@@ -145,13 +147,13 @@ TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
         HMM_V3(101.f, 3.f, 4.f), HMM_V3(1.f, 0.f, 0.f), {Team::Red, EntityType::CapitalShip});
 
     lasers::FrameOutput output;
-    output.append_hits(first_batch.get_const_view(), 7);
-    output.append_hits(second_batch.get_const_view(), 9);
+    output.append_hits(first_batch, 7);
+    output.append_hits(second_batch, 9);
 
-    auto const accumulated{output.hits.get_const_view().columns()};
+    auto const accumulated{output.hits.get_const_view()};
     EXPECT_EQ(accumulated.num(), 67) << "All laser-hit batches accumulate";
-    EXPECT_EQ(accumulated.locations.xs[64], 64.f) << "Growth preserves earlier hits";
-    EXPECT_EQ(accumulated.locations.xs[66], 101.f) << "Later hits append in order";
+    EXPECT_EQ(accumulated.view_locations().xs()[64], 64.f) << "Growth preserves earlier hits";
+    EXPECT_EQ(accumulated.view_locations().xs()[66], 101.f) << "Later hits append in order";
     EXPECT_EQ(output.hit_ticks[64], SimTick{7}) << "First batch tick remains aligned";
     EXPECT_EQ(output.hit_ticks[65], SimTick{9}) << "Second batch tick remains aligned";
     EXPECT_EQ(output.hit_ordinals[64], 64) << "First batch ordinal remains aligned";
@@ -162,10 +164,10 @@ TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
     EXPECT_TRUE(output.hit_ticks.empty()) << "Reset clears hit ticks";
     EXPECT_TRUE(output.hit_ordinals.empty()) << "Reset clears hit ordinals";
 
-    output.append_hits(second_batch.get_const_view(), 11);
-    auto const reused{output.hits.get_const_view().columns()};
+    output.append_hits(second_batch, 11);
+    auto const reused{output.hits.get_const_view()};
     EXPECT_EQ(reused.num(), 2) << "Reset storage can be reused";
-    EXPECT_EQ(reused.locations.xs[0], 100.f) << "Reused storage receives new contents";
+    EXPECT_EQ(reused.view_locations().xs()[0], 100.f) << "Reused storage receives new contents";
     EXPECT_EQ(output.hit_ticks[0], SimTick{11}) << "Reused tick side array stays aligned";
 }
 
@@ -174,38 +176,38 @@ TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMove
     constexpr std::int32_t row_count{65};
     for (std::int32_t index{}; index < row_count; ++index) {
         events.initial_spawns.capital_spawns.add_defaulted(1);
-        auto const capitals{events.initial_spawns.capital_spawns.get_view().columns()};
-        capitals.entity_indices[index] = index;
-        capitals.locations.set(index, HMM_V3(static_cast<float>(index), 1.f, 2.f));
-        capitals.teams[index] = Team::Green;
-        capitals.healths[index] = 1000 + index;
+        auto const capitals{events.initial_spawns.capital_spawns.get_view()};
+        capitals.entity_indices()[index] = index;
+        set_vector(capitals.view_locations(), index, HMM_V3(static_cast<float>(index), 1.f, 2.f));
+        capitals.teams()[index] = Team::Green;
+        capitals.healths()[index] = 1000 + index;
 
         events.initial_spawns.turret_spawns.add_defaulted(1);
-        auto const turrets{events.initial_spawns.turret_spawns.get_view().columns()};
-        turrets.entity_indices[index] = index + 100;
-        turrets.locations.set(index, HMM_V3(static_cast<float>(index), 3.f, 4.f));
-        turrets.laser_damages[index] = index * 2;
+        auto const turrets{events.initial_spawns.turret_spawns.get_view()};
+        turrets.entity_indices()[index] = index + 100;
+        set_vector(turrets.view_locations(), index, HMM_V3(static_cast<float>(index), 3.f, 4.f));
+        turrets.laser_damages()[index] = index * 2;
 
         events.initial_spawns.spinner_spawns.add_defaulted(1);
-        auto const spinners{events.initial_spawns.spinner_spawns.get_view().columns()};
-        spinners.entity_indices[index] = index + 200;
-        spinners.locations.set(index, HMM_V3(static_cast<float>(index), 5.f, 6.f));
-        spinners.yaws[index] = static_cast<float>(index * 3);
-        spinners.initial_fire_point_indices[index] = index;
+        auto const spinners{events.initial_spawns.spinner_spawns.get_view()};
+        spinners.entity_indices()[index] = index + 200;
+        set_vector(spinners.view_locations(), index, HMM_V3(static_cast<float>(index), 5.f, 6.f));
+        spinners.yaws()[index] = static_cast<float>(index * 3);
+        spinners.initial_fire_point_indices()[index] = index;
     }
     events.schedule.capital_spawns.append_from(
         events.initial_spawns.capital_spawns.get_const_view());
     events.schedule.turret_spawns.append_from(events.initial_spawns.turret_spawns.get_const_view());
 
     CompiledLevelEvents moved{std::move(events)};
-    auto const capitals{moved.initial_spawns.capital_spawns.get_const_view().columns()};
-    auto const turrets{moved.schedule.turret_spawns.get_const_view().columns()};
-    auto const spinners{moved.initial_spawns.spinner_spawns.get_const_view().columns()};
-    EXPECT_EQ(capitals.entity_indices[64], 64) << "Capital event order survives growth";
-    EXPECT_EQ(capitals.locations.xs[64], 64.f) << "Capital nested values survive moves";
-    EXPECT_EQ(turrets.entity_indices[64], 164) << "Scheduled turret order is unchanged";
-    EXPECT_EQ(turrets.laser_damages[64], 128) << "Scheduled turret payloads append";
-    EXPECT_EQ(spinners.entity_indices[64], 264) << "Spinner event order survives growth";
-    EXPECT_EQ(spinners.yaws[64], 192.f) << "Spinner payloads survive moves";
+    auto const capitals{moved.initial_spawns.capital_spawns.get_const_view()};
+    auto const turrets{moved.schedule.turret_spawns.get_const_view()};
+    auto const spinners{moved.initial_spawns.spinner_spawns.get_const_view()};
+    EXPECT_EQ(capitals.entity_indices()[64], 64) << "Capital event order survives growth";
+    EXPECT_EQ(capitals.view_locations().xs()[64], 64.f) << "Capital nested values survive moves";
+    EXPECT_EQ(turrets.entity_indices()[64], 164) << "Scheduled turret order is unchanged";
+    EXPECT_EQ(turrets.laser_damages()[64], 128) << "Scheduled turret payloads append";
+    EXPECT_EQ(spinners.entity_indices()[64], 264) << "Spinner event order survives growth";
+    EXPECT_EQ(spinners.yaws()[64], 192.f) << "Spinner payloads survive moves";
 }
 } // namespace ioj::sim::tests

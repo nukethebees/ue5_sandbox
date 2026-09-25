@@ -4,367 +4,11 @@
 #pragma once
 
 #include "ioj/sim/entity_unique_id.h"
-#include "ioj/sim/vectors3f.h"
-#include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/native_soa/vector_storage_ops.h"
 
 #include <utility>
 
 namespace ioj::sim {
-struct SpinnerEntityDataView;
-struct SpinnerEntityDataConstView;
-struct SpinnerEntityDataConstView {
-    using View = SpinnerEntityDataView;
-    using ConstView = SpinnerEntityDataConstView;
-    using size_type = std::int32_t;
-    std::span<EntityUniqueId const> entity_ids;
-    Vectors3fConstView locations;
-    std::span<float const> yaws;
-    std::span<std::int16_t const> laser_cooldowns;
-    std::span<std::int32_t const> next_fire_point_indices;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entity_ids);
-        fn(locations.xs_span());
-        fn(locations.ys_span());
-        fn(locations.zs_span());
-        fn(yaws);
-        fn(laser_cooldowns);
-        fn(next_fire_point_indices);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> SpinnerEntityDataConstView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
-        return {
-            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            locations.slice(offset, count),
-            yaws.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            laser_cooldowns.subspan(static_cast<std::size_t>(offset),
-                                    static_cast<std::size_t>(count)),
-            next_fire_point_indices.subspan(static_cast<std::size_t>(offset),
-                                            static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> SpinnerEntityDataConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> SpinnerEntityDataConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            entity_ids,
-            locations.get_const_view(),
-            yaws,
-            laser_cooldowns,
-            next_fire_point_indices,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> SpinnerEntityDataConstView { return slice(0, count); }
-    auto right(size_type const count) const -> SpinnerEntityDataConstView {
-        return slice(num() - count, count);
-    }
-};
-struct SpinnerEntityDataView {
-    using View = SpinnerEntityDataView;
-    using ConstView = SpinnerEntityDataConstView;
-    using size_type = std::int32_t;
-    std::span<EntityUniqueId> entity_ids;
-    Vectors3fView locations;
-    std::span<float> yaws;
-    std::span<std::int16_t> laser_cooldowns;
-    std::span<std::int32_t> next_fire_point_indices;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entity_ids);
-        fn(locations.xs_span());
-        fn(locations.ys_span());
-        fn(locations.zs_span());
-        fn(yaws);
-        fn(laser_cooldowns);
-        fn(next_fire_point_indices);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> SpinnerEntityDataView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
-        return {
-            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            locations.slice(offset, count),
-            yaws.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            laser_cooldowns.subspan(static_cast<std::size_t>(offset),
-                                    static_cast<std::size_t>(count)),
-            next_fire_point_indices.subspan(static_cast<std::size_t>(offset),
-                                            static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> SpinnerEntityDataView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> SpinnerEntityDataView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            entity_ids,
-            locations.get_const_view(),
-            yaws,
-            laser_cooldowns,
-            next_fire_point_indices,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> SpinnerEntityDataView { return slice(0, count); }
-    auto right(size_type const count) const -> SpinnerEntityDataView {
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
-             EntityUniqueId const new_entity_ids,
-             float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_yaws,
-             std::int16_t const new_laser_cooldowns,
-             std::int32_t const new_next_fire_point_indices) const {
-        ml::native_soa::require(index >= 0 && index < num());
-        entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
-        locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
-        locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
-        locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
-        yaws[static_cast<std::size_t>(index)] = new_yaws;
-        laser_cooldowns[static_cast<std::size_t>(index)] = new_laser_cooldowns;
-        next_fire_point_indices[static_cast<std::size_t>(index)] = new_next_fire_point_indices;
-    }
-};
-struct SpinnerEntityData {
-    using View = SpinnerEntityDataView;
-    using ConstView = SpinnerEntityDataConstView;
-    using size_type = std::int32_t;
-    ml::native_soa::Vector<EntityUniqueId> entity_ids;
-    Vectors3f locations;
-    ml::native_soa::Vector<float> yaws;
-    ml::native_soa::Vector<std::int16_t> laser_cooldowns;
-    ml::native_soa::Vector<std::int32_t> next_fire_point_indices;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(entity_ids);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
-        fn(yaws);
-        fn(laser_cooldowns);
-        fn(next_fire_point_indices);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entity_ids);
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
-        fn(yaws);
-        fn(laser_cooldowns);
-        fn(next_fire_point_indices);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             EntityUniqueId const new_entity_ids,
-             float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_yaws,
-             std::int16_t const new_laser_cooldowns,
-             std::int32_t const new_next_fire_point_indices) {
-        get_view().set(index,
-                       new_entity_ids,
-                       new_locations_xs,
-                       new_locations_ys,
-                       new_locations_zs,
-                       new_yaws,
-                       new_laser_cooldowns,
-                       new_next_fire_point_indices);
-    }
-    auto add(EntityUniqueId const new_entity_ids,
-             float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_yaws,
-             std::int16_t const new_laser_cooldowns,
-             std::int32_t const new_next_fire_point_indices) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            entity_ids.emplace_back(new_entity_ids);
-            locations.xs.emplace_back(new_locations_xs);
-            locations.ys.emplace_back(new_locations_ys);
-            locations.zs.emplace_back(new_locations_zs);
-            yaws.emplace_back(new_yaws);
-            laser_cooldowns.emplace_back(new_laser_cooldowns);
-            next_fire_point_indices.emplace_back(new_next_fire_point_indices);
-        });
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
-        }
-        {
-            auto const address{ml::address_cast(source.entity_ids.data())};
-            auto const begin{ml::address_cast(entity_ids.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + entity_ids.size() * sizeof(EntityUniqueId));
-        }
-        {
-            auto const address{ml::address_cast(source.locations.xs)};
-            auto const begin{ml::address_cast(locations.xs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + locations.xs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.locations.ys)};
-            auto const begin{ml::address_cast(locations.ys.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + locations.ys.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.locations.zs)};
-            auto const begin{ml::address_cast(locations.zs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + locations.zs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.yaws.data())};
-            auto const begin{ml::address_cast(yaws.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + yaws.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.laser_cooldowns.data())};
-            auto const begin{ml::address_cast(laser_cooldowns.data())};
-            ml::native_soa::require(address < begin || address >= begin + laser_cooldowns.size() *
-                                                                              sizeof(std::int16_t));
-        }
-        {
-            auto const address{ml::address_cast(source.next_fire_point_indices.data())};
-            auto const begin{ml::address_cast(next_fire_point_indices.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + next_fire_point_indices.size() *
-                                                           sizeof(std::int32_t));
-        }
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            entity_ids.insert(
-                entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
-            locations.xs.insert(
-                locations.xs.end(), source.locations.xs, source.locations.xs + count);
-            locations.ys.insert(
-                locations.ys.end(), source.locations.ys, source.locations.ys + count);
-            locations.zs.insert(
-                locations.zs.end(), source.locations.zs, source.locations.zs + count);
-            yaws.insert(yaws.end(), source.yaws.data(), source.yaws.data() + count);
-            laser_cooldowns.insert(laser_cooldowns.end(),
-                                   source.laser_cooldowns.data(),
-                                   source.laser_cooldowns.data() + count);
-            next_fire_point_indices.insert(next_fire_point_indices.end(),
-                                           source.next_fire_point_indices.data(),
-                                           source.next_fire_point_indices.data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            entity_ids,
-            locations.get_view(),
-            yaws,
-            laser_cooldowns,
-            next_fire_point_indices,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            entity_ids,
-            locations.get_view(),
-            yaws,
-            laser_cooldowns,
-            next_fire_point_indices,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View { return slice(num() - count, count); }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        entity_ids[static_cast<std::size_t>(dst_index)] =
-            other.entity_ids[static_cast<std::size_t>(src_index)];
-        locations.copy_element(dst_index, other.locations, src_index);
-        yaws[static_cast<std::size_t>(dst_index)] = other.yaws[static_cast<std::size_t>(src_index)];
-        laser_cooldowns[static_cast<std::size_t>(dst_index)] =
-            other.laser_cooldowns[static_cast<std::size_t>(src_index)];
-        next_fire_point_indices[static_cast<std::size_t>(dst_index)] =
-            other.next_fire_point_indices[static_cast<std::size_t>(src_index)];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
-    }
-};
 
 struct SpinnerEntityDataSingleView;
 struct SpinnerEntityDataSingleConstView;
@@ -427,6 +71,7 @@ struct SpinnerEntityDataSingleViewImpl : ml::native_soa::CompactViewState<Const>
     using Base::column_data;
     using Base::column_data_unchecked;
     using Base::count_;
+    using Base::offset_;
     using Base::state_;
   public:
     auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
@@ -462,40 +107,15 @@ struct SpinnerEntityDataSingleViewImpl : ml::native_soa::CompactViewState<Const>
                         capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto columns() const
-        -> std::conditional_t<Const, SpinnerEntityDataConstView, SpinnerEntityDataView> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return std::conditional_t<Const, SpinnerEntityDataConstView, SpinnerEntityDataView>{
-            {this->template column_data_unchecked<EntityUniqueId>(
-                 SpinnerEntityDataSingleLayout::EntityIdsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            std::conditional_t<Const, Vectors3fConstView, Vectors3fView>{
-                {this->template column_data_unchecked<float>(
-                     SpinnerEntityDataSingleLayout::LocationsXsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     SpinnerEntityDataSingleLayout::LocationsYsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     SpinnerEntityDataSingleLayout::LocationsZsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            {this->template column_data_unchecked<float>(
-                 SpinnerEntityDataSingleLayout::YawsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<std::int16_t>(
-                 SpinnerEntityDataSingleLayout::LaserCooldownsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<std::int32_t>(
-                 SpinnerEntityDataSingleLayout::NextFirePointIndicesColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
     template <typename Func>
     void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
+        func(entity_ids());
+        func(view_locations().xs());
+        func(view_locations().ys());
+        func(view_locations().zs());
+        func(yaws());
+        func(laser_cooldowns());
+        func(next_fire_point_indices());
     }
 };
 struct SpinnerEntityDataSingleConstView : SpinnerEntityDataSingleViewImpl<true> {
@@ -510,8 +130,7 @@ struct SpinnerEntityDataSingleConstView : SpinnerEntityDataSingleViewImpl<true> 
         return slice(offset, count);
     }
 };
-static_assert(sizeof(SpinnerEntityDataSingleConstView) == 16);
-static_assert(std::is_trivially_copyable_v<SpinnerEntityDataSingleConstView>);
+static_assert(ml::soa_storage_detail::validate_compact_view<SpinnerEntityDataSingleConstView>());
 struct SpinnerEntityDataSingleView : SpinnerEntityDataSingleViewImpl<false> {
     using Base = SpinnerEntityDataSingleViewImpl<false>;
     using Base::Base;
@@ -523,8 +142,7 @@ struct SpinnerEntityDataSingleView : SpinnerEntityDataSingleViewImpl<false> {
         return slice(offset, count);
     }
 };
-static_assert(sizeof(SpinnerEntityDataSingleView) == 16);
-static_assert(std::is_trivially_copyable_v<SpinnerEntityDataSingleView>);
+static_assert(ml::soa_storage_detail::validate_compact_view<SpinnerEntityDataSingleView>());
 inline SpinnerEntityDataSingleConstView::SpinnerEntityDataSingleConstView(
     SpinnerEntityDataSingleView const& other)
     : Base{other} {}
@@ -543,25 +161,30 @@ struct SingleAllocationSpinnerEntityData
     }
     using View = SpinnerEntityDataSingleView;
     using ConstView = SpinnerEntityDataSingleConstView;
-    using SchemaConstView = SpinnerEntityDataConstView;
-    using ml::native_soa::StorageOperations::append_from;
-    auto append_from(SpinnerEntityDataConstView const& source) -> size_type {
-        source.validate_array_sizes();
-        auto const count{source.num()};
-        auto const first{num_};
-        ml::native_soa::require((count <= max_capacity - first));
-        if (count == 0) {
-            return first;
-        }
-        auto const new_num{first + count};
-        if (new_num > capacity_) {
-            ml::native_soa::require(!ordinary_source_aliases_storage(source));
-            reallocate(ml::native_soa::growth_capacity(new_num, capacity_, capacity_block_bound));
-        }
-        append_columns(source, first, count);
-        num_ = new_num;
-        return first;
-    }
+    template <typename Source>
+    inline static constexpr bool accepts_source = requires(Source const& source) {
+        { source.num() } -> std::convertible_to<size_type>;
+        source.validate();
+        {
+            ml::native_soa::source_data(source.entity_ids())
+        } -> std::convertible_to<EntityUniqueId const*>;
+        {
+            ml::native_soa::source_data(source.view_locations().xs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_locations().ys())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_locations().zs())
+        } -> std::convertible_to<float const*>;
+        { ml::native_soa::source_data(source.yaws()) } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.laser_cooldowns())
+        } -> std::convertible_to<std::int16_t const*>;
+        {
+            ml::native_soa::source_data(source.next_fire_point_indices())
+        } -> std::convertible_to<std::int32_t const*>;
+    };
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -697,36 +320,35 @@ struct SingleAllocationSpinnerEntityData
                 copy_columns(columns, index, source, count);
             });
     }
-    auto ordinary_source_aliases_storage(SpinnerEntityDataConstView const& source) const noexcept
-        -> bool {
-        if (data_ == nullptr) {
-            return false;
-        }
-        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
-        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
-        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
-            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
-            return address >= allocation_begin && address < allocation_end;
-        };
-        return ml::native_soa::any_column(source, aliases);
-    }
     template <typename Columns>
-    void append_columns(Columns const& source, size_type first, size_type count) {
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count) {
         auto const destination{get_data(first)};
+        ml::native_soa::copy_n(destination.entity_ids,
+                               ml::native_soa::source_data(source.entity_ids()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.locations_xs,
+                               ml::native_soa::source_data(source.view_locations().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::copy_n(destination.locations_ys,
+                               ml::native_soa::source_data(source.view_locations().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::copy_n(destination.locations_zs,
+                               ml::native_soa::source_data(source.view_locations().zs()) +
+                                   source_first,
+                               count);
         ml::native_soa::copy_n(
-            destination.entity_ids, ml::native_soa::source_data(source.entity_ids), count);
-        ml::native_soa::copy_n(
-            destination.locations_xs, ml::native_soa::source_data(source.locations.xs), count);
-        ml::native_soa::copy_n(
-            destination.locations_ys, ml::native_soa::source_data(source.locations.ys), count);
-        ml::native_soa::copy_n(
-            destination.locations_zs, ml::native_soa::source_data(source.locations.zs), count);
-        ml::native_soa::copy_n(destination.yaws, ml::native_soa::source_data(source.yaws), count);
+            destination.yaws, ml::native_soa::source_data(source.yaws()) + source_first, count);
         ml::native_soa::copy_n(destination.laser_cooldowns,
-                               ml::native_soa::source_data(source.laser_cooldowns),
+                               ml::native_soa::source_data(source.laser_cooldowns()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.next_fire_point_indices,
-                               ml::native_soa::source_data(source.next_fire_point_indices),
+                               ml::native_soa::source_data(source.next_fire_point_indices()) +
+                                   source_first,
                                count);
     }
     void reallocate(size_type const new_capacity) {

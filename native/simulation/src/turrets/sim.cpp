@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstdint>
 #include <execution>
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/deterministic_bias.h>
 #include <numeric>
@@ -55,11 +56,11 @@ Sim::Sim(SimClock const& clock,
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
-                           Rotators3fConstView const rotations) -> std::vector<EntityUniqueId> {
+auto Sim::register_turrets(SingleAllocationLevelTurretSpawnEvents::ConstView const spawn_data)
+    -> std::vector<EntityUniqueId> {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::register_turrets");
     agents_.indexes().assert_preparation_mutation_allowed();
-    spawn_data.validate_array_sizes();
+    spawn_data.validate();
     auto const n_to_add{spawn_data.num()};
     if (n_to_add == 0) {
         return {};
@@ -75,17 +76,34 @@ auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
 
     auto const first_new_index{entities.num()};
     entities.add_defaulted(n_to_add);
-    auto const entities{this->entities.get_view().columns()};
+    auto const entities{this->entities.get_view()};
     auto const spawn_count{static_cast<std::size_t>(n_to_add)};
+    auto const entities_locations{entities.view_locations()};
+    auto const entities_fire_point_locations{entities.view_fire_point_locations()};
+    auto const entities_teams{entities.teams()};
+    auto const entities_laser_damages{entities.laser_damages()};
+    auto const entities_target_refresh_countdowns_periods{
+        entities.target_refresh_countdowns_periods()};
+    auto const entities_target_refresh_countdowns_remaining_ticks{
+        entities.target_refresh_countdowns_remaining_ticks()};
+    auto const entities_rotations{entities.view_rotations()};
+    auto const entities_entity_ids{entities.entity_ids()};
+
+    auto const spawn_data_locations{spawn_data.view_locations()};
+    auto const spawn_data_teams{spawn_data.teams()};
+    auto const spawn_data_laser_damages{spawn_data.laser_damages()};
+    auto const spawn_data_rotations{spawn_data.view_rotations()};
+    auto const spawn_data_healths{spawn_data.healths()};
+
     for (std::int32_t local_index{}; local_index < n_to_add; ++local_index) {
         auto const index{first_new_index + local_index};
-        auto const location{spawn_data.locations[local_index]};
-        entities.locations.set(index, location);
-        entities.fire_point_locations.set(index, location + config.fire_point_offset);
-        entities.teams[index] = spawn_data.teams[local_index];
-        entities.laser_damages[index] = spawn_data.laser_damages[local_index];
-        entities.target_refresh_countdowns_periods[index] = target_refresh_tick_period;
-        entities.target_refresh_countdowns_remaining_ticks[index] =
+        auto const location{vector_at(spawn_data_locations, local_index)};
+        set_vector(entities_locations, index, location);
+        set_vector(entities_fire_point_locations, index, location + config.fire_point_offset);
+        entities_teams[index] = spawn_data_teams[local_index];
+        entities_laser_damages[index] = spawn_data_laser_damages[local_index];
+        entities_target_refresh_countdowns_periods[index] = target_refresh_tick_period;
+        entities_target_refresh_countdowns_remaining_ticks[index] =
             static_cast<std::int16_t>(target_refresh_next_offset);
         ++target_refresh_next_offset;
         if (target_refresh_next_offset == target_refresh_tick_period) {
@@ -94,35 +112,34 @@ auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
     }
 
     for (std::int32_t i{}; i < n_to_add; ++i) {
-        auto const rotation{rotations[i]};
-        entities.rotations.set(first_new_index + i, rotation);
+        auto const rotation{rotation_at(spawn_data_rotations, i)};
+        set_rotation(entities_rotations, first_new_index + i, rotation);
     }
     std::vector<EntityUniqueId> new_ids;
     new_ids.reserve(spawn_count);
     for (std::int32_t i{}; i < n_to_add; ++i) {
         auto const id{ledger_.record_spawn(
-            EntityType::Turret, spawn_data.teams[i], is_alive(spawn_data.healths[i]))};
+            EntityType::Turret, spawn_data_teams[i], is_alive(spawn_data_healths[i]))};
         new_ids.push_back(id);
-        entities.entity_ids[first_new_index + i] = id;
+        entities_entity_ids[first_new_index + i] = id;
     }
-    entity_tables_.health.add(std::span<EntityUniqueId const>{entities.entity_ids}.subspan(
+    entity_tables_.health.add(std::span<EntityUniqueId const>{entities_entity_ids}.subspan(
                                   static_cast<std::size_t>(first_new_index), spawn_count),
-                              spawn_data.healths,
-                              std::span<HealthIndex>{entities.health_indices}.subspan(
+                              spawn_data_healths,
+                              std::span<HealthIndex>{entities.health_indices()}.subspan(
                                   static_cast<std::size_t>(first_new_index), spawn_count));
-    make_deterministic_biases(std::span<EntityUniqueId const>{entities.entity_ids}.subspan(
+    make_deterministic_biases(std::span<EntityUniqueId const>{entities_entity_ids}.subspan(
                                   static_cast<std::size_t>(first_new_index), spawn_count),
-                              std::span<std::uint32_t>{entities.integral_biases}.subspan(
+                              std::span<std::uint32_t>{entities.integral_biases()}.subspan(
                                   static_cast<std::size_t>(first_new_index), spawn_count));
-    validate_array_sizes();
     for (std::int32_t i{}; i < n_to_add; ++i) {
         auto const index{first_new_index + i};
         frame_changes_.push_back({.kind = EntityFrameChangeKind::Spawn,
                                   .index = index,
-                                  .location = entities.locations[index],
-                                  .rotation = entities.rotations[index],
-                                  .team = entities.teams[index],
-                                  .id = entities.entity_ids[index]});
+                                  .location = vector_at(entities_locations, index),
+                                  .rotation = rotation_at(entities_rotations, index),
+                                  .team = entities_teams[index],
+                                  .id = entities_entity_ids[index]});
     }
     return new_ids;
 }
@@ -136,14 +153,15 @@ void Sim::handle_dead_entities() {
         return;
     }
 
-    auto const entities{this->entities.get_const_view().columns()};
+    auto const entities{this->entities.get_const_view()};
+    auto const entity_ids{entities.entity_ids()};
+
     for (auto const index : local_indices_to_remove) {
-        frame_changes_.push_back({.kind = EntityFrameChangeKind::RemoveSwap,
-                                  .index = index,
-                                  .id = entities.entity_ids[index]});
+        frame_changes_.push_back(
+            {.kind = EntityFrameChangeKind::RemoveSwap, .index = index, .id = entity_ids[index]});
     }
     for (auto const index : local_indices_to_remove) {
-        agents_.indexes().retire(entities.entity_ids[index]);
+        agents_.indexes().retire(entity_ids[index]);
     }
     this->entities.remove_at_swap(local_indices_to_remove);
 }
@@ -161,29 +179,37 @@ void Sim::begin_play() {
     assert(cooldown_tick_period >= 0 && std::in_range<std::int16_t>(cooldown_tick_period));
     cooldown_restart_ticks_ = static_cast<std::int16_t>(cooldown_tick_period);
     cooldown_cleaner_ = 0;
-    validate_array_sizes();
 }
 void Sim::prepare_tick(float const) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::prepare_tick");
     clear_tick_buffers();
 
-    auto const entities{this->entities.get_view().columns()};
-    ml::tick_countdowns<std::int16_t>(entities.laser_cooldowns, cooldown_cleaner_, 16384);
-    ml::tick_periodic_countdowns<std::int16_t>(entities.target_refresh_countdowns_remaining_ticks);
+    auto const entities{this->entities.get_view()};
+    ml::tick_countdowns<std::int16_t>(entities.laser_cooldowns(), cooldown_cleaner_, 16384);
+    ml::tick_periodic_countdowns<std::int16_t>(
+        entities.target_refresh_countdowns_remaining_ticks());
 }
 void Sim::refresh_target_data(ml::FrameScratch& scratch) {
-    auto const entities{this->entities.get_view().columns()};
+    auto const entities{this->entities.get_view()};
     auto const count{entities.num()};
     ml::FrameArray<std::int32_t> order{&scratch};
     ml::FrameArray<std::uint8_t> alive{&scratch};
     order.set_num(count);
     alive.set_num(count);
-    agents_.gather_targets(entities.target_ids,
-                           order,
-                           {entities.target_locations, entities.target_velocities, {}, alive});
+    auto const target_ids{entities.target_ids()};
+    auto const target_locations{entities.view_target_locations()};
+    auto const target_velocities{entities.view_target_velocities()};
+
+    agents_.gather_targets(
+        target_ids,
+        order,
+        {{target_locations.xs(), target_locations.ys(), target_locations.zs()},
+         {target_velocities.xs(), target_velocities.ys(), target_velocities.zs()},
+         {},
+         alive});
     for (std::int32_t index{}; index < count; ++index) {
         if (!alive[index]) {
-            entities.target_ids[index] = {};
+            target_ids[index] = {};
         }
     }
 }
@@ -201,20 +227,21 @@ void Sim::generate_fire_commands(ml::FrameScratch& scratch) {
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::resolve_damage_events");
 
-    auto const entities{this->entities.get_view().columns()};
+    auto const entities{this->entities.get_view()};
     auto const healths{
-        entity_tables_.health.get_view(entities.health_indices, entities.entity_ids)};
+        entity_tables_.health.get_view(entities.health_indices(), entities.entity_ids())};
     batch::resolve_damage_events(combat_events_.events_for(EntityType::Turret),
                                  agents_.indexes(),
-                                 entities.entity_ids,
+                                 entities.entity_ids(),
                                  healths,
                                  local_indices_to_remove,
                                  entity_death_info,
                                  ledger_);
+    auto const locations{entities.view_locations()};
+
     for (auto const index : local_indices_to_remove) {
-        death_locations_.push_back(entities.locations[index]);
+        death_locations_.push_back(vector_at(locations, index));
     }
-    validate_array_sizes();
 }
 void Sim::publish_deaths() {
     auto const deaths{entity_death_info.get_const_view()};
@@ -231,9 +258,9 @@ void Sim::remove_components() {
         return;
     }
 
-    auto const entities{this->entities.get_const_view().columns()};
+    auto const entities{this->entities.get_const_view()};
     entity_tables_.remove_health_rows(
-        local_indices_to_remove, entities.health_indices, entities.entity_ids);
+        local_indices_to_remove, entities.health_indices(), entities.entity_ids());
 }
 void Sim::remove_entities() {
     agents_.indexes().assert_removal_allowed();
@@ -246,8 +273,6 @@ void Sim::remove_entities() {
 void Sim::finish_action() {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::finish_action");
     profiling::plot("Sandbox/TurretCount", get_num_instances());
-
-    validate_array_sizes();
 }
 
 /* **************************************** */
@@ -300,26 +325,32 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
     std::array<float, 128> candidate_ys;
     std::array<float, 128> candidate_zs;
     ml::FixedArray<LineQueryResult, 128> has_line_of_sight;
-    auto const entities{this->entities.get_view().columns()};
+    auto const entities{this->entities.get_view()};
 
     ml::PeriodicTickCountdownView<std::int16_t> const refresh_countdowns{
-        entities.target_refresh_countdowns_remaining_ticks,
-        entities.target_refresh_countdowns_periods};
+        entities.target_refresh_countdowns_remaining_ticks(),
+        entities.target_refresh_countdowns_periods()};
+    auto const current_targets{entities.target_ids()};
+    auto const locations{entities.view_locations()};
+    auto const turret_teams{entities.teams()};
+    auto const fire_point_locations{entities.view_fire_point_locations()};
+    auto const integral_biases{entities.integral_biases()};
+
     for (std::int32_t i{begin}; i < end; ++i) {
         if (!refresh_countdowns.try_consume(i)) {
             continue;
         }
 
-        if (!entities.target_ids[i].is_valid()) {
-            auto const turret_location{entities.locations[i]};
-            auto const this_team{entities.teams[i]};
+        if (!current_targets[i].is_valid()) {
+            auto const turret_location{vector_at(locations, i)};
+            auto const this_team{turret_teams[i]};
 
             ml::FixedArray<EntityUniqueId, 128> target_ids;
             target_ids.set_num_uninitialised(
                 spatial_query_manager.collect_non_team_entities_in_range(
                     turret_location, this_team, radius, target_ids.capacity_view()));
 
-            entities.target_ids[i] = EntityUniqueId{};
+            current_targets[i] = EntityUniqueId{};
 
             auto const target_count{target_ids.num()};
             auto const count{static_cast<std::size_t>(target_count)};
@@ -338,14 +369,14 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
                                     std::span{alive}.first(count)});
 
             spatial_query_manager.has_line_of_sight_to_targets(
-                entities.fire_point_locations[i],
+                vector_at(fire_point_locations, i),
                 candidate_locations_view.get_const_view(),
                 target_ids,
                 has_line_of_sight);
 
             if (target_count > 0) {
                 auto const target_offset{static_cast<std::int32_t>(
-                    entities.integral_biases[i] % static_cast<std::uint32_t>(target_count))};
+                    integral_biases[i] % static_cast<std::uint32_t>(target_count))};
                 auto const loop_bounds{
                     ml::make_rotated_loop_bounds(0, target_count, target_offset)};
                 for (auto const bounds : loop_bounds) {
@@ -358,11 +389,11 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
 
                         auto const candidate{target_ids[element]};
                         if (alive[element] && teams[element] != this_team) {
-                            entities.target_ids[i] = candidate;
+                            current_targets[i] = candidate;
                             break;
                         }
                     }
-                    if (entities.target_ids[i].is_valid()) {
+                    if (current_targets[i].is_valid()) {
                         break;
                     }
                 }
@@ -386,33 +417,38 @@ void Sim::fire_at_enemies(ml::FrameScratch& scratch) {
     starts.reserve(count);
     ends.reserve(count);
 
-    auto const entities{this->entities.get_view().columns()};
+    auto const entities{this->entities.get_view()};
     auto const disengage_radius{get_disengage_radius()};
     auto const disengage_radius_squared{disengage_radius * disengage_radius};
     auto cooldowns{
-        ml::TickCountdownView<std::int16_t>{entities.laser_cooldowns, cooldown_restart_ticks_}};
+        ml::TickCountdownView<std::int16_t>{entities.laser_cooldowns(), cooldown_restart_ticks_}};
+    auto const target_ids{entities.target_ids()};
+    auto const locations{entities.view_locations()};
+    auto const target_locations{entities.view_target_locations()};
+    auto const fire_point_locations{entities.view_fire_point_locations()};
+
     for (std::int32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};
-        auto& target{entities.target_ids[element]};
+        auto& target{target_ids[element]};
         if (!target.is_valid()) {
             continue;
         }
-        if (!agents_.read_alive(target)) {
+        if (!agents_.is_alive(target)) {
             target = {};
             continue;
         }
         if (!cooldowns.is_ready(element)) {
             continue;
         }
-        if (HMM_LenSqrV3(entities.locations[index] - entities.target_locations[index]) >=
+        if (HMM_LenSqrV3(vector_at(locations, index) - vector_at(target_locations, index)) >=
             disengage_radius_squared) {
             target = {};
             continue;
         }
 
         candidate_indices.add(index);
-        starts.add(entities.fire_point_locations[index]);
-        ends.add(entities.target_locations[index]);
+        starts.add(vector_at(fire_point_locations, index));
+        ends.add(vector_at(target_locations, index));
         cooldowns.restart_counter(element);
     }
 
@@ -429,16 +465,21 @@ void Sim::fire_at_enemies(ml::FrameScratch& scratch) {
 
     lasers::FrameSpawnRequests new_lasers{scratch};
     new_lasers.reserve(candidate_count);
+    auto const target_velocities{entities.view_target_velocities()};
+    auto const laser_damages{entities.laser_damages()};
+    auto const entity_ids{entities.entity_ids()};
+    auto const teams{entities.teams()};
+
     for (std::int32_t candidate{}; candidate < candidate_count; ++candidate) {
         auto const index{candidate_indices[candidate]};
         auto const element{static_cast<std::size_t>(index)};
-        if (hit_ids[candidate] != entities.target_ids[element]) {
+        if (hit_ids[candidate] != target_ids[element]) {
             continue;
         }
 
-        auto const location{entities.fire_point_locations[index]};
-        auto const target_location{entities.target_locations[index]};
-        auto const target_velocity{entities.target_velocities[index]};
+        auto const location{vector_at(fire_point_locations, index)};
+        auto const target_location{vector_at(target_locations, index)};
+        auto const target_velocity{vector_at(target_velocities, index)};
         auto const intercept_time{ml::solve_intercept_time(
             location, target_location, target_velocity, config.laser.projectile_speed)};
         auto const direction{ml::native_math::safe_normal(
@@ -454,13 +495,13 @@ void Sim::fire_at_enemies(ml::FrameScratch& scratch) {
         new_lasers.add(location,
                        rotation,
                        HMM_V3(0.f, 0.f, 0.f),
-                       entities.laser_damages[element],
+                       laser_damages[element],
                        config.laser.projectile_speed,
                        config.laser.max_distance,
-                       entities.entity_ids[element],
-                       {entities.teams[element], EntityType::Turret});
+                       entity_ids[element],
+                       {teams[element], EntityType::Turret});
     }
-    laser_simulation.queue_laser_spawns(new_lasers.get_const_view());
+    laser_simulation.queue_laser_spawns(new_lasers);
 }
 auto Sim::get_disengage_radius() const -> float {
     return config.detection_radius * 1.2f;
@@ -477,7 +518,4 @@ void Sim::clear_tick_buffers() {
 /* **************************************** */
 // Checks
 /* **************************************** */
-void Sim::validate_array_sizes() const {
-    entities.get_const_view().columns().validate_array_sizes();
-}
 } // namespace turrets

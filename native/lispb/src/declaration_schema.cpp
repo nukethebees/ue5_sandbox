@@ -1,6 +1,7 @@
 #include <codegen/schema/declaration_schema.h>
 #include <codegen/schema/normal_module_schema.h>
 
+#include <algorithm>
 #include <type_traits>
 
 namespace codegen {
@@ -120,9 +121,12 @@ void visit_declaration_type_references(Declaration& declaration, Visitor const& 
 auto soa_generated_cpp_names(SoaSchema const& schema,
                              NormalModuleSchema const& module,
                              bool const includes_allocator_variants) -> std::vector<std::string> {
-    std::vector<std::string> result{schema.name,
-                                    schema.view_name.value_or(schema.name + "View"),
-                                    schema.const_view_name.value_or(schema.name + "ConstView")};
+    std::vector<std::string> result;
+    if (schema.emits_vector_storage()) {
+        result = {schema.name,
+                  schema.view_name.value_or(schema.name + "View"),
+                  schema.const_view_name.value_or(schema.name + "ConstView")};
+    }
     if (schema.field_mask_name.has_value()) {
         result.push_back(*schema.field_mask_name);
     }
@@ -135,6 +139,31 @@ auto soa_generated_cpp_names(SoaSchema const& schema,
         result.push_back(schema.name + "SingleView");
         result.push_back(schema.name + "SingleConstView");
         result.push_back(schema.name + "SingleViewImpl");
+        std::vector<std::string> ancestors{schema.name};
+        auto collect_nested =
+            [&](auto&& self, SoaSchema const& parent, std::string const& suffix) -> void {
+            for (auto const& member : parent.members) {
+                if (member.kind != SoaMemberKind::nested || !member.nested_schema) {
+                    continue;
+                }
+                for (auto const& declaration : module.declarations) {
+                    auto const* nested{std::get_if<SoaSchema>(&declaration)};
+                    if (!nested || nested->name != *member.nested_schema ||
+                        !nested->vector_components.empty() ||
+                        std::ranges::find(ancestors, nested->name) != ancestors.end()) {
+                        continue;
+                    }
+                    auto const path{suffix + "_" + member.name};
+                    result.push_back(schema.name + "SingleView" + path);
+                    result.push_back(schema.name + "SingleConstView" + path);
+                    result.push_back(schema.name + "SingleView" + path + "Impl");
+                    ancestors.push_back(nested->name);
+                    self(self, *nested, path);
+                    ancestors.pop_back();
+                }
+            }
+        };
+        collect_nested(collect_nested, schema, "");
     }
     for (auto const& variant : schema.single_allocation_variants) {
         result.push_back(variant.name);
@@ -144,7 +173,7 @@ auto soa_generated_cpp_names(SoaSchema const& schema,
         result.insert(
             result.end(), schema.fixed->containers.begin(), schema.fixed->containers.end());
     }
-    if (includes_allocator_variants) {
+    if (includes_allocator_variants && schema.emits_vector_storage()) {
         for (auto const& allocator : module.soa_array_allocators) {
             result.push_back(allocator.prefix + schema.name);
             result.push_back(allocator.prefix + schema.view_name.value_or(schema.name + "View"));

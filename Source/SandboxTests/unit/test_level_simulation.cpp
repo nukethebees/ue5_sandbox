@@ -1,8 +1,10 @@
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_type.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/laser_source.h>
 #include <ioj/sim/level_sim.h>
 #include <ioj/sim/levels/level_event_manager.h>
+#include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <ioj/sim/world_aabb_operations.h>
 #include <NiagaraComponent.h>
@@ -36,16 +38,17 @@
 
 #include <type_traits>
 
+static_assert(
+    std::is_const_v<std::remove_reference_t<
+        decltype(std::declval<::ioj::sim::CapitalReadView>().entities.view_locations().xs()[0])>>);
 static_assert(std::is_const_v<std::remove_reference_t<
-                  decltype(std::declval<::ioj::sim::CapitalReadView>().entities.locations.xs[0])>>);
-static_assert(std::is_const_v<std::remove_reference_t<
-                  decltype(std::declval<::ioj::sim::FighterReadView>().entities.teams[0])>>);
+                  decltype(std::declval<::ioj::sim::FighterReadView>().entities.teams()[0])>>);
 static_assert(
     std::is_const_v<
         std::remove_reference_t<decltype(std::declval<::ioj::sim::TurretReadView>().changes[0])>>);
 static_assert(
     std::is_const_v<std::remove_reference_t<
-        decltype(std::declval<::ioj::sim::LaserReadView>().entities.lifetimes_remaining[0])>>);
+        decltype(std::declval<::ioj::sim::LaserReadView>().entities.lifetimes_remaining()[0])>>);
 
 namespace {
 auto make_battle() -> ::ioj::sim::LevelSimInitData {
@@ -55,21 +58,21 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     data.capital_ships.fighter_spawn_slots = 0;
     auto& spawn_storage{data.level_events.initial_spawns.capital_spawns};
     spawn_storage.add_defaulted(2);
-    auto const spawns{spawn_storage.get_view().columns()};
-    spawns.entity_indices[0] = 0;
-    spawns.entity_indices[1] = 1;
-    spawns.target_entity_indices[0] = -1;
-    spawns.target_entity_indices[1] = -1;
-    spawns.teams[0] = ::ioj::sim::Team::Green;
-    spawns.teams[1] = ::ioj::sim::Team::White;
-    spawns.healths[0] = 100;
-    spawns.healths[1] = 100;
-    spawns.initial_fighter_spawn_delays[0] = 60.f;
-    spawns.initial_fighter_spawn_delays[1] = 60.f;
-    spawns.fighter_spawn_cooldowns[0] = 60.f;
-    spawns.fighter_spawn_cooldowns[1] = 60.f;
-    spawns.locations.xs[0] = -1000.f;
-    spawns.locations.xs[1] = 1000.f;
+    auto const spawns{spawn_storage.get_view()};
+    spawns.entity_indices()[0] = 0;
+    spawns.entity_indices()[1] = 1;
+    spawns.target_entity_indices()[0] = -1;
+    spawns.target_entity_indices()[1] = -1;
+    spawns.teams()[0] = ::ioj::sim::Team::Green;
+    spawns.teams()[1] = ::ioj::sim::Team::White;
+    spawns.healths()[0] = 100;
+    spawns.healths()[1] = 100;
+    spawns.initial_fighter_spawn_delays()[0] = 60.f;
+    spawns.initial_fighter_spawn_delays()[1] = 60.f;
+    spawns.fighter_spawn_cooldowns()[0] = 60.f;
+    spawns.fighter_spawn_cooldowns()[1] = 60.f;
+    spawns.view_locations().xs()[0] = -1000.f;
+    spawns.view_locations().xs()[1] = 1000.f;
     data.level_events.initialisation.entity_count = 2;
     for (auto const type : ml::EnumTraits<::ioj::sim::EntityType>::values) {
         data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
@@ -203,13 +206,13 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
     data.turrets.fire_point_offset = ml::make_vector3f(20.f, 0.f, 0.f);
     auto& initial_storage{data.level_events.initial_spawns.turret_spawns};
     initial_storage.add_uninitialised(1);
-    auto const initial{initial_storage.get_view().columns()};
-    initial.entity_indices[0] = data.level_events.initialisation.entity_count++;
-    initial.locations.set(0, ml::make_vector3f(-1000.f, 1000.f, 0.f));
-    initial.rotations.set(0, {});
-    initial.teams[0] = ::ioj::sim::Team::Blue;
-    initial.healths[0] = 100;
-    initial.laser_damages[0] = 0;
+    auto const initial{initial_storage.get_view()};
+    initial.entity_indices()[0] = data.level_events.initialisation.entity_count++;
+    ::ioj::sim::set_vector(initial.view_locations(), 0, ml::make_vector3f(-1000.f, 1000.f, 0.f));
+    ::ioj::sim::set_rotation(initial.view_rotations(), 0, {});
+    initial.teams()[0] = ::ioj::sim::Team::Blue;
+    initial.healths()[0] = 100;
+    initial.laser_damages()[0] = 0;
     ::ioj::sim::LevelSim simulation{MoveTemp(data)};
     simulation.finish_initialisation();
     simulation.start();
@@ -313,8 +316,9 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
             auto const entities{view.entities};
             for (int32 index{}; index < entities.num(); ++index) {
                 snapshot.healths.push_back(view.healths.health(index));
-                snapshot.locations.push_back(entities.locations[index]);
-                snapshot.teams.push_back(entities.teams[index]);
+                snapshot.locations.push_back(
+                    ::ioj::sim::vector_at(entities.view_locations(), index));
+                snapshot.teams.push_back(entities.teams()[index]);
                 snapshot.types.push_back(type);
             }
         };
@@ -411,10 +415,9 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     resources.config = config->get_visual_config();
 
     auto scheduled_battle{make_scheduled_battle()};
-    auto const scheduled_spawns{
-        scheduled_battle.level_events.schedule.capital_spawns.get_view().columns()};
-    scheduled_spawns.locations.xs[0] = -1000.f;
-    scheduled_spawns.healths[0] = 100;
+    auto const scheduled_spawns{scheduled_battle.level_events.schedule.capital_spawns.get_view()};
+    scheduled_spawns.view_locations().xs()[0] = -1000.f;
+    scheduled_spawns.healths()[0] = 100;
     scheduled_battle.level_events.initial_spawns.capital_spawns.get_view().healths()[0] = 10000;
     scheduled_battle.overlap_response.damage_per_overlap_detection = 100;
     ::ioj::sim::LevelSim simulation{MoveTemp(scheduled_battle)};
@@ -495,15 +498,17 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     damage.add(
         deaths.get_capital_ships().get_id(0), MAX_int32, deaths.get_capital_ships().get_id(1));
     ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(deaths, damage.get_const_view());
-    ::ioj::sim::lasers::SpawnRequests shot;
-    shot.add({700.f, 0.f, 0.f},
-             {},
-             {},
-             MAX_int32,
-             1000.f,
-             10000.f,
-             {},
-             {::ioj::sim::Team::Green, ::ioj::sim::EntityType::CapitalShip});
+    ::ioj::sim::lasers::SingleAllocationLaserSpawnRequests shot;
+    ::ioj::sim::tests::add_laser_spawn(
+        shot,
+        {700.f, 0.f, 0.f},
+        {},
+        {},
+        MAX_int32,
+        1000.f,
+        10000.f,
+        {},
+        {::ioj::sim::Team::Green, ::ioj::sim::EntityType::CapitalShip});
     ::ioj::sim::LevelSimTestAccess::queue_laser_spawns(deaths, shot.get_const_view());
     deaths.start();
     deaths.advance(0.425);
@@ -637,7 +642,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     expected_material_data.Reserve(tick_count * spawns_per_tick);
 
     for (int32 tick{}; tick < tick_count; ++tick) {
-        ::ioj::sim::lasers::SpawnRequests requests;
+        ::ioj::sim::lasers::SingleAllocationLaserSpawnRequests requests;
         requests.add_uninitialised(spawns_per_tick);
         for (int32 spawn{}; spawn < spawns_per_tick; ++spawn) {
             auto const id{expected_material_data.Num() + 1};
@@ -645,16 +650,23 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
                 static_cast<float>((spawn == 0 ? 0.5 : 2.0 + static_cast<double>(id % 45)) * dt)};
             auto const colour{FLinearColor::White};
 
-            requests.locations.set(
-                spawn, ml::to_native(FVector3f{0.0f, static_cast<float>(id * 10), 100000.0f}));
-            requests.rotations.set(spawn, ml::to_native(FRotator3f::ZeroRotator));
-            requests.base_velocities.set(spawn, ml::to_native(FVector3f::ZeroVector));
-            requests.damages[spawn] = 1;
-            requests.speeds[spawn] = 1000.0f;
-            requests.max_distances[spawn] = requests.speeds[spawn] * initial_lifetime;
-            requests.instigator_ids[spawn] = {};
-            requests.sources[spawn] = {ml::to_native(ETestTeam::White),
-                                       ::ioj::sim::EntityType::TubeSpinner};
+            ::ioj::sim::set_vector(
+                requests.get_view().view_locations(),
+                spawn,
+                ml::to_native(FVector3f{0.0f, static_cast<float>(id * 10), 100000.0f}));
+            ::ioj::sim::set_rotation(requests.get_view().view_rotations(),
+                                     spawn,
+                                     ml::to_native(FRotator3f::ZeroRotator));
+            ::ioj::sim::set_vector(requests.get_view().view_base_velocities(),
+                                   spawn,
+                                   ml::to_native(FVector3f::ZeroVector));
+            requests.get_view().damages()[spawn] = 1;
+            requests.get_view().speeds()[spawn] = 1000.0f;
+            requests.get_view().max_distances()[spawn] =
+                requests.get_view().speeds()[spawn] * initial_lifetime;
+            requests.get_view().instigator_ids()[spawn] = {};
+            requests.get_view().sources()[spawn] = {ml::to_native(ETestTeam::White),
+                                                    ::ioj::sim::EntityType::TubeSpinner};
             expected_material_data.Add(
                 {.colour = colour,
                  .initial_lifetime = initial_lifetime,
@@ -677,8 +689,8 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
         }
 
         for (int32 index{}; index < live_count; ++index) {
-            auto const id{
-                FMath::RoundToInt(lasers.get_read_view().entities.locations.ys[index] / 10.f)};
+            auto const id{FMath::RoundToInt(
+                lasers.get_read_view().entities.view_locations().ys()[index] / 10.f)};
             auto const& expected{expected_material_data[id - 1]};
             auto const& actual{presentation.material_data[index]};
             auto const matches{actual.colour.X == expected.colour.R &&

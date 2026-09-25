@@ -90,7 +90,6 @@ auto build_single_allocation_model(SoaSchema const& schema,
         .layout_name = schema.name + "SingleLayout",
         .view_name = schema.name + "SingleView",
         .const_view_name = schema.name + "SingleConstView",
-        .schema_const_view_name = schema.const_view_name.value_or(schema.name + "ConstView"),
         .emit_shared_types = !schema.single_allocation_allocator.has_value(),
     };
     result.dependencies = result.dialect.dependencies;
@@ -137,6 +136,9 @@ auto build_single_allocation_model(SoaSchema const& schema,
             if (member.kind == SoaMemberKind::nested) {
                 auto const& nested{std::get<lispb::schema::SoaType>(
                     type_graph.type(*member.nested_type).definition)};
+                if (auto const shape{recognize_compact_vector(nested, backend)}) {
+                    result.compact_vectors.emplace(join(path, "_"), *shape);
+                }
                 self(self, nested, path);
                 continue;
             }
@@ -158,17 +160,6 @@ auto build_single_allocation_model(SoaSchema const& schema,
     };
     collect_columns(collect_columns, root_type, {});
 
-    for (auto const& member : root_type.columns) {
-        if (member.kind != SoaMemberKind::nested) {
-            continue;
-        }
-        auto const& nested_type{
-            std::get<lispb::schema::SoaType>(type_graph.type(*member.nested_type).definition)};
-        auto const shape{recognize_compact_vector(nested_type, backend)};
-        if (shape) {
-            result.compact_vectors.emplace(member.name, *shape);
-        }
-    }
     return result;
 }
 

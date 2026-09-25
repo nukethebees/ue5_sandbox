@@ -1,12 +1,12 @@
 # Generated single-allocation SoA
 
-The LispB `single-allocation` declaration adds an owning representation alongside the ordinary generated owner (TArray-backed in Unreal and vector-backed in native builds):
+The LispB `single-allocation` declaration selects single-allocation ownership:
 
 ```lisp
 (single-allocation SingleEntityData)
 ```
 
-SandboxCore provides the Unreal runtime adapter. Native and Unreal owners share the layout and compact-view implementation under `native/core`. Production simulation storage uses generated single-allocation owners.
+Use `:storage both` when a schema also needs an ordinary generated owner (TArray-backed in Unreal and vector-backed in native builds). Schemas without a single-allocation declaration default to vector storage; `:storage vector` and `:storage single-allocation` can make the choice explicit. SandboxCore provides the Unreal runtime. Native and Unreal owners share the layout and compact-view implementation under `native/core`.
 
 ## Ownership and layout
 
@@ -45,32 +45,34 @@ The explicit `:vector-components (xs ys)` or `(xs ys zs)` annotation marks the s
 
 Each vector view is 16 bytes: a first-component pointer, a 32-bit byte stride, and a 32-bit row count. The generated layout guarantees equally spaced component columns. `slice`, `left` and `right` advance the first pointer while retaining the component stride, including for empty end slices. Mutable views convert to const views, but not the reverse. The vector view has no owner pointer or field-specific layout type.
 
-For example, `view_locations()` and `view_velocities()` both return `ml::soa::Vector3View<float>`. Resolve `xs()`, `ys()` and `zs()` outside hot loops. `columns()` returns an aggregate with those component spans as fields; the top-level `rows.columns()` still materializes the original schema-level aggregate for existing algorithms. Other nested shapes retain their existing schema-level views.
+For example, `view_locations()` and `view_velocities()` both return `ml::soa::Vector3View<float>`. Resolve `xs()`, `ys()` and `zs()` outside hot loops. Other nested shapes receive generated compact views rooted in the parent's owner state, so they can survive growth under the same range contract as the parent view.
 
 Mutable vector views remain writable when the view object itself is const, like an ordinary span; const-view aliases expose only const elements. Constructor and slice range checks use the backend's normal failure mechanism. Direct construction requires sufficiently large, equally spaced component arrays and a byte stride that preserves element alignment and fits in uint32.
 
-`view.columns()` explicitly materializes the existing larger aggregate of TArrayViews or native spans, including nested structure. This supports existing view-taking algorithms and pointer traversal. It does not change the compact view's size. Materialize outside entity loops; the aggregate has the same pointer invalidation rules as individual spans.
+Algorithms normally take compact views by value and extract only the spans they use. Generated `each_column` / `apply_arrays` access the flattened leaves directly. The shared `validate_compact_view` contract checks size and trivial copyability with separate diagnostics.
 
 ## Bulk insertion
 
 ```cpp
-auto first = destination.append_from(source);
-destination.append_from(source.slice(offset, count));
-destination.append_from(ordinary_schema_const_view);
-destination.append_from(destination); // self-append, including growth
+auto first = destination.append_from(source.get_const_view());
+destination.append_from(source.get_const_view().slice(offset, count));
+destination.append_from(frame_source);
+destination.append_from(destination.get_const_view()); // self-append, including growth
 destination.append_from(destination.slice(offset, count));
 destination.add_uninitialised(count);
 destination.add_defaulted(count);
 ```
 
-`append_from` copies actual values from a compatible single-allocation owner, compact view or the
-ordinary generated schema `ConstView`, and returns the first inserted row index. It checks final
-size, grows at most once, bulk-copies each flattened column and publishes size once. The ordinary
-view overload copies directly from its column pointers without materializing a compact view.
-Whole and sliced compact self-append need no temporary container. An ordinary schema view of the
-destination may be appended while retained capacity is sufficient; if growth would invalidate its
-spans, the operation is rejected before relocation. Empty append is a no-op. Source values remain
-independent after copying.
+`append_from` accepts a compact view or an independent-column source exposing `num()`, `validate()`,
+scalar span accessors and nested `view_<member>()` accessors. It returns the first inserted row index.
+The generated `accepts_source` constraint checks the required leaf types. Independent producers
+validate their own column lengths and must keep their storage alive through the call.
+
+Append checks the source range and final size, grows at most once, resolves source accessors after
+growth, bulk-copies each leaf and publishes size once. Whole and sliced compact self-append need no
+temporary container: the source still refers to the owner's updated state. Independent sources must
+not contain cached spans into the destination allocation. Empty append is a no-op, and copied
+values are independent of their source.
 
 `add_uninitialised` creates logical rows without writing their values; callers must initialize them before reading. `add_defaulted` initializes the new rows. AoS input ranges, arbitrary aggregates of unrelated spans, non-trivial relocation and deep-copy constructors are outside this API.
 
@@ -125,7 +127,7 @@ native SoA suites exercise actual standard and mimalloc storage and alignment.
 
 For Unreal-dependent behavior, build the Editor and run the existing CQTest/Unreal Automation
 unit suite. The private SandboxCoreEngineTests fixture covers compact handles across growth,
-self-append, nested alias detection, and move assignment:
+self-append, nested access, and move assignment:
 
 ```powershell
 cmake --workflow --preset debug-game

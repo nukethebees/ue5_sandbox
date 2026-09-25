@@ -59,6 +59,32 @@ auto schema_at(Manifest const& manifest,
     return std::get<Schema>(module.declarations.at(declaration_index));
 }
 
+TEST(SourceLoader, SoaStoragePolicySelectsRepresentations) {
+    TemporaryManifest files;
+    files.write_root(R"((module rows :header "Rows.h" :backend standard-library
+      (struct VectorRows :storage vector (member values array int32))
+      (struct CompactRows :storage single-allocation (member values array int32)
+        (single-allocation SingleRows))
+      (struct BothRows :storage both (member values array int32)
+        (single-allocation SingleBothRows))))");
+    auto const manifest{files.load()};
+    EXPECT_TRUE(schema_at<SoaSchema>(manifest, 0, 0).emits_vector_storage());
+    EXPECT_FALSE(schema_at<SoaSchema>(manifest, 0, 1).emits_vector_storage());
+    EXPECT_TRUE(schema_at<SoaSchema>(manifest, 0, 2).emits_vector_storage());
+    auto const output{render_modules(lower_modules(manifest)).front().content};
+    EXPECT_NE(output.find("struct VectorRowsView"), std::string::npos);
+    EXPECT_EQ(output.find("struct CompactRowsView"), std::string::npos);
+    EXPECT_NE(output.find("struct BothRowsView"), std::string::npos);
+    for (auto const* invalid : {"vector", "single-allocation", "both", "unknown"}) {
+        files.write_root(
+            std::string{R"((module rows :header "Rows.h" (struct Rows :storage )"} + invalid +
+            " (member values array int32)" +
+            (std::string_view{invalid} == "vector" ? " (single-allocation SingleRows)" : "") +
+            "))");
+        EXPECT_THROW(lower_modules(files.load()), std::exception);
+    }
+}
+
 TEST(SourceLoader, AliasEmissionKeepsSemanticIdentityAndDependencies) {
     TemporaryManifest files;
     files.write_root(

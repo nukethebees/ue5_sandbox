@@ -8,22 +8,6 @@
 
 namespace ml::soa_storage_detail {
 
-template <typename Column, int Dimensions>
-struct VectorColumns;
-
-template <typename Column>
-struct VectorColumns<Column, 2> {
-    Column xs;
-    Column ys;
-};
-
-template <typename Column>
-struct VectorColumns<Column, 3> {
-    Column xs;
-    Column ys;
-    Column zs;
-};
-
 template <typename T, int Dimensions, template <typename> typename Span, auto Require>
 class VectorView {
     static_assert(Dimensions == 2 || Dimensions == 3);
@@ -67,20 +51,15 @@ class VectorView {
     {
         return column(2);
     }
-    auto columns() const -> VectorColumns<Span<T>, Dimensions> {
-        if constexpr (Dimensions == 2) {
-            return {xs(), ys()};
-        } else {
-            return {xs(), ys(), zs()};
-        }
-    }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto values{columns()};
+        auto x{xs()};
+        auto y{ys()};
         if constexpr (Dimensions == 2) {
-            return std::forward<Func>(func)(values.xs, values.ys);
+            return std::forward<Func>(func)(x, y);
         } else {
-            return std::forward<Func>(func)(values.xs, values.ys, values.zs);
+            auto z{zs()};
+            return std::forward<Func>(func)(x, y, z);
         }
     }
     template <typename Func>

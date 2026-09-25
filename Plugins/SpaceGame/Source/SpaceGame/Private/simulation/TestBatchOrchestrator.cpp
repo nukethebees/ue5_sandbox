@@ -1,5 +1,6 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
 #include <HAL/IConsoleManager.h>
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
 #include <SpaceGame/missions/TestMissionFailReasonConversion.h>
 #include <SpaceGame/missions/TestMissionModeConversion.h>
@@ -486,13 +487,13 @@ auto ATestBatchOrchestrator::initialise_simulation(
         }
 
         initial_turret_transforms_.Reset();
-        auto const turrets{
-            result->level_events.initial_spawns.turret_spawns.get_const_view().columns()};
+        auto const turrets{result->level_events.initial_spawns.turret_spawns.get_const_view()};
         auto const turret_count{turrets.num()};
         initial_turret_transforms_.Reserve(turret_count);
         for (int32 i{}; i < turret_count; ++i) {
-            initial_turret_transforms_.Emplace(FRotator{ml::to_unreal(turrets.rotations[i])},
-                                               FVector{ml::to_unreal(turrets.locations[i])});
+            initial_turret_transforms_.Emplace(
+                FRotator{ml::to_unreal(::ioj::sim::rotation_at(turrets.view_rotations(), i))},
+                FVector{ml::to_unreal(::ioj::sim::vector_at(turrets.view_locations(), i))});
         }
         result->fighter_diagnostics_enabled =
             ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;

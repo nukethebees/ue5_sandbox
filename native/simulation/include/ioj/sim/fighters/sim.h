@@ -38,6 +38,7 @@ struct SpatialQueryManager;
 }
 
 namespace ioj::sim::fighters {
+struct FrameSpawnQueue;
 class CommandInterface;
 class PhaseInterface;
 
@@ -48,15 +49,14 @@ struct FighterLevelData {
 };
 
 struct Sim {
-    using EntityData = FighterEntityData;
     using EntityStorage = SingleAllocationFighterEntityData;
     using EntityBuffers = ml::MultiBuffer<EntityStorage, 2>;
     using Task = FighterTask;
     static constexpr auto n_task_types{static_cast<std::size_t>(Task::COUNT)};
     using TaskSpans = std::array<IndexSpan, n_task_types>;
     using TaskCounts = std::array<std::int32_t, n_task_types>;
-    using TaskView = EntityData::View;
-    using ConstTaskView = EntityData::ConstView;
+    using TaskView = EntityStorage::View;
+    using ConstTaskView = EntityStorage::ConstView;
 
     Sim(SimClock const& clock,
         EntityLedger& ledger,
@@ -74,9 +74,10 @@ struct Sim {
     // Configuration
     /* **************************************** */
     auto get_read_view() const -> FighterReadView {
-        auto const entities{entity_buffers.current().get_const_view().columns()};
-        return {entities,
-                entity_tables_.health.get_const_view(entities.health_indices, entities.entity_ids)};
+        auto const entities{entity_buffers.current().get_const_view()};
+        return {
+            entities,
+            entity_tables_.health.get_const_view(entities.health_indices(), entities.entity_ids())};
     }
     void set_config(FighterSimConfig const& new_config, FighterLevelData level_data) noexcept;
     void set_diagnostics_enabled(bool enabled) noexcept { diagnostics_enabled_ = enabled; }
@@ -89,7 +90,7 @@ struct Sim {
         return overlap_candidates_;
     }
     auto get_laser_simulation() const noexcept -> lasers::Sim const& { return laser_simulation; }
-    auto get_const_view(std::int32_t offset, std::int32_t width) const -> EntityData::ConstView;
+    auto get_const_view(std::int32_t offset, std::int32_t width) const -> EntityStorage::ConstView;
     auto get_membership_revision() const noexcept -> std::uint64_t { return membership_revision_; }
     auto get_layout_revision() const noexcept -> std::uint64_t { return layout_revision_; }
     auto get_entity_ids() const -> std::span<EntityUniqueId const> {
@@ -99,18 +100,19 @@ struct Sim {
         return entity_buffers.current().get_const_view().parent_ids();
     }
     auto get_healths() const -> HealthConstView {
-        auto const entities{entity_buffers.current().get_const_view().columns()};
-        return entity_tables_.health.get_const_view(entities.health_indices, entities.entity_ids);
+        auto const entities{entity_buffers.current().get_const_view()};
+        return entity_tables_.health.get_const_view(entities.health_indices(),
+                                                    entities.entity_ids());
     }
     void set_parent_id(EntityUniqueId fighter, EntityUniqueId parent);
     auto get_locations() const {
-        return entity_buffers.current().get_const_view().columns().locations;
+        return entity_buffers.current().get_const_view().view_locations();
     }
     auto has_id(EntityUniqueId fighter) const -> bool;
     auto get_target_ids() const noexcept -> std::span<EntityUniqueId const>;
     auto get_target_id(EntityUniqueId fighter) const noexcept -> EntityUniqueId;
     auto get_target_locations() const {
-        return entity_buffers.current().get_const_view().columns().target_locations;
+        return entity_buffers.current().get_const_view().view_target_locations();
     }
     auto get_target_location(EntityUniqueId fighter) const -> Vector3f;
     auto get_tasks() const -> std::span<Task const>;
@@ -123,10 +125,8 @@ struct Sim {
     // Checks
     /* **************************************** */
 #ifndef NDEBUG
-    void validate_array_sizes() const;
     void check_fighter_tasks() const;
 #else
-    void validate_array_sizes() const {}
     void check_fighter_tasks() const {}
 #endif
   private:
@@ -164,7 +164,7 @@ struct Sim {
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto get_view(std::int32_t offset, std::int32_t width) -> EntityData::View;
+    auto get_view(std::int32_t offset, std::int32_t width) -> EntityStorage::View;
     auto get_task_view(Task task) noexcept -> TaskView;
     auto get_const_task_view(Task task) const noexcept -> ConstTaskView;
     auto find_index(EntityUniqueId fighter) const noexcept -> std::int32_t;
@@ -175,7 +175,7 @@ struct Sim {
     /* **************************************** */
     // Movement
     /* **************************************** */
-    void move(float dt, TaskView const& fighters, ml::FrameScratch& scratch);
+    void move(float dt, TaskView fighters, ml::FrameScratch& scratch);
     void update_navigation_steering(ml::FrameScratch& scratch);
     void collect_navigation_updates(NavigationScratch& scratch);
     void update_separation_observations(NavigationScratch& scratch);
@@ -196,12 +196,14 @@ struct Sim {
     /* **************************************** */
     // Combat
     /* **************************************** */
-    void handle_firing(TaskView const& data, ml::FrameScratch& scratch);
+    void handle_firing(TaskView data, ml::FrameScratch& scratch);
 
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto queue_spawns(FighterSpawnQueueConstView new_spawns) -> std::int32_t;
+    auto queue_spawns(SingleAllocationFighterSpawnQueue::ConstView new_spawns) -> std::int32_t;
+    auto queue_spawns(FrameSpawnQueue const& new_spawns) -> std::int32_t;
+    auto accept_spawn_count(std::span<Team const> teams) -> std::int32_t;
     void reassign_pending_spawns(EntityUniqueId parent, EntityUniqueId replacement);
     void commit_spawns();
 

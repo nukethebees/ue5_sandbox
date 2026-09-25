@@ -1,4 +1,5 @@
 #include "SpaceGamePresentation/presentation/TurretPresentation.h"
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/integration/RotatorConversion.h>
@@ -56,11 +57,16 @@ void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_tra
 
     configure_ismc();
     ismc_transforms = MoveTemp(initial_transforms);
-    auto const& entities{view().entities};
+    auto const entities{view().entities};
     auto const count{entities.num()};
+    auto const locations{entities.view_locations()};
+    auto const pitches{entities.view_rotations().pitches()};
+    auto const yaws{entities.view_rotations().yaws()};
+    auto const rolls{entities.view_rotations().rolls()};
     for (auto i{ismc_transforms.Num()}; i < count; ++i) {
-        ismc_transforms.Emplace(FRotator{ml::to_unreal(entities.rotations[i])},
-                                FVector{ml::to_unreal(entities.locations[i])});
+        ismc_transforms.Emplace(
+            FRotator{ml::to_unreal(::ioj::sim::Rotator3f{pitches[i], yaws[i], rolls[i]})},
+            FVector{ml::to_unreal(::ioj::sim::vector_at(locations, i))});
     }
     add_initial_visual_instances();
     validate_array_sizes();
@@ -117,7 +123,7 @@ void FTurretPresentation::add_initial_visual_instances() {
 
 void FTurretPresentation::add_visual_instances(TArray<FTransform> const& transforms,
                                                int32 const first_entity_index) {
-    auto const& entities{view().entities};
+    auto const entities{view().entities};
     auto const n_to_add{transforms.Num()};
     if (n_to_add == 0) {
         return;
@@ -127,9 +133,11 @@ void FTurretPresentation::add_visual_instances(TArray<FTransform> const& transfo
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
     TArray<float> custom_data;
     custom_data.SetNumUninitialized(n_to_add * n_custom_ismc_floats, EAllowShrinking::No);
+    auto const teams{entities.teams()};
+
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const base{i * n_custom_ismc_floats};
-        auto const& colour{colour_cache[ml::to_unreal(entities.teams[first_entity_index + i])]};
+        auto const& colour{colour_cache[ml::to_unreal(teams[first_entity_index + i])]};
         custom_data[base + 0] = colour.R;
         custom_data[base + 1] = colour.G;
         custom_data[base + 2] = colour.B;
@@ -171,7 +179,7 @@ void FTurretPresentation::trigger_death_effects() {
 }
 
 void FTurretPresentation::validate_array_sizes() const {
-    view().entities.validate_array_sizes();
+    view().entities.validate();
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(view().get_num_instances()),
         SANDBOX_NAMED_NUM(ismc_transforms),
@@ -188,20 +196,26 @@ void FTurretPresentation::draw_debugging_shapes() const {
     auto const text_offset{actor_config->debug_status_text_offset};
 
     auto& drawer{debug_drawer};
+    auto const locations{entities.view_locations()};
+    auto const targets{entities.target_ids()};
+    auto const target_locations{entities.view_target_locations()};
+    auto const ids{entities.entity_ids()};
+
     for (int32 i{0}; i < n; ++i) {
-        auto const turret_location{FVector{ml::to_unreal(entities.locations[i])}};
+        auto const turret_location{FVector{ml::to_unreal(::ioj::sim::vector_at(locations, i))}};
 
         if (draw_target_arrows_enabled) {
-            auto const target_id{entities.target_ids[i]};
+            auto const target_id{targets[i]};
 
             if (target_id.is_valid()) {
-                auto const target_location{FVector{ml::to_unreal(entities.target_locations[i])}};
+                auto const target_location{
+                    FVector{ml::to_unreal(::ioj::sim::vector_at(target_locations, i))}};
                 drawer.draw_line(turret_location, target_location);
             }
         }
 
         if (draw_debug_entity_info_enabled) {
-            auto const entity_id{entities.entity_ids[i]};
+            auto const entity_id{ids[i]};
 
             auto const msg{FString::Printf(
                 TEXT("[%u] HP=%d"), entity_id.raw_value(), turret_simulation.healths.health(i))};

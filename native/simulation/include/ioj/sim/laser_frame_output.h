@@ -9,7 +9,16 @@
 namespace ioj::sim::lasers {
 struct FrameOutput {
     void reset();
-    void append_hits(LaserHitDetailsConstView hits, SimTick tick);
+    template <typename Source>
+        requires SingleAllocationLaserHitDetails::accepts_source<Source>
+    void append_hits(Source const& new_hits, SimTick const tick) {
+        auto const count{new_hits.num()};
+        hits.append_from(new_hits);
+        for (std::int32_t index{}; index < count; ++index) {
+            hit_ticks.push_back(tick);
+            hit_ordinals.push_back(index);
+        }
+    }
 
     SingleAllocationLaserHitDetails hits;
     std::vector<SimTick> hit_ticks;

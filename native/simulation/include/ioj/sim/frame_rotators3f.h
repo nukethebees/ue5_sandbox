@@ -27,8 +27,20 @@ struct FrameRotators3f {
     [[nodiscard]] auto get_const_view() const noexcept -> Rotators3fConstView;
     [[nodiscard]] auto num() const noexcept -> std::int32_t;
 
-    ml::FrameArray<float> pitches;
-    ml::FrameArray<float> yaws;
-    ml::FrameArray<float> rolls;
+    auto pitches() -> std::span<float> { return pitches_.view(); }
+    auto pitches() const -> std::span<float const> { return pitches_.view(); }
+    auto yaws() -> std::span<float> { return yaws_.view(); }
+    auto yaws() const -> std::span<float const> { return yaws_.view(); }
+    auto rolls() -> std::span<float> { return rolls_.view(); }
+    auto rolls() const -> std::span<float const> { return rolls_.view(); }
+    void validate() const {
+        ml::native_soa::require(pitches_.num() == num());
+        ml::native_soa::require(yaws_.num() == num());
+        ml::native_soa::require(rolls_.num() == num());
+    }
+  private:
+    ml::FrameArray<float> pitches_;
+    ml::FrameArray<float> yaws_;
+    ml::FrameArray<float> rolls_;
 };
 } // namespace ioj::sim

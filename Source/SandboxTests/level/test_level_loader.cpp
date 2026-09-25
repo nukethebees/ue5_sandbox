@@ -1,3 +1,4 @@
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/laser_source.h>
 #include <ioj/sim/missions/mission_fail_reason.h>
@@ -465,8 +466,8 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
     check(level);
     auto const capitals{level->get_capital_ships().get_read_view().entities};
     for (int32 i{}; i < capitals.num(); ++i) {
-        auto const position{ml::to_unreal(capitals.locations[i])};
-        auto const team{ml::to_unreal(capitals.teams[i])};
+        auto const position{ml::to_unreal(::ioj::sim::vector_at(capitals.view_locations(), i))};
+        auto const team{ml::to_unreal(capitals.teams()[i])};
         if (team == ETestTeam::Blue) {
             sample.blue_capital_position = position;
         } else if (team == ETestTeam::Red) {
@@ -475,8 +476,8 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
     }
     auto const turrets{level->get_turrets().get_read_view().entities};
     for (int32 i{}; i < turrets.num(); ++i) {
-        if (ml::to_unreal(turrets.teams[i]) == ETestTeam::Red) {
-            auto const position{ml::to_unreal(turrets.locations[i])};
+        if (ml::to_unreal(turrets.teams()[i]) == ETestTeam::Red) {
+            auto const position{ml::to_unreal(::ioj::sim::vector_at(turrets.view_locations(), i))};
             sample.red_turret_position = position;
         }
     }

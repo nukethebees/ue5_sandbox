@@ -1,4 +1,5 @@
 #include "WorldlessSimulationTest.h"
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <SpaceGame/simulation/SimulationConfigConversion.h>
 #include <SpaceGamePresentation/integration/TransformConversion.h>
@@ -56,14 +57,14 @@ auto add_worldless_capital_spawn(::ioj::sim::LevelSimInitData& data,
     auto& storage{data.level_events.initial_spawns.capital_spawns};
     auto const index{storage.num()};
     storage.add_defaulted(1);
-    auto const events{storage.get_view().columns()};
-    events.entity_indices[index] = data.level_events.initialisation.entity_count++;
-    events.target_entity_indices[index] = target_entity_index;
-    events.locations.set(index, ml::to_native(FVector3f{location}));
-    events.teams[index] = static_cast<::ioj::sim::Team>(team);
-    events.healths[index] = health == INDEX_NONE ? data.capital_ships.max_health : health;
-    events.initial_fighter_spawn_delays[index] = initial_spawn_delay;
-    events.fighter_spawn_cooldowns[index] = spawn_cooldown;
+    auto const events{storage.get_view()};
+    events.entity_indices()[index] = data.level_events.initialisation.entity_count++;
+    events.target_entity_indices()[index] = target_entity_index;
+    ::ioj::sim::set_vector(events.view_locations(), index, ml::to_native(FVector3f{location}));
+    events.teams()[index] = static_cast<::ioj::sim::Team>(team);
+    events.healths()[index] = health == INDEX_NONE ? data.capital_ships.max_health : health;
+    events.initial_fighter_spawn_delays()[index] = initial_spawn_delay;
+    events.fighter_spawn_cooldowns()[index] = spawn_cooldown;
     return index;
 }
 

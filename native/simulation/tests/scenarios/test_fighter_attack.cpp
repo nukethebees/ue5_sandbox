@@ -1,4 +1,5 @@
 #include "test_fighter_attack.h"
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/rotator_math.h>
 #include "../support/simulation_test_support.h"
 
@@ -54,7 +55,7 @@ void run_worldless_fighter_obstacle_avoidance(tests::SimulationFixture const& co
         }
 
         fighter_spawned = true;
-        auto const location{locations[0]};
+        auto const location{vector_at(locations, 0)};
         maximum_lateral_distance =
             std::max(maximum_lateral_distance, std::hypot(location.Y, location.Z));
         maximum_x = std::max(maximum_x, location.X);
@@ -119,8 +120,9 @@ void run_worldless_fighter_capital_obstruction(tests::SimulationFixture const& c
     tests::add_capital_spawn(data, obstacle, Team::Green, -1, 60.f, 60.f, 100000);
     tests::add_capital_spawn(data, target, Team::Red, -1, 60.f, 60.f, 100000);
     Rotator3f const obstacle_rotation{0.f, 35.f, 0.f};
-    data.level_events.initial_spawns.capital_spawns.get_view().view_rotations().set(
-        1, obstacle_rotation);
+    set_rotation(data.level_events.initial_spawns.capital_spawns.get_view().view_rotations(),
+                 1,
+                 obstacle_rotation);
 
     auto const obstacle_bounds{collision::make_entity_world_bounds(
         data.entity_bounds, EntityType::CapitalShip, obstacle, to_quaternion(obstacle_rotation))};
@@ -143,7 +145,7 @@ void run_worldless_fighter_capital_obstruction(tests::SimulationFixture const& c
         if (locations.num() == 0) {
             return;
         }
-        auto const location{locations[0]};
+        auto const location{vector_at(locations, 0)};
         entered_obstacle =
             entered_obstacle || (location.X >= expanded_min.X && location.X <= expanded_max.X &&
                                  location.Y >= expanded_min.Y && location.Y <= expanded_max.Y &&
@@ -185,7 +187,7 @@ void run_worldless_fighter_clear_navigation(tests::SimulationFixture const& conf
         if (locations.num() == 0) {
             return;
         }
-        last_location = locations[0];
+        last_location = vector_at(locations, 0);
         if (!recorded_first) {
             first_location = last_location;
             recorded_first = true;
@@ -235,7 +237,7 @@ void run_worldless_fighter_separation(tests::SimulationFixture const& config) {
         if (locations.num() != 2) {
             return;
         }
-        final_distance = HMM_LenV3(locations[0] - locations[1]);
+        final_distance = HMM_LenV3(vector_at(locations, 0) - vector_at(locations, 1));
         if (initial_distance == 0.f) {
             initial_distance = final_distance;
         }
@@ -319,10 +321,9 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     spawn_slots.assign(fighter_count, Transform3d{.location = ml::Vector3d{3000.f, 7000.f, 0.f}});
     auto data{make_fighter_navigation_test_data(
         config, spawn_slots, Vector3f{{-20000.f, -7000.f, 0.f}}, Vector3f{{20000.f, 0.f, 0.f}})};
-    std::ranges::fill(data.level_events.initial_spawns.capital_spawns.get_view()
-                          .columns()
-                          .fighter_spawn_cooldowns,
-                      3600.f);
+    std::ranges::fill(
+        data.level_events.initial_spawns.capital_spawns.get_view().fighter_spawn_cooldowns(),
+        3600.f);
     DenseNavigationResult result;
     result.collision_distance =
         collision::get_entity_radius(data.entity_bounds, EntityType::Fighter) * 2.f;
@@ -342,7 +343,7 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     auto const locations{fighters.get_locations()};
     result.locations.reserve(locations.num());
     for (std::int32_t i{}; i < locations.num(); ++i) {
-        result.locations.push_back(locations[i]);
+        result.locations.push_back(vector_at(locations, i));
     }
     return result;
 }
@@ -448,7 +449,7 @@ void run_worldless_fighter_hard_avoidance_authority(tests::SimulationFixture con
     harness.on_end_tick = [&](LevelSim&) {
         auto const locations{fighters.get_locations()};
         for (std::int32_t i{}; i < locations.num(); ++i) {
-            auto const location{locations[i]};
+            auto const location{vector_at(locations, i)};
             entered_obstacle =
                 entered_obstacle || (location.X >= expanded_min.X && location.X <= expanded_max.X &&
                                      location.Y >= expanded_min.Y && location.Y <= expanded_max.Y &&

@@ -16,12 +16,32 @@ struct FrameSpawnQueue {
              Team team,
              EntityUniqueId parent,
              EntityUniqueId target);
-    auto get_const_view() const -> FighterSpawnQueueConstView;
 
-    FrameVectors3f locations;
-    FrameRotators3f rotations;
-    ml::FrameArray<Team> teams;
-    ml::FrameArray<EntityUniqueId> parents;
-    ml::FrameArray<EntityUniqueId> targets;
+    auto view_locations() -> FrameVectors3f& { return locations_; }
+    auto view_locations() const -> FrameVectors3f const& { return locations_; }
+    auto view_rotations() -> FrameRotators3f& { return rotations_; }
+    auto view_rotations() const -> FrameRotators3f const& { return rotations_; }
+    auto teams() -> std::span<Team> { return teams_.view(); }
+    auto teams() const -> std::span<Team const> { return teams_.view(); }
+    auto parents() -> std::span<EntityUniqueId> { return parents_.view(); }
+    auto parents() const -> std::span<EntityUniqueId const> { return parents_.view(); }
+    auto targets() -> std::span<EntityUniqueId> { return targets_.view(); }
+    auto targets() const -> std::span<EntityUniqueId const> { return targets_.view(); }
+    auto num() const -> std::int32_t { return locations_.num(); }
+    void validate() const {
+        locations_.validate();
+        rotations_.validate();
+        ml::native_soa::require(locations_.num() == num());
+        ml::native_soa::require(rotations_.num() == num());
+        ml::native_soa::require(teams_.num() == num());
+        ml::native_soa::require(parents_.num() == num());
+        ml::native_soa::require(targets_.num() == num());
+    }
+  private:
+    FrameVectors3f locations_;
+    FrameRotators3f rotations_;
+    ml::FrameArray<Team> teams_;
+    ml::FrameArray<EntityUniqueId> parents_;
+    ml::FrameArray<EntityUniqueId> targets_;
 };
 }

@@ -23,23 +23,10 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
                                                         std::make_move_iterator(structs.end())},
                                        .soa_backend = SoaBackend::standard_library}}}))};
     auto const& output{files.front().content};
-    EXPECT_NE(output.find("ml::native_soa::Vector<std::int32_t> ids"), std::string::npos);
+    EXPECT_EQ(output.find("struct RowsView"), std::string::npos);
+    EXPECT_EQ(output.find("struct RowsConstView"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<std::int32_t> IdsColumn"), std::string::npos);
-    EXPECT_NE(output.find("std::span<std::int32_t const> ids"), std::string::npos);
-    EXPECT_NE(output.find("std::span<float> xs"), std::string::npos);
-    EXPECT_NE(output.find("void set(size_type const index, std::int32_t const new_ids, float const "
-                          "new_nested_xs) const"),
-              std::string::npos);
-    EXPECT_NE(output.find("nested.xs[static_cast<std::size_t>(index)] = new_nested_xs;"),
-              std::string::npos);
-    EXPECT_NE(
-        output.find("auto add(std::int32_t const new_ids, float const new_nested_xs) -> size_type"),
-        std::string::npos);
-    EXPECT_NE(output.find("ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&]"),
-              std::string::npos);
-    EXPECT_NE(output.find("ids.emplace_back(new_ids);"), std::string::npos);
-    EXPECT_NE(output.find("nested.xs.emplace_back(new_nested_xs);"), std::string::npos);
-    EXPECT_EQ(output.find("add_defaulted(1);"), std::string::npos);
+    EXPECT_NE(output.find("auto ids() const"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<float> NestedXsColumn{IdsColumn}"), std::string::npos);
     EXPECT_NE(output.find("ml::native_soa::copy_n(destination.nested_xs"), std::string::npos);
     EXPECT_EQ(output.find("TArray"), std::string::npos);
@@ -47,7 +34,8 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
     EXPECT_EQ(output.find("CoreMinimal"), std::string::npos);
     EXPECT_NE(output.find("ml::native_soa::default_construct_n(columns.nested_xs, count);"),
               std::string::npos);
-    EXPECT_NE(output.find("ml::native_soa::source_data(source.nested.xs), count);"),
+    EXPECT_NE(output.find(
+                  "ml::native_soa::source_data(source.view_nested().xs()) + source_first, count);"),
               std::string::npos);
     EXPECT_NE(output.find("ml::native_soa::free(data_, allocation_alignment);"), std::string::npos);
     EXPECT_NE(output.find("CustomAllocator::free(data_);"), std::string::npos);
@@ -124,8 +112,10 @@ TEST(SingleAllocationSoa, TypedColumnOperationsUseLayoutCursorAndPreserveNestedP
     EXPECT_NE(output.find("pointer_at(Layout::NestedValuesColumn, "
                           "cursor.advance(Layout::NestedValuesColumn))"),
               std::string::npos);
-    EXPECT_NE(output.find("ml::soa_storage::source_data(source.nested.values), count"),
-              std::string::npos);
+    EXPECT_NE(
+        output.find(
+            "ml::soa_storage::source_data(source.view_nested().values()) + source_first, count"),
+        std::string::npos);
     EXPECT_EQ(output.find("_bytes{elements_to_"), std::string::npos);
     auto const start{output.find("void reallocate(size_type const new_capacity)")};
     ASSERT_NE(start, std::string::npos);
@@ -148,24 +138,14 @@ TEST(SingleAllocationSoa, TypedColumnOperationsUseLayoutCursorAndPreserveNestedP
     EXPECT_LT(release, publish);
 }
 
-TEST(SingleAllocationSoa, EmitsDirectOrdinaryConstViewAppend) {
-    auto input{schemas()};
-    input.back().const_view_name = "ReadOnlyRows";
-    auto const output{render(input)};
-    EXPECT_NE(output.find("using ml::soa_storage::StorageOperations::append_from;"),
-              std::string::npos);
-    auto const overload{output.find("auto append_from(ReadOnlyRows const& source) -> size_type")};
-    ASSERT_NE(overload, std::string::npos);
-    auto const overload_end{output.find("\n    }", overload)};
-    ASSERT_NE(overload_end, std::string::npos);
-    auto const body{output.substr(overload, overload_end - overload)};
-    EXPECT_NE(body.find("source.validate_array_sizes();"), std::string::npos);
-    EXPECT_NE(body.find("append_columns(source, first, count);"), std::string::npos);
-    EXPECT_EQ(body.find("source.columns()"), std::string::npos);
-    EXPECT_EQ(body.find("get_view("), std::string::npos);
-    EXPECT_NE(output.find("ordinary_source_aliases_storage(ReadOnlyRows const& source)"),
-              std::string::npos);
-    EXPECT_NE(output.find("ml::soa_storage::any_column(source, aliases)"), std::string::npos);
+TEST(SingleAllocationSoa, StructuralSourcesNeedNoOrdinaryView) {
+    auto const output{render(schemas())};
+    EXPECT_NE(output.find("accepts_source = requires(Source const& source)"), std::string::npos);
+    EXPECT_NE(output.find("source.view_nested().wide()"), std::string::npos);
+    EXPECT_EQ(output.find("SchemaConstView"), std::string::npos);
+    EXPECT_EQ(output.find("ordinary_source_aliases_storage"), std::string::npos);
+    EXPECT_EQ(output.find("auto columns()"), std::string::npos);
+    EXPECT_EQ(output.find("struct RowsView"), std::string::npos);
 }
 
 TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {
@@ -174,6 +154,7 @@ TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {
         .declarations =
             [] {
                 auto values{schemas()};
+                values.back().storage = SoaStorage::both;
                 return std::vector<DeclarationSchema>{values.begin(), values.end()};
             }(),
         .soa_array_allocators = {{"Test", TypeRef{"TestArrayAllocator"}},
@@ -194,6 +175,20 @@ TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {
         std::invalid_argument);
 }
 
+TEST(SingleAllocationSoa, ArrayAllocatorVariantsSkipSingleOnlySchemas) {
+    auto values{schemas()};
+    NormalModuleSchema module{
+        .settings = {.name = "test", .header = "Test.h", .source = "Test.cpp"},
+        .declarations = {values.begin(), values.end()},
+        .soa_array_allocators = {{"Custom", TypeRef{"CustomAllocator"}}}};
+    auto const files{render_modules(
+        lower_modules(Manifest{.schema_version = manifest_schema_version, .modules = {module}}))};
+    auto const& output{files.front().content};
+    EXPECT_NE(output.find("struct CustomChild"), std::string::npos);
+    EXPECT_EQ(output.find("struct CustomRows"), std::string::npos);
+    EXPECT_NE(output.find("struct SingleRows"), std::string::npos);
+}
+
 TEST(SingleAllocationSoa, SingleAllocatorVariantPreservesViewsAndRoutesOwnership) {
     auto input{schemas()};
     input.back().single_allocation_variants = {{"CustomSingle", TypeRef{"CustomAllocator"}}};
@@ -203,7 +198,7 @@ TEST(SingleAllocationSoa, SingleAllocatorVariantPreservesViewsAndRoutesOwnership
     EXPECT_NE(output.find("CustomAllocator::allocate("), std::string::npos);
     EXPECT_NE(output.find("CustomAllocator::free(data_)"), std::string::npos);
     EXPECT_NE(output.find("MimallocStorageAllocator::free(data_)"), std::string::npos);
-    input.back().single_allocation_variants.front().name = input.back().name;
+    input.back().single_allocation_variants.front().name = *input.back().single_allocation;
     EXPECT_THROW(render(input), std::invalid_argument);
 }
 
@@ -217,20 +212,21 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
               std::string::npos);
     EXPECT_NE(output.find("using View = RowsSingleView;"), std::string::npos);
     EXPECT_NE(output.find("using ConstView = RowsSingleConstView;"), std::string::npos);
-    EXPECT_EQ(output.find("struct RowsSingleView_nested"), std::string::npos);
-    EXPECT_NE(output.find("sizeof(RowsSingleView) == 16"), std::string::npos);
-    EXPECT_NE(output.find("sizeof(RowsSingleConstView) == 16"), std::string::npos);
-    EXPECT_NE(output.find("column_data_unchecked<Aligned256>"), std::string::npos);
-    EXPECT_NE(output.find("auto columns() const"), std::string::npos);
+    EXPECT_NE(output.find("struct RowsSingleView_nested"), std::string::npos);
+    EXPECT_NE(output.find("validate_compact_view<RowsSingleView>()"), std::string::npos);
+    EXPECT_NE(output.find("validate_compact_view<RowsSingleConstView>()"), std::string::npos);
+    EXPECT_NE(output.find("column_data<Aligned256>"), std::string::npos);
+    EXPECT_EQ(output.find("auto columns() const"), std::string::npos);
     EXPECT_NE(output.find("for_each_removal_run(num_, indices"), std::string::npos);
-    EXPECT_NE(output.find("ml::soa_storage::source_data(source.nested.wide)"), std::string::npos);
+    EXPECT_NE(output.find("ml::soa_storage::source_data(source.view_nested().wide())"),
+              std::string::npos);
     EXPECT_NE(output.find("SingleRows(SingleRows const&) = delete"), std::string::npos);
-    EXPECT_NE(output.find("nested.append_from(other.nested)"), std::string::npos);
     input.front().members = {{"xs", SoaMemberKind::array, TypeRef{"double"}},
                              {"ys", SoaMemberKind::array, TypeRef{"double"}}};
     auto vectors{render(input)};
-    EXPECT_NE(vectors.find("auto view_nested() const -> "
-                           "std::conditional_t<Const, ChildConstView, ChildView>"),
+    EXPECT_NE(vectors.find(
+                  "auto view_nested() const -> "
+                  "std::conditional_t<Const, RowsSingleConstView_nested, RowsSingleView_nested>"),
               std::string::npos);
     input.front().vector_components = {"xs", "ys"};
     vectors = render(input);
@@ -252,7 +248,6 @@ TEST(SingleAllocationSoa, OwnerBorrowingRequiresLvalues) {
     EXPECT_NE(
         output.find("inline RowsSingleConstView::RowsSingleConstView(RowsSingleView const& other)"),
         std::string::npos);
-    EXPECT_NE(output.find("if (!state_ || !state_->data_)"), std::string::npos);
     EXPECT_NE(output.find("auto get_view(this Self&& self) -> ViewFor<Self>"), std::string::npos);
     EXPECT_NE(output.find("requires std::is_lvalue_reference_v<Self>"), std::string::npos);
     EXPECT_EQ(output.find("get_view() && ->"), std::string::npos);
@@ -266,7 +261,7 @@ TEST(SingleAllocationSoa, RejectsEmptySchema) {
 
 TEST(SingleAllocationSoa, RejectsCompactViewNameCollisions) {
     auto input{schemas()};
-    input.front().members.front().name = "columns";
+    input.front().members.front().name = "validate";
     EXPECT_THROW(render(input), std::invalid_argument);
     input = schemas();
     input.back().single_allocation = "RowsSingleLayout";
@@ -276,6 +271,11 @@ TEST(SingleAllocationSoa, RejectsCompactViewNameCollisions) {
     EXPECT_THROW(render(input), std::invalid_argument);
     input = schemas();
     input.back().members.push_back({"view_nested", SoaMemberKind::array, TypeRef{"float"}});
+    EXPECT_THROW(render(input), std::invalid_argument);
+    input = schemas();
+    input.front().name = "RowsSingleView_nested";
+    input.back().members.back().type = TypeRef{"RowsSingleView_nested"};
+    input.back().members.back().nested_schema = "RowsSingleView_nested";
     EXPECT_THROW(render(input), std::invalid_argument);
 }
 TEST(SingleAllocationSoa, EmitsOrderedAlignedBlocksAndExplicitBulkRelocation) {
@@ -290,7 +290,7 @@ TEST(SingleAllocationSoa, EmitsOrderedAlignedBlocksAndExplicitBulkRelocation) {
     EXPECT_NE(output.find("ColumnLayoutStart LayoutStart{}"), std::string::npos);
     EXPECT_NE(output.find("capacity_block_bound(NestedWideColumn)"), std::string::npos);
     EXPECT_NE(output.find("destination.nested_wide"), std::string::npos);
-    EXPECT_NE(output.find("source_data(source.nested.wide)"), std::string::npos);
+    EXPECT_NE(output.find("source_data(source.view_nested().wide())"), std::string::npos);
     EXPECT_NE(output.find("LayoutCursor cursor{blocks}"), std::string::npos);
     EXPECT_EQ(output.find("nested_wide_bytes"), std::string::npos);
 }
@@ -327,7 +327,7 @@ TEST(SingleAllocationSoa, SharesTypeChecksAlignmentAndCopySizesAcrossNestedLeave
     EXPECT_EQ(occurrences("supported_leaf<float>"), 0);
     EXPECT_EQ(occurrences("sizeof(float)"), 0);
     EXPECT_EQ(occurrences("columns.ys + source, move_count)"), 1);
-    EXPECT_EQ(occurrences("source_data(source.ys)"), 1);
+    EXPECT_EQ(occurrences("source_data(source.ys())"), 2);
     EXPECT_EQ(occurrences("_maximum_alignment"), 0);
     EXPECT_NE(owner.find("ColLayout<float> YsColumn{NestedXsColumn}"), std::string::npos);
     EXPECT_NE(owner.find("capacity_block_bound(YsColumn)"), std::string::npos);
@@ -347,7 +347,7 @@ TEST(SingleAllocationSoa, RejectsInvalidFlatteningAndOwnerNames) {
     input.back().members.back().type = TypeRef{"Opaque"};
     EXPECT_THROW(render(input), std::invalid_argument);
     input = schemas();
-    input.back().single_allocation = "RowsView";
+    input.back().single_allocation = "ChildView";
     EXPECT_THROW(render(input), std::invalid_argument);
     input = schemas();
     input.front().name = "SingleRowsStorage";
@@ -382,14 +382,9 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
     auto const output{render(input)};
     EXPECT_NE(output.find("ColLayout<int32> SecondIdsColumn{FirstNestedWideColumn}"),
               std::string::npos);
-    EXPECT_NE(output.find("auto view_first() const -> "
-                          "std::conditional_t<Const, RowsConstView, RowsView>"),
-              std::string::npos);
-    EXPECT_NE(output.find("auto view_second() const -> "
-                          "std::conditional_t<Const, RowsConstView, RowsView>"),
-              std::string::npos);
-    EXPECT_NE(output.find("GrandparentSingleLayout::SecondNestedWideColumn.offset(blocks)"),
-              std::string::npos);
+    EXPECT_NE(output.find("GrandparentSingleView_first"), std::string::npos);
+    EXPECT_NE(output.find("GrandparentSingleView_second_nested"), std::string::npos);
+    EXPECT_NE(output.find("source.view_second().view_nested().wide()"), std::string::npos);
 }
 
 }

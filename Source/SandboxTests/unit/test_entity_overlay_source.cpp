@@ -1,3 +1,4 @@
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/laser_source.h>
 #include <SandboxTests/support/DisplayEntityTestData.h>
@@ -35,8 +36,8 @@ auto make_view(ml::tests::FDisplayEntityTestData const& entities,
         batches.push_back(
             {entities.entity_types[static_cast<std::size_t>(i)],
              ids.empty() ? ids : ids.subspan(i, 1),
-             entities.locations.get_const_view(i, 1),
-             entities.velocities.get_const_view(i, 1),
+             entities.motion.get_const_view(i, 1).view_locations(),
+             entities.motion.get_const_view(i, 1).view_velocities(),
              entities.health_table.get_const_view(std::span{entities.health_indices}.subspan(i, 1),
                                                   std::span{entities.entity_ids}.subspan(i, 1)),
              std::span{entities.teams}.subspan(i, 1)});
@@ -54,7 +55,8 @@ void add_entity(ml::tests::FDisplayEntityTestData& entities,
                 ETestTeam const team = ETestTeam::White) {
     auto const index{entities.num()};
     entities.add_defaulted(1);
-    entities.locations.set(index, ml::to_native(position));
+    ::ioj::sim::set_vector(
+        entities.motion.get_view().view_locations(), index, ml::to_native(position));
     entity_type_radii[type] = radius;
     entities.teams[index] = ml::to_native(team);
     entities.entity_types[index] = type;
@@ -282,14 +284,14 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                               retained.id.raw_value(),
                               entity_id(entities, 1).raw_value());
 
-        entities.locations.ys[0] = 50.0f;
+        entities.motion.get_view().view_locations().ys()[0] = 50.0f;
         auto const switched{select_target(entities, entity_type_radii, entity_id(entities, 1))};
         TestRunner->TestEqual(TEXT("Materially better candidate switches"),
                               switched.id.raw_value(),
                               entity_id(entities, 0).raw_value());
 
-        entities.locations.ys[0] = 250.0f;
-        entities.locations.ys[1] = 250.0f;
+        entities.motion.get_view().view_locations().ys()[0] = 250.0f;
+        entities.motion.get_view().view_locations().ys()[1] = 250.0f;
         auto const cleared{select_target(entities, entity_type_radii, entity_id(entities, 1))};
         TestRunner->TestFalse(TEXT("Target outside retention is cleared"), cleared.id.is_valid());
         TestRunner->TestTrue(TEXT("Valid on-screen lost target may fade"),
@@ -377,19 +379,19 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                               comfortably_out_of_range.range_alpha,
                               0.0f);
 
-        entities.locations.xs[0] = 2500.0f;
+        entities.motion.get_view().view_locations().xs()[0] = 2500.0f;
         auto const approaching{select_target(entities, entity_type_radii)};
         TestRunner->TestEqual(
             TEXT("Mid-transition range alpha is linear"), approaching.range_alpha, 0.5f);
 
-        entities.locations.xs[0] = 1100.0f;
+        entities.motion.get_view().view_locations().xs()[0] = 1100.0f;
         entity_type_radii[::ioj::sim::EntityType::Turret] = 100.0f;
         auto const at_range_boundary{select_target(entities, entity_type_radii)};
         TestRunner->TestEqual(TEXT("Surface at range boundary has full range alpha"),
                               at_range_boundary.range_alpha,
                               1.0f);
 
-        entities.locations.xs[0] = 500.0f;
+        entities.motion.get_view().view_locations().xs()[0] = 500.0f;
         auto const inside_range{select_target(entities, entity_type_radii)};
         TestRunner->TestEqual(
             TEXT("Inside range remains clamped to one"), inside_range.range_alpha, 1.0f);
@@ -444,7 +446,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Zero-radius targets still have a usable projection scale"),
                              zero_radius.world_units_per_pixel > 0.0f);
 
-        entities.locations.xs[0] = 500.0f;
+        entities.motion.get_view().view_locations().xs()[0] = 500.0f;
         auto const nearer{select_target(entities, entity_type_radii)};
         TestRunner->TestTrue(TEXT("World units per pixel shrink as the target approaches"),
                              nearer.world_units_per_pixel < distant.world_units_per_pixel);

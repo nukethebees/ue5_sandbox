@@ -12,6 +12,23 @@
 
 namespace codegen {
 
+enum class SoaStorage { vector, single_allocation, both };
+
+constexpr auto soa_storage_name(SoaStorage const storage) -> char const* {
+    switch (storage) {
+        case SoaStorage::vector: {
+            return "vector";
+        }
+        case SoaStorage::single_allocation: {
+            return "single-allocation";
+        }
+        case SoaStorage::both: {
+            return "both";
+        }
+    }
+    return "";
+}
+
 struct SingleAllocationVariant {
     std::string name;
     TypeRef allocator;
@@ -38,6 +55,13 @@ struct SoaSchema {
     std::optional<std::string> field_mask_name;
     std::optional<std::string> field_enum_name;
     std::vector<std::string> vector_components;
+    std::optional<SoaStorage> storage;
+
+    auto emits_vector_storage() const -> bool {
+        return !layout_only && storage.value_or(single_allocation ? SoaStorage::single_allocation
+                                                                  : SoaStorage::vector) !=
+                                   SoaStorage::single_allocation;
+    }
 };
 
 } // namespace codegen

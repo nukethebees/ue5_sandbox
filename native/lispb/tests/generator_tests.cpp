@@ -617,7 +617,7 @@ TEST(Generator, RendersCompleteProductionManifest) {
     auto const manifest{load_sources(project.root / target.types, sources)};
     auto const files{render_modules(lower_modules(manifest))};
 
-    EXPECT_EQ(files.size(), 82);
+    EXPECT_EQ(files.size(), 80);
     EXPECT_EQ(files.front().path,
               "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_2f.h");
     EXPECT_EQ(files.back().path,

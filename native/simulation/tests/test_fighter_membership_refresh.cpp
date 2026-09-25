@@ -1,3 +1,4 @@
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include "support/simulation_test_support.h"
 
@@ -40,14 +41,14 @@ class FighterMembershipRefresh : public ::testing::Test {
     }
 
     void spawn(std::int32_t const count) {
-        FighterSpawnQueue spawns;
+        SingleAllocationFighterSpawnQueue spawns;
         spawns.add_defaulted(count);
         auto const data{spawns.get_view()};
         for (std::int32_t index{}; index < count; ++index) {
-            data.locations.set(index, {{100.f + 100.f * index, 100.f, 0.f}});
-            data.teams[index] = Team::Green;
-            data.parents[index] = first_parent;
-            data.targets[index] = enemy;
+            set_vector(data.view_locations(), index, {{100.f + 100.f * index, 100.f, 0.f}});
+            data.teams()[index] = Team::Green;
+            data.parents()[index] = first_parent;
+            data.targets()[index] = enemy;
         }
         LevelSimTestAccess::commit_fighter_spawns(simulation, spawns.get_const_view());
     }
@@ -71,15 +72,15 @@ class FighterMembershipRefresh : public ::testing::Test {
             std::vector<EntityUniqueId> expected;
             for (std::int32_t fighter_index{}; fighter_index < fighter_count; ++fighter_index) {
                 if (is_alive(fighter_view.healths.health(fighter_index)) &&
-                    entities.parent_ids[fighter_index] ==
-                        capitals.entities.entity_ids[capital_index]) {
-                    expected.push_back(entities.entity_ids[fighter_index]);
+                    entities.parent_ids()[fighter_index] ==
+                        capitals.entities.entity_ids()[capital_index]) {
+                    expected.push_back(entities.entity_ids()[fighter_index]);
                 }
             }
             auto const actual{simulation.get_capital_ships().get_fighter_ids(capital_index)};
             EXPECT_TRUE(std::ranges::equal(actual, expected));
             EXPECT_TRUE(std::ranges::equal(capitals.get_fighter_ids(capital_index), expected));
-            EXPECT_EQ(capitals.entities.fighter_id_spans[capital_index],
+            EXPECT_EQ(capitals.entities.fighter_id_spans()[capital_index],
                       (IndexSpan{offset, static_cast<std::int32_t>(expected.size())}));
             offset += static_cast<std::int32_t>(expected.size());
             flat.insert(flat.end(), expected.begin(), expected.end());
@@ -229,13 +230,13 @@ TEST_F(FighterMembershipRefresh, MultipleMutationsNeedOneEventualRebuild) {
 }
 
 TEST_F(FighterMembershipRefresh, PendingReparentingChangesMembershipOnlyWhenCommitted) {
-    FighterSpawnQueue spawns;
+    SingleAllocationFighterSpawnQueue spawns;
     spawns.add_defaulted(1);
     auto const data{spawns.get_view()};
-    data.locations.set(0, {{700.f, 100.f, 0.f}});
-    data.teams[0] = Team::Green;
-    data.parents[0] = first_parent;
-    data.targets[0] = enemy;
+    set_vector(data.view_locations(), 0, {{700.f, 100.f, 0.f}});
+    data.teams()[0] = Team::Green;
+    data.parents()[0] = first_parent;
+    data.targets()[0] = enemy;
     auto const revision{simulation.get_fighters().get_membership_revision()};
     LevelSimTestAccess::queue_fighter_spawns(simulation, spawns.get_const_view());
     LevelSimTestAccess::reassign_pending_fighter_spawns(simulation, first_parent, second_parent);
@@ -304,12 +305,12 @@ TEST_F(FighterMembershipRefresh, CapitalRemovalWithoutOwnedFightersInvalidatesSp
 }
 
 TEST_F(FighterMembershipRefresh, CapitalRegistrationInitializesNewEmptySpan) {
-    CapitalSpawnData spawns;
+    SingleAllocationLevelCapitalSpawnEvents spawns;
     spawns.add_defaulted(1);
     auto const data{spawns.get_view()};
-    data.locations.set(0, {{3000.f, 0.f, 0.f}});
-    data.teams[0] = Team::Green;
-    data.healths[0] = 100;
+    set_vector(data.view_locations(), 0, {{3000.f, 0.f, 0.f}});
+    data.teams()[0] = Team::Green;
+    data.healths()[0] = 100;
     auto const revision{simulation.get_fighters().get_membership_revision()};
     LevelSimTestAccess::register_capitals(simulation, spawns.get_const_view());
     EXPECT_EQ(simulation.get_fighters().get_membership_revision(), revision);

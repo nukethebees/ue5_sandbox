@@ -2299,6 +2299,9 @@ auto render_soa(codegen::SoaSchema const& schema) -> std::string {
     if (schema.layout_only) {
         output << "\n    :layout-only true";
     }
+    if (schema.storage) {
+        output << "\n    :storage " << codegen::soa_storage_name(*schema.storage);
+    }
     if (schema.field_mask_name.has_value()) {
         output << "\n    :field-mask-name " << *schema.field_mask_name;
     }
@@ -3385,7 +3388,11 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
     }
     auto const preserve_all_operations{source_operations_use_all &&
                                        schema.operations == codegen::all_storage_operations()};
-    auto const properties{std::array<SourceProperty, 8>{
+    auto const properties{std::array<SourceProperty, 9>{
+        std::pair{"storage",
+                  schema.storage
+                      ? std::optional<std::string>{codegen::soa_storage_name(*schema.storage)}
+                      : std::nullopt},
         std::pair{"view-name", schema.view_name},
         std::pair{"const-view-name", schema.const_view_name},
         std::pair{"export-specifier", schema.export_specifier},

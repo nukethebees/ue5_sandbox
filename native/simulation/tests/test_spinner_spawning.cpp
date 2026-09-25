@@ -89,39 +89,39 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
                   std::span{yaws}.first(0),
                   std::span{fire_points}.first(0));
 
-    auto const entities{entity_storage.get_const_view().columns()};
-    entities.validate_array_sizes();
+    auto const entities{entity_storage.get_const_view()};
+    entities.validate();
     ASSERT_EQ((6), (simulation.get_num_instances()));
-    ASSERT_TRUE((first_id == entities.entity_ids[0]));
-    ASSERT_TRUE((second_id == entities.entity_ids[1]));
-    ASSERT_EQ((first_cooldown), (entities.laser_cooldowns[0]));
-    ASSERT_EQ((std::int16_t{23}), (entities.laser_cooldowns[1]));
+    ASSERT_TRUE((first_id == entities.entity_ids()[0]));
+    ASSERT_TRUE((second_id == entities.entity_ids()[1]));
+    ASSERT_EQ((first_cooldown), (entities.laser_cooldowns()[0]));
+    ASSERT_EQ((std::int16_t{23}), (entities.laser_cooldowns()[1]));
     auto const count{entities.num()};
     for (std::int32_t i{}; i < count; ++i) {
         auto const source_index{i % 3};
-        ASSERT_TRUE((yaws[source_index] == entities.yaws[i]));
-        ASSERT_EQ((fire_points[source_index]), (entities.next_fire_point_indices[i]));
-        ASSERT_TRUE((locations.xs[source_index] == entities.locations.xs[i]));
-        ASSERT_TRUE((locations.ys[source_index] == entities.locations.ys[i]));
-        ASSERT_TRUE((locations.zs[source_index] == entities.locations.zs[i]));
-        ASSERT_TRUE((ledger.is_valid_unique_id(entities.entity_ids[i])));
+        ASSERT_TRUE((yaws[source_index] == entities.yaws()[i]));
+        ASSERT_EQ((fire_points[source_index]), (entities.next_fire_point_indices()[i]));
+        ASSERT_TRUE((locations.xs[source_index] == entities.view_locations().xs()[i]));
+        ASSERT_TRUE((locations.ys[source_index] == entities.view_locations().ys()[i]));
+        ASSERT_TRUE((locations.zs[source_index] == entities.view_locations().zs()[i]));
+        ASSERT_TRUE((ledger.is_valid_unique_id(entities.entity_ids()[i])));
         for (std::int32_t j{}; j < i; ++j) {
-            ASSERT_TRUE((entities.entity_ids[i] != entities.entity_ids[j]));
+            ASSERT_TRUE((entities.entity_ids()[i] != entities.entity_ids()[j]));
         }
         if (i >= 2) {
-            ASSERT_EQ((std::int16_t{0}), (entities.laser_cooldowns[i]));
+            ASSERT_EQ((std::int16_t{0}), (entities.laser_cooldowns()[i]));
         }
     }
     Access::cooldowns(simulation).restart_counter(5);
-    ASSERT_EQ((std::int16_t{23}), (entities.laser_cooldowns[5]));
+    ASSERT_EQ((std::int16_t{23}), (entities.laser_cooldowns()[5]));
 
     {
         ml::FrameScratchScope scratch_scope{frame_memory};
         Access::rotate(simulation, 5.f, scratch_scope.scratch());
     }
-    auto const rotated_entities{entity_storage.get_const_view().columns()};
+    auto const rotated_entities{entity_storage.get_const_view()};
     for (std::int32_t i{}; i < count; ++i) {
-        ASSERT_EQ((yaws[i % 3] + 5.f), (rotated_entities.yaws[i]));
+        ASSERT_EQ((yaws[i % 3] + 5.f), (rotated_entities.yaws()[i]));
     }
 }
 

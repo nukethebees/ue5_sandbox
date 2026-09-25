@@ -67,11 +67,11 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     EXPECT_EQ(initial_state.active_lasers, 0);
     EXPECT_EQ(tick_series.active_lasers.num(), 1);
     auto const& initial_history{LevelTelemetryManagerTestAccess::history(telemetry_manager)};
-    auto const initial_history_columns{initial_history.block_view(0).columns()};
+    auto const initial_history_columns{initial_history.block_view(0)};
     EXPECT_EQ(initial_history.num(), 1);
-    EXPECT_EQ(initial_history_columns.validity_masks[0].value(),
+    EXPECT_EQ(initial_history_columns.validity_masks()[0].value(),
               (std::uint64_t{1} << FieldMask::field_count) - 1);
-    EXPECT_EQ(initial_history_columns.kills[0], 0);
+    EXPECT_EQ(initial_history_columns.kills()[0], 0);
     EXPECT_EQ(tick_series.kills.last_value(), 0);
     EXPECT_LE(sizeof(LevelTelemetryManager), 1216);
     bool columns_aligned{true};
@@ -145,9 +145,9 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
 
     EXPECT_EQ(entity_state.spawned_entities, 3);
     auto const entity_change_columns{
-        LevelTelemetryManagerTestAccess::history(telemetry_manager).block_view(0).columns()};
+        LevelTelemetryManagerTestAccess::history(telemetry_manager).block_view(0)};
     EXPECT_EQ(entity_change_columns.num(), 2);
-    EXPECT_EQ(std::popcount(entity_change_columns.validity_masks[1].value()), 8);
+    EXPECT_EQ(std::popcount(entity_change_columns.validity_masks()[1].value()), 8);
 
     clock.completed_ticks = 3;
     telemetry_manager.tick();

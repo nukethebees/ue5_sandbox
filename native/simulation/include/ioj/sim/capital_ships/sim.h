@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <ioj/sim/agent_accessor.h>
-#include <ioj/sim/capital_spawn_data.h>
+#include <ioj/sim/levels/level_runtime_events.h>
 #include <ioj/sim/sim_config.h>
 #include <optional>
 #include <span>
@@ -36,8 +36,6 @@ namespace ioj::sim::capital_ships {
 class PhaseInterface;
 
 struct Sim {
-    using SpawnData = CapitalSpawnData;
-    using EntityData = CapitalEntityData;
     using EntityStorage = SingleAllocationCapitalEntityData;
 
     Sim(EntityLedger& ledger,
@@ -55,10 +53,10 @@ struct Sim {
     // Configuration
     /* **************************************** */
     auto get_read_view() const -> CapitalReadView {
-        auto const entity_data{entities.get_const_view().columns()};
+        auto const entity_data{entities.get_const_view()};
         return {entity_data,
-                entity_tables_.health.get_const_view(entity_data.health_indices,
-                                                     entity_data.entity_ids),
+                entity_tables_.health.get_const_view(entity_data.health_indices(),
+                                                     entity_data.entity_ids()),
                 get_fighter_ids(),
                 frame_changes_,
                 deaths_,
@@ -109,7 +107,6 @@ struct Sim {
     /* **************************************** */
     // Checks
     /* **************************************** */
-    void validate_array_sizes() const;
     void set_target_id(EntityUniqueId ship_id, EntityUniqueId target_id);
   private:
     /* **************************************** */
@@ -128,8 +125,9 @@ struct Sim {
     /* **************************************** */
     // Ship spawning
     /* **************************************** */
-    auto register_ships(CapitalSpawnDataConstView spawn_data) -> std::vector<EntityUniqueId>;
-    void spawn_ships(CapitalSpawnDataConstView spawn_data);
+    auto register_ships(SingleAllocationLevelCapitalSpawnEvents::ConstView spawn_data)
+        -> std::vector<EntityUniqueId>;
+    void spawn_ships(SingleAllocationLevelCapitalSpawnEvents::ConstView spawn_data);
 
     /* **************************************** */
     // Entity data

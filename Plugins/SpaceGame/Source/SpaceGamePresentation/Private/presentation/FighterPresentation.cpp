@@ -1,4 +1,5 @@
 #include "SpaceGamePresentation/presentation/FighterPresentation.h"
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
@@ -80,7 +81,7 @@ void FFighterPresentation::configure_ismc() {
 void FFighterPresentation::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_ismc);
 
-    auto const& data{view().entities};
+    auto const data{view().entities};
     auto const count{data.num()};
     visible_indices_.Reset();
     for (int32 index{}; index < count; ++index) {
@@ -92,16 +93,21 @@ void FFighterPresentation::update_ismc() {
         visible_indices_.Num(), ESandboxISMCParallelism::Auto, [this, &data](auto& chunk) {
             auto const first_index{chunk.first_index()};
             auto const chunk_count{chunk.num()};
+            auto const locations{data.view_locations()};
+            auto const aim_directions{data.view_aim_directions()};
+            auto const teams{data.teams()};
+
             for (int32 local_index{0}; local_index < chunk_count; ++local_index) {
                 auto const index{visible_indices_[first_index + local_index]};
-                auto const position{ml::to_unreal(data.locations[index])};
-                FVector const direction{ml::to_unreal(data.aim_directions[index])};
+                auto const position{ml::to_unreal(::ioj::sim::vector_at(locations, index))};
+                FVector const direction{
+                    ml::to_unreal(::ioj::sim::vector_at(aim_directions, index))};
                 auto const rotation{
                     FQuat4f{FQuat::FindBetweenNormals(FVector::ForwardVector, direction)}};
                 chunk.set_transform(local_index, position, rotation, FVector3f::OneVector);
 
                 auto custom_data{chunk.custom_data(local_index)};
-                auto const& colour{team_colours_[ml::to_unreal(data.teams[index])]};
+                auto const& colour{team_colours_[ml::to_unreal(teams[index])]};
                 custom_data[0] = colour.R;
                 custom_data[1] = colour.G;
                 custom_data[2] = colour.B;
@@ -112,21 +118,26 @@ void FFighterPresentation::update_ismc() {
 void FFighterPresentation::draw_debug_shapes() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::draw_debug_shapes);
 
-    auto const& data{view().entities};
+    auto const data{view().entities};
     auto const n{data.num()};
+    auto const locations{data.view_locations()};
+    auto const targets{data.target_ids()};
+    auto const target_locations{data.view_target_locations()};
+
     for (int32 i{0}; i < n; ++i) {
-        FVector const ship_location{ml::to_unreal(data.locations[i])};
+        FVector const ship_location{ml::to_unreal(::ioj::sim::vector_at(locations, i))};
         if (enable_ship_location_debug_drawing) {
             debug_drawer.draw_sphere(ship_location);
         }
-        if (enable_target_debug_drawing && data.target_ids[i].is_valid()) {
-            debug_drawer.draw_line(ship_location, FVector{ml::to_unreal(data.target_locations[i])});
+        if (enable_target_debug_drawing && targets[i].is_valid()) {
+            debug_drawer.draw_line(
+                ship_location, FVector{ml::to_unreal(::ioj::sim::vector_at(target_locations, i))});
         }
     }
 }
 
 void FFighterPresentation::validate_array_sizes() const {
-    view().entities.validate_array_sizes();
+    view().entities.validate();
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(visible_indices_.Num()),
         SANDBOX_NAMED_NUM(instances->get_instance_count()),

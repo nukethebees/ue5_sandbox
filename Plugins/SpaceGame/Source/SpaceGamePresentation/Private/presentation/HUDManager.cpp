@@ -865,19 +865,24 @@ void FHUDManager::collect_kill_data() {
     auto const& unique_entities{entity_ledger->get_unique_entities()};
     auto const n_unique_entities{unique_entities.num()};
 
+    auto const kills{unique_entities.kills()};
+    auto const entity_ids{unique_entities.entity_ids()};
+    auto const entity_types{unique_entities.entity_types()};
+    auto const teams{unique_entities.teams()};
+    auto const killed_by{unique_entities.killed_by()};
+
     top_killer_ids_buffer.Reset();
     for (int32 entity_index{0}; entity_index < n_unique_entities; ++entity_index) {
-        if (unique_entities.kills[entity_index] == 0) {
+        if (kills[entity_index] == 0) {
             continue;
         }
-        top_killer_ids_buffer.Add(unique_entities.entity_ids[entity_index]);
+        top_killer_ids_buffer.Add(entity_ids[entity_index]);
     }
     Algo::Sort(
         top_killer_ids_buffer,
-        [this, &unique_entities](::ioj::sim::EntityUniqueId const lhs,
-                                 ::ioj::sim::EntityUniqueId const rhs) {
-            auto const lhs_kills{unique_entities.kills[entity_ledger->get_history_index(lhs)]};
-            auto const rhs_kills{unique_entities.kills[entity_ledger->get_history_index(rhs)]};
+        [this, kills](::ioj::sim::EntityUniqueId const lhs, ::ioj::sim::EntityUniqueId const rhs) {
+            auto const lhs_kills{kills[entity_ledger->get_history_index(lhs)]};
+            auto const rhs_kills{kills[entity_ledger->get_history_index(rhs)]};
             return lhs_kills != rhs_kills ? lhs_kills > rhs_kills
                                           : entity_ledger->get_history_index(lhs) <
                                                 entity_ledger->get_history_index(rhs);
@@ -890,31 +895,28 @@ void FHUDManager::collect_kill_data() {
         auto const entity_id{top_killer_ids_buffer[top_killer_index]};
         auto const history_index{entity_ledger->get_history_index(entity_id)};
         next_data.top_killers.entity_ids[top_killer_index] = entity_id;
-        next_data.top_killers.entity_types[top_killer_index] =
-            unique_entities.entity_types[history_index];
-        next_data.top_killers.teams[top_killer_index] =
-            ml::to_unreal(unique_entities.teams[history_index]);
-        next_data.top_killers.kills[top_killer_index] =
-            static_cast<int32>(unique_entities.kills[history_index]);
+        next_data.top_killers.entity_types[top_killer_index] = entity_types[history_index];
+        next_data.top_killers.teams[top_killer_index] = ml::to_unreal(teams[history_index]);
+        next_data.top_killers.kills[top_killer_index] = static_cast<int32>(kills[history_index]);
     }
 
     next_data.team_kill_matrix = {};
     for (int32 victim_index{0}; victim_index < n_unique_entities; ++victim_index) {
-        if (!unique_entities.killed_by[victim_index].is_valid()) {
+        if (!killed_by[victim_index].is_valid()) {
             continue;
         }
 
-        auto const killer_id{unique_entities.killed_by[victim_index]};
+        auto const killer_id{killed_by[victim_index]};
         check(killer_id.is_valid());
         auto const killer_history_index{entity_ledger->get_history_index(killer_id)};
-        auto const team_index{std::to_underlying(unique_entities.teams[killer_history_index])};
-        auto const type_index{std::to_underlying(unique_entities.entity_types[victim_index])};
+        auto const team_index{std::to_underlying(teams[killer_history_index])};
+        auto const type_index{std::to_underlying(entity_types[victim_index])};
         if (team_index >= ml::ship_hud::FTeamKillMatrix::team_count ||
             type_index >= ml::ship_hud::FTeamKillMatrix::entity_type_count) {
             continue;
         }
-        next_data.team_kill_matrix.add(ml::to_unreal(unique_entities.teams[killer_history_index]),
-                                       unique_entities.entity_types[victim_index]);
+        next_data.team_kill_matrix.add(ml::to_unreal(teams[killer_history_index]),
+                                       entity_types[victim_index]);
     }
     kill_data_buffers.cycle();
 }

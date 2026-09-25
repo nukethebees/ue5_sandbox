@@ -1,3 +1,5 @@
+#include <ioj/sim/column_math.h>
+#include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include "support/simulation_test_support.h"
 
@@ -36,13 +38,13 @@ void schedule_turret(LevelSimInitData& data, Vector3f const location, SimTick co
     schedule.execution_ticks = {tick};
     schedule.event_group_counts = {{}};
     schedule.turret_spawns.add_defaulted(1);
-    auto const turret_spawns{schedule.turret_spawns.get_view().columns()};
-    turret_spawns.entity_indices[0] = data.level_events.initialisation.entity_count++;
-    turret_spawns.locations.set(0, location);
-    turret_spawns.rotations.set(0, {});
-    turret_spawns.teams[0] = Team::Green;
-    turret_spawns.healths[0] = 100;
-    turret_spawns.laser_damages[0] = 0;
+    auto const turret_spawns{schedule.turret_spawns.get_view()};
+    turret_spawns.entity_indices()[0] = data.level_events.initialisation.entity_count++;
+    set_vector(turret_spawns.view_locations(), 0, location);
+    set_rotation(turret_spawns.view_rotations(), 0, {});
+    turret_spawns.teams()[0] = Team::Green;
+    turret_spawns.healths()[0] = 100;
+    turret_spawns.laser_damages()[0] = 0;
 
     ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, 0, 1));
 }
@@ -68,7 +70,7 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     auto const view{simulation.get_read_view()};
     auto const& turrets{view.turrets.entities};
     ASSERT_EQ(turrets.num(), 1);
-    auto const turret{turrets.entity_ids[0]};
+    auto const turret{turrets.entity_ids()[0]};
     EXPECT_EQ(simulation.get_agent_accessor().read(turret)->health, 75);
     EXPECT_EQ(simulation.get_capital_ships().get_health(simulation.get_capital_ships().get_id(0)),
               75);
@@ -111,7 +113,7 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     auto const view{simulation.get_read_view()};
     auto const& fighters{view.fighters.entities};
     ASSERT_EQ(fighters.num(), 1);
-    auto const fighter{fighters.entity_ids[0]};
+    auto const fighter{fighters.entity_ids()[0]};
     EXPECT_TRUE(simulation.get_agent_accessor().is_alive(fighter));
     EXPECT_EQ(simulation.get_agent_accessor().read(fighter)->health, 75);
 
@@ -152,8 +154,8 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
 
     auto const lasers{simulation.get_read_view().lasers.entities};
     ASSERT_EQ(lasers.num(), 1);
-    EXPECT_NEAR(lasers.locations.ys[0], 200.f, 0.001f);
-    EXPECT_FLOAT_EQ(lasers.velocities.ys[0], 1000.f);
+    EXPECT_NEAR(lasers.view_locations().ys()[0], 200.f, 0.001f);
+    EXPECT_FLOAT_EQ(lasers.view_velocities().ys()[0], 1000.f);
 }
 
 TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
@@ -185,15 +187,16 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
 
-    lasers::SpawnRequests shot{};
-    shot.add({{290.f, 100.f, 0.f}},
-             {},
-             {},
-             25,
-             1000.f,
-             10000.f,
-             simulation.get_capital_ships().get_id(0),
-             {Team::White, EntityType::CapitalShip});
+    lasers::SingleAllocationLaserSpawnRequests shot{};
+    tests::add_laser_spawn(shot,
+                           {{290.f, 100.f, 0.f}},
+                           {},
+                           {},
+                           25,
+                           1000.f,
+                           10000.f,
+                           simulation.get_capital_ships().get_id(0),
+                           {Team::White, EntityType::CapitalShip});
 
     LevelSimTestAccess::queue_laser_spawns(simulation, shot.get_const_view());
 
@@ -203,7 +206,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
     simulation.advance(period * 2.0);
 
     ASSERT_EQ(simulation.get_turrets().get_num_instances(), 1);
-    auto const turret{simulation.get_read_view().turrets.entities.entity_ids[0]};
+    auto const turret{simulation.get_read_view().turrets.entities.entity_ids()[0]};
     EXPECT_EQ(simulation.get_agent_accessor().read(turret)->health, 75);
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 0);
     EXPECT_EQ(simulation.get_spatial_query_manager()
@@ -278,15 +281,16 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndQueriesAdvanceAfterw
     auto const& laser_sim{simulation.get_lasers()};
     simulation.get_player_ship_commands()->set_right_input(1.f);
 
-    lasers::SpawnRequests shot{};
-    shot.add({{290.f, 100.f, 0.f}},
-             {},
-             {},
-             25,
-             1000.f,
-             10000.f,
-             simulation.get_capital_ships().get_id(0),
-             {Team::White, EntityType::CapitalShip});
+    lasers::SingleAllocationLaserSpawnRequests shot{};
+    tests::add_laser_spawn(shot,
+                           {{290.f, 100.f, 0.f}},
+                           {},
+                           {},
+                           25,
+                           1000.f,
+                           10000.f,
+                           simulation.get_capital_ships().get_id(0),
+                           {Team::White, EntityType::CapitalShip});
 
     LevelSimTestAccess::queue_laser_spawns(simulation, shot.get_const_view());
 
@@ -342,8 +346,9 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     add_capital_spawn(data, {{40.f, 0.f, 0.f}}, Team::White, -1, 60.f, 60.f, 100);
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
-    lasers::SpawnRequests shot;
-    shot.add({}, {}, {}, 25, 1000.f, 50.f, {}, {Team::Green, EntityType::PlayerShip});
+    lasers::SingleAllocationLaserSpawnRequests shot;
+    tests::add_laser_spawn(
+        shot, {}, {}, {}, 25, 1000.f, 50.f, {}, {Team::Green, EntityType::PlayerShip});
     LevelSimTestAccess::queue_laser_spawns(simulation, shot.get_const_view());
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period());
@@ -441,11 +446,12 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto const initial{simulation.get_read_view().capitals.entities};
-    std::vector<EntityUniqueId> visual_ids{initial.entity_ids.begin(), initial.entity_ids.end()};
-    auto const survivor_id{initial.entity_ids[2]};
+    std::vector<EntityUniqueId> visual_ids{initial.entity_ids().begin(),
+                                           initial.entity_ids().end()};
+    auto const survivor_id{initial.entity_ids()[2]};
     DirectDamageEvents damage;
-    damage.add(initial.entity_ids[0], 100, {});
-    damage.add(initial.entity_ids[1], 100, {});
+    damage.add(initial.entity_ids()[0], 100, {});
+    damage.add(initial.entity_ids()[1], 100, {});
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period() * 2.0);
@@ -461,7 +467,7 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
     }
     ASSERT_EQ(visual_ids.size(), 1);
     ASSERT_EQ(final.entities.num(), 1);
-    EXPECT_EQ(visual_ids[0], final.entities.entity_ids[0]);
+    EXPECT_EQ(visual_ids[0], final.entities.entity_ids()[0]);
     EXPECT_EQ(simulation.get_agent_indexes().find(survivor_id), 0);
     EXPECT_TRUE(simulation.get_agent_accessor().read_alive(survivor_id));
 }

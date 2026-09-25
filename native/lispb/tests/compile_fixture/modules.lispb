@@ -293,6 +293,7 @@
     :operations (all)
     (member values array int32))
   (struct FParents
+    :storage both
     :operations (all)
     (member keys array int32)
     (member children nested @child

@@ -51,7 +51,10 @@ struct ColumnLayoutBase {
                                    ? previous.allocation_alignment
                                    : alignment}
         , element_size_{element_size}
-        , previous_{&previous} {}
+        , previous_{&previous}
+        , gap_offset_{layout_align(
+              previous.column_count == 0 ? 0 : previous.gap_offset_ + column_gap, alignment)}
+        , linear_offset_{previous.linear_offset_ && previous.block_end % alignment == 0} {}
   public:
     std::size_t capacity_granularity{};
     std::size_t column_gap{};
@@ -77,6 +80,11 @@ struct ColumnLayoutBase {
     }
 
     constexpr auto offset(std::size_t const blocks) const noexcept -> std::size_t {
+        // When every preceding capacity block meets this alignment, only the fixed gaps
+        // need padding. Resolve the column directly instead of walking its predecessors.
+        if (linear_offset_) {
+            return block_offset * blocks + gap_offset_;
+        }
         return previous_ == nullptr ? 0 : offset_after(previous_->next_offset(blocks));
     }
     constexpr auto data_end(std::size_t const blocks) const noexcept -> std::size_t {
@@ -98,6 +106,8 @@ struct ColumnLayoutBase {
 
     std::size_t element_size_{};
     ColumnLayoutBase const* previous_{};
+    std::size_t gap_offset_{};
+    bool linear_offset_{true};
 };
 
 struct ColumnLayoutStart : ColumnLayoutBase {

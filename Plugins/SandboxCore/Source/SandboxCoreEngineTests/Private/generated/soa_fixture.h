@@ -191,152 +191,6 @@ struct Vectors {
     TArray<float> zs;
 };
 
-struct RowsView;
-struct RowsConstView;
-
-struct RowsConstView {
-    using View = RowsView;
-    using ConstView = RowsConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.bytes, self.nested);
-    }
-
-    auto get_view() const -> ConstView;
-    auto get_view(int32 const offset, int32 const count) const -> ConstView;
-    auto get_const_view() const -> ConstView;
-    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
-    auto num() const noexcept -> int32;
-    auto is_empty() const noexcept -> bool;
-    void validate_array_sizes() const;
-    auto slice(int32 const offset, int32 const count) const -> ConstView;
-    auto left(int32 const count) const -> ConstView;
-    auto right(int32 const count) const -> ConstView;
-
-    TConstArrayView<uint8> bytes;
-    Vectors::ConstView nested;
-};
-
-struct RowsView {
-    using View = RowsView;
-    using ConstView = RowsConstView;
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.bytes, self.nested);
-    }
-
-    auto get_view() -> View;
-    auto get_view(int32 const offset, int32 const count) -> View;
-    auto get_view() const -> ConstView;
-    auto get_view(int32 const offset, int32 const count) const -> ConstView;
-    auto get_const_view() const -> ConstView;
-    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
-    auto num() const noexcept -> int32;
-    auto is_empty() const noexcept -> bool;
-    void validate_array_sizes() const;
-    auto slice(int32 const offset, int32 const count) -> View;
-    auto left(int32 const count) -> View;
-    auto right(int32 const count) -> View;
-    auto slice(int32 const offset, int32 const count) const -> ConstView;
-    auto left(int32 const count) const -> ConstView;
-    auto right(int32 const count) const -> ConstView;
-
-    TArrayView<uint8> bytes;
-    Vectors::View nested;
-};
-
-struct Rows {
-    using View = RowsView;
-    using ConstView = RowsConstView;
-
-    void reset();
-
-    void reserve(int32 const count);
-
-    void add_uninitialised(int32 const count);
-
-    void add_defaulted(int32 const count);
-
-    void remove_at_swap(int32 const index,
-                        int32 const count,
-                        EAllowShrinking const allow_shrinking) {
-        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
-    }
-
-    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
-
-    template <typename Other>
-    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
-        ml::copy_element(bytes, dst_i, other.bytes, src_i);
-        ml::copy_element(nested, dst_i, other.nested, src_i);
-    }
-
-    template <typename Other>
-    void
-        copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
-        ml::copy_elements(bytes, dst_i, other.bytes, src_i, count);
-        ml::copy_elements(nested, dst_i, other.nested, src_i, count);
-    }
-
-    template <typename Other>
-    void copy_to_tail(Other const& other) {
-        auto const count{other.num()};
-        check(num() >= count);
-        copy_elements(num() - count, other, 0, count);
-    }
-
-    template <typename Other>
-    void append_from(Other const& other)
-        requires ml::SupportsApplyArrayPairsWith<Rows, Other>
-    {
-        ml::append_from(bytes, other.bytes);
-        nested.append_from(other.nested);
-    }
-
-    void apply_permutation(TArrayView<int32> indices);
-
-    template <typename Compare>
-    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
-    }
-
-    template <auto Compare>
-    void sort(TArrayView<int32> scratch_indices) {
-        ml::soa_ops::sort<Compare>(*this, scratch_indices);
-    }
-
-    template <typename TFunc>
-    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.bytes, self.nested);
-    }
-
-    template <typename Self, typename Other, typename TFunc>
-    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.bytes, other.bytes, self.nested, other.nested);
-    }
-
-    auto get_view() -> View;
-    auto get_view(int32 const offset, int32 const count) -> View;
-    auto get_view() const -> ConstView;
-    auto get_view(int32 const offset, int32 const count) const -> ConstView;
-    auto get_const_view() const -> ConstView;
-    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
-    auto num() const noexcept -> int32;
-    auto is_empty() const noexcept -> bool;
-    void validate_array_sizes() const;
-    auto slice(int32 const offset, int32 const count) -> View;
-    auto left(int32 const count) -> View;
-    auto right(int32 const count) -> View;
-    auto slice(int32 const offset, int32 const count) const -> ConstView;
-    auto left(int32 const count) const -> ConstView;
-    auto right(int32 const count) const -> ConstView;
-
-    TArray<uint8> bytes;
-    Vectors nested;
-};
-
 struct RowsSingleView;
 struct RowsSingleConstView;
 struct RowsSingleLayout {
@@ -394,6 +248,7 @@ struct RowsSingleViewImpl : ml::soa_storage::CompactViewState<Const> {
     using Base::column_data;
     using Base::column_data_unchecked;
     using Base::count_;
+    using Base::offset_;
     using Base::state_;
   public:
     auto bytes() const -> TArrayView<Element<uint8>> {
@@ -412,31 +267,13 @@ struct RowsSingleViewImpl : ml::soa_storage::CompactViewState<Const> {
         auto const stride{RowsSingleLayout::NestedYsColumn.offset(blocks) - first};
         return {this->template column_data_unchecked<float>(first), stride, count_};
     }
-    auto columns() const -> std::conditional_t<Const, RowsConstView, RowsView> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return std::conditional_t<Const, RowsConstView, RowsView>{
-            {this->template column_data_unchecked<uint8>(
-                 RowsSingleLayout::BytesColumn.offset(blocks)),
-             count_},
-            std::conditional_t<Const, VectorsConstView, VectorsView>{
-                {this->template column_data_unchecked<float>(
-                     RowsSingleLayout::NestedXsColumn.offset(blocks)),
-                 count_},
-                {this->template column_data_unchecked<float>(
-                     RowsSingleLayout::NestedYsColumn.offset(blocks)),
-                 count_},
-                {this->template column_data_unchecked<float>(
-                     RowsSingleLayout::NestedZsColumn.offset(blocks)),
-                 count_}}};
-    }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
+        auto column_0{bytes()};
+        auto column_1{view_nested().xs()};
+        auto column_2{view_nested().ys()};
+        auto column_3{view_nested().zs()};
+        return std::forward<Func>(func)(column_0, column_1, column_2, column_3);
     }
 };
 struct RowsSingleConstView : RowsSingleViewImpl<true> {
@@ -451,8 +288,7 @@ struct RowsSingleConstView : RowsSingleViewImpl<true> {
         return slice(offset, count);
     }
 };
-static_assert(sizeof(RowsSingleConstView) == 16);
-static_assert(std::is_trivially_copyable_v<RowsSingleConstView>);
+static_assert(ml::soa_storage_detail::validate_compact_view<RowsSingleConstView>());
 struct RowsSingleView : RowsSingleViewImpl<false> {
     using Base = RowsSingleViewImpl<false>;
     using Base::Base;
@@ -464,8 +300,7 @@ struct RowsSingleView : RowsSingleViewImpl<false> {
         return slice(offset, count);
     }
 };
-static_assert(sizeof(RowsSingleView) == 16);
-static_assert(std::is_trivially_copyable_v<RowsSingleView>);
+static_assert(ml::soa_storage_detail::validate_compact_view<RowsSingleView>());
 inline RowsSingleConstView::RowsSingleConstView(RowsSingleView const& other)
     : Base{other} {}
 struct SingleRows
@@ -483,25 +318,21 @@ struct SingleRows
     }
     using View = RowsSingleView;
     using ConstView = RowsSingleConstView;
-    using SchemaConstView = RowsConstView;
-    using ml::soa_storage::StorageOperations::append_from;
-    auto append_from(RowsConstView const& source) -> size_type {
-        source.validate_array_sizes();
-        auto const count{source.num()};
-        auto const first{num_};
-        ml::soa_storage::require((count <= max_capacity - first));
-        if (count == 0) {
-            return first;
-        }
-        auto const new_num{first + count};
-        if (new_num > capacity_) {
-            ml::soa_storage::require(!ordinary_source_aliases_storage(source));
-            reallocate(ml::soa_storage::growth_capacity(new_num, capacity_, capacity_block_bound));
-        }
-        append_columns(source, first, count);
-        num_ = new_num;
-        return first;
-    }
+    template <typename Source>
+    inline static constexpr bool accepts_source = requires(Source const& source) {
+        { source.num() } -> std::convertible_to<size_type>;
+        source.validate();
+        { ml::soa_storage::source_data(source.bytes()) } -> std::convertible_to<uint8 const*>;
+        {
+            ml::soa_storage::source_data(source.view_nested().xs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::soa_storage::source_data(source.view_nested().ys())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::soa_storage::source_data(source.view_nested().zs())
+        } -> std::convertible_to<float const*>;
+    };
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -609,29 +440,26 @@ struct SingleRows
                 copy_columns(columns, index, source, count);
             });
     }
-    auto ordinary_source_aliases_storage(RowsConstView const& source) const noexcept -> bool {
-        if (data_ == nullptr) {
-            return false;
-        }
-        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
-        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
-        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
-            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
-            return address >= allocation_begin && address < allocation_end;
-        };
-        return ml::soa_storage::any_column(source, aliases);
-    }
     template <typename Columns>
-    void append_columns(Columns const& source, size_type first, size_type count) {
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count) {
         auto const destination{get_data(first)};
         ml::soa_storage::copy_n(
-            destination.bytes, ml::soa_storage::source_data(source.bytes), count);
-        ml::soa_storage::copy_n(
-            destination.nested_xs, ml::soa_storage::source_data(source.nested.xs), count);
-        ml::soa_storage::copy_n(
-            destination.nested_ys, ml::soa_storage::source_data(source.nested.ys), count);
-        ml::soa_storage::copy_n(
-            destination.nested_zs, ml::soa_storage::source_data(source.nested.zs), count);
+            destination.bytes, ml::soa_storage::source_data(source.bytes()) + source_first, count);
+        ml::soa_storage::copy_n(destination.nested_xs,
+                                ml::soa_storage::source_data(source.view_nested().xs()) +
+                                    source_first,
+                                count);
+        ml::soa_storage::copy_n(destination.nested_ys,
+                                ml::soa_storage::source_data(source.view_nested().ys()) +
+                                    source_first,
+                                count);
+        ml::soa_storage::copy_n(destination.nested_zs,
+                                ml::soa_storage::source_data(source.view_nested().zs()) +
+                                    source_first,
+                                count);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::soa_storage::MimallocStorageAllocator::allocate(

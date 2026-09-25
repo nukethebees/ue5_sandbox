@@ -2,52 +2,49 @@
 
 namespace ioj::sim {
 FrameVectors3f::FrameVectors3f(ml::FrameScratch& scratch)
-    : xs{&scratch}
-    , ys{&scratch}
-    , zs{&scratch} {}
+    : xs_{&scratch}
+    , ys_{&scratch}
+    , zs_{&scratch} {}
 
 void FrameVectors3f::reserve(size_type const count) {
-    xs.reserve(count);
-    ys.reserve(count);
-    zs.reserve(count);
+    xs_.reserve(count);
+    ys_.reserve(count);
+    zs_.reserve(count);
 }
 void FrameVectors3f::set_num(size_type const count) {
-    xs.set_num(count);
-    ys.set_num(count);
-    zs.set_num(count);
+    xs_.set_num(count);
+    ys_.set_num(count);
+    zs_.set_num(count);
 }
 void FrameVectors3f::clear() noexcept {
-    xs.clear();
-    ys.clear();
-    zs.clear();
+    xs_.clear();
+    ys_.clear();
+    zs_.clear();
 }
 void FrameVectors3f::add(Vector3f const value) {
-    xs.add(value.X);
-    ys.add(value.Y);
-    zs.add(value.Z);
+    xs_.add(value.X);
+    ys_.add(value.Y);
+    zs_.add(value.Z);
 }
 void FrameVectors3f::set(size_type const index, Vector3f const value) {
-    xs[index] = value.X;
-    ys[index] = value.Y;
-    zs[index] = value.Z;
+    xs_[index] = value.X;
+    ys_[index] = value.Y;
+    zs_[index] = value.Z;
 }
 
 auto FrameVectors3f::get_view() noexcept -> Vectors3fView {
-    return {xs.data(), ys.data(), zs.data(), num()};
+    return {xs_.data(), ys_.data(), zs_.data(), num()};
 }
 auto FrameVectors3f::get_view() const noexcept -> Vectors3fConstView {
-    return {xs.data(), ys.data(), zs.data(), num()};
+    return {xs_.data(), ys_.data(), zs_.data(), num()};
 }
 auto FrameVectors3f::get_const_view() const noexcept -> Vectors3fConstView {
     return get_view();
 }
 auto FrameVectors3f::num() const noexcept -> size_type {
-    return xs.num();
+    return xs_.num();
 }
 auto FrameVectors3f::is_empty() const noexcept -> bool {
-    return xs.is_empty();
-}
-void FrameVectors3f::validate_array_sizes() const {
-    get_const_view().validate_array_sizes();
+    return xs_.is_empty();
 }
 } // namespace ioj::sim

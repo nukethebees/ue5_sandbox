@@ -228,8 +228,11 @@ auto lower_one_soa(SoaSchema const& schema,
         return {};
     }
     auto const standard_library{backend == SoaBackend::standard_library};
-    auto lowered{standard_library ? lower_native_soa(schema, schemas, types)
-                                  : lower_soa_impl(schema, types, {})};
+    LoweredSoa lowered;
+    if (schema.emits_vector_storage()) {
+        lowered = standard_library ? lower_native_soa(schema, schemas, types)
+                                   : lower_soa_impl(schema, types, {});
+    }
     if (standard_library && schema.field_mask_name.has_value()) {
         NodeListBuilder header;
         header.append(field_mask_nodes(schema, true))
@@ -275,6 +278,9 @@ auto lower_soa_declaration(SoaSchema const& schema,
                            lispb::schema::TypeGraph const& type_graph,
                            std::optional<std::string> const& allocator_prefix)
     -> DeclarationEmission {
+    if (allocator_prefix.has_value() && !schema.emits_vector_storage()) {
+        return {};
+    }
     std::vector<SoaSchema> original_schemas;
     for (auto const& declaration : module.declarations) {
         if (auto const* soa{std::get_if<SoaSchema>(&declaration)}) {

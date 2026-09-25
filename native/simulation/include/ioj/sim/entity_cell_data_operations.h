@@ -13,45 +13,45 @@ inline void add(EntityCellData& data,
                 EntityUniqueId const id) {
     auto const index{data.num()};
     data.add_uninitialised(1);
-    data.get_view().columns().set(index,
-                                  min_point.X,
-                                  min_point.Y,
-                                  min_point.Z,
-                                  max_point.X,
-                                  max_point.Y,
-                                  max_point.Z,
-                                  min_cell.x,
-                                  min_cell.y,
-                                  min_cell.z,
-                                  max_cell.x,
-                                  max_cell.y,
-                                  max_cell.z,
-                                  id);
+    auto const view{data.get_view()};
+    view.min_point_xs()[index] = min_point.X;
+    view.min_point_ys()[index] = min_point.Y;
+    view.min_point_zs()[index] = min_point.Z;
+    view.max_point_xs()[index] = max_point.X;
+    view.max_point_ys()[index] = max_point.Y;
+    view.max_point_zs()[index] = max_point.Z;
+    view.min_cell_xs()[index] = min_cell.x;
+    view.min_cell_ys()[index] = min_cell.y;
+    view.min_cell_zs()[index] = min_cell.z;
+    view.max_cell_xs()[index] = max_cell.x;
+    view.max_cell_ys()[index] = max_cell.y;
+    view.max_cell_zs()[index] = max_cell.z;
+    view.entity_ids()[index] = id;
 }
 
-[[nodiscard]] inline auto min_point_at(EntityCellDataColumnsConstView const& data,
+[[nodiscard]] inline auto min_point_at(EntityCellData::ConstView const data,
                                        std::int32_t const index) -> Vector3f {
     auto const element{static_cast<std::size_t>(index)};
     return ml::make_vector3f(
-        data.min_point_xs[element], data.min_point_ys[element], data.min_point_zs[element]);
+        data.min_point_xs()[element], data.min_point_ys()[element], data.min_point_zs()[element]);
 }
 
-[[nodiscard]] inline auto max_point_at(EntityCellDataColumnsConstView const& data,
+[[nodiscard]] inline auto max_point_at(EntityCellData::ConstView const data,
                                        std::int32_t const index) -> Vector3f {
     auto const element{static_cast<std::size_t>(index)};
     return ml::make_vector3f(
-        data.max_point_xs[element], data.max_point_ys[element], data.max_point_zs[element]);
+        data.max_point_xs()[element], data.max_point_ys()[element], data.max_point_zs()[element]);
 }
 
-[[nodiscard]] inline auto min_cell_at(EntityCellDataColumnsConstView const& data,
+[[nodiscard]] inline auto min_cell_at(EntityCellData::ConstView const data,
                                       std::int32_t const index) -> CellCoord {
     auto const element{static_cast<std::size_t>(index)};
-    return {data.min_cell_xs[element], data.min_cell_ys[element], data.min_cell_zs[element]};
+    return {data.min_cell_xs()[element], data.min_cell_ys()[element], data.min_cell_zs()[element]};
 }
 
-[[nodiscard]] inline auto max_cell_at(EntityCellDataColumnsConstView const& data,
+[[nodiscard]] inline auto max_cell_at(EntityCellData::ConstView const data,
                                       std::int32_t const index) -> CellCoord {
     auto const element{static_cast<std::size_t>(index)};
-    return {data.max_cell_xs[element], data.max_cell_ys[element], data.max_cell_zs[element]};
+    return {data.max_cell_xs()[element], data.max_cell_ys()[element], data.max_cell_zs()[element]};
 }
 } // namespace ioj::sim::collision

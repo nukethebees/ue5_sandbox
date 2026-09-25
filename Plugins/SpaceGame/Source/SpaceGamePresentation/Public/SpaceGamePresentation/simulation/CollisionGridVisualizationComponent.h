@@ -1,12 +1,10 @@
 #pragma once
 
 #include <Components/PrimitiveComponent.h>
+#include <ioj/sim/entity_cell_data.h>
+#include <ioj/sim/world_aabbs.h>
 
 #include "CollisionGridVisualizationComponent.generated.h"
-
-namespace ioj::sim::collision {
-struct WorldAABBsColumnsConstView;
-}
 
 struct FCollisionGridVisualizationSettings {
     FIntVector3 dimensions{FIntVector3::ZeroValue};
@@ -24,8 +22,8 @@ class SPACEGAMEPRESENTATION_API UCollisionGridVisualizationComponent final
     UCollisionGridVisualizationComponent();
 
     void configure(TOptional<FCollisionGridVisualizationSettings> settings);
-    void update_collision_bounds(::ioj::sim::collision::WorldAABBsColumnsConstView entity_aabbs,
-                                 ::ioj::sim::collision::WorldAABBsColumnsConstView static_aabbs);
+    void update_collision_bounds(::ioj::sim::collision::EntityCellData::ConstView entity_aabbs,
+                                 ::ioj::sim::collision::WorldAABBs::ConstView static_aabbs);
     void clear_collision_bounds();
     void clear();
 

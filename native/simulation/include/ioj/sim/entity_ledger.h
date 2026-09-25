@@ -16,8 +16,8 @@ class EntityLedger {
     void record_damage(EntityUniqueId victim, EntityUniqueId attacker, Health damage);
     void record_shots(std::span<EntityUniqueId const> instigators);
 
-    auto get_unique_entities() const noexcept -> EntityHistoryColumnsConstView {
-        return history_.get_const_view().columns();
+    auto get_unique_entities() const noexcept -> EntityHistory::ConstView {
+        return history_.get_const_view();
     }
     auto get_history_index(EntityUniqueId id) const noexcept -> std::int32_t {
         return ids_.history_index(id);

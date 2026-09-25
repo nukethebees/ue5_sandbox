@@ -151,9 +151,9 @@ TEST(EntityLedger, PreservesHistoricalAccountingAndResetsLevelIdentity) {
     EXPECT_EQ(ledger.get_kills(killer), 2u);
     EXPECT_EQ(ledger.count_kills(), 2);
     EXPECT_EQ(ledger.count_alive(), 0);
-    EXPECT_EQ(ledger.get_unique_entities().killed_by[ledger.get_history_index(first_victim)],
+    EXPECT_EQ(ledger.get_unique_entities().killed_by()[ledger.get_history_index(first_victim)],
               killer);
-    EXPECT_EQ(ledger.get_unique_entities().killed_by[ledger.get_history_index(second_victim)],
+    EXPECT_EQ(ledger.get_unique_entities().killed_by()[ledger.get_history_index(second_victim)],
               killer);
 
     auto const& telemetry{ledger.get_combat_telemetry()};

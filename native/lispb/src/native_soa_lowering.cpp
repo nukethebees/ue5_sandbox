@@ -155,16 +155,12 @@ auto lower_native_soa(SoaSchema const& schema,
     auto const view_leaf = [&](auto const& leaf, std::string_view const prefix = {}) {
         auto expression{std::string{prefix} + join(leaf.path, ".")};
         if (vector3f_schema || nested_vector3f(leaf.path.front())) {
-            expression += "_span()";
+            expression += "()";
         }
         return expression;
     };
     auto const view_leaf_data = [&](auto const& leaf, std::string_view const prefix = {}) {
-        auto expression{std::string{prefix} + join(leaf.path, ".")};
-        if (!vector3f_schema && !nested_vector3f(leaf.path.front())) {
-            expression += ".data()";
-        }
-        return expression;
+        return view_leaf(leaf, prefix) + ".data()";
     };
 
     if (!vector3f_schema) {
@@ -260,7 +256,11 @@ auto lower_native_soa(SoaSchema const& schema,
                     if (parameter.nested) {
                         out << parameter.column << ".set(index, new_" << parameter.name << ");\n";
                     } else {
-                        out << parameter.column << "[static_cast<std::size_t>(index)] = new_"
+                        auto column{parameter.column};
+                        if (nested_vector3f(column.substr(0, column.find('.')))) {
+                            column += "()";
+                        }
+                        out << column << "[static_cast<std::size_t>(index)] = new_"
                             << parameter.name << ";\n";
                     }
                 }

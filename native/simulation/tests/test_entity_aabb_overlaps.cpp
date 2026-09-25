@@ -1,3 +1,4 @@
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/testing/spatial_query_manager_test_access.h>
 #include <sandbox/core/frame_memory_resource.h>
@@ -152,13 +153,13 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     EXPECT_EQ(fixture.get_static_overlaps().num(), 0)
         << "A dynamic-only overlap produces no static record";
 
-    auto owner{fixture.owners.capitals.get_view().columns()};
-    owner.locations.set(0, {{300.f, 0.f, 0.f}});
-    owner.locations.set(1, {{315.f, 0.f, 0.f}});
+    auto owner{fixture.owners.capitals.get_view()};
+    set_vector(owner.view_locations(), 0, {{300.f, 0.f, 0.f}});
+    set_vector(owner.view_locations(), 1, {{315.f, 0.f, 0.f}});
     fixture.query_manager.reset_frame_collision_events();
     fixture.refresh_and_detect_overlaps(fixture.ids(handles));
     check_single_pair(fixture.get_entity_overlaps(), moved, stationary);
-    owner.teams[0] = Team::Green;
+    owner.teams()[0] = Team::Green;
     auto const& queries{fixture.query_manager};
     std::array<EntityUniqueId, 2> nearby{};
     EXPECT_EQ(
@@ -173,7 +174,7 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
                   {{300.f, 0.f, 0.f}}, EntityType::CapitalShip, 20.f, stationary, nearby_ids),
               1);
     EXPECT_EQ(nearby_ids[0], moved);
-    fixture.owners.health_table.get_view(owner.health_indices, owner.entity_ids).health(0) = 0;
+    fixture.owners.health_table.get_view(owner.health_indices(), owner.entity_ids()).health(0) = 0;
     EXPECT_EQ(
         queries.collect_non_team_entities_in_range({{300.f, 0.f, 0.f}}, Team::Blue, 20.f, nearby),
         0);

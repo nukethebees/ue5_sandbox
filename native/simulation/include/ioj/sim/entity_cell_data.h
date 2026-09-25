@@ -4,562 +4,11 @@
 #pragma once
 
 #include "ioj/sim/entity_unique_id.h"
-#include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/native_soa/vector_storage_ops.h"
 
 #include <utility>
 
 namespace ioj::sim::collision {
-struct EntityCellDataColumnsView;
-struct EntityCellDataColumnsConstView;
-struct EntityCellDataColumnsConstView {
-    using View = EntityCellDataColumnsView;
-    using ConstView = EntityCellDataColumnsConstView;
-    using size_type = std::int32_t;
-    std::span<float const> min_point_xs;
-    std::span<float const> min_point_ys;
-    std::span<float const> min_point_zs;
-    std::span<float const> max_point_xs;
-    std::span<float const> max_point_ys;
-    std::span<float const> max_point_zs;
-    std::span<std::int32_t const> min_cell_xs;
-    std::span<std::int32_t const> min_cell_ys;
-    std::span<std::int32_t const> min_cell_zs;
-    std::span<std::int32_t const> max_cell_xs;
-    std::span<std::int32_t const> max_cell_ys;
-    std::span<std::int32_t const> max_cell_zs;
-    std::span<EntityUniqueId const> entity_ids;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(min_point_xs.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(min_point_xs);
-        fn(min_point_ys);
-        fn(min_point_zs);
-        fn(max_point_xs);
-        fn(max_point_ys);
-        fn(max_point_zs);
-        fn(min_cell_xs);
-        fn(min_cell_ys);
-        fn(min_cell_zs);
-        fn(max_cell_xs);
-        fn(max_cell_ys);
-        fn(max_cell_zs);
-        fn(entity_ids);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const
-        -> EntityCellDataColumnsConstView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
-        return {
-            min_point_xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            min_point_ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            min_point_zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_point_xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_point_ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_point_zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            min_cell_xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            min_cell_ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            min_cell_zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_cell_xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_cell_ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_cell_zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> EntityCellDataColumnsConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> EntityCellDataColumnsConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            min_point_xs,
-            min_point_ys,
-            min_point_zs,
-            max_point_xs,
-            max_point_ys,
-            max_point_zs,
-            min_cell_xs,
-            min_cell_ys,
-            min_cell_zs,
-            max_cell_xs,
-            max_cell_ys,
-            max_cell_zs,
-            entity_ids,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> EntityCellDataColumnsConstView {
-        return slice(0, count);
-    }
-    auto right(size_type const count) const -> EntityCellDataColumnsConstView {
-        return slice(num() - count, count);
-    }
-};
-struct EntityCellDataColumnsView {
-    using View = EntityCellDataColumnsView;
-    using ConstView = EntityCellDataColumnsConstView;
-    using size_type = std::int32_t;
-    std::span<float> min_point_xs;
-    std::span<float> min_point_ys;
-    std::span<float> min_point_zs;
-    std::span<float> max_point_xs;
-    std::span<float> max_point_ys;
-    std::span<float> max_point_zs;
-    std::span<std::int32_t> min_cell_xs;
-    std::span<std::int32_t> min_cell_ys;
-    std::span<std::int32_t> min_cell_zs;
-    std::span<std::int32_t> max_cell_xs;
-    std::span<std::int32_t> max_cell_ys;
-    std::span<std::int32_t> max_cell_zs;
-    std::span<EntityUniqueId> entity_ids;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(min_point_xs.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(min_point_xs);
-        fn(min_point_ys);
-        fn(min_point_zs);
-        fn(max_point_xs);
-        fn(max_point_ys);
-        fn(max_point_zs);
-        fn(min_cell_xs);
-        fn(min_cell_ys);
-        fn(min_cell_zs);
-        fn(max_cell_xs);
-        fn(max_cell_ys);
-        fn(max_cell_zs);
-        fn(entity_ids);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> EntityCellDataColumnsView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
-        return {
-            min_point_xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            min_point_ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            min_point_zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_point_xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_point_ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_point_zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            min_cell_xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            min_cell_ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            min_cell_zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_cell_xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_cell_ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_cell_zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> EntityCellDataColumnsView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> EntityCellDataColumnsView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            min_point_xs,
-            min_point_ys,
-            min_point_zs,
-            max_point_xs,
-            max_point_ys,
-            max_point_zs,
-            min_cell_xs,
-            min_cell_ys,
-            min_cell_zs,
-            max_cell_xs,
-            max_cell_ys,
-            max_cell_zs,
-            entity_ids,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> EntityCellDataColumnsView { return slice(0, count); }
-    auto right(size_type const count) const -> EntityCellDataColumnsView {
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
-             float const new_min_point_xs,
-             float const new_min_point_ys,
-             float const new_min_point_zs,
-             float const new_max_point_xs,
-             float const new_max_point_ys,
-             float const new_max_point_zs,
-             std::int32_t const new_min_cell_xs,
-             std::int32_t const new_min_cell_ys,
-             std::int32_t const new_min_cell_zs,
-             std::int32_t const new_max_cell_xs,
-             std::int32_t const new_max_cell_ys,
-             std::int32_t const new_max_cell_zs,
-             EntityUniqueId const new_entity_ids) const {
-        ml::native_soa::require(index >= 0 && index < num());
-        min_point_xs[static_cast<std::size_t>(index)] = new_min_point_xs;
-        min_point_ys[static_cast<std::size_t>(index)] = new_min_point_ys;
-        min_point_zs[static_cast<std::size_t>(index)] = new_min_point_zs;
-        max_point_xs[static_cast<std::size_t>(index)] = new_max_point_xs;
-        max_point_ys[static_cast<std::size_t>(index)] = new_max_point_ys;
-        max_point_zs[static_cast<std::size_t>(index)] = new_max_point_zs;
-        min_cell_xs[static_cast<std::size_t>(index)] = new_min_cell_xs;
-        min_cell_ys[static_cast<std::size_t>(index)] = new_min_cell_ys;
-        min_cell_zs[static_cast<std::size_t>(index)] = new_min_cell_zs;
-        max_cell_xs[static_cast<std::size_t>(index)] = new_max_cell_xs;
-        max_cell_ys[static_cast<std::size_t>(index)] = new_max_cell_ys;
-        max_cell_zs[static_cast<std::size_t>(index)] = new_max_cell_zs;
-        entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
-    }
-};
-struct EntityCellDataColumns {
-    using View = EntityCellDataColumnsView;
-    using ConstView = EntityCellDataColumnsConstView;
-    using size_type = std::int32_t;
-    ml::native_soa::Vector<float> min_point_xs;
-    ml::native_soa::Vector<float> min_point_ys;
-    ml::native_soa::Vector<float> min_point_zs;
-    ml::native_soa::Vector<float> max_point_xs;
-    ml::native_soa::Vector<float> max_point_ys;
-    ml::native_soa::Vector<float> max_point_zs;
-    ml::native_soa::Vector<std::int32_t> min_cell_xs;
-    ml::native_soa::Vector<std::int32_t> min_cell_ys;
-    ml::native_soa::Vector<std::int32_t> min_cell_zs;
-    ml::native_soa::Vector<std::int32_t> max_cell_xs;
-    ml::native_soa::Vector<std::int32_t> max_cell_ys;
-    ml::native_soa::Vector<std::int32_t> max_cell_zs;
-    ml::native_soa::Vector<EntityUniqueId> entity_ids;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(min_point_xs.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(min_point_xs);
-        fn(min_point_ys);
-        fn(min_point_zs);
-        fn(max_point_xs);
-        fn(max_point_ys);
-        fn(max_point_zs);
-        fn(min_cell_xs);
-        fn(min_cell_ys);
-        fn(min_cell_zs);
-        fn(max_cell_xs);
-        fn(max_cell_ys);
-        fn(max_cell_zs);
-        fn(entity_ids);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(min_point_xs);
-        fn(min_point_ys);
-        fn(min_point_zs);
-        fn(max_point_xs);
-        fn(max_point_ys);
-        fn(max_point_zs);
-        fn(min_cell_xs);
-        fn(min_cell_ys);
-        fn(min_cell_zs);
-        fn(max_cell_xs);
-        fn(max_cell_ys);
-        fn(max_cell_zs);
-        fn(entity_ids);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             float const new_min_point_xs,
-             float const new_min_point_ys,
-             float const new_min_point_zs,
-             float const new_max_point_xs,
-             float const new_max_point_ys,
-             float const new_max_point_zs,
-             std::int32_t const new_min_cell_xs,
-             std::int32_t const new_min_cell_ys,
-             std::int32_t const new_min_cell_zs,
-             std::int32_t const new_max_cell_xs,
-             std::int32_t const new_max_cell_ys,
-             std::int32_t const new_max_cell_zs,
-             EntityUniqueId const new_entity_ids) {
-        get_view().set(index,
-                       new_min_point_xs,
-                       new_min_point_ys,
-                       new_min_point_zs,
-                       new_max_point_xs,
-                       new_max_point_ys,
-                       new_max_point_zs,
-                       new_min_cell_xs,
-                       new_min_cell_ys,
-                       new_min_cell_zs,
-                       new_max_cell_xs,
-                       new_max_cell_ys,
-                       new_max_cell_zs,
-                       new_entity_ids);
-    }
-    auto add(float const new_min_point_xs,
-             float const new_min_point_ys,
-             float const new_min_point_zs,
-             float const new_max_point_xs,
-             float const new_max_point_ys,
-             float const new_max_point_zs,
-             std::int32_t const new_min_cell_xs,
-             std::int32_t const new_min_cell_ys,
-             std::int32_t const new_min_cell_zs,
-             std::int32_t const new_max_cell_xs,
-             std::int32_t const new_max_cell_ys,
-             std::int32_t const new_max_cell_zs,
-             EntityUniqueId const new_entity_ids) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            min_point_xs.emplace_back(new_min_point_xs);
-            min_point_ys.emplace_back(new_min_point_ys);
-            min_point_zs.emplace_back(new_min_point_zs);
-            max_point_xs.emplace_back(new_max_point_xs);
-            max_point_ys.emplace_back(new_max_point_ys);
-            max_point_zs.emplace_back(new_max_point_zs);
-            min_cell_xs.emplace_back(new_min_cell_xs);
-            min_cell_ys.emplace_back(new_min_cell_ys);
-            min_cell_zs.emplace_back(new_min_cell_zs);
-            max_cell_xs.emplace_back(new_max_cell_xs);
-            max_cell_ys.emplace_back(new_max_cell_ys);
-            max_cell_zs.emplace_back(new_max_cell_zs);
-            entity_ids.emplace_back(new_entity_ids);
-        });
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
-        }
-        {
-            auto const address{ml::address_cast(source.min_point_xs.data())};
-            auto const begin{ml::address_cast(min_point_xs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + min_point_xs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.min_point_ys.data())};
-            auto const begin{ml::address_cast(min_point_ys.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + min_point_ys.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.min_point_zs.data())};
-            auto const begin{ml::address_cast(min_point_zs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + min_point_zs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.max_point_xs.data())};
-            auto const begin{ml::address_cast(max_point_xs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + max_point_xs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.max_point_ys.data())};
-            auto const begin{ml::address_cast(max_point_ys.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + max_point_ys.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.max_point_zs.data())};
-            auto const begin{ml::address_cast(max_point_zs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + max_point_zs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.min_cell_xs.data())};
-            auto const begin{ml::address_cast(min_cell_xs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + min_cell_xs.size() * sizeof(std::int32_t));
-        }
-        {
-            auto const address{ml::address_cast(source.min_cell_ys.data())};
-            auto const begin{ml::address_cast(min_cell_ys.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + min_cell_ys.size() * sizeof(std::int32_t));
-        }
-        {
-            auto const address{ml::address_cast(source.min_cell_zs.data())};
-            auto const begin{ml::address_cast(min_cell_zs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + min_cell_zs.size() * sizeof(std::int32_t));
-        }
-        {
-            auto const address{ml::address_cast(source.max_cell_xs.data())};
-            auto const begin{ml::address_cast(max_cell_xs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + max_cell_xs.size() * sizeof(std::int32_t));
-        }
-        {
-            auto const address{ml::address_cast(source.max_cell_ys.data())};
-            auto const begin{ml::address_cast(max_cell_ys.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + max_cell_ys.size() * sizeof(std::int32_t));
-        }
-        {
-            auto const address{ml::address_cast(source.max_cell_zs.data())};
-            auto const begin{ml::address_cast(max_cell_zs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + max_cell_zs.size() * sizeof(std::int32_t));
-        }
-        {
-            auto const address{ml::address_cast(source.entity_ids.data())};
-            auto const begin{ml::address_cast(entity_ids.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + entity_ids.size() * sizeof(EntityUniqueId));
-        }
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            min_point_xs.insert(
-                min_point_xs.end(), source.min_point_xs.data(), source.min_point_xs.data() + count);
-            min_point_ys.insert(
-                min_point_ys.end(), source.min_point_ys.data(), source.min_point_ys.data() + count);
-            min_point_zs.insert(
-                min_point_zs.end(), source.min_point_zs.data(), source.min_point_zs.data() + count);
-            max_point_xs.insert(
-                max_point_xs.end(), source.max_point_xs.data(), source.max_point_xs.data() + count);
-            max_point_ys.insert(
-                max_point_ys.end(), source.max_point_ys.data(), source.max_point_ys.data() + count);
-            max_point_zs.insert(
-                max_point_zs.end(), source.max_point_zs.data(), source.max_point_zs.data() + count);
-            min_cell_xs.insert(
-                min_cell_xs.end(), source.min_cell_xs.data(), source.min_cell_xs.data() + count);
-            min_cell_ys.insert(
-                min_cell_ys.end(), source.min_cell_ys.data(), source.min_cell_ys.data() + count);
-            min_cell_zs.insert(
-                min_cell_zs.end(), source.min_cell_zs.data(), source.min_cell_zs.data() + count);
-            max_cell_xs.insert(
-                max_cell_xs.end(), source.max_cell_xs.data(), source.max_cell_xs.data() + count);
-            max_cell_ys.insert(
-                max_cell_ys.end(), source.max_cell_ys.data(), source.max_cell_ys.data() + count);
-            max_cell_zs.insert(
-                max_cell_zs.end(), source.max_cell_zs.data(), source.max_cell_zs.data() + count);
-            entity_ids.insert(
-                entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            min_point_xs,
-            min_point_ys,
-            min_point_zs,
-            max_point_xs,
-            max_point_ys,
-            max_point_zs,
-            min_cell_xs,
-            min_cell_ys,
-            min_cell_zs,
-            max_cell_xs,
-            max_cell_ys,
-            max_cell_zs,
-            entity_ids,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            min_point_xs,
-            min_point_ys,
-            min_point_zs,
-            max_point_xs,
-            max_point_ys,
-            max_point_zs,
-            min_cell_xs,
-            min_cell_ys,
-            min_cell_zs,
-            max_cell_xs,
-            max_cell_ys,
-            max_cell_zs,
-            entity_ids,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View { return slice(num() - count, count); }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        min_point_xs[static_cast<std::size_t>(dst_index)] =
-            other.min_point_xs[static_cast<std::size_t>(src_index)];
-        min_point_ys[static_cast<std::size_t>(dst_index)] =
-            other.min_point_ys[static_cast<std::size_t>(src_index)];
-        min_point_zs[static_cast<std::size_t>(dst_index)] =
-            other.min_point_zs[static_cast<std::size_t>(src_index)];
-        max_point_xs[static_cast<std::size_t>(dst_index)] =
-            other.max_point_xs[static_cast<std::size_t>(src_index)];
-        max_point_ys[static_cast<std::size_t>(dst_index)] =
-            other.max_point_ys[static_cast<std::size_t>(src_index)];
-        max_point_zs[static_cast<std::size_t>(dst_index)] =
-            other.max_point_zs[static_cast<std::size_t>(src_index)];
-        min_cell_xs[static_cast<std::size_t>(dst_index)] =
-            other.min_cell_xs[static_cast<std::size_t>(src_index)];
-        min_cell_ys[static_cast<std::size_t>(dst_index)] =
-            other.min_cell_ys[static_cast<std::size_t>(src_index)];
-        min_cell_zs[static_cast<std::size_t>(dst_index)] =
-            other.min_cell_zs[static_cast<std::size_t>(src_index)];
-        max_cell_xs[static_cast<std::size_t>(dst_index)] =
-            other.max_cell_xs[static_cast<std::size_t>(src_index)];
-        max_cell_ys[static_cast<std::size_t>(dst_index)] =
-            other.max_cell_ys[static_cast<std::size_t>(src_index)];
-        max_cell_zs[static_cast<std::size_t>(dst_index)] =
-            other.max_cell_zs[static_cast<std::size_t>(src_index)];
-        entity_ids[static_cast<std::size_t>(dst_index)] =
-            other.entity_ids[static_cast<std::size_t>(src_index)];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
-    }
-};
 
 struct EntityCellDataColumnsSingleView;
 struct EntityCellDataColumnsSingleConstView;
@@ -627,6 +76,7 @@ struct EntityCellDataColumnsSingleViewImpl : ml::native_soa::CompactViewState<Co
     using Base::column_data;
     using Base::column_data_unchecked;
     using Base::count_;
+    using Base::offset_;
     using Base::state_;
   public:
     auto min_point_xs() const -> std::span<Element<float>> {
@@ -694,57 +144,21 @@ struct EntityCellDataColumnsSingleViewImpl : ml::native_soa::CompactViewState<Co
                     EntityCellDataColumnsSingleLayout::EntityIdsColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto columns() const
-        -> std::conditional_t<Const, EntityCellDataColumnsConstView, EntityCellDataColumnsView> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return std::conditional_t<Const, EntityCellDataColumnsConstView, EntityCellDataColumnsView>{
-            {this->template column_data_unchecked<float>(
-                 EntityCellDataColumnsSingleLayout::MinPointXsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<float>(
-                 EntityCellDataColumnsSingleLayout::MinPointYsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<float>(
-                 EntityCellDataColumnsSingleLayout::MinPointZsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<float>(
-                 EntityCellDataColumnsSingleLayout::MaxPointXsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<float>(
-                 EntityCellDataColumnsSingleLayout::MaxPointYsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<float>(
-                 EntityCellDataColumnsSingleLayout::MaxPointZsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<std::int32_t>(
-                 EntityCellDataColumnsSingleLayout::MinCellXsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<std::int32_t>(
-                 EntityCellDataColumnsSingleLayout::MinCellYsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<std::int32_t>(
-                 EntityCellDataColumnsSingleLayout::MinCellZsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<std::int32_t>(
-                 EntityCellDataColumnsSingleLayout::MaxCellXsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<std::int32_t>(
-                 EntityCellDataColumnsSingleLayout::MaxCellYsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<std::int32_t>(
-                 EntityCellDataColumnsSingleLayout::MaxCellZsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<EntityUniqueId>(
-                 EntityCellDataColumnsSingleLayout::EntityIdsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
     template <typename Func>
     void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
+        func(min_point_xs());
+        func(min_point_ys());
+        func(min_point_zs());
+        func(max_point_xs());
+        func(max_point_ys());
+        func(max_point_zs());
+        func(min_cell_xs());
+        func(min_cell_ys());
+        func(min_cell_zs());
+        func(max_cell_xs());
+        func(max_cell_ys());
+        func(max_cell_zs());
+        func(entity_ids());
     }
 };
 struct EntityCellDataColumnsSingleConstView : EntityCellDataColumnsSingleViewImpl<true> {
@@ -759,8 +173,8 @@ struct EntityCellDataColumnsSingleConstView : EntityCellDataColumnsSingleViewImp
         return slice(offset, count);
     }
 };
-static_assert(sizeof(EntityCellDataColumnsSingleConstView) == 16);
-static_assert(std::is_trivially_copyable_v<EntityCellDataColumnsSingleConstView>);
+static_assert(
+    ml::soa_storage_detail::validate_compact_view<EntityCellDataColumnsSingleConstView>());
 struct EntityCellDataColumnsSingleView : EntityCellDataColumnsSingleViewImpl<false> {
     using Base = EntityCellDataColumnsSingleViewImpl<false>;
     using Base::Base;
@@ -772,8 +186,7 @@ struct EntityCellDataColumnsSingleView : EntityCellDataColumnsSingleViewImpl<fal
         return slice(offset, count);
     }
 };
-static_assert(sizeof(EntityCellDataColumnsSingleView) == 16);
-static_assert(std::is_trivially_copyable_v<EntityCellDataColumnsSingleView>);
+static_assert(ml::soa_storage_detail::validate_compact_view<EntityCellDataColumnsSingleView>());
 inline EntityCellDataColumnsSingleConstView::EntityCellDataColumnsSingleConstView(
     EntityCellDataColumnsSingleView const& other)
     : Base{other} {}
@@ -792,25 +205,38 @@ struct EntityCellData
     }
     using View = EntityCellDataColumnsSingleView;
     using ConstView = EntityCellDataColumnsSingleConstView;
-    using SchemaConstView = EntityCellDataColumnsConstView;
-    using ml::native_soa::StorageOperations::append_from;
-    auto append_from(EntityCellDataColumnsConstView const& source) -> size_type {
-        source.validate_array_sizes();
-        auto const count{source.num()};
-        auto const first{num_};
-        ml::native_soa::require((count <= max_capacity - first));
-        if (count == 0) {
-            return first;
-        }
-        auto const new_num{first + count};
-        if (new_num > capacity_) {
-            ml::native_soa::require(!ordinary_source_aliases_storage(source));
-            reallocate(ml::native_soa::growth_capacity(new_num, capacity_, capacity_block_bound));
-        }
-        append_columns(source, first, count);
-        num_ = new_num;
-        return first;
-    }
+    template <typename Source>
+    inline static constexpr bool accepts_source = requires(Source const& source) {
+        { source.num() } -> std::convertible_to<size_type>;
+        source.validate();
+        { ml::native_soa::source_data(source.min_point_xs()) } -> std::convertible_to<float const*>;
+        { ml::native_soa::source_data(source.min_point_ys()) } -> std::convertible_to<float const*>;
+        { ml::native_soa::source_data(source.min_point_zs()) } -> std::convertible_to<float const*>;
+        { ml::native_soa::source_data(source.max_point_xs()) } -> std::convertible_to<float const*>;
+        { ml::native_soa::source_data(source.max_point_ys()) } -> std::convertible_to<float const*>;
+        { ml::native_soa::source_data(source.max_point_zs()) } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.min_cell_xs())
+        } -> std::convertible_to<std::int32_t const*>;
+        {
+            ml::native_soa::source_data(source.min_cell_ys())
+        } -> std::convertible_to<std::int32_t const*>;
+        {
+            ml::native_soa::source_data(source.min_cell_zs())
+        } -> std::convertible_to<std::int32_t const*>;
+        {
+            ml::native_soa::source_data(source.max_cell_xs())
+        } -> std::convertible_to<std::int32_t const*>;
+        {
+            ml::native_soa::source_data(source.max_cell_ys())
+        } -> std::convertible_to<std::int32_t const*>;
+        {
+            ml::native_soa::source_data(source.max_cell_zs())
+        } -> std::convertible_to<std::int32_t const*>;
+        {
+            ml::native_soa::source_data(source.entity_ids())
+        } -> std::convertible_to<EntityUniqueId const*>;
+    };
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -978,49 +404,51 @@ struct EntityCellData
                 copy_columns(columns, index, source, count);
             });
     }
-    auto
-        ordinary_source_aliases_storage(EntityCellDataColumnsConstView const& source) const noexcept
-        -> bool {
-        if (data_ == nullptr) {
-            return false;
-        }
-        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
-        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
-        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
-            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
-            return address >= allocation_begin && address < allocation_end;
-        };
-        return ml::native_soa::any_column(source, aliases);
-    }
     template <typename Columns>
-    void append_columns(Columns const& source, size_type first, size_type count) {
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count) {
         auto const destination{get_data(first)};
-        ml::native_soa::copy_n(
-            destination.min_point_xs, ml::native_soa::source_data(source.min_point_xs), count);
-        ml::native_soa::copy_n(
-            destination.min_point_ys, ml::native_soa::source_data(source.min_point_ys), count);
-        ml::native_soa::copy_n(
-            destination.min_point_zs, ml::native_soa::source_data(source.min_point_zs), count);
-        ml::native_soa::copy_n(
-            destination.max_point_xs, ml::native_soa::source_data(source.max_point_xs), count);
-        ml::native_soa::copy_n(
-            destination.max_point_ys, ml::native_soa::source_data(source.max_point_ys), count);
-        ml::native_soa::copy_n(
-            destination.max_point_zs, ml::native_soa::source_data(source.max_point_zs), count);
-        ml::native_soa::copy_n(
-            destination.min_cell_xs, ml::native_soa::source_data(source.min_cell_xs), count);
-        ml::native_soa::copy_n(
-            destination.min_cell_ys, ml::native_soa::source_data(source.min_cell_ys), count);
-        ml::native_soa::copy_n(
-            destination.min_cell_zs, ml::native_soa::source_data(source.min_cell_zs), count);
-        ml::native_soa::copy_n(
-            destination.max_cell_xs, ml::native_soa::source_data(source.max_cell_xs), count);
-        ml::native_soa::copy_n(
-            destination.max_cell_ys, ml::native_soa::source_data(source.max_cell_ys), count);
-        ml::native_soa::copy_n(
-            destination.max_cell_zs, ml::native_soa::source_data(source.max_cell_zs), count);
-        ml::native_soa::copy_n(
-            destination.entity_ids, ml::native_soa::source_data(source.entity_ids), count);
+        ml::native_soa::copy_n(destination.min_point_xs,
+                               ml::native_soa::source_data(source.min_point_xs()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.min_point_ys,
+                               ml::native_soa::source_data(source.min_point_ys()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.min_point_zs,
+                               ml::native_soa::source_data(source.min_point_zs()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.max_point_xs,
+                               ml::native_soa::source_data(source.max_point_xs()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.max_point_ys,
+                               ml::native_soa::source_data(source.max_point_ys()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.max_point_zs,
+                               ml::native_soa::source_data(source.max_point_zs()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.min_cell_xs,
+                               ml::native_soa::source_data(source.min_cell_xs()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.min_cell_ys,
+                               ml::native_soa::source_data(source.min_cell_ys()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.min_cell_zs,
+                               ml::native_soa::source_data(source.min_cell_zs()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.max_cell_xs,
+                               ml::native_soa::source_data(source.max_cell_xs()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.max_cell_ys,
+                               ml::native_soa::source_data(source.max_cell_ys()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.max_cell_zs,
+                               ml::native_soa::source_data(source.max_cell_zs()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.entity_ids,
+                               ml::native_soa::source_data(source.entity_ids()) + source_first,
+                               count);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(

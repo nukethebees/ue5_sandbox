@@ -27,14 +27,14 @@ void LevelEventManager::initialise(CompiledLevelEvents data, EntityUniqueId cons
     spawn_group_offset_ = 0;
     mission_group_offset_ = 0;
     spawn_manager_.initialise(initialisation_.entity_count,
-                              schedule_.capital_spawns.get_const_view().columns(),
-                              schedule_.turret_spawns.get_const_view().columns());
+                              schedule_.capital_spawns.get_const_view(),
+                              schedule_.turret_spawns.get_const_view());
     if (initialisation_.player_entity_index != -1) {
         spawn_manager_.set_entity_id(initialisation_.player_entity_index, player_id);
     }
-    spawn_manager_.spawn_initial(data.initial_spawns.capital_spawns.get_const_view().columns(),
-                                 data.initial_spawns.turret_spawns.get_const_view().columns(),
-                                 data.initial_spawns.spinner_spawns.get_const_view().columns());
+    spawn_manager_.spawn_initial(data.initial_spawns.capital_spawns.get_const_view(),
+                                 data.initial_spawns.turret_spawns.get_const_view(),
+                                 data.initial_spawns.spinner_spawns.get_const_view());
 
     mission_manager_.bind_level_event_data(schedule_.mission_events.values,
                                            spawn_manager_.get_entity_ids());

@@ -60,7 +60,7 @@ void MissionManager::begin_play() {
 
             if (resolved_kill_target <= 0) {
                 auto const hero_row{entity_ledger.get_history_index(hero_entity_ids[0])};
-                auto const hero_team{entity_ledger.get_unique_entities().teams[hero_row]};
+                auto const hero_team{entity_ledger.get_unique_entities().teams()[hero_row]};
                 resolved_kill_target = entity_ledger.count_alive_not_on_team(hero_team);
             }
 

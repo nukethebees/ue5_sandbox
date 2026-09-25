@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/sim/agent_display_batch.h>
-#include <ioj/sim/vectors3f.h>
+#include <ioj/sim/laser_soa.h>
 
 #include <cstdint>
 #include <vector>
@@ -9,8 +9,7 @@
 namespace ml::tests {
 struct FDisplayEntityTestData {
     void add_defaulted(std::int32_t const count) {
-        locations.add_defaulted(count);
-        velocities.add_defaulted(count);
+        motion.add_defaulted(count);
         health_indices.resize(health_indices.size() + static_cast<std::size_t>(count));
         entity_ids.resize(entity_ids.size() + static_cast<std::size_t>(count));
         teams.resize(teams.size() + static_cast<std::size_t>(count));
@@ -33,8 +32,7 @@ struct FDisplayEntityTestData {
         health_table.get_view(health_indices, entity_ids).health(row) = health;
     }
 
-    ::ioj::sim::Vectors3f locations;
-    ::ioj::sim::Vectors3f velocities;
+    ::ioj::sim::lasers::SingleAllocationLaserEntities motion;
     ::ioj::sim::HealthTable health_table;
     std::vector<::ioj::sim::HealthIndex> health_indices;
     std::vector<::ioj::sim::EntityUniqueId> entity_ids;

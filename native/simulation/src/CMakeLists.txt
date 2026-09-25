@@ -13,7 +13,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/batch_operations.h
   ../include/ioj/sim/capital_death_event.h
   ../include/ioj/sim/capital_entity_data.h
-  ../include/ioj/sim/capital_spawn_data.h
   ../include/ioj/sim/collision_events.h
   ../include/ioj/sim/collision_types.h
   ../include/ioj/sim/collision_grid_entity_storage.h
@@ -92,12 +91,13 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/step_response.h
   ../include/ioj/sim/system_read_views.h
   ../include/ioj/sim/testing/level_sim_test_access.h
+  ../include/ioj/sim/testing/laser_spawns.h
   ../include/ioj/sim/testing/spatial_query_manager_test_access.h
   ../include/ioj/sim/trace_hits.h
   ../include/ioj/sim/transform3d.h
   ../include/ioj/sim/turret_entity_data.h
-  ../include/ioj/sim/turret_spawn_data.h
   ../include/ioj/sim/vector_operations.h
+  ../include/ioj/sim/column_math.h
   ../include/ioj/sim/vector_types.h
   ../include/ioj/sim/vectors3f.h
   ../include/ioj/sim/world_aabb_operations.h

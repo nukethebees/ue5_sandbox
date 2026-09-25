@@ -2,42 +2,42 @@
 
 namespace ioj::sim {
 FrameRotators3f::FrameRotators3f(ml::FrameScratch& scratch)
-    : pitches{&scratch}
-    , yaws{&scratch}
-    , rolls{&scratch} {}
+    : pitches_{&scratch}
+    , yaws_{&scratch}
+    , rolls_{&scratch} {}
 
 void FrameRotators3f::reserve(std::int32_t const count) {
-    pitches.reserve(count);
-    yaws.reserve(count);
-    rolls.reserve(count);
+    pitches_.reserve(count);
+    yaws_.reserve(count);
+    rolls_.reserve(count);
 }
 void FrameRotators3f::set_num(std::int32_t const count) {
-    pitches.set_num(count);
-    yaws.set_num(count);
-    rolls.set_num(count);
+    pitches_.set_num(count);
+    yaws_.set_num(count);
+    rolls_.set_num(count);
 }
 void FrameRotators3f::clear() noexcept {
-    pitches.clear();
-    yaws.clear();
-    rolls.clear();
+    pitches_.clear();
+    yaws_.clear();
+    rolls_.clear();
 }
 void FrameRotators3f::add(Rotator3f const value) {
-    pitches.add(value.pitch);
-    yaws.add(value.yaw);
-    rolls.add(value.roll);
+    pitches_.add(value.pitch);
+    yaws_.add(value.yaw);
+    rolls_.add(value.roll);
 }
 void FrameRotators3f::set(std::int32_t const index, Rotator3f const value) {
-    pitches[index] = value.pitch;
-    yaws[index] = value.yaw;
-    rolls[index] = value.roll;
+    pitches_[index] = value.pitch;
+    yaws_[index] = value.yaw;
+    rolls_[index] = value.roll;
 }
 auto FrameRotators3f::get_view() noexcept -> Rotators3fView {
-    return {pitches, yaws, rolls};
+    return {pitches_, yaws_, rolls_};
 }
 auto FrameRotators3f::get_const_view() const noexcept -> Rotators3fConstView {
-    return {pitches, yaws, rolls};
+    return {pitches_, yaws_, rolls_};
 }
 auto FrameRotators3f::num() const noexcept -> std::int32_t {
-    return pitches.num();
+    return pitches_.num();
 }
 } // namespace ioj::sim

@@ -163,9 +163,9 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
     DirectDamageEvents capital_damage;
     capital_damage.add_uninitialised(1);
     capital_damage.damaged_entities[0] =
-        parent_death_simulation.get_read_view().capitals.entities.entity_ids[0];
+        parent_death_simulation.get_read_view().capitals.entities.entity_ids()[0];
     capital_damage.instigators[0] =
-        parent_death_simulation.get_read_view().capitals.entities.entity_ids[1];
+        parent_death_simulation.get_read_view().capitals.entities.entity_ids()[1];
     capital_damage.damage_amounts[0] = 100;
     LevelSimTestAccess::queue_direct_damage_events(parent_death_simulation,
                                                    capital_damage.get_const_view());
@@ -232,15 +232,15 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
 
     auto const tracked_fighter{white_fighters.front()};
     auto const tracked_index{simulation.get_agent_indexes().find(tracked_fighter)};
-    auto const before_location{fighter_simulation.get_locations()[tracked_index]};
+    auto const before_location{vector_at(fighter_simulation.get_locations(), tracked_index)};
     for (std::int32_t tick{}; tick < 10; ++tick) {
         simulation.advance(simulation.get_clock().get_tick_period());
     }
     auto const after_index{simulation.get_agent_indexes().find(tracked_fighter)};
     EXPECT_TRUE(after_index >= 0) << "Orphaned fighter remains live while simulating";
     if (after_index >= 0) {
-        EXPECT_TRUE(
-            location_changed(before_location, fighter_simulation.get_locations()[after_index]))
+        EXPECT_TRUE(location_changed(before_location,
+                                     vector_at(fighter_simulation.get_locations(), after_index)))
             << "Orphaned fighter continues moving";
     }
 
@@ -300,8 +300,8 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     DirectDamageEvents damage;
     damage.add_uninitialised(1);
     damage.damaged_entities[0] = simulation.get_fighters().get_entity_ids()[0];
-    auto const original_id{simulation.get_read_view().fighters.entities.entity_ids[0]};
-    damage.instigators[0] = simulation.get_read_view().capitals.entities.entity_ids[0];
+    auto const original_id{simulation.get_read_view().fighters.entities.entity_ids()[0]};
+    damage.instigators[0] = simulation.get_read_view().capitals.entities.entity_ids()[0];
     damage.damage_amounts[0] = 100000;
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.advance(simulation.get_clock().get_tick_period());
@@ -319,9 +319,9 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 1)
         << "Exactly one replacement uses the released slot";
 
-    auto const replacement_id{simulation.get_read_view().fighters.entities.entity_ids[0]};
+    auto const replacement_id{simulation.get_read_view().fighters.entities.entity_ids()[0]};
     EXPECT_NE(replacement_id, original_id);
-    stale_orders.add(simulation.get_read_view().capitals.entities.entity_ids[0],
+    stale_orders.add(simulation.get_read_view().capitals.entities.entity_ids()[0],
                      FighterOrder{1, 0},
                      FighterTask::Standby,
                      {});

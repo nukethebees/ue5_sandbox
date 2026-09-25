@@ -1,5 +1,7 @@
 #include "test_collision_uniform_grid.h"
 #include <bit>
+#include <ioj/sim/column_math.h>
+#include <ioj/sim/entity_cell_data_operations.h>
 #include "../support/collision_agent_storage.h"
 #include "../support/simulation_test_support.h"
 
@@ -265,11 +267,11 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
         expected_ids{};
     expected_ids[EntityType::PlayerShip] = player->unique_entity_id;
     expected_ids[EntityType::Turret] =
-        simulation.get_turrets().get_read_view().entities.entity_ids[0];
+        simulation.get_turrets().get_read_view().entities.entity_ids()[0];
     expected_ids[EntityType::CapitalShip] = simulation.get_capital_ships().get_id(0);
     expected_ids[EntityType::Fighter] = fighter_ids[0];
     expected_ids[EntityType::TubeSpinner] =
-        simulation.get_spinners().get_read_view().entities.entity_ids[0];
+        simulation.get_spinners().get_read_view().entities.entity_ids()[0];
     auto const& agents{simulation.get_agent_accessor()};
     auto const& spatial_queries{simulation.get_spatial_query_manager()};
     auto const& grid{SpatialQueryManagerTestAccess::uniform_grid(spatial_queries)};
@@ -467,8 +469,7 @@ void CollisionUniformGridTraceRunner::test_handles_zero_length_traces() {
         << "Stationary point resolves containing entity";
     EXPECT_LE(HMM_LenV3(starts[0] - hits.locations[0]), hit_location_tolerance)
         << "Stationary point hit location is the trace point";
-    EXPECT_EQ(TraceHit{0}, hits.hits[1])
-        << "Stationary point outside AABB does not record a hit";
+    EXPECT_EQ(TraceHit{0}, hits.hits[1]) << "Stationary point outside AABB does not record a hit";
 }
 
 void CollisionUniformGridTraceRunner::test_includes_negative_endpoint_boundary() {
@@ -506,8 +507,7 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
     std::vector<Vector3f> const rotated_starts{{{-50.f, 150.f, 0.f}}, {{100.f, 0.f, 0.f}}};
     std::vector<Vector3f> const rotated_ends{{{50.f, 150.f, 0.f}}, {{200.f, 0.f, 0.f}}};
     auto const rotated_hits{run_traces(rotated, rotated_starts, rotated_ends)};
-    EXPECT_EQ(TraceHit{1}, rotated_hits.hits[0])
-        << "Trace finds rotated box in its new grid cell";
+    EXPECT_EQ(TraceHit{1}, rotated_hits.hits[0]) << "Trace finds rotated box in its new grid cell";
     EXPECT_EQ(TraceHit{0}, rotated_hits.hits[1]) << "Trace misses old unrotated box";
     EXPECT_LE(HMM_LenV3(Vector3f{{-5.f, 150.f, 0.f}} - rotated_hits.locations[0]), 0.001f)
         << "Rotated box has swapped extents";
@@ -516,15 +516,15 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
     EXPECT_LE(HMM_LenV3(Vector3f{{-7.f, 150.f, 0.f}} - swept.locations[0]), 0.001f)
         << "Sweep expands rotated world bounds";
     auto const cached{rotated.grid.get_entity_world_bounds()};
-    EXPECT_LE(HMM_LenV3(Vector3f{{-5.f, 130.f, -10.f}} - collision::min_at(cached, 0)), 0.001f)
+    EXPECT_LE(HMM_LenV3(Vector3f{{-5.f, 130.f, -10.f}} - collision::min_point_at(cached, 0)),
+              0.001f)
         << "Visualisation reads the same rotated cached bounds";
 
     rotated.update_entities(std::vector<Vector3f>{Vector3f{}}, std::vector<std::uint8_t>{1});
     auto const updated_hits{run_traces(rotated, rotated_starts, rotated_ends)};
     EXPECT_EQ(TraceHit{0}, updated_hits.hits[0])
         << "Owner rotation update removes old rotated bounds";
-    EXPECT_EQ(TraceHit{1}, updated_hits.hits[1])
-        << "Owner rotation update reaches grid queries";
+    EXPECT_EQ(TraceHit{1}, updated_hits.hits[1]) << "Owner rotation update reaches grid queries";
     rotated.update_entities(std::vector<Vector3f>{Vector3f{}}, std::vector<std::uint8_t>{0});
     auto const reused_handle{rotated.add_entity(Vector3f{})};
     EXPECT_TRUE(rotated.handles[0] != reused_handle)
@@ -1234,8 +1234,8 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
 
     {
         TraceFixture authoritative{initial_locations, aabb_half_extents};
-        auto owner{authoritative.owners.capitals.get_view().columns()};
-        owner.locations.set(0, moved_location);
+        auto owner{authoritative.owners.capitals.get_view()};
+        set_vector(owner.view_locations(), 0, moved_location);
         check_traces(authoritative, initial_cases);
         authoritative.grid.rebuild_entity_grid(authoritative.aabbs);
         std::vector<ExpectedTrace> const owner_cases{
@@ -1246,7 +1246,7 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
              {{moved_location.X - aabb_half_extents.X, 0.f, 0.f}}},
         };
         check_traces(authoritative, owner_cases);
-        authoritative.owners.health_table.get_view(owner.health_indices, owner.entity_ids)
+        authoritative.owners.health_table.get_view(owner.health_indices(), owner.entity_ids())
             .health(0) = 0;
         std::vector<ExpectedTrace> const dead_owner_cases{
             {"Logical owner death filters cached geometry without rebuild",
@@ -1310,8 +1310,7 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
         {{replacement_location.X + trace_offset, 0.f, 0.f}},
     };
     auto const replacement_hits{run_traces(fixture, replacement_starts, replacement_ends)};
-    EXPECT_EQ(TraceHit{1}, replacement_hits.hits[0])
-        << "Replacement entity is added on rebuild";
+    EXPECT_EQ(TraceHit{1}, replacement_hits.hits[0]) << "Replacement entity is added on rebuild";
     if (replacement_hits.hits[0] != 0) {
         EXPECT_EQ(replacement_handle, replacement_hits.entities[0])
             << "Trace resolves replacement generation";
@@ -1467,8 +1466,7 @@ void CollisionUniformGridTraceRunner::test_invariance_properties() {
     std::vector<Vector3f> const tied_ends{{{20.f, 0.f, 0.f}}};
     auto const expected_id{tied.handles[0]};
     EXPECT_EQ(run_traces(tied, tied_starts, tied_ends).entities[0], expected_id);
-    tied.owners.capitals.get_view().columns().each_column(
-        [](auto column) { std::ranges::reverse(column); });
+    tied.owners.capitals.get_view().each_column([](auto column) { std::ranges::reverse(column); });
     tied.owners.publish();
     tied.grid.rebuild_entity_grid(tied.aabbs);
     EXPECT_EQ(run_traces(tied, tied_starts, tied_ends).entities[0], expected_id);

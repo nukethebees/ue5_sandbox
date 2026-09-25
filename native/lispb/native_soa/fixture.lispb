@@ -37,12 +37,14 @@
     (member ys array float)
     (member zs array float))
   (struct Rows
+    :storage both
     :operations (all)
     (member values array int32)
     (member positions nested Vectors :nested-schema Vectors)
     (member velocities nested Vectors :nested-schema Vectors)
     (single-allocation SingleRows))
   (struct AlignmentRows
+    :storage both
     :operations (all)
     (member bytes array uint8)
     (member odd array @odd_bytes)

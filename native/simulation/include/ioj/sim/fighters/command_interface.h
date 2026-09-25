@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/sim/entity_unique_id.h"
+#include "ioj/sim/fighter_frame_spawn_queue.h"
 #include "ioj/sim/fighter_order_queue.h"
 #include "ioj/sim/fighter_spawn_queue.h"
 #include "ioj/sim/fighters/sim.h"
@@ -17,9 +18,11 @@ class CommandInterface {
     CommandInterface(Sim& new_target)
         : fighters{new_target} {}
 
-    std::int32_t queue_spawns(FighterSpawnQueueConstView queue) {
+    std::int32_t queue_spawns(SingleAllocationFighterSpawnQueue::ConstView queue) {
         return fighters.queue_spawns(queue);
     }
+
+    std::int32_t queue_spawns(FrameSpawnQueue const& queue) { return fighters.queue_spawns(queue); }
 
     void queue_orders(FighterOrderQueue const& queue) { fighters.queue_orders(queue); }
 

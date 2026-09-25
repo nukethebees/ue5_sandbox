@@ -5,398 +5,11 @@
 
 #include "ioj/sim/entity_types.h"
 #include "ioj/sim/entity_unique_id.h"
-#include "ioj/sim/rotators3f.h"
-#include "ioj/sim/vectors3f.h"
-#include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/native_soa/vector_storage_ops.h"
 
 #include <utility>
 
 namespace ioj::sim {
-struct FighterSpawnQueueView;
-struct FighterSpawnQueueConstView;
-struct FighterSpawnQueueConstView {
-    using View = FighterSpawnQueueView;
-    using ConstView = FighterSpawnQueueConstView;
-    using size_type = std::int32_t;
-    Vectors3fConstView locations;
-    Rotators3fConstView rotations;
-    std::span<Team const> teams;
-    std::span<EntityUniqueId const> parents;
-    std::span<EntityUniqueId const> targets;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(locations.xs_span());
-        fn(locations.ys_span());
-        fn(locations.zs_span());
-        fn(rotations.pitches);
-        fn(rotations.yaws);
-        fn(rotations.rolls);
-        fn(teams);
-        fn(parents);
-        fn(targets);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> FighterSpawnQueueConstView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
-        return {
-            locations.slice(offset, count),
-            rotations.slice(offset, count),
-            teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            parents.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            targets.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> FighterSpawnQueueConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> FighterSpawnQueueConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            locations.get_const_view(),
-            rotations.get_const_view(),
-            teams,
-            parents,
-            targets,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> FighterSpawnQueueConstView { return slice(0, count); }
-    auto right(size_type const count) const -> FighterSpawnQueueConstView {
-        return slice(num() - count, count);
-    }
-};
-struct FighterSpawnQueueView {
-    using View = FighterSpawnQueueView;
-    using ConstView = FighterSpawnQueueConstView;
-    using size_type = std::int32_t;
-    Vectors3fView locations;
-    Rotators3fView rotations;
-    std::span<Team> teams;
-    std::span<EntityUniqueId> parents;
-    std::span<EntityUniqueId> targets;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(locations.xs_span());
-        fn(locations.ys_span());
-        fn(locations.zs_span());
-        fn(rotations.pitches);
-        fn(rotations.yaws);
-        fn(rotations.rolls);
-        fn(teams);
-        fn(parents);
-        fn(targets);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> FighterSpawnQueueView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
-        return {
-            locations.slice(offset, count),
-            rotations.slice(offset, count),
-            teams.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            parents.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            targets.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> FighterSpawnQueueView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> FighterSpawnQueueView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            locations.get_const_view(),
-            rotations.get_const_view(),
-            teams,
-            parents,
-            targets,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> FighterSpawnQueueView { return slice(0, count); }
-    auto right(size_type const count) const -> FighterSpawnQueueView {
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
-             float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_rotations_pitches,
-             float const new_rotations_yaws,
-             float const new_rotations_rolls,
-             Team const new_teams,
-             EntityUniqueId const new_parents,
-             EntityUniqueId const new_targets) const {
-        ml::native_soa::require(index >= 0 && index < num());
-        locations.xs[static_cast<std::size_t>(index)] = new_locations_xs;
-        locations.ys[static_cast<std::size_t>(index)] = new_locations_ys;
-        locations.zs[static_cast<std::size_t>(index)] = new_locations_zs;
-        rotations.pitches[static_cast<std::size_t>(index)] = new_rotations_pitches;
-        rotations.yaws[static_cast<std::size_t>(index)] = new_rotations_yaws;
-        rotations.rolls[static_cast<std::size_t>(index)] = new_rotations_rolls;
-        teams[static_cast<std::size_t>(index)] = new_teams;
-        parents[static_cast<std::size_t>(index)] = new_parents;
-        targets[static_cast<std::size_t>(index)] = new_targets;
-    }
-};
-struct FighterSpawnQueue {
-    using View = FighterSpawnQueueView;
-    using ConstView = FighterSpawnQueueConstView;
-    using size_type = std::int32_t;
-    Vectors3f locations;
-    Rotators3f rotations;
-    ml::native_soa::Vector<Team> teams;
-    ml::native_soa::Vector<EntityUniqueId> parents;
-    ml::native_soa::Vector<EntityUniqueId> targets;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
-        fn(rotations.pitches);
-        fn(rotations.yaws);
-        fn(rotations.rolls);
-        fn(teams);
-        fn(parents);
-        fn(targets);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
-        fn(rotations.pitches);
-        fn(rotations.yaws);
-        fn(rotations.rolls);
-        fn(teams);
-        fn(parents);
-        fn(targets);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_rotations_pitches,
-             float const new_rotations_yaws,
-             float const new_rotations_rolls,
-             Team const new_teams,
-             EntityUniqueId const new_parents,
-             EntityUniqueId const new_targets) {
-        get_view().set(index,
-                       new_locations_xs,
-                       new_locations_ys,
-                       new_locations_zs,
-                       new_rotations_pitches,
-                       new_rotations_yaws,
-                       new_rotations_rolls,
-                       new_teams,
-                       new_parents,
-                       new_targets);
-    }
-    auto add(float const new_locations_xs,
-             float const new_locations_ys,
-             float const new_locations_zs,
-             float const new_rotations_pitches,
-             float const new_rotations_yaws,
-             float const new_rotations_rolls,
-             Team const new_teams,
-             EntityUniqueId const new_parents,
-             EntityUniqueId const new_targets) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            locations.xs.emplace_back(new_locations_xs);
-            locations.ys.emplace_back(new_locations_ys);
-            locations.zs.emplace_back(new_locations_zs);
-            rotations.pitches.emplace_back(new_rotations_pitches);
-            rotations.yaws.emplace_back(new_rotations_yaws);
-            rotations.rolls.emplace_back(new_rotations_rolls);
-            teams.emplace_back(new_teams);
-            parents.emplace_back(new_parents);
-            targets.emplace_back(new_targets);
-        });
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
-        }
-        {
-            auto const address{ml::address_cast(source.locations.xs)};
-            auto const begin{ml::address_cast(locations.xs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + locations.xs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.locations.ys)};
-            auto const begin{ml::address_cast(locations.ys.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + locations.ys.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.locations.zs)};
-            auto const begin{ml::address_cast(locations.zs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + locations.zs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.rotations.pitches.data())};
-            auto const begin{ml::address_cast(rotations.pitches.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + rotations.pitches.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.rotations.yaws.data())};
-            auto const begin{ml::address_cast(rotations.yaws.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + rotations.yaws.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.rotations.rolls.data())};
-            auto const begin{ml::address_cast(rotations.rolls.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + rotations.rolls.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.teams.data())};
-            auto const begin{ml::address_cast(teams.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + teams.size() * sizeof(Team));
-        }
-        {
-            auto const address{ml::address_cast(source.parents.data())};
-            auto const begin{ml::address_cast(parents.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + parents.size() * sizeof(EntityUniqueId));
-        }
-        {
-            auto const address{ml::address_cast(source.targets.data())};
-            auto const begin{ml::address_cast(targets.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + targets.size() * sizeof(EntityUniqueId));
-        }
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            locations.xs.insert(
-                locations.xs.end(), source.locations.xs, source.locations.xs + count);
-            locations.ys.insert(
-                locations.ys.end(), source.locations.ys, source.locations.ys + count);
-            locations.zs.insert(
-                locations.zs.end(), source.locations.zs, source.locations.zs + count);
-            rotations.pitches.insert(rotations.pitches.end(),
-                                     source.rotations.pitches.data(),
-                                     source.rotations.pitches.data() + count);
-            rotations.yaws.insert(rotations.yaws.end(),
-                                  source.rotations.yaws.data(),
-                                  source.rotations.yaws.data() + count);
-            rotations.rolls.insert(rotations.rolls.end(),
-                                   source.rotations.rolls.data(),
-                                   source.rotations.rolls.data() + count);
-            teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
-            parents.insert(parents.end(), source.parents.data(), source.parents.data() + count);
-            targets.insert(targets.end(), source.targets.data(), source.targets.data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            locations.get_view(),
-            rotations.get_view(),
-            teams,
-            parents,
-            targets,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            locations.get_view(),
-            rotations.get_view(),
-            teams,
-            parents,
-            targets,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View { return slice(num() - count, count); }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        locations.copy_element(dst_index, other.locations, src_index);
-        rotations.copy_element(dst_index, other.rotations, src_index);
-        teams[static_cast<std::size_t>(dst_index)] =
-            other.teams[static_cast<std::size_t>(src_index)];
-        parents[static_cast<std::size_t>(dst_index)] =
-            other.parents[static_cast<std::size_t>(src_index)];
-        targets[static_cast<std::size_t>(dst_index)] =
-            other.targets[static_cast<std::size_t>(src_index)];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
-    }
-};
 
 struct FighterSpawnQueueSingleView;
 struct FighterSpawnQueueSingleConstView;
@@ -439,6 +52,86 @@ struct FighterSpawnQueueSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
+struct FighterSpawnQueueSingleView_rotations;
+struct FighterSpawnQueueSingleConstView_rotations;
+template <bool Const>
+struct FighterSpawnQueueSingleView_rotationsImpl : ml::native_soa::CompactViewState<Const> {
+    using Base = ml::native_soa::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = FighterSpawnQueueSingleView_rotations;
+    using ConstView = FighterSpawnQueueSingleConstView_rotations;
+    FighterSpawnQueueSingleView_rotationsImpl() = default;
+    template <bool Enabled = Const>
+    FighterSpawnQueueSingleView_rotationsImpl(
+        FighterSpawnQueueSingleView_rotationsImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::offset_;
+    using Base::state_;
+  public:
+    auto pitches() const -> std::span<Element<float>> {
+        return {
+            this->template column_data<float>(
+                FighterSpawnQueueSingleLayout::RotationsPitchesColumn.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
+    }
+    auto yaws() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    FighterSpawnQueueSingleLayout::RotationsYawsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto rolls() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    FighterSpawnQueueSingleLayout::RotationsRollsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(pitches());
+        func(yaws());
+        func(rolls());
+    }
+};
+struct FighterSpawnQueueSingleConstView_rotations
+    : FighterSpawnQueueSingleView_rotationsImpl<true> {
+    using Base = FighterSpawnQueueSingleView_rotationsImpl<true>;
+    using Base::Base;
+    using View = FighterSpawnQueueSingleView_rotations;
+    using ConstView = FighterSpawnQueueSingleConstView_rotations;
+    FighterSpawnQueueSingleConstView_rotations() = default;
+    FighterSpawnQueueSingleConstView_rotations(FighterSpawnQueueSingleView_rotations const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(
+    ml::soa_storage_detail::validate_compact_view<FighterSpawnQueueSingleConstView_rotations>());
+struct FighterSpawnQueueSingleView_rotations : FighterSpawnQueueSingleView_rotationsImpl<false> {
+    using Base = FighterSpawnQueueSingleView_rotationsImpl<false>;
+    using Base::Base;
+    using View = FighterSpawnQueueSingleView_rotations;
+    using ConstView = FighterSpawnQueueSingleConstView_rotations;
+    FighterSpawnQueueSingleView_rotations() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(
+    ml::soa_storage_detail::validate_compact_view<FighterSpawnQueueSingleView_rotations>());
+inline FighterSpawnQueueSingleConstView_rotations::FighterSpawnQueueSingleConstView_rotations(
+    FighterSpawnQueueSingleView_rotations const& other)
+    : Base{other} {}
 template <bool Const>
 struct FighterSpawnQueueSingleViewImpl : ml::native_soa::CompactViewState<Const> {
     using Base = ml::native_soa::CompactViewState<Const>;
@@ -459,6 +152,7 @@ struct FighterSpawnQueueSingleViewImpl : ml::native_soa::CompactViewState<Const>
     using Base::column_data;
     using Base::column_data_unchecked;
     using Base::count_;
+    using Base::offset_;
     using Base::state_;
   public:
     auto view_locations() const -> std::conditional_t<Const,
@@ -473,22 +167,10 @@ struct FighterSpawnQueueSingleViewImpl : ml::native_soa::CompactViewState<Const>
         auto const stride{FighterSpawnQueueSingleLayout::LocationsYsColumn.offset(blocks) - first};
         return {this->template column_data_unchecked<float>(first), stride, count_};
     }
-    auto view_rotations() const -> std::conditional_t<Const, Rotators3fConstView, Rotators3fView> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return std::conditional_t<Const, Rotators3fConstView, Rotators3fView>{
-            {this->template column_data_unchecked<float>(
-                 FighterSpawnQueueSingleLayout::RotationsPitchesColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<float>(
-                 FighterSpawnQueueSingleLayout::RotationsYawsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<float>(
-                 FighterSpawnQueueSingleLayout::RotationsRollsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
+    auto view_rotations() const -> std::conditional_t<Const,
+                                                      FighterSpawnQueueSingleConstView_rotations,
+                                                      FighterSpawnQueueSingleView_rotations> {
+        return {state_, offset_, count_};
     }
     auto teams() const -> std::span<Element<Team>> {
         return {this->template column_data<Team>(
@@ -505,47 +187,17 @@ struct FighterSpawnQueueSingleViewImpl : ml::native_soa::CompactViewState<Const>
                     FighterSpawnQueueSingleLayout::TargetsColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto columns() const
-        -> std::conditional_t<Const, FighterSpawnQueueConstView, FighterSpawnQueueView> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return std::conditional_t<Const, FighterSpawnQueueConstView, FighterSpawnQueueView>{
-            std::conditional_t<Const, Vectors3fConstView, Vectors3fView>{
-                {this->template column_data_unchecked<float>(
-                     FighterSpawnQueueSingleLayout::LocationsXsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     FighterSpawnQueueSingleLayout::LocationsYsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     FighterSpawnQueueSingleLayout::LocationsZsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            std::conditional_t<Const, Rotators3fConstView, Rotators3fView>{
-                {this->template column_data_unchecked<float>(
-                     FighterSpawnQueueSingleLayout::RotationsPitchesColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     FighterSpawnQueueSingleLayout::RotationsYawsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {this->template column_data_unchecked<float>(
-                     FighterSpawnQueueSingleLayout::RotationsRollsColumn.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            {this->template column_data_unchecked<Team>(
-                 FighterSpawnQueueSingleLayout::TeamsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<EntityUniqueId>(
-                 FighterSpawnQueueSingleLayout::ParentsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<EntityUniqueId>(
-                 FighterSpawnQueueSingleLayout::TargetsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
     template <typename Func>
     void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
+        func(view_locations().xs());
+        func(view_locations().ys());
+        func(view_locations().zs());
+        func(view_rotations().pitches());
+        func(view_rotations().yaws());
+        func(view_rotations().rolls());
+        func(teams());
+        func(parents());
+        func(targets());
     }
 };
 struct FighterSpawnQueueSingleConstView : FighterSpawnQueueSingleViewImpl<true> {
@@ -560,8 +212,7 @@ struct FighterSpawnQueueSingleConstView : FighterSpawnQueueSingleViewImpl<true> 
         return slice(offset, count);
     }
 };
-static_assert(sizeof(FighterSpawnQueueSingleConstView) == 16);
-static_assert(std::is_trivially_copyable_v<FighterSpawnQueueSingleConstView>);
+static_assert(ml::soa_storage_detail::validate_compact_view<FighterSpawnQueueSingleConstView>());
 struct FighterSpawnQueueSingleView : FighterSpawnQueueSingleViewImpl<false> {
     using Base = FighterSpawnQueueSingleViewImpl<false>;
     using Base::Base;
@@ -573,8 +224,7 @@ struct FighterSpawnQueueSingleView : FighterSpawnQueueSingleViewImpl<false> {
         return slice(offset, count);
     }
 };
-static_assert(sizeof(FighterSpawnQueueSingleView) == 16);
-static_assert(std::is_trivially_copyable_v<FighterSpawnQueueSingleView>);
+static_assert(ml::soa_storage_detail::validate_compact_view<FighterSpawnQueueSingleView>());
 inline FighterSpawnQueueSingleConstView::FighterSpawnQueueSingleConstView(
     FighterSpawnQueueSingleView const& other)
     : Base{other} {}
@@ -593,25 +243,36 @@ struct SingleAllocationFighterSpawnQueue
     }
     using View = FighterSpawnQueueSingleView;
     using ConstView = FighterSpawnQueueSingleConstView;
-    using SchemaConstView = FighterSpawnQueueConstView;
-    using ml::native_soa::StorageOperations::append_from;
-    auto append_from(FighterSpawnQueueConstView const& source) -> size_type {
-        source.validate_array_sizes();
-        auto const count{source.num()};
-        auto const first{num_};
-        ml::native_soa::require((count <= max_capacity - first));
-        if (count == 0) {
-            return first;
-        }
-        auto const new_num{first + count};
-        if (new_num > capacity_) {
-            ml::native_soa::require(!ordinary_source_aliases_storage(source));
-            reallocate(ml::native_soa::growth_capacity(new_num, capacity_, capacity_block_bound));
-        }
-        append_columns(source, first, count);
-        num_ = new_num;
-        return first;
-    }
+    template <typename Source>
+    inline static constexpr bool accepts_source = requires(Source const& source) {
+        { source.num() } -> std::convertible_to<size_type>;
+        source.validate();
+        {
+            ml::native_soa::source_data(source.view_locations().xs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_locations().ys())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_locations().zs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_rotations().pitches())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_rotations().yaws())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_rotations().rolls())
+        } -> std::convertible_to<float const*>;
+        { ml::native_soa::source_data(source.teams()) } -> std::convertible_to<Team const*>;
+        {
+            ml::native_soa::source_data(source.parents())
+        } -> std::convertible_to<EntityUniqueId const*>;
+        {
+            ml::native_soa::source_data(source.targets())
+        } -> std::convertible_to<EntityUniqueId const*>;
+    };
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -757,41 +418,44 @@ struct SingleAllocationFighterSpawnQueue
                 copy_columns(columns, index, source, count);
             });
     }
-    auto ordinary_source_aliases_storage(FighterSpawnQueueConstView const& source) const noexcept
-        -> bool {
-        if (data_ == nullptr) {
-            return false;
-        }
-        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
-        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
-        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
-            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
-            return address >= allocation_begin && address < allocation_end;
-        };
-        return ml::native_soa::any_column(source, aliases);
-    }
     template <typename Columns>
-    void append_columns(Columns const& source, size_type first, size_type count) {
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count) {
         auto const destination{get_data(first)};
-        ml::native_soa::copy_n(
-            destination.locations_xs, ml::native_soa::source_data(source.locations.xs), count);
-        ml::native_soa::copy_n(
-            destination.locations_ys, ml::native_soa::source_data(source.locations.ys), count);
-        ml::native_soa::copy_n(
-            destination.locations_zs, ml::native_soa::source_data(source.locations.zs), count);
+        ml::native_soa::copy_n(destination.locations_xs,
+                               ml::native_soa::source_data(source.view_locations().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::copy_n(destination.locations_ys,
+                               ml::native_soa::source_data(source.view_locations().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::copy_n(destination.locations_zs,
+                               ml::native_soa::source_data(source.view_locations().zs()) +
+                                   source_first,
+                               count);
         ml::native_soa::copy_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(source.rotations.pitches),
+                               ml::native_soa::source_data(source.view_rotations().pitches()) +
+                                   source_first,
                                count);
-        ml::native_soa::copy_n(
-            destination.rotations_yaws, ml::native_soa::source_data(source.rotations.yaws), count);
+        ml::native_soa::copy_n(destination.rotations_yaws,
+                               ml::native_soa::source_data(source.view_rotations().yaws()) +
+                                   source_first,
+                               count);
         ml::native_soa::copy_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(source.rotations.rolls),
+                               ml::native_soa::source_data(source.view_rotations().rolls()) +
+                                   source_first,
                                count);
-        ml::native_soa::copy_n(destination.teams, ml::native_soa::source_data(source.teams), count);
         ml::native_soa::copy_n(
-            destination.parents, ml::native_soa::source_data(source.parents), count);
-        ml::native_soa::copy_n(
-            destination.targets, ml::native_soa::source_data(source.targets), count);
+            destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
+        ml::native_soa::copy_n(destination.parents,
+                               ml::native_soa::source_data(source.parents()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.targets,
+                               ml::native_soa::source_data(source.targets()) + source_first,
+                               count);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(

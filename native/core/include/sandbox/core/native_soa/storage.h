@@ -96,14 +96,6 @@ void default_construct_n(T* const destination, std::int32_t const count) {
     std::uninitialized_value_construct_n(destination, count);
 }
 
-template <typename View, typename Predicate>
-auto any_column(View const& view, Predicate predicate) -> bool {
-    bool result{};
-    view.each_column(
-        [&](auto const& column) { result = result || predicate(source_data(column)); });
-    return result;
-}
-
 using soa_storage_detail::StorageState;
 template <bool Const>
 using CompactViewState = soa_storage_detail::CompactViewState<Const, require>;
@@ -208,13 +200,21 @@ struct StorageOperations {
         self.num_ = new_num;
     }
     template <typename Self, typename Source>
-        requires (!std::is_same_v<std::remove_cvref_t<Source>, typename Self::SchemaConstView>)
+        requires (Self::template accepts_source<Source>)
     auto append_from(this Self& self, Source const& source) -> std::int32_t {
-        typename Self::ConstView view{source.get_const_view()};
-        view.validate();
-        auto const count{view.num()};
+        return self.append_from(source, 0, source.num());
+    }
+    template <typename Self, typename Source>
+        requires (Self::template accepts_source<Source>)
+    auto append_from(this Self& self,
+                     Source const& source,
+                     std::int32_t const offset,
+                     std::int32_t const count) -> std::int32_t {
+        source.validate();
+        require(offset >= 0 && offset <= source.num() && count >= 0 &&
+                count <= source.num() - offset);
         auto const first{self.num_};
-        require(count <= Self::max_capacity - first);
+        require(count >= 0 && count <= Self::max_capacity - first);
         if (count == 0) {
             return first;
         }
@@ -222,7 +222,7 @@ struct StorageOperations {
         if (new_num > self.capacity_) {
             self.reallocate(growth_capacity(new_num, self.capacity_, Self::capacity_block_bound));
         }
-        self.append_columns(view.columns(), first, count);
+        self.append_columns(source, offset, first, count);
         self.num_ = new_num;
         return first;
     }

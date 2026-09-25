@@ -164,10 +164,10 @@ void CollisionSystem::finalize_overlaps(ml::FrameScratch& scratch) {
 void CollisionSystem::reset_frame_collision_events() {
     overlap_event_storage_.reset();
 }
-auto CollisionSystem::get_entity_collision_bounds() const -> WorldAABBsColumnsConstView {
+auto CollisionSystem::get_entity_collision_bounds() const -> EntityCellData::ConstView {
     return uniform_grid_.get_entity_world_bounds();
 }
-auto CollisionSystem::get_static_collision_bounds() const -> WorldAABBsColumnsConstView {
-    return uniform_grid_.get_static_aabbs().get_const_view().columns();
+auto CollisionSystem::get_static_collision_bounds() const -> WorldAABBs::ConstView {
+    return uniform_grid_.get_static_aabbs().get_const_view();
 }
 }

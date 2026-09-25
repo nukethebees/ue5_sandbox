@@ -22,12 +22,12 @@ struct Vector3SoAView {
                    T* const in_ys,
                    T* const in_zs,
                    size_type const in_count) noexcept
-        : xs{in_xs}
-        , ys{in_ys}
-        , zs{in_zs}
-        , count{in_count} {
-        assert(count >= 0);
-        assert(count == 0 || (xs != nullptr && ys != nullptr && zs != nullptr));
+        : xs_{in_xs}
+        , ys_{in_ys}
+        , zs_{in_zs}
+        , count_{in_count} {
+        assert(count_ >= 0);
+        assert(count_ == 0 || (xs_ != nullptr && ys_ != nullptr && zs_ != nullptr));
     }
     Vector3SoAView(std::span<T> const in_xs,
                    std::span<T> const in_ys,
@@ -40,14 +40,14 @@ struct Vector3SoAView {
     template <typename U>
         requires (std::is_const_v<T> && std::is_same_v<U, std::remove_const_t<T>>)
     Vector3SoAView(Vector3SoAView<U> const other) noexcept
-        : xs{other.xs}
-        , ys{other.ys}
-        , zs{other.zs}
-        , count{other.count} {}
+        : xs_{other.xs_}
+        , ys_{other.ys_}
+        , zs_{other.zs_}
+        , count_{other.count_} {}
 
     auto operator[](size_type const index) const noexcept -> equivalent_type {
-        assert(index >= 0 && index < count);
-        return make_vector3f(xs[index], ys[index], zs[index]);
+        assert(index >= 0 && index < count_);
+        return make_vector3f(xs_[index], ys_[index], zs_[index]);
     }
     void set(size_type const index, equivalent_type const value) const noexcept
         requires (!std::is_const_v<T>)
@@ -57,39 +57,40 @@ struct Vector3SoAView {
     void set(size_type const index, float const x, float const y, float const z) const noexcept
         requires (!std::is_const_v<T>)
     {
-        assert(index >= 0 && index < count);
-        xs[index] = x;
-        ys[index] = y;
-        zs[index] = z;
+        assert(index >= 0 && index < count_);
+        xs_[index] = x;
+        ys_[index] = y;
+        zs_[index] = z;
     }
 
-    auto num() const noexcept -> size_type { return count; }
-    auto is_empty() const noexcept -> bool { return count == 0; }
-    auto xs_span() const noexcept -> std::span<T> { return {xs, static_cast<std::size_t>(count)}; }
-    auto ys_span() const noexcept -> std::span<T> { return {ys, static_cast<std::size_t>(count)}; }
-    auto zs_span() const noexcept -> std::span<T> { return {zs, static_cast<std::size_t>(count)}; }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto xs() const noexcept -> std::span<T> { return {xs_, static_cast<std::size_t>(count_)}; }
+    auto ys() const noexcept -> std::span<T> { return {ys_, static_cast<std::size_t>(count_)}; }
+    auto zs() const noexcept -> std::span<T> { return {zs_, static_cast<std::size_t>(count_)}; }
     template <typename Fn>
     void each_column(Fn&& fn) const {
-        auto xs_view{xs_span()};
-        auto ys_view{ys_span()};
-        auto zs_view{zs_span()};
+        auto xs_view{xs()};
+        auto ys_view{ys()};
+        auto zs_view{zs()};
         fn(xs_view);
         fn(ys_view);
         fn(zs_view);
     }
     void validate_array_sizes() const noexcept {
-        assert(count >= 0);
-        assert(count == 0 || (xs != nullptr && ys != nullptr && zs != nullptr));
+        assert(count_ >= 0);
+        assert(count_ == 0 || (xs_ != nullptr && ys_ != nullptr && zs_ != nullptr));
     }
 
     auto get_view() const noexcept -> Vector3SoAView { return *this; }
     auto get_const_view() const noexcept -> ConstView { return *this; }
     auto slice(size_type const offset, size_type const slice_count) const noexcept
         -> Vector3SoAView {
-        assert(offset >= 0 && slice_count >= 0 && offset <= count && slice_count <= count - offset);
-        return {xs == nullptr ? nullptr : xs + offset,
-                ys == nullptr ? nullptr : ys + offset,
-                zs == nullptr ? nullptr : zs + offset,
+        assert(offset >= 0 && slice_count >= 0 && offset <= count_ &&
+               slice_count <= count_ - offset);
+        return {xs_ == nullptr ? nullptr : xs_ + offset,
+                ys_ == nullptr ? nullptr : ys_ + offset,
+                zs_ == nullptr ? nullptr : zs_ + offset,
                 slice_count};
     }
     auto get_view(size_type const offset, size_type const slice_count) const noexcept
@@ -104,13 +105,16 @@ struct Vector3SoAView {
         return slice(0, slice_count);
     }
     auto right(size_type const slice_count) const noexcept -> Vector3SoAView {
-        return slice(count - slice_count, slice_count);
+        return slice(count_ - slice_count, slice_count);
     }
-
-    T* xs{};
-    T* ys{};
-    T* zs{};
-    size_type count{};
+  private:
+    template <typename U>
+        requires std::is_same_v<std::remove_const_t<U>, float>
+    friend struct Vector3SoAView;
+    T* xs_{};
+    T* ys_{};
+    T* zs_{};
+    size_type count_{};
 };
 
 using Vector3fSoAView = Vector3SoAView<float>;

@@ -7,15 +7,6 @@
 namespace ml::native_soa_tests {
 using namespace native_soa_fixture;
 
-template <typename View>
-auto array_columns(View view) {
-    if constexpr (requires { view.columns(); }) {
-        return view.columns();
-    } else {
-        return view;
-    }
-}
-
 static_assert(!native_soa::supported_leaf<std::string>);
 static_assert(!native_soa::supported_leaf<float const>);
 static_assert(!native_soa::supported_leaf<float volatile>);
@@ -58,29 +49,29 @@ TEST(NativeSoa, LayoutGrowthAndMoves) {
     SingleAlignmentRows owner;
     EXPECT_EQ(owner.num(), 0);
     EXPECT_EQ(owner.capacity(), 0);
-    EXPECT_EQ(array_columns(owner.get_view()).bytes.data(), nullptr);
+    EXPECT_EQ(owner.get_view().bytes().data(), nullptr);
     for (std::int32_t const count : {1, 3, 17, 63, 64, 65, 127, 128, 129, 4097, 65537}) {
         auto const previous{owner.num()};
         owner.set_num(count);
         EXPECT_EQ(owner.num(), count);
         EXPECT_GE(owner.capacity(), count);
         EXPECT_EQ(owner.capacity() % 64, 0);
-        auto const view{array_columns(owner.get_view())};
+        auto const view{owner.get_view()};
 #if NATIVE_SOA_MIMALLOC
-        EXPECT_TRUE(sbx::memory::owns(view.bytes.data()));
+        EXPECT_TRUE(sbx::memory::owns(view.bytes().data()));
 #endif
-        EXPECT_EQ(view.aligned32.back().value, 32);
-        EXPECT_EQ(view.aligned64.back().value, 64);
-        EXPECT_EQ(view.aligned256.back().value, 256);
-        EXPECT_EQ(view.nested.xs_span().back(), 0.f);
+        EXPECT_EQ(view.aligned32().back().value, 32);
+        EXPECT_EQ(view.aligned64().back().value, 64);
+        EXPECT_EQ(view.aligned256().back().value, 256);
+        EXPECT_EQ(view.view_nested().xs().back(), 0.f);
         for (std::int32_t i{}; i < previous; ++i) {
-            EXPECT_EQ(view.nested.ys[i], static_cast<float>(i));
+            EXPECT_EQ(view.view_nested().ys()[i], static_cast<float>(i));
         }
         for (std::int32_t i{}; i < count; ++i) {
-            view.nested.ys[i] = static_cast<float>(i);
+            view.view_nested().ys()[i] = static_cast<float>(i);
         }
         std::uintptr_t previous_end{};
-        auto const base{reinterpret_cast<std::uintptr_t>(view.bytes.data())};
+        auto const base{reinterpret_cast<std::uintptr_t>(view.bytes().data())};
         view.each_column([&](auto column) {
             using T = typename decltype(column)::value_type;
             auto const address{reinterpret_cast<std::uintptr_t>(column.data())};
@@ -98,25 +89,25 @@ TEST(NativeSoa, LayoutGrowthAndMoves) {
     EXPECT_EQ(owner.capacity(), capacity);
     owner.set_num(129);
     owner.remove_at_swap(3, 2);
-    EXPECT_EQ(array_columns(owner.get_view()).nested.ys[3], 127.f);
+    EXPECT_EQ(owner.get_view().view_nested().ys()[3], 127.f);
     EXPECT_EQ(owner.num(), 127);
-    auto const* data{array_columns(owner.get_view()).bytes.data()};
+    auto const* data{owner.get_view().bytes().data()};
     auto moved{std::move(owner)};
     // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     EXPECT_EQ(owner.capacity(), 0);
-    EXPECT_EQ(array_columns(moved.get_view()).bytes.data(), data);
+    EXPECT_EQ(moved.get_view().bytes().data(), data);
     owner.reserve(64);
     owner = std::move(moved);
-    EXPECT_EQ(array_columns(owner.get_view()).bytes.data(), data);
+    EXPECT_EQ(owner.get_view().bytes().data(), data);
     // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     EXPECT_EQ(moved.num(), 0);
-    EXPECT_EQ(array_columns(owner.get_view(2, 3)).num(), 3);
+    EXPECT_EQ(owner.get_view(2, 3).num(), 3);
     owner.reset();
     EXPECT_EQ(owner.num(), 0);
     EXPECT_EQ(owner.capacity(), capacity);
     owner.add_uninitialised(63);
-    EXPECT_EQ(array_columns(owner.get_view()).bytes.data(), data);
-    array_columns(owner.get_view()).bytes[0] = 42;
+    EXPECT_EQ(owner.get_view().bytes().data(), data);
+    owner.get_view().bytes()[0] = 42;
     EXPECT_EQ(std::as_const(owner).get_view().bytes()[0], 42);
 }
 
@@ -128,8 +119,8 @@ TEST(NativeSoa, MatchingSchemaAndMutations) {
         single.add_defaulted(129);
         EXPECT_EQ(baseline.num(), single.num());
     }
-    auto a{array_columns(baseline.get_view())};
-    auto b{array_columns(single.get_view())};
+    auto a{baseline.get_view()};
+    auto b{single.get_view()};
     std::size_t columns{};
     std::size_t row_bytes{};
     a.each_column([&](auto column) {
@@ -145,20 +136,18 @@ TEST(NativeSoa, MatchingSchemaAndMutations) {
     EXPECT_EQ(columns, single_columns);
     EXPECT_EQ(row_bytes, single_row_bytes);
     for (std::int32_t i{}; i < baseline.num(); ++i) {
-        a.values[i] = b.values[i] = i;
+        a.values[i] = b.values()[i] = i;
     }
     baseline.remove_at_swap(7, 19);
     single.remove_at_swap(7, 19);
     EXPECT_EQ(baseline.num(), single.num());
-    EXPECT_TRUE(std::ranges::equal(array_columns(baseline.get_view()).values,
-                                   array_columns(single.get_view()).values));
+    EXPECT_TRUE(std::ranges::equal(baseline.get_view().values, single.get_view().values()));
     baseline.reset();
     single.reset();
     baseline.set_num(65);
     single.set_num(65);
-    EXPECT_TRUE(std::ranges::equal(array_columns(baseline.get_view()).values,
-                                   array_columns(single.get_view()).values));
-    EXPECT_EQ(array_columns(single.get_view()).values[0], 0);
+    EXPECT_TRUE(std::ranges::equal(baseline.get_view().values, single.get_view().values()));
+    EXPECT_EQ(single.get_view().values()[0], 0);
 }
 
 TEST(NativeSoa, VectorSwapRemovalHandlesEveryBoundaryCase) {
@@ -167,20 +156,20 @@ TEST(NativeSoa, VectorSwapRemovalHandlesEveryBoundaryCase) {
                           std::span<std::int32_t const> const expected) {
         Rows owner;
         owner.set_num(6);
-        auto columns{array_columns(owner.get_view())};
+        auto columns{owner.get_view()};
         for (std::int32_t row{}; row < owner.num(); ++row) {
             columns.values[row] = row;
-            columns.positions.xs[row] = static_cast<float>(row);
+            columns.positions.xs()[row] = static_cast<float>(row);
         }
 
         owner.remove_at_swap(index, count);
 
         ASSERT_EQ(owner.num(), static_cast<std::int32_t>(expected.size()));
-        columns = array_columns(owner.get_view());
+        columns = owner.get_view();
         std::int32_t expected_index{};
         for (auto const expected_value : expected) {
             EXPECT_EQ(columns.values[expected_index], expected_value);
-            EXPECT_EQ(columns.positions.xs[expected_index], static_cast<float>(expected_value));
+            EXPECT_EQ(columns.positions.xs()[expected_index], static_cast<float>(expected_value));
             ++expected_index;
         }
     };
@@ -210,7 +199,7 @@ TEST(NativeSoa, CheckedCapacityArithmetic) {
     EXPECT_LE(Storage::layout_bytes(2), 2 * Storage::capacity_block_bound);
 }
 
-TEST(NativeSoa, LayoutCursorMatchesChainedOffsets) {
+TEST(NativeSoa, ColumnOffsetsMatchSequentialLayoutAcrossAlignments) {
     struct alignas(256) Overaligned {
         std::byte bytes[256];
     };
@@ -220,12 +209,18 @@ TEST(NativeSoa, LayoutCursorMatchesChainedOffsets) {
     // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
     single_allocation_layout::ColumnLayout<std::int32_t> const second{first};
     single_allocation_layout::ColumnLayout<Overaligned> const third{second};
+    single_allocation_layout::ColumnLayout<std::byte> const fourth{third};
+    single_allocation_layout::ColumnLayout<Overaligned> const fifth{fourth};
+    single_allocation_layout::ColumnLayout<float> const sixth{fifth};
 
-    for (auto const blocks : {std::size_t{0}, std::size_t{1}, std::size_t{3}, std::size_t{1024}}) {
+    for (std::size_t blocks{}; blocks < 1025; ++blocks) {
         single_allocation_layout::LayoutCursor cursor{blocks};
         EXPECT_EQ(cursor.advance(first), first.offset(blocks));
         EXPECT_EQ(cursor.advance(second), second.offset(blocks));
         EXPECT_EQ(cursor.advance(third), third.offset(blocks));
+        EXPECT_EQ(cursor.advance(fourth), fourth.offset(blocks));
+        EXPECT_EQ(cursor.advance(fifth), fifth.offset(blocks));
+        EXPECT_EQ(cursor.advance(sixth), sixth.offset(blocks));
         EXPECT_EQ(third.data_end(blocks), third.offset(blocks) + blocks * 64 * sizeof(Overaligned));
     }
 }
@@ -242,7 +237,7 @@ void check_layout_limits() {
     EXPECT_FALSE(try_round_capacity(std::numeric_limits<std::int64_t>::max(), maximum, rounded));
     for (auto const capacity : {0, 64, 128, maximum - 64, maximum}) {
         std::size_t expected{};
-        typename Owner::ConstView{}.columns().each_column([&](auto column) {
+        typename Owner::ConstView{}.each_column([&](auto column) {
             using T = typename decltype(column)::value_type;
             if (expected != 0) {
                 expected += 192;
@@ -279,8 +274,8 @@ TEST(NativeSoa, GeneratedLayoutLimits) {
 TEST(NativeSoa, VectorViewContracts) {
     using View = native_soa::Vector3View<double>;
     using ConstView = native_soa::Vector3ConstView<double>;
-    static_assert(sizeof(View) == 16 && sizeof(ConstView) == 16);
-    static_assert(std::is_trivially_copyable_v<View> && std::is_trivially_copyable_v<ConstView>);
+    static_assert(soa_storage_detail::validate_compact_view<View>());
+    static_assert(soa_storage_detail::validate_compact_view<ConstView>());
     static_assert(std::is_convertible_v<View, ConstView>);
     static_assert(!std::is_convertible_v<ConstView, View>);
     static_assert(!std::is_constructible_v<View, std::vector<double>&&>);
@@ -314,10 +309,11 @@ TEST(NativeSoa, VectorViewContracts) {
 }
 
 TEST(NativeSoa, CompactViewsAndBulkAppend) {
-    static_assert(sizeof(native_soa::Vector2View<double>) == 16);
-    static_assert(sizeof(native_soa::Vector2ConstView<float>) == 16);
-    static_assert(sizeof(native_soa::Vector3View<float>) == 16);
-    static_assert(sizeof(native_soa::Vector3ConstView<double>) == 16);
+    static_assert(soa_storage_detail::validate_compact_view<native_soa::Vector2View<double>>());
+    static_assert(soa_storage_detail::validate_compact_view<native_soa::Vector2ConstView<float>>());
+    static_assert(soa_storage_detail::validate_compact_view<native_soa::Vector3View<float>>());
+    static_assert(
+        soa_storage_detail::validate_compact_view<native_soa::Vector3ConstView<double>>());
     double components[96]{};
     native_soa::Vector3View<double> vectors{components, 256, 4};
     vectors.slice(1, 2).ys()[0] = 17.;
@@ -325,12 +321,13 @@ TEST(NativeSoa, CompactViewsAndBulkAppend) {
     EXPECT_EQ(vectors.right(0).zs().data(), components + 68);
     native_soa::Vector3ConstView<double> readonly{vectors.slice(1, 2)};
     EXPECT_EQ(readonly.ys()[0], 17.);
-    EXPECT_EQ(readonly.columns().zs.data(), components + 65);
+    EXPECT_EQ(readonly.zs().data(), components + 65);
     native_soa::Vector2View<double> xy{components, 256, 4};
     EXPECT_EQ(xy.slice(1, 2).ys()[0], 17.);
     EXPECT_EQ(xy.slice(1, 2).byte_stride(), 256);
     using Owner = SingleRows;
-    static_assert(sizeof(Owner::View) == 16 && sizeof(Owner::ConstView) == 16);
+    static_assert(soa_storage_detail::validate_compact_view<Owner::View>());
+    static_assert(soa_storage_detail::validate_compact_view<Owner::ConstView>());
     static_assert(std::is_same_v<decltype(std::declval<Owner::View>().view_positions()),
                                  native_soa::Vector3View<float>>);
     Owner source;
@@ -347,11 +344,11 @@ TEST(NativeSoa, CompactViewsAndBulkAppend) {
     Owner::ConstView const_view{slice};
     EXPECT_EQ(const_view.view_positions().xs()[0], 1.f);
     Owner destination;
-    EXPECT_EQ(destination.append_from(source), 0);
+    EXPECT_EQ(destination.append_from(source.get_const_view()), 0);
     EXPECT_EQ(destination.append_from(const_view), 129);
     EXPECT_EQ(destination.get_view().values()[192], 64);
     auto const first{destination.num()};
-    EXPECT_EQ(destination.append_from(destination), first);
+    EXPECT_EQ(destination.append_from(destination.get_const_view()), first);
     EXPECT_EQ(destination.num(), 2 * first);
     auto self{destination.slice(63, 65)};
     destination.append_from(self);
@@ -370,7 +367,7 @@ TEST(NativeSoa, BulkAppendPreservesEveryAlignedLeaf) {
         }
     });
     SingleAlignmentRows destination;
-    destination.append_from(source);
+    destination.append_from(source.get_const_view());
     destination.append_from(destination.slice(1, 128));
     destination.get_const_view().each_column([](auto column) {
         using Element = typename decltype(column)::value_type;
@@ -385,50 +382,43 @@ TEST(NativeSoa, BulkAppendPreservesEveryAlignedLeaf) {
     });
 }
 
-TEST(NativeSoa, OrdinarySchemaViewsAppendDirectly) {
-    Rows source;
-    source.set_num(65);
-    for (std::int32_t row{}; row < source.num(); ++row) {
-        source.values[static_cast<std::size_t>(row)] = row + 100;
-        source.positions.xs[static_cast<std::size_t>(row)] = static_cast<float>(row);
-    }
+struct IndependentRows {
+    std::array<std::int32_t, 65> values_{};
+    std::array<float, 65> xs_{}, ys_{}, zs_{};
+    auto num() const -> std::int32_t { return 65; }
+    void validate() const {}
+    auto values() const { return std::span{values_}; }
+    auto xs() const { return std::span{xs_}; }
+    auto ys() const { return std::span{ys_}; }
+    auto zs() const { return std::span{zs_}; }
+    auto view_positions() const -> IndependentRows const& { return *this; }
+    auto view_velocities() const -> IndependentRows const& { return *this; }
+};
 
+TEST(NativeSoa, IndependentColumnsAppendDirectly) {
+    IndependentRows source;
+    for (std::int32_t row{}; row < source.num(); ++row) {
+        source.values_[row] = row + 100;
+        source.xs_[row] = static_cast<float>(row);
+    }
     SingleRows destination;
     destination.set_num(1);
     destination.get_view().values()[0] = -1;
-    auto const source_view{source.get_const_view()};
-    EXPECT_EQ(destination.append_from(source_view), 1);
+    EXPECT_EQ(destination.append_from(source), 1);
     EXPECT_EQ(destination.num(), 66);
     EXPECT_EQ(destination.get_const_view().values()[0], -1);
     EXPECT_EQ(destination.get_const_view().values()[65], 164);
     EXPECT_EQ(destination.get_const_view().view_positions().xs()[65], 64.f);
-    EXPECT_EQ(source.values[64], 164);
-
+    EXPECT_EQ(source.values_[64], 164);
     destination.reset();
-    EXPECT_EQ(destination.append_from(source_view.slice(1, 16)), 0);
-    EXPECT_EQ(destination.append_from(source_view.left(0)), 16);
-    EXPECT_EQ(destination.append_from(source_view.slice(17, 16)), 16);
+    EXPECT_EQ(destination.append_from(source, 1, 16), 0);
+    EXPECT_EQ(destination.append_from(source, 0, 0), 16);
+    EXPECT_EQ(destination.append_from(source, 17, 16), 16);
     EXPECT_EQ(destination.num(), 32);
     EXPECT_EQ(destination.get_const_view().values()[0], 101);
     EXPECT_EQ(destination.get_const_view().values()[31], 132);
-}
-
-TEST(NativeSoa, OrdinarySchemaViewAliasingIsRejectedOnlyWhenGrowthWouldInvalidateIt) {
-    SingleRows retained;
-    retained.reserve(256);
-    retained.set_num(65);
-    for (std::int32_t row{}; row < retained.num(); ++row) {
-        retained.get_view().values()[row] = row;
-    }
-    auto const retained_columns{retained.get_const_view().columns()};
-    EXPECT_EQ(retained.append_from(retained_columns.slice(1, 16)), 65);
-    EXPECT_EQ(retained.get_const_view().values()[65], 1);
-    EXPECT_EQ(retained.get_const_view().values()[80], 16);
-
-    SingleRows growing;
-    growing.set_num(65);
-    auto const growing_columns{growing.get_const_view().columns()};
-    EXPECT_DEATH(growing.append_from(growing_columns), "invalid");
+    EXPECT_DEATH(destination.append_from(source, -1, 1), "invalid");
+    EXPECT_DEATH(destination.append_from(source, 64, 2), "invalid");
 }
 
 TEST(NativeSoa, DescendingRemovalExhaustiveSubsets) {

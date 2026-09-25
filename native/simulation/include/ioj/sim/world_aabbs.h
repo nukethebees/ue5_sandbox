@@ -3,344 +3,11 @@
 
 #pragma once
 
-#include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/native_soa/vector_storage_ops.h"
 
 #include <utility>
 
 namespace ioj::sim::collision {
-struct WorldAABBsColumnsView;
-struct WorldAABBsColumnsConstView;
-struct WorldAABBsColumnsConstView {
-    using View = WorldAABBsColumnsView;
-    using ConstView = WorldAABBsColumnsConstView;
-    using size_type = std::int32_t;
-    std::span<float const> min_xs;
-    std::span<float const> min_ys;
-    std::span<float const> min_zs;
-    std::span<float const> max_xs;
-    std::span<float const> max_ys;
-    std::span<float const> max_zs;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(min_xs.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(min_xs);
-        fn(min_ys);
-        fn(min_zs);
-        fn(max_xs);
-        fn(max_ys);
-        fn(max_zs);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> WorldAABBsColumnsConstView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
-        return {
-            min_xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            min_ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            min_zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> WorldAABBsColumnsConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> WorldAABBsColumnsConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            min_xs,
-            min_ys,
-            min_zs,
-            max_xs,
-            max_ys,
-            max_zs,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> WorldAABBsColumnsConstView { return slice(0, count); }
-    auto right(size_type const count) const -> WorldAABBsColumnsConstView {
-        return slice(num() - count, count);
-    }
-};
-struct WorldAABBsColumnsView {
-    using View = WorldAABBsColumnsView;
-    using ConstView = WorldAABBsColumnsConstView;
-    using size_type = std::int32_t;
-    std::span<float> min_xs;
-    std::span<float> min_ys;
-    std::span<float> min_zs;
-    std::span<float> max_xs;
-    std::span<float> max_ys;
-    std::span<float> max_zs;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(min_xs.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(min_xs);
-        fn(min_ys);
-        fn(min_zs);
-        fn(max_xs);
-        fn(max_ys);
-        fn(max_zs);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> WorldAABBsColumnsView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
-        return {
-            min_xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            min_ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            min_zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_xs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_ys.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            max_zs.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> WorldAABBsColumnsView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> WorldAABBsColumnsView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            min_xs,
-            min_ys,
-            min_zs,
-            max_xs,
-            max_ys,
-            max_zs,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> WorldAABBsColumnsView { return slice(0, count); }
-    auto right(size_type const count) const -> WorldAABBsColumnsView {
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
-             float const new_min_xs,
-             float const new_min_ys,
-             float const new_min_zs,
-             float const new_max_xs,
-             float const new_max_ys,
-             float const new_max_zs) const {
-        ml::native_soa::require(index >= 0 && index < num());
-        min_xs[static_cast<std::size_t>(index)] = new_min_xs;
-        min_ys[static_cast<std::size_t>(index)] = new_min_ys;
-        min_zs[static_cast<std::size_t>(index)] = new_min_zs;
-        max_xs[static_cast<std::size_t>(index)] = new_max_xs;
-        max_ys[static_cast<std::size_t>(index)] = new_max_ys;
-        max_zs[static_cast<std::size_t>(index)] = new_max_zs;
-    }
-};
-struct WorldAABBsColumns {
-    using View = WorldAABBsColumnsView;
-    using ConstView = WorldAABBsColumnsConstView;
-    using size_type = std::int32_t;
-    ml::native_soa::Vector<float> min_xs;
-    ml::native_soa::Vector<float> min_ys;
-    ml::native_soa::Vector<float> min_zs;
-    ml::native_soa::Vector<float> max_xs;
-    ml::native_soa::Vector<float> max_ys;
-    ml::native_soa::Vector<float> max_zs;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(min_xs.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(min_xs);
-        fn(min_ys);
-        fn(min_zs);
-        fn(max_xs);
-        fn(max_ys);
-        fn(max_zs);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(min_xs);
-        fn(min_ys);
-        fn(min_zs);
-        fn(max_xs);
-        fn(max_ys);
-        fn(max_zs);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             float const new_min_xs,
-             float const new_min_ys,
-             float const new_min_zs,
-             float const new_max_xs,
-             float const new_max_ys,
-             float const new_max_zs) {
-        get_view().set(
-            index, new_min_xs, new_min_ys, new_min_zs, new_max_xs, new_max_ys, new_max_zs);
-    }
-    auto add(float const new_min_xs,
-             float const new_min_ys,
-             float const new_min_zs,
-             float const new_max_xs,
-             float const new_max_ys,
-             float const new_max_zs) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            min_xs.emplace_back(new_min_xs);
-            min_ys.emplace_back(new_min_ys);
-            min_zs.emplace_back(new_min_zs);
-            max_xs.emplace_back(new_max_xs);
-            max_ys.emplace_back(new_max_ys);
-            max_zs.emplace_back(new_max_zs);
-        });
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
-        }
-        {
-            auto const address{ml::address_cast(source.min_xs.data())};
-            auto const begin{ml::address_cast(min_xs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + min_xs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.min_ys.data())};
-            auto const begin{ml::address_cast(min_ys.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + min_ys.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.min_zs.data())};
-            auto const begin{ml::address_cast(min_zs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + min_zs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.max_xs.data())};
-            auto const begin{ml::address_cast(max_xs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + max_xs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.max_ys.data())};
-            auto const begin{ml::address_cast(max_ys.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + max_ys.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.max_zs.data())};
-            auto const begin{ml::address_cast(max_zs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + max_zs.size() * sizeof(float));
-        }
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            min_xs.insert(min_xs.end(), source.min_xs.data(), source.min_xs.data() + count);
-            min_ys.insert(min_ys.end(), source.min_ys.data(), source.min_ys.data() + count);
-            min_zs.insert(min_zs.end(), source.min_zs.data(), source.min_zs.data() + count);
-            max_xs.insert(max_xs.end(), source.max_xs.data(), source.max_xs.data() + count);
-            max_ys.insert(max_ys.end(), source.max_ys.data(), source.max_ys.data() + count);
-            max_zs.insert(max_zs.end(), source.max_zs.data(), source.max_zs.data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            min_xs,
-            min_ys,
-            min_zs,
-            max_xs,
-            max_ys,
-            max_zs,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            min_xs,
-            min_ys,
-            min_zs,
-            max_xs,
-            max_ys,
-            max_zs,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View { return slice(num() - count, count); }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        min_xs[static_cast<std::size_t>(dst_index)] =
-            other.min_xs[static_cast<std::size_t>(src_index)];
-        min_ys[static_cast<std::size_t>(dst_index)] =
-            other.min_ys[static_cast<std::size_t>(src_index)];
-        min_zs[static_cast<std::size_t>(dst_index)] =
-            other.min_zs[static_cast<std::size_t>(src_index)];
-        max_xs[static_cast<std::size_t>(dst_index)] =
-            other.max_xs[static_cast<std::size_t>(src_index)];
-        max_ys[static_cast<std::size_t>(dst_index)] =
-            other.max_ys[static_cast<std::size_t>(src_index)];
-        max_zs[static_cast<std::size_t>(dst_index)] =
-            other.max_zs[static_cast<std::size_t>(src_index)];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
-    }
-};
 
 struct WorldAABBsColumnsSingleView;
 struct WorldAABBsColumnsSingleConstView;
@@ -400,6 +67,7 @@ struct WorldAABBsColumnsSingleViewImpl : ml::native_soa::CompactViewState<Const>
     using Base::column_data;
     using Base::column_data_unchecked;
     using Base::count_;
+    using Base::offset_;
     using Base::state_;
   public:
     auto min_xs() const -> std::span<Element<float>> {
@@ -432,36 +100,14 @@ struct WorldAABBsColumnsSingleViewImpl : ml::native_soa::CompactViewState<Const>
                     WorldAABBsColumnsSingleLayout::MaxZsColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto columns() const
-        -> std::conditional_t<Const, WorldAABBsColumnsConstView, WorldAABBsColumnsView> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return std::conditional_t<Const, WorldAABBsColumnsConstView, WorldAABBsColumnsView>{
-            {this->template column_data_unchecked<float>(
-                 WorldAABBsColumnsSingleLayout::MinXsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<float>(
-                 WorldAABBsColumnsSingleLayout::MinYsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<float>(
-                 WorldAABBsColumnsSingleLayout::MinZsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<float>(
-                 WorldAABBsColumnsSingleLayout::MaxXsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<float>(
-                 WorldAABBsColumnsSingleLayout::MaxYsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {this->template column_data_unchecked<float>(
-                 WorldAABBsColumnsSingleLayout::MaxZsColumn.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
     template <typename Func>
     void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
+        func(min_xs());
+        func(min_ys());
+        func(min_zs());
+        func(max_xs());
+        func(max_ys());
+        func(max_zs());
     }
 };
 struct WorldAABBsColumnsSingleConstView : WorldAABBsColumnsSingleViewImpl<true> {
@@ -476,8 +122,7 @@ struct WorldAABBsColumnsSingleConstView : WorldAABBsColumnsSingleViewImpl<true> 
         return slice(offset, count);
     }
 };
-static_assert(sizeof(WorldAABBsColumnsSingleConstView) == 16);
-static_assert(std::is_trivially_copyable_v<WorldAABBsColumnsSingleConstView>);
+static_assert(ml::soa_storage_detail::validate_compact_view<WorldAABBsColumnsSingleConstView>());
 struct WorldAABBsColumnsSingleView : WorldAABBsColumnsSingleViewImpl<false> {
     using Base = WorldAABBsColumnsSingleViewImpl<false>;
     using Base::Base;
@@ -489,8 +134,7 @@ struct WorldAABBsColumnsSingleView : WorldAABBsColumnsSingleViewImpl<false> {
         return slice(offset, count);
     }
 };
-static_assert(sizeof(WorldAABBsColumnsSingleView) == 16);
-static_assert(std::is_trivially_copyable_v<WorldAABBsColumnsSingleView>);
+static_assert(ml::soa_storage_detail::validate_compact_view<WorldAABBsColumnsSingleView>());
 inline WorldAABBsColumnsSingleConstView::WorldAABBsColumnsSingleConstView(
     WorldAABBsColumnsSingleView const& other)
     : Base{other} {}
@@ -509,25 +153,17 @@ struct WorldAABBs
     }
     using View = WorldAABBsColumnsSingleView;
     using ConstView = WorldAABBsColumnsSingleConstView;
-    using SchemaConstView = WorldAABBsColumnsConstView;
-    using ml::native_soa::StorageOperations::append_from;
-    auto append_from(WorldAABBsColumnsConstView const& source) -> size_type {
-        source.validate_array_sizes();
-        auto const count{source.num()};
-        auto const first{num_};
-        ml::native_soa::require((count <= max_capacity - first));
-        if (count == 0) {
-            return first;
-        }
-        auto const new_num{first + count};
-        if (new_num > capacity_) {
-            ml::native_soa::require(!ordinary_source_aliases_storage(source));
-            reallocate(ml::native_soa::growth_capacity(new_num, capacity_, capacity_block_bound));
-        }
-        append_columns(source, first, count);
-        num_ = new_num;
-        return first;
-    }
+    template <typename Source>
+    inline static constexpr bool accepts_source = requires(Source const& source) {
+        { source.num() } -> std::convertible_to<size_type>;
+        source.validate();
+        { ml::native_soa::source_data(source.min_xs()) } -> std::convertible_to<float const*>;
+        { ml::native_soa::source_data(source.min_ys()) } -> std::convertible_to<float const*>;
+        { ml::native_soa::source_data(source.min_zs()) } -> std::convertible_to<float const*>;
+        { ml::native_soa::source_data(source.max_xs()) } -> std::convertible_to<float const*>;
+        { ml::native_soa::source_data(source.max_ys()) } -> std::convertible_to<float const*>;
+        { ml::native_soa::source_data(source.max_zs()) } -> std::convertible_to<float const*>;
+    };
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -648,34 +284,24 @@ struct WorldAABBs
                 copy_columns(columns, index, source, count);
             });
     }
-    auto ordinary_source_aliases_storage(WorldAABBsColumnsConstView const& source) const noexcept
-        -> bool {
-        if (data_ == nullptr) {
-            return false;
-        }
-        auto const allocation_begin{reinterpret_cast<std::uintptr_t>(data_)};
-        auto const allocation_end{allocation_begin + layout_bytes(capacity_blocks())};
-        auto const aliases = [allocation_begin, allocation_end](auto const* pointer) noexcept {
-            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
-            return address >= allocation_begin && address < allocation_end;
-        };
-        return ml::native_soa::any_column(source, aliases);
-    }
     template <typename Columns>
-    void append_columns(Columns const& source, size_type first, size_type count) {
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count) {
         auto const destination{get_data(first)};
         ml::native_soa::copy_n(
-            destination.min_xs, ml::native_soa::source_data(source.min_xs), count);
+            destination.min_xs, ml::native_soa::source_data(source.min_xs()) + source_first, count);
         ml::native_soa::copy_n(
-            destination.min_ys, ml::native_soa::source_data(source.min_ys), count);
+            destination.min_ys, ml::native_soa::source_data(source.min_ys()) + source_first, count);
         ml::native_soa::copy_n(
-            destination.min_zs, ml::native_soa::source_data(source.min_zs), count);
+            destination.min_zs, ml::native_soa::source_data(source.min_zs()) + source_first, count);
         ml::native_soa::copy_n(
-            destination.max_xs, ml::native_soa::source_data(source.max_xs), count);
+            destination.max_xs, ml::native_soa::source_data(source.max_xs()) + source_first, count);
         ml::native_soa::copy_n(
-            destination.max_ys, ml::native_soa::source_data(source.max_ys), count);
+            destination.max_ys, ml::native_soa::source_data(source.max_ys()) + source_first, count);
         ml::native_soa::copy_n(
-            destination.max_zs, ml::native_soa::source_data(source.max_zs), count);
+            destination.max_zs, ml::native_soa::source_data(source.max_zs()) + source_first, count);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(

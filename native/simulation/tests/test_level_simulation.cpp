@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <ioj/sim/column_math.h>
+#include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <ioj/sim/world_aabb_operations.h>
 #include <type_traits>
@@ -30,14 +32,14 @@ static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_player_ship_
                              player::CommandInterface*>);
 
 static_assert(std::is_const_v<std::remove_reference_t<
-                  decltype(std::declval<CapitalReadView>().entities.locations.xs[0])>>);
+                  decltype(std::declval<CapitalReadView>().entities.view_locations().xs()[0])>>);
 static_assert(
     std::is_const_v<
-        std::remove_reference_t<decltype(std::declval<FighterReadView>().entities.teams[0])>>);
+        std::remove_reference_t<decltype(std::declval<FighterReadView>().entities.teams()[0])>>);
 static_assert(
     std::is_const_v<std::remove_reference_t<decltype(std::declval<TurretReadView>().changes[0])>>);
 static_assert(std::is_const_v<std::remove_reference_t<
-                  decltype(std::declval<LaserReadView>().entities.lifetimes_remaining[0])>>);
+                  decltype(std::declval<LaserReadView>().entities.lifetimes_remaining()[0])>>);
 
 namespace {
 auto make_battle() -> LevelSimInitData {
@@ -91,7 +93,7 @@ void expect_health_mappings(LevelSim const& simulation) {
         expected_count += entities.num();
         for (std::int32_t row{}; row < entities.num(); ++row) {
             auto const element{static_cast<std::size_t>(row)};
-            auto const id{entities.entity_ids[element]};
+            auto const id{entities.entity_ids()[element]};
             auto const index{healths.indices()[element]};
             EXPECT_TRUE(table.contains(index, id));
             EXPECT_EQ(table.get_health(index, id), healths.health(row));
@@ -211,15 +213,16 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto queue_shot = [](LevelSim& level, float const location) {
-        lasers::SpawnRequests requests;
-        requests.add({{location, 0.f, 0.f}},
-                     {},
-                     {},
-                     1,
-                     2000.f,
-                     10000.f,
-                     level.get_capital_ships().get_id(0),
-                     {Team::Green, EntityType::Fighter});
+        lasers::SingleAllocationLaserSpawnRequests requests;
+        tests::add_laser_spawn(requests,
+                               {{location, 0.f, 0.f}},
+                               {},
+                               {},
+                               1,
+                               2000.f,
+                               10000.f,
+                               level.get_capital_ships().get_id(0),
+                               {Team::Green, EntityType::Fighter});
         LevelSimTestAccess::queue_laser_spawns(level, requests.get_const_view());
     };
     queue_shot(simulation, 700.f);
@@ -236,7 +239,8 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
             << "First impact keeps its deterministic tick";
         EXPECT_EQ(frame.lasers.hit_ticks[1], std::uint64_t{2})
             << "Second impact keeps its deterministic tick";
-        EXPECT_TRUE((frame.lasers.hits.sources[0] == LaserSource{Team::Green, EntityType::Fighter}))
+        EXPECT_TRUE(
+            (frame.lasers.hits.sources()[0] == LaserSource{Team::Green, EntityType::Fighter}))
             << "Neutral source is retained after removal";
     }
     simulation.advance(0.0);
@@ -267,10 +271,9 @@ TEST(NativeSimulation, LevelSimInitialQueriesTest) {
 TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     auto data{make_battle()};
     auto const player_index{add_player_spawn(data, {})};
-    auto const capitals_events{
-        data.level_events.initial_spawns.capital_spawns.get_view().columns()};
-    capitals_events.target_entity_indices[0] = capitals_events.entity_indices[1];
-    capitals_events.target_entity_indices[1] = player_index;
+    auto const capitals_events{data.level_events.initial_spawns.capital_spawns.get_view()};
+    capitals_events.target_entity_indices()[0] = capitals_events.entity_indices()[1];
+    capitals_events.target_entity_indices()[1] = player_index;
     add_turret_spawn(data, {{0.f, -1000.f, 0.f}}, {0.f, 90.f, 0.f}, Team::Green, 20, 5);
     add_turret_spawn(data, {{0.f, 1000.f, 0.f}}, {}, Team::White, 30, 7);
     LevelSim simulation{std::move(data)};
@@ -289,12 +292,13 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     auto const turret_view{simulation.get_turrets().get_read_view()};
     auto const turrets{turret_view.entities};
     for (std::int32_t i{}; i < turrets.num(); ++i) {
-        auto const rotated{turrets.teams[i] == Team::Green};
-        EXPECT_TRUE(health_table.contains(turret_view.healths.indices()[i], turrets.entity_ids[i]))
+        auto const rotated{turrets.teams()[i] == Team::Green};
+        EXPECT_TRUE(
+            health_table.contains(turret_view.healths.indices()[i], turrets.entity_ids()[i]))
             << "Turret health is allocated in the world health table";
         EXPECT_EQ(turret_view.healths.health(i), rotated ? 20 : 30)
             << "Compiled turret health is retained";
-        EXPECT_EQ(turrets.rotations.yaws[i], rotated ? 90.f : 0.f)
+        EXPECT_EQ(turrets.view_rotations().yaws()[i], rotated ? 90.f : 0.f)
             << "Compiled turret rotation is retained";
     }
     EXPECT_EQ(turrets.num(), 2) << "Both compiled turrets are registered";
@@ -330,20 +334,20 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     data.capital_ships.fighter_spawn_slots_relative_transforms[1].location.y = 100.0;
     data.fighters.health = 100;
     data.fighters.speed = 0.f;
-    auto const capital_events{data.level_events.initial_spawns.capital_spawns.get_view().columns()};
-    capital_events.target_entity_indices[0] = capital_events.entity_indices[1];
-    capital_events.target_entity_indices[1] = capital_events.entity_indices[0];
-    std::ranges::fill(capital_events.initial_fighter_spawn_delays, 0.f);
+    auto const capital_events{data.level_events.initial_spawns.capital_spawns.get_view()};
+    capital_events.target_entity_indices()[0] = capital_events.entity_indices()[1];
+    capital_events.target_entity_indices()[1] = capital_events.entity_indices()[0];
+    std::ranges::fill(capital_events.initial_fighter_spawn_delays(), 0.f);
 
     auto& schedule{data.level_events.schedule};
     schedule.execution_ticks = {4};
     schedule.event_group_counts = {{}};
     schedule.turret_spawns.add_defaulted(1);
-    auto const scheduled_turret{schedule.turret_spawns.get_view().columns()};
-    scheduled_turret.entity_indices[0] = data.level_events.initialisation.entity_count++;
-    scheduled_turret.locations.set(0, {{0.f, 6000.f, 0.f}});
-    scheduled_turret.teams[0] = Team::White;
-    scheduled_turret.healths[0] = 75;
+    auto const scheduled_turret{schedule.turret_spawns.get_view()};
+    scheduled_turret.entity_indices()[0] = data.level_events.initialisation.entity_count++;
+    set_vector(scheduled_turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});
+    scheduled_turret.teams()[0] = Team::White;
+    scheduled_turret.healths()[0] = 75;
     ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, 0, 1));
 
     LevelSim simulation{std::move(data)};
@@ -365,10 +369,10 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
         fighter_count_before = before.fighters.entities.num();
         victims = {
             simulation.get_capital_ships().get_id(0),
-            before.fighters.entities.entity_ids[0],
-            before.fighters.entities.entity_ids[before.fighters.entities.num() - 1],
-            before.turrets.entities.entity_ids[0],
-            before.turrets.entities.entity_ids[before.turrets.entities.num() - 1],
+            before.fighters.entities.entity_ids()[0],
+            before.fighters.entities.entity_ids()[before.fighters.entities.num() - 1],
+            before.turrets.entities.entity_ids()[0],
+            before.turrets.entities.entity_ids()[before.turrets.entities.num() - 1],
             player->unique_entity_id,
         };
     }
@@ -504,7 +508,7 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
         << "The low-health entity dies after three detected overlaps";
     EXPECT_EQ(simulation.get_agent_accessor().read(capital)->health, 4850)
         << "The capital receives one contribution per detected tick";
-    EXPECT_TRUE(ledger.get_unique_entities().life_state[ledger.get_history_index(player_id)] ==
+    EXPECT_TRUE(ledger.get_unique_entities().life_state()[ledger.get_history_index(player_id)] ==
                 LifeState::Unknown)
         << "Overlap death uses the environmental death path";
     EXPECT_EQ(ledger.count_kills(), 0) << "Environmental overlap death gives no combat kill";

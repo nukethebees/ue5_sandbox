@@ -75,15 +75,14 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
 
     auto& mission_data{data.level_events.initialisation.mission.emplace()};
     if (needs_defence) {
-        auto const capital_events{
-            data.level_events.initial_spawns.capital_spawns.get_const_view().columns()};
+        auto const capital_events{data.level_events.initial_spawns.capital_spawns.get_const_view()};
         mission_data.mode = ::ioj::sim::levels::LevelMissionMode::SurviveTime;
         mission_data.time_limit_seconds = 10.f;
         mission_data.save_results = false;
         mission_data.must_survive_entity_indices.push_back(
-            capital_events.entity_indices[first_capital_index]);
+            capital_events.entity_indices()[first_capital_index]);
         mission_data.required_kill_entity_indices.push_back(
-            capital_events.entity_indices[second_capital_index]);
+            capital_events.entity_indices()[second_capital_index]);
     }
 
     FWorldlessSimulationTest harness{MoveTemp(data)};
@@ -441,7 +440,7 @@ void FTestHUDManagerScenario::player_kill_begin() {
     check(capitals.get_num_instances() == 1);
 
     std::array<::ioj::sim::EntityUniqueId, 1> const targets{
-        capitals.get_read_view().entities.entity_ids[0]};
+        capitals.get_read_view().entities.entity_ids()[0]};
     auto const instigator{player_ship->get_unique_id()};
     test_driver->timeline.then_after(damage_queue_time, [this, targets, instigator] {
         test_driver->queue_kills(targets, instigator);

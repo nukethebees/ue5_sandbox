@@ -1355,6 +1355,12 @@ void validate_soa(NormalModuleSchema const& module,
                   TypeRegistry const& types) {
     for (auto const& schema : schemas) {
         require_identifier(schema.name, "SOA name");
+        if (schema.storage && (schema.layout_only || ((*schema.storage == SoaStorage::vector) ==
+                                                      schema.single_allocation.has_value()))) {
+            throw std::invalid_argument{
+                "SOA '" + schema.name +
+                "' storage policy conflicts with its layout-only or single-allocation declaration"};
+        }
         if (schema.view_name.has_value()) {
             require_identifier(*schema.view_name, "SOA '" + schema.name + "' view name");
         }
@@ -1556,9 +1562,8 @@ void validate_soa(NormalModuleSchema const& module,
                 if (!accessors.insert(accessor).second) {
                     throw std::invalid_argument{"Duplicate compact view accessor: " + accessor};
                 }
-                if (member.name == "columns" || member.name == "validate" ||
-                    member.name == "column_data" || member.name == "column_data_unchecked" ||
-                    member.name == "capacity_blocks") {
+                if (member.name == "validate" || member.name == "column_data" ||
+                    member.name == "column_data_unchecked" || member.name == "capacity_blocks") {
                     throw std::invalid_argument{"Member collides with compact view API: " +
                                                 member.name};
                 }

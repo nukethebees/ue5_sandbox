@@ -184,7 +184,7 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
     EXPECT_EQ(0, third.kill_count) << "Collision death grants no combat kill";
     EXPECT_TRUE(harness.get_ledger()
                     .get_unique_entities()
-                    .life_state[harness.get_ledger().get_history_index(capital_id)] ==
+                    .life_state()[harness.get_ledger().get_history_index(capital_id)] ==
                 LifeState::Unknown)
         << "Collision death is environmental";
 }

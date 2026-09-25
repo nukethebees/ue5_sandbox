@@ -1,4 +1,5 @@
 #include "SpaceGamePresentation/presentation/LaserPresentation.h"
+#include <ioj/sim/column_math.h>
 
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/laser_source.h>
@@ -99,17 +100,21 @@ auto FLaserPresentation::source_colour(::ioj::sim::LaserSource const source) con
     }
 }
 void FLaserPresentation::synchronize_material_data() {
-    auto const& entities{view().entities};
+    auto const entities{view().entities};
     auto const count{entities.num()};
     material_data.SetNum(count, EAllowShrinking::No);
     visible_indices_.Reset();
+    auto const active{entities.active()};
+    auto const sources{entities.sources()};
+    auto const initial_lifetimes{entities.initial_lifetimes()};
+    auto const spawn_times{entities.spawn_times()};
+
     for (int32 i{}; i < count; ++i) {
-        if (entities.active[i] != 0) {
+        if (active[i] != 0) {
             visible_indices_.Add(i);
         }
-        auto const colour{source_colour(entities.sources[i])};
-        material_data[i] = {
-            {colour.R, colour.G, colour.B}, entities.initial_lifetimes[i], entities.spawn_times[i]};
+        auto const colour{source_colour(sources[i])};
+        material_data[i] = {{colour.R, colour.G, colour.B}, initial_lifetimes[i], spawn_times[i]};
     }
 }
 
@@ -122,15 +127,16 @@ void FLaserPresentation::update_ismc() {
         count, ESandboxISMCParallelism::Auto, [this, &laser_simulation](auto& chunk) {
             auto const first_index{chunk.first_index()};
             auto const chunk_count{chunk.num()};
+            auto const locations{laser_simulation.entities.view_locations()};
+            auto const pitches{laser_simulation.entities.view_rotations().pitches()};
+            auto const yaws{laser_simulation.entities.view_rotations().yaws()};
+            auto const rolls{laser_simulation.entities.view_rotations().rolls()};
             for (int32 local_index{0}; local_index < chunk_count; ++local_index) {
                 auto const index{visible_indices_[first_index + local_index]};
-                auto const& locations{laser_simulation.entities.locations};
                 auto const location{
-                    FVector3f{locations.xs[index], locations.ys[index], locations.zs[index]}};
-                auto const& rotations{laser_simulation.entities.rotations};
-                auto const rotation{FRotator3f{
-                    rotations.pitches[index], rotations.yaws[index], rotations.rolls[index]}
-                                        .Quaternion()};
+                    FVector3f{locations.xs()[index], locations.ys()[index], locations.zs()[index]}};
+                auto const rotation{
+                    FRotator3f{pitches[index], yaws[index], rolls[index]}.Quaternion()};
                 chunk.set_transform(local_index, location, rotation, FVector3f::OneVector);
 
                 auto custom_data{chunk.custom_data(local_index)};
@@ -153,14 +159,18 @@ void FLaserPresentation::queue_hit_sparks() {
     auto const& hit_details{view().hits};
     auto const count{ml::num(hit_details)};
     auto const& style{actor_config->impact_sparks};
+    auto const locations{hit_details.view_locations()};
+    auto const sources{hit_details.sources()};
+    auto const directions{hit_details.view_emission_directions()};
+
     for (int32 index{0}; index < count; ++index) {
-        auto const location{ml::to_unreal(hit_details.locations[index])};
-        auto const colour{source_colour(hit_details.sources[index])};
+        auto const location{ml::to_unreal(::ioj::sim::vector_at(locations, index))};
+        auto const colour{source_colour(sources[index])};
         spark_effects_->queue_burst({
             .emission =
                 {
                     .location = location,
-                    .direction = ml::to_unreal(hit_details.emission_directions[index]),
+                    .direction = ml::to_unreal(::ioj::sim::vector_at(directions, index)),
                     .colour = FVector3f{colour.R, colour.G, colour.B},
                     .seed = SpaceGame::LaserPresentation::Private::make_seed(
                         view().hit_ticks[index], location, view().hit_ordinals[index]),
@@ -171,7 +181,7 @@ void FLaserPresentation::queue_hit_sparks() {
 }
 
 void FLaserPresentation::validate_array_sizes() const {
-    view().entities.validate_array_sizes();
+    view().entities.validate();
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(view().get_num_instances()),
         SANDBOX_NAMED_NUM(material_data.Num()),
