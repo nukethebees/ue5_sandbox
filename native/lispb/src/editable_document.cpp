@@ -4118,7 +4118,7 @@ auto create_recovery_directory(std::filesystem::path const& destination) -> std:
         if (std::filesystem::create_directory(directory, error)) {
             return directory;
         }
-        if (error) {
+        if (error && error != std::errc::file_exists) {
             throw std::filesystem::filesystem_error{
                 "Cannot create LispB recovery directory", directory, error};
         }
@@ -5140,11 +5140,17 @@ auto EditableSchemaDocument::preview_source_updates() const
                 return false;
             }()};
             if (!has_bare_line_feed) {
-                for (std::size_t index{}; index < updated.size(); ++index) {
-                    if (updated[index] == '\n' && (index == 0 || updated[index - 1] != '\r')) {
-                        updated.insert(index++, 1, '\r');
+                std::string converted;
+                converted.reserve(updated.size());
+                char previous{};
+                for (auto const character : updated) {
+                    if (character == '\n' && previous != '\r') {
+                        converted += '\r';
                     }
+                    converted += character;
+                    previous = character;
                 }
+                updated = std::move(converted);
             }
         }
         if (updated == original) {
@@ -5168,13 +5174,22 @@ auto EditableSchemaDocument::save()
         std::filesystem::path directory;
         std::filesystem::path staged;
         std::filesystem::path original;
+        std::string_view published_content;
     };
     std::vector<RecoveryFile> recovery;
     recovery.reserve(updates->size());
-    auto cleanup{[&] {
+    auto cleanup_safe{true};
+    auto cleanup{[&]() noexcept {
+        if (!cleanup_safe) {
+            return;
+        }
         for (auto const& file : recovery) {
-            std::error_code ignored;
-            std::filesystem::remove_all(file.directory, ignored);
+            try {
+                std::error_code ignored;
+                std::filesystem::remove_all(file.directory, ignored);
+            } catch (...) {
+                // Cleanup must not turn a committed save into a reported failure.
+            }
         }
     }};
     auto verify_snapshots{[&] {
@@ -5216,7 +5231,8 @@ auto EditableSchemaDocument::save()
             recovery.push_back({.destination = update.path,
                                 .directory = directory,
                                 .staged = directory / "staged",
-                                .original = directory / "original"});
+                                .original = directory / "original",
+                                .published_content = update.updated});
             write_recovery_file(recovery.back().staged, update.updated);
             write_recovery_file(recovery.back().original, update.original);
         }
@@ -5273,6 +5289,7 @@ auto EditableSchemaDocument::save()
 
         verify_snapshots();
         std::size_t published{};
+        cleanup_safe = false;
         try {
             for (auto const& file : recovery) {
                 publish_file(file.staged, file.destination);
@@ -5284,11 +5301,29 @@ auto EditableSchemaDocument::save()
             while (published > 0) {
                 auto const& file{recovery[--published]};
                 try {
+                    {
+                        std::ifstream input{file.destination, std::ios::binary};
+                        if (!input) {
+                            throw std::runtime_error{
+                                "rollback skipped: cannot open destination for verification"};
+                        }
+                        auto const current{std::string{std::istreambuf_iterator<char>{input},
+                                                       std::istreambuf_iterator<char>{}}};
+                        if (input.bad()) {
+                            throw std::runtime_error{
+                                "rollback skipped: cannot read destination for verification"};
+                        }
+                        if (current != file.published_content) {
+                            throw std::runtime_error{"rollback skipped: destination no longer "
+                                                     "matches published content"};
+                        }
+                    }
                     publish_file(file.original, file.destination);
                 } catch (std::exception const& restoration_error) {
                     rollback_failed = true;
                     message += "; cannot restore '" + file.destination.string() +
-                               "': " + restoration_error.what();
+                               "': " + restoration_error.what() +
+                               "; original recovery copy: " + file.original.string();
                 }
             }
             if (rollback_failed) {
@@ -5297,6 +5332,7 @@ auto EditableSchemaDocument::save()
                                "': " + file.directory.string();
                 }
             } else {
+                cleanup_safe = true;
                 cleanup();
             }
             return std::unexpected{SchemaEditError{std::move(message)}};
@@ -5304,6 +5340,7 @@ auto EditableSchemaDocument::save()
 
         static_assert(std::is_nothrow_move_assignable_v<EditableSchemaDocument>);
         *this = std::move(prepared);
+        cleanup_safe = true;
         cleanup();
         return saved;
     } catch (std::exception const& error) {

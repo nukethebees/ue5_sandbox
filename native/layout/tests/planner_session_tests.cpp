@@ -7,6 +7,7 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>
 
 namespace ioj::layout {
 namespace {
@@ -582,6 +583,92 @@ TEST(PlannerSession, SavedMovePreservesSelectionReferenceAndDistribution) {
     auto const& tagged{std::get<lispb::schema::TaggedUnionType>(
         types.type(*session.inputs.selection.type).definition)};
     EXPECT_EQ(types.type(tagged.discriminant.type).identity.name, "Kind");
+}
+
+TEST(PlannerSession, UnsafeRollbackKeepsDraftDistributionsAndCachedAnalysis) {
+    TemporaryPlannerSchema files;
+    auto document{files.load_with_destination()};
+    auto const raw_type{*document.types().find_declared("unions", "Later")};
+    auto const raw{*document.find_declaration(document.types().type(raw_type).identity)};
+    auto const tagged{*document.find_declaration(
+        document.types().type(*document.types().find_declared("unions", "TaggedLater")).identity)};
+    PlannerAnalysisSession session{document.types()};
+    session.inputs.selection.select_type(session.inputs.workspace.types(), raw_type);
+    session.set_union_distribution_weight(raw, "small", 9);
+    session.set_tagged_union_distribution_weight(tagged, "Small", 13);
+    ASSERT_TRUE(document
+                    .apply(lispb::schema::MoveDeclaration{
+                        .declaration = raw, .module_index = 1, .insertion_index = std::nullopt})
+                    .value());
+    auto const identity{document.declaration(raw)->identity};
+    session.replace_types(document, identity);
+    ASSERT_TRUE(session.refresh(&document));
+    auto const revision{document.revision()};
+    auto const workspace_revision{session.inputs.workspace.revision()};
+
+    struct RestoreHook {
+        lispb::schema::detail::SaveReplacementHook previous;
+        ~RestoreHook() { lispb::schema::detail::set_save_replacement_hook_for_testing(previous); }
+    };
+    RestoreHook restore{lispb::schema::detail::set_save_replacement_hook_for_testing(
+        [](auto const& source,
+           auto const& destination,
+           lispb::schema::detail::SaveReplaceFile real_replace) {
+            if (source.filename() == "staged" && destination.filename() == "destination.lispb") {
+                throw std::runtime_error{"Injected second publication failure"};
+            }
+            real_replace(source, destination);
+            if (source.filename() == "staged") {
+                std::ofstream output{destination, std::ios::binary | std::ios::app};
+                output << "\n; concurrent edit\n";
+            }
+        })};
+    auto const saved{document.save()};
+    ASSERT_FALSE(saved.has_value());
+    EXPECT_NE(saved.error().message.find("rollback skipped"), std::string::npos);
+    EXPECT_EQ(document.revision(), revision);
+    EXPECT_TRUE(document.can_undo());
+    EXPECT_EQ(document.declaration(raw)->identity, identity);
+    EXPECT_EQ(session.inputs.workspace.revision(), workspace_revision);
+    EXPECT_EQ(session.inputs.selection.identity(), identity);
+    EXPECT_EQ(session.union_distributions().at(raw).at("small"), 9);
+    EXPECT_EQ(session.tagged_union_distributions().at(tagged).at("Small"), 13);
+    EXPECT_FALSE(session.refresh(&document));
+    ASSERT_TRUE(session.results().union_distribution_analysis.has_value());
+    EXPECT_EQ(session.results().union_distribution_analysis->total_weight, 9);
+}
+
+TEST(PlannerSession, ExplicitReloadSessionResetClearsDistributions) {
+    TemporaryPlannerSchema files;
+    auto document{files.load()};
+    auto const raw_type{*document.types().find_declared("unions", "Later")};
+    auto const identity{document.types().type(raw_type).identity};
+    auto const raw{*document.find_declaration(identity)};
+    auto const tagged{*document.find_declaration(
+        document.types().type(*document.types().find_declared("unions", "TaggedLater")).identity)};
+    PlannerAnalysisSession session{document.types()};
+    session.inputs.selection.select_type(session.inputs.workspace.types(), raw_type);
+    session.set_union_distribution_weight(raw, "small", 9);
+    session.set_tagged_union_distribution_weight(tagged, "Small", 13);
+    ASSERT_TRUE(session.refresh(&document));
+    ASSERT_TRUE(session.results().union_distribution_analysis.has_value());
+
+    auto inputs{session.inputs};
+    document = files.load();
+    session = PlannerAnalysisSession{document.types()};
+    EXPECT_TRUE(session.union_distributions().empty());
+    EXPECT_TRUE(session.tagged_union_distributions().empty());
+    session.inputs = std::move(inputs);
+    session.replace_types(document, identity);
+    ASSERT_TRUE(session.refresh(&document));
+    EXPECT_EQ(session.inputs.selection.identity(), identity);
+    EXPECT_FALSE(session.results().union_distribution_analysis.has_value());
+    EXPECT_TRUE(session.union_distributions().empty());
+    EXPECT_TRUE(session.tagged_union_distributions().empty());
+    auto const& types{session.inputs.workspace.types()};
+    session.inputs.selection.select_type(types, *types.find_declared("unions", "TaggedLater"));
+    ASSERT_TRUE(session.refresh(&document));
+    EXPECT_FALSE(session.results().tagged_union_distribution_analysis.has_value());
 }
 
 } // namespace

@@ -6,6 +6,7 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <set>
 #include <stdexcept>
 #include <string_view>
@@ -9580,23 +9581,36 @@ TEST(EditableDocument, VectorDeclarationEditsPreserveModuleSource) {
 
 class SaveReplacementFailure {
   public:
-    explicit SaveReplacementFailure(std::set<int> failed_calls)
+    using BeforeReplacement =
+        std::function<void(int, std::filesystem::path const&, std::filesystem::path const&)>;
+
+    explicit SaveReplacementFailure(std::set<int> failed_calls,
+                                    BeforeReplacement before_replacement = {})
         : previous_{detail::set_save_replacement_hook_for_testing(&replace)} {
         failed_calls_ = std::move(failed_calls);
+        before_replacement_ = std::move(before_replacement);
         calls_ = 0;
     }
-    ~SaveReplacementFailure() { detail::set_save_replacement_hook_for_testing(previous_); }
+    ~SaveReplacementFailure() {
+        detail::set_save_replacement_hook_for_testing(previous_);
+        before_replacement_ = {};
+    }
   private:
     static void replace(std::filesystem::path const& source,
                         std::filesystem::path const& destination,
                         detail::SaveReplaceFile const real_replace) {
-        if (failed_calls_.contains(++calls_)) {
+        ++calls_;
+        if (before_replacement_) {
+            before_replacement_(calls_, source, destination);
+        }
+        if (failed_calls_.contains(calls_)) {
             throw std::runtime_error{"Injected replacement failure"};
         }
         real_replace(source, destination);
     }
 
     inline static std::set<int> failed_calls_;
+    inline static BeforeReplacement before_replacement_;
     inline static int calls_{};
     detail::SaveReplacementHook previous_{};
 };
@@ -9677,7 +9691,105 @@ TEST(EditableSchemaDocument, SaveRetainsRecoveryWhenRollbackFails) {
     files.write_source("modules.lispb", original_source);
     ASSERT_TRUE(document.save().has_value());
     EXPECT_TRUE(std::filesystem::exists(recovery / "original"));
+    EXPECT_EQ(files.read_source("modules.lispb.layout-planner-recovery-1/original"),
+              original_source);
     EXPECT_FALSE(std::filesystem::exists(files.path("modules.lispb.layout-planner-recovery-2")));
+}
+
+TEST(EditableSchemaDocument, SaveDoesNotRollBackConcurrentExternalEdit) {
+    TemporarySchema files;
+    files.write_source("destination.lispb", R"((module destination
+  :header "Destination.h"
+  :namespace authored))");
+    auto document{files.load_with_module_source("destination.lispb")};
+    auto const original_source{files.read_source("modules.lispb")};
+    auto const original_destination{files.read_source("destination.lispb")};
+    auto const scalar{move_scalar_to_second_file(document)};
+    ASSERT_TRUE(document.apply(RenameDeclaration{scalar, "TemporaryName"}).value());
+    ASSERT_TRUE(document.undo().value());
+    auto const revision{document.revision()};
+    auto const preview{document.preview_source_updates().value()};
+    auto const declarations{std::vector<DeclarationInfo>{document.declarations().begin(),
+                                                         document.declarations().end()}};
+    auto const external{preview[0].updated + "\n; concurrent external edit\n"};
+    auto const recovery{files.path("modules.lispb.layout-planner-recovery-1") / "original"};
+    SaveReplacementFailure failure{{2}, [&](int const call, auto const&, auto const&) {
+                                       if (call == 2) {
+                                           EXPECT_EQ(files.read_source("modules.lispb"),
+                                                     preview[0].updated);
+                                           files.write_source("modules.lispb", external);
+                                       }
+                                   }};
+
+    auto const saved{document.save()};
+    ASSERT_FALSE(saved.has_value());
+    EXPECT_EQ(files.read_source("modules.lispb"), external);
+    EXPECT_EQ(files.read_source("destination.lispb"), original_destination);
+    EXPECT_EQ(files.read_source("modules.lispb.layout-planner-recovery-1/original"),
+              original_source);
+    EXPECT_NE(saved.error().message.find("rollback skipped"), std::string::npos);
+    EXPECT_NE(saved.error().message.find("no longer matches published content"), std::string::npos);
+    EXPECT_NE(saved.error().message.find(recovery.string()), std::string::npos);
+    EXPECT_EQ(document.revision(), revision);
+    EXPECT_TRUE(document.can_undo());
+    EXPECT_TRUE(document.can_redo());
+    for (auto const& expected : declarations) {
+        auto const* actual{document.declaration(expected.id)};
+        ASSERT_NE(actual, nullptr);
+        EXPECT_EQ(actual->identity, expected.identity);
+        EXPECT_EQ(actual->source, expected.source);
+    }
+    EXPECT_EQ(document.preview_source_updates().value()[0].updated, preview[0].updated);
+    EXPECT_EQ(document.preview_source_updates().value()[1].updated, preview[1].updated);
+    EXPECT_FALSE(document.save().has_value());
+    EXPECT_EQ(files.read_source("modules.lispb"), external);
+    EXPECT_EQ(files.read_source("modules.lispb.layout-planner-recovery-1/original"),
+              original_source);
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(scalar)->identity.module_name, "authored_scalars");
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_EQ(document.declaration(scalar)->identity.module_name, "destination");
+}
+
+TEST(EditableSchemaDocument, SaveContinuesRollbackPastMissingDestination) {
+    TemporarySchema files;
+    files.write_source("destination.lispb", R"((module destination
+  :header "Destination.h"
+  :namespace authored))");
+    files.write_source("third.lispb", R"((module third
+  :header "Third.h"
+  :namespace authored
+  (integer-scalar ThirdScalar :signed false :minimum 0 :maximum 3 :bit-width auto)))");
+    auto const modules{std::array{
+        files.path("modules.lispb"), files.path("destination.lispb"), files.path("third.lispb")}};
+    auto document{load_editable_schema_document(files.path("types.lispb"), modules)};
+    auto const original_source{files.read_source("modules.lispb")};
+    auto const original_destination{files.read_source("destination.lispb")};
+    auto const original_third{files.read_source("third.lispb")};
+    move_scalar_to_second_file(document);
+    auto const third{declaration_id(document, "third", "ThirdScalar", "authored")};
+    ASSERT_TRUE(document.apply(RenameDeclaration{third, "RenamedThird"}).value());
+    ASSERT_EQ(document.preview_source_updates().value().size(), 3U);
+    SaveReplacementFailure failure{
+        {3}, [&](int const call, auto const&, auto const&) {
+            if (call == 3) {
+                ASSERT_TRUE(std::filesystem::remove(files.path("destination.lispb")));
+            }
+        }};
+
+    auto const saved{document.save()};
+    ASSERT_FALSE(saved.has_value());
+    EXPECT_EQ(files.read_source("modules.lispb"), original_source);
+    EXPECT_FALSE(std::filesystem::exists(files.path("destination.lispb")));
+    EXPECT_EQ(files.read_source("third.lispb"), original_third);
+    EXPECT_EQ(files.read_source("destination.lispb.layout-planner-recovery-1/original"),
+              original_destination);
+    EXPECT_NE(saved.error().message.find("rollback skipped: cannot open destination"),
+              std::string::npos);
+    EXPECT_NE(saved.error().message.find("destination.lispb.layout-planner-recovery-1"),
+              std::string::npos);
 }
 
 TEST(EditableSchemaDocument, SaveRejectsExternalChangesToEveryLoadedSource) {
@@ -9793,17 +9905,24 @@ TEST(EditableSchemaDocument, SaveLeavesPreexistingRecoveryArtifactsUntouched) {
     auto const artifact{files.path("modules.lispb.layout-planner-recovery-1")};
     std::filesystem::create_directory(artifact);
     files.write_source("modules.lispb.layout-planner-recovery-1/sentinel", "keep recovery");
+    files.write_source("modules.lispb.layout-planner-recovery-2", "keep occupied file");
     files.write_source("modules.lispb.layout-planner.tmp", "keep temporary");
     auto document{files.load()};
     auto const scalar{declaration_id(document, "authored_scalars", "OtherScalar", "authored")};
     ASSERT_TRUE(
         document.apply(RenameDeclaration{.declaration = scalar, .new_name = "RenamedOtherScalar"})
             .value());
+    std::vector<std::filesystem::path> staged_paths;
+    SaveReplacementFailure observe{
+        {}, [&](int, auto const& source, auto const&) { staged_paths.push_back(source); }};
     ASSERT_TRUE(document.save().has_value());
+    ASSERT_EQ(staged_paths.size(), 1U);
+    EXPECT_EQ(staged_paths.front(), files.path("modules.lispb.layout-planner-recovery-3/staged"));
     EXPECT_EQ(files.read_source("modules.lispb.layout-planner-recovery-1/sentinel"),
               "keep recovery");
+    EXPECT_EQ(files.read_source("modules.lispb.layout-planner-recovery-2"), "keep occupied file");
     EXPECT_EQ(files.read_source("modules.lispb.layout-planner.tmp"), "keep temporary");
-    EXPECT_FALSE(std::filesystem::exists(files.path("modules.lispb.layout-planner-recovery-2")));
+    EXPECT_FALSE(std::filesystem::exists(files.path("modules.lispb.layout-planner-recovery-3")));
 }
 
 TEST(EditableSchemaDocument, SaveKeepsSameNamesInDifferentModulesDistinct) {
@@ -9884,6 +10003,66 @@ TEST(EditableSchemaDocument, SavePreservesCrLfAndVerifiesCleanDocuments) {
     auto const clean_save{document.save()};
     ASSERT_FALSE(clean_save.has_value());
     EXPECT_NE(clean_save.error().message.find("modules.lispb"), std::string::npos);
+}
+
+TEST(EditableSchemaDocument, SavePreservesLineEndingPolicyForGeneratedLinesAndNoOps) {
+    for (auto const mode : {"lf", "crlf", "mixed"}) {
+        SCOPED_TRACE(mode);
+        TemporarySchema files;
+        files.write_source("types.lispb", "");
+        std::string source{"; Keep the first comment.\n; Keep the second comment.\n"
+                           "(module scalars\n  :header \"Scalars.h\"\n"
+                           "  (integer-scalar Value :signed false :minimum 0 :maximum 3))\n"};
+        if (mode == std::string_view{"crlf"}) {
+            std::string converted;
+            for (auto const character : source) {
+                if (character == '\n') {
+                    converted += '\r';
+                }
+                converted += character;
+            }
+            source = std::move(converted);
+        } else if (mode == std::string_view{"mixed"}) {
+            source.insert(source.find('\n'), 1, '\r');
+        }
+        files.write_source("modules.lispb", source);
+        auto document{files.load()};
+        EXPECT_TRUE(document.preview_source_updates().value().empty());
+        EXPECT_TRUE(document.save().value().empty());
+        EXPECT_EQ(files.read_source("modules.lispb"), source);
+
+        auto const existing{declaration_id(document, "scalars", "Value", "")};
+        auto schema{*document.integer_scalar_schema(existing)};
+        schema.name = "NewValue";
+        auto const created{document.allocate_declaration_id()};
+        ASSERT_TRUE(document
+                        .apply(CreateIntegerScalar{.declaration = created,
+                                                   .module_index = 0,
+                                                   .schema = std::move(schema),
+                                                   .insertion_index = std::nullopt})
+                        .value());
+        auto const preview{document.preview_source_updates().value()};
+        ASSERT_EQ(preview.size(), 1U);
+        ASSERT_TRUE(document.save().has_value());
+        auto const saved{files.read_source("modules.lispb")};
+        EXPECT_EQ(saved, preview.front().updated);
+        EXPECT_TRUE(saved.starts_with(source.substr(0, source.rfind(')'))));
+        EXPECT_GT(std::ranges::count(saved, '\n'), std::ranges::count(source, '\n'));
+        if (mode == std::string_view{"crlf"}) {
+            char previous{};
+            for (auto const character : saved) {
+                if (character == '\n') {
+                    EXPECT_EQ(previous, '\r');
+                }
+                previous = character;
+            }
+        } else {
+            EXPECT_EQ(std::ranges::count(saved, '\r'), std::ranges::count(source, '\r'));
+        }
+        EXPECT_TRUE(document.preview_source_updates().value().empty());
+        EXPECT_TRUE(document.save().value().empty());
+        EXPECT_EQ(files.read_source("modules.lispb"), saved);
+    }
 }
 
 } // namespace

@@ -430,7 +430,7 @@ class EditableSchemaDocument {
     auto preview_source_updates() const
         -> std::expected<std::vector<SchemaSourceUpdate>, SchemaEditError>;
     // Multi-file publication rolls back failures but is not crash-atomic. External writers can
-    // still change a source after the final content check.
+    // still change a source between content verification and publication or rollback.
     auto save() -> std::expected<std::vector<std::filesystem::path>, SchemaEditError>;
   private:
     friend auto load_editable_schema_document(std::filesystem::path const& types_path,
