@@ -43,13 +43,8 @@ database at `out/build/win-x64-clangcl-debug/clang-tidy`. Only source selection 
 vary. This tree disables precompiled headers and C++ dependency scanning so entries can be
 analyzed independently without build-only module-map response files.
 
-Before the first LispB or full audit in a fresh tree, prepare its generated fixture headers
-using the existing generation targets:
-
-```powershell
-cmake --preset win-x64-clangcl-debug-tidy
-cmake --build out/build/win-x64-clangcl-debug/clang-tidy --target generate-native-soa-fixture kernel-native-generated-sources
-```
+LispB and full audits automatically prepare their required generated build-tree inputs,
+including in a fresh tree. Up-to-date generated outputs are reused on subsequent runs.
 
 For a comprehensive whole-native audit:
 

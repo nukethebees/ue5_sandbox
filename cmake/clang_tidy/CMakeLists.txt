@@ -70,4 +70,10 @@ function(sandbox_add_native_clang_tidy_target)
   sandbox_add_native_clang_tidy_scope(s7 "s7")
   sandbox_add_native_clang_tidy_scope(image "image")
   sandbox_add_native_clang_tidy_scope(mesh-gen "mesh_gen")
+
+  foreach(tidy_target IN ITEMS native-clang-tidy native-clang-tidy-lispb)
+    add_dependencies(${tidy_target}
+      generate-native-soa-fixture
+      kernel-native-generated-sources)
+  endforeach()
 endfunction()

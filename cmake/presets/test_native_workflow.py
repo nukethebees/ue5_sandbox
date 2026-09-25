@@ -92,6 +92,9 @@ class NativeWorkflowTests(unittest.TestCase):
                 "import json, pathlib, sys\n"
                 "args = sys.argv[1:]\n"
                 "log = pathlib.Path(args[args.index('-LogFile') + 1])\n"
+                "if log.stem in ('clang-tidy', 'clang-tidy-lispb'):\n"
+                "    for name in ('generate-native-soa-fixture', 'kernel-native-generated-sources'):\n"
+                "        assert (log.parent / (name + '.stamp')).is_file(), name\n"
                 "log.with_suffix('.json').write_text(json.dumps(args), encoding='utf-8')\n",
                 encoding="utf-8",
             )
@@ -110,8 +113,19 @@ class NativeWorkflowTests(unittest.TestCase):
                 '"${CMAKE_CURRENT_SOURCE_DIR}/capture.py" PARENT_SCOPE)\n'
                 "endfunction()\n"
                 'include("${PROJECT_SOURCE_DIR}/cmake/clang_tidy/CMakeLists.txt")\n'
+                "foreach(prerequisite IN ITEMS generate-native-soa-fixture kernel-native-generated-sources)\n"
+                '  set(output "${CMAKE_BINARY_DIR}/${prerequisite}.stamp")\n'
+                '  add_custom_command(OUTPUT "${output}"\n'
+                '    COMMAND "${CMAKE_COMMAND}" -E touch "${output}" VERBATIM)\n'
+                '  add_custom_target(${prerequisite} DEPENDS "${output}")\n'
+                "endforeach()\n"
                 "sandbox_configure_native_clang_tidy()\n"
-                "sandbox_add_native_clang_tidy_target()\n",
+                "sandbox_add_native_clang_tidy_target()\n"
+                "get_property(targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)\n"
+                "foreach(target IN LISTS targets)\n"
+                '  file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/${target}.deps"\n'
+                '    CONTENT "$<TARGET_PROPERTY:${target},MANUALLY_ADDED_DEPENDENCIES>")\n'
+                "endforeach()\n",
                 encoding="utf-8",
             )
             self.run_cmake("-S", str(fixture), "-B", str(build), "-G", "Ninja")
@@ -121,6 +135,31 @@ class NativeWorkflowTests(unittest.TestCase):
                 if "tidy" in preset["name"]
                 for target in preset["targets"]
             ]
+            prerequisites = {"generate-native-soa-fixture", "kernel-native-generated-sources"}
+            for target in targets:
+                dependencies = set(
+                    (build / f"{target}.deps").read_text(encoding="utf-8").split(";")
+                ) - {""}
+                with self.subTest(target=target):
+                    self.assertEqual(
+                        dependencies,
+                        prerequisites if target in ("native-clang-tidy", "native-clang-tidy-lispb") else set(),
+                    )
+
+            outputs = [build / f"{name}.stamp" for name in prerequisites]
+            self.run_cmake("--build", str(build), "--target", "native-clang-tidy-core")
+            self.assertTrue(all(not output.exists() for output in outputs))
+            for target in ("native-clang-tidy-lispb", "native-clang-tidy"):
+                with self.subTest(fresh_target=target):
+                    self.run_cmake("--build", str(build), "--target", target)
+                    self.assertTrue(all(output.is_file() for output in outputs))
+                    for output in outputs:
+                        os.utime(output, ns=(1_000_000_000, 1_000_000_000))
+                    self.run_cmake("--build", str(build), "--target", target)
+                    for output in outputs:
+                        self.assertEqual(output.stat().st_mtime_ns, 1_000_000_000)
+                        output.unlink()
+
             self.run_cmake("--build", str(build), "--target", *targets)
             filters = {}
             for name in ("clang-tidy", *(f"clang-tidy-{scope}" for scope in TIDY_SCOPES)):
