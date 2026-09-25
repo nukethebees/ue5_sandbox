@@ -243,7 +243,14 @@ void PlannerUi::draw_project_panel() {
         }
     }
 
-    if (detail::section("Schema declarations")) {
+    detail::WrappingButtonRow module_expansion;
+    if (module_expansion.button("Expand all modules")) {
+        detail::request_expansion(detail::ExpansionDomain::modules, true);
+    }
+    if (module_expansion.button("Collapse all modules")) {
+        detail::request_expansion(detail::ExpansionDomain::modules, false);
+    }
+    if (detail::section("Schema declarations", false, true)) {
         ImGui::BeginDisabled(!document_.has_value() || project_history_active());
         detail::WrappingButtonRow declaration_buttons;
         if (declaration_buttons.button("+ New module")) {
@@ -340,6 +347,7 @@ void PlannerUi::draw_project_panel() {
                         ImGui::TreePop();
                     }
                     current_source = source;
+                    detail::prepare_expansion(source.c_str(), detail::ExpansionDomain::modules);
                     source_open = ImGui::TreeNodeEx(source.c_str(), ImGuiTreeNodeFlags_DefaultOpen);
                     ImGui::SetItemTooltip("%s", source.c_str());
                 }
@@ -451,6 +459,7 @@ void PlannerUi::draw_project_panel() {
                 ImGui::EndPopup();
             }
             ImGui::SameLine();
+            detail::prepare_expansion(label.c_str(), detail::ExpansionDomain::modules);
             if (open_record_module_ == module_index) {
                 ImGui::SetNextItemOpen(true, ImGuiCond_Always);
                 open_record_module_.reset();

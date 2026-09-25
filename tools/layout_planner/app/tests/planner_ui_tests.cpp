@@ -2,10 +2,13 @@
 #include <gtest/gtest.h>
 #include <imgui_internal.h>
 #include "gui/planner_ui.hpp"
+#include "gui/planner_ui_support.hpp"
 
 namespace ioj::layout_planner {
 
 struct PlannerUiTestAccess {
+    static void browser(PlannerUi& ui) { ui.draw_project_panel(); }
+    static void files(PlannerUi& ui) { ui.schema_file_view_ = true; }
     static auto session(PlannerUi& ui) -> layout::PlannerAnalysisSession& {
         return ui.analysis_session_;
     }
@@ -139,6 +142,41 @@ TEST_F(PlannerActions, ExternalApplyButtonLabelsAssumptionsAndDiscardRestoresPro
     PlannerUiTestAccess::discard_facts(ui);
     EXPECT_FALSE(session.primary_abi().find("OpaqueVector"));
     EXPECT_FALSE(PlannerUiTestAccess::fact_edits(ui));
+}
+
+TEST_F(PlannerActions, ModuleButtonsReachModulesHiddenUnderCollapsedSources) {
+    PlannerUi ui{ui_fixture()};
+    PlannerUiTestAccess::files(ui);
+    auto const browser_frame{[&] {
+        ImGui::NewFrame();
+        ImGui::SetNextWindowPos({0.0F, 0.0F});
+        ImGui::SetNextWindowSize({1400.0F, 950.0F});
+        PlannerUiTestAccess::browser(ui);
+        ImGui::Render();
+    }};
+    browser_frame();
+    browser_frame();
+    auto* window{ImGui::FindWindowByName("Project / Schema")};
+    ASSERT_NE(window, nullptr);
+    auto const source_id{window->GetID("Unsaved modules")};
+    auto const module_id{ImHashStr("first  [module]", 0, ImHashStr("first", 0, source_id))};
+    activate("Project / Schema", "Expand all modules");
+    browser_frame();
+    EXPECT_EQ(window->StateStorage.GetInt(source_id), 1);
+    EXPECT_EQ(window->StateStorage.GetInt(module_id), 1);
+    activate("Project / Schema", "Collapse all modules");
+    browser_frame();
+    EXPECT_EQ(window->StateStorage.GetInt(source_id), 0);
+    // Opening only the parent later must not resurrect the child's pre-collapse state.
+    window->StateStorage.SetInt(source_id, 1);
+    browser_frame();
+    EXPECT_EQ(window->StateStorage.GetInt(module_id), 0);
+    activate("Project / Schema", "Expand all modules");
+    browser_frame();
+    EXPECT_EQ(window->StateStorage.GetInt(module_id), 1);
+    window->StateStorage.SetInt(module_id, 0);
+    browser_frame();
+    EXPECT_EQ(window->StateStorage.GetInt(module_id), 0);
 }
 } // namespace
 } // namespace ioj::layout_planner

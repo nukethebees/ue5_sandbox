@@ -16,7 +16,11 @@
 namespace ioj::layout_planner::detail {
 
 void pane_section_menu();
-[[nodiscard]] auto section(char const* label, bool default_open = false) -> bool;
+enum class ExpansionDomain { sections, modules };
+void request_expansion(ExpansionDomain domain, bool open);
+void prepare_expansion(char const* label, ExpansionDomain domain, bool reveal = false);
+[[nodiscard]] auto section(char const* label, bool default_open = false, bool module_tree = false)
+    -> bool;
 
 class WrappingButtonRow {
   public:

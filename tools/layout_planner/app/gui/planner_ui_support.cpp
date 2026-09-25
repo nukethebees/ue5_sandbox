@@ -10,8 +10,39 @@
 
 namespace ioj::layout_planner::detail {
 
-void pane_section_menu() {
+namespace {
+auto expansion_key(ExpansionDomain const domain) -> ImGuiID {
+    return ImHashStr(domain == ExpansionDomain::sections ? "planner-section-action"
+                                                         : "planner-module-action");
+}
+}
+
+void request_expansion(ExpansionDomain const domain, bool const open) {
     auto& storage{ImGui::GetCurrentWindow()->RootWindow->StateStorage};
+    auto const key{expansion_key(domain)};
+    storage.SetInt(ImHashStr("revision", 0, key),
+                   storage.GetInt(ImHashStr("revision", 0, key)) + 1);
+    storage.SetBool(ImHashStr("open", 0, key), open);
+}
+
+void prepare_expansion(char const* label, ExpansionDomain const domain, bool const reveal) {
+    auto const* window{ImGui::GetCurrentWindow()};
+    if (window->SkipItems) {
+        return;
+    }
+    auto const key{expansion_key(domain)};
+    auto const& pane_storage{window->RootWindow->StateStorage};
+    auto const revision{pane_storage.GetInt(ImHashStr("revision", 0, key))};
+    auto* storage{ImGui::GetStateStorage()};
+    auto const applied_key{ImHashData(&key, sizeof(key), ImGui::GetID(label))};
+    // A hidden descendant consumes the latest command when it is next submitted.
+    if (storage->GetInt(applied_key) != revision) {
+        ImGui::SetNextItemOpen(reveal || pane_storage.GetBool(ImHashStr("open", 0, key)));
+        storage->SetInt(applied_key, revision);
+    }
+}
+
+void pane_section_menu() {
     if (!ImGui::BeginMenuBar()) {
         return;
     }
@@ -35,32 +66,22 @@ void pane_section_menu() {
             open = true;
         }
         if (open.has_value()) {
-            auto const revision_key{ImHashStr("planner-section-action-revision")};
-            storage.SetInt(revision_key, storage.GetInt(revision_key) + 1);
-            storage.SetBool(ImHashStr("planner-section-action-open"), *open);
+            request_expansion(ExpansionDomain::sections, *open);
         }
         ImGui::EndPopup();
     }
     ImGui::EndMenuBar();
 }
 
-auto section(char const* label, bool const default_open) -> bool {
+auto section(char const* label, bool const default_open, bool const module_tree) -> bool {
     auto const* window{ImGui::GetCurrentWindow()};
     if (window->SkipItems) {
         return false;
     }
 
-    auto const& pane_storage{window->RootWindow->StateStorage};
-    auto const revision{pane_storage.GetInt(ImHashStr("planner-section-action-revision"))};
-    auto* storage{ImGui::GetStateStorage()};
-    ImGui::PushID(label);
-    auto const applied_key{ImGui::GetID("section-action-applied")};
-    ImGui::PopID();
-
-    // Hidden nested sections apply the last pane action when they are next submitted.
-    if (storage->GetInt(applied_key) != revision) {
-        ImGui::SetNextItemOpen(pane_storage.GetBool(ImHashStr("planner-section-action-open")));
-        storage->SetInt(applied_key, revision);
+    prepare_expansion(label, ExpansionDomain::sections);
+    if (module_tree) {
+        prepare_expansion(label, ExpansionDomain::modules, true);
     }
     return ImGui::CollapsingHeader(
         label, default_open ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None);
