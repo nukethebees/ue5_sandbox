@@ -21,20 +21,46 @@ namespace {
 template <typename>
 inline constexpr bool unlowered_declaration_schema{false};
 
+auto forward_declaration_kind(lispb::schema::TypeNode const& node)
+    -> std::optional<std::string_view> {
+    using namespace lispb::schema;
+    if (node.identity.origin != TypeOrigin::declaration) {
+        return std::nullopt;
+    }
+    return std::visit(
+        [](auto const& definition) -> std::optional<std::string_view> {
+            using T = std::decay_t<decltype(definition)>;
+            if constexpr (std::is_same_v<T, UnionType>) {
+                return "union";
+            } else if constexpr (std::is_same_v<T, FacadeType>) {
+                return "class";
+            } else if constexpr (std::is_same_v<T, SoaType>) {
+                return definition.layout_only ? std::nullopt
+                                              : std::optional<std::string_view>{"struct"};
+            } else if constexpr (std::is_same_v<T, RecordType> ||
+                                 std::is_same_v<T, TaggedUnionType> ||
+                                 std::is_same_v<T, PackedType> ||
+                                 std::is_same_v<T, StaticTableType> ||
+                                 std::is_same_v<T, HomogeneousStorageType>) {
+                return "struct";
+            } else {
+                return std::nullopt;
+            }
+        },
+        node.definition);
+}
+
 auto uses_forward_declaration(lispb::schema::ResolvedTypeRef const& reference,
                               lispb::schema::TypeGraph const& graph) -> bool {
     auto const form{reference.physical.form};
-    auto const& definition{graph.type(reference.type).definition};
     return reference.physical.names_semantic_type &&
            (form == PhysicalTypeForm::object_pointer ||
             form == PhysicalTypeForm::lvalue_reference ||
             form == PhysicalTypeForm::rvalue_reference) &&
-           (std::holds_alternative<lispb::schema::RecordType>(definition) ||
-            std::holds_alternative<lispb::schema::UnionType>(definition) ||
-            std::holds_alternative<lispb::schema::TaggedUnionType>(definition));
+           forward_declaration_kind(graph.type(reference.type)).has_value();
 }
 
-auto aggregate_forward_declarations(NormalModuleSchema const& module,
+auto generated_forward_declarations(NormalModuleSchema const& module,
                                     lispb::schema::TypeGraph const& graph)
     -> detail::DeclarationEmission {
     std::set<lispb::schema::TypeId> targets;
@@ -48,10 +74,8 @@ auto aggregate_forward_declarations(NormalModuleSchema const& module,
     NodeListBuilder declarations;
     for (auto const target : targets) {
         auto const& node{graph.type(target)};
-        auto const keyword{std::holds_alternative<lispb::schema::UnionType>(node.definition)
-                               ? "union "
-                               : "struct "};
-        declarations.add(raw(keyword + node.identity.name + ";"));
+        declarations.add(
+            ForwardDeclaration{node.identity.name, std::string{*forward_declaration_kind(node)}});
     }
     return {.header = declarations.build(), .source_dependencies = false};
 }
@@ -235,7 +259,7 @@ auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
                 if constexpr (std::is_same_v<T, NormalModuleSchema>) {
                     std::vector<detail::DeclarationEmission> emissions;
                     emissions.reserve(module.declarations.size());
-                    emissions.push_back(aggregate_forward_declarations(module, type_graph));
+                    emissions.push_back(generated_forward_declarations(module, type_graph));
                     for (auto const index : declaration_emission_order(module, type_graph)) {
                         auto const& declaration{module.declarations[index]};
                         emissions.push_back(std::visit(

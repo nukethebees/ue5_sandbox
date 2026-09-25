@@ -10,6 +10,18 @@
     (member weight float))
   (record First (member other (type-ref Second :suffix "*")))
   (record Second (member other (type-ref First :suffix "*")))
+
+  (struct PointerA :operations (all)
+    (member others array (type-ref PointerB :suffix "*")))
+  (struct PointerB :operations (all)
+    (member others array (type-ref PointerA :suffix "*")))
+  (struct ReverseB :operations (all)
+    (member others array (type-ref ReverseA :suffix "*")))
+  (struct ReverseA :operations (all)
+    (member others array (type-ref ReverseB :suffix "*")))
+  (record MixedRecord (member rows (type-ref MixedRows :suffix "*")))
+  (struct MixedRows :operations (all)
+    (member records array (type-ref MixedRecord :suffix "*")))
   (record Envelope
     (member pairs Pair :count 3)
     (member node Node)

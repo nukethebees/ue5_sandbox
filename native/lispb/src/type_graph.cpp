@@ -707,7 +707,8 @@ class TypeGraphBuilder {
                                                             *source.equivalent_type, module_name)}
                                                       : std::nullopt,
                                  .related_storage_name = source.single_allocation,
-                                 .vector_components = source.vector_components};
+                                 .vector_components = source.vector_components,
+                                 .layout_only = source.layout_only};
                     type.columns.reserve(source.members.size());
                     for (auto const& member : source.members) {
                         std::optional<TypeId> nested;

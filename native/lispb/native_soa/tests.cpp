@@ -26,6 +26,25 @@ static_assert(!std::is_copy_constructible_v<SingleRows>);
 static_assert(std::is_same_v<decltype(std::declval<SingleRows const&>().get_view().values()),
                              std::span<std::int32_t const>>);
 
+TEST(NativeSoa, MutuallyReferencingPointersCompileInBothOrdersAndAcrossDeclarationKinds) {
+    PointerA first;
+    PointerB second;
+    first.add(&second);
+    second.add(&first);
+    EXPECT_EQ(first.get_view().others[0], &second);
+    EXPECT_EQ(second.get_view().others[0], &first);
+    ReverseB reverse_second;
+    ReverseA reverse_first;
+    reverse_second.add(&reverse_first);
+    reverse_first.add(&reverse_second);
+    EXPECT_EQ(reverse_second.get_view().others[0], &reverse_first);
+    EXPECT_EQ(reverse_first.get_view().others[0], &reverse_second);
+    MixedRows rows;
+    MixedRecord record{&rows};
+    rows.add(&record);
+    EXPECT_EQ(record.rows->get_view().records[0], &record);
+}
+
 TEST(NativeSoa, LayoutGrowthAndMoves) {
     AlignmentRows vectors;
     vectors.set_num(129);
