@@ -9858,6 +9858,76 @@ TEST(EditableSchemaDocument, SaveRejectsExternalChangesToEveryLoadedSource) {
     }
 }
 
+TEST(EditableSchemaDocument, ExternalChangeDuringLoadCannotBecomeTheSaveSnapshot) {
+    TemporarySchema files;
+    files.write_source("types.lispb", "");
+    auto const original{std::string{R"((module scalars
+  :header "Scalars.h"
+  (integer-scalar Value :signed false :minimum 0 :maximum 3)))"}};
+    auto const destination{std::string{R"((module destination
+  :header "Destination.h"))"}};
+    files.write_source("modules.lispb", original);
+    files.write_source("destination.lispb", destination);
+
+    struct RestoreReadHook {
+        codegen::detail::ModuleSourceReadHook previous;
+        ~RestoreReadHook() { codegen::detail::set_module_source_read_hook_for_testing(previous); }
+    };
+    RestoreReadHook restore{codegen::detail::set_module_source_read_hook_for_testing(
+        [](std::filesystem::path const& path) {
+            if (path.filename() == "modules.lispb") {
+                std::ofstream output{path, std::ios::binary};
+                output << R"((module scalars
+  :header "Scalars.h"
+  (integer-scalar Value :signed false :minimum 0 :maximum 7)))";
+            }
+        })};
+    auto document{files.load_with_module_source("destination.lispb")};
+    codegen::detail::set_module_source_read_hook_for_testing(restore.previous);
+    auto const external{files.read_source("modules.lispb")};
+    ASSERT_NE(external, original);
+    auto const scalar{declaration_id(document, "scalars", "Value", "")};
+    ASSERT_NE(document.integer_scalar_schema(scalar), nullptr);
+    auto const source{std::ranges::find(
+        document.source_files(), files.path("modules.lispb"), &SchemaSourceFile::path)};
+    ASSERT_NE(source, document.source_files().end());
+    EXPECT_EQ(source->text, original);
+
+    ASSERT_TRUE(document
+                    .apply(MoveDeclaration{
+                        .declaration = scalar, .module_index = 1, .insertion_index = std::nullopt})
+                    .value());
+    ASSERT_TRUE(document.apply(RenameDeclaration{scalar, "RenamedValue"}).value());
+    ASSERT_TRUE(document.undo().value());
+    auto const preview{document.preview_source_updates().value()};
+    ASSERT_EQ(preview.size(), 2U);
+    auto const revision{document.revision()};
+    auto const saved{document.save()};
+    EXPECT_FALSE(saved.has_value());
+    if (!saved.has_value()) {
+        EXPECT_NE(saved.error().message.find("changed externally"), std::string::npos);
+        EXPECT_NE(saved.error().message.find("modules.lispb"), std::string::npos);
+    }
+    EXPECT_EQ(files.read_source("modules.lispb"), external);
+    EXPECT_EQ(files.read_source("destination.lispb"), destination);
+    EXPECT_TRUE(document.dirty());
+    EXPECT_TRUE(document.can_undo());
+    EXPECT_TRUE(document.can_redo());
+    EXPECT_EQ(document.revision(), revision);
+    EXPECT_EQ(document.declaration(scalar)->identity.module_name, "destination");
+    auto const after{document.preview_source_updates().value()};
+    ASSERT_EQ(after.size(), preview.size());
+    auto const update_count{preview.size()};
+    for (std::size_t index{}; index < update_count; ++index) {
+        EXPECT_EQ(after[index].updated, preview[index].updated);
+    }
+
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(scalar)->identity.module_name, "scalars");
+}
+
 TEST(EditableSchemaDocument, SaveKeepsDraftIdsAcrossDeletionCreationRenameAndMove) {
     TemporarySchema files;
     files.write_source("destination.lispb", R"((module destination

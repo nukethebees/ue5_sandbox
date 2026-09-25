@@ -15,6 +15,18 @@
 #include <utility>
 
 namespace codegen {
+namespace detail {
+namespace {
+thread_local ModuleSourceReadHook module_source_read_hook{};
+}
+
+auto set_module_source_read_hook_for_testing(ModuleSourceReadHook const hook) noexcept
+    -> ModuleSourceReadHook {
+    return std::exchange(module_source_read_hook, hook);
+}
+
+} // namespace detail
+
 namespace {
 
 using sexpr::Form;
@@ -31,14 +43,6 @@ auto read_file(std::filesystem::path const& path) -> std::string {
         throw ManifestError{"Cannot open manifest file: " + path.string()};
     }
     return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
-}
-
-auto read_document(std::filesystem::path const& path) -> std::vector<Form> {
-    try {
-        return sexpr::read_forms(path.string(), read_file(path));
-    } catch (sexpr::SourceError const& error) {
-        throw ManifestError{error.what()};
-    }
 }
 
 class Fields : public sexpr::Fields {
@@ -1621,6 +1625,22 @@ auto load_type_registry(std::filesystem::path const& root) -> LoadedTypeRegistry
     return result;
 }
 
+auto load_module_source(std::filesystem::path const& path) -> LoadedModuleSource {
+    LoadedModuleSource result;
+    result.text = read_file(path);
+    if (detail::module_source_read_hook != nullptr) {
+        detail::module_source_read_hook(path);
+    }
+    try {
+        for (auto const& form : sexpr::read_forms(path.string(), result.text)) {
+            result.modules.push_back(parse_module(form));
+        }
+    } catch (sexpr::SourceError const& error) {
+        throw ManifestError{error.what()};
+    }
+    return result;
+}
+
 auto load_sources(std::filesystem::path const& types_path,
                   std::span<std::filesystem::path const> const module_paths) -> Manifest {
     return load_sources(load_type_registry(types_path), module_paths);
@@ -1630,8 +1650,9 @@ auto load_sources(LoadedTypeRegistry const& registry,
                   std::span<std::filesystem::path const> const module_paths) -> Manifest {
     std::vector<ModuleSchema> modules;
     for (auto const& module_path : module_paths) {
-        for (auto const& form : read_document(module_path)) {
-            modules.push_back(parse_module(form));
+        auto source{load_module_source(module_path)};
+        for (auto& module : source.modules) {
+            modules.push_back(std::move(module));
         }
     }
     return Manifest{manifest_schema_version, registry.types, std::move(modules)};

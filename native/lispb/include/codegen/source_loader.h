@@ -32,11 +32,27 @@ struct LoadedTypeRegistry {
     std::map<std::string, RegistrySourceRange, std::less<>> declarations;
 };
 
+struct LoadedModuleSource {
+    // Editable source ownership must use the same bytes as semantic parsing.
+    std::string text;
+    std::vector<ModuleSchema> modules;
+};
+
 auto load_type_registry(std::filesystem::path const& root) -> LoadedTypeRegistry;
+auto load_module_source(std::filesystem::path const& path) -> LoadedModuleSource;
 auto load_sources(LoadedTypeRegistry const& registry,
                   std::span<std::filesystem::path const> module_paths) -> Manifest;
 
 auto load_sources(std::filesystem::path const& types_path,
                   std::span<std::filesystem::path const> module_paths) -> Manifest;
+
+namespace detail {
+
+using ModuleSourceReadHook = void (*)(std::filesystem::path const&);
+
+auto set_module_source_read_hook_for_testing(ModuleSourceReadHook hook) noexcept
+    -> ModuleSourceReadHook;
+
+} // namespace detail
 
 } // namespace codegen

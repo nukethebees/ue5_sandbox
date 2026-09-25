@@ -1,6 +1,6 @@
 #include <lispb/schema/editable_document.h>
 
-#include <codegen/manifest_error.h>
+#include <codegen/schema/schema_version.h>
 #include <codegen/sexpr/reader.h>
 #include <codegen/source_loader.h>
 #include <codegen/validation.h>
@@ -28,14 +28,6 @@ namespace lispb::schema {
 namespace {
 
 using codegen::sexpr::Form;
-
-auto read_file(std::filesystem::path const& path) -> std::string {
-    std::ifstream input{path, std::ios::binary};
-    if (!input) {
-        throw codegen::ManifestError{"Cannot open manifest file: " + path.string()};
-    }
-    return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
-}
 
 auto form_range(Form const& form, std::size_t const source_file_index) -> SourceRange {
     auto const end_offset{form.is_list() ? form.closing.span.offset + 1
@@ -6161,7 +6153,7 @@ auto load_editable_schema_document(std::filesystem::path const& types_path,
                                    std::span<std::filesystem::path const> const module_paths)
     -> EditableSchemaDocument {
     auto registry{codegen::load_type_registry(types_path)};
-    auto manifest{codegen::load_sources(registry, module_paths)};
+    codegen::Manifest manifest{codegen::manifest_schema_version, registry.types, {}};
     std::vector<SchemaSourceFile> sources;
     for (auto& source : registry.sources) {
         sources.push_back({.path = std::move(source.path),
@@ -6174,10 +6166,13 @@ auto load_editable_schema_document(std::filesystem::path const& types_path,
     std::vector<std::optional<SourceRange>> module_ranges;
     auto module_index{std::size_t{}};
     for (auto const& path : module_paths) {
-        auto source{read_file(path)};
+        auto source{codegen::load_module_source(path)};
         auto const source_file_index{sources.size()};
-        auto const forms{codegen::sexpr::read_forms(path.string(), source)};
-        sources.push_back({.path = path, .text = std::move(source)});
+        auto const forms{codegen::sexpr::read_forms(path.string(), source.text)};
+        sources.push_back({.path = path, .text = std::move(source.text)});
+        for (auto& module : source.modules) {
+            manifest.modules.push_back(std::move(module));
+        }
         for (auto const& form : forms) {
             if (module_index >= manifest.modules.size()) {
                 throw std::logic_error{"Source contains more modules than the loaded manifest"};

@@ -434,6 +434,7 @@ class TemporaryPlannerSchema {
         std::ofstream output{directory_ / "modules.lispb", std::ios::binary};
         output << R"((module unions
   :header "Unions.h"
+  (integer-scalar Before :signed false :minimum 0 :maximum 3)
   (enum Kind std::uint8_t
     (value Small :value "0")
     (value Large :value "1"))
@@ -520,6 +521,77 @@ TEST(PlannerSession, SavePreservesDistributionOwnersAfterEarlierDeclarationsAreD
     EXPECT_TRUE(session.refresh(&document));
     ASSERT_TRUE(session.results().tagged_union_distribution_analysis.has_value());
     EXPECT_EQ(session.results().tagged_union_distribution_analysis->total_weight, 11);
+}
+
+TEST(PlannerSession, SaveKeepsSurvivingUnionDistributionsWithOverlappingAlternativesDistinct) {
+    TemporaryPlannerSchema files;
+    auto document{files.load()};
+    PlannerAnalysisSession session{document.types()};
+    struct ExpectedDistribution {
+        lispb::schema::TypeIdentity identity;
+        lispb::schema::DeclarationId declaration;
+        bool tagged;
+        PlannerAnalysisSession::DistributionWeights weights;
+    };
+    std::vector<ExpectedDistribution> expected;
+    for (auto const& name : {"Earlier", "Later", "TaggedEarlier", "TaggedLater"}) {
+        auto const type{*document.types().find_declared("unions", name)};
+        auto const identity{document.types().type(type).identity};
+        auto const declaration{*document.find_declaration(identity)};
+        auto const tagged{document.tagged_union_schema(declaration) != nullptr};
+        auto const small_weight{static_cast<std::uint64_t>(expected.size() * 10 + 3)};
+        auto const large_weight{small_weight + 4};
+        auto const small{tagged ? "Small" : "small"};
+        auto const large{tagged ? "Large" : "large"};
+        if (tagged) {
+            ASSERT_TRUE(
+                session.set_tagged_union_distribution_weight(declaration, small, small_weight));
+            ASSERT_TRUE(
+                session.set_tagged_union_distribution_weight(declaration, large, large_weight));
+        } else {
+            ASSERT_TRUE(session.set_union_distribution_weight(declaration, small, small_weight));
+            ASSERT_TRUE(session.set_union_distribution_weight(declaration, large, large_weight));
+        }
+        expected.push_back(
+            {identity, declaration, tagged, {{small, small_weight}, {large, large_weight}}});
+    }
+    auto const before{*document.find_declaration(
+        document.types().type(*document.types().find_declared("unions", "Before")).identity)};
+    ASSERT_TRUE(document.apply(lispb::schema::DeleteIntegerScalar{before}).value());
+    session.replace_types(document, expected.front().identity);
+    ASSERT_TRUE(session.refresh(&document));
+    auto const saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    session.replace_types(document, expected.front().identity);
+
+    auto const fresh{files.load()};
+    EXPECT_EQ(*fresh.find_declaration(expected[1].identity), expected[0].declaration);
+    EXPECT_EQ(*fresh.find_declaration(expected[3].identity), expected[2].declaration);
+    EXPECT_EQ(session.union_distributions().size(), 2U);
+    EXPECT_EQ(session.tagged_union_distributions().size(), 2U);
+    for (auto const& owner : expected) {
+        SCOPED_TRACE(owner.identity.name);
+        auto const declaration{document.find_declaration(owner.identity)};
+        ASSERT_TRUE(declaration.has_value());
+        EXPECT_EQ(*declaration, owner.declaration);
+        EXPECT_NE(*fresh.find_declaration(owner.identity), *declaration);
+        auto const* weights{owner.tagged ? session.tagged_union_distribution(*declaration)
+                                         : session.union_distribution(*declaration)};
+        ASSERT_NE(weights, nullptr);
+        EXPECT_EQ(*weights, owner.weights);
+        session.inputs.selection.select_type(
+            session.inputs.workspace.types(),
+            *session.inputs.workspace.types().find(owner.identity));
+        ASSERT_TRUE(session.refresh(&document));
+        auto const total{owner.weights.begin()->second + owner.weights.rbegin()->second};
+        if (owner.tagged) {
+            ASSERT_TRUE(session.results().tagged_union_distribution_analysis.has_value());
+            EXPECT_EQ(session.results().tagged_union_distribution_analysis->total_weight, total);
+        } else {
+            ASSERT_TRUE(session.results().union_distribution_analysis.has_value());
+            EXPECT_EQ(session.results().union_distribution_analysis->total_weight, total);
+        }
+    }
 }
 
 TEST(PlannerSession, FailedSaveKeepsSelectionDistributionAndCachedResult) {
