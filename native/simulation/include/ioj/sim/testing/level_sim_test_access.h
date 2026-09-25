@@ -6,6 +6,53 @@
 namespace ioj::sim {
 
 struct LevelSimTestAccess {
+    static void queue_fighter_spawns(LevelSim& simulation, FighterSpawnQueueConstView spawns) {
+        fighters::CommandInterface{simulation.fighters_simulation_}.queue_spawns(spawns);
+    }
+    static void reassign_pending_fighter_spawns(LevelSim& simulation,
+                                                EntityUniqueId parent,
+                                                EntityUniqueId replacement) {
+        fighters::CommandInterface{simulation.fighters_simulation_}.reassign_pending_spawns(
+            parent, replacement);
+    }
+    static void refresh_fighter_membership(LevelSim& simulation, ml::FrameScratch& scratch) {
+        simulation.capital_ships_simulation_.refresh_fighter_ids(scratch);
+    }
+    static void
+        set_fighter_parent(LevelSim& simulation, EntityUniqueId fighter, EntityUniqueId parent) {
+        simulation.fighters_simulation_.set_parent_id(fighter, parent);
+    }
+    static void prepare_fighters(LevelSim& simulation) {
+        simulation.clock_.phase = SimulationPhase::Preparation;
+        simulation.fighters_simulation_.commit_orders();
+        simulation.fighters_simulation_.prepare_tick(
+            static_cast<float>(simulation.clock_.get_tick_period()));
+        simulation.rebuild_agent_indexes();
+    }
+    static void resolve_ship_damage(LevelSim& simulation, ml::FrameScratch& scratch) {
+        simulation.clock_.phase = SimulationPhase::Resolution;
+        simulation.combat_events_.prepare(simulation.agent_indexes_, scratch);
+        simulation.capital_ships_simulation_.resolve_damage_events();
+        simulation.fighters_simulation_.resolve_damage_events();
+        simulation.capital_ships_simulation_.resolve_fighters_of_dying_capitals();
+        simulation.capital_ships_simulation_.publish_deaths();
+        simulation.fighters_simulation_.publish_deaths();
+        simulation.combat_events_.reset();
+    }
+    static void remove_dead_ships(LevelSim& simulation) {
+        simulation.clock_.phase = SimulationPhase::ResolutionCommit;
+        simulation.capital_ships_simulation_.remove_components();
+        simulation.fighters_simulation_.remove_components();
+        simulation.capital_ships_simulation_.remove_entities();
+        simulation.fighters_simulation_.remove_entities();
+        simulation.rebuild_agent_indexes();
+        simulation.query_manager_.refresh_spatial_index();
+    }
+    static void register_capitals(LevelSim& simulation, CapitalSpawnDataConstView spawns) {
+        simulation.clock_.phase = SimulationPhase::Preparation;
+        simulation.capital_ships_simulation_.register_ships(spawns);
+        simulation.rebuild_agent_indexes();
+    }
     static void commit_fighter_spawns(LevelSim& simulation, FighterSpawnQueueConstView spawns) {
         simulation.clock_.phase = SimulationPhase::Preparation;
         auto& fighters{simulation.fighters_simulation_};

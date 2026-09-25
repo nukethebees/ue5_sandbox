@@ -14,6 +14,7 @@ target_sources(native-simulation-tests PRIVATE
   test_entity_aabb_overlaps.cpp
   test_fighter_live_cap.cpp
   test_fighter_target_refresh.cpp
+  test_fighter_membership_refresh.cpp
   test_level_telemetry_block_history.cpp
   test_level_telemetry_manager.cpp
   test_level_telemetry_json_validation.cpp

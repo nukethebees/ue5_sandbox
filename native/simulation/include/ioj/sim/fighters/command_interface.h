@@ -29,6 +29,12 @@ class CommandInterface {
 
     std::span<EntityUniqueId const> get_entity_ids() const { return fighters.get_entity_ids(); }
 
+    std::uint64_t get_membership_revision() const noexcept {
+        return fighters.get_membership_revision();
+    }
+
+    std::uint64_t get_layout_revision() const noexcept { return fighters.get_layout_revision(); }
+
     HealthConstView get_healths() const { return fighters.get_healths(); }
 
     void set_parent_id(EntityUniqueId fighter, EntityUniqueId parent) {

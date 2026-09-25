@@ -21,6 +21,7 @@
 
 namespace ioj::sim {
 struct LevelSim;
+struct LevelSimTestAccess;
 class EntityLedger;
 class CombatEvents;
 class LevelSpawnManager;
@@ -162,6 +163,7 @@ struct Sim {
 
     friend class PhaseInterface;
     friend struct sim::LevelSim;
+    friend struct sim::LevelSimTestAccess;
 
     friend class sim::LevelSpawnManager;
 
@@ -181,6 +183,9 @@ struct Sim {
 
     fighters::CommandInterface fighters_interface;
     std::vector<EntityUniqueId> fighter_ids;
+    std::uint64_t fighter_membership_revision_{};
+    std::uint64_t fighter_layout_revision_{};
+    bool fighter_ids_current_{};
     std::int32_t fighters_spawned{0};
 
     FighterOrderQueue fighter_order_queue{};

@@ -89,8 +89,9 @@ struct Sim {
         return overlap_candidates_;
     }
     auto get_laser_simulation() const noexcept -> lasers::Sim const& { return laser_simulation; }
-    auto get_view(std::int32_t offset, std::int32_t width) -> EntityData::View;
     auto get_const_view(std::int32_t offset, std::int32_t width) const -> EntityData::ConstView;
+    auto get_membership_revision() const noexcept -> std::uint64_t { return membership_revision_; }
+    auto get_layout_revision() const noexcept -> std::uint64_t { return layout_revision_; }
     auto get_entity_ids() const -> std::span<EntityUniqueId const> {
         return entity_buffers.current().get_const_view().entity_ids();
     }
@@ -101,12 +102,7 @@ struct Sim {
         auto const entities{entity_buffers.current().get_const_view().columns()};
         return entity_tables_.health.get_const_view(entities.health_indices, entities.entity_ids);
     }
-    void set_parent_id(EntityUniqueId fighter, EntityUniqueId parent) {
-        assert(fighter.is_valid() && fighter.entity_type() == EntityType::Fighter);
-        auto const index{agents_.indexes().find(fighter)};
-        assert(index >= 0);
-        entity_buffers.current().get_view().parent_ids()[index] = parent;
-    }
+    void set_parent_id(EntityUniqueId fighter, EntityUniqueId parent);
     auto get_locations() const {
         return entity_buffers.current().get_const_view().columns().locations;
     }
@@ -168,6 +164,7 @@ struct Sim {
     /* **************************************** */
     // Accessors
     /* **************************************** */
+    auto get_view(std::int32_t offset, std::int32_t width) -> EntityData::View;
     auto get_task_view(Task task) noexcept -> TaskView;
     auto get_const_task_view(Task task) const noexcept -> ConstTaskView;
     auto find_index(EntityUniqueId fighter) const noexcept -> std::int32_t;
@@ -270,6 +267,9 @@ struct Sim {
     std::int16_t attack_cleaner_{};
 
     EntityBuffers entity_buffers{};
+    std::uint64_t membership_revision_{};
+    // Membership lists preserve fighter storage order, independently of live ownership changes.
+    std::uint64_t layout_revision_{};
     EntityLedger& ledger_;
     CombatEvents const& combat_events_;
     EntityTables& entity_tables_;

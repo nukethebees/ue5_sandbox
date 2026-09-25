@@ -194,6 +194,7 @@ auto Sim::register_ships(CapitalSpawnDataConstView const spawn_data)
 
     auto const first_new_index{entities.num()};
     spawn_ships(spawn_data);
+    fighter_ids_current_ = false;
 
     std::vector<EntityUniqueId> new_ids;
     new_ids.reserve(static_cast<std::size_t>(n_to_add));
@@ -300,6 +301,13 @@ void Sim::queue_fighter_spawns(ml::FrameScratch& scratch) {
     }
 }
 void Sim::refresh_fighter_ids(ml::FrameScratch& scratch) {
+    auto const membership_revision{fighters_interface.get_membership_revision()};
+    auto const layout_revision{fighters_interface.get_layout_revision()};
+    if (fighter_ids_current_ && fighter_membership_revision_ == membership_revision &&
+        fighter_layout_revision_ == layout_revision) {
+        return;
+    }
+
     auto const entities{this->entities.get_view().columns()};
     auto const ids{fighters_interface.get_entity_ids()};
     auto const parents{fighters_interface.get_parent_ids()};
@@ -338,6 +346,9 @@ void Sim::refresh_fighter_ids(ml::FrameScratch& scratch) {
             fighter_ids[counts[owners[index]]++] = ids[index];
         }
     }
+    fighter_membership_revision_ = membership_revision;
+    fighter_layout_revision_ = layout_revision;
+    fighter_ids_current_ = true;
 }
 /* **************************************** */
 // Orders
@@ -410,6 +421,7 @@ void Sim::handle_dead_entities() {
         agents_.indexes().retire(entities.entity_ids[index]);
     }
     this->entities.remove_at_swap(local_indices_to_remove);
+    fighter_ids_current_ = false;
 }
 void Sim::reassign_fighters_of_dying_capital() {
     auto const entities{this->entities.get_const_view().columns()};

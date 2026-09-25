@@ -509,6 +509,7 @@ void Sim::resolve_damage_events() {
     auto const data{entity_buffers.current().get_view().columns()};
     auto const healths{entity_tables_.health.get_view(data.health_indices, data.entity_ids)};
     auto const damage_events{combat_events_.events_for(EntityType::Fighter)};
+    auto const previous_death_count{entity_death_info.num()};
     batch::resolve_damage_events(damage_events,
                                  agents_.indexes(),
                                  data.entity_ids,
@@ -516,6 +517,10 @@ void Sim::resolve_damage_events() {
                                  local_indices_to_remove,
                                  entity_death_info,
                                  ledger_);
+
+    if (entity_death_info.num() != previous_death_count) {
+        ++membership_revision_;
+    }
 
     auto const damage_count{damage_events.num()};
     for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {
@@ -1022,6 +1027,21 @@ void Sim::publish_navigation_telemetry() const {
 auto Sim::get_num_instances() const noexcept -> std::int32_t {
     return entity_buffers.current().num();
 }
+void Sim::set_parent_id(EntityUniqueId const fighter, EntityUniqueId const parent) {
+    assert(fighter.is_valid() && fighter.entity_type() == EntityType::Fighter);
+    auto const index{agents_.indexes().find(fighter)};
+    assert(index >= 0);
+    auto const data{entity_buffers.current().get_view().columns()};
+
+    if (data.parent_ids[index] == parent) {
+        return;
+    }
+
+    data.parent_ids[index] = parent;
+    if (is_alive(entity_tables_.health.get_health(data.health_indices[index], fighter))) {
+        ++membership_revision_;
+    }
+}
 auto Sim::get_view(std::int32_t const offset, std::int32_t const width) -> EntityData::View {
     return entity_buffers.current().get_view(offset, width).columns();
 }
@@ -1176,13 +1196,18 @@ void Sim::refresh_layout() {
     new_data.reset();
     new_data.reserve(n_fighters);
     auto const old_tasks{old_data.get_const_view().tasks()};
+    bool reordered{};
     for (std::size_t group{}; group < n_task_types; ++group) {
         for (std::int32_t index{}; index < n_fighters; ++index) {
             if (static_cast<std::size_t>(old_tasks[index]) == group) {
+                reordered |= new_data.num() != index;
                 new_data.append_from(old_data.slice(index, 1));
                 ++write_indices[group];
             }
         }
+    }
+    if (reordered) {
+        ++layout_revision_;
     }
     assert(old_data.num() == new_data.num());
     check_fighter_tasks();
@@ -1279,6 +1304,9 @@ void Sim::commit_spawns() {
         std::span<EntityUniqueId const>{data.entity_ids}.subspan(n_cur, n_new),
         config.health,
         std::span<HealthIndex>{data.health_indices}.subspan(n_cur, n_new));
+    if (is_alive(config.health)) {
+        ++membership_revision_;
+    }
     if (diagnostics_enabled_) {
         for (std::int32_t i{}; i < n_new; ++i) {
             if (!diagnostics::take_report(diagnostics_enabled_, diagnostic_spawn_reports, 64)) {
@@ -1312,6 +1340,9 @@ void Sim::remove_dead_entities() {
         agents_.indexes().retire(columns.entity_ids[index]);
     }
     data.remove_at_swap(local_indices_to_remove);
+    if (!local_indices_to_remove.empty()) {
+        ++layout_revision_;
+    }
     validate_array_sizes();
 }
 
