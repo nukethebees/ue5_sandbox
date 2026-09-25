@@ -1,6 +1,5 @@
-add_executable(layout-planner)
-target_sources(layout-planner PRIVATE
-  application.cpp
+add_library(layout-planner-ui)
+target_sources(layout-planner-ui PRIVATE
   platform/file_dialog.cpp
   gui/planner_ui.cpp
   gui/planner_ui_external.cpp
@@ -18,11 +17,10 @@ target_sources(layout-planner PRIVATE
   gui/planner_ui_properties_structural.cpp
   gui/planner_ui_support.cpp
   gui/planner_ui_visualizations.cpp
-  main.cpp
 )
-target_compile_features(layout-planner PRIVATE cxx_std_23)
-target_include_directories(layout-planner PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_link_libraries(layout-planner PRIVATE
+target_compile_features(layout-planner-ui PUBLIC cxx_std_23)
+target_include_directories(layout-planner-ui PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
+target_link_libraries(layout-planner-ui PUBLIC
   CLI11::CLI11
   SDL3::SDL3-static
   nfd::nfd
@@ -32,15 +30,19 @@ target_link_libraries(layout-planner PRIVATE
   ioj::warnings_as_errors
 )
 if(WIN32)
-  target_link_libraries(layout-planner PRIVATE ole32 uuid shell32)
+  target_link_libraries(layout-planner-ui PUBLIC ole32 uuid shell32)
 endif()
+add_executable(layout-planner application.cpp main.cpp)
+target_link_libraries(layout-planner PRIVATE layout-planner-ui)
 target_compile_definitions(layout-planner PRIVATE SDL_MAIN_HANDLED)
+target_compile_definitions(layout-planner-ui PRIVATE SDL_MAIN_HANDLED)
 
-add_executable(layout-planner-ui-tests tests/table_tests.cpp gui/planner_ui_support.cpp)
+add_executable(layout-planner-ui-tests tests/table_tests.cpp tests/planner_ui_tests.cpp)
 target_compile_features(layout-planner-ui-tests PRIVATE cxx_std_23)
 target_include_directories(layout-planner-ui-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(layout-planner-ui-tests PRIVATE
-  sandbox-imgui native-layout GTest::gtest_main ioj::warnings_as_errors)
+  layout-planner-ui GTest::gtest_main ioj::warnings_as_errors)
+target_compile_definitions(layout-planner-ui-tests PRIVATE IOJ_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 add_test(NAME layout-planner-ui-tests COMMAND layout-planner-ui-tests)
 set_tests_properties(layout-planner-ui-tests PROPERTIES LABELS "unit;layout;tools")
 

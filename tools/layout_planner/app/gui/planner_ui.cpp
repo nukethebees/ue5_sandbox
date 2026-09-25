@@ -2291,6 +2291,11 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     focus_inline_record_rename_ = false;
     open_record_module_.reset();
     graph_node_positions_.clear();
+    graph_cache_revision_ = 0;
+    graph_scope_ = {};
+    graph_focus_.reset();
+    module_graph_positions_.clear();
+    graph_fit_all_ = true;
     auto const types{analysis_session_.inputs.workspace.types().types()};
     if (auto const saved{persisted_graph_node_positions_.find(graph_project_key(project_path_))};
         saved != persisted_graph_node_positions_.end()) {

@@ -2,6 +2,7 @@
 
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/graph_view.hpp>
 #include <ioj/layout/planner_session.hpp>
 #include <ioj/layout/schema_loader.hpp>
 
@@ -50,6 +51,7 @@ class PlannerUi {
     auto draw() -> bool;
     [[nodiscard]] auto window_title() const -> std::string;
   private:
+    friend struct PlannerUiTestAccess;
     struct PendingPackedEnumBinding {
         lispb::schema::DeclarationId packed_declaration;
         std::string field_name;
@@ -494,6 +496,18 @@ class PlannerUi {
     float graph_pan_x_{32.0F};
     float graph_pan_y_{32.0F};
     float graph_zoom_{1.0F};
+    layout::GraphScope graph_scope_;
+    layout::GraphScope cached_graph_scope_;
+    layout::GraphProjection graph_projection_;
+    std::optional<lispb::schema::TypeIdentity> graph_focus_;
+    std::uint64_t graph_cache_revision_{};
+    float graph_cache_font_size_{};
+    std::vector<layout::GraphPoint> graph_sizes_;
+    std::vector<layout::GraphPoint> graph_positions_;
+    std::vector<std::string> graph_names_;
+    std::vector<std::string> graph_details_;
+    std::map<std::string, std::map<lispb::schema::TypeIdentity, std::array<float, 2>>>
+        module_graph_positions_;
     std::map<lispb::schema::TypeIdentity, std::array<float, 2>> graph_node_positions_;
     std::map<std::string, std::map<lispb::schema::TypeIdentity, std::array<float, 2>>, std::less<>>
         persisted_graph_node_positions_;
