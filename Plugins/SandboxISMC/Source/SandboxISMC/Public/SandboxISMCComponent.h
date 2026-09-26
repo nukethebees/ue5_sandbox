@@ -39,6 +39,9 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     auto set_num_custom_data_floats(int32 count) -> void;
     auto get_num_custom_data_floats() const -> int32;
 
+    // Reserve CPU staging capacity as each slot next becomes writable; never waits or shrinks.
+    auto reserve_instances(int32 instance_count) -> void;
+
     template <typename FillChunk>
     auto set_instances(int32 instance_count,
                        ESandboxISMCParallelism parallelism,
@@ -65,8 +68,15 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     virtual auto CreateSceneProxy() -> FPrimitiveSceneProxy* override;
     virtual auto GetNumMaterials() const -> int32 override;
     virtual auto GetMaterial(int32 element_index) const -> UMaterialInterface* override;
+    virtual auto GetUsedMaterials(TArray<UMaterialInterface*>& out_materials,
+                                  bool get_debug_materials = false) const -> void override;
     virtual auto CalcBounds(FTransform const& local_to_world) const -> FBoxSphereBounds override;
     virtual auto SendRenderDynamicData_Concurrent() -> void override;
+    virtual auto ShouldCreatePhysicsState() const -> bool override { return false; }
+    virtual auto OnRegister() -> void override;
+    virtual auto CollectPSOPrecacheData(FPSOPrecacheParams const& base_params,
+                                        FMaterialInterfacePSOPrecacheParamsList& out_params)
+        -> void override;
   private:
     static constexpr int32 instance_chunk_size{1024};
     static constexpr int32 parallel_instance_threshold{4096};
@@ -79,14 +89,13 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
         checkf(instance_count >= 0, TEXT("SandboxISMC instance count must not be negative"));
         TRACE_CPUPROFILER_EVENT_SCOPE(USandboxISMCComponent::set_instances);
         SCOPE_CYCLE_COUNTER(STAT_SandboxISMCBuild);
-        auto const start_cycles{FPlatformTime::Cycles64()};
-
         auto& buffer{begin_instance_update(instance_count)};
+        auto const start_cycles{FPlatformTime::Cycles64()};
         auto instances{MakeArrayView(buffer.instances)};
         auto custom_data{MakeArrayView(buffer.custom_data)};
         auto const chunk_count{FMath::DivideAndRoundUp(instance_count, instance_chunk_size)};
         if constexpr (CalculateBounds) {
-            chunk_bounds_.SetNumUninitialized(chunk_count);
+            chunk_bounds_.SetNumUninitialized(chunk_count, EAllowShrinking::No);
         } else {
             chunk_bounds_.Reset();
         }
@@ -101,7 +110,7 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
                 num_custom_data_floats_,
                 first_index,
                 mesh_bounds_origin_,
-                mesh_bounds_radius_,
+                mesh_bounds_extent_,
                 CalculateBounds && has_mesh_bounds_};
             fill_chunk(writer);
             if constexpr (CalculateBounds) {
@@ -133,11 +142,14 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     }
 
     auto begin_instance_update(int32 instance_count) -> FSandboxISMCStagingBuffer&;
+    auto synchronize_mesh_cache() -> bool;
     auto finish_instance_update(int32 instance_count, FBox3f local_box, uint64 elapsed_cycles)
         -> void;
 
     UPROPERTY(EditAnywhere, Category = "Mesh")
     TObjectPtr<UStaticMesh> static_mesh_;
+
+    TWeakObjectPtr<UStaticMesh> cached_mesh_;
 
     TSharedPtr<FSandboxISMCStagingState, ESPMode::ThreadSafe> staging_state_;
     TSharedPtr<FSandboxISMCMetricsState, ESPMode::ThreadSafe> metrics_;
@@ -145,8 +157,9 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     TArray<FBox3f> chunk_bounds_;
     FBoxSphereBounds local_bounds_{ForceInit};
     FVector3f mesh_bounds_origin_{FVector3f::ZeroVector};
-    float mesh_bounds_radius_{0.0f};
+    FVector3f mesh_bounds_extent_{FVector3f::ZeroVector};
     int32 instance_count_{0};
     int32 num_custom_data_floats_{0};
+    int32 reserved_instance_count_{0};
     bool has_mesh_bounds_{false};
 };

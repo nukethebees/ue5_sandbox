@@ -1,11 +1,91 @@
 #include "SandboxISMCComponent.h"
 
 #include "Engine/StaticMesh.h"
+#include "UObject/UnrealType.h"
 #include "UObject/UObjectGlobals.h"
 #include <CQTest.h>
 
 TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
 {
+    TEST_METHOD(RefreshesPropertyAssignedAndReplacementMeshBounds)
+    {
+        auto* component{NewObject<USandboxISMCComponent>()};
+        auto* cube{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
+        auto* cone{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cone.Cone"))};
+        auto* property{FindFProperty<FObjectProperty>(USandboxISMCComponent::StaticClass(),
+                                                      TEXT("static_mesh_"))};
+        if (!TestRunner->TestNotNull(TEXT("Cube loads"), cube) ||
+            !TestRunner->TestNotNull(TEXT("Cone loads"), cone) ||
+            !TestRunner->TestNotNull(TEXT("Mesh property exists"), property)) {
+            return;
+        }
+        auto const verify_bounds{[&](UStaticMesh& mesh) {
+            component->set_instances(1, ESandboxISMCParallelism::Sequential, [](auto& chunk) {
+                chunk.set_transform(
+                    0, FVector3f::ZeroVector, FQuat4f::Identity, FVector3f::OneVector);
+            });
+            auto const bounds{component->CalcBounds(FTransform::Identity)};
+            TestRunner->TestTrue(TEXT("Bounds use the configured mesh origin"),
+                                 bounds.Origin.Equals(mesh.GetBounds().Origin));
+            TestRunner->TestTrue(TEXT("Bounds use the configured mesh box"),
+                                 bounds.BoxExtent.Equals(mesh.GetBounds().BoxExtent));
+        }};
+        property->SetObjectPropertyValue_InContainer(component, cube);
+        component->set_static_mesh(*cube);
+        verify_bounds(*cube);
+        component->set_static_mesh(*cube);
+        TestRunner->TestEqual(
+            TEXT("An unchanged mesh preserves the snapshot"), component->get_instance_count(), 1);
+        component->set_static_mesh(*cone);
+        TestRunner->TestEqual(
+            TEXT("Replacement invalidates the old snapshot"), component->get_instance_count(), 0);
+        verify_bounds(*cone);
+
+        auto* loaded_component{NewObject<USandboxISMCComponent>()};
+        property->SetObjectPropertyValue_InContainer(loaded_component, cube);
+        component = loaded_component;
+        verify_bounds(*cube);
+        component->clear_static_mesh();
+        TestRunner->TestEqual(TEXT("Clearing the mesh invalidates bounds"),
+                              component->CalcBounds(FTransform::Identity).SphereRadius,
+                              0.0);
+    }
+
+    TEST_METHOD(ReservesWithoutSubmittingInstances)
+    {
+        auto* component{NewObject<USandboxISMCComponent>()};
+        component->set_num_custom_data_floats(3);
+        component->reserve_instances(4097);
+        TestRunner->TestEqual(
+            TEXT("Reserve does not publish instances"), component->get_instance_count(), 0);
+        auto const submit{[&](int32 count) {
+            component->set_instances(count, ESandboxISMCParallelism::Sequential, [](auto& chunk) {
+                auto const count{chunk.num()};
+                for (int32 index{}; index < count; ++index) {
+                    chunk.set_transform(
+                        index, FVector3f::ZeroVector, FQuat4f::Identity, FVector3f::OneVector);
+                    for (auto& value : chunk.custom_data(index)) {
+                        value = 1.0f;
+                    }
+                }
+            });
+        }};
+        for (int32 slot{}; slot < 3; ++slot) {
+            submit(1);
+        }
+        auto const warmed{component->get_update_metrics().staging_capacity_changes};
+        component->reserve_instances(1);
+        for (int32 slot{}; slot < 3; ++slot) {
+            submit(4097);
+        }
+        TestRunner->TestEqual(TEXT("Reserved slots grow without allocating"),
+                              component->get_update_metrics().staging_capacity_changes,
+                              warmed);
+        TestRunner->TestEqual(TEXT("Unregistered submissions have not been uploaded"),
+                              component->get_update_metrics().uploads,
+                              uint64{0});
+    }
+
     TEST_METHOD(BuildsCompleteSnapshotsInFixedChunks)
     {
         auto* component{NewObject<USandboxISMCComponent>()};
@@ -51,7 +131,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
         TestRunner->TestEqual(
             TEXT("Metrics report the snapshot size"), metrics.instance_count, instance_count);
         TestRunner->TestEqual(TEXT("Metrics report a complete packed upload"),
-                              metrics.upload_bytes,
+                              metrics.submitted_bytes,
                               static_cast<uint64>(instance_count) *
                                   sizeof(FSandboxISMCRenderInstance));
         TestRunner->TestTrue(TEXT("Snapshot bounds are non-empty"),
@@ -90,13 +170,13 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                               component->get_num_custom_data_floats(),
                               3);
         TestRunner->TestEqual(TEXT("Metrics split transform upload bytes"),
-                              metrics.transform_upload_bytes,
+                              metrics.transform_submitted_bytes,
                               transform_bytes);
         TestRunner->TestEqual(TEXT("Metrics split custom-data upload bytes"),
-                              metrics.custom_data_upload_bytes,
+                              metrics.custom_data_submitted_bytes,
                               custom_data_bytes);
         TestRunner->TestEqual(TEXT("Metrics report the combined upload size"),
-                              metrics.upload_bytes,
+                              metrics.submitted_bytes,
                               transform_bytes + custom_data_bytes);
     }
 
@@ -133,10 +213,10 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                                   count);
             auto const metrics{component->get_update_metrics()};
             TestRunner->TestEqual(TEXT("Transform upload size follows the live count"),
-                                  metrics.transform_upload_bytes,
+                                  metrics.transform_submitted_bytes,
                                   static_cast<uint64>(count) * sizeof(FSandboxISMCRenderInstance));
             TestRunner->TestEqual(TEXT("Custom-data upload size follows the live count"),
-                                  metrics.custom_data_upload_bytes,
+                                  metrics.custom_data_submitted_bytes,
                                   static_cast<uint64>(count) * 3 * sizeof(float));
         }};
 

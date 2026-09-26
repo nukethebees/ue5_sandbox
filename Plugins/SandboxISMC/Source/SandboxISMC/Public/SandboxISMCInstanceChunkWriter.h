@@ -16,14 +16,14 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
                                     int32 num_custom_data_floats,
                                     int32 first_index,
                                     FVector3f mesh_bounds_origin,
-                                    float mesh_bounds_radius,
+                                    FVector3f mesh_bounds_extent,
                                     bool has_mesh_bounds)
         : instances_{instances}
         , custom_data_{custom_data}
         , num_custom_data_floats_{num_custom_data_floats}
         , first_index_{first_index}
         , mesh_bounds_origin_{mesh_bounds_origin}
-        , mesh_bounds_radius_{mesh_bounds_radius}
+        , mesh_bounds_extent_{mesh_bounds_extent}
         , has_mesh_bounds_{has_mesh_bounds} {
         check(num_custom_data_floats >= 0);
         check(custom_data.Num() == instances.Num() * num_custom_data_floats);
@@ -34,6 +34,10 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
     auto range() const -> FSandboxISMCInstanceRange { return {first_index_, instances_.Num()}; }
     auto num_custom_data_floats() const -> int32 { return num_custom_data_floats_; }
 
+    static auto supports_scale(FVector3f scale) -> bool {
+        return scale.X >= 0.0f && scale.Y >= 0.0f && scale.Z >= 0.0f;
+    }
+
     auto custom_data(int32 local_index) -> TArrayView<float> {
         check(instances_.IsValidIndex(local_index));
         return custom_data_.Slice(local_index * num_custom_data_floats_, num_custom_data_floats_);
@@ -43,6 +47,8 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
         -> void {
         check(instances_.IsValidIndex(local_index));
 
+        checkf(supports_scale(scale), TEXT("SandboxISMC does not support negative instance scale"));
+
         auto const matrix{FTransform3f{rotation, position, scale}.ToMatrixWithScale()};
         auto& instance{instances_[local_index]};
         instance.origin = FVector4f{position, 0.0f};
@@ -51,9 +57,14 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
         instance.transform_row_2 = FVector4f{matrix.M[2][0], matrix.M[2][1], matrix.M[2][2], 0.0f};
 
         if (has_mesh_bounds_) {
-            auto const center{position + rotation.RotateVector(mesh_bounds_origin_ * scale)};
-            auto const radius{mesh_bounds_radius_ * scale.GetAbsMax()};
-            auto const extent{FVector3f{radius}};
+            auto const row_0{matrix.GetScaledAxis(EAxis::X)};
+            auto const row_1{matrix.GetScaledAxis(EAxis::Y)};
+            auto const row_2{matrix.GetScaledAxis(EAxis::Z)};
+            auto const center{position + row_0 * mesh_bounds_origin_.X +
+                              row_1 * mesh_bounds_origin_.Y + row_2 * mesh_bounds_origin_.Z};
+            auto const extent{row_0.GetAbs() * mesh_bounds_extent_.X +
+                              row_1.GetAbs() * mesh_bounds_extent_.Y +
+                              row_2.GetAbs() * mesh_bounds_extent_.Z};
             bounds_ += FBox3f{center - extent, center + extent};
         }
     }
@@ -66,6 +77,6 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
     int32 num_custom_data_floats_{0};
     int32 first_index_{0};
     FVector3f mesh_bounds_origin_{FVector3f::ZeroVector};
-    float mesh_bounds_radius_{0.0f};
+    FVector3f mesh_bounds_extent_{FVector3f::ZeroVector};
     bool has_mesh_bounds_{false};
 };

@@ -59,10 +59,13 @@ struct FSandboxISMCMetricsState {
     int32 instance_count{0};
     uint64 build_cycles{0};
     uint64 submit_cycles{0};
-    uint64 transform_upload_bytes{0};
-    uint64 custom_data_upload_bytes{0};
-    uint64 upload_bytes{0};
+    uint64 transform_submitted_bytes{0};
+    uint64 custom_data_submitted_bytes{0};
+    uint64 submitted_bytes{0};
     TAtomic<uint64> upload_cycles{0};
+    TAtomic<uint64> uploaded_bytes{0};
+    TAtomic<uint64> total_uploaded_bytes{0};
+    TAtomic<uint64> uploads{0};
     uint64 staging_capacity_changes{0};
     TAtomic<uint64> gpu_buffer_allocations{0};
     uint64 staging_waits{0};
@@ -70,6 +73,27 @@ struct FSandboxISMCMetricsState {
 };
 
 namespace {
+auto resolve_material(USandboxISMCComponent const& component, int32 material_index)
+    -> UMaterialInterface* {
+    auto* material{component.GetMaterial(material_index)};
+    if (material == nullptr || material->GetMaterial()->MaterialDomain != MD_Surface ||
+        !material->CheckMaterialUsage_Concurrent(MATUSAGE_InstancedStaticMeshes)) {
+        material = UMaterial::GetDefaultMaterial(MD_Surface);
+    }
+    return material;
+}
+
+auto has_supported_lod(UStaticMesh const& mesh) -> bool {
+    auto const* data{mesh.GetRenderData()};
+    if (data == nullptr || !data->IsInitialized() || data->LODResources.IsEmpty()) {
+        return false;
+    }
+    auto const& lod{data->LODResources[0]};
+    return lod.bBuffersInlined && !lod.bIsOptionalLOD && data->CurrentFirstLODIdx == 0 &&
+           lod.GetNumVertices() > 0 && lod.IndexBuffer.GetNumIndices() > 0 &&
+           !lod.Sections.IsEmpty();
+}
+
 class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
   public:
     FSandboxISMCInstanceBuffer(
@@ -166,6 +190,9 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
                                  static_cast<int64>(custom_data_byte_count));
         TRACE_COUNTER_SET_ALWAYS(SandboxISMCRenderThreadUploadInstances, instance_count);
         metrics_->upload_cycles.Store(elapsed_cycles);
+        metrics_->uploaded_bytes.Store(byte_count);
+        metrics_->total_uploaded_bytes += byte_count;
+        ++metrics_->uploads;
         SET_DWORD_STAT(STAT_SandboxISMCUploadBytes,
                        static_cast<uint32>(FMath::Min<uint64>(byte_count, MAX_uint32)));
         return resources_changed;
@@ -246,7 +273,29 @@ class FSandboxISMCVertexFactory final : public FLocalVertexFactory {
         : FLocalVertexFactory{feature_level, "FSandboxISMCVertexFactory"}
         , instance_buffer_{instance_buffer} {}
 
-    void set_static_mesh_data(FDataType const& data) { Data = data; }
+    void set_static_mesh_data(FStaticMeshLODResources const& lod, UStaticMesh* mesh) {
+        lod_ = &lod;
+#if WITH_EDITORONLY_DATA
+        Data.StaticMesh = mesh;
+#endif
+    }
+
+    void bind_static_mesh_data() {
+        check(lod_ != nullptr);
+        auto const& lod{*lod_};
+        lod.VertexBuffers.PositionVertexBuffer.BindPositionVertexBuffer(this, Data);
+        lod.VertexBuffers.StaticMeshVertexBuffer.BindTangentVertexBuffer(this, Data);
+        lod.VertexBuffers.StaticMeshVertexBuffer.BindPackedTexCoordVertexBuffer(this, Data);
+        if (lod.bHasColorVertexData) {
+            lod.VertexBuffers.ColorVertexBuffer.BindColorVertexBuffer(this, Data);
+        } else {
+            FColorVertexBuffer::BindDefaultColorVertexBuffer(
+                this, Data, FColorVertexBuffer::NullBindStride::ZeroForDefaultBufferBind);
+        }
+        if (lod.VertexBuffers.StaticMeshVertexBuffer.GetNumTexCoords() > 0) {
+            lod.VertexBuffers.StaticMeshVertexBuffer.BindLightMapVertexBuffer(this, Data, 0);
+        }
+    }
 
     auto get_instance_uniform_buffer() const -> FRHIUniformBuffer* {
         return instance_uniform_buffer_.GetReference();
@@ -283,12 +332,9 @@ class FSandboxISMCVertexFactory final : public FLocalVertexFactory {
         environment.SetDefine(TEXT("VF_SUPPORTS_PRIMITIVE_SCENE_DATA"), TEXT("0"));
     }
 
-    virtual void InitRHI(FRHICommandListBase& rhi_command_list) override {
-        TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCVertexFactory::InitRHI);
-        check(HasValidFeatureLevel());
-        check(instance_buffer_ != nullptr);
-
-        FVertexDeclarationElementList elements;
+    void build_vertex_declaration(FVertexDeclarationElementList& elements) {
+        bind_static_mesh_data();
+        Streams.Reset();
         GetVertexElements(GetFeatureLevel(),
                           EVertexInputStreamType::Default,
                           false,
@@ -316,7 +362,25 @@ class FSandboxISMCVertexFactory final : public FLocalVertexFactory {
         FVertexStreamComponent const null_lightmap{
             &GNullVertexBuffer, 0, 0, VET_Float4, EVertexStreamUsage::Instancing};
         elements.Add(AccessStreamComponent(null_lightmap, 12, Streams));
+    }
 
+    virtual void InitRHI(FRHICommandListBase& rhi_command_list) override {
+        TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCVertexFactory::InitRHI);
+        check(HasValidFeatureLevel());
+        check(instance_buffer_ != nullptr);
+
+        FVertexDeclarationElementList elements;
+        build_vertex_declaration(elements);
+        if (!Data.PositionComponent.VertexBuffer->VertexBufferRHI.IsValid() ||
+            !lod_->IndexBuffer.IndexBufferRHI.IsValid() ||
+            (RHISupportsManualVertexFetch(GMaxRHIShaderPlatform) &&
+             (Data.PositionComponentSRV == nullptr || Data.TangentsSRV == nullptr ||
+              Data.TextureCoordinatesSRV == nullptr))) {
+            UE_LOG(LogSandboxISMC,
+                   Warning,
+                   TEXT("SandboxISMC LOD0 RHI resources are unavailable; skipping draws"));
+            return;
+        }
         InitDeclaration(elements);
         UniformBuffer = CreateLocalVFUniformBuffer(this, Data.LODLightmapDataIndex, nullptr, 0, 0);
         update_instance_uniform_buffer();
@@ -327,6 +391,7 @@ class FSandboxISMCVertexFactory final : public FLocalVertexFactory {
         FLocalVertexFactory::ReleaseRHI();
     }
   private:
+    FStaticMeshLODResources const* lod_{nullptr};
     FSandboxISMCInstanceBuffer const* instance_buffer_{nullptr};
     TUniformBufferRef<FInstancedStaticMeshVertexFactoryUniformShaderParameters>
         instance_uniform_buffer_;
@@ -390,6 +455,7 @@ IMPLEMENT_VERTEX_FACTORY_TYPE(FSandboxISMCVertexFactory,
                               "/Engine/Private/LocalVertexFactory.ush",
                               EVertexFactoryFlags::UsedWithMaterials |
                                   EVertexFactoryFlags::SupportsDynamicLighting |
+                                  EVertexFactoryFlags::SupportsPSOPrecaching |
                                   EVertexFactoryFlags::DoesNotSupportNullPixelShader);
 
 class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
@@ -402,51 +468,22 @@ class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
         , static_mesh_{component->get_static_mesh()}
         , render_data_{static_mesh_->GetRenderData()}
         , instance_buffer_{initial_buffer, MoveTemp(staging_state), MoveTemp(metrics)}
-        , vertex_factory_{GetScene().GetFeatureLevel(), &instance_buffer_}
-        , material_relevance_{component->GetMaterialRelevance(GetScene().GetShaderPlatform())} {
+        , vertex_factory_{GetScene().GetFeatureLevel(), &instance_buffer_} {
         TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCSceneProxy::FSandboxISMCSceneProxy);
         check(render_data_ != nullptr);
         check(!render_data_->LODResources.IsEmpty());
 
         auto const& lod = render_data_->LODResources[0];
-        FLocalVertexFactory::FDataType vertex_data;
-        lod.VertexBuffers.PositionVertexBuffer.BindPositionVertexBuffer(&vertex_factory_,
-                                                                        vertex_data);
-        lod.VertexBuffers.StaticMeshVertexBuffer.BindTangentVertexBuffer(&vertex_factory_,
-                                                                         vertex_data);
-        lod.VertexBuffers.StaticMeshVertexBuffer.BindPackedTexCoordVertexBuffer(&vertex_factory_,
-                                                                                vertex_data);
-
-        if (lod.bHasColorVertexData) {
-            lod.VertexBuffers.ColorVertexBuffer.BindColorVertexBuffer(&vertex_factory_,
-                                                                      vertex_data);
-        } else {
-            FColorVertexBuffer::BindDefaultColorVertexBuffer(
-                &vertex_factory_,
-                vertex_data,
-                FColorVertexBuffer::NullBindStride::ZeroForDefaultBufferBind);
-        }
-
-        if (lod.VertexBuffers.StaticMeshVertexBuffer.GetNumTexCoords() > 0) {
-            lod.VertexBuffers.StaticMeshVertexBuffer.BindLightMapVertexBuffer(
-                &vertex_factory_, vertex_data, 0);
-        }
-
-#if WITH_EDITORONLY_DATA
-        vertex_data.StaticMesh = static_mesh_;
-#endif
-        vertex_factory_.set_static_mesh_data(vertex_data);
+        vertex_factory_.set_static_mesh_data(lod, static_mesh_);
 
         auto const section_count = lod.Sections.Num();
         materials_.Reserve(section_count);
         for (auto section_index = 0; section_index < section_count; ++section_index) {
             auto const material_index = lod.Sections[section_index].MaterialIndex;
-            auto* material = component->GetMaterial(material_index);
-            if (material == nullptr ||
-                !material->CheckMaterialUsage_Concurrent(MATUSAGE_InstancedStaticMeshes)) {
-                material = UMaterial::GetDefaultMaterial(MD_Surface);
-            }
+            auto* material{resolve_material(*component, material_index)};
             materials_.Add(material);
+            material_relevance_ |=
+                material->GetRelevance_Concurrent(GetScene().GetShaderPlatform());
         }
 
         instance_count_ = instance_buffer_.get_initial_instance_count();
@@ -497,9 +534,16 @@ class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
                                         uint32 visibility_map,
                                         FMeshElementCollector& collector) const override {
         TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCSceneProxy::GetDynamicMeshElements);
-        if (instance_count_ == 0 || !loose_uniform_buffer_.IsValid()) {
+        if (instance_count_ == 0 || visibility_map == 0 || !loose_uniform_buffer_.IsValid() ||
+            !vertex_factory_.GetDeclaration(EVertexInputStreamType::Default).IsValid()) {
             return;
         }
+
+        auto& primitive_uniform_buffer =
+            collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
+        FPrimitiveUniformShaderParametersBuilder builder;
+        BuildUniformShaderParameters(builder);
+        primitive_uniform_buffer.Set(collector.GetRHICommandList(), builder);
 
         auto const& lod = render_data_->LODResources[0];
         auto const view_count = views.Num();
@@ -519,7 +563,7 @@ class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
                 mesh.ReverseCulling = IsLocalToWorldDeterminantNegative();
                 mesh.Type = PT_TriangleList;
                 mesh.DepthPriorityGroup = SDPG_World;
-                mesh.CastShadow = CastsDynamicShadow();
+                mesh.CastShadow = CastsDynamicShadow() && section.bCastShadow;
                 mesh.bUseForMaterial = true;
                 mesh.bUseForDepthPass = true;
                 mesh.bCanApplyViewModeOverrides = true;
@@ -534,11 +578,6 @@ class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
                 batch_element.LooseParametersUniformBuffer = loose_uniform_buffer_;
                 batch_element.PrimitiveIdMode = PrimID_ForceZero;
 
-                auto& primitive_uniform_buffer =
-                    collector.AllocateOneFrameResource<FDynamicPrimitiveUniformBuffer>();
-                FPrimitiveUniformShaderParametersBuilder builder;
-                BuildUniformShaderParameters(builder);
-                primitive_uniform_buffer.Set(collector.GetRHICommandList(), builder);
                 batch_element.PrimitiveUniformBufferResource =
                     &primitive_uniform_buffer.UniformBuffer;
 
@@ -592,33 +631,51 @@ USandboxISMCComponent::USandboxISMCComponent()
     SetCanEverAffectNavigation(false);
     CanCharacterStepUpOn = ECB_No;
     bVisibleInRayTracing = false;
+    Mobility = EComponentMobility::Movable;
+}
+
+auto USandboxISMCComponent::synchronize_mesh_cache() -> bool {
+    auto const mesh_bounds{static_mesh_ != nullptr ? static_mesh_->GetBounds()
+                                                   : FBoxSphereBounds{ForceInit}};
+    auto const origin{FVector3f{mesh_bounds.Origin}};
+    auto const extent{FVector3f{mesh_bounds.BoxExtent}};
+    auto const changed{cached_mesh_.Get() != static_mesh_ || mesh_bounds_origin_ != origin ||
+                       mesh_bounds_extent_ != extent ||
+                       has_mesh_bounds_ != (static_mesh_ != nullptr)};
+    cached_mesh_ = static_mesh_;
+    mesh_bounds_origin_ = origin;
+    mesh_bounds_extent_ = extent;
+    has_mesh_bounds_ = static_mesh_ != nullptr;
+    return changed;
+}
+
+auto USandboxISMCComponent::OnRegister() -> void {
+    if (synchronize_mesh_cache()) {
+        clear_instances();
+    }
+    Super::OnRegister();
+    PrecachePSOs();
 }
 
 auto USandboxISMCComponent::set_static_mesh(UStaticMesh& mesh) -> void {
     TRACE_CPUPROFILER_EVENT_SCOPE(USandboxISMCComponent::set_static_mesh);
-    if (static_mesh_ == &mesh) {
+    static_mesh_ = &mesh;
+    if (!synchronize_mesh_cache()) {
         return;
     }
 
-    static_mesh_ = &mesh;
-    auto const mesh_bounds{mesh.GetBounds()};
-    mesh_bounds_origin_ = FVector3f{mesh_bounds.Origin};
-    mesh_bounds_radius_ = static_cast<float>(mesh_bounds.SphereRadius);
-    has_mesh_bounds_ = true;
     clear_instances();
+    PrecachePSOs();
     MarkRenderStateDirty();
 }
 
 auto USandboxISMCComponent::clear_static_mesh() -> void {
     TRACE_CPUPROFILER_EVENT_SCOPE(USandboxISMCComponent::clear_static_mesh);
-    if (static_mesh_ == nullptr) {
+    static_mesh_ = nullptr;
+    if (!synchronize_mesh_cache()) {
         return;
     }
 
-    static_mesh_ = nullptr;
-    mesh_bounds_origin_ = FVector3f::ZeroVector;
-    mesh_bounds_radius_ = 0.0f;
-    has_mesh_bounds_ = false;
     clear_instances();
     MarkRenderStateDirty();
 }
@@ -650,10 +707,22 @@ auto USandboxISMCComponent::get_instance_count() const -> int32 {
     return instance_count_;
 }
 
+auto USandboxISMCComponent::reserve_instances(int32 instance_count) -> void {
+    check(IsInGameThread());
+    check(instance_count >= 0);
+    reserved_instance_count_ = FMath::Max(reserved_instance_count_, instance_count);
+    chunk_bounds_.Reserve(FMath::DivideAndRoundUp(reserved_instance_count_, instance_chunk_size));
+}
+
 auto USandboxISMCComponent::begin_instance_update(int32 instance_count)
     -> FSandboxISMCStagingBuffer& {
     check(IsInGameThread());
-    check(instance_count == 0 || num_custom_data_floats_ <= MAX_int32 / instance_count);
+    if (synchronize_mesh_cache()) {
+        MarkRenderStateDirty();
+        PrecachePSOs();
+    }
+    auto const capacity{FMath::Max(instance_count, reserved_instance_count_)};
+    check(capacity == 0 || num_custom_data_floats_ <= MAX_int32 / capacity);
 
     auto& buffer{staging_state_->buffers.next()};
     if (buffer.in_flight.Load()) {
@@ -668,6 +737,8 @@ auto USandboxISMCComponent::begin_instance_update(int32 instance_count)
 
     auto const transform_capacity{buffer.instances.Max()};
     auto const custom_data_capacity{buffer.custom_data.Max()};
+    buffer.instances.Reserve(reserved_instance_count_);
+    buffer.custom_data.Reserve(reserved_instance_count_ * num_custom_data_floats_);
     buffer.instances.SetNumUninitialized(instance_count, EAllowShrinking::No);
     buffer.custom_data.SetNumUninitialized(instance_count * num_custom_data_floats_,
                                            EAllowShrinking::No);
@@ -683,27 +754,30 @@ auto USandboxISMCComponent::finish_instance_update(int32 instance_count,
     staging_state_->buffers.cycle();
     pending_staging_buffer_ = &staging_state_->buffers.current();
 
-    local_bounds_ = local_box.IsValid != 0
-                      ? FBoxSphereBounds{FBoxSphereBounds3f{local_box}}
-                      : FBoxSphereBounds{FVector::ZeroVector, FVector::ZeroVector, 0.0};
+    auto const new_bounds = local_box.IsValid != 0
+                              ? FBoxSphereBounds{FBoxSphereBounds3f{local_box}}
+                              : FBoxSphereBounds{FVector::ZeroVector, FVector::ZeroVector, 0.0};
+    if (local_bounds_.Origin != new_bounds.Origin ||
+        local_bounds_.BoxExtent != new_bounds.BoxExtent ||
+        local_bounds_.SphereRadius != new_bounds.SphereRadius) {
+        local_bounds_ = new_bounds;
+        MarkRenderTransformDirty();
+    }
     instance_count_ = instance_count;
 
-    auto const transform_upload_bytes{static_cast<uint64>(instance_count) *
-                                      sizeof(FSandboxISMCRenderInstance)};
-    auto const custom_data_upload_bytes{static_cast<uint64>(instance_count) *
-                                        static_cast<uint64>(num_custom_data_floats_) *
-                                        sizeof(float)};
-    auto const upload_bytes{transform_upload_bytes + custom_data_upload_bytes};
+    auto const transform_submitted_bytes{static_cast<uint64>(instance_count) *
+                                         sizeof(FSandboxISMCRenderInstance)};
+    auto const custom_data_submitted_bytes{static_cast<uint64>(instance_count) *
+                                           static_cast<uint64>(num_custom_data_floats_) *
+                                           sizeof(float)};
+    auto const submitted_bytes{transform_submitted_bytes + custom_data_submitted_bytes};
     metrics_->instance_count = instance_count;
     metrics_->build_cycles = elapsed_cycles;
-    metrics_->transform_upload_bytes = transform_upload_bytes;
-    metrics_->custom_data_upload_bytes = custom_data_upload_bytes;
-    metrics_->upload_bytes = upload_bytes;
+    metrics_->transform_submitted_bytes = transform_submitted_bytes;
+    metrics_->custom_data_submitted_bytes = custom_data_submitted_bytes;
+    metrics_->submitted_bytes = submitted_bytes;
     SET_DWORD_STAT(STAT_SandboxISMCInstances, instance_count);
-    SET_DWORD_STAT(STAT_SandboxISMCUploadBytes,
-                   static_cast<uint32>(FMath::Min<uint64>(upload_bytes, MAX_uint32)));
 
-    MarkRenderTransformDirty();
     MarkRenderDynamicDataDirty();
     if (IsRegistered() && SceneProxy == nullptr && static_mesh_ != nullptr && instance_count > 0) {
         MarkRenderStateDirty();
@@ -716,9 +790,12 @@ auto USandboxISMCComponent::get_update_metrics() const -> FSandboxISMCUpdateMetr
         .build_ms = FPlatformTime::ToMilliseconds64(metrics_->build_cycles),
         .submit_ms = FPlatformTime::ToMilliseconds64(metrics_->submit_cycles),
         .upload_ms = FPlatformTime::ToMilliseconds64(metrics_->upload_cycles.Load()),
-        .transform_upload_bytes = metrics_->transform_upload_bytes,
-        .custom_data_upload_bytes = metrics_->custom_data_upload_bytes,
-        .upload_bytes = metrics_->upload_bytes,
+        .transform_submitted_bytes = metrics_->transform_submitted_bytes,
+        .custom_data_submitted_bytes = metrics_->custom_data_submitted_bytes,
+        .submitted_bytes = metrics_->submitted_bytes,
+        .uploaded_bytes = metrics_->uploaded_bytes.Load(),
+        .total_uploaded_bytes = metrics_->total_uploaded_bytes.Load(),
+        .uploads = metrics_->uploads.Load(),
         .staging_capacity_changes = metrics_->staging_capacity_changes,
         .gpu_buffer_allocations = metrics_->gpu_buffer_allocations.Load(),
         .staging_waits = metrics_->staging_waits,
@@ -732,12 +809,18 @@ auto USandboxISMCComponent::CreateSceneProxy() -> FPrimitiveSceneProxy* {
         return nullptr;
     }
 
-    auto* render_data = static_mesh_->GetRenderData();
-    if (render_data == nullptr || render_data->LODResources.IsEmpty()) {
+    if (!has_supported_lod(*static_mesh_)) {
         UE_LOG(LogSandboxISMC,
                Warning,
-               TEXT("Static mesh '%s' has no conventional LOD render data for SandboxISMC"),
+               TEXT("SandboxISMC mesh '%s' requires initialized, non-empty, inlined, non-optional "
+                    "LOD0 render data. Disable mesh LOD streaming and retain LOD0 when cooking."),
                *GetNameSafe(static_mesh_));
+        return nullptr;
+    }
+
+    if (CheckPSOPrecachingAndBoostPriority() &&
+        GetPSOPrecacheProxyCreationStrategy() ==
+            EPSOPrecacheProxyCreationStrategy::DelayUntilPSOPrecached) {
         return nullptr;
     }
 
@@ -759,6 +842,34 @@ auto USandboxISMCComponent::CreateSceneProxy() -> FPrimitiveSceneProxy* {
     return new FSandboxISMCSceneProxy{this, initial_buffer, staging_state_, metrics_};
 }
 
+auto USandboxISMCComponent::CollectPSOPrecacheData(
+    FPSOPrecacheParams const& base_params, FMaterialInterfacePSOPrecacheParamsList& out_params)
+    -> void {
+    if (static_mesh_ == nullptr || !has_supported_lod(*static_mesh_)) {
+        return;
+    }
+
+    auto const& lod{static_mesh_->GetRenderData()->LODResources[0]};
+    // Only the declaration is needed: no RHI resources or staging slots are acquired.
+    FSandboxISMCVertexFactory factory{
+        GetWorld() != nullptr ? GetWorld()->GetFeatureLevel() : GMaxRHIFeatureLevel, nullptr};
+    factory.set_static_mesh_data(lod, static_mesh_);
+    FVertexDeclarationElementList elements;
+    factory.build_vertex_declaration(elements);
+    for (auto const& section : lod.Sections) {
+        FMaterialInterfacePSOPrecacheParams params;
+        params.MaterialInterface = resolve_material(*this, section.MaterialIndex);
+        params.VertexFactoryDataList.Add(
+            FPSOPrecacheVertexFactoryData{&FSandboxISMCVertexFactory::StaticType, elements});
+        params.PSOPrecacheParams = base_params;
+        params.PSOPrecacheParams.bCastShadow =
+            base_params.bCastShadow && bCastDynamicShadow && section.bCastShadow;
+        params.PSOPrecacheParams.bReverseCulling =
+            base_params.bReverseCulling || GetRenderMatrix().Determinant() < 0;
+        AddMaterialInterfacePSOPrecacheParamsToList(params, out_params);
+    }
+}
+
 auto USandboxISMCComponent::GetNumMaterials() const -> int32 {
     auto const static_material_count =
         static_mesh_ != nullptr ? static_mesh_->GetStaticMaterials().Num() : 0;
@@ -771,6 +882,18 @@ auto USandboxISMCComponent::GetMaterial(int32 element_index) const -> UMaterialI
     }
 
     return static_mesh_ != nullptr ? static_mesh_->GetMaterial(element_index) : nullptr;
+}
+
+auto USandboxISMCComponent::GetUsedMaterials(TArray<UMaterialInterface*>& out_materials,
+                                             bool get_debug_materials) const -> void {
+    auto const* data{static_mesh_ != nullptr ? static_mesh_->GetRenderData() : nullptr};
+    if (data == nullptr || data->LODResources.IsEmpty()) {
+        return;
+    }
+    // The base scene proxy also derives WPO and material verification state from this list.
+    for (auto const& section : data->LODResources[0].Sections) {
+        out_materials.AddUnique(resolve_material(*this, section.MaterialIndex));
+    }
 }
 
 auto USandboxISMCComponent::CalcBounds(FTransform const& local_to_world) const -> FBoxSphereBounds {

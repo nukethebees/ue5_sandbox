@@ -15,6 +15,7 @@ public class SandboxISMCTests : ModuleRules
             "CQTest",
             "Engine",
             "RenderCore",
+            "RHI",
             "SandboxISMC",
         });
     }

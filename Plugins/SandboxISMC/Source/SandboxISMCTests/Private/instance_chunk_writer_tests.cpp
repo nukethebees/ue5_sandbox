@@ -18,7 +18,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
         TArray<FSandboxISMCRenderInstance> packed;
         packed.SetNumUninitialized(2);
         FSandboxISMCInstanceChunkWriter writer{
-            packed, {}, 0, 1024, FVector3f::ZeroVector, 0.0f, false};
+            packed, {}, 0, 1024, FVector3f::ZeroVector, FVector3f::ZeroVector, false};
 
         auto const positions{TArray<FVector3f>{{4.0f, 5.0f, 6.0f}, {7.0f, 8.0f, 9.0f}}};
         auto const rotations{
@@ -52,23 +52,44 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
         }
     }
 
-    TEST_METHOD(AccumulatesConservativeMeshBounds)
+    TEST_METHOD(MatchesTransformedLocalBoxesWithRotatedNonUniformScale)
     {
         TArray<FSandboxISMCRenderInstance> packed;
         packed.SetNumUninitialized(1);
-        FSandboxISMCInstanceChunkWriter writer{packed, {}, 0, 0, {1.0f, 0.0f, 0.0f}, 2.0f, true};
-        writer.set_transform(
-            0, {10.0f, 0.0f, 0.0f}, FQuat4f{FVector3f::UpVector, UE_HALF_PI}, {-2.0f, 1.0f, 1.0f});
+        FVector3f const center{1.0f, -2.0f, 3.0f};
+        FVector3f const extent{2.0f, 5.0f, 0.5f};
+        FBox3f const local_box{center - extent, center + extent};
+        for (auto const rotation : {FQuat4f::Identity,
+                                    FQuat4f{FVector3f::UpVector, UE_HALF_PI},
+                                    FRotator3f{27.0f, 63.0f, -18.0f}.Quaternion()}) {
+            FSandboxISMCInstanceChunkWriter writer{packed, {}, 0, 0, center, extent, true};
+            FVector3f const position{10.0f, -20.0f, 30.0f};
+            FVector3f const scale{2.0f, 0.5f, 3.0f};
+            writer.set_transform(0, position, rotation, scale);
+            auto const expected{
+                local_box.TransformBy(FTransform3f{rotation, position, scale}.ToMatrixWithScale())};
+            test_vector(*TestRunner,
+                        TEXT("Minimum matches Unreal transformed AABB"),
+                        writer.bounds().Min,
+                        expected.Min);
+            test_vector(*TestRunner,
+                        TEXT("Maximum matches Unreal transformed AABB"),
+                        writer.bounds().Max,
+                        expected.Max);
+        }
+    }
 
-        auto const& bounds{writer.bounds()};
-        test_vector(*TestRunner,
-                    TEXT("The scaled mesh origin is rotated and translated"),
-                    bounds.GetCenter(),
-                    {10.0f, -2.0f, 0.0f});
-        test_vector(*TestRunner,
-                    TEXT("The largest absolute scale controls conservative extent"),
-                    bounds.GetExtent(),
-                    {4.0f, 4.0f, 4.0f});
+    TEST_METHOD(RejectsEveryNegativeScaleAxisIncludingPositiveDeterminantMirrors)
+    {
+        for (auto const scale : {FVector3f{-1.0f, 1.0f, 1.0f},
+                                 FVector3f{1.0f, -1.0f, 1.0f},
+                                 FVector3f{1.0f, 1.0f, -1.0f},
+                                 FVector3f{-1.0f, -1.0f, 1.0f}}) {
+            TestRunner->TestFalse(TEXT("The checked packing contract rejects negative axes"),
+                                  FSandboxISMCInstanceChunkWriter::supports_scale(scale));
+        }
+        TestRunner->TestTrue(TEXT("Positive nonuniform scale is supported"),
+                             FSandboxISMCInstanceChunkWriter::supports_scale({2.0f, 0.5f, 3.0f}));
     }
 
     TEST_METHOD(ExposesPerInstanceCustomDataSlices)
@@ -78,7 +99,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
         TArray<float> custom_data;
         custom_data.SetNumUninitialized(6);
         FSandboxISMCInstanceChunkWriter writer{
-            packed, custom_data, 3, 50, FVector3f::ZeroVector, 0.0f, false};
+            packed, custom_data, 3, 50, FVector3f::ZeroVector, FVector3f::ZeroVector, false};
 
         auto first{writer.custom_data(0)};
         first[0] = 0.1f;

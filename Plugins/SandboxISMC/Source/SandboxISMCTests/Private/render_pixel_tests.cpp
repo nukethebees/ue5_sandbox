@@ -81,7 +81,11 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
         capture_->RegisterComponent();
     }
 
-    auto submit(int32 const count, float const height, int32 const colour_shift) -> void {
+    auto submit(int32 const count,
+                float const height,
+                int32 const colour_shift,
+                FVector3f scale = FVector3f::OneVector,
+                FQuat4f rotation = FQuat4f::Identity) -> void {
         if (component_ == nullptr) {
             return;
         }
@@ -100,8 +104,7 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                             data[(slot + colour_shift) % 3] = 1.0f;
                         }
                     }
-                    chunk.set_transform(
-                        local_index, position, FQuat4f::Identity, FVector3f::OneVector);
+                    chunk.set_transform(local_index, position, rotation, scale);
                 }
             });
         submitted_frame_ = GFrameCounter;
@@ -200,5 +203,31 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
             })
             .Until(next_frame, FTimespan::FromSeconds(10))
             .Do([this] { check_image(TEXT("Cleared snapshot"), 80, 0, true); });
+    }
+
+    TEST_METHOD(AutomaticBoundsFollowInstancesAcrossTheViewFrustum)
+    {
+        auto const next_frame{[this] { return GFrameCounter > submitted_frame_ + 1; }};
+        TestCommandBuilder
+            .Do([this] {
+                setup();
+                submit(3, 10000.0f, 0);
+            })
+            .Until(next_frame, FTimespan::FromSeconds(10))
+            .Do([this] {
+                check_image(TEXT("Outside the frustum"), 128, 0, true);
+                submit(3, 0.0f, 0, {0.5f, 0.8f, 1.5f}, FQuat4f{FVector3f::ForwardVector, 0.4f});
+            })
+            .Until(next_frame, FTimespan::FromSeconds(10))
+            .Do([this] {
+                check_image(TEXT("Rotated nonuniform instances enter the frustum"), 128, 0);
+                if (component_ != nullptr) {
+                    TestRunner->TestTrue(TEXT("Registered bounds track the submitted location"),
+                                         FMath::Abs(component_->Bounds.Origin.Z) < 1.0);
+                }
+                submit(3, 10000.0f, 0);
+            })
+            .Until(next_frame, FTimespan::FromSeconds(10))
+            .Do([this] { check_image(TEXT("Instances leave the frustum again"), 128, 0, true); });
     }
 };

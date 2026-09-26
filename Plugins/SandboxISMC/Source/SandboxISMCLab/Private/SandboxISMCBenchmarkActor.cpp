@@ -57,12 +57,12 @@ TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomBuildMs,
                             TEXT("SandboxISMCBenchmark/Custom/BuildSnapshotMs"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomApiMs,
                             TEXT("SandboxISMCBenchmark/Custom/SetInstancesApiMs"));
-TRACE_DECLARE_MEMORY_COUNTER(BenchmarkCustomUploadBytes,
-                             TEXT("SandboxISMCBenchmark/Custom/UploadBytes"));
-TRACE_DECLARE_MEMORY_COUNTER(BenchmarkCustomTransformUploadBytes,
-                             TEXT("SandboxISMCBenchmark/Custom/TransformUploadBytes"));
-TRACE_DECLARE_MEMORY_COUNTER(BenchmarkCustomDataUploadBytes,
-                             TEXT("SandboxISMCBenchmark/Custom/CustomDataUploadBytes"));
+TRACE_DECLARE_MEMORY_COUNTER(BenchmarkCustomSubmittedBytes,
+                             TEXT("SandboxISMCBenchmark/Custom/SubmittedBytes"));
+TRACE_DECLARE_MEMORY_COUNTER(BenchmarkCustomTransformSubmittedBytes,
+                             TEXT("SandboxISMCBenchmark/Custom/TransformSubmittedBytes"));
+TRACE_DECLARE_MEMORY_COUNTER(BenchmarkCustomDataSubmittedBytes,
+                             TEXT("SandboxISMCBenchmark/Custom/CustomDataSubmittedBytes"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkEngineTotalMs,
                             TEXT("SandboxISMCBenchmark/EngineISMC/TotalUpdateMs"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkEnginePrepareMs,
@@ -298,6 +298,8 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
             staging_waits_.Add(
                 static_cast<double>(metrics.staging_waits - previous_metrics_.staging_waits));
             staging_wait_ms_.Add(wait_ms);
+            render_upload_cpu_ms_.Add(metrics.upload_ms);
+            render_uploaded_bytes_.Add(static_cast<double>(metrics.uploaded_bytes));
         }
     }
     previous_metrics_ = metrics;
@@ -318,14 +320,14 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
     TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomTotalMs, custom_timing.total_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomBuildMs, custom_timing.build_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomApiMs, custom_timing.api_ms);
-    TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomUploadBytes,
-                             static_cast<int64>(FMath::Max(custom_timing.uploaded_bytes, 0.0)));
+    TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomSubmittedBytes,
+                             static_cast<int64>(FMath::Max(custom_timing.submitted_bytes, 0.0)));
     TRACE_COUNTER_SET_ALWAYS(
-        BenchmarkCustomTransformUploadBytes,
-        static_cast<int64>(FMath::Max(custom_timing.transform_upload_bytes, 0.0)));
+        BenchmarkCustomTransformSubmittedBytes,
+        static_cast<int64>(FMath::Max(custom_timing.transform_submitted_bytes, 0.0)));
     TRACE_COUNTER_SET_ALWAYS(
-        BenchmarkCustomDataUploadBytes,
-        static_cast<int64>(FMath::Max(custom_timing.custom_data_upload_bytes, 0.0)));
+        BenchmarkCustomDataSubmittedBytes,
+        static_cast<int64>(FMath::Max(custom_timing.custom_data_submitted_bytes, 0.0)));
     TRACE_COUNTER_SET_ALWAYS(BenchmarkEngineTotalMs, engine_timing.total_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkEnginePrepareMs, engine_timing.prepare_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkEngineApiMs, engine_timing.api_ms);
@@ -665,9 +667,9 @@ auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
         .total_ms = FPlatformTime::ToMilliseconds64(total_cycles),
         .build_ms = metrics.build_ms,
         .api_ms = FPlatformTime::ToMilliseconds64(api_cycles),
-        .transform_upload_bytes = static_cast<double>(metrics.transform_upload_bytes),
-        .custom_data_upload_bytes = static_cast<double>(metrics.custom_data_upload_bytes),
-        .uploaded_bytes = static_cast<double>(metrics.upload_bytes),
+        .transform_submitted_bytes = static_cast<double>(metrics.transform_submitted_bytes),
+        .custom_data_submitted_bytes = static_cast<double>(metrics.custom_data_submitted_bytes),
+        .submitted_bytes = static_cast<double>(metrics.submitted_bytes),
     };
 }
 
@@ -791,14 +793,14 @@ void ASandboxISMCBenchmarkActor::record_samples(FRendererSamples& samples,
         samples.build_ms.Add(timing.build_ms);
     }
     samples.api_ms.Add(timing.api_ms);
-    if (timing.transform_upload_bytes >= 0.0) {
-        samples.transform_upload_bytes.Add(timing.transform_upload_bytes);
+    if (timing.transform_submitted_bytes >= 0.0) {
+        samples.transform_submitted_bytes.Add(timing.transform_submitted_bytes);
     }
-    if (timing.custom_data_upload_bytes >= 0.0) {
-        samples.custom_data_upload_bytes.Add(timing.custom_data_upload_bytes);
+    if (timing.custom_data_submitted_bytes >= 0.0) {
+        samples.custom_data_submitted_bytes.Add(timing.custom_data_submitted_bytes);
     }
-    if (timing.uploaded_bytes >= 0.0) {
-        samples.uploaded_bytes.Add(timing.uploaded_bytes);
+    if (timing.submitted_bytes >= 0.0) {
+        samples.submitted_bytes.Add(timing.submitted_bytes);
     }
 }
 
@@ -1041,19 +1043,21 @@ void ASandboxISMCBenchmarkActor::save_report() const {
                gpu_buffer_allocations_);
         append(TEXT("custom"), TEXT("staging_waits"), TEXT("count/update"), staging_waits_);
         append(TEXT("custom"), TEXT("staging_wait"), TEXT("ms"), staging_wait_ms_);
+        append(TEXT("custom"), TEXT("last_render_upload_cpu"), TEXT("ms"), render_upload_cpu_ms_);
+        append(TEXT("custom"), TEXT("last_render_uploaded"), TEXT("bytes"), render_uploaded_bytes_);
         append(TEXT("custom"), TEXT("creation"), TEXT("ms"), {custom_creation_ms_});
         append(TEXT("custom"), TEXT("total_update"), TEXT("ms"), custom_samples_.total_update_ms);
         append(TEXT("custom"), TEXT("build"), TEXT("ms"), custom_samples_.build_ms);
         append(TEXT("custom"), TEXT("api"), TEXT("ms"), custom_samples_.api_ms);
         append(TEXT("custom"),
-               TEXT("transform_uploaded"),
+               TEXT("transform_submitted"),
                TEXT("bytes"),
-               custom_samples_.transform_upload_bytes);
+               custom_samples_.transform_submitted_bytes);
         append(TEXT("custom"),
-               TEXT("custom_data_uploaded"),
+               TEXT("custom_data_submitted"),
                TEXT("bytes"),
-               custom_samples_.custom_data_upload_bytes);
-        append(TEXT("custom"), TEXT("uploaded"), TEXT("bytes"), custom_samples_.uploaded_bytes);
+               custom_samples_.custom_data_submitted_bytes);
+        append(TEXT("custom"), TEXT("submitted"), TEXT("bytes"), custom_samples_.submitted_bytes);
     }
     if (runs_engine_ismc()) {
         append_population_timings(TEXT("engine_ismc"), engine_samples_);

@@ -303,6 +303,11 @@ add_unreal_automation_test(
   LABELS ismc-module-smoke
 )
 add_unreal_automation_test(
+  SandboxISMC.UnitTests
+  FILTERS SandboxISMC.UnitTests Sandbox.UnitTests.LaserPresentation
+  LABELS unit ismc
+)
+add_unreal_automation_test(
   Sandbox.LevelTests
   FILTERS ${IOJ_LEVEL_AUTOMATION_FILTERS}
   LABELS level

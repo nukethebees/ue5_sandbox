@@ -50,9 +50,9 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
         double prepare_ms{-1.0};
         double build_ms{-1.0};
         double api_ms{0.0};
-        double transform_upload_bytes{-1.0};
-        double custom_data_upload_bytes{-1.0};
-        double uploaded_bytes{-1.0};
+        double transform_submitted_bytes{-1.0};
+        double custom_data_submitted_bytes{-1.0};
+        double submitted_bytes{-1.0};
     };
 
     struct FRendererSamples {
@@ -60,9 +60,9 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
         TArray<double> prepare_ms;
         TArray<double> build_ms;
         TArray<double> api_ms;
-        TArray<double> transform_upload_bytes;
-        TArray<double> custom_data_upload_bytes;
-        TArray<double> uploaded_bytes;
+        TArray<double> transform_submitted_bytes;
+        TArray<double> custom_data_submitted_bytes;
+        TArray<double> submitted_bytes;
         TArray<double> growing_update_ms;
         TArray<double> shrinking_update_ms;
         TArray<double> steady_update_ms;
@@ -201,6 +201,8 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     TArray<double> gpu_buffer_allocations_;
     TArray<double> staging_waits_;
     TArray<double> staging_wait_ms_;
+    TArray<double> render_upload_cpu_ms_;
+    TArray<double> render_uploaded_bytes_;
     FBox3f supplied_local_bounds_{ForceInit};
     TArray<double> frame_ms_;
     TArray<double> game_thread_ms_;

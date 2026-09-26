@@ -73,6 +73,17 @@ TEST_CLASS(SandboxISMCRenderLifecycle, "SandboxISMC.RenderTests")
                                  component->IsRenderStateCreated());
             TestRunner->TestNotNull(TEXT("The first snapshot creates a scene proxy"),
                                     component->GetSceneProxy());
+            TestRunner->TestFalse(TEXT("Render-only components never create physics state"),
+                                  component->ShouldCreatePhysicsState());
+            TestRunner->TestFalse(TEXT("No physics state is registered"),
+                                  component->IsPhysicsStateCreated());
+            submit(4, 0.0f);
+            TestRunner->TestFalse(TEXT("Identical bounds do not dirty the transform"),
+                                  component->IsRenderTransformDirty());
+            component->SetRelativeLocation(FVector{100.0, 0.0, 0.0});
+            TestRunner->TestTrue(TEXT("Unreal component motion still dirties the transform"),
+                                 component->IsRenderTransformDirty());
+            world.SendAllEndOfFrameUpdates();
 
             TArray<int32> const update_counts{1, 1024, 1025, 4096, 4097, 33};
             auto const update_count{update_counts.Num()};
@@ -80,8 +91,6 @@ TEST_CLASS(SandboxISMCRenderLifecycle, "SandboxISMC.RenderTests")
                 submit(update_counts[update_index], static_cast<float>(update_index + 1));
                 world.SendAllEndOfFrameUpdates();
             }
-            FlushRenderingCommands();
-
             auto const final_instance_count{update_counts.Last()};
             TestRunner->TestEqual(TEXT("Rapid updates retain the final snapshot"),
                                   component->get_instance_count(),
@@ -102,6 +111,24 @@ TEST_CLASS(SandboxISMCRenderLifecycle, "SandboxISMC.RenderTests")
                                   final_instance_count);
             TestRunner->TestTrue(TEXT("Proxy recreation preserves snapshot bounds"),
                                  component->CalcBounds(FTransform::Identity).SphereRadius > 0.0);
+            auto const metrics{component->get_update_metrics()};
+            TestRunner->TestEqual(TEXT("The render thread consumes the recreated snapshot"),
+                                  metrics.uploaded_bytes,
+                                  static_cast<uint64>(final_instance_count) *
+                                      (64 + 3 * sizeof(float)));
+
+            component->clear_instances();
+            world.SendAllEndOfFrameUpdates();
+            submit(1025, 10.0f);
+            world.SendAllEndOfFrameUpdates();
+            component->MarkRenderStateDirty();
+            world.SendAllEndOfFrameUpdates();
+            submit(7, 20.0f);
+            world.SendAllEndOfFrameUpdates();
+            component->DestroyComponent();
+            actor->Destroy();
+            // One terminal fence: clear, reuse, recreation and destruction are queued together.
+            FlushRenderingCommands();
         });
     }
 };

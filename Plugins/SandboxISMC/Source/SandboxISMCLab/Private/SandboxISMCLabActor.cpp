@@ -62,12 +62,15 @@ void ASandboxISMCLabActor::Tick(float delta_seconds) {
     auto const metrics = instances_->get_update_metrics();
     UE_LOG(LogSandboxISMCLab,
            Display,
-           TEXT("instances=%d build=%.3f ms submit=%.3f ms upload=%.3f ms bytes=%llu"),
+           TEXT("instances=%d packing=%.3f ms enqueue=%.3f ms upload_cpu=%.3f ms submitted=%llu "
+                "uploaded=%llu waits=%llu"),
            metrics.instance_count,
            metrics.build_ms,
            metrics.submit_ms,
            metrics.upload_ms,
-           metrics.upload_bytes);
+           metrics.submitted_bytes,
+           metrics.uploaded_bytes,
+           metrics.staging_waits);
 }
 
 void ASandboxISMCLabActor::regenerate_instances() {
@@ -144,7 +147,7 @@ void ASandboxISMCLabActor::regenerate_instances() {
            Display,
            TEXT("Generated %d SandboxISMC instances; packed upload is %.2f MiB"),
            metrics.instance_count,
-           static_cast<double>(metrics.upload_bytes) / (1024.0 * 1024.0));
+           static_cast<double>(metrics.submitted_bytes) / (1024.0 * 1024.0));
 }
 
 void ASandboxISMCLabActor::clear_instances() {
