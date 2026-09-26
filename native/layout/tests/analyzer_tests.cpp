@@ -362,7 +362,7 @@ TEST(EnumAnalyzer, KeepsStandaloneBackingAggregateOverflowUnknown) {
     EXPECT_FALSE(analysis.aggregate.minimum_pages.has_value());
     EXPECT_FALSE(analysis.aggregate.cache_capacity.working_set_bytes.has_value());
     EXPECT_TRUE(std::ranges::any_of(analysis.diagnostics, [](Diagnostic const& diagnostic) {
-        return diagnostic.message.find("aggregate storage overflows") != std::string::npos;
+        return diagnostic.message.contains("aggregate storage overflows");
     }));
 }
 

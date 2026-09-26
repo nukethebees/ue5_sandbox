@@ -2794,7 +2794,7 @@ auto patch_source_mask_dimensions(Form const& source_member,
     auto const rows_begin{source_dimensions->token.span.offset + 1};
     auto const multiline{
         original.substr(rows_begin, source_dimensions->closing.span.offset - rows_begin)
-            .find('\n') != std::string_view::npos};
+            .contains('\n')};
     if (!multiline) {
         if (source_dimensions->children.size() != dimensions.size()) {
             return patch_source_form(
@@ -2993,8 +2993,8 @@ auto patch_source_scalar_list_property(Form const& source,
     auto const edited_value{infer_single_list_value_edit(source_values->children, values)};
     auto const rows_begin{source_values->token.span.offset + 1};
     auto const multiline{
-        original.substr(rows_begin, source_values->closing.span.offset - rows_begin).find('\n') !=
-        std::string_view::npos};
+        original.substr(rows_begin, source_values->closing.span.offset - rows_begin)
+            .contains('\n')};
     if (!multiline) {
         if (source_values->children.size() != values.size()) {
             return patch_source_form(*source_values, *rendered_values, original, replacements);
@@ -3182,7 +3182,7 @@ auto patch_source_fixed_soa(codegen::FixedSoaSchema const& schema,
     auto const rows_begin{source_containers->token.span.offset + 1};
     auto const multiline{
         original.substr(rows_begin, source_containers->closing.span.offset - rows_begin)
-            .find('\n') != std::string_view::npos};
+            .contains('\n')};
     if (!multiline) {
         if (renamed_container.has_value()) {
             for (auto const& container : source_containers->children) {
@@ -4387,11 +4387,10 @@ void repair_semantic_references(codegen::Manifest& manifest,
             throw std::invalid_argument{"Cannot repair registered semantic reference '" +
                                         reference.name + "' to '" + std::string{old_name} + "'"};
         }
-        reference.name =
-            user_module_index == destination_module_index &&
-                    (reference.name.find("::") == std::string::npos || requires_local_spelling)
-                ? std::string{new_local_name}
-                : new_spelling;
+        reference.name = user_module_index == destination_module_index &&
+                                 (!reference.name.contains("::") || requires_local_spelling)
+                           ? std::string{new_local_name}
+                           : new_spelling;
     };
 
     for (auto const& user_info : declarations) {
@@ -5249,7 +5248,7 @@ auto EditableSchemaDocument::preview_source_updates() const
                 replacement.begin, replacement.end - replacement.begin, replacement.text);
         }
         auto const& original{source_files_[source_index].text};
-        if (original.find("\r\n") != std::string::npos) {
+        if (original.contains("\r\n")) {
             auto const has_bare_line_feed{[&] {
                 for (std::size_t index{}; index < original.size(); ++index) {
                     if (original[index] == '\n' && (index == 0 || original[index - 1] != '\r')) {
