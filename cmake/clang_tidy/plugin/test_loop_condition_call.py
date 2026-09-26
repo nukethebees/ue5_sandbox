@@ -24,12 +24,12 @@ Items get_items();
 
 class LoopConditionCallTests(unittest.TestCase):
     clang_tidy: str
-    plugin: str
+    plugin: str | None
     source_dir: Path
 
     def run_tidy(self, *arguments: str) -> str:
         result = subprocess.run(
-            [self.clang_tidy, "-load", self.plugin, *arguments],
+            [self.clang_tidy, *(["-load", self.plugin] if self.plugin else []), *arguments],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
         output = result.stdout + result.stderr
@@ -92,7 +92,7 @@ class LoopConditionCallTests(unittest.TestCase):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--clang-tidy", required=True)
-    parser.add_argument("--plugin", required=True)
+    parser.add_argument("--plugin")
     parser.add_argument("--source-dir", required=True, type=Path)
     arguments = parser.parse_args()
     LoopConditionCallTests.clang_tidy = arguments.clang_tidy

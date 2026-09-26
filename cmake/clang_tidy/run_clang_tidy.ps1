@@ -6,8 +6,7 @@ param(
   [string]$RunClangTidyExecutable,
   [Parameter(Mandatory)]
   [string]$ClangTidyExecutable,
-  [Parameter(Mandatory)]
-  [string]$Plugin,
+  [string]$Plugin = '',
   [Parameter(Mandatory)]
   [string]$LogFile,
   [Parameter(Mandatory)]
@@ -28,14 +27,15 @@ $clang_tidy_arguments = @(
   "-quiet",
   "-clang-tidy-binary",
   $ClangTidyExecutable,
-  "-load",
-  $Plugin,
   "-p",
   $CompilationDatabase,
   "-j",
   $Jobs,
   $SourceFilter
 )
+if ($Plugin) {
+  $clang_tidy_arguments += @('-load', $Plugin)
+}
 
 & $PythonExecutable $RunClangTidyExecutable @clang_tidy_arguments *>&1 |
   Tee-Object -FilePath $LogFile

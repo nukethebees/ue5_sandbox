@@ -1,0 +1,12 @@
+diff --git a/clang-tools-extra/clang-tidy/CMakeLists.txt b/clang-tools-extra/clang-tidy/CMakeLists.txt
+index 270e7b37d532..46b9850df0fc 100644
+--- a/clang-tools-extra/clang-tidy/CMakeLists.txt
++++ b/clang-tools-extra/clang-tidy/CMakeLists.txt
+@@ -128,3 +128,7 @@ if (NOT LLVM_INSTALL_TOOLCHAIN_ONLY)
+                              COMPONENT clang-tidy-headers)
+   endif()
+ endif()
++
++if(IOJ_TIDY_SOURCE_DIR)
++  add_subdirectory("${IOJ_TIDY_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/ioj-tidy")
++endif()

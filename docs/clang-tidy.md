@@ -13,19 +13,16 @@ Generated presets select `LLVM_ROOT=C:/dev/llvm/install`. This single CMake cach
 `bin/clang-cl.exe`, `bin/clang-tidy.exe`, `bin/run-clang-tidy`, and `bin/clang-format.exe`, without
 depending on PATH ordering. Override it in a local configure preset if necessary.
 
-Tidy-enabled configurations also require `include/clang`, `include/clang-tidy`,
-`lib/cmake/llvm/LLVMConfig.cmake`, `lib/cmake/clang/ClangConfig.cmake`, and the executable import
-library `lib/clang-tidy.lib` from that same installation. Ordinary builds need no LLVM development
-packages. On Windows, LLVM must be built with `LLVM_EXPORT_SYMBOLS_FOR_PLUGINS=ON` and
-`CLANG_PLUGIN_SUPPORT=ON`; its installed `clang-tidy` CMake target must expose the import library.
-The tested LLVM 24 revision needed `ENABLE_EXPORTS` set before `install(TARGETS)` in LLVM's
-`AddLLVM.cmake`, and `ARCHIVE DESTINATION lib${LLVM_LIBDIR_SUFFIX}` added to `add_clang_tool`'s
-install rule in Clang's `AddClang.cmake`. Static `clangTidy.lib` is not a substitute: it
-creates a separate check registry.
+By default, tidy uses the selected executable directly. The optional machine installation can
+contain the C++23 IOJ checks statically linked into `clang-tidy.exe`; no DLL, `-load`, development
+packages, or executable import library is required by the game build. Configure reports whether
+IOJ checks are available. Ordinary clang-tidy runs the standard checks when they are absent.
 
-Every tidy target builds and loads the C++23 `ioj-tidy-module` DLL automatically. The tooling DLL
-uses the installed LLVM build configuration (Release in the tested installation), runtime and
-RTTI settings; the native compilation database remains Debug.
+Game workflows never build or repair LLVM. Building custom tooling is an intentional
+infrastructure task: see [the LLVM build instructions](../tools/llvm/README.md). The installed
+checker is a machine-level snapshot, not necessarily the current worktree's checker source.
+When changing a checker, explicitly rebuild it and run its semantic tests before installing it.
+Agents doing unrelated work must use the available tool rather than locate, clone, or rebuild LLVM.
 
 Run the scope affected by your change:
 
@@ -112,11 +109,20 @@ for (SimTick tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
 
 `simulation_benchmark` is included in the execution scope but does not inherit this custom policy.
 The existing translation-unit diagnostic scope is explicit because LLVM 24 changed its default
-header filter. Run the plugin's registration, semantic and nested-policy tests after the workflow:
+header filter. When IOJ checks are available, run the registration, semantic and nested-policy tests:
 
 ```powershell
 ctest --test-dir out/build/win-x64-clangcl-debug/clang-tidy -L clang-tidy --output-on-failure
 ```
+
+## DLL comparison mode
+
+`IOJ_CLANG_TIDY_USE_DLL=ON` preserves the previous per-worktree DLL build and automatic `-load`
+workflow for comparison. Use a matching DLL-capable LLVM installation, not the static IOJ executable.
+This mode still requires `include/clang`, `include/clang-tidy`, LLVM/Clang CMake packages,
+`LLVM_EXPORT_SYMBOLS_FOR_PLUGINS=ON`, `CLANG_PLUGIN_SUPPORT=ON`, and installed `lib/clang-tidy.lib`.
+The baseline's host/runtime matching and two LLVM install fixes remain available; the static path
+does not use them. See [the comparison and cleanup list](../tools/llvm/ARCHITECTURE.md).
 
 LLVM `24.0.0git` revision `688a1498b3ce` also needs the local
 [analyzer lifetime fix](../cmake/clang_tidy/llvm-patches/control-dependency-node-lifetime.patch).

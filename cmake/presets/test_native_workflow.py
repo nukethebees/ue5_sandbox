@@ -73,7 +73,7 @@ class NativeWorkflowTests(unittest.TestCase):
             self.run_cmake("-P", str(script))
 
     @unittest.skipUnless(shutil.which("pwsh"), "requires PowerShell")
-    def test_tidy_runner_forwards_plugin_and_exit_status(self) -> None:
+    def test_tidy_runner_forwards_optional_plugin_and_exit_status(self) -> None:
         with tempfile.TemporaryDirectory(prefix="sandbox tidy runner ") as directory:
             fixture = Path(directory)
             runner = fixture / "run clang tidy.py"
@@ -87,18 +87,22 @@ class NativeWorkflowTests(unittest.TestCase):
             plugin = fixture / "plugin with spaces.dll"
             tidy = fixture / "clang tidy.exe"
             log = fixture / "logs" / "tidy.log"
-            result = subprocess.run([
-                "pwsh", "-NoProfile", "-File", str(self.source_dir / "cmake/clang_tidy/run_clang_tidy.ps1"),
-                "-PythonExecutable", sys.executable, "-RunClangTidyExecutable", str(runner),
-                "-ClangTidyExecutable", str(tidy), "-Plugin", str(plugin), "-LogFile", str(log),
-                "-CompilationDatabase", str(fixture), "-Jobs", "2", "-SourceFilter", "simulation|benchmark",
-            ], capture_output=True, text=True)
-            self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
-            self.assertEqual(json.loads(captured.read_text()), [
-                "-quiet", "-clang-tidy-binary", str(tidy), "-load", str(plugin),
-                "-p", str(fixture), "-j", "2", "simulation|benchmark",
-            ])
-            self.assertIn("runner output", log.read_text(encoding="utf-8-sig"))
+            for use_dll in (False, True):
+                with self.subTest(use_dll=use_dll):
+                    result = subprocess.run([
+                        "pwsh", "-NoProfile", "-File", str(self.source_dir / "cmake/clang_tidy/run_clang_tidy.ps1"),
+                        "-PythonExecutable", sys.executable, "-RunClangTidyExecutable", str(runner),
+                        "-ClangTidyExecutable", str(tidy), "-LogFile", str(log),
+                        "-CompilationDatabase", str(fixture), "-Jobs", "2", "-SourceFilter", "simulation|benchmark",
+                        *(["-Plugin", str(plugin)] if use_dll else []),
+                    ], capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
+                    self.assertEqual(json.loads(captured.read_text()), [
+                        "-quiet", "-clang-tidy-binary", str(tidy),
+                        "-p", str(fixture), "-j", "2", "simulation|benchmark",
+                        *(["-load", str(plugin)] if use_dll else []),
+                    ])
+                    self.assertIn("runner output", log.read_text(encoding="utf-8-sig"))
 
     def test_tidy_presets_share_one_configure_tree(self) -> None:
         validate_preset_references(self.presets)
@@ -148,6 +152,11 @@ class NativeWorkflowTests(unittest.TestCase):
                 )
 
     def test_tidy_targets_and_source_filters(self) -> None:
+        for use_dll in (False, True):
+            with self.subTest(use_dll=use_dll):
+                self.check_tidy_targets_and_source_filters(use_dll)
+
+    def check_tidy_targets_and_source_filters(self, use_dll: bool) -> None:
         # Exercise the real CMake targets, capturing their runner arguments without
         # requiring LLVM or configuring the native dependency graph.
         with tempfile.TemporaryDirectory(prefix="sandbox tidy workflow ") as root:
@@ -157,7 +166,8 @@ class NativeWorkflowTests(unittest.TestCase):
                 "import json, pathlib, sys\n"
                 "args = sys.argv[1:]\n"
                 "log = pathlib.Path(args[args.index('-LogFile') + 1])\n"
-                "assert pathlib.Path(args[args.index('-Plugin') + 1]).is_file()\n"
+                "if '-Plugin' in args:\n"
+                "    assert pathlib.Path(args[args.index('-Plugin') + 1]).is_file()\n"
                 "if log.stem in ('clang-tidy', 'clang-tidy-lispb'):\n"
                 "    for name in ('generate-native-soa-fixture', 'kernel-native-generated-sources'):\n"
                 "        assert (log.parent / (name + '.stamp')).is_file(), name\n"
@@ -169,6 +179,7 @@ class NativeWorkflowTests(unittest.TestCase):
                 "project(TidyWorkflow NONE)\n"
                 f'set(PROJECT_SOURCE_DIR "{self.source_dir.as_posix()}")\n'
                 "set(IOJ_ENABLE_CLANG_TIDY TRUE)\n"
+                f"set(IOJ_CLANG_TIDY_USE_DLL {'ON' if use_dll else 'OFF'})\n"
                 "set(IOJ_IS_CLANG_CL TRUE)\n"
                 f'set(Python3_EXECUTABLE "{Path(sys.executable).as_posix()}")\n'
                 'set(IOJ_CLANG_TIDY_EXECUTABLE "${CMAKE_COMMAND}")\n'
@@ -177,7 +188,18 @@ class NativeWorkflowTests(unittest.TestCase):
                 "function(ioj_find_llvm_tool output name)\n"
                 '  set(${output} "${CMAKE_COMMAND}" PARENT_SCOPE)\n'
                 "endfunction()\n"
+                "function(find_package)\n"
+                '  message(FATAL_ERROR "Tidy workflow requested development packages")\n'
+                "endfunction()\n"
+                "function(execute_process)\n"
+                '  cmake_parse_arguments(query "" "OUTPUT_VARIABLE;RESULT_VARIABLE" "" ${ARGN})\n'
+                '  set(${query_OUTPUT_VARIABLE} "Enabled checks:\\n    modernize-use-nullptr\\n" PARENT_SCOPE)\n'
+                '  set(${query_RESULT_VARIABLE} 0 PARENT_SCOPE)\n'
+                "endfunction()\n"
                 "function(add_subdirectory directory)\n"
+                '  if(NOT IOJ_CLANG_TIDY_USE_DLL)\n'
+                '    message(FATAL_ERROR "Static tidy workflow tried to build a plugin")\n'
+                '  endif()\n'
                 '  if(NOT directory STREQUAL "plugin")\n'
                 '    message(FATAL_ERROR "Unexpected subdirectory: ${directory}")\n'
                 "  endif()\n"
@@ -209,7 +231,9 @@ class NativeWorkflowTests(unittest.TestCase):
                 "endforeach()\n",
                 encoding="utf-8",
             )
-            self.run_cmake("-S", str(fixture), "-B", str(build), "-G", "Ninja")
+            configured = self.run_cmake("-S", str(fixture), "-B", str(build), "-G", "Ninja")
+            if not use_dll:
+                self.assertIn("standard checks only", configured)
             targets = [
                 target
                 for preset in self.presets["buildPresets"]
@@ -224,7 +248,7 @@ class NativeWorkflowTests(unittest.TestCase):
                 with self.subTest(target=target):
                     self.assertEqual(
                         dependencies,
-                        {"ioj-tidy-module"} | (prerequisites if target in ("native-clang-tidy", "native-clang-tidy-lispb") else set()),
+                        ({"ioj-tidy-module"} if use_dll else set()) | (prerequisites if target in ("native-clang-tidy", "native-clang-tidy-lispb") else set()),
                     )
 
             outputs = [build / f"{name}.stamp" for name in prerequisites]
@@ -247,7 +271,10 @@ class NativeWorkflowTests(unittest.TestCase):
                 args = json.loads((build / f"{name}.json").read_text(encoding="utf-8"))
                 self.assertEqual(Path(args[args.index("-CompilationDatabase") + 1]), build)
                 self.assertEqual(args[args.index("-Jobs") + 1], "0")
-                self.assertEqual(Path(args[args.index("-Plugin") + 1]), build / "plugin with spaces.dll")
+                if use_dll:
+                    self.assertEqual(Path(args[args.index("-Plugin") + 1]), build / "plugin with spaces.dll")
+                else:
+                    self.assertNotIn("-Plugin", args)
                 self.assertEqual(
                     Path(args[args.index("-File") + 1]),
                     self.source_dir / "cmake/clang_tidy/run_clang_tidy.ps1",
