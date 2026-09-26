@@ -339,6 +339,58 @@ auto signature(std::string const& name,
     return result + ")" + (is_const ? " const" : "");
 }
 
+void validate_function(FunctionSchema const& function,
+                       TypeRegistry const& types,
+                       std::string const& context,
+                       std::set<std::string>& signatures) {
+    if (function.is_constexpr && (function.body_lines.empty() || function.definition_in_source)) {
+        throw std::invalid_argument{context +
+                                    " constexpr function requires a generated header body"};
+    }
+    if (function.is_static && function.is_const) {
+        throw std::invalid_argument{context + " must not be both static and const"};
+    }
+    if (function.is_inline && function.definition_in_source) {
+        throw std::invalid_argument{context + " must not be both inline and defined in the source"};
+    }
+    if (function.template_parameters && function.definition_in_source) {
+        throw std::invalid_argument{context + " function templates must be defined in the header"};
+    }
+    if (function.template_parameters) {
+        require_non_blank_value(*function.template_parameters, context + " template parameters");
+    }
+    if (function.requires_clause) {
+        require_non_blank_value(*function.requires_clause, context + " requires clause");
+    }
+
+    validate_type(function.return_type, types, context + " return");
+    if (function.trailing_return_type) {
+        if (function.return_type.name != "auto" || !function.return_type.suffix.empty() ||
+            function.return_type.nested) {
+            throw std::invalid_argument{context + " trailing return type requires an auto return"};
+        }
+        validate_type(*function.trailing_return_type, types, context + " trailing return");
+    }
+    auto const& effective_return{function.trailing_return_type ? *function.trailing_return_type
+                                                               : function.return_type};
+    auto const result{resolve_type_use(effective_return, types)};
+    if (function.is_nodiscard && result.physical.form == PhysicalTypeForm::value &&
+        result.physical.object_spelling == "void") {
+        throw std::invalid_argument{context + " nodiscard function must not return void"};
+    }
+
+    if (!signatures
+             .insert(signature(function.name,
+                               parameter_type_names(function.parameters, types, context),
+                               function.is_const))
+             .second) {
+        throw std::invalid_argument{"Duplicate " + context + " signature"};
+    }
+    for (auto const& dependency : function.dependencies) {
+        validate_dependency(dependency, types, context);
+    }
+}
+
 void validate_settings(ModuleSettings const& settings) {
     require_value(settings.name, "Module name");
     if (settings.header.empty()) {
@@ -1042,35 +1094,11 @@ void validate_record(RecordSchema const& record, TypeRegistry const& types) {
             std::ranges::find(member_names, function.name) != member_names.end()) {
             throw std::invalid_argument{context + " collides with a member or owning type"};
         }
+        validate_function(function, types, context, signatures);
         if (function.definition_in_source || function.template_parameters ||
             function.requires_clause) {
             throw std::invalid_argument{
                 context + " requires an ordinary header method or bodyless declaration"};
-        }
-        if (function.is_static && function.is_const) {
-            throw std::invalid_argument{context + " must not be both static and const"};
-        }
-        if (function.is_constexpr && function.body_lines.empty()) {
-            throw std::invalid_argument{context + " constexpr method requires a header body"};
-        }
-        validate_type(function.return_type, types, context + " return");
-        if (function.trailing_return_type) {
-            if (function.return_type.name != "auto" || !function.return_type.suffix.empty() ||
-                function.return_type.nested) {
-                throw std::invalid_argument{context +
-                                            " trailing return type requires an auto return"};
-            }
-            validate_type(*function.trailing_return_type, types, context + " trailing return");
-        }
-        if (!signatures
-                 .insert(signature(function.name,
-                                   parameter_type_names(function.parameters, types, context),
-                                   function.is_const))
-                 .second) {
-            throw std::invalid_argument{"Duplicate " + context + " signature"};
-        }
-        for (auto const& dependency : function.dependencies) {
-            validate_dependency(dependency, types, context);
         }
     }
 }
@@ -1606,6 +1634,8 @@ void validate_soa(NormalModuleSchema const& module,
                                       std::set<std::string>& function_signatures,
                                       bool const read_only) {
             for (auto const& function : functions) {
+                auto const context{"SOA '" + schema.name + "' function '" + function.name + "'"};
+                validate_function(function, types, context, function_signatures);
                 if (read_only && !function.is_const && !function.is_static) {
                     throw std::invalid_argument{context +
                                                 " read-only view functions must be const"};
@@ -1614,10 +1644,6 @@ void validate_soa(NormalModuleSchema const& module,
                     throw std::invalid_argument{context +
                                                 " out-of-line function requires a source output"};
                 }
-                if (function.definition_in_source && function.template_parameters) {
-                    throw std::invalid_argument{
-                        context + " function templates must be defined in the header"};
-                }
                 if (function.is_static &&
                     std::ranges::any_of(function.body_lines, [](auto const& line) {
                         return line.find("$column(") != std::string::npos;
@@ -1625,48 +1651,11 @@ void validate_soa(NormalModuleSchema const& module,
                     throw std::invalid_argument{context +
                                                 " static function cannot access a receiver column"};
                 }
-                auto const context{"SOA '" + schema.name + "' function '" + function.name + "'"};
                 require_identifier(function.name, "SOA '" + schema.name + "' function name");
                 if (function.name == schema.name) {
                     throw std::invalid_argument{context + " collides with its owning type"};
                 }
                 reject_generated_name_collision(function.name, context, false);
-                if (function.is_inline && function.definition_in_source) {
-                    throw std::invalid_argument{
-                        context + " must not be both inline and defined in the source"};
-                }
-                if (function.is_static && function.is_const) {
-                    throw std::invalid_argument{context + " must not be both static and const"};
-                }
-                if (function.template_parameters.has_value()) {
-                    require_non_blank_value(*function.template_parameters,
-                                            context + " template parameters");
-                }
-                if (function.requires_clause.has_value()) {
-                    require_non_blank_value(*function.requires_clause,
-                                            context + " requires clause");
-                }
-                validate_type(function.return_type, types, context + " return");
-                if (function.trailing_return_type.has_value()) {
-                    if (function.return_type.name != "auto" ||
-                        !function.return_type.suffix.empty() ||
-                        function.return_type.nested.has_value()) {
-                        throw std::invalid_argument{
-                            context + " trailing return type requires an auto return"};
-                    }
-                    validate_type(
-                        *function.trailing_return_type, types, context + " trailing return");
-                }
-                auto const parameter_types{
-                    parameter_type_names(function.parameters, types, context)};
-                auto const function_signature{
-                    signature(function.name, parameter_types, function.is_const)};
-                if (!function_signatures.insert(function_signature).second) {
-                    throw std::invalid_argument{"Duplicate " + context + " signature"};
-                }
-                for (auto const& dependency : function.dependencies) {
-                    validate_dependency(dependency, types, context);
-                }
             }
         };
         std::set<std::string> owner_signatures;

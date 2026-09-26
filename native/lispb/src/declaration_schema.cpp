@@ -12,10 +12,15 @@ template <typename>
 inline constexpr bool unhandled_declaration_schema{false};
 
 template <typename Declaration, typename Visitor>
-void visit_declaration_type_references(Declaration& declaration, Visitor const& visit) {
-    auto optional = [&](std::string const& role, auto& reference) {
+void visit_declaration_type_references(Declaration& declaration, Visitor const& detailed_visit) {
+    auto visit = [&](std::string const& role, auto& reference) {
+        detailed_visit(role, reference, TypeReferenceKind::ordinary);
+    };
+    auto optional = [&](std::string const& role,
+                        auto& reference,
+                        TypeReferenceKind const kind = TypeReferenceKind::ordinary) {
         if (reference.has_value()) {
-            visit(role, *reference);
+            detailed_visit(role, *reference, kind);
         }
     };
     auto relationship = [&](std::string const& role, auto& relation) {
@@ -24,9 +29,18 @@ void visit_declaration_type_references(Declaration& declaration, Visitor const& 
         }
     };
     auto function = [&](std::string const& role, auto& method) {
-        visit(role + " return", method.return_type);
+        auto kind{TypeReferenceKind::ordinary};
+        if constexpr (std::is_same_v<std::decay_t<decltype(method)>, FunctionSchema>) {
+            kind = method.body_lines.empty() || method.definition_in_source
+                     ? TypeReferenceKind::function_declaration
+                     : TypeReferenceKind::function_definition;
+        }
+        detailed_visit(role + " return", method.return_type, kind);
         for (auto& parameter : method.parameters) {
-            visit(role + " parameter " + parameter.name, parameter.type);
+            detailed_visit(role + " parameter " + parameter.name, parameter.type, kind);
+        }
+        if constexpr (std::is_same_v<std::decay_t<decltype(method)>, FunctionSchema>) {
+            optional(role + " trailing return", method.trailing_return_type, kind);
         }
     };
     std::visit(
@@ -61,7 +75,6 @@ void visit_declaration_type_references(Declaration& declaration, Visitor const& 
                         auto const role{"function " + method.name + " [" + std::to_string(index) +
                                         "]"};
                         function(role, method);
-                        optional(role + " trailing return", method.trailing_return_type);
                     }
                 }
                 if constexpr (std::is_same_v<T, SoaSchema>) {
@@ -76,12 +89,9 @@ void visit_declaration_type_references(Declaration& declaration, Visitor const& 
                         auto const role{"function " + method.name + " [" + std::to_string(index) +
                                         "]"};
                         function(role, method);
-                        optional(role + " trailing return", method.trailing_return_type);
                     }
                     for (auto& method : schema.const_view_functions) {
                         function("const view function " + method.name, method);
-                        optional("const view function " + method.name + " trailing return",
-                                 method.trailing_return_type);
                     }
                     for (std::size_t index{}; index < schema.mutable_view_functions.size();
                          ++index) {
@@ -89,7 +99,6 @@ void visit_declaration_type_references(Declaration& declaration, Visitor const& 
                         auto const role{"view function " + method.name + " [" +
                                         std::to_string(index) + "]"};
                         function(role, method);
-                        optional(role + " trailing return", method.trailing_return_type);
                     }
                 }
             } else if constexpr (std::is_same_v<T, UnionSchema> ||
@@ -266,11 +275,22 @@ auto has_primary_semantic_type(DeclarationSchema const& declaration) -> bool {
 
 void visit_type_references(DeclarationSchema const& declaration,
                            std::function<void(std::string const&, TypeRef const&)> const& visit) {
-    visit_declaration_type_references(declaration, visit);
+    visit_declaration_type_references(
+        declaration, [&](auto const& role, auto const& reference, TypeReferenceKind) {
+            visit(role, reference);
+        });
 }
 
 void visit_type_references(DeclarationSchema& declaration,
                            std::function<void(std::string const&, TypeRef&)> const& visit) {
+    visit_declaration_type_references(
+        declaration,
+        [&](auto const& role, auto& reference, TypeReferenceKind) { visit(role, reference); });
+}
+
+void visit_type_references(
+    DeclarationSchema const& declaration,
+    std::function<void(std::string const&, TypeRef const&, TypeReferenceKind)> const& visit) {
     visit_declaration_type_references(declaration, visit);
 }
 

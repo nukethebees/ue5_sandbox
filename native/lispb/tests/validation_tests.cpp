@@ -34,6 +34,78 @@ auto valid_soa_module() -> NormalModuleSchema {
         }}};
 }
 
+TEST(Validation, FunctionQualifiersAreSharedByRecordsAndAllSoaReceivers) {
+    FunctionSchema const valid{.name = "read",
+                               .return_type = TypeRef{"int"},
+                               .body_lines = {"return 7;"},
+                               .is_const = true,
+                               .is_constexpr = true,
+                               .is_nodiscard = true};
+    auto check = [&](FunctionSchema const& function, std::string_view const diagnostic) {
+        for (int receiver{}; receiver < 4; ++receiver) {
+            SCOPED_TRACE(receiver);
+            SCOPED_TRACE(diagnostic);
+            auto module{valid_soa_module()};
+            if (receiver == 0) {
+                module.declarations = {RecordSchema{.name = "Record", .functions = {function}}};
+            } else {
+                auto& soa{std::get<SoaSchema>(module.declarations.front())};
+                auto& functions{receiver == 1   ? soa.functions
+                                : receiver == 2 ? soa.const_view_functions
+                                                : soa.mutable_view_functions};
+                functions.push_back(function);
+            }
+            auto const manifest{manifest_with(module)};
+            if (diagnostic.empty()) {
+                EXPECT_NO_THROW(validate_manifest(manifest));
+            } else {
+                try {
+                    validate_manifest(manifest);
+                    FAIL() << "Expected " << diagnostic;
+                } catch (std::invalid_argument const& error) {
+                    EXPECT_TRUE(std::string{error.what()}.contains(diagnostic)) << error.what();
+                }
+            }
+        }
+    };
+    check(valid, "");
+    auto function{valid};
+    function.body_lines.clear();
+    check(function, "constexpr function requires a generated header body");
+    function = valid;
+    function.definition_in_source = true;
+    check(function, "constexpr function requires a generated header body");
+    function = valid;
+    function.return_type = TypeRef{"void"};
+    function.body_lines = {"return;"};
+    check(function, "nodiscard function must not return void");
+    function.return_type = TypeRef{"auto"};
+    function.trailing_return_type = TypeRef{"void"};
+    check(function, "nodiscard function must not return void");
+    function = valid;
+    function.is_static = true;
+    check(function, "must not be both static and const");
+    function = valid;
+    function.is_constexpr = false;
+    function.is_inline = true;
+    function.definition_in_source = true;
+    check(function, "must not be both inline and defined in the source");
+    function.is_inline = false;
+    function.template_parameters = "typename T";
+    check(function, "function templates must be defined in the header");
+
+    function = valid;
+    function.return_type = TypeRef{"void", "*"};
+    function.body_lines = {"return nullptr;"};
+    check(function, "");
+    function.return_type = TypeRef{"auto"};
+    function.trailing_return_type = TypeRef{"void", "*"};
+    check(function, "");
+    function.is_constexpr = false;
+    function.body_lines.clear();
+    check(function, "");
+}
+
 auto valid_mask_soa_module() -> NormalModuleSchema {
     auto module{valid_soa_module()};
     auto& schema{std::get<codegen::SoaSchema>(module.declarations.front())};

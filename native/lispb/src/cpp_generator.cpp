@@ -7,6 +7,7 @@
 #include <codegen/validation.h>
 #include <lispb/schema/type_graph.h>
 
+#include <algorithm>
 #include <iterator>
 #include <limits>
 #include <set>
@@ -50,13 +51,25 @@ auto forward_declaration_kind(lispb::schema::TypeNode const& node)
 }
 
 auto uses_forward_declaration(lispb::schema::ResolvedTypeRef const& reference,
-                              lispb::schema::TypeGraph const& graph) -> bool {
+                              lispb::schema::TypeGraph const& graph,
+                              bool const declaration_only = false) -> bool {
     auto const form{reference.physical.form};
     return reference.physical.names_semantic_type &&
-           (form == PhysicalTypeForm::object_pointer ||
+           ((declaration_only && form == PhysicalTypeForm::value) ||
+            form == PhysicalTypeForm::object_pointer ||
             form == PhysicalTypeForm::lvalue_reference ||
             form == PhysicalTypeForm::rvalue_reference) &&
            forward_declaration_kind(graph.type(reference.type)).has_value();
+}
+
+auto is_record_signature(lispb::schema::TypeUse const& use, lispb::schema::TypeGraph const& graph)
+    -> bool {
+    if (use.kind == TypeReferenceKind::ordinary || !use.declaration.has_value()) {
+        return false;
+    }
+    auto const owner{graph.find(*use.declaration)};
+    return owner.has_value() &&
+           std::holds_alternative<lispb::schema::RecordType>(graph.type(*owner).definition);
 }
 
 auto generated_forward_declarations(NormalModuleSchema const& module,
@@ -65,7 +78,10 @@ auto generated_forward_declarations(NormalModuleSchema const& module,
     std::set<lispb::schema::TypeId> targets;
     for (auto const& use : graph.type_uses()) {
         if (use.module_name == module.settings.name &&
-            uses_forward_declaration(use.target, graph) &&
+            uses_forward_declaration(use.target,
+                                     graph,
+                                     is_record_signature(use, graph) &&
+                                         use.kind == TypeReferenceKind::function_declaration) &&
             graph.type(use.target.type).identity.module_name == module.settings.name) {
             targets.insert(use.target.type);
         }
@@ -82,6 +98,73 @@ auto generated_forward_declarations(NormalModuleSchema const& module,
     return {.header = declarations.build(), .source_dependencies = false};
 }
 
+template <typename Visitor>
+void visit_complete_dependencies(lispb::schema::TypeId const type,
+                                 lispb::schema::TypeGraph const& graph,
+                                 Visitor const& visit) {
+    auto dependency = [&](lispb::schema::ResolvedTypeRef const& reference) {
+        if (!uses_forward_declaration(reference, graph)) {
+            visit(reference.type);
+        }
+    };
+    std::visit(
+        [&](auto const& value) {
+            using T = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<T, lispb::schema::RecordType>) {
+                for (auto const& member : value.members) {
+                    dependency(member.semantic_type);
+                }
+            } else if constexpr (std::is_same_v<T, lispb::schema::SoaType>) {
+                for (auto const& column : value.columns) {
+                    dependency(column.semantic_type);
+                }
+            } else if constexpr (std::is_same_v<T, lispb::schema::UnionType> ||
+                                 std::is_same_v<T, lispb::schema::TaggedUnionType>) {
+                if constexpr (std::is_same_v<T, lispb::schema::TaggedUnionType>) {
+                    dependency(value.discriminant);
+                }
+                for (auto const& alternative : value.alternatives) {
+                    dependency(alternative.semantic_type);
+                }
+            }
+        },
+        graph.type(type).definition);
+    for (auto const& use : graph.type_uses()) {
+        if (use.declaration == graph.type(type).identity && is_record_signature(use, graph) &&
+            use.target.type != type &&
+            !uses_forward_declaration(
+                use.target, graph, use.kind == TypeReferenceKind::function_declaration)) {
+            dependency(use.target);
+        }
+    }
+}
+
+void validate_complete_definition_cycles(lispb::schema::TypeGraph const& graph) {
+    std::vector<bool> visited(graph.types().size());
+    std::vector<lispb::schema::TypeId> active;
+    auto visit = [&](auto&& self, lispb::schema::TypeId const type) -> void {
+        if (visited[type.value]) {
+            return;
+        }
+        if (auto const cycle{std::ranges::find(active, type)}; cycle != active.end()) {
+            std::string message{"C++ complete-definition dependency cycle: "};
+            for (auto entry{cycle}; entry != active.end(); ++entry) {
+                message += graph.type(*entry).cpp_spelling + " -> ";
+            }
+            throw std::invalid_argument{message + graph.type(type).cpp_spelling};
+        }
+        active.push_back(type);
+        visit_complete_dependencies(
+            type, graph, [&](auto const dependency) { self(self, dependency); });
+        active.pop_back();
+        visited[type.value] = true;
+    };
+    auto const count{graph.types().size()};
+    for (std::size_t index{}; index < count; ++index) {
+        visit(visit, lispb::schema::TypeId{static_cast<std::uint32_t>(index)});
+    }
+}
+
 auto declaration_emission_order(NormalModuleSchema const& module,
                                 lispb::schema::TypeGraph const& graph) -> std::vector<std::size_t> {
     std::map<lispb::schema::TypeId, std::size_t> declarations;
@@ -91,6 +174,11 @@ auto declaration_emission_order(NormalModuleSchema const& module,
                                             declaration_name(module.declarations[index]))};
         if (type.has_value()) {
             declarations.emplace(*type, index);
+        }
+        for (auto const& name : generated_cpp_names(module.declarations[index], module)) {
+            if (auto const generated{graph.find_declared(module.settings.name, name)}) {
+                declarations.emplace(*generated, index);
+            }
         }
     }
 
@@ -116,37 +204,11 @@ auto declaration_emission_order(NormalModuleSchema const& module,
                     self(self, found->second);
                 }
             }
-            auto dependency = [&](lispb::schema::ResolvedTypeRef const& reference) {
-                if (uses_forward_declaration(reference, graph)) {
-                    return;
-                }
-                if (auto const found{declarations.find(reference.type)};
-                    found != declarations.end()) {
+            visit_complete_dependencies(*type, graph, [&](auto const dependency) {
+                if (auto const found{declarations.find(dependency)}; found != declarations.end()) {
                     self(self, found->second);
                 }
-            };
-            std::visit(
-                [&](auto const& value) {
-                    using T = std::decay_t<decltype(value)>;
-                    if constexpr (std::is_same_v<T, lispb::schema::RecordType>) {
-                        for (auto const& member : value.members) {
-                            dependency(member.semantic_type);
-                        }
-                    } else if constexpr (std::is_same_v<T, lispb::schema::SoaType>) {
-                        for (auto const& column : value.columns) {
-                            dependency(column.semantic_type);
-                        }
-                    } else if constexpr (std::is_same_v<T, lispb::schema::UnionType> ||
-                                         std::is_same_v<T, lispb::schema::TaggedUnionType>) {
-                        if constexpr (std::is_same_v<T, lispb::schema::TaggedUnionType>) {
-                            dependency(value.discriminant);
-                        }
-                        for (auto const& alternative : value.alternatives) {
-                            dependency(alternative.semantic_type);
-                        }
-                    }
-                },
-                graph.type(*type).definition);
+            });
         }
         order.push_back(index);
     };
@@ -330,6 +392,7 @@ auto lower_scalar(IntegerScalarSchema const& scalar, TypeRegistry const& types)
 auto lower_modules(Manifest const& input) -> std::vector<Module> {
     auto const type_graph{lispb::schema::resolve_type_graph(input)};
     auto const manifest{resolve_declared_cpp_references(input, type_graph)};
+    validate_complete_definition_cycles(type_graph);
     std::vector<Module> result;
     for (auto const& schema : manifest.modules) {
         std::visit(

@@ -6056,6 +6056,50 @@ TEST(EditableSchemaDocument, RecordValueSemanticsSurviveEditCopyMoveUndoAndReloa
     }
 }
 
+TEST(EditableSchemaDocument, FunctionQualifiersSurviveEditingAndReloadOnAllReceivers) {
+    TemporarySchema files;
+    files.write_source("modules.lispb",
+                       R"((module values :header "Values.h" :backend standard-library
+      (record Value (function read int :const true :body ("return 7;")))
+      (struct Rows (member values array int)
+        (function read int :const true :body ("return 7;"))
+        (view-function read int :body ("return 7;"))
+        (mutable-view-function read_mutable auto :trailing-return-type int :body ("return 8;")))))");
+    auto document{files.load()};
+    auto const value{declaration_id(document, "values", "Value", "")};
+    auto const rows{declaration_id(document, "values", "Rows", "")};
+    auto record{*document.record_schema(value)};
+    record.functions[0].is_constexpr = true;
+    record.functions[0].is_nodiscard = true;
+    ASSERT_TRUE(document.apply(ReplaceRecord{value, record}).has_value());
+    auto soa{*document.soa_schema(rows)};
+    for (auto* function : {soa.functions.data(),
+                           soa.const_view_functions.data(),
+                           soa.mutable_view_functions.data()}) {
+        function->is_constexpr = true;
+        function->is_nodiscard = true;
+    }
+    ASSERT_TRUE(document.apply(ReplaceSoa{rows, soa}).has_value());
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_FALSE(document.soa_schema(rows)->functions[0].is_constexpr);
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.save().has_value());
+    auto const reloaded{files.load()};
+    auto const& saved_record{
+        *reloaded.record_schema(declaration_id(reloaded, "values", "Value", ""))};
+    auto const& saved_soa{*reloaded.soa_schema(declaration_id(reloaded, "values", "Rows", ""))};
+    for (auto const* function : {saved_record.functions.data(),
+                                 saved_soa.functions.data(),
+                                 saved_soa.const_view_functions.data(),
+                                 saved_soa.mutable_view_functions.data()}) {
+        EXPECT_TRUE(function->is_constexpr);
+        EXPECT_TRUE(function->is_nodiscard);
+        EXPECT_FALSE(function->body_lines.empty());
+    }
+    ASSERT_TRUE(saved_soa.mutable_view_functions[0].trailing_return_type.has_value());
+    EXPECT_EQ(saved_soa.mutable_view_functions[0].trailing_return_type->name, "int");
+}
+
 TEST(EditableSchemaDocument, RecordMethodSignaturesFollowTypeRenameAndMove) {
     TemporarySchema files;
     files.write_source("modules.lispb", R"((module api :header "Api.h" :namespace game

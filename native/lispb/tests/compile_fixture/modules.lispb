@@ -303,7 +303,16 @@ for (std::int32_t i{}; i < count; ++i) { xs[i] += amount; }}cpp#))
     (member values array float :mask-field true)
     (member masks array ApiMask)
     (member positions nested ApiCoordinates :nested-schema ApiCoordinates)
-    (function first_value float :const true :inline true
+    (function schema_version int :static true :constexpr true :nodiscard true
+      :body ("return 7;"))
+    (function identity T :static true :constexpr true :nodiscard true
+      :template-parameters "typename T" :requires "(sizeof(T) > 0)"
+      (parameter value T) :body ("return value;"))
+    (view-function schema_version int :constexpr true :nodiscard true
+      :body ("return 7;"))
+    (mutable-view-function mutable_version auto :trailing-return-type int
+      :constexpr true :nodiscard true :body ("return 8;"))
+    (function first_value float :const true :inline true :nodiscard true
       :body #cpp{return $column(values)[0];}cpp#)
     (function total Value :const true :definition-in-source true
       :body #cpp{auto values = $column(values);
@@ -480,6 +489,33 @@ return result;}cpp#)
 (module mixed_fixture
   :header "Mixed.h"
   :namespace codegen_compile_fixture::mixed
+  (record MethodConsumer
+    (function make MethodProvider)
+    (function accept void (parameter value MethodProvider))
+    (function ref auto :trailing-return-type (type-ref MethodProvider :suffix " const&"))
+    (function mode Kind)
+    (function raw Payload)
+    (function count (type-ref MethodCount :suffix " const&")))
+  (record PointerFactory
+    (function empty_pointer "void*" :static true :constexpr true :nodiscard true
+      :body ("return nullptr;"))
+    (function pointer (type-ref MethodProvider :suffix "*") :body ("return nullptr;"))
+    (function ref (type-ref MethodProvider :suffix "&")
+      (parameter value (type-ref MethodProvider :suffix "&")) :body ("return value;")))
+  (record ValueFactory
+    (function make auto :trailing-return-type MethodProvider :body ("return {};"))
+    (function accept void (parameter value MethodArgument) :body ("(void)value;"))
+    (function self ValueFactory :body ("return *this;")))
+  (record MethodProvider (function consumer MethodConsumer))
+  (record MethodArgument)
+  (integer-scalar MethodCount :signed false :minimum 0 :maximum 255 :bit-width 8
+    :cpp-emission alias :cpp-type std::uint8_t)
+  (record CrossModuleReader
+    (function make codegen_compile_fixture::ApiPair)
+    (function accept void
+      (parameter value (type-ref codegen_compile_fixture::ApiPair :suffix " const&")))
+    (function pointer auto
+      :trailing-return-type (type-ref codegen_compile_fixture::ApiPair :suffix "*")))
   (record Uninitialized (member value int))
   (record ValueDefaults :comparison equality
     (member uninitialized int)

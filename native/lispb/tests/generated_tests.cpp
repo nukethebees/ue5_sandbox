@@ -16,6 +16,13 @@
 
 namespace codegen_compile_fixture {
 
+auto mixed::MethodConsumer::make() -> mixed::MethodProvider {
+    return {};
+}
+auto mixed::MethodProvider::consumer() -> mixed::MethodConsumer {
+    return {};
+}
+
 auto mixed::ValueDefaults::valid() const noexcept -> bool {
     return zero == 0 && seven == 7;
 }
@@ -43,6 +50,31 @@ TEST(GeneratedRecords, PreserveAggregateDefaultsComparisonsAndMemberApi) {
     EXPECT_EQ(value, (mixed::ValueDefaults{1, 0, 7}));
     static_assert(std::is_trivially_default_constructible_v<mixed::Uninitialized>);
     static_assert(!std::is_trivially_default_constructible_v<mixed::ValueDefaults>);
+}
+
+TEST(GeneratedRecords, MethodSignaturesCompileWithForwardAndCompleteDependencies) {
+    mixed::MethodConsumer consumer;
+    EXPECT_TRUE((std::is_same_v<decltype(consumer.make().consumer()), mixed::MethodConsumer>));
+    static_assert(std::is_same_v<decltype(consumer.mode()), mixed::Kind>);
+    static_assert(std::is_same_v<decltype(consumer.raw()), mixed::Payload>);
+    static_assert(std::is_same_v<decltype(consumer.count()), mixed::MethodCount const&>);
+    static_assert(std::is_same_v<decltype(consumer.ref()), mixed::MethodProvider const&>);
+    mixed::ValueFactory factory;
+    auto provider{factory.make()};
+    factory.accept({});
+    mixed::PointerFactory pointers;
+    EXPECT_EQ(pointers.pointer(), nullptr);
+    EXPECT_EQ(&pointers.ref(provider), &provider);
+    static_assert(
+        std::is_same_v<decltype(std::declval<mixed::CrossModuleReader>().make()), ApiPair>);
+    static_assert(
+        std::is_same_v<decltype(std::declval<mixed::CrossModuleReader>().pointer()), ApiPair*>);
+    static_assert(ApiOwner::schema_version() == 7);
+    static_assert(ApiOwner::identity(9) == 9);
+    static_assert(mixed::PointerFactory::empty_pointer() == nullptr);
+    constexpr ApiConstView view{};
+    static_assert(view.schema_version() == 7);
+    static_assert(ApiView{}.mutable_version() == 8);
 }
 
 TEST(GeneratedScalarAlias, UsesConfiguredCppType) {

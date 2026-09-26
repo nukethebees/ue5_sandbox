@@ -407,12 +407,15 @@ class TypeGraphBuilder {
                     auto const& settings{schema.settings};
                     auto add = [&](std::optional<TypeIdentity> const& owner,
                                    std::string const& role,
-                                   codegen::TypeRef const& reference) {
+                                   codegen::TypeRef const& reference,
+                                   codegen::TypeReferenceKind const kind =
+                                       codegen::TypeReferenceKind::ordinary) {
                         graph_.type_uses_.push_back(
                             {.module_name = settings.name,
                              .declaration = owner,
                              .role = role,
-                             .target = resolve_ref(reference, settings.name)});
+                             .target = resolve_ref(reference, settings.name),
+                             .kind = kind});
                     };
                     if constexpr (std::is_same_v<T, codegen::NormalModuleSchema>) {
                         for (auto const& declaration : schema.declarations) {
@@ -421,8 +424,11 @@ class TypeGraphBuilder {
                                 .namespace_name = settings.namespace_name.value_or(""),
                                 .name = codegen::declaration_name(declaration)};
                             codegen::visit_type_references(
-                                declaration, [&](auto const& role, auto const& reference) {
-                                    add(owner, role, reference);
+                                declaration,
+                                [&](auto const& role,
+                                    auto const& reference,
+                                    codegen::TypeReferenceKind const kind) {
+                                    add(owner, role, reference, kind);
                                 });
                             auto registration = [&](std::string const& role,
                                                     std::string const& name) {

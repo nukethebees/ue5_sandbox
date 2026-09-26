@@ -18,6 +18,14 @@ in handwritten C++. Record methods do not support constructors, access control, 
 generated source definitions. Typed signatures participate in shared dependency and rename/move
 handling. As with SoA functions, identifiers inside C++ expressions and bodies are authored text.
 
+Signature type uses distinguish declarations from header definitions. Bodyless record methods may
+use forward-declared value types; header bodies require complete by-value return and parameter
+types. Pointer/reference uses use forward declarations where the generated C++ kind allows them.
+Aliases and enums precede their users, and complete-definition cycles are rejected across modules
+as well as within a header. These emission dependencies do not reorder authored declarations.
+Record and SoA owner/view functions share qualifier, return-type, parameter, overload and dependency
+validation, with receiver-specific restrictions applied separately.
+
 The simulation schema owns aggregate data, enums, and ordinary scalar aliases. Strong wrappers
 such as `HealthIndex` and `EntityOwnerId` remain C++ declarations because their constructors,
 private representation or nested constants are outside this record model; external integer

@@ -3,10 +3,68 @@
 
 #pragma once
 
+#include "Soa.h"
+
 #include <compare>
 #include <cstdint>
 
 namespace codegen_compile_fixture::mixed {
+struct MethodConsumer;
+
+struct MethodProvider;
+
+union Payload;
+
+using MethodCount = std::uint8_t;
+
+enum class Kind : std::uint8_t {
+    Data,
+};
+
+struct MethodConsumer {
+    MethodProvider make();
+
+    void accept(MethodProvider value);
+
+    auto ref() -> MethodProvider const&;
+
+    Kind mode();
+
+    Payload raw();
+
+    MethodCount const& count();
+};
+
+struct PointerFactory {
+    [[nodiscard]] static constexpr void* empty_pointer() { return nullptr; }
+
+    MethodProvider* pointer() { return nullptr; }
+
+    MethodProvider& ref(MethodProvider& value) { return value; }
+};
+
+struct MethodProvider {
+    MethodConsumer consumer();
+};
+
+struct MethodArgument {};
+
+struct ValueFactory {
+    auto make() -> MethodProvider { return {}; }
+
+    void accept(MethodArgument value) { (void)value; }
+
+    ValueFactory self() { return *this; }
+};
+
+struct CrossModuleReader {
+    codegen_compile_fixture::ApiPair make();
+
+    void accept(codegen_compile_fixture::ApiPair const& value);
+
+    auto pointer() -> codegen_compile_fixture::ApiPair*;
+};
+
 struct Uninitialized {
     int value;
 };
@@ -45,10 +103,6 @@ union Payload {
 
 struct Packet {
     Payload payload;
-};
-
-enum class Kind : std::uint8_t {
-    Data,
 };
 
 struct Event {

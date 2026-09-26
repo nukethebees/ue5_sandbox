@@ -261,6 +261,7 @@ struct COMPILE_FIXTURE_API ApiConstView : ApiViewImpl<true> {
         return slice(offset, count);
     }
     using Value = float;
+    [[nodiscard]] constexpr int schema_version() const { return 7; }
     float first_x() const;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<ApiConstView>());
@@ -275,7 +276,9 @@ struct COMPILE_FIXTURE_API ApiView : ApiViewImpl<false> {
         return slice(offset, count);
     }
     using Value = float;
+    [[nodiscard]] constexpr int schema_version() const { return 7; }
     float first_x() const;
+    [[nodiscard]] constexpr auto mutable_version() -> int { return 8; }
     void assign_first(float value) { this->values()[0] = value; }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<ApiView>());
@@ -534,7 +537,14 @@ struct COMPILE_FIXTURE_API ApiOwner
         return {&self, offset, count};
     }
     using Value = float;
-    float first_value() const { return get_view().values()[0]; }
+    [[nodiscard]] static constexpr int schema_version() { return 7; }
+    template <typename T>
+    [[nodiscard]] static constexpr T identity(T value)
+        requires (sizeof(T) > 0)
+    {
+        return value;
+    }
+    [[nodiscard]] float first_value() const { return get_view().values()[0]; }
     Value total() const;
 };
 

@@ -46,6 +46,7 @@ struct TypeUse {
     std::optional<TypeIdentity> declaration;
     std::string role;
     ResolvedTypeRef target;
+    codegen::TypeReferenceKind kind{codegen::TypeReferenceKind::ordinary};
 };
 
 struct Enumerator {

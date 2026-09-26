@@ -109,6 +109,119 @@ TEST(SourceLoader, RecordRejectsStatementInitializersAndInvalidMethods) {
     }
 }
 
+TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareLaterAndMutualTypes) {
+    TemporaryManifest files;
+    files.write_root(R"((module values :header "Values.h"
+      (record A
+        (function make B)
+        (function accept void (parameter value B))
+        (function ref auto :trailing-return-type (type-ref B :suffix " const&"))
+        (function pointer (type-ref B :suffix "*") :body ("return nullptr;")))
+      (record B (function make A))))");
+    auto const manifest{files.load()};
+    auto const graph{lispb::schema::resolve_type_graph(manifest)};
+    auto const a{*graph.find_declared("values", "A")};
+    auto const b{*graph.find_declared("values", "B")};
+    EXPECT_NE(std::ranges::find(graph.dependencies_of(a), b), graph.dependencies_of(a).end());
+    EXPECT_TRUE(std::ranges::any_of(graph.type_uses(), [&](auto const& use) {
+        return use.target.type == b && use.kind == TypeReferenceKind::function_declaration &&
+               use.target.physical.form == PhysicalTypeForm::value;
+    }));
+    auto const output{render_modules(lower_modules(manifest)).front().content};
+    EXPECT_LT(output.find("struct B;"), output.find("struct A {"));
+    EXPECT_LT(output.find("struct A;"), output.find("struct B {"));
+    EXPECT_LT(output.find("struct A {"), output.find("struct B {"));
+    EXPECT_NE(output.find("auto ref() -> B const&;"), std::string::npos);
+    EXPECT_EQ(declaration_name(
+                  std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front()),
+              "A");
+}
+
+TEST(SourceLoader, RecordMethodSignaturesOrderAliasesEnumsAndHeaderBodyValues) {
+    TemporaryManifest files;
+    files.write_root(R"((module values :header "Values.h"
+      (record Consumer
+        (function tag Tag)
+        (function count (type-ref Count :suffix " const&"))
+        (function make auto :trailing-return-type Provider :body ("return {};"))
+        (function accept void (parameter value Argument) :body ("(void)value;"))
+        (function self Consumer :body ("return *this;")))
+      (record Provider)
+      (record Argument)
+      (enum Tag std::uint8_t (value Value))
+      (integer-scalar Count :signed false :minimum 0 :maximum 255 :bit-width 8
+        :cpp-emission alias :cpp-type std::uint8_t)))");
+    auto const manifest{files.load()};
+    auto const output{render_modules(lower_modules(manifest)).front().content};
+    auto const consumer{output.find("struct Consumer {")};
+    for (auto const definition :
+         {"struct Provider {", "struct Argument {", "enum class Tag", "using Count ="}) {
+        EXPECT_LT(output.find(definition), consumer) << definition;
+    }
+    EXPECT_EQ(output.find("struct Tag;"), std::string::npos);
+    EXPECT_EQ(output.find("struct Count;"), std::string::npos);
+    EXPECT_EQ(declaration_name(
+                  std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front()),
+              "Consumer");
+}
+
+TEST(SourceLoader, RecordMethodSignaturesIncludeCrossModuleHeaders) {
+    TemporaryManifest files;
+    files.write_root(R"((module consumers :header "Consumers.h" :namespace consumers
+      (record Consumer
+        (function make providers::Provider)
+        (function accept void (parameter value (type-ref providers::Provider :suffix " const&")))
+        (function pointer auto :trailing-return-type (type-ref providers::Provider :suffix "*"))))
+      (module providers :header "generated/Provider.h" :header-include "api/Provider.h"
+        :namespace providers (record Provider)))");
+    auto const output{render_modules(lower_modules(files.load())).front().content};
+    EXPECT_NE(output.find("#include \"api/Provider.h\""), std::string::npos);
+    EXPECT_NE(output.find("providers::Provider make();"), std::string::npos);
+    EXPECT_NE(output.find("providers::Provider const& value"), std::string::npos);
+    EXPECT_NE(output.find("-> providers::Provider*;"), std::string::npos);
+}
+
+TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinitionCycles) {
+    TemporaryManifest files;
+    for (auto const signature :
+         {"(function make Layout)",
+          "(function make (type-ref Layout :suffix \"*\"))",
+          "(function make auto :trailing-return-type (type-ref Layout :suffix \"&\"))",
+          "(function accept void (parameter value Layout))"}) {
+        files.write_root(std::string{R"((module values :header "Values.h" :backend standard-library
+          (record Consumer )"} +
+                         signature + R"()
+          (struct Layout :layout-only true (member xs array float))))");
+        try {
+            static_cast<void>(lower_modules(files.load()));
+            FAIL() << signature;
+        } catch (std::invalid_argument const& error) {
+            EXPECT_TRUE(std::string{error.what()}.contains("has no C++ owner")) << error.what();
+        }
+    }
+    files.write_root(R"((module values :header "Values.h"
+      (record A (function make B :body ("return {};")))
+      (record B (function make A :body ("return {};")))))");
+    try {
+        static_cast<void>(lower_modules(files.load()));
+        FAIL();
+    } catch (std::invalid_argument const& error) {
+        EXPECT_TRUE(std::string{error.what()}.contains("complete-definition dependency cycle"));
+        EXPECT_TRUE(std::string{error.what()}.contains("A -> B -> A"));
+    }
+    files.write_root(R"((module first :header "First.h" :namespace first
+      (record A (function make second::B :body ("return {};"))))
+      (module second :header "Second.h" :namespace second
+        (record B (member a first::A))))");
+    try {
+        static_cast<void>(lower_modules(files.load()));
+        FAIL();
+    } catch (std::invalid_argument const& error) {
+        EXPECT_TRUE(std::string{error.what()}.contains("complete-definition dependency cycle"));
+        EXPECT_TRUE(std::string{error.what()}.contains("first::A -> second::B -> first::A"));
+    }
+}
+
 TEST(SourceLoader, SoaStoragePolicySelectsRepresentations) {
     TemporaryManifest files;
     files.write_root(R"((module rows :header "Rows.h" :backend standard-library
