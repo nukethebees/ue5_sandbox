@@ -40,7 +40,8 @@ public sealed class IntegrationTransactionTests
         CollectionAssert.AreEqual(
             new[]
             {
-                "dotnet test tools/AgentGit.Tests/AgentGit.Tests.csproj --nologo",
+                "dotnet build tools/AgentGit.Tests/AgentGit.Tests.csproj --nologo -p:IsStandaloneTool=false",
+                "dotnet test tools/AgentGit.Tests/AgentGit.Tests.csproj --nologo --no-build --no-restore",
             },
             runner.Commands);
 
@@ -60,11 +61,11 @@ public sealed class IntegrationTransactionTests
         Assert.AreEqual(0, combined.ExitCode);
         CollectionAssert.Contains(
             runner.Commands,
-            "dotnet test tools/Tools.slnx --nologo --filter FullyQualifiedName!~AgentGit.Tests");
+            "dotnet test tools/BenchmarkTools.Tests/BenchmarkTools.Tests.csproj --nologo --no-build --no-restore");
         Assert.AreEqual(
             2,
             runner.Commands.Count(command =>
-                command == "dotnet test tools/AgentGit.Tests/AgentGit.Tests.csproj --nologo"));
+                command == "dotnet test tools/AgentGit.Tests/AgentGit.Tests.csproj --nologo --no-build --no-restore"));
     }
 
     [TestMethod]

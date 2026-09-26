@@ -253,7 +253,7 @@ foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
       "-DREJECT_TARGET=${reject_target}"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_single_allocation_leaf.cmake")
   set_tests_properties("SingleAllocationRejects${restriction}" PROPERTIES
-    LABELS "unit;all;native;codegen" RESOURCE_LOCK codegen-negative-build)
+    LABELS "all;native;codegen;compile-contract;subprocess" RESOURCE_LOCK codegen-negative-build)
 endforeach()
 foreach(restriction IN ITEMS SIGNED_STORAGE BOOL_STORAGE ZERO_BITS NEGATIVE_BITS NEGATIVE_OFFSET OVERFLOW FULL_OFFSET
     UNSIGNED_VALUE SIGNED_VALUE BOOL_VALUE ENUM_WIDTH ENUM_SIGNED FLOAT_VALUE POINTER_VALUE REFERENCE_VALUE)
@@ -268,15 +268,8 @@ foreach(restriction IN ITEMS SIGNED_STORAGE BOOL_STORAGE ZERO_BITS NEGATIVE_BITS
       "-DREJECT_TARGET=${reject_target}"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_packed_field.cmake")
   set_tests_properties("PackedFieldRejects${restriction}" PROPERTIES
-    LABELS "unit;all;native;codegen" RESOURCE_LOCK codegen-negative-build)
+    LABELS "all;native;codegen;compile-contract;subprocess" RESOURCE_LOCK codegen-negative-build)
 endforeach()
-add_test(NAME CodegenCliChecksGeneratedFixture
-  COMMAND lispb check
-    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-    --build-root "${CMAKE_BINARY_DIR}"
-    --target cpp-compile-fixture
-)
-set_tests_properties(CodegenCliChecksGeneratedFixture PROPERTIES LABELS "unit;all;native;codegen")
 add_test(NAME CodegenCliRejectsUnknownArgument COMMAND lispb generate --unknown value)
 set_tests_properties(CodegenCliRejectsUnknownArgument PROPERTIES
   LABELS "unit;all;native;codegen"

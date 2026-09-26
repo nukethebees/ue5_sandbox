@@ -311,6 +311,13 @@
       ]
     },
     {
+      "name": "debug-game-tool-tests-build",
+      "configurePreset": "debug-game",
+      "targets": [
+        "developer-tools-build"
+      ]
+    },
+    {
       "name": "development-game",
       "configurePreset": "development",
       "targets": [
@@ -396,6 +403,9 @@
       "filter": {
         "include": {
           "label": "^level$"
+        },
+        "exclude": {
+          "label": "^csharp$"
         }
       }
     },
@@ -416,6 +426,9 @@
       "filter": {
         "include": {
           "label": "unit"
+        },
+        "exclude": {
+          "label": "^csharp$"
         }
       }
     },
@@ -426,6 +439,9 @@
       "filter": {
         "include": {
           "label": "^level$"
+        },
+        "exclude": {
+          "label": "^csharp$"
         }
       }
     },
@@ -436,6 +452,9 @@
       "filter": {
         "include": {
           "label": "unit"
+        },
+        "exclude": {
+          "label": "^csharp$"
         }
       }
     },
@@ -843,6 +862,10 @@
         {
           "type": "build",
           "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "debug-game-tool-tests-build"
         },
         {
           "type": "test",

@@ -194,7 +194,7 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
         }
     }
 
-    private static string FindExecutable(string name)
+    internal static string FindExecutable(string name)
     {
         var path = Environment.GetEnvironmentVariable("PATH") ?? string.Empty;
         foreach (var directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))

@@ -54,6 +54,6 @@ add_test(
     --package set-live-coding-disabled
 )
 set_tests_properties(Sandbox.RustSetLiveCodingDisabled PROPERTIES
-  LABELS "developer-tool"
+  LABELS "developer-tool;rust;integration;subprocess"
   WORKING_DIRECTORY "${IOJ_RUST_TOOLS_ROOT}"
 )

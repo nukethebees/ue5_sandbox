@@ -202,6 +202,20 @@
   ],
   "buildPresets": [
     {
+      "name": "task-start",
+      "configurePreset": "native",
+      "targets": [
+        "task-start-build"
+      ]
+    },
+    {
+      "name": "tool-tests",
+      "configurePreset": "native",
+      "targets": [
+        "developer-tools-build"
+      ]
+    },
+    {
       "name": "native",
       "configurePreset": "native",
       "targets": [
@@ -228,7 +242,8 @@
       "name": "native-simulation-tests",
       "configurePreset": "native",
       "targets": [
-        "native-simulation-tests"
+        "native-simulation-tests",
+        "native-simulation-soak-tests"
       ]
     },
     {
@@ -334,7 +349,8 @@
         "lispb",
         "codegen-tests",
         "slate-codegen-tests",
-        "kernel-codegen-tests"
+        "kernel-codegen-tests",
+        "check-generated-code"
       ]
     },
     {
@@ -630,6 +646,19 @@
   ],
   "workflowPresets": [
     {
+      "name": "task-start",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "native"
+        },
+        {
+          "type": "build",
+          "name": "task-start"
+        }
+      ]
+    },
+    {
       "name": "native-tests",
       "displayName": "Run the native validation suite",
       "steps": [
@@ -654,6 +683,10 @@
         {
           "type": "configure",
           "name": "native"
+        },
+        {
+          "type": "build",
+          "name": "tool-tests"
         },
         {
           "type": "test",

@@ -17,7 +17,12 @@ Unreal Engine 5.8 project.
   while Git provides index/ref locking. Do not treat `agent-git` as a repository-global mutex or
   inspect or modify another agent's worktree.
 * `dev` is the integration branch
-* When starting a new task, clear the old build directories and start fresh
+* When starting a new task, clear the old build directories and start fresh. Run generators,
+  then `cmake --workflow --preset task-start` for a broad native/tool/test build and generated
+  consistency checks. This builds binaries; it does not run the test suites.
+* After the clean initial build, rebuild only affected targets and execute relevant CTest labels.
+  Use `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"` for the
+  fast loop. Include the applicable expensive categories once for final validation.
 * Run code/asset generators before starting the task and re-run as needed
 * Perform feature work on dedicated feature branches
 * Do not bypass instructions here unless explicitly told to
@@ -64,17 +69,20 @@ Unreal Engine 5.8 project.
   `ctools` as a workflow preflight. Native mimalloc validation likewise builds its configuration-
   local `NativeBinaryTools` host dependency on demand.
 * For final integration, only build and test what your work has affected
-* Native C++ changes must pass `cmake --workflow --preset win-x64-clangcl-debug-tidy` with no
-  clang-tidy diagnostics before they are reported ready or submitted for integration. The workflow
-  itself does not make findings fatal, so inspect its output or `clang-tidy.log` and resolve all
-  findings.
+* Native C++ changes must pass the affected `clang-tidy-<scope>` workflows with no diagnostics
+  before readiness or integration. Include consumers of changed shared headers; use the full
+  `win-x64-clangcl-debug-tidy` workflow for core/memory/profiling public headers, shared compiler
+  configuration, or uncertain/cross-cutting scope. See `docs/build-and-test.md` for scope rules.
+  Inspect the selected `clang-tidy-<scope>.log` files (or `clang-tidy.log` for the full sweep);
+  the runner itself does not make findings fatal.
 * Keep benchmarks short; Not more than 3 minutes total
 * Standalone developer-tool tests are not part of the default validation path. Run
   `cmake --workflow --preset tool-tests` only when the change can affect a tool or its tests, a
   directly consumed interface/protocol/file format/configuration, shared build or tool
   infrastructure, or the tool is being diagnosed. Unrelated native, game, and runtime changes must
-  not run them merely because a broad test command exists. For a tool-affecting feature, use
-  `integrate-feature -ToolTests` so final integration also runs `tool-tests`.
+  not run them merely because a broad test command exists. Integration routes known tools to
+  their own gates automatically. Use `integrate-feature -ToolTests` when the complete developer-tool
+  suite is required; shared/unknown tool infrastructure keeps conservative broad coverage.
 
 
 # Agent Behaviour

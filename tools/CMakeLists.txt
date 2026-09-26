@@ -22,16 +22,17 @@ add_custom_target(format-all-code
   VERBATIM
 )
 
-find_program(DOTNET_EXECUTABLE NAMES dotnet REQUIRED)
-add_test(
-  NAME Sandbox.CSharpTools
-  COMMAND "${DOTNET_EXECUTABLE}" test "${PROJECT_SOURCE_DIR}/tools/Tools.slnx" -m:1
-)
-set_tests_properties(Sandbox.CSharpTools PROPERTIES
-  LABELS "developer-tool"
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-)
+include("${PROJECT_SOURCE_DIR}/cmake/csharp_tests.cmake")
 
 add_subdirectory(perf)
 add_subdirectory(layout_planner)
 add_subdirectory(image_lab)
+
+add_custom_target(developer-tools-build
+  DEPENDS csharp-tests-build layout-planner-ui-tests image-lab-tests tracy-benchmark-compare-tests
+)
+add_custom_target(task-start-build
+  DEPENDS native-tests developer-tools-build
+)
+
+add_dependencies(native-tests layout-planner-ui-tests image-lab-tests)

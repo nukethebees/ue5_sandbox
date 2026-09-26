@@ -20,7 +20,7 @@ add_test(NAME CMake.NativeWorkflow
     --cmake "${CMAKE_COMMAND}"
 )
 set_tests_properties(CMake.NativeWorkflow PROPERTIES
-  LABELS "unit;all;cmake"
+  LABELS "integration;subprocess;all;cmake"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
 
@@ -30,7 +30,7 @@ add_test(NAME Scripts.BenchmarkToolsBootstrap
     --powershell powershell
 )
 set_tests_properties(Scripts.BenchmarkToolsBootstrap PROPERTIES
-  LABELS "unit;all;scripts"
+  LABELS "integration;subprocess;all;scripts"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
 
@@ -40,6 +40,12 @@ add_test(NAME CMake.DotnetHostTools
     --cmake "${CMAKE_COMMAND}"
 )
 set_tests_properties(CMake.DotnetHostTools PROPERTIES
-  LABELS "unit;cmake"
+  LABELS "integration;subprocess;cmake"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
+
+add_test(NAME CMake.CSharpTests
+  COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/cmake/test_csharp_tests.py")
+set_tests_properties(CMake.CSharpTests PROPERTIES
+  LABELS "cmake;integration;subprocess"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")

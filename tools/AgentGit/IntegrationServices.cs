@@ -221,7 +221,6 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
             foreach (var command in Commands(
                 gate,
                 identity.ChangedPaths,
-                worktree,
                 plan.Gates.Contains(IntegrationGate.AgentGitTests)))
             {
                 output.WriteLine($"Running: {command.Executable} {string.Join(' ', command.Arguments)}");
@@ -254,14 +253,16 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
         return IntegrationValidationResult.Success;
     }
 
-    private static IReadOnlyList<IntegrationCommand> Commands(
+    internal static IReadOnlyList<IntegrationCommand> Commands(
         IntegrationGate gate,
         IReadOnlyList<string> changed_paths,
-        string worktree,
         bool agent_git_tests_selected) => gate switch
         {
             IntegrationGate.AgentGitTests =>
-                [new("dotnet", ["test", "tools/AgentGit.Tests/AgentGit.Tests.csproj", "--nologo"])],
+                [
+                new("dotnet", ["build", "tools/AgentGit.Tests/AgentGit.Tests.csproj", "--nologo", "-p:IsStandaloneTool=false"]),
+                new("dotnet", ["test", "tools/AgentGit.Tests/AgentGit.Tests.csproj", "--nologo", "--no-build", "--no-restore"]),
+            ],
             IntegrationGate.JobserverTests =>
             [
                 new("cmake", ["--preset", "native"]),
@@ -269,7 +270,16 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
             new("ctest", ["--test-dir", "out/build/native", "-L", "^jobserver$", "--output-on-failure"]),
         ],
             IntegrationGate.CSharpToolsTests => CSharpCommands(
-                changed_paths, worktree, agent_git_tests_selected),
+                changed_paths, agent_git_tests_selected),
+            IntegrationGate.LayoutPlannerTests =>
+                [new("cmake", ["--workflow", "--preset", "layout-planner"])],
+            IntegrationGate.ImageLabTests =>
+                [new("cmake", ["--workflow", "--preset", "image-lab"])],
+            IntegrationGate.RustToolsTests =>
+            [
+                new("cmake", ["--preset", "native"]),
+                new("ctest", ["--test-dir", "out/build/native", "-L", "^rust$", "--output-on-failure"]),
+            ],
             IntegrationGate.ToolTests =>
                 [new("cmake", ["--workflow", "--preset", "tool-tests"])],
             IntegrationGate.PowerShellChecks =>
@@ -303,51 +313,14 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
 
     private static IReadOnlyList<IntegrationCommand> CSharpCommands(
         IReadOnlyList<string> changed_paths,
-        string worktree,
         bool agent_git_tests_selected)
     {
-        var projects = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var raw_path in changed_paths)
-        {
-            var parts = raw_path.Replace('\\', '/').Split('/');
-            if (parts.Length < 3 || !string.Equals(parts[0], "tools", StringComparison.OrdinalIgnoreCase))
+        return ToolComponents.SelectTestProjects(changed_paths, agent_git_tests_selected)
+            .SelectMany(project => new IntegrationCommand[]
             {
-                continue;
-            }
-
-            var component = parts[1].EndsWith(".Tests", StringComparison.OrdinalIgnoreCase)
-                ? parts[1][..^".Tests".Length]
-                : parts[1];
-            if (agent_git_tests_selected &&
-                string.Equals(component, "AgentGit", StringComparison.OrdinalIgnoreCase))
-            {
-                continue;
-            }
-
-            if (string.Equals(component, "GitSupport", StringComparison.OrdinalIgnoreCase))
-            {
-                projects.Add("tools/GitTools.Tests/GitTools.Tests.csproj");
-                continue;
-            }
-
-            var test_project = $"tools/{component}.Tests/{component}.Tests.csproj";
-            if (File.Exists(Path.Combine(worktree, test_project.Replace('/', Path.DirectorySeparatorChar))))
-            {
-                projects.Add(test_project);
-            }
-        }
-
-        if (projects.Count == 0)
-        {
-            projects.Add("tools/Tools.slnx");
-        }
-        return projects
-            .Select(project => new IntegrationCommand(
-                "dotnet",
-                project == "tools/Tools.slnx" && agent_git_tests_selected
-                    ? ["test", project, "--nologo", "--filter", "FullyQualifiedName!~AgentGit.Tests"]
-                    : ["test", project, "--nologo"]))
-            .ToArray();
+                new("dotnet", ["build", project, "--nologo", "-p:IsStandaloneTool=false"]),
+                new("dotnet", ["test", project, "--nologo", "--no-build", "--no-restore"]),
+            }).ToArray();
     }
 
     private static string EnvironmentIdentity(IntegrationGate gate)
@@ -361,7 +334,7 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
         return $"{Environment.OSVersion}|{Environment.Version}|{agent_git}|{dotnet_root}|{compiler}|{unreal}";
     }
 
-    private sealed record IntegrationCommand(string Executable, IReadOnlyList<string> Arguments);
+    internal sealed record IntegrationCommand(string Executable, IReadOnlyList<string> Arguments);
 }
 
 internal sealed class StreamingIntegrationCommandRunner : IIntegrationCommandRunner

@@ -10,12 +10,11 @@ public sealed class ParallelFormattingTests
     [TestMethod]
     public async Task RunAsync_formats_files_in_parallel_with_bounded_concurrency_and_one_attempt_per_file()
     {
-        using var fixture = new TemporaryGitRepository();
-        var files = CreateFiles(fixture, 6);
+        var files = ExplicitFiles(6);
         var formatter = new ControlledFormatter(expected_starts: 3);
         var application = CreateApplication(formatter, new StringWriter(), new StringWriter());
 
-        var run_task = application.RunAsync(["--all", "--jobs", "3"], fixture.Root);
+        var run_task = application.FormatAsync(Selection(files), new FormatRequest(FormatMode.All, false, 3));
         await formatter.WaitForStartsAsync(3);
 
         Assert.AreEqual(3, formatter.MaximumActive);
@@ -31,12 +30,11 @@ public sealed class ParallelFormattingTests
     [TestMethod]
     public async Task RunAsync_with_one_job_never_formats_more_than_one_file_at_a_time()
     {
-        using var fixture = new TemporaryGitRepository();
-        var files = CreateFiles(fixture, 4);
+        var files = ExplicitFiles(4);
         var formatter = new ControlledFormatter(expected_starts: 1);
         var application = CreateApplication(formatter, new StringWriter(), new StringWriter());
 
-        var run_task = application.RunAsync(["--all", "-j", "1"], fixture.Root);
+        var run_task = application.FormatAsync(Selection(files), new FormatRequest(FormatMode.All, false, 1));
         for (var index = 0; index < files.Count; index++)
         {
             await formatter.WaitForStartsAsync(index + 1);
@@ -53,14 +51,13 @@ public sealed class ParallelFormattingTests
     [TestMethod]
     public async Task RunAsync_reports_results_in_selection_order_when_formatting_completes_out_of_order()
     {
-        using var fixture = new TemporaryGitRepository();
-        var files = CreateFiles(fixture, 3);
+        var files = ExplicitFiles(3);
         var output = new StringWriter();
         var error = new StringWriter();
         var formatter = new ControlledFormatter(expected_starts: 3);
         var application = CreateApplication(formatter, output, error);
 
-        var run_task = application.RunAsync(["--all", "--jobs", "3", "--verbose"], fixture.Root);
+        var run_task = application.FormatAsync(Selection(files), new FormatRequest(FormatMode.All, true, 3));
         await formatter.WaitForStartsAsync(3);
 
         formatter.Complete(files[2], new FormatFileResult(false, "third failure"));
@@ -72,15 +69,15 @@ public sealed class ParallelFormattingTests
         Assert.AreEqual(1, exit_code);
         AssertInOrder(
             output.ToString(),
-            $"Formatting: {RelativePath(fixture, files[0])}",
-            $"Formatting: {RelativePath(fixture, files[1])}",
-            $"Formatting: {RelativePath(fixture, files[2])}");
+            $"Formatting: {Path.GetRelativePath(Environment.CurrentDirectory, files[0])}",
+            $"Formatting: {Path.GetRelativePath(Environment.CurrentDirectory, files[1])}",
+            $"Formatting: {Path.GetRelativePath(Environment.CurrentDirectory, files[2])}");
         AssertInOrder(
             error.ToString(),
-            $"ERROR formatting {RelativePath(fixture, files[1])}: second failure",
-            $"ERROR formatting {RelativePath(fixture, files[2])}: third failure",
-            $"  {RelativePath(fixture, files[1])}: second failure",
-            $"  {RelativePath(fixture, files[2])}: third failure");
+            $"ERROR formatting {Path.GetRelativePath(Environment.CurrentDirectory, files[1])}: second failure",
+            $"ERROR formatting {Path.GetRelativePath(Environment.CurrentDirectory, files[2])}: third failure",
+            $"  {Path.GetRelativePath(Environment.CurrentDirectory, files[1])}: second failure",
+            $"  {Path.GetRelativePath(Environment.CurrentDirectory, files[2])}: third failure");
         CollectionAssert.AreEquivalent(files.ToArray(), formatter.Attempts.ToArray());
     }
 
@@ -161,6 +158,12 @@ public sealed class ParallelFormattingTests
         Assert.AreEqual("int file_0;\n", fixture.RunGit("show", ":Source/file-0.cpp"));
         Assert.AreEqual("int file_1;\n", fixture.RunGit("show", ":Source/file-1.cpp"));
     }
+
+    private static IReadOnlyList<string> ExplicitFiles(int count) => Enumerable.Range(0, count)
+        .Select(index => Path.Combine(Environment.CurrentDirectory, "Source", $"file-{index}.cpp")).ToArray();
+
+    private static FileSelection Selection(IReadOnlyList<string> files) =>
+        new(Environment.CurrentDirectory, files, "explicit scheduling inputs");
 
     private static IReadOnlyList<string> CreateFiles(TemporaryGitRepository fixture, int count)
     {

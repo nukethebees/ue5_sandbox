@@ -10,6 +10,9 @@ internal enum IntegrationGate
     JobserverTests,
     CSharpToolsTests,
     ToolTests,
+    LayoutPlannerTests,
+    ImageLabTests,
+    RustToolsTests,
     PowerShellChecks,
     PythonChecks,
     CMakeChecks,
@@ -133,10 +136,15 @@ internal sealed class IntegrationGatePlanner
         if (include_tool_tests)
         {
             Add("explicit-tool-tests", [IntegrationGate.ToolTests], "requested with --tool-tests");
+        }
+        if (gates.Contains(IntegrationGate.ToolTests))
+        {
             gates.Remove(IntegrationGate.AgentGitTests);
             gates.Remove(IntegrationGate.CSharpToolsTests);
             reasons.Remove(IntegrationGate.AgentGitTests);
             reasons.Remove(IntegrationGate.CSharpToolsTests);
+            gates.Remove(IntegrationGate.RustToolsTests);
+            reasons.Remove(IntegrationGate.RustToolsTests);
         }
 
         return new IntegrationGatePlan(
@@ -171,6 +179,9 @@ internal sealed class IntegrationGatePlanner
         IntegrationGate.JobserverTests => "jobserver-tests",
         IntegrationGate.CSharpToolsTests => "csharp-tools-tests",
         IntegrationGate.ToolTests => "tool-tests",
+        IntegrationGate.LayoutPlannerTests => "layout-planner-tests",
+        IntegrationGate.ImageLabTests => "image-lab-tests",
+        IntegrationGate.RustToolsTests => "rust-tools-tests",
         IntegrationGate.PowerShellChecks => "powershell-checks",
         IntegrationGate.PythonChecks => "python-checks",
         IntegrationGate.CMakeChecks => "cmake-checks",
@@ -192,30 +203,20 @@ internal sealed class IntegrationGatePlanner
         {
             return [];
         }
-        if (path.StartsWith("tools/AgentGit/", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("tools/AgentGit.Tests/", StringComparison.OrdinalIgnoreCase))
-        {
-            return [IntegrationGate.AgentGitTests];
-        }
-        if (path.StartsWith("tools/GitSupport/", StringComparison.OrdinalIgnoreCase))
+        if (path is "tools/Directory.Build.props" or "tools/Directory.Build.targets" or "tools/Tools.slnx")
         {
             return [IntegrationGate.AgentGitTests, IntegrationGate.CSharpToolsTests];
         }
-        if (path.StartsWith("tools/jobserver/", StringComparison.OrdinalIgnoreCase))
+        var tool = ToolComponents.Find(path);
+        if (tool is not null)
         {
-            return [IntegrationGate.JobserverTests];
-        }
-        if (path.StartsWith("tools/rust/", StringComparison.OrdinalIgnoreCase))
-        {
-            return [IntegrationGate.ToolTests];
-        }
-        if (path.StartsWith("tools/perf/", StringComparison.OrdinalIgnoreCase))
-        {
-            return [IntegrationGate.BenchmarkBuild];
+            return tool.Name == "git-support"
+                ? [IntegrationGate.AgentGitTests, IntegrationGate.CSharpToolsTests]
+                : [tool.Gate];
         }
         if (path.StartsWith("tools/", StringComparison.OrdinalIgnoreCase))
         {
-            return [IntegrationGate.CSharpToolsTests];
+            return [IntegrationGate.ToolTests, IntegrationGate.NativeTests];
         }
         if (path.Equals("dev.ps1", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("PowerShell/", StringComparison.OrdinalIgnoreCase))
@@ -265,11 +266,11 @@ internal sealed class IntegrationGatePlanner
     [
         new("integration-policy", [".integration-gates.json", ".agent-git.json"], global_gates, []),
         new("docs", ["AGENTS.md", "README.md", "docs/", "PowerShell/README.md", "cmake/README.md"], [], []),
-        new("agent-git", ["tools/AgentGit/", "tools/AgentGit.Tests/"], [IntegrationGate.AgentGitTests], []),
-        new("git-support", ["tools/GitSupport/"], [], ["agent-git", "csharp-tools"]),
-        new("jobserver", ["tools/jobserver/"], [IntegrationGate.JobserverTests], []),
-        new("rust-tools", ["tools/rust/"], [IntegrationGate.ToolTests], []),
-        new("csharp-tools", ["tools/"], [IntegrationGate.CSharpToolsTests], []),
+        .. ToolComponents.All.Select(tool => new ComponentRule(tool.Name, tool.Paths, [tool.Gate],
+            tool.Name == "git-support" ? ["agent-git", "agent-git-installer", "git-tools"] : [])),
+        new("csharp-infrastructure", ["tools/Directory.Build.props", "tools/Directory.Build.targets", "tools/Tools.slnx"],
+            [IntegrationGate.AgentGitTests, IntegrationGate.CSharpToolsTests], []),
+        new("unknown-tools", ["tools/"], [IntegrationGate.ToolTests, IntegrationGate.NativeTests], []),
         new("powershell", ["dev.ps1", "PowerShell/"], [IntegrationGate.PowerShellChecks], []),
         new("python", ["Scripts/"], [IntegrationGate.PythonChecks], []),
         new("preset-generator", ["cmake/presets/"],
@@ -280,7 +281,7 @@ internal sealed class IntegrationGatePlanner
         new("codegen", ["Codegen/", "lispb/"], [IntegrationGate.CodegenTests, IntegrationGate.NativeTests], []),
         new("unreal", ["Source/", "Plugins/", "unreal/", "Config/", "Sandbox.uproject"],
             [IntegrationGate.UnrealTests, IntegrationGate.DevelopmentBuild], []),
-        new("benchmark", ["tools/perf/", "native/simulation_benchmark/"], [IntegrationGate.BenchmarkBuild], []),
+        new("benchmark", ["native/simulation_benchmark/"], [IntegrationGate.BenchmarkBuild], []),
     ];
 
     private static IReadOnlyList<ComponentRule> ParseManifest(string json)
@@ -338,6 +339,9 @@ internal sealed class IntegrationGatePlanner
         "jobserver-tests" => IntegrationGate.JobserverTests,
         "csharp-tools-tests" => IntegrationGate.CSharpToolsTests,
         "tool-tests" => IntegrationGate.ToolTests,
+        "layout-planner-tests" => IntegrationGate.LayoutPlannerTests,
+        "image-lab-tests" => IntegrationGate.ImageLabTests,
+        "rust-tools-tests" => IntegrationGate.RustToolsTests,
         "powershell-checks" => IntegrationGate.PowerShellChecks,
         "python-checks" => IntegrationGate.PythonChecks,
         "cmake-checks" => IntegrationGate.CMakeChecks,

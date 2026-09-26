@@ -92,16 +92,16 @@ public sealed class ProcessRunnerTests
     [TestMethod]
     public async Task ProcessRunner_bounds_captured_diagnostic_output()
     {
-        using var fixture = new TemporaryAgentGitRepository();
+        var git_executable = TemporaryAgentGitRepository.FindExecutable("git.exe");
         var environment = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["SystemRoot"] = Environment.GetFolderPath(Environment.SpecialFolder.Windows),
-            ["PATH"] = Path.GetDirectoryName(fixture.GitExecutable)!,
+            ["PATH"] = Path.GetDirectoryName(git_executable)!,
         };
         var request = new ProcessRequest(
-            fixture.GitExecutable,
+            git_executable,
             ["--version"],
-            fixture.RepositoryRoot,
+            Path.GetTempPath(),
             environment,
             TimeSpan.FromSeconds(10),
             MaximumCapturedStreamBytes: 1);

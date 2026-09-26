@@ -44,7 +44,7 @@ target_link_libraries(layout-planner-ui-tests PRIVATE
   layout-planner-ui GTest::gtest_main ioj::warnings_as_errors)
 target_compile_definitions(layout-planner-ui-tests PRIVATE IOJ_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 add_test(NAME layout-planner-ui-tests COMMAND layout-planner-ui-tests)
-set_tests_properties(layout-planner-ui-tests PROPERTIES LABELS "unit;layout;tools")
+set_tests_properties(layout-planner-ui-tests PROPERTIES LABELS "unit;native;layout;tools;developer-tool")
 
 install(TARGETS layout-planner
   RUNTIME DESTINATION bin

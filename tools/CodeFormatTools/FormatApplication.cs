@@ -67,6 +67,34 @@ internal sealed class FormatApplication(
             }
         }
 
+        var result = await FormatAsync(selection, request, cancellation_token);
+        if (result != 0)
+        {
+            return result;
+        }
+
+        if (request.Mode == FormatMode.Staged)
+        {
+            try
+            {
+                await file_selector.StageAsync(selection.RepositoryRoot, selection.Files, cancellation_token);
+            }
+            catch (FormatToolException exception)
+            {
+                standard_error.WriteLine($"ERROR: Failed to stage formatted files: {exception.Message}");
+                return 1;
+            }
+        }
+
+        standard_output.WriteLine($"Successfully formatted {selection.Files.Count}/{selection.Files.Count} files.");
+        return 0;
+    }
+
+    internal async Task<int> FormatAsync(
+        FileSelection selection,
+        FormatRequest request,
+        CancellationToken cancellation_token = default)
+    {
         standard_output.WriteLine($"Running clang-format on {selection.Description}.");
         try
         {
@@ -134,20 +162,6 @@ internal sealed class FormatApplication(
             return 1;
         }
 
-        if (request.Mode == FormatMode.Staged)
-        {
-            try
-            {
-                await file_selector.StageAsync(selection.RepositoryRoot, selection.Files, cancellation_token);
-            }
-            catch (FormatToolException exception)
-            {
-                standard_error.WriteLine($"ERROR: Failed to stage formatted files: {exception.Message}");
-                return 1;
-            }
-        }
-
-        standard_output.WriteLine($"Successfully formatted {selection.Files.Count}/{selection.Files.Count} files.");
         return 0;
     }
 }

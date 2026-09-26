@@ -21,4 +21,4 @@ target_link_libraries(image-lab-tests PRIVATE
   sandbox::native_defaults
 )
 add_test(NAME image-lab-tests COMMAND image-lab-tests)
-set_tests_properties(image-lab-tests PROPERTIES LABELS "unit;image-lab")
+set_tests_properties(image-lab-tests PROPERTIES LABELS "unit;native;image-lab;developer-tool")

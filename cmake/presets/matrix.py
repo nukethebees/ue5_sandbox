@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from itertools import product
-from typing import Any, Iterable, Mapping, cast
+from typing import Any, cast
 
 
 CacheVariables = Mapping[str, bool | str]

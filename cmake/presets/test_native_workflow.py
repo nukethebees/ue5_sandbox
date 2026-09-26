@@ -161,7 +161,7 @@ class NativeWorkflowTests(unittest.TestCase):
                         output.unlink()
 
             self.run_cmake("--build", str(build), "--target", *targets)
-            filters = {}
+            filters: dict[str, re.Pattern[str]] = {}
             for name in ("clang-tidy", *(f"clang-tidy-{scope}" for scope in TIDY_SCOPES)):
                 args = json.loads((build / f"{name}.json").read_text(encoding="utf-8"))
                 self.assertEqual(Path(args[args.index("-CompilationDatabase") + 1]), build)
@@ -277,6 +277,7 @@ class NativeWorkflowTests(unittest.TestCase):
             workflows["tool-tests"]["steps"],
             [
                 {"type": "configure", "name": "native"},
+                {"type": "build", "name": "tool-tests"},
                 {"type": "test", "name": "tool-tests"},
             ],
         )
@@ -335,7 +336,16 @@ class NativeWorkflowTests(unittest.TestCase):
             self.assertNotIn("tools/bin/NativeBinaryTools.exe", dry_run)
 
             build_ninja = (build_directory / "build.ninja").read_text(encoding="utf-8")
-            self.assertNotIn("VERIFY_GLOBS", build_ninja)
+            verify_globs = build_directory / "CMakeFiles/VerifyGlobs.cmake"
+            if verify_globs.exists():
+                owners = re.findall(
+                    r"^# .* at (.+):\d+ \(file\)$",
+                    verify_globs.read_text(encoding="utf-8"),
+                    re.MULTILINE,
+                )
+                self.assertTrue(owners)
+                for owner in owners:
+                    self.assertTrue(owner.startswith("native/third_party/"), owner)
             normalized_build_ninja = build_ninja.replace("\\", "/").replace("$:", ":")
             native_binary_tools_directory = self.source_dir / "tools" / "NativeBinaryTools"
             self.assertIn(

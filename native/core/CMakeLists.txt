@@ -152,7 +152,8 @@ add_test(NAME StaticStringViewRejectsAutomaticStorage
     --target native-core-static-string-view-reject-automatic
 )
 set_tests_properties(StaticStringViewRejectsAutomaticStorage PROPERTIES
-  LABELS "unit;all;native;native-core"
+  LABELS "all;native;native-core;compile-contract;subprocess"
+  RESOURCE_LOCK codegen-negative-build
   WILL_FAIL TRUE
 )
 

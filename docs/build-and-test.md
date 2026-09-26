@@ -40,41 +40,92 @@ Unreal is an integration boundary. The final integration planner selects the rel
 the changed component graph; the normal DebugGame game/native workflow is reserved for
 Unreal-facing or cross-cutting candidates.
 
-### Native inner loop
+### Clean task start
+
+Keep the clean-build policy: load `dev.ps1`, remove this worktree's old build directories,
+regenerate presets and code, then build once:
 
 ```powershell
-# Configure the default native clang-cl Debug + unity build. Unreal is disabled.
-cmake --preset native
-
-# Build only the changed native test target, then run its focused tests.
-cmake --build --preset native --target native-simulation-tests
-ctest --preset native-simulation-tests
-
-# Run the complete first-party native suite.
-cmake --workflow --preset native-tests
+python cmake/presets/generate.py
+cmake --workflow --preset generate-code
+cmake --workflow --preset task-start
 ```
 
-`native-core-tests` and `native-simulation-tests` are focused workflows. `native-tests` builds and
-runs all first-party tests under `native/`; it does not configure UBT or launch UnrealEditor. The
-PowerShell shortcut `cbuild` defaults to `native-tests`.
+`task-start` builds native tests (including the soak), native developer-tool tests, all nine C#
+test assemblies, and generated-output consistency checks. It executes no tests and uses no
+Unreal resources. Binaries and C# intermediates are isolated under `out/build/native`.
+The `check-generated-code` build target owns the committed codegen fixture consistency check.
 
-Native mimalloc targets build their configuration-local `NativeBinaryTools` host dependency on
-demand. CMake-owned tools likewise rebuild automatically when their sources change; no CMake
-workflow requires a manual `ctools` preflight.
-
-### Standalone developer tools
+### Iteration: rebuild affected targets, then select tests
 
 ```powershell
+cmake --build --preset native --target native-simulation-tests
+ctest --test-dir out/build/native -L '^native-simulation$' -LE 'soak|compile-contract' --output-on-failure
+
+cmake --build --preset native --target csharp-CodeFormatTools-build
+ctest --test-dir out/build/native -L '^formatting$' --output-on-failure
+```
+
+CTest never rebuilds the C# assemblies. Each registered project uses `dotnet test --no-build
+--no-restore`; a source fingerprint rejects stale binaries with the precise rebuild target.
+Adding/removing files and changing transitive C# dependencies also invalidate the fingerprint.
+Use `csharp-tests-build` after shared C# infrastructure changes. The canonical AgentGit installer
+still performs its real private validation build and security tests.
+
+Labels are regular expressions, not shell globs. One `-L` selects any matching label; repeated
+`-L` options require every expression to match. `-LE 'soak|compile-contract'` excludes either
+category. `ctest --test-dir out/build/native -N -L <label>` previews selection without executing.
+
+C# labels include `csharp`, `agent-git`, `installer`, `architecture`, `benchmark`, `formatting`,
+`game-package`, `git`, `native-binary`, and `unreal-build`. The `developer-tool` label includes
+all standalone C# projects, Rust tests, and the registered layout, image-lab, and perf tests.
+Mixed integration assemblies carry `integration;subprocess`; pure assemblies carry `unit`.
+Labels apply to whole executables/assemblies, not individual GTest/MSTest cases.
+
+### Native tidy scopes
+
+Use `cmake --workflow --preset clang-tidy-simulation` (or `core`, `layout`, `lispb`, `memory`,
+`level-authoring`, `s7`, `image`, `mesh-gen`) for scoped readiness. After its initial configure,
+`cmake --build --preset clang-tidy-simulation` reruns that scope without a broad build.
+Generated prerequisites remain dependencies of the relevant tidy targets. Inspect the resulting
+`clang-tidy-<scope>.log` and resolve every diagnostic; the checks themselves are unchanged.
+
+Implementation-only changes use their owning scope. Shared headers require consumer analysis:
+follow `target_link_libraries` and actual include users, including header-only consumers. Core,
+memory, profiling, compiler defaults, or uncertain cross-cutting changes require the full
+`cmake --workflow --preset win-x64-clangcl-debug-tidy` sweep. Simulation public headers also
+require level-authoring; level-authoring headers require simulation; image headers require
+mesh-gen where consumed. Expand further for actual includes, and validate Unreal adapters when
+those public interfaces cross the engine boundary. Directory ownership alone is insufficient.
+
+For opt-in check profiling, use the prepared compilation database for a representative file:
+`clang-tidy -p out/build/win-x64-clangcl-debug/clang-tidy --enable-check-profile <source.cpp>`.
+Add `--store-check-profile=out/tidy-profile` to save JSON timing data. This preserves the normal
+check set; the installed `run-clang-tidy` driver does not forward these profiling options.
+
+### Final validation
+
+```powershell
+cmake --workflow --preset native-tests
 cmake --workflow --preset tool-tests
 ```
 
-Run this only when the current change can affect a standalone developer tool: the tool or its
-tests, a directly consumed interface/protocol/file format/configuration, shared tool/build
-infrastructure, or an active tool diagnosis. Normal native, game, runtime, DebugGame unit, and
-DebugGame integration validation deliberately exclude this suite.
+Run only the affected broader validation classes once against the final candidate. Native final
+validation includes the separate `native-simulation-soak-tests` and all compile-contract tests;
+focused simulation final validation must rebuild and include the soak. Codegen/type-system final
+validation includes `compile-contract`. Those nested builds retain a shared CTest resource lock.
+The full native workflow is conservative; it is not the repeated inner loop.
 
-Do not rebuild Unreal merely because a native implementation has a thin Unreal adapter. Settle the
-native behavior with the smallest target and test subset first.
+`tool-tests` builds its prerequisites before running the per-project tests, with no duplicate
+umbrella C# test. Use it for shared/unknown tool infrastructure or broad tool validation. Known
+C# tools select explicit projects; GitSupport expands to AgentGit, AgentGitInstaller, and GitTools.
+Layout planner and image lab select their native workflows, jobserver its dedicated gate, Rust
+its own CTest label, and perf its benchmark validation. Unknown tool paths retain broad tool and
+native validation. CMake owns physical test registration in `cmake/csharp_tests.cmake`; the
+integration manifest and built-in ownership map describe semantic boundaries and safety floors.
+
+Do not rebuild Unreal merely because a native implementation has a thin Unreal adapter. Settle
+the native behavior with the smallest target and test subset first.
 
 ### Focused Unreal integration
 

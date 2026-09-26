@@ -165,6 +165,10 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
     )
     document["configurePresets"] = configure_presets
     document["buildPresets"] = [
+        {"name": "task-start", "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
+         "targets": ["task-start-build"]},
+        {"name": "tool-tests", "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
+         "targets": ["developer-tools-build"]},
         {
             "name": "native",
             "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
@@ -179,7 +183,8 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             {
                 "name": test_target,
                 "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
-                "targets": [test_target],
+                "targets": [test_target, "native-simulation-soak-tests"]
+                if test_target == "native-simulation-tests" else [test_target],
             }
             for test_target in ("native-core-tests", "native-simulation-tests")
         ),
@@ -199,6 +204,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                 "codegen-tests",
                 "slate-codegen-tests",
                 "kernel-codegen-tests",
+                "check-generated-code",
             ],
         },
         {
@@ -279,6 +285,9 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
         },
     ]
     document["workflowPresets"] = [
+        {"name": "task-start", "steps": [
+            {"type": "configure", "name": DEFAULT_NATIVE_CONFIGURATION},
+            {"type": "build", "name": "task-start"}]},
         {
             "name": "native-tests",
             "displayName": "Run the native validation suite",
@@ -293,6 +302,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "displayName": "Run standalone developer-tool tests",
             "steps": [
                 {"type": "configure", "name": DEFAULT_NATIVE_CONFIGURATION},
+                {"type": "build", "name": "tool-tests"},
                 {"type": "test", "name": "tool-tests"},
             ],
         },
@@ -511,6 +521,11 @@ def make_unreal_document() -> dict[str, Any]:
         for name, configure_preset, target in extra_build_presets
     )
 
+    build_presets.append({
+        "name": "debug-game-tool-tests-build", "configurePreset": "debug-game",
+        "targets": ["developer-tools-build"],
+    })
+
     packaging_build_presets = (
         ("development-game", "development", "game"),
         ("development-cook", "development", "cook"),
@@ -544,7 +559,7 @@ def make_unreal_document() -> dict[str, Any]:
                     "name": f"debug-game{suffix}-{name}",
                     "inherits": "test-base",
                     "configurePreset": f"debug-game{suffix}",
-                    "filter": {"include": {"label": label}},
+                    "filter": {"include": {"label": label}, "exclude": {"label": "^csharp$"}},
                 }
             )
     test_presets.append(
@@ -708,6 +723,7 @@ def make_unreal_document() -> dict[str, Any]:
                 "steps": [
                     {"type": "configure", "name": "debug-game"},
                     {"type": "build", "name": "debug-game"},
+                    {"type": "build", "name": "debug-game-tool-tests-build"},
                     {"type": "test", "name": "debug-game-full-tests"},
                 ],
             },

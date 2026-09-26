@@ -132,13 +132,13 @@ add_dependencies(jobserver-tests
   jobserverd
 )
 add_test(NAME jobserver-tests COMMAND jobserver-tests)
-set_tests_properties(jobserver-tests PROPERTIES LABELS "jobserver")
+set_tests_properties(jobserver-tests PROPERTIES LABELS "jobserver;integration;subprocess")
 add_test(NAME jobserver-unreal-integration-tests
   COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_unreal_integration.py"
     "${PROJECT_SOURCE_DIR}" "$<TARGET_FILE:jobserver>" "$<TARGET_FILE:jobserverd>"
     "$<TARGET_FILE:jobserver-test-helper>" "${CMAKE_COMMAND}" "${CMAKE_CTEST_COMMAND}")
 set_tests_properties(jobserver-unreal-integration-tests PROPERTIES
-  LABELS "jobserver"
+  LABELS "jobserver;integration;subprocess"
   TIMEOUT 180)
 
 option(IOJ_JOBSERVER_SYSTEM_TESTS
