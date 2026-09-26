@@ -9,6 +9,24 @@ endif()
 ioj_find_llvm_tool(IOJ_CLANG_TIDY_EXECUTABLE clang-tidy)
 ioj_find_llvm_tool(IOJ_RUN_CLANG_TIDY_EXECUTABLE run-clang-tidy)
 find_program(IOJ_POWERSHELL_EXECUTABLE NAMES pwsh powershell REQUIRED)
+execute_process(
+  COMMAND "${IOJ_CLANG_TIDY_EXECUTABLE}" "-checks=*" -list-checks
+  OUTPUT_VARIABLE ioj_tidy_checks
+  ERROR_VARIABLE ioj_tidy_error
+  RESULT_VARIABLE ioj_tidy_result)
+if(NOT ioj_tidy_result EQUAL 0)
+  message(FATAL_ERROR "Cannot query clang-tidy checks: ${ioj_tidy_error}")
+endif()
+if(ioj_tidy_checks MATCHES "(^|[\r\n])[ \t]+ioj-loop-condition-call([\r\n]|$)")
+  message(STATUS "clang-tidy has built-in IOJ checks (machine tool; not rebuilt by game workflows)")
+  add_test(NAME ClangTidy.LoopConditionCall
+    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/llvm/clang_tidy/tests/test_loop_condition_call.py"
+      --clang-tidy "${IOJ_CLANG_TIDY_EXECUTABLE}"
+      --source-dir "${PROJECT_SOURCE_DIR}")
+  set_tests_properties(ClangTidy.LoopConditionCall PROPERTIES LABELS "clang-tidy")
+else()
+  message(STATUS "clang-tidy has no IOJ checks; running the standard checks only")
+endif()
 
 set(IOJ_CLANG_TIDY_JOBS 0 CACHE STRING
   "Number of parallel run-clang-tidy workers; 0 uses the detected CPU count")

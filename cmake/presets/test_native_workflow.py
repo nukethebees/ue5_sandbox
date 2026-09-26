@@ -182,6 +182,12 @@ class NativeWorkflowTests(unittest.TestCase):
                 )
 
     def test_tidy_targets_and_source_filters(self) -> None:
+        self.check_tidy_targets_and_source_filters(has_ioj=False)
+
+    def test_tidy_detects_builtin_ioj_checks(self) -> None:
+        self.check_tidy_targets_and_source_filters(has_ioj=True)
+
+    def check_tidy_targets_and_source_filters(self, has_ioj: bool) -> None:
         # Exercise the real CMake targets, capturing their runner arguments without
         # requiring LLVM or configuring the native dependency graph.
         with tempfile.TemporaryDirectory(prefix="sandbox tidy workflow ") as root:
@@ -202,6 +208,7 @@ class NativeWorkflowTests(unittest.TestCase):
                 "project(TidyWorkflow NONE)\n"
                 f'set(PROJECT_SOURCE_DIR "{self.source_dir.as_posix()}")\n'
                 "set(IOJ_ENABLE_CLANG_TIDY TRUE)\n"
+                "enable_testing()\n"
                 "set(IOJ_IS_CLANG_CL TRUE)\n"
                 f'set(Python3_EXECUTABLE "{Path(sys.executable).as_posix()}")\n'
                 'set(IOJ_CLANG_TIDY_EXECUTABLE "${CMAKE_COMMAND}")\n'
@@ -209,6 +216,19 @@ class NativeWorkflowTests(unittest.TestCase):
                 'set(IOJ_POWERSHELL_EXECUTABLE "${CMAKE_COMMAND}")\n'
                 "function(ioj_find_llvm_tool output name)\n"
                 '  set(${output} "${CMAKE_COMMAND}" PARENT_SCOPE)\n'
+                "endfunction()\n"
+                "function(find_package)\n"
+                '  message(FATAL_ERROR "Tidy workflow requested development packages")\n'
+                "endfunction()\n"
+                "function(execute_process)\n"
+                '  cmake_parse_arguments(query "" "OUTPUT_VARIABLE;RESULT_VARIABLE" "" ${ARGN})\n'
+                '  set(${query_OUTPUT_VARIABLE} "Enabled checks:\\n    modernize-use-nullptr\\n'
+                + ('    ioj-loop-condition-call\\n' if has_ioj else '')
+                + '" PARENT_SCOPE)\n'
+                '  set(${query_RESULT_VARIABLE} 0 PARENT_SCOPE)\n'
+                "endfunction()\n"
+                "function(add_subdirectory directory)\n"
+                '  message(FATAL_ERROR "Tidy workflow tried to build an extra target: ${directory}")\n'
                 "endfunction()\n"
                 "function(sandbox_jobserver_command output)\n"
                 '  set(${output} "${Python3_EXECUTABLE}" '
@@ -230,7 +250,12 @@ class NativeWorkflowTests(unittest.TestCase):
                 "endforeach()\n",
                 encoding="utf-8",
             )
-            self.run_cmake("-S", str(fixture), "-B", str(build), "-G", "Ninja")
+            configured = self.run_cmake("-S", str(fixture), "-B", str(build), "-G", "Ninja")
+            self.assertIn("built-in IOJ checks" if has_ioj else "standard checks only", configured)
+            registered_tests = (build / "CTestTestfile.cmake").read_text()
+            self.assertEqual("ClangTidy.LoopConditionCall" in registered_tests, has_ioj)
+            if has_ioj:
+                self.assertIn("tools/llvm/clang_tidy/tests/test_loop_condition_call.py", registered_tests)
             targets = [
                 target
                 for preset in self.presets["buildPresets"]
@@ -268,6 +293,8 @@ class NativeWorkflowTests(unittest.TestCase):
                 args = json.loads((build / f"{name}.json").read_text(encoding="utf-8"))
                 self.assertEqual(Path(args[args.index("-CompilationDatabase") + 1]), build)
                 self.assertEqual(args[args.index("-Jobs") + 1], "0")
+                self.assertNotIn("-Plugin", args)
+                self.assertNotIn("-load", args)
                 self.assertEqual(
                     Path(args[args.index("-File") + 1]),
                     self.source_dir / "cmake/clang_tidy/run_clang_tidy.ps1",

@@ -1,8 +1,9 @@
 # Native clang-tidy
 
 Native clang-tidy uses clang-cl and LLVM's `run-clang-tidy`. Targeted subsystem audits are the
-normal developer and agent workflow. Full and scoped audits use the same `native/.clang-tidy`
-configuration, including its static-analyzer checks. Unreal Engine, generated sources,
+normal developer and agent workflow. Full and scoped audits inherit `native/.clang-tidy`,
+including its static-analyzer checks.
+Unreal Engine, generated sources,
 third-party code, `sbx_mimalloc`, compile/rejection fixtures, and the existing specifically
 excluded translation units remain outside the audit.
 
@@ -14,6 +15,16 @@ cache value takes precedence; otherwise the cache is
 initialized from the `LLVM_ROOT` environment variable. With neither set, normal PATH discovery
 applies. CMake forwards this selection to CodeFormatTools; standalone formatting uses the
 `LLVM_ROOT` environment variable for the matching clang-format.
+
+By default, tidy uses the selected executable directly. The optional machine installation can
+contain the C++23 IOJ checks statically linked into `clang-tidy.exe`. Configure reports whether
+IOJ checks are available. Ordinary clang-tidy runs the standard checks when they are absent.
+
+Game workflows never build or repair LLVM. Building custom tooling is an intentional
+infrastructure task: see [the LLVM build instructions](../tools/llvm/README.md). The installed
+checker is a machine-level snapshot, not necessarily the current worktree's checker source.
+When changing a checker, explicitly rebuild it and run its semantic tests before installing it.
+Agents doing unrelated work must use the available tool rather than locate, clone, or rebuild LLVM.
 
 Run the scope affected by your change:
 
@@ -81,3 +92,7 @@ cmake --build --preset clang-tidy-core
 Set `IOJ_CLANG_TIDY_JOBS=0` to restore the automatic worker count.
 
 The enabled checks and audit compiler arguments are defined in `native/.clang-tidy`.
+
+
+The pinned LLVM toolchain also includes an independent analyzer lifetime fix. Its build script
+applies that patch separately from IOJ integration; see [toolchain patches](../tools/llvm/README.md).
