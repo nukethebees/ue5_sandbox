@@ -52,10 +52,11 @@ auto forward_declaration_kind(lispb::schema::TypeNode const& node)
 
 auto uses_forward_declaration(lispb::schema::ResolvedTypeRef const& reference,
                               lispb::schema::TypeGraph const& graph,
-                              bool const declaration_only = false) -> bool {
+                              TypeReferenceKind const kind = TypeReferenceKind::ordinary) -> bool {
     auto const form{reference.physical.form};
-    return reference.physical.names_semantic_type &&
-           ((declaration_only && form == PhysicalTypeForm::value) ||
+    return kind != TypeReferenceKind::complete_definition &&
+           reference.physical.names_semantic_type &&
+           ((kind == TypeReferenceKind::function_declaration && form == PhysicalTypeForm::value) ||
             form == PhysicalTypeForm::object_pointer ||
             form == PhysicalTypeForm::lvalue_reference ||
             form == PhysicalTypeForm::rvalue_reference) &&
@@ -78,7 +79,7 @@ auto
                                                     lispb::schema::TypeGraph const& graph) -> bool {
     return kind == TypeReferenceKind::function_declaration &&
            reference.cpp_type.dependencies.empty() &&
-           uses_forward_declaration(reference, graph, true);
+           uses_forward_declaration(reference, graph, kind);
 }
 
 auto generated_forward_declarations(NormalModuleSchema const& module,
@@ -87,10 +88,10 @@ auto generated_forward_declarations(NormalModuleSchema const& module,
     std::set<lispb::schema::TypeId> targets;
     for (auto const& use : graph.type_uses()) {
         if (use.module_name == module.settings.name &&
-            uses_forward_declaration(use.target,
-                                     graph,
-                                     is_record_signature(use, graph) &&
-                                         use.kind == TypeReferenceKind::function_declaration) &&
+            uses_forward_declaration(
+                use.target,
+                graph,
+                is_record_signature(use, graph) ? use.kind : TypeReferenceKind::ordinary) &&
             (graph.type(use.target.type).identity.module_name == module.settings.name ||
              (is_record_signature(use, graph) &&
               uses_cross_module_signature_forward_declaration(use.target, use.kind, graph)))) {
@@ -153,10 +154,8 @@ void visit_complete_dependencies(lispb::schema::TypeId const type,
         graph.type(type).definition);
     for (auto const& use : graph.type_uses()) {
         if (use.declaration == graph.type(type).identity && is_record_signature(use, graph) &&
-            use.target.type != type &&
-            !uses_forward_declaration(
-                use.target, graph, use.kind == TypeReferenceKind::function_declaration)) {
-            dependency(use.target);
+            use.target.type != type && !uses_forward_declaration(use.target, graph, use.kind)) {
+            visit(use.target.type);
         }
     }
 }

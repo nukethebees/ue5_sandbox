@@ -489,6 +489,16 @@ return result;}cpp#)
 (module mixed_fixture
   :header "Mixed.h"
   :namespace codegen_compile_fixture::mixed
+  (record DefaultArguments
+    (function value int (parameter value DefaultValue :default "{}"))
+    (function reference int
+      (parameter value (type-ref DefaultReference :suffix " const&") :default "{}"))
+    (function pointer bool
+      (parameter value (type-ref DefaultPointer :suffix "*") :default "nullptr"))
+    (function cross void (parameter value codegen_compile_fixture::second::B :default "{}")))
+  (record DefaultValue (member value int :initializer "7"))
+  (record DefaultReference (member value int :initializer "9"))
+  (record DefaultPointer)
   (record MethodConsumer
     (function make MethodProvider)
     (function accept void (parameter value MethodProvider))

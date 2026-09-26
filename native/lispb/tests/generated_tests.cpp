@@ -45,6 +45,19 @@ auto second::B::ref(first::A const& value) -> first::A const& {
     return value;
 }
 
+auto mixed::DefaultArguments::value(DefaultValue value) -> int {
+    return value.value;
+}
+auto mixed::DefaultArguments::reference(DefaultReference const& value) -> int {
+    return value.value;
+}
+auto mixed::DefaultArguments::pointer(DefaultPointer* value) -> bool {
+    return value == nullptr;
+}
+void mixed::DefaultArguments::cross(second::B value) {
+    (void)value;
+}
+
 auto mixed::MethodConsumer::make() -> mixed::MethodProvider {
     return {};
 }
@@ -104,6 +117,14 @@ TEST(GeneratedRecords, MethodSignaturesCompileWithForwardAndCompleteDependencies
     constexpr ApiConstView view{};
     static_assert(view.schema_version() == 7);
     static_assert(ApiView{}.mutable_version() == 8);
+}
+
+TEST(GeneratedRecords, ParameterDefaultsConstructCompleteTypesAtDeclarationSite) {
+    mixed::DefaultArguments arguments;
+    EXPECT_EQ(arguments.value(), 7);
+    EXPECT_EQ(arguments.reference(), 9);
+    EXPECT_TRUE(arguments.pointer());
+    arguments.cross();
 }
 
 TEST(GeneratedRecords, CrossModuleSignaturesSupportOutOfLineDefinitions) {

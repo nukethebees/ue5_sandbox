@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "SignatureSecond.h"
+
 #include <compare>
 #include <cstdint>
 
@@ -15,6 +17,26 @@ struct MethodConsumer;
 struct MethodProvider;
 
 union Payload;
+
+struct DefaultValue {
+    int value{7};
+};
+
+struct DefaultReference {
+    int value{9};
+};
+
+struct DefaultPointer {};
+
+struct DefaultArguments {
+    int value(DefaultValue value = {});
+
+    int reference(DefaultReference const& value = {});
+
+    bool pointer(DefaultPointer* value = nullptr);
+
+    void cross(codegen_compile_fixture::second::B value = {});
+};
 
 using MethodCount = std::uint8_t;
 

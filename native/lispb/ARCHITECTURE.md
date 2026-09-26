@@ -21,6 +21,8 @@ handling. As with SoA functions, identifiers inside C++ expressions and bodies a
 Signature type uses distinguish declarations from header definitions. Bodyless record methods may
 use forward-declared value types; header bodies require complete by-value return and parameter
 types. Pointer/reference uses use forward declarations where the generated C++ kind allows them.
+Parameters with defaults conservatively require complete semantic types, including pointer and
+reference parameters; default expressions are not analyzed. Other signature uses remain unchanged.
 Across modules, bodyless record signatures emit these declarations in the target namespace before
 the owning namespace, without adding a generated-header include. Explicit registered header
 dependencies are retained. Header-defined by-value uses and record members still require the target

@@ -37,7 +37,11 @@ void visit_declaration_type_references(Declaration& declaration, Visitor const& 
         }
         detailed_visit(role + " return", method.return_type, kind);
         for (auto& parameter : method.parameters) {
-            detailed_visit(role + " parameter " + parameter.name, parameter.type, kind);
+            auto const parameter_kind{kind != TypeReferenceKind::ordinary &&
+                                              parameter.default_value.has_value()
+                                          ? TypeReferenceKind::complete_definition
+                                          : kind};
+            detailed_visit(role + " parameter " + parameter.name, parameter.type, parameter_kind);
         }
         if constexpr (std::is_same_v<std::decay_t<decltype(method)>, FunctionSchema>) {
             optional(role + " trailing return", method.trailing_return_type, kind);

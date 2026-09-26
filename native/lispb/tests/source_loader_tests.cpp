@@ -226,6 +226,99 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareMutualCrossModuleTypes)
     EXPECT_LT(output[1].content.find("struct A;"), output[1].content.find("namespace second {"));
 }
 
+TEST(SourceLoader, RecordParameterDefaultsRequireCompleteTypesWithoutChangingOtherSignatures) {
+    TemporaryManifest files;
+    for (auto const& [parameter_type, default_value] :
+         {std::pair{"B", "{}"},
+          std::pair{"(type-ref B :suffix \" const&\")", "{}"},
+          std::pair{"(type-ref B :suffix \"*\")", "nullptr"}}) {
+        files.write_root(std::string{R"((module values :header "Values.h"
+          (record A
+            (function consume Result (parameter value )"} +
+                         parameter_type + " :default \"" + default_value + R"("))
+            (function inspect auto :trailing-return-type Result
+              (parameter existing (type-ref C :suffix " const&"))
+              (parameter value )" +
+                         parameter_type + " :default \"" + default_value + R"(")))
+          (record B)
+          (record Result)
+          (record C)))");
+        auto const manifest{files.load()};
+        auto const graph{lispb::schema::resolve_type_graph(manifest)};
+        auto const b{*graph.find_declared("values", "B")};
+        auto const result{*graph.find_declared("values", "Result")};
+        auto const c{*graph.find_declared("values", "C")};
+        for (auto const& use : graph.type_uses()) {
+            if (use.target.type == b) {
+                EXPECT_EQ(use.kind, TypeReferenceKind::complete_definition);
+            } else if (use.target.type == result || use.target.type == c) {
+                EXPECT_EQ(use.kind, TypeReferenceKind::function_declaration);
+            }
+        }
+        auto declaration{
+            std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front()};
+        std::vector<TypeReferenceKind> const_kinds;
+        visit_type_references(std::as_const(declaration),
+                              [&](std::string const&, TypeRef const&, TypeReferenceKind kind) {
+                                  const_kinds.push_back(kind);
+                              });
+        std::vector<TypeReferenceKind> mutable_kinds;
+        visit_type_references(declaration,
+                              [&](std::string const&, TypeRef&, TypeReferenceKind kind) {
+                                  mutable_kinds.push_back(kind);
+                              });
+        EXPECT_EQ(mutable_kinds, const_kinds);
+        EXPECT_EQ(std::ranges::count(mutable_kinds, TypeReferenceKind::complete_definition), 2);
+        auto const output{render_modules(lower_modules(manifest)).front().content};
+        EXPECT_LT(output.find("struct B {"), output.find("struct A {"));
+        EXPECT_EQ(output.find("struct B;"), std::string::npos);
+        EXPECT_LT(output.find("struct Result;"), output.find("struct A {"));
+        EXPECT_LT(output.find("struct C;"), output.find("struct A {"));
+        EXPECT_LT(output.find("struct A {"), output.find("struct Result {"));
+        EXPECT_LT(output.find("struct A {"), output.find("struct C {"));
+    }
+}
+
+TEST(SourceLoader, RecordParameterDefaultsRetainCrossModuleIncludes) {
+    TemporaryManifest files;
+    for (auto const& [parameter_type, default_value] :
+         {std::pair{"second::B", "{}"},
+          std::pair{"(type-ref second::B :suffix \" const&\")", "{}"},
+          std::pair{"(type-ref second::B :suffix \"*\")", "nullptr"}}) {
+        files.write_root(std::string{R"((module first :header "First.h" :namespace first
+          (record A (function consume void (parameter value )"} +
+                         parameter_type + " :default \"" + default_value + R"("))))
+          (module second :header "generated/Second.h" :header-include "api/Second.h"
+            :namespace second (record B)))");
+        auto const output{render_modules(lower_modules(files.load())).front().content};
+        EXPECT_NE(output.find("#include \"api/Second.h\""), std::string::npos);
+        EXPECT_EQ(output.find("struct B;"), std::string::npos);
+    }
+}
+
+TEST(SourceLoader, RecordParameterDefaultsRejectCompleteDefinitionCycles) {
+    TemporaryManifest files;
+    for (auto const& schema : {
+             R"((module values :header "Values.h"
+               (record A (function inspect void
+                 (parameter value (type-ref B :suffix " const&") :default "{}")))
+               (record B (function inspect void
+                 (parameter value (type-ref A :suffix " const&") :default "{}")))))",
+             R"((module first :header "First.h" :namespace first
+               (record A (function consume void (parameter value second::B :default "{}"))))
+               (module second :header "Second.h" :namespace second
+                 (record B (function consume void (parameter value first::A :default "{}")))))"}) {
+        files.write_root(schema);
+        try {
+            static_cast<void>(lower_modules(files.load()));
+            FAIL();
+        } catch (std::invalid_argument const& error) {
+            EXPECT_TRUE(std::string{error.what()}.contains("complete-definition dependency cycle"))
+                << error.what();
+        }
+    }
+}
+
 TEST(SourceLoader, RecordMethodCrossModuleCompleteTypesRetainIncludes) {
     TemporaryManifest files;
     files.write_root(R"((module consumers :header "Consumers.h" :namespace consumers

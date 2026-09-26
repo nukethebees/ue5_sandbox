@@ -71,7 +71,12 @@ auto declaration_kind(DeclarationSchema const& declaration) -> DeclarationKind;
 auto declaration_head(DeclarationSchema const& declaration) -> std::string_view;
 auto declaration_name(DeclarationSchema const& declaration) -> std::string const&;
 auto has_primary_semantic_type(DeclarationSchema const& declaration) -> bool;
-enum class TypeReferenceKind { ordinary, function_declaration, function_definition };
+enum class TypeReferenceKind {
+    ordinary,
+    function_declaration,
+    function_definition,
+    complete_definition,
+};
 
 void visit_type_references(
     DeclarationSchema const& declaration,
