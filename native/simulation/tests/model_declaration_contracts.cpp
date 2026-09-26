@@ -1,15 +1,10 @@
-#include <ioj/sim/collision/trace_entity_filter.h>
-#include <ioj/sim/levels/level_mission_mode.h>
-#include <ioj/sim/levels/level_validation_error_code.h>
-#include <ioj/sim/player/flight_model_enums.h>
-#include <ioj/sim/sim_state.h>
-#include <ioj/sim/simulation_phase.h>
 // Frozen declaration contracts from the handwritten simulation model.
 // Keep these expectations independent of the LispB schema.
 #include <ioj/sim/attack_distance_band.h>
 #include <ioj/sim/base_sim_config.h>
 #include <ioj/sim/capital_death_event.h>
 #include <ioj/sim/collision/grid_geometry.h>
+#include <ioj/sim/collision/trace_entity_filter.h>
 #include <ioj/sim/collision/world_aabb.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/fighters/navigation_records.h>
@@ -17,11 +12,15 @@
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/laser_source.h>
 #include <ioj/sim/level_telemetry_current_state.h>
+#include <ioj/sim/levels/level_mission_mode.h>
+#include <ioj/sim/levels/level_validation_error_code.h>
 #include <ioj/sim/line_trace_result.h>
 #include <ioj/sim/line_traces.h>
 #include <ioj/sim/navigation_telemetry.h>
 #include <ioj/sim/player/flight_model_data.h>
+#include <ioj/sim/player/flight_model_enums.h>
 #include <ioj/sim/player/flight_model_runtime.h>
+#include <ioj/sim/sim_state.h>
 #include <ioj/sim/simulation_phase.h>
 #include <ioj/sim/trace_hits.h>
 
@@ -109,6 +108,8 @@ IOJ_RECORD_MEMBER_CONTRACT(SeparationObservationParameters, float_bias);
 }
 
 namespace ioj::sim::fighters::model_contract {
+// The vector's union is independent of risk_tier; this is not a tagged union.
+// NOLINTNEXTLINE(bugprone-tagged-union-member-count)
 struct OriginalSeparationObservation {
     Vector3f steering_memory;
     NavigationRiskTier risk_tier;
