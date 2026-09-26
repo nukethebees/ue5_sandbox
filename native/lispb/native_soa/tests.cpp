@@ -131,6 +131,69 @@ TEST(NativeSoa, LogicalApiAcceptsIndependentColumnsAndCompactSourcesDuringGrowth
     EXPECT_EQ(compact.first_x(), 2.0f);
 }
 
+TEST(NativeSoa, CompactSelfCopyPreservesEveryColumn) {
+    struct CopyRange {
+        char const* name;
+        std::int32_t source;
+        std::int32_t destination;
+        std::int32_t count;
+        bool single_element{};
+    };
+    constexpr CopyRange cases[]{
+        {"source before destination", 0, 2, 5},
+        {"destination before source", 2, 0, 5},
+        {"identical ranges", 1, 1, 5},
+        {"disjoint forward", 0, 5, 3},
+        {"disjoint backward", 5, 0, 3},
+        {"one element", 3, 6, 1, true},
+        {"identical element", 3, 3, 1, true},
+        {"empty range", 2, 4, 0},
+    };
+    constexpr std::int32_t row_count{8};
+    for (auto const& range : cases) {
+        SCOPED_TRACE(range.name);
+        for (bool const sliced : {false, true}) {
+            SCOPED_TRACE(sliced);
+            SingleRows owner;
+            owner.set_num(row_count);
+            auto const view{owner.get_view()};
+            std::int32_t column_index{};
+            view.each_column([&](auto column) {
+                using Element = std::remove_cvref_t<decltype(column[0])>;
+                for (std::int32_t row{}; row < row_count; ++row) {
+                    column[row] = static_cast<Element>(column_index * 16 + row);
+                }
+                ++column_index;
+            });
+            auto const capacity{owner.capacity()};
+            auto const source_first{sliced ? range.source : 0};
+            auto const source{owner.get_const_view(source_first, row_count - source_first)};
+            if (range.single_element) {
+                owner.copy_element(range.destination, source, range.source - source_first);
+            } else {
+                owner.copy_elements(
+                    range.destination, source, range.source - source_first, range.count);
+            }
+
+            EXPECT_EQ(owner.num(), row_count);
+            EXPECT_EQ(owner.capacity(), capacity);
+            column_index = 0;
+            view.each_column([&](auto const column) {
+                using Element = std::remove_cvref_t<decltype(column[0])>;
+                SCOPED_TRACE(column_index);
+                for (std::int32_t row{}; row < row_count; ++row) {
+                    auto const copied{row >= range.destination &&
+                                      row < range.destination + range.count};
+                    auto const original{copied ? range.source + row - range.destination : row};
+                    EXPECT_EQ(column[row], static_cast<Element>(column_index * 16 + original));
+                }
+                ++column_index;
+            });
+            EXPECT_EQ(column_index, 7);
+        }
+    }
+}
+
 TEST(NativeSoa, LayoutGrowthAndMoves) {
     AlignmentRows vectors;
     vectors.set_num(129);

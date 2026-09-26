@@ -61,7 +61,7 @@ struct StorageOperations {
                 count <= self.num_ - destination && offset >= 0 && offset <= source.num() &&
                 count <= source.num() - offset);
         if (count > 0) {
-            self.append_columns(source, offset, destination, count);
+            self.copy_columns_from(source, offset, destination, count);
         }
     }
     template <typename Self, typename Source>

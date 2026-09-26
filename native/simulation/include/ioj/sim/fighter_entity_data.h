@@ -1410,6 +1410,227 @@ struct SingleAllocationFighterEntityData
                                ml::native_soa::source_data(source.target_radii()) + source_first,
                                count);
     }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count) {
+        auto const destination{get_data(first)};
+        ml::native_soa::move_n(destination.entity_ids,
+                               ml::native_soa::source_data(source.entity_ids()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.integral_biases,
+                               ml::native_soa::source_data(source.integral_biases()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.float_biases,
+                               ml::native_soa::source_data(source.float_biases()) + source_first,
+                               count);
+        ml::native_soa::move_n(
+            destination.tasks, ml::native_soa::source_data(source.tasks()) + source_first, count);
+        ml::native_soa::move_n(destination.locations_xs,
+                               ml::native_soa::source_data(source.view_locations().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.locations_ys,
+                               ml::native_soa::source_data(source.view_locations().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.locations_zs,
+                               ml::native_soa::source_data(source.view_locations().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(
+            destination.desired_move_locations_xs,
+            ml::native_soa::source_data(source.view_desired_move_locations().xs()) + source_first,
+            count);
+        ml::native_soa::move_n(
+            destination.desired_move_locations_ys,
+            ml::native_soa::source_data(source.view_desired_move_locations().ys()) + source_first,
+            count);
+        ml::native_soa::move_n(
+            destination.desired_move_locations_zs,
+            ml::native_soa::source_data(source.view_desired_move_locations().zs()) + source_first,
+            count);
+        ml::native_soa::move_n(destination.aim_directions_xs,
+                               ml::native_soa::source_data(source.view_aim_directions().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.aim_directions_ys,
+                               ml::native_soa::source_data(source.view_aim_directions().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.aim_directions_zs,
+                               ml::native_soa::source_data(source.view_aim_directions().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(
+            destination.planned_aim_directions_xs,
+            ml::native_soa::source_data(source.view_planned_aim_directions().xs()) + source_first,
+            count);
+        ml::native_soa::move_n(
+            destination.planned_aim_directions_ys,
+            ml::native_soa::source_data(source.view_planned_aim_directions().ys()) + source_first,
+            count);
+        ml::native_soa::move_n(
+            destination.planned_aim_directions_zs,
+            ml::native_soa::source_data(source.view_planned_aim_directions().zs()) + source_first,
+            count);
+        ml::native_soa::move_n(
+            destination.desired_aiming_directions_xs,
+            ml::native_soa::source_data(source.view_desired_aiming_directions().xs()) +
+                source_first,
+            count);
+        ml::native_soa::move_n(
+            destination.desired_aiming_directions_ys,
+            ml::native_soa::source_data(source.view_desired_aiming_directions().ys()) +
+                source_first,
+            count);
+        ml::native_soa::move_n(
+            destination.desired_aiming_directions_zs,
+            ml::native_soa::source_data(source.view_desired_aiming_directions().zs()) +
+                source_first,
+            count);
+        ml::native_soa::move_n(destination.movement_directions_xs,
+                               ml::native_soa::source_data(source.view_movement_directions().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.movement_directions_ys,
+                               ml::native_soa::source_data(source.view_movement_directions().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.movement_directions_zs,
+                               ml::native_soa::source_data(source.view_movement_directions().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.velocities_xs,
+                               ml::native_soa::source_data(source.view_velocities().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.velocities_ys,
+                               ml::native_soa::source_data(source.view_velocities().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.velocities_zs,
+                               ml::native_soa::source_data(source.view_velocities().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.move_distances,
+                               ml::native_soa::source_data(source.move_distances()) + source_first,
+                               count);
+        ml::native_soa::move_n(
+            destination.speeds, ml::native_soa::source_data(source.speeds()) + source_first, count);
+        ml::native_soa::move_n(
+            destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
+        ml::native_soa::move_n(destination.health_indices,
+                               ml::native_soa::source_data(source.health_indices()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.parent_ids,
+                               ml::native_soa::source_data(source.parent_ids()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.awareness_scan_countdowns,
+                               ml::native_soa::source_data(source.awareness_scan_countdowns()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(
+            destination.navigation_update_countdowns_remaining_ticks,
+            ml::native_soa::source_data(source.navigation_update_countdowns_remaining_ticks()) +
+                source_first,
+            count);
+        ml::native_soa::move_n(
+            destination.navigation_update_countdowns_periods,
+            ml::native_soa::source_data(source.navigation_update_countdowns_periods()) +
+                source_first,
+            count);
+        ml::native_soa::move_n(destination.separation_steering_xs,
+                               ml::native_soa::source_data(source.view_separation_steering().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.separation_steering_ys,
+                               ml::native_soa::source_data(source.view_separation_steering().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.separation_steering_zs,
+                               ml::native_soa::source_data(source.view_separation_steering().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.navigation_risk_tiers,
+                               ml::native_soa::source_data(source.navigation_risk_tiers()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(
+            destination.navigation_lower_risk_scan_counts,
+            ml::native_soa::source_data(source.navigation_lower_risk_scan_counts()) + source_first,
+            count);
+        ml::native_soa::move_n(destination.avoidance_choice_indices,
+                               ml::native_soa::source_data(source.avoidance_choice_indices()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.avoidance_clear_scan_counts,
+                               ml::native_soa::source_data(source.avoidance_clear_scan_counts()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.attack_reposition_countdowns,
+                               ml::native_soa::source_data(source.attack_reposition_countdowns()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.attack_cooldowns,
+                               ml::native_soa::source_data(source.attack_cooldowns()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.target_ids,
+                               ml::native_soa::source_data(source.target_ids()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.target_locations_xs,
+                               ml::native_soa::source_data(source.view_target_locations().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.target_locations_ys,
+                               ml::native_soa::source_data(source.view_target_locations().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.target_locations_zs,
+                               ml::native_soa::source_data(source.view_target_locations().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.target_velocities_xs,
+                               ml::native_soa::source_data(source.view_target_velocities().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.target_velocities_ys,
+                               ml::native_soa::source_data(source.view_target_velocities().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.target_velocities_zs,
+                               ml::native_soa::source_data(source.view_target_velocities().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.target_directions_xs,
+                               ml::native_soa::source_data(source.view_target_directions().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.target_directions_ys,
+                               ml::native_soa::source_data(source.view_target_directions().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.target_directions_zs,
+                               ml::native_soa::source_data(source.view_target_directions().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.intercept_times,
+                               ml::native_soa::source_data(source.intercept_times()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.target_distance_sq,
+                               ml::native_soa::source_data(source.target_distance_sq()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.target_distances,
+                               ml::native_soa::source_data(source.target_distances()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.target_radii,
+                               ml::native_soa::source_data(source.target_radii()) + source_first,
+                               count);
+    }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(
             layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),

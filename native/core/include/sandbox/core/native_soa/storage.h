@@ -88,6 +88,14 @@ void copy_n(T* const destination, T const* const source, std::int32_t const coun
     if (count == 0) {
         return;
     }
+    std::memcpy(destination, source, static_cast<std::size_t>(count) * sizeof(T));
+}
+
+template <typename T>
+void move_n(T* const destination, T const* const source, std::int32_t const count) noexcept {
+    if (count == 0) {
+        return;
+    }
     std::memmove(destination, source, static_cast<std::size_t>(count) * sizeof(T));
 }
 
@@ -211,7 +219,7 @@ struct StorageOperations {
                 count <= self.num_ - destination && offset >= 0 && offset <= source.num() &&
                 count <= source.num() - offset);
         if (count > 0) {
-            self.append_columns(source, offset, destination, count);
+            self.copy_columns_from(source, offset, destination, count);
         }
     }
     template <typename Self, typename Source>

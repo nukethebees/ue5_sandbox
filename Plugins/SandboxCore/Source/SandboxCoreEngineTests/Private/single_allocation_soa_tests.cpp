@@ -4,11 +4,79 @@
 #include <CQTest.h>
 
 #include <cstdint>
+#include <type_traits>
 #include <utility>
 
 TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
 {
     using Owner = ml::soa_test_fixture::SingleRows;
+
+    TEST_METHOD(CompactSelfCopyPreservesEveryColumn)
+    {
+        struct CopyRange {
+            TCHAR const* name;
+            int32 source;
+            int32 destination;
+            int32 count;
+            bool single_element{};
+        };
+        constexpr CopyRange cases[]{
+            {TEXT("source before destination"), 0, 2, 5},
+            {TEXT("destination before source"), 2, 0, 5},
+            {TEXT("identical ranges"), 1, 1, 5},
+            {TEXT("disjoint forward"), 0, 5, 3},
+            {TEXT("disjoint backward"), 5, 0, 3},
+            {TEXT("one element"), 3, 6, 1, true},
+            {TEXT("identical element"), 3, 3, 1, true},
+            {TEXT("empty range"), 2, 4, 0},
+        };
+        constexpr int32 row_count{8};
+        for (auto const& range : cases) {
+            for (bool const sliced : {false, true}) {
+                Owner owner;
+                owner.set_num(row_count);
+                auto const view{owner.get_view()};
+                int32 column_index{};
+                auto const initialize_column{[&](auto column) {
+                    using Element = std::remove_cvref_t<decltype(column[0])>;
+                    for (int32 row{}; row < row_count; ++row) {
+                        column[row] = static_cast<Element>(column_index * 16 + row);
+                    }
+                    ++column_index;
+                }};
+                view.apply_arrays([&](auto... columns) { (initialize_column(columns), ...); });
+                auto const capacity{owner.capacity()};
+                auto const source_first{sliced ? range.source : 0};
+                auto const source{owner.get_const_view(source_first, row_count - source_first)};
+                if (range.single_element) {
+                    owner.copy_element(range.destination, source, range.source - source_first);
+                } else {
+                    owner.copy_elements(
+                        range.destination, source, range.source - source_first, range.count);
+                }
+
+                auto correct{owner.num() == row_count && owner.capacity() == capacity};
+                column_index = 0;
+                auto const check_column{[&](auto const column) {
+                    using Element = std::remove_cvref_t<decltype(column[0])>;
+                    for (int32 row{}; row < row_count; ++row) {
+                        auto const copied{row >= range.destination &&
+                                          row < range.destination + range.count};
+                        auto const original{copied ? range.source + row - range.destination : row};
+                        correct &=
+                            column[row] == static_cast<Element>(column_index * 16 + original);
+                    }
+                    ++column_index;
+                }};
+                view.apply_arrays([&](auto... columns) { (check_column(columns), ...); });
+                TestRunner->TestTrue(
+                    *FString::Printf(TEXT("%s (sliced source: %d): all columns preserve rows"),
+                                     range.name,
+                                     static_cast<int32>(sliced)),
+                    correct && column_index == 4);
+            }
+        }
+    }
 
     TEST_METHOD(LogicalCompactApi)
     {

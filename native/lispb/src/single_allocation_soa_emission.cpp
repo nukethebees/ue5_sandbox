@@ -315,20 +315,20 @@ auto column_copying_nodes(SingleAllocationModel const& model) -> Nodes {
     return adjacent({std::move(swap_remove), std::move(copy), std::move(remove_indices)});
 }
 
-auto append_node(SingleAllocationModel const& model) -> Node {
+auto source_copy_node(SingleAllocationModel const& model, bool const overlapping) -> Node {
     NodeListBuilder body;
     body.add(VariableDeclarationStmt{
         "auto const", "destination", call(named("get_data"), {named("first")})});
     for (auto const& column : model.columns) {
         body.add(ExpressionStmt{call(
-            copy_function(model),
+            named(model.dialect.runtime_namespace + (overlapping ? "move_n" : "copy_n")),
             {member_access(named("destination"), column.flattened_identifier),
              binary(
                  BinaryOperator::add, source_data_expression(model, column), named("source_first")),
              named("count")})});
     }
     return inline_function(FunctionSpec{
-        .name = "append_columns",
+        .name = overlapping ? "copy_columns_from" : "append_columns",
         .return_type = "void",
         .parameters = {FunctionParameter{"Columns const&", "source"},
                        FunctionParameter{"size_type", "source_first"},
@@ -703,9 +703,11 @@ auto storage_implementation_nodes(SingleAllocationModel const& model) -> Nodes {
         .new_lines(1)
         .append(std::move(copying))
         .new_lines(1)
-        .add(append_node(model))
-        .new_lines(1)
-        .add(reallocation_node(model));
+        .add(source_copy_node(model, false));
+    if (model.schema->has_operation(StorageOperation::copy_element)) {
+        children.new_lines(1).add(source_copy_node(model, true));
+    }
+    children.new_lines(1).add(reallocation_node(model));
 
     return children.build();
 }

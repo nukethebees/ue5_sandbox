@@ -559,6 +559,60 @@ struct SingleAllocationCapitalEntityData
                                ml::native_soa::source_data(source.target_ids()) + source_first,
                                count);
     }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count) {
+        auto const destination{get_data(first)};
+        ml::native_soa::move_n(destination.entity_ids,
+                               ml::native_soa::source_data(source.entity_ids()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.locations_xs,
+                               ml::native_soa::source_data(source.view_locations().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.locations_ys,
+                               ml::native_soa::source_data(source.view_locations().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.locations_zs,
+                               ml::native_soa::source_data(source.view_locations().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.rotations_pitches,
+                               ml::native_soa::source_data(source.view_rotations().pitches()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.rotations_yaws,
+                               ml::native_soa::source_data(source.view_rotations().yaws()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.rotations_rolls,
+                               ml::native_soa::source_data(source.view_rotations().rolls()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.fighter_spawn_timers,
+                               ml::native_soa::source_data(source.fighter_spawn_timers()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.fighter_spawn_cooldowns,
+                               ml::native_soa::source_data(source.fighter_spawn_cooldowns()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(
+            destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
+        ml::native_soa::move_n(destination.health_indices,
+                               ml::native_soa::source_data(source.health_indices()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.fighter_id_spans,
+                               ml::native_soa::source_data(source.fighter_id_spans()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.target_ids,
+                               ml::native_soa::source_data(source.target_ids()) + source_first,
+                               count);
+    }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(
             layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),

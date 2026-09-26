@@ -43,6 +43,14 @@ void copy_n(T* const destination, T const* const source, int32 const count) noex
     if (count == 0) {
         return;
     }
+    FMemory::Memcpy(destination, source, static_cast<SIZE_T>(count) * sizeof(T));
+}
+
+template <typename T>
+void move_n(T* const destination, T const* const source, int32 const count) noexcept {
+    if (count == 0) {
+        return;
+    }
     FMemory::Memmove(destination, source, static_cast<SIZE_T>(count) * sizeof(T));
 }
 

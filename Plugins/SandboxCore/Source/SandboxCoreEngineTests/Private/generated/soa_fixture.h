@@ -476,6 +476,27 @@ struct SingleRows
                                     source_first,
                                 count);
     }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count) {
+        auto const destination{get_data(first)};
+        ml::soa_storage::move_n(
+            destination.bytes, ml::soa_storage::source_data(source.bytes()) + source_first, count);
+        ml::soa_storage::move_n(destination.nested_xs,
+                                ml::soa_storage::source_data(source.view_nested().xs()) +
+                                    source_first,
+                                count);
+        ml::soa_storage::move_n(destination.nested_ys,
+                                ml::soa_storage::source_data(source.view_nested().ys()) +
+                                    source_first,
+                                count);
+        ml::soa_storage::move_n(destination.nested_zs,
+                                ml::soa_storage::source_data(source.view_nested().zs()) +
+                                    source_first,
+                                count);
+    }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::soa_storage::MimallocStorageAllocator::allocate(
             layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
@@ -955,6 +976,26 @@ struct SANDBOXCOREENGINETESTS_API ApiOwner
                                     source_first,
                                 count);
         ml::soa_storage::copy_n(destination.positions_ys,
+                                ml::soa_storage::source_data(source.view_positions().ys()) +
+                                    source_first,
+                                count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count) {
+        auto const destination{get_data(first)};
+        ml::soa_storage::move_n(destination.values,
+                                ml::soa_storage::source_data(source.values()) + source_first,
+                                count);
+        ml::soa_storage::move_n(
+            destination.masks, ml::soa_storage::source_data(source.masks()) + source_first, count);
+        ml::soa_storage::move_n(destination.positions_xs,
+                                ml::soa_storage::source_data(source.view_positions().xs()) +
+                                    source_first,
+                                count);
+        ml::soa_storage::move_n(destination.positions_ys,
                                 ml::soa_storage::source_data(source.view_positions().ys()) +
                                     source_first,
                                 count);

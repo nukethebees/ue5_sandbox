@@ -148,6 +148,37 @@ TEST(SingleAllocationSoa, StructuralSourcesNeedNoOrdinaryView) {
     EXPECT_EQ(output.find("struct RowsView"), std::string::npos);
 }
 
+TEST(SingleAllocationSoa, OverlappingCopyUsesMoveWithoutChangingAppend) {
+    for (auto const backend : {SoaBackend::unreal, SoaBackend::standard_library}) {
+        SCOPED_TRACE(static_cast<int>(backend));
+        auto input{schemas()};
+        input.back().operations = {StorageOperation::copy_element, StorageOperation::append_from};
+        auto const files{render_modules(lower_modules(
+            Manifest{.schema_version = manifest_schema_version,
+                     .modules = {NormalModuleSchema{
+                         .settings = {.name = "copy", .header = "Copy.h", .source = "Copy.cpp"},
+                         .declarations = {input.begin(), input.end()},
+                         .soa_backend = backend}}}))};
+        auto const& output{files.front().content};
+        auto const append_begin{output.find("void append_columns(")};
+        auto const copy_begin{output.find("void copy_columns_from(")};
+        auto const reallocate_begin{output.find("void reallocate(")};
+        ASSERT_NE(append_begin, std::string::npos);
+        ASSERT_NE(copy_begin, std::string::npos);
+        ASSERT_NE(reallocate_begin, std::string::npos);
+        ASSERT_LT(append_begin, copy_begin);
+        ASSERT_LT(copy_begin, reallocate_begin);
+        auto const append{output.substr(append_begin, copy_begin - append_begin)};
+        auto const copy{output.substr(copy_begin, reallocate_begin - copy_begin)};
+        EXPECT_NE(append.find("::copy_n("), std::string::npos);
+        EXPECT_EQ(append.find("::move_n("), std::string::npos);
+        EXPECT_NE(copy.find("::move_n(destination.ids"), std::string::npos);
+        EXPECT_NE(copy.find("::move_n(destination.nested_wide"), std::string::npos);
+        EXPECT_EQ(copy.find("::copy_n("), std::string::npos);
+    }
+    EXPECT_EQ(render(schemas()).find("void copy_columns_from("), std::string::npos);
+}
+
 TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {
     auto module{NormalModuleSchema{
         .settings = {.name = "test", .header = "Test.h", .source = "Test.cpp"},

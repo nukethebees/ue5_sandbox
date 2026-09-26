@@ -499,6 +499,46 @@ struct SingleAllocationHistoryRows
                                ml::native_soa::source_data(source.lasers_fired()) + source_first,
                                count);
     }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count) {
+        auto const destination{get_data(first)};
+        ml::native_soa::move_n(destination.completed_ticks,
+                               ml::native_soa::source_data(source.completed_ticks()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.validity_masks,
+                               ml::native_soa::source_data(source.validity_masks()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.active_entities,
+                               ml::native_soa::source_data(source.active_entities()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.active_entities_by_type,
+                               ml::native_soa::source_data(source.active_entities_by_type()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(
+            destination.active_entities_by_team_and_type,
+            ml::native_soa::source_data(source.active_entities_by_team_and_type()) + source_first,
+            count);
+        ml::native_soa::move_n(destination.spawned_entities,
+                               ml::native_soa::source_data(source.spawned_entities()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.destroyed_entities,
+                               ml::native_soa::source_data(source.destroyed_entities()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(
+            destination.kills, ml::native_soa::source_data(source.kills()) + source_first, count);
+        ml::native_soa::move_n(destination.active_lasers,
+                               ml::native_soa::source_data(source.active_lasers()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.lasers_fired,
+                               ml::native_soa::source_data(source.lasers_fired()) + source_first,
+                               count);
+    }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(
             layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),

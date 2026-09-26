@@ -243,6 +243,8 @@ row `set`/`add` and permutation helpers, which are distinct from these bulk oper
 owners privately inherit runtime implementations and expose only selected operations; internal
 dependencies such as `set_num` growing defaulted rows do not expose additional public mutations.
 Compact copy accepts the same structural sources as append and supports overlapping row ranges.
+It uses a separate per-column `move_n` path (`memmove` / `FMemory::Memmove`), while append and
+allocation growth retain non-overlapping `copy_n` (`memcpy` / `FMemory::Memcpy`).
 
 The type graph retains the logical declaration identity while recording the single owner as
 its physical C++ spelling for single-only storage. C++ type references and forward declarations

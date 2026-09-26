@@ -370,6 +370,40 @@ struct SingleAllocationLaserHitDetails
                                ml::native_soa::source_data(source.sources()) + source_first,
                                count);
     }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count) {
+        auto const destination{get_data(first)};
+        ml::native_soa::move_n(destination.locations_xs,
+                               ml::native_soa::source_data(source.view_locations().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.locations_ys,
+                               ml::native_soa::source_data(source.view_locations().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.locations_zs,
+                               ml::native_soa::source_data(source.view_locations().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.emission_directions_xs,
+                               ml::native_soa::source_data(source.view_emission_directions().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.emission_directions_ys,
+                               ml::native_soa::source_data(source.view_emission_directions().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.emission_directions_zs,
+                               ml::native_soa::source_data(source.view_emission_directions().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.sources,
+                               ml::native_soa::source_data(source.sources()) + source_first,
+                               count);
+    }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(
             layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
