@@ -252,7 +252,7 @@ auto resolve_declared_cpp_references(Manifest const& manifest,
             visit_type_references(
                 declaration,
                 [&](std::string const& role, TypeRef& reference, TypeReferenceKind const kind) {
-                    if (role.find("relationship") != std::string::npos) {
+                    if (role.contains("relationship")) {
                         return;
                     }
                     if (auto const* soa{std::get_if<SoaSchema>(&declaration)}) {

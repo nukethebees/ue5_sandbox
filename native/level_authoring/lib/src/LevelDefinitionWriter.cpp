@@ -292,7 +292,7 @@ auto emit_editor_level_source(::ioj::sim::levels::LevelDefinition const& definit
                   format_number(entity.position.y) + " " + format_number(entity.position.z) + ")\n";
         source += "      (rotation " + format_number(entity.rotation.pitch) + " " +
                   format_number(entity.rotation.yaw) + " " + format_number(entity.rotation.roll);
-        source += ")";
+        source += ')';
         if (entity.spawn_time_seconds != 0.0) {
             source += "\n      (spawn-at " + format_number(entity.spawn_time_seconds) + ")";
         }

@@ -214,7 +214,7 @@ Checks:
   - modernize-raw-string-literal
   - modernize-use-scoped-lock
   - performance-avoid-endl
-  - performance-faster-string-find
+  - performance-prefer-single-char-overloads
   - performance-inefficient-algorithm
   - performance-noexcept-destructor
   - performance-noexcept-move-constructor
@@ -256,6 +256,8 @@ Checks:
   - readability-inconsistent-declaration-parameter-name
   - readability-isolate-declaration
   - readability-non-const-parameter
+# Preserve the existing translation-unit audit scope; LLVM 24 defaults to all headers.
+HeaderFilterRegex: ''
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:

@@ -20,9 +20,26 @@ public sealed class ClangFormatterTests
 
         Assert.IsTrue(result.Success, result.Error);
         var requests = runner.Requests.ToArray();
+        Assert.AreEqual("clang-format", requests[0].FileName);
         CollectionAssert.AreEqual(new[] { "--version" }, requests[0].Arguments.ToArray());
         CollectionAssert.AreEqual(new[] { "-i", file }, requests[1].Arguments.ToArray());
         CollectionAssert.AreEqual("int main() {\n}\n"u8.ToArray(), File.ReadAllBytes(file));
+    }
+
+    [TestMethod]
+    public async Task FormatAsync_uses_selected_llvm_executable_with_spaces()
+    {
+        using var fixture = new TemporaryGitRepository();
+        var file = fixture.WriteFile("Source/example.cpp");
+        var executable = fixture.PathFor("LLVM with spaces/bin/clang-format.exe");
+        var runner = new RecordingProcessRunner();
+        var formatter = new ClangFormatter(runner, executable);
+
+        await formatter.EnsureAvailableAsync(CancellationToken.None);
+        var result = await formatter.FormatAsync(file, CancellationToken.None);
+
+        Assert.IsTrue(result.Success, result.Error);
+        Assert.IsTrue(runner.Requests.All(request => request.FileName == executable));
     }
 
     [TestMethod]

@@ -8,6 +8,13 @@ excluded translation units remain outside the audit.
 
 ## Run clang-tidy
 
+`LLVM_ROOT` selects `bin/clang-cl.exe`, `bin/clang-tidy.exe` and `bin/run-clang-tidy` exclusively
+from one installation; native archiving also selects that root's `llvm-lib`. An explicit CMake
+cache value takes precedence; otherwise the cache is
+initialized from the `LLVM_ROOT` environment variable. With neither set, normal PATH discovery
+applies. CMake forwards this selection to CodeFormatTools; standalone formatting uses the
+`LLVM_ROOT` environment variable for the matching clang-format.
+
 Run the scope affected by your change:
 
 ```powershell

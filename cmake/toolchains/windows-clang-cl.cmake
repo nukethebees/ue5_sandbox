@@ -4,7 +4,17 @@ endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/windows_environment.cmake")
 
-find_program(IOJ_CLANG_CL_EXECUTABLE NAMES clang-cl REQUIRED)
+include("${CMAKE_CURRENT_LIST_DIR}/../llvm_tools.cmake")
+ioj_find_llvm_tool(IOJ_CLANG_CL_EXECUTABLE clang-cl)
+list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES LLVM_ROOT)
+
+if(LLVM_ROOT)
+  ioj_find_llvm_tool(IOJ_LLVM_LIB_EXECUTABLE llvm-lib)
+  set(CMAKE_AR "${IOJ_LLVM_LIB_EXECUTABLE}" CACHE FILEPATH "" FORCE)
+  # Do not pick up LLVM linker/manifest tools from another installation on PATH.
+  set(CMAKE_LINKER "${msvc_toolchain_directory}/bin/Hostx64/x64/link.exe" CACHE FILEPATH "" FORCE)
+  set(CMAKE_MT "${msvc_sdk_directory}/bin/${windows_WindowsSDKVersion}/x64/mt.exe" CACHE FILEPATH "" FORCE)
+endif()
 
 # Keep clang's automatic toolchain discovery pinned when building from a plain shell.
 set(windows_driver_arguments

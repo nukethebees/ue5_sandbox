@@ -42,7 +42,7 @@ auto logical_column_access(SoaSchema const& schema,
     auto const* current{&schema};
     for (std::size_t index{}; index < path.size(); ++index) {
         if (!receiver.empty() && !receiver.ends_with("->")) {
-            receiver += ".";
+            receiver += '.';
         }
         auto const member{std::ranges::find(current->members, path[index], &SoaMemberSchema::name)};
         if (member == current->members.end()) {

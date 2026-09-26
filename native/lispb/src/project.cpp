@@ -802,7 +802,7 @@ auto EditableProjectDocument::preview_source_updates() const
             auto rendered{
                 source_.substr(range.begin_offset, range.end_offset - range.begin_offset)};
             auto insertion_offset{range.closing_offset - range.begin_offset};
-            auto const multiline{rendered.find('\n') != std::string::npos};
+            auto const multiline{rendered.contains('\n')};
             if (multiline) {
                 while (insertion_offset > 1 && std::isspace(static_cast<unsigned char>(
                                                    rendered[insertion_offset - 1])) != 0) {

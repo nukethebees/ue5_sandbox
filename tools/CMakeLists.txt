@@ -5,7 +5,8 @@ sandbox_add_dotnet_host_tool(
 )
 
 add_custom_target(format-code
-  COMMAND "${IOJ_CODE_FORMAT_TOOLS}" --changed
+  COMMAND "${CMAKE_COMMAND}" -E env "LLVM_ROOT=${LLVM_ROOT}"
+    "${IOJ_CODE_FORMAT_TOOLS}" --changed
   DEPENDS code-format-tools-host
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Formatting Git-changed project source files"
@@ -14,7 +15,8 @@ add_custom_target(format-code
 )
 
 add_custom_target(format-all-code
-  COMMAND "${IOJ_CODE_FORMAT_TOOLS}"
+  COMMAND "${CMAKE_COMMAND}" -E env "LLVM_ROOT=${LLVM_ROOT}"
+    "${IOJ_CODE_FORMAT_TOOLS}"
   DEPENDS code-format-tools-host
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Formatting all project source files"

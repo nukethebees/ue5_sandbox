@@ -42,7 +42,7 @@ auto signature_key(ExpandedVariant const& expanded, bool const owning_target) ->
     auto result{expanded.variant->public_name + "("};
     for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
         if (index != 0) {
-            result += ",";
+            result += ',';
         }
         result += public_parameter_type(expanded, index, owning_target);
     }

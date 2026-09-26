@@ -14,6 +14,7 @@ if(CMAKE_UNITY_BUILD)
 endif()
 
 include(cmake/compiler_detection.cmake)
+include(cmake/llvm_tools.cmake)
 include(cmake/dotnet_host_tools.cmake)
 include(cmake/ue_cache_vars.cmake)
 
@@ -24,9 +25,9 @@ option(IOJ_WITH_UNREAL "Configure Unreal Engine integration and targets" ON)
 option(IOJ_ENABLE_ASAN "Instrument native targets with AddressSanitizer" OFF)
 option(IOJ_ENABLE_CLANG_TIDY "Run clang-tidy for first-party native targets" OFF)
 
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_subdirectory(cmake)
 
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(IOJ_HAS_PYTHON ${Python3_Interpreter_FOUND})
 
 sandbox_add_dotnet_host_tool(

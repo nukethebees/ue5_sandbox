@@ -176,7 +176,7 @@ auto read_inventory(std::filesystem::path const& path) -> std::optional<std::set
 
 auto is_generated_file(std::filesystem::path const& path) -> bool {
     auto const content{read_file(path)};
-    return content.has_value() && content->find(generated_file_warning) != std::string::npos;
+    return content.has_value() && content->contains(generated_file_warning);
 }
 
 } // namespace

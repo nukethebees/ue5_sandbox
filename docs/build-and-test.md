@@ -29,6 +29,14 @@ Visual Studio Installer. Both CMake toolchains use the pinned headers and librar
 when run from a developer prompt for a different toolset. After changing either pin, remove the
 affected `out/build/<preset>` directories and rebuild the native libraries before building Unreal.
 
+The `LLVM_ROOT` CMake cache path selects native clang-cl and LLVM tooling. It defaults to the
+`LLVM_ROOT` environment variable; an explicit cache value takes precedence. When empty, tools
+are discovered on PATH. A nonempty root selects tools exclusively from its `bin` directory.
+Unreal/UBT still compiles with MSVC and consumes the native `.lib`
+files. The pinned Microsoft linker/SDK, `/MD` runtime and simulation `_ITERATOR_DEBUG_LEVEL=0`
+remain shared ABI settings. Tidy uses the installed executable without LLVM development packages.
+See [clang-tidy](clang-tidy.md).
+
 Project-owned build options and compile definitions use the `IOJ_` prefix. CMake passes
 `IOJ_NATIVE_TOOLCHAIN` to UnrealBuildTools, project-file generation, and UAT; Unreal module rules
 read that same environment variable. Set `IOJ_WITH_UNREAL=OFF` for standalone native builds.
