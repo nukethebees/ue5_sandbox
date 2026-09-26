@@ -4,11 +4,20 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <charconv>
 #include <cstdio>
 #include <ranges>
 
 namespace ioj::layout_planner::detail {
+
+auto lowercase(std::string_view const text) -> std::string {
+    std::string result{text};
+    std::ranges::transform(result, result.begin(), [](unsigned char const character) {
+        return static_cast<char>(std::tolower(character));
+    });
+    return result;
+}
 
 namespace {
 auto expansion_key(ExpansionDomain const domain) -> ImGuiID {

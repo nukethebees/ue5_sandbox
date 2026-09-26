@@ -329,7 +329,8 @@ void PlannerUi::draw_project_panel() {
                                            declaration.identity.namespace_name + " " +
                                            declaration.identity.name + " " +
                                            std::string{codegen::declaration_head(schema)}};
-                    if (lowercase(search_text).find(lowercase(filter)) != std::string::npos) {
+                    if (detail::lowercase(search_text).find(detail::lowercase(filter)) !=
+                        std::string::npos) {
                         declarations.push_back(&declaration);
                     }
                 }
@@ -726,7 +727,7 @@ void PlannerUi::draw_project_panel() {
             }
             ImGui::EndCombo();
         }
-        auto const filter{lowercase(external_filter_.data())};
+        auto const filter{detail::lowercase(external_filter_.data())};
         std::size_t shown{};
         for (auto const& entry : dependencies) {
             if ((!external_show_described_ && entry.semantics_known) ||
@@ -740,7 +741,8 @@ void PlannerUi::draw_project_panel() {
             for (auto const& name : entry.registered_names) {
                 searchable += " @" + name;
             }
-            if (!filter.empty() && lowercase(searchable).find(filter) == std::string::npos) {
+            if (!filter.empty() &&
+                detail::lowercase(searchable).find(filter) == std::string::npos) {
                 continue;
             }
             ++shown;

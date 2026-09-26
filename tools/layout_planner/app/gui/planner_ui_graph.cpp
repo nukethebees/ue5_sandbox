@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -148,23 +147,14 @@ auto multiply(ImVec2 const value, float const scale) -> ImVec2 {
     return {value.x * scale, value.y * scale};
 }
 
-auto lowercase(std::string_view const value) -> std::string {
-    std::string result;
-    result.reserve(value.size());
-    for (auto const character : value) {
-        result.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(character))));
-    }
-    return result;
-}
-
 auto graph_matches(TypeNode const& node, std::string_view const lowercase_query) -> bool {
     if (lowercase_query.empty()) {
         return false;
     }
 
-    auto const haystack{lowercase(node.identity.name + " " + node.identity.module_name + " " +
-                                  node.identity.namespace_name + " " +
-                                  graph_kind(node.definition))};
+    auto const haystack{detail::lowercase(node.identity.name + " " + node.identity.module_name +
+                                          " " + node.identity.namespace_name + " " +
+                                          graph_kind(node.definition))};
     return haystack.find(lowercase_query) != std::string::npos;
 }
 
@@ -320,7 +310,7 @@ void PlannerUi::draw_graph_panel() {
     }
     auto const& nodes{graph_projection_.nodes};
     auto const count{nodes.size()};
-    auto const query{lowercase(graph_search_.data())};
+    auto const query{detail::lowercase(graph_search_.data())};
     if ((search || next) && !query.empty()) {
         std::vector<TypeId> matches;
         for (auto const& node : nodes) {

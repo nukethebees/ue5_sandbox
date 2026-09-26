@@ -9,7 +9,6 @@
 #include <ioj/layout/planner_type.hpp>
 
 #include <algorithm>
-#include <cctype>
 #include <charconv>
 #include <cstdio>
 #include <limits>
@@ -24,14 +23,6 @@ namespace {
 
 using namespace layout;
 using namespace lispb::schema;
-
-inline auto lowercase(std::string_view const text) -> std::string {
-    std::string result{text};
-    std::ranges::transform(result, result.begin(), [](unsigned char const character) {
-        return static_cast<char>(std::tolower(character));
-    });
-    return result;
-}
 
 inline auto parse_integer_literal(std::string_view text)
     -> std::optional<codegen::PackedIntegerValue> {
@@ -83,7 +74,7 @@ inline auto matches_filter(TypeNode const& node, std::string_view const filter) 
         soa != nullptr && soa->related_storage_name.has_value()) {
         haystack += " " + *soa->related_storage_name;
     }
-    return lowercase(haystack).find(lowercase(filter)) != std::string::npos;
+    return detail::lowercase(haystack).find(detail::lowercase(filter)) != std::string::npos;
 }
 
 } // namespace

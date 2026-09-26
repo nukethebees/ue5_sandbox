@@ -43,6 +43,7 @@ auto editable_table_row_handle(bool selected) -> bool;
 auto semantic_type_navigation_button() -> bool;
 
 auto format_bytes(std::optional<std::uint64_t> bytes) -> std::string;
+auto lowercase(std::string_view text) -> std::string;
 auto format_number(std::optional<std::uint64_t> value) -> std::string;
 auto format_code_count(layout::ExactCodeCount value) -> std::string;
 auto format_fit(std::optional<bool> fits) -> std::string;

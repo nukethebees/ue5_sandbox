@@ -19,8 +19,6 @@ namespace {
 using namespace layout;
 using namespace lispb::schema;
 
-inline constexpr ImVec4 changed_color{0.4F, 0.75F, 0.95F, 1.0F};
-
 inline void comparison_row(char const* const label,
                            std::string const& baseline,
                            std::string const& variant,
@@ -33,6 +31,7 @@ inline void comparison_row(char const* const label,
     ImGui::TextUnformatted(baseline.c_str());
     ImGui::TableNextColumn();
     if (changed) {
+        constexpr ImVec4 changed_color{0.4F, 0.75F, 0.95F, 1.0F};
         ImGui::PushStyleColor(ImGuiCol_Text, changed_color);
     }
     ImGui::TextUnformatted(variant.c_str());
