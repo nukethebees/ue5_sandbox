@@ -78,7 +78,8 @@ void run_worldless_fighters_intercept_capital(tests::SimulationFixture const& co
         << "Parent has fighters at end";
     EXPECT_EQ(original_target, start.parent_target)
         << "Green capital initially targets red capital";
-    for (std::int32_t i{}; i < static_cast<std::int32_t>(start.fighter_targets.size()); ++i) {
+    auto const fighter_count{static_cast<std::int32_t>(start.fighter_targets.size())};
+    for (std::int32_t i{}; i < fighter_count; ++i) {
         EXPECT_EQ(original_target, start.fighter_targets[i])
             << "Initial fighter target matches red parent target";
     }

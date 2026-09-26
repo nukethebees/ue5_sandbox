@@ -59,7 +59,8 @@ auto validate_entities(LevelDefinition const& definition,
     state.teams_by_id.reserve(definition.entities.size());
     state.spawn_times_by_id.reserve(definition.entities.size());
 
-    for (std::size_t index{}; index < definition.entities.size(); ++index) {
+    auto const entity_count{definition.entities.size()};
+    for (std::size_t index{}; index < entity_count; ++index) {
         auto const& entity{definition.entities[index]};
         auto const entity_owner{owner(entity, index)};
         auto const is_player{!definition.player_entity_id.empty() &&
@@ -430,7 +431,8 @@ auto validate_level(LevelDefinition const& definition) -> LevelValidationResult 
 
     IdSet teams;
     teams.reserve(definition.teams.size());
-    for (std::size_t index{}; index < definition.teams.size(); ++index) {
+    auto const team_count{definition.teams.size()};
+    for (std::size_t index{}; index < team_count; ++index) {
         auto const& team{definition.teams[index]};
         if (team.empty()) {
             add_error(result,
@@ -472,7 +474,8 @@ auto validate_level(LevelDefinition const& definition) -> LevelValidationResult 
                       "Initial camera has no target entities");
         }
         IdSet targets;
-        for (std::size_t index{}; index < camera.target_entity_ids.size(); ++index) {
+        auto const target_count{camera.target_entity_ids.size()};
+        for (std::size_t index{}; index < target_count; ++index) {
             auto const& id{camera.target_entity_ids[index]};
             if (!targets.insert(id).second) {
                 add_error(result,

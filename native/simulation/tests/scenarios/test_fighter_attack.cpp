@@ -279,10 +279,11 @@ auto measure_fighter_cluster(std::span<Vector3f const> const locations,
     std::vector<float> nearest_neighbour_distances{};
     centroid_distances.reserve(static_cast<std::int32_t>(locations.size()));
     nearest_neighbour_distances.reserve(static_cast<std::int32_t>(locations.size()));
-    for (std::int32_t i{}; i < static_cast<std::int32_t>(locations.size()); ++i) {
+    auto const location_count{static_cast<std::int32_t>(locations.size())};
+    for (std::int32_t i{}; i < location_count; ++i) {
         auto nearest_distance{std::numeric_limits<float>::max()};
         centroid_distances.push_back(HMM_LenV3(locations[i] - centroid));
-        for (std::int32_t j{}; j < static_cast<std::int32_t>(locations.size()); ++j) {
+        for (std::int32_t j{}; j < location_count; ++j) {
             if (i == j) {
                 continue;
             }
@@ -341,7 +342,8 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
         << "Dense fixture spawns exactly one fighter wave";
     auto const locations{fighters.get_locations()};
     result.locations.reserve(locations.num());
-    for (std::int32_t i{}; i < locations.num(); ++i) {
+    auto const location_count{locations.num()};
+    for (std::int32_t i{}; i < location_count; ++i) {
         result.locations.push_back(vector_at(locations, i));
     }
     return result;
@@ -370,7 +372,8 @@ void run_worldless_fighter_dense_determinism(tests::SimulationFixture const& con
     EXPECT_EQ(first_result.collision_distance, second_result.collision_distance)
         << "Deterministic fixtures use equal collision distances";
 
-    for (std::int32_t i{}; i < static_cast<std::int32_t>(first.size()); ++i) {
+    auto const location_count{static_cast<std::int32_t>(first.size())};
+    for (std::int32_t i{}; i < location_count; ++i) {
         EXPECT_TRUE(!(!std::isfinite(first[i].X) || !std::isfinite(first[i].Y) ||
                       !std::isfinite(first[i].Z)))
             << "Dense fighter location is finite";
@@ -447,7 +450,8 @@ void run_worldless_fighter_hard_avoidance_authority(tests::SimulationFixture con
     float maximum_x{-std::numeric_limits<float>::max()};
     harness.on_end_tick = [&](LevelSim&) {
         auto const locations{fighters.get_locations()};
-        for (std::int32_t i{}; i < locations.num(); ++i) {
+        auto const location_count{locations.num()};
+        for (std::int32_t i{}; i < location_count; ++i) {
             auto const location{vector_at(locations, i)};
             entered_obstacle =
                 entered_obstacle || (location.X >= expanded_min.X && location.X <= expanded_max.X &&
@@ -534,7 +538,8 @@ void run_worldless_fighter_attack(tests::SimulationFixture const& config) {
     auto const& after{samples.nearest_value(11.0)};
     EXPECT_GT(static_cast<std::int32_t>(before.fighter_teams.size()), std::int32_t{0})
         << "Hero fighters spawned";
-    for (std::int32_t i{}; i < static_cast<std::int32_t>(before.fighter_teams.size()); ++i) {
+    auto const fighter_count{static_cast<std::int32_t>(before.fighter_teams.size())};
+    for (std::int32_t i{}; i < fighter_count; ++i) {
         SCOPED_TRACE(::testing::Message() << "index " << i);
         EXPECT_EQ(Team::Green, before.fighter_teams[i]) << "Fighter is on the hero team";
     }

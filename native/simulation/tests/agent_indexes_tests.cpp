@@ -51,7 +51,8 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
         locations.add_defaulted(static_cast<std::int32_t>(ids.size()));
         velocities.add_defaulted(static_cast<std::int32_t>(ids.size()));
         agents.gather_targets(ids, order, {locations.get_view(), velocities.get_view(), {}, alive});
-        for (std::size_t i{}; i < ids.size(); ++i) {
+        auto const id_count{ids.size()};
+        for (std::size_t i{}; i < id_count; ++i) {
             auto const expected{agents.read_alive(ids[i])};
             EXPECT_EQ(static_cast<bool>(alive[i]), expected.has_value());
             EXPECT_FLOAT_EQ(locations[static_cast<std::int32_t>(i)].X,

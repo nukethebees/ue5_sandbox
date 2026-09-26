@@ -12,7 +12,10 @@
       "name": "base",
       "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/${presetName}"
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "cacheVariables": {
+        "LLVM_ROOT": "C:/dev/llvm/install"
+      }
     },
     {
       "name": "windows-clang-cl",

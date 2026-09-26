@@ -526,7 +526,8 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
 
     auto const entity_overlaps{fixture.get_entity_overlaps()};
     EXPECT_TRUE(entity_overlaps.num() >= entity_count) << "Large query produces dynamic overlaps";
-    for (std::int32_t index{}; index < entity_overlaps.num(); ++index) {
+    auto const entity_overlap_count{entity_overlaps.num()};
+    for (std::int32_t index{}; index < entity_overlap_count; ++index) {
         EXPECT_TRUE(fixture.owners.agents.is_alive(entity_overlaps.first_entities[index]) &&
                     fixture.owners.agents.is_alive(entity_overlaps.second_entities[index]))
             << "Dynamic overlap handles remain valid";
@@ -546,7 +547,8 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     auto const static_overlaps{fixture.get_static_overlaps()};
     EXPECT_TRUE(static_overlaps.num() >= entity_count)
         << "Every moved entity overlaps the large static AABB";
-    for (std::int32_t index{}; index < static_overlaps.num(); ++index) {
+    auto const static_overlap_count{static_overlaps.num()};
+    for (std::int32_t index{}; index < static_overlap_count; ++index) {
         EXPECT_TRUE(fixture.owners.agents.is_alive(static_overlaps.entities[index]))
             << "Static overlap entity remains valid";
         auto const static_geometry_count{fixture.query_manager.get_static_collision_bounds().num()};
@@ -565,7 +567,7 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     }
     for (auto const moved : moved_entities) {
         bool found_large_static{};
-        for (std::int32_t index{}; index < static_overlaps.num(); ++index) {
+        for (std::int32_t index{}; index < static_overlap_count; ++index) {
             found_large_static = found_large_static ||
                                  (static_overlaps.entities[index] == moved &&
                                   static_overlaps.static_geometry_indices[index] == large_static);

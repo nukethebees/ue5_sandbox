@@ -1,4 +1,4 @@
-find_program(IOJ_CLANG_FORMAT_EXECUTABLE NAMES clang-format REQUIRED)
+ioj_find_llvm_tool(IOJ_CLANG_FORMAT_EXECUTABLE clang-format)
 
 add_subdirectory(sexpr)
 add_subdirectory(material)

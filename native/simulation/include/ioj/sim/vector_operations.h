@@ -88,7 +88,8 @@ inline void direction(VectorColumns auto const& out,
 inline void to_rotations(Rotators3f& out, VectorColumns auto const& directions) {
     out.set_num(directions.num());
     auto const rotations{out.get_view()};
-    for (std::int32_t i{}; i < directions.num(); ++i) {
+    auto const direction_count{directions.num()};
+    for (std::int32_t i{}; i < direction_count; ++i) {
         rotations.set(i, direction_to_rotation(vector_at(directions, i)));
     }
 }

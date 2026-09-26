@@ -207,8 +207,8 @@ auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
             }
         }
     }
-    for (std::int32_t index{}; index < static_cast<std::int32_t>(record.battle_samples.size());
-         ++index) {
+    auto const sample_count{static_cast<std::int32_t>(record.battle_samples.size())};
+    for (std::int32_t index{}; index < sample_count; ++index) {
         auto const& sample{record.battle_samples[index]};
         auto const path{"battle_samples[" + std::to_string(index) + "]"};
         auto const tick{

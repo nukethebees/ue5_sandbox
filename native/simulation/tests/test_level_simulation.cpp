@@ -92,7 +92,8 @@ void expect_health_mappings(LevelSim const& simulation) {
     auto validate = [&](auto const& entities, HealthConstView const healths) {
         ASSERT_EQ(healths.num(), entities.num());
         expected_count += entities.num();
-        for (std::int32_t row{}; row < entities.num(); ++row) {
+        auto const entity_count{entities.num()};
+        for (std::int32_t row{}; row < entity_count; ++row) {
             auto const element{static_cast<std::size_t>(row)};
             auto const id{entities.entity_ids()[element]};
             auto const index{healths.indices()[element]};
@@ -292,7 +293,8 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
         << "Player health is allocated in the world health table";
     auto const turret_view{simulation.get_turrets().get_read_view()};
     auto const turrets{turret_view.entities};
-    for (std::int32_t i{}; i < turrets.num(); ++i) {
+    auto const turret_count{turrets.num()};
+    for (std::int32_t i{}; i < turret_count; ++i) {
         auto const rotated{turrets.teams()[i] == Team::Green};
         EXPECT_TRUE(
             health_table.contains(turret_view.healths.indices()[i], turrets.entity_ids()[i]))

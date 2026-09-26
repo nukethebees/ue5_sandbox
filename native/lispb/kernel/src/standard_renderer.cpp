@@ -45,7 +45,7 @@ auto signature_key(ExpandedVariant const& expanded) -> std::string {
         for (auto const& unused : operand_names(expanded, index)) {
             static_cast<void>(unused);
             if (!first) {
-                result += ",";
+                result += ',';
             }
             first = false;
             result += parameter_type(expanded, index);
@@ -55,7 +55,7 @@ auto signature_key(ExpandedVariant const& expanded) -> std::string {
         for (auto const& unused : output_names(expanded)) {
             static_cast<void>(unused);
             if (!first) {
-                result += ",";
+                result += ',';
             }
             first = false;
             result += "std::span<" + standard_type(expanded.type) + ">";

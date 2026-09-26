@@ -216,7 +216,8 @@ void Sim::begin_play() {
         config.avoidance_active_update_frequency,
         config.avoidance_immediate_update_frequency,
     };
-    for (std::int32_t i{}; static_cast<std::size_t>(i) < frequencies.size(); ++i) {
+    auto const frequency_count{frequencies.size()};
+    for (std::int32_t i{}; static_cast<std::size_t>(i) < frequency_count; ++i) {
         auto const period{simulation_clock.frequency_to_tick_period(frequencies[i])};
         assert(period > 0 && std::in_range<std::int16_t>(period));
         navigation_tick_periods[i] = static_cast<std::int16_t>(period);
@@ -564,7 +565,8 @@ void Sim::resolve_damage_events() {
 }
 void Sim::publish_deaths() {
     auto const deaths{entity_death_info.get_const_view()};
-    for (std::int32_t i{}; i < deaths.num(); ++i) {
+    auto const death_count{deaths.num()};
+    for (std::int32_t i{}; i < death_count; ++i) {
         ledger_.record_death(deaths.victims[i], deaths.killers[i], deaths.reasons[i]);
     }
 }
@@ -1572,6 +1574,7 @@ void Sim::handle_firing(TaskView data, ml::FrameScratch& scratch) {
 
     auto const n_fire_point_candidates{
         static_cast<std::uint32_t>(firing_detail::angle_offsets.size())};
+    // NOLINTNEXTLINE(ioj-loop-condition-call) -- each candidate can remove fighters.
     for (std::uint32_t candidate_order{};
          candidate_order < n_fire_point_candidates && !firing_position_fighter_indices.is_empty();
          ++candidate_order) {

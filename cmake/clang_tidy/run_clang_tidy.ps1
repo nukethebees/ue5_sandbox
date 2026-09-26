@@ -7,6 +7,8 @@ param(
   [Parameter(Mandatory)]
   [string]$ClangTidyExecutable,
   [Parameter(Mandatory)]
+  [string]$Plugin,
+  [Parameter(Mandatory)]
   [string]$LogFile,
   [Parameter(Mandatory)]
   [string]$CompilationDatabase,
@@ -26,6 +28,8 @@ $clang_tidy_arguments = @(
   "-quiet",
   "-clang-tidy-binary",
   $ClangTidyExecutable,
+  "-load",
+  $Plugin,
   "-p",
   $CompilationDatabase,
   "-j",

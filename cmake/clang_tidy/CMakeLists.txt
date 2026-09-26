@@ -6,9 +6,10 @@ if(NOT IOJ_IS_CLANG_CL)
   message(FATAL_ERROR "IOJ_ENABLE_CLANG_TIDY requires the clang-cl toolchain.")
 endif()
 
-find_program(IOJ_CLANG_TIDY_EXECUTABLE NAMES clang-tidy REQUIRED)
-find_program(IOJ_RUN_CLANG_TIDY_EXECUTABLE NAMES run-clang-tidy run-clang-tidy.py REQUIRED)
+ioj_find_llvm_tool(IOJ_CLANG_TIDY_EXECUTABLE clang-tidy)
+ioj_find_llvm_tool(IOJ_RUN_CLANG_TIDY_EXECUTABLE run-clang-tidy)
 find_program(IOJ_POWERSHELL_EXECUTABLE NAMES pwsh powershell REQUIRED)
+add_subdirectory(plugin)
 
 set(IOJ_CLANG_TIDY_JOBS 0 CACHE STRING
   "Number of parallel run-clang-tidy workers; 0 uses the detected CPU count")
@@ -39,15 +40,19 @@ function(sandbox_add_clang_tidy_target target_name source_filter log_name descri
       -PythonExecutable "${Python3_EXECUTABLE}"
       -RunClangTidyExecutable "${IOJ_RUN_CLANG_TIDY_EXECUTABLE}"
       -ClangTidyExecutable "${IOJ_CLANG_TIDY_EXECUTABLE}"
+      -Plugin "$<TARGET_FILE:ioj-tidy-module>"
       -LogFile "${sandbox_native_clang_tidy_log}"
       -CompilationDatabase "${CMAKE_BINARY_DIR}"
       -Jobs "${IOJ_CLANG_TIDY_JOBS}"
       -SourceFilter "${source_filter}"
-    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    # run-clang-tidy's preliminary list-checks invocation reads the working
+    # directory's config; per-file nested policies still apply during analysis.
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/native"
     COMMENT "Auditing ${description} with clang-tidy (log: ${sandbox_native_clang_tidy_log})"
     USES_TERMINAL
     VERBATIM
   )
+  add_dependencies(${target_name} ioj-tidy-module)
 endfunction()
 
 function(sandbox_add_native_clang_tidy_scope scope directories)

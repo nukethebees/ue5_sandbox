@@ -285,7 +285,7 @@ class Renderer {
     }
 
     static auto float_literal(std::string value) -> std::string {
-        if (value.find('.') == std::string::npos) {
+        if (!value.contains('.')) {
             value += ".0";
         }
         value += 'f';

@@ -31,7 +31,8 @@ void DamageQueue::prepare(AgentIndices const& indexes, ml::FrameScratch& scratch
     EntityTypeSizes write_offsets{};
     std::int32_t offset{};
     std::int32_t groups{};
-    for (std::size_t i{}; i < EntityTypeSizes::size(); ++i) {
+    auto const entity_type_count{EntityTypeSizes::size()};
+    for (std::size_t i{}; i < entity_type_count; ++i) {
         auto const type{static_cast<EntityType>(i)};
         auto& span{spans_[type]};
         span.offset = offset;

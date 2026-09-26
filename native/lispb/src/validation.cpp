@@ -1677,7 +1677,7 @@ void validate_soa(NormalModuleSchema const& module,
             std::set<std::string> accessors;
             for (auto const& member : schema.members) {
                 auto const flattened{prefix.empty() ? member.name : prefix + "_" + member.name};
-                if (flattened.find("__") != std::string::npos || flattened.back() == '_') {
+                if (flattened.contains("__") || flattened.back() == '_') {
                     throw std::invalid_argument{
                         "Single-allocation leaf would generate reserved identifiers: " + flattened};
                 }

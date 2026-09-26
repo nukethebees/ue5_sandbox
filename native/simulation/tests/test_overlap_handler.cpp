@@ -27,7 +27,8 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
     std::int32_t capital_count{};
     std::int32_t fighter_count{};
     std::int32_t turret_count{};
-    for (std::int32_t index{}; index < damage.num(); ++index) {
+    auto const damage_count{damage.num()};
+    for (std::int32_t index{}; index < damage_count; ++index) {
         EXPECT_EQ(damage.damage_amounts[index], 37) << "Configured overlap damage is used";
         EXPECT_TRUE(!damage.instigators[index].is_valid())
             << "Overlap damage has no combat instigator";

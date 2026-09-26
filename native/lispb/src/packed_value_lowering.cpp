@@ -480,7 +480,7 @@ auto packed_value_text(PackedValueSchema const& source_schema,
 
     auto output{std::string{"struct "} + schema.export_specifier.value_or("")};
     if (schema.export_specifier.has_value()) {
-        output += " ";
+        output += ' ';
     }
     output += schema.name + " {\n";
     output += "    using storage_type = " + storage.spelling + ";\n";

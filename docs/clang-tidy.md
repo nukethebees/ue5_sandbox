@@ -1,12 +1,31 @@
 # Native clang-tidy
 
 Native clang-tidy uses clang-cl and LLVM's `run-clang-tidy`. Targeted subsystem audits are the
-normal developer and agent workflow. Full and scoped audits use the same `native/.clang-tidy`
-configuration, including its static-analyzer checks. Unreal Engine, generated sources,
+normal developer and agent workflow. Full and scoped audits inherit `native/.clang-tidy`,
+including its static-analyzer checks. Simulation adds its nested policy described below.
+Unreal Engine, generated sources,
 third-party code, `sbx_mimalloc`, compile/rejection fixtures, and the existing specifically
 excluded translation units remain outside the audit.
 
 ## Run clang-tidy
+
+Generated presets select `LLVM_ROOT=C:/dev/llvm/install`. This single CMake cache path selects
+`bin/clang-cl.exe`, `bin/clang-tidy.exe`, `bin/run-clang-tidy`, and `bin/clang-format.exe`, without
+depending on PATH ordering. Override it in a local configure preset if necessary.
+
+Tidy-enabled configurations also require `include/clang`, `include/clang-tidy`,
+`lib/cmake/llvm/LLVMConfig.cmake`, `lib/cmake/clang/ClangConfig.cmake`, and the executable import
+library `lib/clang-tidy.lib` from that same installation. Ordinary builds need no LLVM development
+packages. On Windows, LLVM must be built with `LLVM_EXPORT_SYMBOLS_FOR_PLUGINS=ON` and
+`CLANG_PLUGIN_SUPPORT=ON`; its installed `clang-tidy` CMake target must expose the import library.
+The tested LLVM 24 revision needed `ENABLE_EXPORTS` set before `install(TARGETS)` in LLVM's
+`AddLLVM.cmake`, and `ARCHIVE DESTINATION lib${LLVM_LIBDIR_SUFFIX}` added to `add_clang_tool`'s
+install rule in Clang's `AddClang.cmake`. Static `clangTidy.lib` is not a substitute: it
+creates a separate check registry.
+
+Every tidy target builds and loads the C++23 `ioj-tidy-module` DLL automatically. The tooling DLL
+uses the installed LLVM build configuration (Release in the tested installation), runtime and
+RTTI settings; the native compilation database remains Debug.
 
 Run the scope affected by your change:
 
@@ -74,3 +93,32 @@ cmake --build --preset clang-tidy-core
 Set `IOJ_CLANG_TIDY_JOBS=0` to restore the automatic worker count.
 
 The enabled checks and audit compiler arguments are defined in `native/.clang-tidy`.
+
+## Simulation policy
+
+`native/simulation/.clang-tidy` inherits the native policy and enables exactly one custom check,
+`ioj-loop-condition-call`. It rejects calls in C-style `for` conditions, including member calls.
+Hoist stable bounds into const locals. It does not inspect initializers, increments, loop bodies,
+range-for, `while`, or `do` conditions, and supplies no automatic fix.
+
+For deliberately changing conditions, use a local suppression with a reason:
+
+```cpp
+// NOLINTNEXTLINE(ioj-loop-condition-call) -- advancing can finish the timeline.
+for (SimTick tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
+    advance(tick_period);
+}
+```
+
+`simulation_benchmark` is included in the execution scope but does not inherit this custom policy.
+The existing translation-unit diagnostic scope is explicit because LLVM 24 changed its default
+header filter. Run the plugin's registration, semantic and nested-policy tests after the workflow:
+
+```powershell
+ctest --test-dir out/build/win-x64-clangcl-debug/clang-tidy -L clang-tidy --output-on-failure
+```
+
+LLVM `24.0.0git` revision `688a1498b3ce` currently asserts in `GenericDomTree.h:400` when the
+full audit analyzes `native/lispb/src/packed_value_internal.cpp`, also without loading the plugin.
+The simulation audit works. Resolve this upstream analyzer failure before treating the full
+compiler-uplift gate as green; no checks are disabled to hide it.

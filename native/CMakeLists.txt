@@ -59,7 +59,7 @@ if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
       third_party/tracy/public/TracyClient.cpp
       profiling/src/memory.cpp
     )
-    target_compile_features(TracyClientUnreal PUBLIC cxx_std_11)
+    target_compile_features(TracyClientUnreal PUBLIC cxx_std_11 PRIVATE cxx_std_23)
     target_include_directories(TracyClientUnreal PUBLIC profiling/include)
     target_include_directories(TracyClientUnreal SYSTEM PUBLIC third_party/tracy/public)
     get_target_property(tracy_definitions TracyClient INTERFACE_COMPILE_DEFINITIONS)

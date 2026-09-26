@@ -323,7 +323,7 @@ auto include_is_system(Include const& include) -> bool {
     }
     auto const slash{include.path.find_last_of('/')};
     auto const filename{include.path.substr(slash == std::string::npos ? 0 : slash + 1)};
-    return filename.find('.') == std::string::npos;
+    return !filename.contains('.');
 }
 
 void for_each_child(Node const& node, std::function<void(Node const&)> const& visit) {
