@@ -47,7 +47,7 @@ target_link_libraries(tracy-benchmark-compare-test-helper PRIVATE sandbox::nativ
 add_dependencies(tracy-benchmark-compare-tests tracy-benchmark-compare-test-helper)
 
 add_test(NAME tracy-benchmark-compare-tests COMMAND tracy-benchmark-compare-tests)
-set_tests_properties(tracy-benchmark-compare-tests PROPERTIES LABELS "all;perf;developer-tool;integration;subprocess")
+set_tests_properties(tracy-benchmark-compare-tests PROPERTIES LABELS "perf;developer-tool;integration;subprocess")
 
 if(NOT IOJ_TRACY_TOOLS)
   return()

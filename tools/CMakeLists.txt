@@ -34,5 +34,3 @@ add_custom_target(developer-tools-build
 add_custom_target(task-start-build
   DEPENDS native-tests developer-tools-build
 )
-
-add_dependencies(native-tests layout-planner-ui-tests image-lab-tests)

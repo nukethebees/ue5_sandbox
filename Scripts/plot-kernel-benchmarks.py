@@ -26,8 +26,8 @@ TIME_UNIT_TO_NS = {
     "s": 1_000_000_000.0,
 }
 
-JsonValue: TypeAlias = (
-    None | bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"]
+JsonValue: TypeAlias = (  # noqa: UP040 -- This standalone script supports Python 3.11.
+    bool | int | float | str | list["JsonValue"] | dict[str, "JsonValue"] | None
 )
 
 

@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-import re
+from copy import deepcopy
 import subprocess
 import sys
 import tempfile
@@ -44,19 +44,30 @@ class CSharpTests(unittest.TestCase):
             missing_consumer["projects"][0]["inputs"] = ["tools/AgentGit.Tests"]
             with self.assertRaisesRegex(ValueError, "freshness inputs"):
                 csharp_tests.validate_registration(missing_consumer)
-            ownership = (ROOT / "tools/AgentGit/ToolComponents.cs").read_text()
-            self.assertEqual(set(re.findall(r'"(tools/[^"\n]+\.csproj)"', ownership)), expected)
             manifest = json.loads((ROOT / ".integration-gates.json").read_text())
-            components = {component["name"]: component for component in manifest["components"]}
-            gates = {
-                "AgentGitTests": "agent-git-tests", "CSharpToolsTests": "csharp-tools-tests",
-                "LayoutPlannerTests": "layout-planner-tests", "ImageLabTests": "image-lab-tests",
-                "JobserverTests": "jobserver-tests", "RustToolsTests": "rust-tools-tests",
-                "BenchmarkBuild": "benchmark-build",
-            }
-            for name, paths, gate in re.findall(r'new\("([^"]+)", \[([^\]]+)\], IntegrationGate\.(\w+),', ownership):
-                self.assertEqual(components[name]["paths"], re.findall(r'"([^"]+)"', paths))
-                self.assertEqual(components[name]["gates"], [gates[gate]])
+            # Compare semantics to the actual transitive MSBuild graph, not another table.
+            for field, value in (
+                ("testProjects", ["tools/GitTools.Tests/GitTools.Tests.csproj"]),
+                ("affects", ["git-tools"]),
+                ("paths", ["tools/misspelled/"]),
+                ("gates", []),
+            ):
+                wrong = deepcopy(manifest)
+                component = next(item for item in wrong["components"] if item["name"] == "code-format-tools")
+                component[field] = value
+                with self.subTest(field=field), patch.object(csharp_tests.json, "loads", return_value=wrong):
+                    with self.assertRaises(ValueError):
+                        csharp_tests.validate_registration(metadata)
+            wrong = deepcopy(manifest)
+            next(item for item in wrong["components"] if item["name"] == "git-support")["affects"] = ["agent-git"]
+            with patch.object(csharp_tests.json, "loads", return_value=wrong):
+                with self.assertRaisesRegex(ValueError, "Manifest consumers for tools/GitSupport/"):
+                    csharp_tests.validate_registration(metadata)
+            wrong = deepcopy(manifest)
+            next(item for item in wrong["components"] if item["name"] == "tool-routing")["affects"] = ["code-format-tools"]
+            with patch.object(csharp_tests.json, "loads", return_value=wrong):
+                with self.assertRaisesRegex(ValueError, "Manifest consumers for tools/AgentGit/"):
+                    csharp_tests.validate_registration(metadata)
             inventory = json.loads(subprocess.check_output(
                 ["ctest", "--test-dir", str(build), "--show-only=json-v1"], text=True))
             self.assertEqual(len(expected), len(inventory["tests"]))
@@ -80,7 +91,7 @@ class CSharpTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             files = ["tools/Directory.Build.props", "tools/Directory.Build.targets", "tools/Tools.slnx",
-                     "cmake/csharp_tests.cmake", "cmake/csharp_tests.py", "tools/Example/Source.cs"]
+                     ".integration-gates.json", "cmake/csharp_tests.cmake", "cmake/csharp_tests.py", "tools/Example/Source.cs"]
             for name in files:
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)
@@ -89,7 +100,7 @@ class CSharpTests(unittest.TestCase):
             project = {"inputs": ["tools/Example"]}
             with patch.object(csharp_tests, "__file__", str(root / "cmake/csharp_tests.py")):
                 initial = csharp_tests.fingerprint(metadata, project)
-                for name in ("tools/Example/Source.cs", "tools/Directory.Build.props"):
+                for name in ("tools/Example/Source.cs", "tools/Directory.Build.props", ".integration-gates.json"):
                     (root / name).write_text("changed")
                     self.assertNotEqual(initial, csharp_tests.fingerprint(metadata, project))
                     (root / name).write_text("initial")

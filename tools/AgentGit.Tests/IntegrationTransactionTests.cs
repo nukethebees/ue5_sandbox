@@ -13,7 +13,7 @@ public sealed class IntegrationTransactionTests
         var validator = new IntegrationGateValidator(runner);
         var store = new IntegrationStateStore(fixture.RunGit(
             "rev-parse", "--path-format=absolute", "--git-common-dir").Trim());
-        var identity = new PatchIdentity("candidate", "tree", ["tools/AgentGit/Program.cs"]);
+        var identity = new PatchIdentity("candidate", "tree", ["tools/AgentGit.Tests/ProgramTests.cs"]);
         var plan = new IntegrationGatePlanner().Plan(identity.ChangedPaths);
 
         var result = await validator.ValidateAsync(
@@ -76,7 +76,7 @@ public sealed class IntegrationTransactionTests
         var validator = new IntegrationGateValidator(runner);
         var store = new IntegrationStateStore(fixture.RunGit(
             "rev-parse", "--path-format=absolute", "--git-common-dir").Trim());
-        var identity = new PatchIdentity("candidate", "tree", ["tools/AgentGit/Program.cs"]);
+        var identity = new PatchIdentity("candidate", "tree", ["tools/AgentGit.Tests/ProgramTests.cs"]);
         var plan = new IntegrationGatePlanner().Plan(identity.ChangedPaths, include_tool_tests: true);
 
         var result = await validator.ValidateAsync(

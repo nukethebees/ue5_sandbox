@@ -5,7 +5,9 @@ set(sandbox_csharp_metadata "${CMAKE_BINARY_DIR}/csharp-tests.json")
 set(sandbox_csharp_runner "${PROJECT_SOURCE_DIR}/cmake/csharp_tests.py")
 set(sandbox_csharp_entries "")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-  "${PROJECT_SOURCE_DIR}/tools/Tools.slnx")
+  "${PROJECT_SOURCE_DIR}/tools/Tools.slnx"
+  "${PROJECT_SOURCE_DIR}/.integration-gates.json"
+  "${sandbox_csharp_runner}")
 
 add_custom_target(csharp-tests-build
   COMMAND "${DOTNET_EXECUTABLE}" build "${PROJECT_SOURCE_DIR}/tools/Tools.slnx"

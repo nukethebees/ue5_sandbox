@@ -1,4 +1,4 @@
-add_executable(native-simulation-tests)
+add_native_simulation_test(native-simulation-tests)
 target_sources(native-simulation-tests PRIVATE
   agent_indexes_tests.cpp
   entity_ledger_tests.cpp
@@ -49,26 +49,11 @@ target_sources(native-simulation-tests PRIVATE
   step_response_tests.cpp
   vectors3f_tests.cpp
 )
-target_compile_features(native-simulation-tests PRIVATE cxx_std_23)
-target_link_libraries(native-simulation-tests PRIVATE
-  native-simulation
-  sandbox::native_defaults
-  ioj::test_pch
-)
-
-target_link_libraries(native-simulation-tests PRIVATE GTest::gtest_main)
-
-add_test(NAME native-simulation-tests COMMAND native-simulation-tests)
 set_tests_properties(native-simulation-tests PROPERTIES LABELS "unit;all;native;native-simulation")
 
-add_executable(native-simulation-soak-tests
+add_native_simulation_test(native-simulation-soak-tests
   test_moved_entities_battle.cpp
   support/worldless_simulation_test.cpp
 )
-target_compile_features(native-simulation-soak-tests PRIVATE cxx_std_23)
-target_link_libraries(native-simulation-soak-tests PRIVATE
-  native-simulation sandbox::native_defaults ioj::test_pch GTest::gtest_main
-)
-add_test(NAME native-simulation-soak-tests COMMAND native-simulation-soak-tests)
 set_tests_properties(native-simulation-soak-tests PROPERTIES
   LABELS "all;native;native-simulation;integration;soak")

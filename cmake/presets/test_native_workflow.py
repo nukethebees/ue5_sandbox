@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from typing import Any
 import unittest
 
 from matrix import validate_preset_references
@@ -289,6 +290,26 @@ class NativeWorkflowTests(unittest.TestCase):
             unreal_test_presets["debug-game-full-tests"]["filter"]["include"]["label"],
             "^(all|developer-tool)$",
         )
+        self.assertEqual(unreal_test_presets["debug-game-unit-tests"]["filter"]["exclude"]["label"],
+                         "^developer-tool$")
+
+    def test_simulation_presets_separate_iteration_from_final_validation(self) -> None:
+        builds = {preset["name"]: preset for preset in self.presets["buildPresets"]}
+        tests = {preset["name"]: preset for preset in self.presets["testPresets"]}
+        workflows = {preset["name"]: preset for preset in self.presets["workflowPresets"]}
+        normal, soak, full = "native-simulation-tests", "native-simulation-soak-tests", "native-simulation-full-tests"
+        self.assertEqual(builds[normal]["targets"], [normal])
+        self.assertEqual(builds[soak]["targets"], [soak])
+        self.assertEqual(builds[full]["targets"], [normal, soak])
+        self.assertEqual(tests[normal]["filter"], {
+            "include": {"label": "^native-simulation$"}, "exclude": {"label": "soak|compile-contract"}})
+        self.assertEqual(tests[full]["filter"], {"include": {"label": "^native-simulation$"}})
+        self.assertEqual(tests[soak]["filter"], {
+            "include": {"label": "^native-simulation$", "name": "^native-simulation-soak-tests$"}})
+        for name in (normal, soak, full):
+            self.assertEqual(workflows[name]["steps"], [
+                {"type": "configure", "name": "native"}, {"type": "build", "name": name},
+                {"type": "test", "name": name}])
 
     def test_native_target_dry_run_has_no_unreal_dependency(self) -> None:
         generated_sources = self.create_generated_source_sentinels()
@@ -296,6 +317,53 @@ class NativeWorkflowTests(unittest.TestCase):
             prefix="sandbox native workflow "
         ) as temporary_root:
             build_directory = Path(temporary_root) / "build with spaces"
+            policy_check = Path(temporary_root) / "check_simulation_policy.cmake"
+            policy_check.write_text('''
+function(check_simulation_policy)
+  foreach(directory IN ITEMS native/simulation native/simulation/tests)
+    get_property(targets DIRECTORY "${PROJECT_SOURCE_DIR}/${directory}" PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(target IN LISTS targets)
+      get_target_property(runtime ${target} MSVC_RUNTIME_LIBRARY)
+      get_target_property(definitions ${target} COMPILE_DEFINITIONS)
+      get_target_property(options ${target} COMPILE_OPTIONS)
+      if(NOT runtime STREQUAL "MultiThreadedDLL" OR NOT "_ITERATOR_DEBUG_LEVEL=0" IN_LIST definitions)
+        message(FATAL_ERROR "${target} omitted simulation ABI policy")
+      endif()
+      if(IOJ_MSVC_FRONTEND AND NOT "/permissive-" IN_LIST options)
+        message(FATAL_ERROR "${target} omitted simulation compiler policy")
+      endif()
+    endforeach()
+  endforeach()
+  file(WRITE "${CMAKE_BINARY_DIR}/policy_fixture.cpp" "void policy_fixture() {}\n")
+  foreach(frontend IN ITEMS ON OFF)
+    foreach(configuration IN ITEMS Debug Development Shipping Test)
+      set(IOJ_MSVC_FRONTEND ${frontend})
+      set(UE_CONFIGURATION ${configuration})
+      set(target policy-${frontend}-${configuration})
+      add_library(${target} OBJECT EXCLUDE_FROM_ALL "${CMAKE_BINARY_DIR}/policy_fixture.cpp")
+      configure_native_simulation_target(${target})
+      get_target_property(options ${target} COMPILE_OPTIONS)
+      get_target_property(definitions ${target} COMPILE_DEFINITIONS)
+      if(frontend)
+        set(optimization /O2)
+      else()
+        set(optimization -O2)
+      endif()
+      if(configuration STREQUAL "Debug")
+        if("${optimization}" IN_LIST options OR "NDEBUG" IN_LIST definitions)
+          message(FATAL_ERROR "Debug simulation policy unexpectedly optimized")
+        endif()
+      elseif(NOT "${optimization}" IN_LIST options)
+        message(FATAL_ERROR "${configuration} simulation policy omitted optimization")
+      endif()
+      if(configuration MATCHES "^(Shipping|Test)$" AND NOT "NDEBUG" IN_LIST definitions)
+        message(FATAL_ERROR "${configuration} simulation policy omitted NDEBUG")
+      endif()
+    endforeach()
+  endforeach()
+endfunction()
+cmake_language(DEFER CALL check_simulation_policy)
+''', encoding="utf-8")
             self.run_cmake(
                 "-S",
                 str(self.source_dir),
@@ -306,6 +374,7 @@ class NativeWorkflowTests(unittest.TestCase):
                 "-DCMAKE_BUILD_TYPE=Debug",
                 "-DCMAKE_UNITY_BUILD=ON",
                 "-DIOJ_WITH_UNREAL=OFF",
+                f"-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES={policy_check.as_posix()}",
             )
 
             cache = (build_directory / "CMakeCache.txt").read_text(encoding="utf-8")
@@ -324,6 +393,10 @@ class NativeWorkflowTests(unittest.TestCase):
             self.assertNotRegex(dry_run, r"(?i)(?:^|[\\/\s])unreal(?:[\\/\s]|$)")
             self.assertNotIn("Tools.slnx", dry_run)
             self.assertNotIn("dotnet.exe\" test", dry_run)
+            self.assertNotIn("layout-planner-ui-tests", dry_run)
+            self.assertNotIn("image-lab-tests", dry_run)
+            self.assertIn("native-simulation-soak-tests", dry_run)
+            self.check_test_inventory(build_directory)
 
             host_tool = (
                 build_directory
@@ -427,6 +500,33 @@ class NativeWorkflowTests(unittest.TestCase):
 
         self.addCleanup(self.remove_generated_source_sentinels, generated_sources)
         return generated_sources
+
+    def check_test_inventory(self, build: Path) -> None:
+        def inventory(*filters: str) -> dict[str, dict[str, Any]]:
+            result = subprocess.run(["ctest", "--test-dir", str(build), "--show-only=json-v1", *filters],
+                                    check=True, capture_output=True, text=True)
+            return {test["name"]: test for test in json.loads(result.stdout)["tests"]}
+
+        native = inventory("-L", "^native$")
+        tools = inventory("-L", "^developer-tool$")
+        self.assertTrue({"native-simulation-tests", "native-simulation-soak-tests"} <= native.keys())
+        self.assertFalse(native.keys() & tools.keys())
+        expected_tools = {"layout-planner-ui-tests", "image-lab-tests", "tracy-benchmark-compare-tests", "Sandbox.RustSetLiveCodingDisabled"}
+        expected_tools.update("Sandbox." + name for name in (
+            "AgentGit", "AgentGitInstaller", "ArchitectureChecks", "BenchmarkTools", "CodeFormatTools",
+            "GamePackageTools", "GitTools", "NativeBinaryTools", "UnrealBuildTools"))
+        self.assertEqual(tools.keys(), expected_tools)
+        self.assertEqual(inventory("-L", "^native-simulation$", "-LE", "soak|compile-contract").keys(),
+                         {"native-simulation-tests"})
+        self.assertEqual(inventory("-L", "^native-simulation$").keys(),
+                         {"native-simulation-tests", "native-simulation-soak-tests"})
+        self.assertIn("CMake.CSharpTests", inventory("-L", "^cmake$"))
+        self.assertNotIn("CodegenCliChecksGeneratedFixture", inventory())
+        contracts = inventory("-L", "compile-contract")
+        self.assertTrue(contracts)
+        self.assertTrue(contracts.keys() <= native.keys())
+        for test in contracts.values():
+            self.assertTrue(any(prop["name"] == "RESOURCE_LOCK" for prop in test["properties"]))
 
     @staticmethod
     def remove_generated_source_sentinels(generated_sources: tuple[Path, ...]) -> None:

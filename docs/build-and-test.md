@@ -81,6 +81,14 @@ C# labels include `csharp`, `agent-git`, `installer`, `architecture`, `benchmark
 all standalone C# projects, Rust tests, and the registered layout, image-lab, and perf tests.
 Mixed integration assemblies carry `integration;subprocess`; pure assemblies carry `unit`.
 Labels apply to whole executables/assemblies, not individual GTest/MSTest cases.
+The `native` label describes product/library validation, not implementation language. Layout
+planner and image lab belong to `developer-tool`; their consumed layout/image libraries route
+to the relevant tool explicitly. Image lab also carries `integration` for real file round trips.
+
+`cmake --workflow --preset native-simulation-tests` builds and runs only ordinary simulation
+tests. Use `native-simulation-full-tests` for ordinary tests plus soak, or
+`native-simulation-soak-tests` for the soak alone. Both executables share simulation ABI,
+iterator, compiler, and configuration policy.
 
 ### Native tidy scopes
 
@@ -112,9 +120,10 @@ cmake --workflow --preset tool-tests
 
 Run only the affected broader validation classes once against the final candidate. Native final
 validation includes the separate `native-simulation-soak-tests` and all compile-contract tests;
-focused simulation final validation must rebuild and include the soak. Codegen/type-system final
+focused simulation final validation uses `native-simulation-full-tests`. Codegen/type-system final
 validation includes `compile-contract`. Those nested builds retain a shared CTest resource lock.
-The full native workflow is conservative; it is not the repeated inner loop.
+The full native workflow excludes standalone layout-planner and image-lab tests. It is not the
+repeated inner loop.
 
 `tool-tests` builds its prerequisites before running the per-project tests, with no duplicate
 umbrella C# test. Use it for shared/unknown tool infrastructure or broad tool validation. Known
@@ -122,7 +131,18 @@ C# tools select explicit projects; GitSupport expands to AgentGit, AgentGitInsta
 Layout planner and image lab select their native workflows, jobserver its dedicated gate, Rust
 its own CTest label, and perf its benchmark validation. Unknown tool paths retain broad tool and
 native validation. CMake owns physical test registration in `cmake/csharp_tests.cmake`; the
-integration manifest and built-in ownership map describe semantic boundaries and safety floors.
+`.integration-gates.json` owns paths, gates, affected consumers, and `testProjects`. AgentGit
+loads it from the pinned base commit and unions it with an immutable copy embedded in the
+installed executable as its minimum safety policy. No policy is loaded from the feature worktree.
+AgentGit implementation changes also validate its installer consumer; AgentGit test-only edits
+retain the dedicated test gate. Older pinned manifests without project metadata widen C# coverage.
+
+CMake configure cross-checks registered projects against `Tools.slnx`, transitive MSBuild
+references, and manifest ownership. `CMakeChecks` checks generated presets, configures `native`,
+and runs the `cmake` infrastructure regressions, including `CMake.CSharpTests`. It excludes
+`CMake.Presets` from that CTest invocation because the same check already ran before configure.
+Shared C# build files and routing changes select this gate automatically. Python validation
+covers all repository-owned Python under `Scripts` and `cmake` with Ruff and Pyright.
 
 Do not rebuild Unreal merely because a native implementation has a thin Unreal adapter. Settle
 the native behavior with the smallest target and test subset first.
@@ -146,7 +166,7 @@ workflow.
 
 ### Merge-ready integration
 
-After implementation is complete and the feature branch has been rebased onto current `dev`, run:
+For Unreal-facing or cross-cutting game changes, after implementation and rebase onto current `dev`, run:
 
 ```powershell
 cmake --workflow --preset debug-game-tests

@@ -23,6 +23,9 @@ Unreal Engine 5.8 project.
 * After the clean initial build, rebuild only affected targets and execute relevant CTest labels.
   Use `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"` for the
   fast loop. Include the applicable expensive categories once for final validation.
+  `native-simulation-tests` is the ordinary-only workflow; `native-simulation-full-tests`
+  adds the soak for final simulation validation. `native-tests` includes native soak/compile
+  contracts but excludes standalone developer-tool tests.
 * Run code/asset generators before starting the task and re-run as needed
 * Perform feature work on dedicated feature branches
 * Do not bypass instructions here unless explicitly told to

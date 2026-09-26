@@ -242,6 +242,20 @@
       "name": "native-simulation-tests",
       "configurePreset": "native",
       "targets": [
+        "native-simulation-tests"
+      ]
+    },
+    {
+      "name": "native-simulation-soak-tests",
+      "configurePreset": "native",
+      "targets": [
+        "native-simulation-soak-tests"
+      ]
+    },
+    {
+      "name": "native-simulation-full-tests",
+      "configurePreset": "native",
+      "targets": [
         "native-simulation-tests",
         "native-simulation-soak-tests"
       ]
@@ -478,6 +492,30 @@
       "filter": {
         "include": {
           "label": "^native-simulation$"
+        },
+        "exclude": {
+          "label": "soak|compile-contract"
+        }
+      }
+    },
+    {
+      "name": "native-simulation-full-tests",
+      "inherits": "test-base",
+      "configurePreset": "native",
+      "filter": {
+        "include": {
+          "label": "^native-simulation$"
+        }
+      }
+    },
+    {
+      "name": "native-simulation-soak-tests",
+      "inherits": "test-base",
+      "configurePreset": "native",
+      "filter": {
+        "include": {
+          "label": "^native-simulation$",
+          "name": "^native-simulation-soak-tests$"
         }
       }
     },
@@ -725,6 +763,40 @@
         {
           "type": "test",
           "name": "native-simulation-tests"
+        }
+      ]
+    },
+    {
+      "name": "native-simulation-full-tests",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "native"
+        },
+        {
+          "type": "build",
+          "name": "native-simulation-full-tests"
+        },
+        {
+          "type": "test",
+          "name": "native-simulation-full-tests"
+        }
+      ]
+    },
+    {
+      "name": "native-simulation-soak-tests",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "native"
+        },
+        {
+          "type": "build",
+          "name": "native-simulation-soak-tests"
+        },
+        {
+          "type": "test",
+          "name": "native-simulation-soak-tests"
         }
       ]
     },

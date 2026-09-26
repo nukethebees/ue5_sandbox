@@ -183,11 +183,15 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             {
                 "name": test_target,
                 "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
-                "targets": [test_target, "native-simulation-soak-tests"]
-                if test_target == "native-simulation-tests" else [test_target],
+                "targets": [test_target],
             }
-            for test_target in ("native-core-tests", "native-simulation-tests")
+            for test_target in ("native-core-tests", "native-simulation-tests", "native-simulation-soak-tests")
         ),
+        {
+            "name": "native-simulation-full-tests",
+            "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
+            "targets": ["native-simulation-tests", "native-simulation-soak-tests"],
+        },
         *(
             {
                 "name": combination.name,
@@ -249,11 +253,19 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                 "name": test_target,
                 "inherits": "test-base",
                 "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
-                "filter": {"include": {"label": f"^{label}$"}},
+                "filter": {
+                    "include": {"label": f"^{label}$",
+                                **({"name": "^native-simulation-soak-tests$"}
+                                   if test_target == "native-simulation-soak-tests" else {})},
+                    **({"exclude": {"label": "soak|compile-contract"}}
+                       if test_target == "native-simulation-tests" else {}),
+                },
             }
             for test_target, label in (
                 ("native-core-tests", "native-core"),
                 ("native-simulation-tests", "native-simulation"),
+                ("native-simulation-full-tests", "native-simulation"),
+                ("native-simulation-soak-tests", "native-simulation"),
             )
         ),
         *(
@@ -315,7 +327,8 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                     {"type": "test", "name": test_target},
                 ],
             }
-            for test_target in ("native-core-tests", "native-simulation-tests")
+            for test_target in ("native-core-tests", "native-simulation-tests",
+                                "native-simulation-full-tests", "native-simulation-soak-tests")
         ),
         *(
             {
@@ -559,7 +572,7 @@ def make_unreal_document() -> dict[str, Any]:
                     "name": f"debug-game{suffix}-{name}",
                     "inherits": "test-base",
                     "configurePreset": f"debug-game{suffix}",
-                    "filter": {"include": {"label": label}, "exclude": {"label": "^csharp$"}},
+                    "filter": {"include": {"label": label}, "exclude": {"label": "^developer-tool$"}},
                 }
             )
     test_presets.append(

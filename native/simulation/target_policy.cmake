@@ -1,0 +1,26 @@
+function(configure_native_simulation_target target)
+  set_property(TARGET ${target} PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
+  target_compile_definitions(${target} PRIVATE _ITERATOR_DEBUG_LEVEL=0)
+
+  if(IOJ_MSVC_FRONTEND)
+    target_compile_options(${target} PRIVATE /permissive-)
+    if(UE_CONFIGURATION MATCHES "^(Development|Shipping|Test)$")
+      target_compile_options(${target} PRIVATE /O2)
+    endif()
+  elseif(UE_CONFIGURATION MATCHES "^(Development|Shipping|Test)$")
+    target_compile_options(${target} PRIVATE -O2)
+  endif()
+
+  if(UE_CONFIGURATION MATCHES "^(Shipping|Test)$")
+    target_compile_definitions(${target} PRIVATE NDEBUG)
+  endif()
+endfunction()
+
+function(add_native_simulation_test target)
+  add_executable(${target} ${ARGN})
+  configure_native_simulation_target(${target})
+  target_compile_features(${target} PRIVATE cxx_std_23)
+  target_link_libraries(${target} PRIVATE
+    native-simulation sandbox::native_defaults ioj::test_pch GTest::gtest_main)
+  add_test(NAME ${target} COMMAND ${target})
+endfunction()

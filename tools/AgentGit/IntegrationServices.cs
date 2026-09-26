@@ -218,10 +218,7 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
             output.WriteLine();
             output.WriteLine($"Integration gate: {gate_name}");
             output.WriteLine($"Reason: {plan.Reasons[gate]}");
-            foreach (var command in Commands(
-                gate,
-                identity.ChangedPaths,
-                plan.Gates.Contains(IntegrationGate.AgentGitTests)))
+            foreach (var command in Commands(gate, plan))
             {
                 output.WriteLine($"Running: {command.Executable} {string.Join(' ', command.Arguments)}");
                 var exit_code = await command_runner.RunAsync(
@@ -255,22 +252,16 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
 
     internal static IReadOnlyList<IntegrationCommand> Commands(
         IntegrationGate gate,
-        IReadOnlyList<string> changed_paths,
-        bool agent_git_tests_selected) => gate switch
+        IntegrationGatePlan plan) => gate switch
         {
-            IntegrationGate.AgentGitTests =>
-                [
-                new("dotnet", ["build", "tools/AgentGit.Tests/AgentGit.Tests.csproj", "--nologo", "-p:IsStandaloneTool=false"]),
-                new("dotnet", ["test", "tools/AgentGit.Tests/AgentGit.Tests.csproj", "--nologo", "--no-build", "--no-restore"]),
-            ],
+            IntegrationGate.AgentGitTests => CSharpCommands(plan.TestProjects[gate]),
             IntegrationGate.JobserverTests =>
             [
                 new("cmake", ["--preset", "native"]),
             new("cmake", ["--build", "--preset", "native", "--target", "jobserver-tests"]),
-            new("ctest", ["--test-dir", "out/build/native", "-L", "^jobserver$", "--output-on-failure"]),
+            new("ctest", ["--test-dir", "out/build/native", "-L", "^jobserver$", "--output-on-failure", "--no-tests=error"]),
         ],
-            IntegrationGate.CSharpToolsTests => CSharpCommands(
-                changed_paths, agent_git_tests_selected),
+            IntegrationGate.CSharpToolsTests => CSharpCommands(plan.TestProjects[gate]),
             IntegrationGate.LayoutPlannerTests =>
                 [new("cmake", ["--workflow", "--preset", "layout-planner"])],
             IntegrationGate.ImageLabTests =>
@@ -278,21 +269,22 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
             IntegrationGate.RustToolsTests =>
             [
                 new("cmake", ["--preset", "native"]),
-                new("ctest", ["--test-dir", "out/build/native", "-L", "^rust$", "--output-on-failure"]),
+                new("ctest", ["--test-dir", "out/build/native", "-L", "^rust$", "--output-on-failure", "--no-tests=error"]),
             ],
             IntegrationGate.ToolTests =>
-                [new("cmake", ["--workflow", "--preset", "tool-tests"])],
+                ToolCommands(plan),
             IntegrationGate.PowerShellChecks =>
                 [new("pwsh", ["-NoProfile", "-File", "PowerShell/TestDeveloperScripts.ps1"])],
             IntegrationGate.PythonChecks =>
             [
-                new("pyright", ["Scripts", "cmake/presets"]),
-            new("ruff", ["check", "Scripts", "cmake/presets"]),
+                new("pyright", ["Scripts", "cmake"]),
+            new("ruff", ["check", "Scripts", "cmake"]),
         ],
             IntegrationGate.CMakeChecks =>
             [
                 new("python", ["cmake/presets/generate.py", "--check"]),
             new("cmake", ["--preset", "native"]),
+            new("ctest", ["--test-dir", "out/build/native", "-L", "^cmake$", "-E", "^CMake[.]Presets$", "--output-on-failure", "--no-tests=error"]),
         ],
             IntegrationGate.NativeTests =>
                 [new("cmake", ["--workflow", "--preset", "native-tests"])],
@@ -306,17 +298,40 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
             [
                 new("cmake", ["--preset", "tracy-tools"]),
                 new("cmake", ["--build", "--preset", "tracy-tools", "--target", "tracy-benchmark-compare-tests"]),
-                new("ctest", ["--test-dir", "out/build/tracy-tools", "-L", "^perf$", "--output-on-failure"]),
+                new("ctest", ["--test-dir", "out/build/tracy-tools", "-L", "^perf$", "--output-on-failure", "--no-tests=error"]),
             ],
             _ => throw new ArgumentOutOfRangeException(nameof(gate), gate, "Unknown integration gate."),
         };
 
-    private static IReadOnlyList<IntegrationCommand> CSharpCommands(
-        IReadOnlyList<string> changed_paths,
-        bool agent_git_tests_selected)
+    private static IReadOnlyList<IntegrationCommand> ToolCommands(IntegrationGatePlan plan)
     {
-        return ToolComponents.SelectTestProjects(changed_paths, agent_git_tests_selected)
-            .SelectMany(project => new IntegrationCommand[]
+        // Preserve each native tool workflow's CLI/library builds while testing its suite only once.
+        var separately_validated = new[]
+        {
+            (IntegrationGate.LayoutPlannerTests, "layout"),
+            (IntegrationGate.ImageLabTests, "image-lab"),
+            (IntegrationGate.BenchmarkBuild, "perf"),
+        }.Where(item => plan.Gates.Contains(item.Item1)).Select(item => item.Item2).ToArray();
+        if (separately_validated.Length == 0)
+        {
+            return [new("cmake", ["--workflow", "--preset", "tool-tests"])];
+        }
+        return
+        [
+            new("cmake", ["--preset", "native"]),
+            new("cmake", ["--build", "--preset", "tool-tests"]),
+            new("ctest", ["--preset", "tool-tests", "-LE", $"^({string.Join('|', separately_validated)})$"]),
+        ];
+    }
+
+    private static IReadOnlyList<IntegrationCommand> CSharpCommands(
+        IReadOnlyList<string> projects)
+    {
+        if (projects.Count == 0)
+        {
+            throw new PolicyConfigurationException("C# test gate has no declared test projects.");
+        }
+        return projects.SelectMany(project => new IntegrationCommand[]
             {
                 new("dotnet", ["build", project, "--nologo", "-p:IsStandaloneTool=false"]),
                 new("dotnet", ["test", project, "--nologo", "--no-build", "--no-restore"]),

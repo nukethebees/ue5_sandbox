@@ -5,7 +5,7 @@
       "name": "integration-policy",
       "paths": [".integration-gates.json", ".agent-git.json"],
       "gates": ["agent-git-tests", "jobserver-tests", "csharp-tools-tests", "powershell-checks", "python-checks", "cmake-checks", "native-tests", "codegen-tests", "unreal-tests", "development-build"],
-      "affects": []
+      "affects": ["csharp-infrastructure", "layout-planner", "image-lab"]
     },
     {
       "name": "docs",
@@ -46,8 +46,8 @@
     {
       "name": "global-cmake",
       "paths": ["CMakeLists.txt", "CMakePresets.json", "cmake/"],
-      "gates": ["cmake-checks", "csharp-tools-tests", "native-tests", "codegen-tests", "unreal-tests", "development-build"],
-      "affects": []
+      "gates": ["cmake-checks", "csharp-tools-tests", "native-tests", "codegen-tests", "unreal-tests", "development-build", "python-checks"],
+      "affects": ["csharp-infrastructure", "layout-planner", "image-lab"]
     },
     {
       "name": "native-unreal-interface",
@@ -63,9 +63,9 @@
     },
     {
       "name": "codegen",
-      "paths": ["Codegen/", "lispb/"],
+      "paths": ["Codegen/", "lispb/", "native/lispb/"],
       "gates": ["codegen-tests", "native-tests"],
-      "affects": []
+      "affects": ["layout-planner"]
     },
     {
       "name": "unreal",
@@ -81,57 +81,66 @@
     },
     {
       "name": "agent-git",
-      "paths": ["tools/AgentGit/", "tools/AgentGit.Tests/"],
+      "paths": ["tools/AgentGit/"],
       "gates": ["agent-git-tests"],
-      "affects": []
+      "affects": ["agent-git-installer"],
+      "testProjects": ["tools/AgentGit.Tests/AgentGit.Tests.csproj"]
     },
     {
       "name": "agent-git-installer",
       "paths": ["tools/AgentGitInstaller/", "tools/AgentGitInstaller.Tests/"],
       "gates": ["csharp-tools-tests"],
-      "affects": []
+      "affects": [],
+      "testProjects": ["tools/AgentGitInstaller.Tests/AgentGitInstaller.Tests.csproj"]
     },
     {
       "name": "architecture-checks",
       "paths": ["tools/ArchitectureChecks/", "tools/ArchitectureChecks.Tests/"],
       "gates": ["csharp-tools-tests"],
-      "affects": []
+      "affects": [],
+      "testProjects": ["tools/ArchitectureChecks.Tests/ArchitectureChecks.Tests.csproj"]
     },
     {
       "name": "benchmark-tools",
       "paths": ["tools/BenchmarkTools/", "tools/BenchmarkTools.Tests/"],
       "gates": ["csharp-tools-tests"],
-      "affects": []
+      "affects": [],
+      "testProjects": ["tools/BenchmarkTools.Tests/BenchmarkTools.Tests.csproj"]
     },
     {
       "name": "code-format-tools",
       "paths": ["tools/CodeFormatTools/", "tools/CodeFormatTools.Tests/"],
       "gates": ["csharp-tools-tests"],
-      "affects": []
+      "affects": [],
+      "testProjects": ["tools/CodeFormatTools.Tests/CodeFormatTools.Tests.csproj"]
     },
     {
       "name": "game-package-tools",
       "paths": ["tools/GamePackageTools/", "tools/GamePackageTools.Tests/"],
       "gates": ["csharp-tools-tests"],
-      "affects": []
+      "affects": [],
+      "testProjects": ["tools/GamePackageTools.Tests/GamePackageTools.Tests.csproj"]
     },
     {
       "name": "git-tools",
       "paths": ["tools/GitTools/", "tools/GitTools.Tests/"],
       "gates": ["csharp-tools-tests"],
-      "affects": []
+      "affects": [],
+      "testProjects": ["tools/GitTools.Tests/GitTools.Tests.csproj"]
     },
     {
       "name": "native-binary-tools",
       "paths": ["tools/NativeBinaryTools/", "tools/NativeBinaryTools.Tests/"],
       "gates": ["csharp-tools-tests"],
-      "affects": []
+      "affects": [],
+      "testProjects": ["tools/NativeBinaryTools.Tests/NativeBinaryTools.Tests.csproj"]
     },
     {
       "name": "unreal-build-tools",
       "paths": ["tools/UnrealBuildTools/", "tools/UnrealBuildTools.Tests/"],
       "gates": ["csharp-tools-tests"],
-      "affects": []
+      "affects": [],
+      "testProjects": ["tools/UnrealBuildTools.Tests/UnrealBuildTools.Tests.csproj"]
     },
     {
       "name": "git-support",
@@ -172,14 +181,57 @@
     {
       "name": "csharp-infrastructure",
       "paths": ["tools/Directory.Build.props", "tools/Directory.Build.targets", "tools/Tools.slnx"],
-      "gates": ["agent-git-tests", "csharp-tools-tests"],
-      "affects": []
+      "gates": ["agent-git-tests", "csharp-tools-tests", "cmake-checks"],
+      "affects": ["agent-git", "agent-git-installer", "architecture-checks", "benchmark-tools", "code-format-tools", "game-package-tools", "git-tools", "native-binary-tools", "unreal-build-tools"]
     },
     {
       "name": "unknown-tools",
       "paths": ["tools/"],
       "gates": ["tool-tests", "native-tests"],
       "affects": []
+    },
+    {
+      "name": "agent-git-tests",
+      "paths": ["tools/AgentGit.Tests/"],
+      "gates": ["agent-git-tests"],
+      "affects": [],
+      "testProjects": ["tools/AgentGit.Tests/AgentGit.Tests.csproj"]
+    },
+    {
+      "name": "tool-routing",
+      "paths": ["tools/AgentGit/IntegrationGates.cs", "tools/AgentGit/IntegrationServices.cs"],
+      "gates": ["cmake-checks"],
+      "affects": ["agent-git"]
+    },
+    {
+      "name": "tool-build",
+      "paths": ["tools/CMakeLists.txt"],
+      "gates": ["tool-tests", "native-tests", "cmake-checks"],
+      "affects": []
+    },
+    {
+      "name": "cmake-test-registration",
+      "paths": ["Scripts/CMakeLists.txt"],
+      "gates": ["cmake-checks", "python-checks"],
+      "affects": []
+    },
+    {
+      "name": "simulation-build",
+      "paths": ["native/simulation/CMakeLists.txt", "native/simulation/tests/CMakeLists.txt", "native/simulation/target_policy.cmake"],
+      "gates": ["native-tests", "cmake-checks"],
+      "affects": []
+    },
+    {
+      "name": "native-layout",
+      "paths": ["native/layout/"],
+      "gates": ["native-tests"],
+      "affects": ["layout-planner"]
+    },
+    {
+      "name": "native-image",
+      "paths": ["native/image/"],
+      "gates": ["native-tests"],
+      "affects": ["image-lab"]
     }
   ]
 }

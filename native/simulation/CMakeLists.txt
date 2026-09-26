@@ -1,3 +1,5 @@
+include(target_policy.cmake)
+
 add_library(native-simulation STATIC)
 
 add_subdirectory(src)
@@ -17,6 +19,7 @@ if(IOJ_WITH_UNREAL)
 endif()
 
 foreach(native_simulation_target IN LISTS native_simulation_targets)
+  configure_native_simulation_target(${native_simulation_target})
   target_compile_features(${native_simulation_target} PUBLIC cxx_std_23)
   target_include_directories(${native_simulation_target} PUBLIC
     include
@@ -60,24 +63,3 @@ if(IOJ_WITH_UNREAL)
 endif()
 
 add_subdirectory(tests)
-
-list(APPEND native_simulation_targets native-simulation-tests)
-foreach(native_simulation_target IN LISTS native_simulation_targets)
-  set_property(TARGET ${native_simulation_target} PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
-  target_compile_definitions(${native_simulation_target} PRIVATE _ITERATOR_DEBUG_LEVEL=0)
-
-  if(IOJ_MSVC_FRONTEND)
-    target_compile_options(${native_simulation_target} PRIVATE /permissive-)
-    if(UE_CONFIGURATION MATCHES "^(Development|Shipping|Test)$")
-      target_compile_options(${native_simulation_target} PRIVATE /O2)
-    endif()
-  else()
-    if(UE_CONFIGURATION MATCHES "^(Development|Shipping|Test)$")
-      target_compile_options(${native_simulation_target} PRIVATE -O2)
-    endif()
-  endif()
-
-  if(UE_CONFIGURATION MATCHES "^(Shipping|Test)$")
-    target_compile_definitions(${native_simulation_target} PRIVATE NDEBUG)
-  endif()
-endforeach()

@@ -26,7 +26,8 @@ internal enum IntegrationGate
 internal sealed record IntegrationGatePlan(
     IReadOnlyList<string> Components,
     IReadOnlyList<IntegrationGate> Gates,
-    IReadOnlyDictionary<IntegrationGate, string> Reasons)
+    IReadOnlyDictionary<IntegrationGate, string> Reasons,
+    IReadOnlyDictionary<IntegrationGate, IReadOnlyList<string>> TestProjects)
 {
     public bool RequiresUnreal => Gates.Contains(IntegrationGate.UnrealTests) ||
         Gates.Contains(IntegrationGate.DevelopmentBuild);
@@ -42,25 +43,19 @@ internal sealed class IntegrationGatePlanner
         IntegrationGate.PythonChecks,
         IntegrationGate.CMakeChecks,
         IntegrationGate.CSharpToolsTests,
+        IntegrationGate.ToolTests,
         IntegrationGate.NativeTests,
         IntegrationGate.CodegenTests,
         IntegrationGate.UnrealTests,
         IntegrationGate.DevelopmentBuild,
     ];
 
-    private static readonly IntegrationGate[] build_global_gates =
-    [
-        IntegrationGate.CMakeChecks,
-        IntegrationGate.CSharpToolsTests,
-        IntegrationGate.NativeTests,
-        IntegrationGate.CodegenTests,
-        IntegrationGate.UnrealTests,
-        IntegrationGate.DevelopmentBuild,
-    ];
+    // This immutable installed snapshot is the minimum policy, never the feature worktree.
+    private static readonly IReadOnlyList<ComponentRule> minimum_rules = LoadMinimumRules();
 
     private readonly IReadOnlyList<ComponentRule> rules;
 
-    public IntegrationGatePlanner() : this(DefaultRules())
+    public IntegrationGatePlanner() : this(minimum_rules)
     {
     }
 
@@ -92,44 +87,20 @@ internal sealed class IntegrationGatePlanner
         var components = new SortedSet<string>(StringComparer.Ordinal);
         var gates = new HashSet<IntegrationGate>();
         var reasons = new Dictionary<IntegrationGate, string>();
+        var csharp_projects = new SortedSet<string>(StringComparer.Ordinal);
+        var agent_git_projects = new SortedSet<string>(StringComparer.Ordinal);
         foreach (var raw_path in changed_paths)
         {
             var path = raw_path.Replace('\\', '/');
-            foreach (var gate in MinimumGates(path))
+            if (path.StartsWith("tools/", StringComparison.OrdinalIgnoreCase) &&
+                path.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase))
             {
-                gates.Add(gate);
-                reasons.TryAdd(gate, $"built-in safety classification for '{path}'");
+                Add("csharp-project-graph", [IntegrationGate.CMakeChecks], "validate changed MSBuild project ownership");
             }
-            var matched = rules
-                .Select(rule => (Rule: rule, Length: rule.MatchLength(path)))
-                .Where(value => value.Length >= 0)
-                .ToArray();
-            var longest = matched.Length == 0 ? -1 : matched.Max(value => value.Length);
-            var matches = matched.Where(value => value.Length == longest).Select(value => value.Rule).ToArray();
-            if (matches.Length == 0)
+            Expand(path, minimum_rules, "built-in safety policy");
+            if (!ReferenceEquals(rules, minimum_rules))
             {
-                Add("unclassified", global_gates, $"'{path}' is not owned by a known component");
-                continue;
-            }
-
-            var pending = new Queue<(ComponentRule Rule, string Reason)>(matches.Select(match =>
-                (match, $"'{path}' belongs to {match.Name}")));
-            var expanded = new HashSet<string>(StringComparer.Ordinal);
-            while (pending.TryDequeue(out var current))
-            {
-                if (!expanded.Add(current.Rule.Name))
-                {
-                    continue;
-                }
-
-                Add(current.Rule.Name, current.Rule.Gates, current.Reason);
-                foreach (var affected_name in current.Rule.Affects)
-                {
-                    var affected = rules.SingleOrDefault(rule => rule.Name == affected_name)
-                        ?? throw new PolicyConfigurationException(
-                            $"Integration gate component '{current.Rule.Name}' affects unknown component '{affected_name}'.");
-                    pending.Enqueue((affected, $"{affected.Name} depends on {current.Rule.Name}"));
-                }
+                Expand(path, rules, "pinned base policy");
             }
         }
 
@@ -139,18 +110,85 @@ internal sealed class IntegrationGatePlanner
         }
         if (gates.Contains(IntegrationGate.ToolTests))
         {
-            gates.Remove(IntegrationGate.AgentGitTests);
-            gates.Remove(IntegrationGate.CSharpToolsTests);
-            reasons.Remove(IntegrationGate.AgentGitTests);
-            reasons.Remove(IntegrationGate.CSharpToolsTests);
-            gates.Remove(IntegrationGate.RustToolsTests);
-            reasons.Remove(IntegrationGate.RustToolsTests);
+            foreach (var covered in new[] { IntegrationGate.AgentGitTests, IntegrationGate.CSharpToolsTests,
+                IntegrationGate.RustToolsTests })
+            {
+                gates.Remove(covered);
+                reasons.Remove(covered);
+            }
+        }
+        if (gates.Contains(IntegrationGate.AgentGitTests))
+        {
+            csharp_projects.ExceptWith(agent_git_projects);
         }
 
         return new IntegrationGatePlan(
             components.ToArray(),
             gates.OrderBy(value => value).ToArray(),
-            reasons);
+            reasons,
+            new Dictionary<IntegrationGate, IReadOnlyList<string>>
+            {
+                [IntegrationGate.AgentGitTests] = agent_git_projects.ToArray(),
+                [IntegrationGate.CSharpToolsTests] = csharp_projects.ToArray(),
+            });
+
+        void Expand(string path, IReadOnlyList<ComponentRule> policy, string source)
+        {
+            var matched = policy
+                .Select(rule => (Rule: rule, Length: rule.MatchLength(path)))
+                .Where(value => value.Length >= 0)
+                .ToArray();
+            var longest = matched.Length == 0 ? -1 : matched.Max(value => value.Length);
+            var matches = matched.Where(value => value.Length == longest).Select(value => value.Rule).ToArray();
+            if (matches.Length == 0)
+            {
+                Add("unclassified", global_gates, $"'{path}' is not owned by a known component");
+                AddAllProjects();
+                return;
+            }
+
+            var pending = new Queue<(ComponentRule Rule, string Reason)>(matches.Select(match =>
+                (match, $"'{path}' belongs to {match.Name}")));
+            var expanded = new HashSet<string>(StringComparer.Ordinal);
+            var projects = new HashSet<string>(StringComparer.Ordinal);
+            var needs_csharp = false;
+            while (pending.TryDequeue(out var current))
+            {
+                if (!expanded.Add(current.Rule.Name))
+                {
+                    continue;
+                }
+
+                Add(current.Rule.Name, current.Rule.Gates, $"{source}: {current.Reason}");
+                projects.UnionWith(current.Rule.TestProjects ?? []);
+                needs_csharp |= current.Rule.Gates.Contains(IntegrationGate.CSharpToolsTests);
+                if (current.Rule.Gates.Contains(IntegrationGate.AgentGitTests))
+                {
+                    agent_git_projects.UnionWith(current.Rule.TestProjects ?? []);
+                }
+                foreach (var affected_name in current.Rule.Affects)
+                {
+                    var affected = policy.SingleOrDefault(rule => rule.Name == affected_name)
+                        ?? throw new PolicyConfigurationException(
+                            $"Integration gate component '{current.Rule.Name}' affects unknown component '{affected_name}'.");
+                    pending.Enqueue((affected, $"{affected.Name} depends on {current.Rule.Name}"));
+                }
+            }
+            csharp_projects.UnionWith(projects);
+            // Older trusted manifests can require C# coverage without declaring projects.
+            // Widen each such path independently so another narrow path cannot hide it.
+            if (needs_csharp && projects.Count == 0)
+            {
+                AddAllProjects();
+            }
+        }
+
+        void AddAllProjects()
+        {
+            csharp_projects.UnionWith(minimum_rules.Concat(rules).SelectMany(rule => rule.TestProjects ?? []));
+            agent_git_projects.UnionWith(minimum_rules.Where(rule => rule.Gates.Contains(IntegrationGate.AgentGitTests))
+                .SelectMany(rule => rule.TestProjects ?? []));
+        }
 
         void Add(string component, IEnumerable<IntegrationGate> required, string reason)
         {
@@ -193,96 +231,14 @@ internal sealed class IntegrationGatePlanner
         _ => throw new ArgumentOutOfRangeException(nameof(gate), gate, "Unknown integration gate."),
     };
 
-    private static IReadOnlyList<IntegrationGate> MinimumGates(string path)
+    private static IReadOnlyList<ComponentRule> LoadMinimumRules()
     {
-        if (path is ".integration-gates.json" or ".agent-git.json")
-        {
-            return global_gates;
-        }
-        if (path.EndsWith(".md", StringComparison.OrdinalIgnoreCase))
-        {
-            return [];
-        }
-        if (path is "tools/Directory.Build.props" or "tools/Directory.Build.targets" or "tools/Tools.slnx")
-        {
-            return [IntegrationGate.AgentGitTests, IntegrationGate.CSharpToolsTests];
-        }
-        var tool = ToolComponents.Find(path);
-        if (tool is not null)
-        {
-            return tool.Name == "git-support"
-                ? [IntegrationGate.AgentGitTests, IntegrationGate.CSharpToolsTests]
-                : [tool.Gate];
-        }
-        if (path.StartsWith("tools/", StringComparison.OrdinalIgnoreCase))
-        {
-            return [IntegrationGate.ToolTests, IntegrationGate.NativeTests];
-        }
-        if (path.Equals("dev.ps1", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("PowerShell/", StringComparison.OrdinalIgnoreCase))
-        {
-            return [IntegrationGate.PowerShellChecks];
-        }
-        if (path.StartsWith("Scripts/", StringComparison.OrdinalIgnoreCase))
-        {
-            return [IntegrationGate.PythonChecks];
-        }
-        if (path.Equals("CMakeLists.txt", StringComparison.OrdinalIgnoreCase) ||
-            path.Equals("CMakePresets.json", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("cmake/", StringComparison.OrdinalIgnoreCase))
-        {
-            return path.Equals("cmake/presets/native.json", StringComparison.OrdinalIgnoreCase)
-                ? [IntegrationGate.CMakeChecks, IntegrationGate.NativeTests]
-                : path.Equals("cmake/presets/unreal.json", StringComparison.OrdinalIgnoreCase)
-                    ? [IntegrationGate.CMakeChecks, IntegrationGate.UnrealTests, IntegrationGate.DevelopmentBuild]
-                    : build_global_gates;
-        }
-        if (path.StartsWith("native/simulation_benchmark/", StringComparison.OrdinalIgnoreCase))
-        {
-            return [IntegrationGate.BenchmarkBuild];
-        }
-        if (path.StartsWith("native/", StringComparison.OrdinalIgnoreCase))
-        {
-            return [IntegrationGate.NativeTests];
-        }
-        if (path.StartsWith("Codegen/", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("lispb/", StringComparison.OrdinalIgnoreCase))
-        {
-            return [IntegrationGate.CodegenTests, IntegrationGate.NativeTests];
-        }
-        if (path.StartsWith("Source/", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("Plugins/", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("unreal/", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("Config/", StringComparison.OrdinalIgnoreCase) ||
-            path.Equals("Sandbox.uproject", StringComparison.OrdinalIgnoreCase))
-        {
-            return [IntegrationGate.UnrealTests, IntegrationGate.DevelopmentBuild];
-        }
-
-        return [];
+        using var stream = typeof(IntegrationGatePlanner).Assembly.GetManifestResourceStream(
+            "AgentGit.integration-gates.json")
+            ?? throw new PolicyConfigurationException("Installed integration safety policy is missing.");
+        using var reader = new StreamReader(stream);
+        return ParseManifest(reader.ReadToEnd());
     }
-
-    private static IReadOnlyList<ComponentRule> DefaultRules() =>
-    [
-        new("integration-policy", [".integration-gates.json", ".agent-git.json"], global_gates, []),
-        new("docs", ["AGENTS.md", "README.md", "docs/", "PowerShell/README.md", "cmake/README.md"], [], []),
-        .. ToolComponents.All.Select(tool => new ComponentRule(tool.Name, tool.Paths, [tool.Gate],
-            tool.Name == "git-support" ? ["agent-git", "agent-git-installer", "git-tools"] : [])),
-        new("csharp-infrastructure", ["tools/Directory.Build.props", "tools/Directory.Build.targets", "tools/Tools.slnx"],
-            [IntegrationGate.AgentGitTests, IntegrationGate.CSharpToolsTests], []),
-        new("unknown-tools", ["tools/"], [IntegrationGate.ToolTests, IntegrationGate.NativeTests], []),
-        new("powershell", ["dev.ps1", "PowerShell/"], [IntegrationGate.PowerShellChecks], []),
-        new("python", ["Scripts/"], [IntegrationGate.PythonChecks], []),
-        new("preset-generator", ["cmake/presets/"],
-            [IntegrationGate.PythonChecks, IntegrationGate.CMakeChecks, IntegrationGate.NativeTests,
-             IntegrationGate.UnrealTests, IntegrationGate.DevelopmentBuild], []),
-        new("global-cmake", ["CMakeLists.txt", "CMakePresets.json", "cmake/compiler_", "cmake/jobserver_", "cmake/unreal"], build_global_gates, []),
-        new("native", ["native/"], [IntegrationGate.NativeTests], []),
-        new("codegen", ["Codegen/", "lispb/"], [IntegrationGate.CodegenTests, IntegrationGate.NativeTests], []),
-        new("unreal", ["Source/", "Plugins/", "unreal/", "Config/", "Sandbox.uproject"],
-            [IntegrationGate.UnrealTests, IntegrationGate.DevelopmentBuild], []),
-        new("benchmark", ["native/simulation_benchmark/"], [IntegrationGate.BenchmarkBuild], []),
-    ];
 
     private static IReadOnlyList<ComponentRule> ParseManifest(string json)
     {
@@ -320,7 +276,13 @@ internal sealed class IntegrationGatePlanner
                     "Integration gate components require a unique name, paths, gates, and affects list.");
             }
             var gates = component.Gates.Select(ParseGate).ToArray();
-            rules.Add(new ComponentRule(component.Name, component.Paths, gates, component.Affects));
+            if (component.TestProjects?.Any(project => !project.StartsWith("tools/", StringComparison.Ordinal) ||
+                !project.EndsWith(".Tests.csproj", StringComparison.Ordinal) || project.Contains("..", StringComparison.Ordinal) ||
+                project.Contains('\\', StringComparison.Ordinal)) == true)
+            {
+                throw new PolicyConfigurationException($"Invalid test project in component '{component.Name}'.");
+            }
+            rules.Add(new ComponentRule(component.Name, component.Paths, gates, component.Affects, component.TestProjects));
         }
         foreach (var rule in rules)
         {
@@ -359,21 +321,20 @@ internal sealed class IntegrationGatePlanner
         string Name,
         IReadOnlyList<string>? Paths,
         IReadOnlyList<string>? Gates,
-        IReadOnlyList<string>? Affects);
+        IReadOnlyList<string>? Affects,
+        IReadOnlyList<string>? TestProjects);
 
     internal sealed record ComponentRule(
         string Name,
         IReadOnlyList<string> Prefixes,
         IReadOnlyList<IntegrationGate> Gates,
-        IReadOnlyList<string> Affects)
+        IReadOnlyList<string> Affects,
+        IReadOnlyList<string>? TestProjects = null)
     {
         public int MatchLength(string path) => Prefixes
             .Where(prefix =>
                 path.Equals(prefix, StringComparison.OrdinalIgnoreCase) ||
                 (prefix.EndsWith("/", StringComparison.Ordinal) &&
-                 path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) ||
-                (!prefix.EndsWith("/", StringComparison.Ordinal) &&
-                 prefix.Contains('_', StringComparison.Ordinal) &&
                  path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
             .Select(prefix => prefix.Length)
             .DefaultIfEmpty(-1)

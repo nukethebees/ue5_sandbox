@@ -405,7 +405,7 @@
           "label": "^level$"
         },
         "exclude": {
-          "label": "^csharp$"
+          "label": "^developer-tool$"
         }
       }
     },
@@ -428,7 +428,7 @@
           "label": "unit"
         },
         "exclude": {
-          "label": "^csharp$"
+          "label": "^developer-tool$"
         }
       }
     },
@@ -441,7 +441,7 @@
           "label": "^level$"
         },
         "exclude": {
-          "label": "^csharp$"
+          "label": "^developer-tool$"
         }
       }
     },
@@ -454,7 +454,7 @@
           "label": "unit"
         },
         "exclude": {
-          "label": "^csharp$"
+          "label": "^developer-tool$"
         }
       }
     },

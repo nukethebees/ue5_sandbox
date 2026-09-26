@@ -5,6 +5,7 @@
     <IsStandaloneTool>true</IsStandaloneTool>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="../../.integration-gates.json" LogicalName="AgentGit.integration-gates.json" />
     <ProjectReference Include="../GitSupport/GitSupport.csproj" />
   </ItemGroup>
 </Project>

@@ -19,6 +19,7 @@ def validate_registration(metadata: dict[str, Any]) -> None:
     registered = {project["project"] for project in metadata["projects"]}
     if expected != registered:
         raise ValueError(f"Update cmake/csharp_tests.cmake: solution/registration mismatch: {sorted(expected ^ registered)}")
+    consumers: dict[str, set[str]] = {}
     for project in metadata["projects"]:
         pending = [project["project"]]
         visited: set[str] = set()
@@ -28,11 +29,51 @@ def validate_registration(metadata: dict[str, Any]) -> None:
                 continue
             visited.add(path)
             relative = Path(path)
+            consumers.setdefault(relative.parent.as_posix() + "/", set()).add(project["project"])
             if relative.parent.as_posix() not in project["inputs"]:
                 raise ValueError(f"Update {project['name']} freshness inputs in cmake/csharp_tests.cmake: missing {path}")
             for reference in ET.parse(root / relative).iter("ProjectReference"):
                 dependency = (root / relative.parent / reference.attrib["Include"]).resolve().relative_to(root)
                 pending.append(dependency.as_posix())
+    manifest = json.loads((root / ".integration-gates.json").read_text(encoding="utf-8"))
+    validate_ownership(manifest, registered, consumers)
+
+
+def validate_ownership(manifest: dict[str, Any], registered: set[str], consumers: dict[str, set[str]]) -> None:
+    components = {component["name"]: component for component in manifest["components"]}
+    declared = {project for component in components.values() for project in component.get("testProjects", [])}
+    if declared != registered:
+        raise ValueError(f"Manifest/registration mismatch: {sorted(declared ^ registered)}")
+    for component in components.values():
+        for project in component.get("testProjects", []):
+            expected_gate = "agent-git-tests" if project == "tools/AgentGit.Tests/AgentGit.Tests.csproj" else "csharp-tools-tests"
+            if expected_gate not in component["gates"]:
+                raise ValueError(f"Missing {expected_gate} for {project}")
+        for affected in component["affects"]:
+            if affected not in components:
+                raise ValueError(f"Unknown affected component: {affected}")
+    owned_paths = {directory + "source.cs": expected for directory, expected in consumers.items()}
+    for directory, expected in consumers.items():
+        for component in components.values():
+            for path in component["paths"]:
+                if path.startswith(directory) and not path.endswith("/"):
+                    owned_paths[path] = expected
+    for path, expected in owned_paths.items():
+        matches = [(len(prefix), component) for component in components.values() for prefix in component["paths"]
+                   if path == prefix or (prefix.endswith("/") and path.startswith(prefix))]
+        longest = max((length for length, _ in matches), default=-1)
+        pending = [component["name"] for length, component in matches if length == longest]
+        visited: set[str] = set()
+        selected: set[str] = set()
+        while pending:
+            name = pending.pop()
+            if name in visited:
+                continue
+            visited.add(name)
+            selected.update(components[name].get("testProjects", []))
+            pending.extend(components[name]["affects"])
+        if selected != expected:
+            raise ValueError(f"Manifest consumers for {path}: expected {sorted(expected)}, selected {sorted(selected)}")
 
 
 def fingerprint(metadata: dict[str, Any], project: dict[str, Any]) -> str:
@@ -42,6 +83,7 @@ def fingerprint(metadata: dict[str, Any], project: dict[str, Any]) -> str:
         root / "tools/Directory.Build.targets",
         root / "tools/Tools.slnx",
         root / "cmake/csharp_tests.cmake",
+        root / ".integration-gates.json",
         Path(__file__),
     }
     for directory in project["inputs"]:

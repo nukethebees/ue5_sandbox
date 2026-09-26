@@ -39,7 +39,9 @@ After clearing the worktree's old build directories and running generators, use
 For iteration, rebuild affected targets and select CTest labels; exclude `soak|compile-contract`
 when those categories are unrelated. C# registrations run without rebuilding and reject stale
 assemblies. `cmake --workflow --preset tool-tests` builds and runs the complete standalone suite;
-ordinary native/game validation excludes the C# suite.
+ordinary native/game validation excludes standalone developer-tool tests. The focused
+`native-simulation-tests` preset excludes soak; `native-simulation-full-tests` includes it,
+and `native-simulation-soak-tests` runs it alone. Full `native-tests` retains soak and compile contracts.
 
 The normal Unreal presets build `dev-core`, the broad integration aggregate. The focused
 `debug-game-unit-tests` workflow instead builds `unreal-unit-tests` (`editor` plus `native-tests`)
