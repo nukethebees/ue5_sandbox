@@ -5,7 +5,6 @@ internal sealed class FormattingScope
     internal static readonly IReadOnlyList<string> DefaultRoots =
     [
         "Codegen",
-        "cmake/clang_tidy/plugin",
         "native",
         "tools",
         "Source",

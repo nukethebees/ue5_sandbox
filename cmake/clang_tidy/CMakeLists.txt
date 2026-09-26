@@ -9,28 +9,23 @@ endif()
 ioj_find_llvm_tool(IOJ_CLANG_TIDY_EXECUTABLE clang-tidy)
 ioj_find_llvm_tool(IOJ_RUN_CLANG_TIDY_EXECUTABLE run-clang-tidy)
 find_program(IOJ_POWERSHELL_EXECUTABLE NAMES pwsh powershell REQUIRED)
-option(IOJ_CLANG_TIDY_USE_DLL "Build/load the DLL baseline instead of using built-in IOJ checks" OFF)
-if(IOJ_CLANG_TIDY_USE_DLL)
-  add_subdirectory(plugin)
+execute_process(
+  COMMAND "${IOJ_CLANG_TIDY_EXECUTABLE}" "-checks=*" -list-checks
+  OUTPUT_VARIABLE ioj_tidy_checks
+  ERROR_VARIABLE ioj_tidy_error
+  RESULT_VARIABLE ioj_tidy_result)
+if(NOT ioj_tidy_result EQUAL 0)
+  message(FATAL_ERROR "Cannot query clang-tidy checks: ${ioj_tidy_error}")
+endif()
+if(ioj_tidy_checks MATCHES "(^|[\r\n])[ \t]+ioj-loop-condition-call([\r\n]|$)")
+  message(STATUS "clang-tidy has built-in IOJ checks (machine tool; not rebuilt by game workflows)")
+  add_test(NAME ClangTidy.LoopConditionCall
+    COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/llvm/clang_tidy/tests/test_loop_condition_call.py"
+      --clang-tidy "${IOJ_CLANG_TIDY_EXECUTABLE}"
+      --source-dir "${PROJECT_SOURCE_DIR}")
+  set_tests_properties(ClangTidy.LoopConditionCall PROPERTIES LABELS "clang-tidy")
 else()
-  execute_process(
-    COMMAND "${IOJ_CLANG_TIDY_EXECUTABLE}" "-checks=*" -list-checks
-    OUTPUT_VARIABLE ioj_tidy_checks
-    ERROR_VARIABLE ioj_tidy_error
-    RESULT_VARIABLE ioj_tidy_result)
-  if(NOT ioj_tidy_result EQUAL 0)
-    message(FATAL_ERROR "Cannot query clang-tidy checks: ${ioj_tidy_error}")
-  endif()
-  if(ioj_tidy_checks MATCHES "(^|[\r\n])[ \t]+ioj-loop-condition-call([\r\n]|$)")
-    message(STATUS "clang-tidy has built-in IOJ checks (machine tool; not rebuilt by game workflows)")
-    add_test(NAME ClangTidy.LoopConditionCall
-      COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/plugin/test_loop_condition_call.py"
-        --clang-tidy "${IOJ_CLANG_TIDY_EXECUTABLE}"
-        --source-dir "${PROJECT_SOURCE_DIR}")
-    set_tests_properties(ClangTidy.LoopConditionCall PROPERTIES LABELS "clang-tidy")
-  else()
-    message(STATUS "clang-tidy has no IOJ checks; running the standard checks only")
-  endif()
+  message(STATUS "clang-tidy has no IOJ checks; running the standard checks only")
 endif()
 
 set(IOJ_CLANG_TIDY_JOBS 0 CACHE STRING
@@ -52,10 +47,6 @@ function(sandbox_configure_native_clang_tidy)
 endfunction()
 
 function(sandbox_add_clang_tidy_target target_name source_filter log_name description)
-  set(ioj_clang_tidy_plugin_arguments)
-  if(IOJ_CLANG_TIDY_USE_DLL)
-    list(APPEND ioj_clang_tidy_plugin_arguments -Plugin "$<TARGET_FILE:ioj-tidy-module>")
-  endif()
   set(sandbox_native_clang_tidy_log "${CMAKE_BINARY_DIR}/${log_name}.log")
   sandbox_jobserver_command(clang_tidy_command STANDARD static-analysis
     "clang-tidy: ${description}")
@@ -66,7 +57,6 @@ function(sandbox_add_clang_tidy_target target_name source_filter log_name descri
       -PythonExecutable "${Python3_EXECUTABLE}"
       -RunClangTidyExecutable "${IOJ_RUN_CLANG_TIDY_EXECUTABLE}"
       -ClangTidyExecutable "${IOJ_CLANG_TIDY_EXECUTABLE}"
-      ${ioj_clang_tidy_plugin_arguments}
       -LogFile "${sandbox_native_clang_tidy_log}"
       -CompilationDatabase "${CMAKE_BINARY_DIR}"
       -Jobs "${IOJ_CLANG_TIDY_JOBS}"
@@ -78,9 +68,6 @@ function(sandbox_add_clang_tidy_target target_name source_filter log_name descri
     USES_TERMINAL
     VERBATIM
   )
-  if(IOJ_CLANG_TIDY_USE_DLL)
-    add_dependencies(${target_name} ioj-tidy-module)
-  endif()
 endfunction()
 
 function(sandbox_add_native_clang_tidy_scope scope directories)

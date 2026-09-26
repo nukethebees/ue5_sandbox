@@ -6,7 +6,6 @@ param(
   [string]$RunClangTidyExecutable,
   [Parameter(Mandatory)]
   [string]$ClangTidyExecutable,
-  [string]$Plugin = '',
   [Parameter(Mandatory)]
   [string]$LogFile,
   [Parameter(Mandatory)]
@@ -33,9 +32,6 @@ $clang_tidy_arguments = @(
   $Jobs,
   $SourceFilter
 )
-if ($Plugin) {
-  $clang_tidy_arguments += @('-load', $Plugin)
-}
 
 & $PythonExecutable $RunClangTidyExecutable @clang_tidy_arguments *>&1 |
   Tee-Object -FilePath $LogFile

@@ -61,7 +61,6 @@ def make_base_document() -> dict[str, Any]:
             "hidden": True,
             "generator": "Ninja",
             "binaryDir": "${sourceDir}/out/build/${presetName}",
-            "cacheVariables": {"LLVM_ROOT": "C:/dev/llvm/install"},
         }
     ]
 

@@ -25,6 +25,18 @@ public sealed class FormattingScopeTests
     }
 
     [TestMethod]
+    public void Default_scope_includes_llvm_checker_implementation()
+    {
+        using var fixture = new TemporaryGitRepository();
+        var source = fixture.WriteFile("tools/llvm/clang_tidy/lib/LoopConditionCallCheck.cpp");
+        var header = fixture.WriteFile("tools/llvm/clang_tidy/lib/LoopConditionCallCheck.hpp");
+        var scope = new FormattingScope(fixture.Root, FormattingScope.DefaultRoots);
+
+        CollectionAssert.Contains(scope.SelectAll(_ => { }).ToArray(), source);
+        Assert.IsTrue(scope.IsFormatCandidate(header));
+    }
+
+    [TestMethod]
     public void IsFormatCandidate_excludes_case_insensitive_path_components_only()
     {
         using var fixture = new TemporaryGitRepository();

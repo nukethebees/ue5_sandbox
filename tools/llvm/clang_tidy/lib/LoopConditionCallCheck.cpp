@@ -9,14 +9,18 @@ static bool contains_call(Stmt const* statement) {
     if (!statement) {
         return false;
     }
-    if (isa<CallExpr>(statement)) {
+
+    auto const* operator_call{dyn_cast<CXXOperatorCallExpr>(statement)};
+    if (isa<CallExpr>(statement) && (!operator_call || operator_call->getOperator() == OO_Call)) {
         return true;
     }
+
     for (auto const* child : statement->children()) {
         if (contains_call(child)) {
             return true;
         }
     }
+
     return false;
 }
 

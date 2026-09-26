@@ -9,13 +9,15 @@ excluded translation units remain outside the audit.
 
 ## Run clang-tidy
 
-Generated presets select `LLVM_ROOT=C:/dev/llvm/install`. This single CMake cache path selects
-`bin/clang-cl.exe`, `bin/clang-tidy.exe`, `bin/run-clang-tidy`, and `bin/clang-format.exe`, without
-depending on PATH ordering. Override it in a local configure preset if necessary.
+`LLVM_ROOT` selects `bin/clang-cl.exe`, `bin/clang-tidy.exe` and `bin/run-clang-tidy` exclusively
+from one installation; native archiving also selects that root's `llvm-lib`. An explicit CMake
+cache value takes precedence; otherwise the cache is
+initialized from the `LLVM_ROOT` environment variable. With neither set, normal PATH discovery
+applies. CMake forwards this selection to CodeFormatTools; standalone formatting uses the
+`LLVM_ROOT` environment variable for the matching clang-format.
 
 By default, tidy uses the selected executable directly. The optional machine installation can
-contain the C++23 IOJ checks statically linked into `clang-tidy.exe`; no DLL, `-load`, development
-packages, or executable import library is required by the game build. Configure reports whether
+contain the C++23 IOJ checks statically linked into `clang-tidy.exe`. Configure reports whether
 IOJ checks are available. Ordinary clang-tidy runs the standard checks when they are absent.
 
 Game workflows never build or repair LLVM. Building custom tooling is an intentional
@@ -94,7 +96,10 @@ The enabled checks and audit compiler arguments are defined in `native/.clang-ti
 ## Simulation policy
 
 `native/simulation/.clang-tidy` inherits the native policy and enables exactly one custom check,
-`ioj-loop-condition-call`. It rejects calls in C-style `for` conditions, including member calls.
+`ioj-loop-condition-call`. It rejects source-level function and member calls in C-style `for`
+conditions, including function-object `operator()`. Operator syntax such as overloaded `<`, `!=`
+and `==` is allowed; a function call inside an operator's operands still warns. Explicit calls
+such as `index.operator<(end)` also warn.
 Hoist stable bounds into const locals. It does not inspect initializers, increments, loop bodies,
 range-for, `while`, or `do` conditions, and supplies no automatic fix.
 
@@ -115,18 +120,5 @@ header filter. When IOJ checks are available, run the registration, semantic and
 ctest --test-dir out/build/win-x64-clangcl-debug/clang-tidy -L clang-tidy --output-on-failure
 ```
 
-## DLL comparison mode
-
-`IOJ_CLANG_TIDY_USE_DLL=ON` preserves the previous per-worktree DLL build and automatic `-load`
-workflow for comparison. Use a matching DLL-capable LLVM installation, not the static IOJ executable.
-This mode still requires `include/clang`, `include/clang-tidy`, LLVM/Clang CMake packages,
-`LLVM_EXPORT_SYMBOLS_FOR_PLUGINS=ON`, `CLANG_PLUGIN_SUPPORT=ON`, and installed `lib/clang-tidy.lib`.
-The baseline's host/runtime matching and two LLVM install fixes remain available; the static path
-does not use them. See [the comparison and cleanup list](../tools/llvm/ARCHITECTURE.md).
-
-LLVM `24.0.0git` revision `688a1498b3ce` also needs the local
-[analyzer lifetime fix](../cmake/clang_tidy/llvm-patches/control-dependency-node-lifetime.patch).
-It prevents a control-dependency visitor from retaining a recycled analyzer node, which crashed
-the full audit in `native/lispb/src/packed_value_internal.cpp`. Apply the patch at the LLVM source
-root before building/installing LLVM. It includes a C++23 regression test and preserves analyzer
-diagnostics; no checks are disabled. The installation at `C:/dev/llvm/install` includes this fix.
+The pinned LLVM toolchain also includes an independent analyzer lifetime fix. Its build script
+applies that patch separately from IOJ integration; see [toolchain patches](../tools/llvm/README.md).

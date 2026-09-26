@@ -1,6 +1,6 @@
 include_guard(GLOBAL)
 
-set(LLVM_ROOT "" CACHE PATH "LLVM toolchain installation (bin, include, lib/cmake)")
+set(LLVM_ROOT "$ENV{LLVM_ROOT}" CACHE PATH "LLVM toolchain installation root")
 
 function(ioj_find_llvm_tool output name)
   if(LLVM_ROOT)

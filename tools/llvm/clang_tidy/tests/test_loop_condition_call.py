@@ -19,17 +19,24 @@ struct Items {
     int* end() const;
 };
 Items get_items();
+struct Index {
+    bool operator<(Index) const;
+    bool operator!=(Index) const;
+    bool operator==(Index) const;
+    Index& operator++();
+};
+Index get_end();
+struct Predicate { bool operator()() const; };
 """
 
 
 class LoopConditionCallTests(unittest.TestCase):
     clang_tidy: str
-    plugin: str | None
     source_dir: Path
 
     def run_tidy(self, *arguments: str) -> str:
         result = subprocess.run(
-            [self.clang_tidy, *(["-load", self.plugin] if self.plugin else []), *arguments],
+            [self.clang_tidy, *arguments],
             capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
         output = result.stdout + result.stderr
@@ -47,7 +54,8 @@ class LoopConditionCallTests(unittest.TestCase):
             ("free", "for (int i = 0; i < get_count(); ++i) {}", 1),
             ("root_call", "for (; get_count();) {}", 1),
             ("condition_declaration", "for (; int count = get_count();) {}", 1),
-            ("nested_calls", "for (int i = 0; i < get_count() + items.size(); ++i) {}", 1),
+            ("multiple_calls", "for (int i = 0; i < get_count() + items.size(); ++i) {}", 1),
+            ("nested_calls", "for (int i = 0; i < get_items().size(); ++i) {}", 1),
             ("hoisted", "auto const count = items.size(); for (int i = 0; i < count; ++i) {}", 0),
             ("body", "for (int i = 0; i < 10; ++i) { update(); }", 0),
             ("initializer", "for (int i = make_start(); i < 10; ++i) {}", 0),
@@ -56,6 +64,12 @@ class LoopConditionCallTests(unittest.TestCase):
             ("while", "while (get_count()) {}", 0),
             ("do", "do {} while (get_count());", 0),
             ("empty_condition", "for (;;) {}", 0),
+            ("operator_less", "Index end; for (Index i; i < end; ++i) {}", 0),
+            ("operator_not_equal", "Index end; for (Index i; i != end; ++i) {}", 0),
+            ("operator_equal", "Index end; for (Index i; i == end; ++i) {}", 0),
+            ("operator_operand_call", "for (Index i; i < get_end(); ++i) {}", 1),
+            ("explicit_operator_call", "Index end; for (Index i; i.operator<(end); ++i) {}", 1),
+            ("function_object", "Predicate predicate; for (; predicate();) {}", 1),
             ("suppressed", f"// NOLINTNEXTLINE({CHECK}) -- bound intentionally changes.\n"
              "for (int i = 0;\n i < items.size(); ++i) {}", 0),
         )
@@ -92,10 +106,8 @@ class LoopConditionCallTests(unittest.TestCase):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--clang-tidy", required=True)
-    parser.add_argument("--plugin")
     parser.add_argument("--source-dir", required=True, type=Path)
     arguments = parser.parse_args()
     LoopConditionCallTests.clang_tidy = arguments.clang_tidy
-    LoopConditionCallTests.plugin = arguments.plugin
     LoopConditionCallTests.source_dir = arguments.source_dir
     unittest.main(argv=[__file__])

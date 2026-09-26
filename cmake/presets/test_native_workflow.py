@@ -40,12 +40,12 @@ class NativeWorkflowTests(unittest.TestCase):
 
     def test_llvm_root_selects_tools_without_development_packages(self) -> None:
         base = json.loads((PRESET_DIRECTORY / "base.json").read_text(encoding="utf-8"))
-        self.assertEqual(base["configurePresets"][0]["cacheVariables"]["LLVM_ROOT"], "C:/dev/llvm/install")
+        self.assertNotIn("LLVM_ROOT", base["configurePresets"][0].get("cacheVariables", {}))
         with tempfile.TemporaryDirectory(prefix="sandbox llvm root ") as directory:
             fixture = Path(directory)
             llvm_root = fixture / "LLVM with spaces"
             (llvm_root / "bin").mkdir(parents=True)
-            names = ("clang-cl", "clang", "clang-tidy", "clang-format", "run-clang-tidy")
+            names = ("clang-cl", "clang", "clang-tidy", "clang-format", "run-clang-tidy", "llvm-lib")
             suffix = ".exe" if sys.platform == "win32" else ""
             for name in names:
                 tool = llvm_root / "bin" / (name + suffix)
@@ -54,12 +54,15 @@ class NativeWorkflowTests(unittest.TestCase):
             script = fixture / "verify.cmake"
             script.write_text(
                 'cmake_minimum_required(VERSION 4.4.2)\n'
-                f'set(LLVM_ROOT "{llvm_root.as_posix()}")\n'
                 f'include("{self.source_dir.as_posix()}/cmake/llvm_tools.cmake")\n'
+                'get_property(cached_root CACHE LLVM_ROOT PROPERTY VALUE)\n'
+                'if(NOT cached_root STREQUAL expected_root)\n'
+                '  message(FATAL_ERROR "Wrong LLVM_ROOT cache: ${cached_root}")\n'
+                'endif()\n'
                 f'foreach(name IN ITEMS {" ".join(names)})\n'
                 '  set(selected "old installation" CACHE FILEPATH "" FORCE)\n'
                 '  ioj_find_llvm_tool(selected "${name}")\n'
-                f'  if(NOT selected STREQUAL "${{LLVM_ROOT}}/bin/${{name}}{suffix}")\n'
+                f'  if(NOT selected STREQUAL "{llvm_root.as_posix()}/bin/${{name}}{suffix}")\n'
                 '    message(FATAL_ERROR "Wrong LLVM tool: ${selected}")\n'
                 '  endif()\n'
                 'endforeach()\n'
@@ -70,10 +73,39 @@ class NativeWorkflowTests(unittest.TestCase):
                 f'include("{self.source_dir.as_posix()}/cmake/clang_tidy/CMakeLists.txt")\n',
                 encoding="utf-8",
             )
-            self.run_cmake("-P", str(script))
+            for selection in ("explicit", "environment", "path", "empty"):
+                with self.subTest(selection=selection):
+                    environment = os.environ.copy()
+                    environment.pop("LLVM_ROOT", None)
+                    arguments: list[str] = []
+                    if selection == "explicit":
+                        environment["LLVM_ROOT"] = str(fixture / "wrong installation")
+                        arguments.append(f"-DLLVM_ROOT:PATH={llvm_root.as_posix()}")
+                    elif selection == "environment":
+                        environment["LLVM_ROOT"] = llvm_root.as_posix()
+                    else:
+                        environment["PATH"] = str(llvm_root / "bin") + os.pathsep + environment["PATH"]
+                        if selection == "empty":
+                            environment["LLVM_ROOT"] = str(fixture / "wrong installation")
+                            arguments.append("-DLLVM_ROOT:PATH=")
+                    expected = "" if selection in ("path", "empty") else llvm_root.as_posix()
+                    result = subprocess.run(
+                        [self.cmake, *arguments, f"-Dexpected_root={expected}", "-P", str(script)],
+                        env=environment, capture_output=True, text=True,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+            # An explicitly selected incomplete installation must not borrow PATH tools.
+            result = subprocess.run(
+                [self.cmake, f"-DLLVM_ROOT:PATH={fixture.as_posix()}",
+                 f"-Dexpected_root={fixture.as_posix()}", "-P", str(script)],
+                capture_output=True, text=True,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Could not find llvm_tool", result.stdout + result.stderr)
 
     @unittest.skipUnless(shutil.which("pwsh"), "requires PowerShell")
-    def test_tidy_runner_forwards_optional_plugin_and_exit_status(self) -> None:
+    def test_tidy_runner_forwards_arguments_and_exit_status(self) -> None:
         with tempfile.TemporaryDirectory(prefix="sandbox tidy runner ") as directory:
             fixture = Path(directory)
             runner = fixture / "run clang tidy.py"
@@ -84,25 +116,23 @@ class NativeWorkflowTests(unittest.TestCase):
                 "print('runner output')\n"
                 "sys.exit(7)\n", encoding="utf-8",
             )
-            plugin = fixture / "plugin with spaces.dll"
             tidy = fixture / "clang tidy.exe"
             log = fixture / "logs" / "tidy.log"
-            for use_dll in (False, True):
-                with self.subTest(use_dll=use_dll):
-                    result = subprocess.run([
-                        "pwsh", "-NoProfile", "-File", str(self.source_dir / "cmake/clang_tidy/run_clang_tidy.ps1"),
-                        "-PythonExecutable", sys.executable, "-RunClangTidyExecutable", str(runner),
-                        "-ClangTidyExecutable", str(tidy), "-LogFile", str(log),
-                        "-CompilationDatabase", str(fixture), "-Jobs", "2", "-SourceFilter", "simulation|benchmark",
-                        *(["-Plugin", str(plugin)] if use_dll else []),
-                    ], capture_output=True, text=True)
-                    self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
-                    self.assertEqual(json.loads(captured.read_text()), [
-                        "-quiet", "-clang-tidy-binary", str(tidy),
-                        "-p", str(fixture), "-j", "2", "simulation|benchmark",
-                        *(["-load", str(plugin)] if use_dll else []),
-                    ])
-                    self.assertIn("runner output", log.read_text(encoding="utf-8-sig"))
+            result = subprocess.run([
+                "pwsh", "-NoProfile", "-File", str(self.source_dir / "cmake/clang_tidy/run_clang_tidy.ps1"),
+                "-PythonExecutable", sys.executable, "-RunClangTidyExecutable", str(runner),
+                "-ClangTidyExecutable", str(tidy), "-LogFile", str(log),
+                "-CompilationDatabase", str(fixture), "-Jobs", "2", "-SourceFilter", "simulation|benchmark",
+            ], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
+            self.assertEqual(json.loads(captured.read_text()), [
+                "-quiet", "-clang-tidy-binary", str(tidy),
+                "-p", str(fixture), "-j", "2", "simulation|benchmark",
+            ])
+            self.assertIn("runner output", log.read_text(encoding="utf-8-sig"))
+            runner_source = (self.source_dir / "cmake/clang_tidy/run_clang_tidy.ps1").read_text()
+            self.assertNotIn("Plugin", runner_source)
+            self.assertNotIn("-load", runner_source)
 
     def test_tidy_presets_share_one_configure_tree(self) -> None:
         validate_preset_references(self.presets)
@@ -152,11 +182,12 @@ class NativeWorkflowTests(unittest.TestCase):
                 )
 
     def test_tidy_targets_and_source_filters(self) -> None:
-        for use_dll in (False, True):
-            with self.subTest(use_dll=use_dll):
-                self.check_tidy_targets_and_source_filters(use_dll)
+        self.check_tidy_targets_and_source_filters(has_ioj=False)
 
-    def check_tidy_targets_and_source_filters(self, use_dll: bool) -> None:
+    def test_tidy_detects_builtin_ioj_checks(self) -> None:
+        self.check_tidy_targets_and_source_filters(has_ioj=True)
+
+    def check_tidy_targets_and_source_filters(self, has_ioj: bool) -> None:
         # Exercise the real CMake targets, capturing their runner arguments without
         # requiring LLVM or configuring the native dependency graph.
         with tempfile.TemporaryDirectory(prefix="sandbox tidy workflow ") as root:
@@ -166,8 +197,6 @@ class NativeWorkflowTests(unittest.TestCase):
                 "import json, pathlib, sys\n"
                 "args = sys.argv[1:]\n"
                 "log = pathlib.Path(args[args.index('-LogFile') + 1])\n"
-                "if '-Plugin' in args:\n"
-                "    assert pathlib.Path(args[args.index('-Plugin') + 1]).is_file()\n"
                 "if log.stem in ('clang-tidy', 'clang-tidy-lispb'):\n"
                 "    for name in ('generate-native-soa-fixture', 'kernel-native-generated-sources'):\n"
                 "        assert (log.parent / (name + '.stamp')).is_file(), name\n"
@@ -179,7 +208,7 @@ class NativeWorkflowTests(unittest.TestCase):
                 "project(TidyWorkflow NONE)\n"
                 f'set(PROJECT_SOURCE_DIR "{self.source_dir.as_posix()}")\n'
                 "set(IOJ_ENABLE_CLANG_TIDY TRUE)\n"
-                f"set(IOJ_CLANG_TIDY_USE_DLL {'ON' if use_dll else 'OFF'})\n"
+                "enable_testing()\n"
                 "set(IOJ_IS_CLANG_CL TRUE)\n"
                 f'set(Python3_EXECUTABLE "{Path(sys.executable).as_posix()}")\n'
                 'set(IOJ_CLANG_TIDY_EXECUTABLE "${CMAKE_COMMAND}")\n'
@@ -193,23 +222,13 @@ class NativeWorkflowTests(unittest.TestCase):
                 "endfunction()\n"
                 "function(execute_process)\n"
                 '  cmake_parse_arguments(query "" "OUTPUT_VARIABLE;RESULT_VARIABLE" "" ${ARGN})\n'
-                '  set(${query_OUTPUT_VARIABLE} "Enabled checks:\\n    modernize-use-nullptr\\n" PARENT_SCOPE)\n'
+                '  set(${query_OUTPUT_VARIABLE} "Enabled checks:\\n    modernize-use-nullptr\\n'
+                + ('    ioj-loop-condition-call\\n' if has_ioj else '')
+                + '" PARENT_SCOPE)\n'
                 '  set(${query_RESULT_VARIABLE} 0 PARENT_SCOPE)\n'
                 "endfunction()\n"
                 "function(add_subdirectory directory)\n"
-                '  if(NOT IOJ_CLANG_TIDY_USE_DLL)\n'
-                '    message(FATAL_ERROR "Static tidy workflow tried to build a plugin")\n'
-                '  endif()\n'
-                '  if(NOT directory STREQUAL "plugin")\n'
-                '    message(FATAL_ERROR "Unexpected subdirectory: ${directory}")\n'
-                "  endif()\n"
-                '  set(plugin "${CMAKE_BINARY_DIR}/plugin with spaces.dll")\n'
-                '  add_custom_command(OUTPUT "${plugin}"\n'
-                '    COMMAND "${CMAKE_COMMAND}" -E touch "${plugin}" VERBATIM)\n'
-                '  add_custom_target(build-plugin DEPENDS "${plugin}")\n'
-                "  add_library(ioj-tidy-module MODULE IMPORTED GLOBAL)\n"
-                '  set_target_properties(ioj-tidy-module PROPERTIES IMPORTED_LOCATION "${plugin}")\n'
-                "  add_dependencies(ioj-tidy-module build-plugin)\n"
+                '  message(FATAL_ERROR "Tidy workflow tried to build an extra target: ${directory}")\n'
                 "endfunction()\n"
                 "function(sandbox_jobserver_command output)\n"
                 '  set(${output} "${Python3_EXECUTABLE}" '
@@ -232,8 +251,11 @@ class NativeWorkflowTests(unittest.TestCase):
                 encoding="utf-8",
             )
             configured = self.run_cmake("-S", str(fixture), "-B", str(build), "-G", "Ninja")
-            if not use_dll:
-                self.assertIn("standard checks only", configured)
+            self.assertIn("built-in IOJ checks" if has_ioj else "standard checks only", configured)
+            registered_tests = (build / "CTestTestfile.cmake").read_text()
+            self.assertEqual("ClangTidy.LoopConditionCall" in registered_tests, has_ioj)
+            if has_ioj:
+                self.assertIn("tools/llvm/clang_tidy/tests/test_loop_condition_call.py", registered_tests)
             targets = [
                 target
                 for preset in self.presets["buildPresets"]
@@ -248,7 +270,7 @@ class NativeWorkflowTests(unittest.TestCase):
                 with self.subTest(target=target):
                     self.assertEqual(
                         dependencies,
-                        ({"ioj-tidy-module"} if use_dll else set()) | (prerequisites if target in ("native-clang-tidy", "native-clang-tidy-lispb") else set()),
+                        prerequisites if target in ("native-clang-tidy", "native-clang-tidy-lispb") else set(),
                     )
 
             outputs = [build / f"{name}.stamp" for name in prerequisites]
@@ -271,10 +293,8 @@ class NativeWorkflowTests(unittest.TestCase):
                 args = json.loads((build / f"{name}.json").read_text(encoding="utf-8"))
                 self.assertEqual(Path(args[args.index("-CompilationDatabase") + 1]), build)
                 self.assertEqual(args[args.index("-Jobs") + 1], "0")
-                if use_dll:
-                    self.assertEqual(Path(args[args.index("-Plugin") + 1]), build / "plugin with spaces.dll")
-                else:
-                    self.assertNotIn("-Plugin", args)
+                self.assertNotIn("-Plugin", args)
+                self.assertNotIn("-load", args)
                 self.assertEqual(
                     Path(args[args.index("-File") + 1]),
                     self.source_dir / "cmake/clang_tidy/run_clang_tidy.ps1",
@@ -490,8 +510,14 @@ cmake_language(DEFER CALL check_simulation_policy)
             cache = (build_directory / "CMakeCache.txt").read_text(encoding="utf-8")
             self.assertIn("IOJ_WITH_UNREAL:BOOL=OFF", cache)
             compiler = re.search(r"^CMAKE_CXX_COMPILER:[^=]+=(.+)$", cache, re.MULTILINE)
-            self.assertIsNotNone(compiler)
-            self.assertEqual(Path(compiler[1]), Path(self.llvm_root) / "bin/clang-cl.exe")
+            assert compiler is not None
+            expected_compiler = (Path(self.llvm_root) / "bin/clang-cl.exe" if self.llvm_root
+                                 else Path(shutil.which("clang-cl") or "clang-cl"))
+            self.assertEqual(Path(compiler[1]), expected_compiler)
+            if self.llvm_root:
+                archiver = re.search(r"^CMAKE_AR:[^=]+=(.+)$", cache, re.MULTILINE)
+                assert archiver is not None
+                self.assertEqual(Path(archiver[1]), Path(self.llvm_root) / "bin/llvm-lib.exe")
             self.assertNotIn("LLVM_DIR:", cache)
             self.assertNotIn("Clang_DIR:", cache)
 

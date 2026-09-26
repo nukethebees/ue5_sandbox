@@ -1,8 +1,8 @@
 # Included by LLVM after clangTidy and the clang-tidy executable exist.
 add_library(ioj-tidy-checks OBJECT
-  ../plugin/IojTidyModule.cpp
-  ../plugin/LoopConditionCallCheck.cpp
-  ../plugin/LoopConditionCallCheck.hpp)
+  lib/IojTidyModule.cpp
+  lib/LoopConditionCallCheck.cpp
+  lib/LoopConditionCallCheck.hpp)
 target_compile_features(ioj-tidy-checks PRIVATE cxx_std_23)
 llvm_update_compile_flags(ioj-tidy-checks)
 target_include_directories(ioj-tidy-checks PRIVATE
