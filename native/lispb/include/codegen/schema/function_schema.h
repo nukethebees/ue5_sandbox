@@ -23,6 +23,8 @@ struct FunctionSchema {
     bool definition_in_source{false};
     std::optional<std::string> template_parameters;
     std::optional<std::string> requires_clause;
+    bool is_constexpr{false};
+    bool is_nodiscard{false};
 };
 
 } // namespace codegen

@@ -1,5 +1,31 @@
 # Lispb architecture
 
+## Ordinary value records
+
+Record members distinguish an omitted initializer from `:initializer ""` (C++ `{}`) and
+`:initializer "3.f"` (C++ `{3.f}`). The string is the brace initializer's expression list;
+it cannot contain statements or preprocessor directives. Initialization is retained in the
+shared schema, resolved record members, and editable source, but does not affect layout analysis.
+Record members retain their authored order and remain public aggregate fields.
+
+`:comparison equality` and `:comparison three-way` opt into a defaulted const member operator.
+`:comparison-noexcept true` preserves an explicitly noexcept declaration. Nothing is synthesized
+when the comparison property is absent.
+
+Records reuse typed `function` forms, including `:const`, `:noexcept`, `:constexpr`, and
+`:nodiscard`. A body emits a member definition; an absent body emits a declaration implemented
+in handwritten C++. Record methods do not support constructors, access control, templates, or
+generated source definitions. Typed signatures participate in shared dependency and rename/move
+handling. As with SoA functions, identifiers inside C++ expressions and bodies are authored text.
+
+The simulation schema owns aggregate data, enums, and ordinary scalar aliases. Strong wrappers
+such as `HealthIndex` and `EntityOwnerId` remain C++ declarations because their constructors,
+private representation or nested constants are outside this record model; external integer
+registrations expose their domains and invalid sentinels. Telemetry `std::array` aliases also
+remain handwritten: record fixed counts generate member arrays, while homogeneous layouts emit
+different public C++ types. Neither faithfully declares these aliases. Their physical facts can
+still be supplied through the planner's existing ABI profile/probe system.
+
 Lispb parses constrained declarative input and emits checked source assets; it is not a general Lisp
 runtime or an escape hatch for arbitrary C++. Each DSL owns its grammar, semantic validation, and
 stable output contract while sharing the parser and generation workflow.

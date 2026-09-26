@@ -480,6 +480,17 @@ return result;}cpp#)
 (module mixed_fixture
   :header "Mixed.h"
   :namespace codegen_compile_fixture::mixed
+  (record Uninitialized (member value int))
+  (record ValueDefaults :comparison equality
+    (member uninitialized int)
+    (member zero int :initializer "")
+    (member seven int :initializer "7")
+    (function valid bool :const true :noexcept true :nodiscard true))
+  (record SpanValue :comparison three-way :comparison-noexcept true
+    (member offset std::int32_t :initializer "0")
+    (member count std::int32_t :initializer "0")
+    (function end std::int32_t :const true :noexcept true :constexpr true :nodiscard true
+      :body ("return offset + count;")))
   (record Packet (member payload Payload))
   (tagged-union Event :discriminant Kind
     (alternative data Packet :tag Data))

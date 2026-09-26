@@ -16,6 +16,10 @@
 
 namespace codegen_compile_fixture {
 
+auto mixed::ValueDefaults::valid() const noexcept -> bool {
+    return zero == 0 && seven == 7;
+}
+
 auto FRows::manual_value() const -> int32 {
     return 77;
 }
@@ -25,6 +29,21 @@ auto FRows::manual_value() const -> int32 {
 namespace {
 
 using namespace codegen_compile_fixture;
+
+TEST(GeneratedRecords, PreserveAggregateDefaultsComparisonsAndMemberApi) {
+    static_assert(std::is_aggregate_v<mixed::ValueDefaults>);
+    static_assert(std::is_standard_layout_v<mixed::ValueDefaults>);
+    static_assert(std::is_trivially_copyable_v<mixed::ValueDefaults>);
+    constexpr mixed::SpanValue span{.offset = 4, .count = 3};
+    static_assert(span.end() == 7);
+    static_assert(noexcept(span.end()));
+    static_assert(span > mixed::SpanValue{});
+    mixed::ValueDefaults value{.uninitialized = 1};
+    EXPECT_TRUE(value.valid());
+    EXPECT_EQ(value, (mixed::ValueDefaults{1, 0, 7}));
+    static_assert(std::is_trivially_default_constructible_v<mixed::Uninitialized>);
+    static_assert(!std::is_trivially_default_constructible_v<mixed::ValueDefaults>);
+}
 
 TEST(GeneratedScalarAlias, UsesConfiguredCppType) {
     static_assert(std::is_same_v<Health, std::uint16_t>);

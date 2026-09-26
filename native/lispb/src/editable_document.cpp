@@ -864,6 +864,12 @@ void render_function(std::ostringstream& output,
     if (function.is_static) {
         output << "\n" << indent << "  :static true";
     }
+    if (function.is_constexpr) {
+        output << "\n" << indent << "  :constexpr true";
+    }
+    if (function.is_nodiscard) {
+        output << "\n" << indent << "  :nodiscard true";
+    }
     if (function.is_inline) {
         output << "\n" << indent << "  :inline true";
     }
@@ -1810,6 +1816,9 @@ auto render_aggregate_child(std::string_view const head, Child const& child) -> 
         output << " :count " << *child.count;
     }
     if constexpr (std::is_same_v<Child, codegen::RecordMemberSchema>) {
+        if (child.initializer) {
+            output << " :initializer " << quote(*child.initializer);
+        }
         if (child.relationship.has_value()) {
             output << "\n      " << render_semantic_relation(*child.relationship);
         }
@@ -1824,8 +1833,20 @@ auto render_record(codegen::RecordSchema const& schema) -> std::string {
     if (schema.export_specifier.has_value()) {
         output << "\n    :export-specifier " << *schema.export_specifier;
     }
+    if (schema.comparison != codegen::RecordComparison::none) {
+        output << "\n    :comparison "
+               << (schema.comparison == codegen::RecordComparison::equality ? "equality"
+                                                                            : "three-way");
+    }
+    if (schema.comparison_noexcept) {
+        output << "\n    :comparison-noexcept true";
+    }
     for (auto const& member : schema.members) {
         output << "\n    " << render_aggregate_child("member", member);
+    }
+    for (auto const& function : schema.functions) {
+        output << '\n';
+        render_function(output, function, "    ");
     }
     output << ')';
     return output.str();
@@ -1876,7 +1897,9 @@ auto try_render_source_preserved_aggregate(std::string_view const declaration_he
                                            std::string const& name,
                                            std::vector<Child> const& children,
                                            std::optional<std::string> const& export_specifier,
-                                           std::string_view const original)
+                                           std::string_view const original,
+                                           std::span<SourceProperty const> extra_properties = {},
+                                           bool const retain_functions = false)
     -> std::optional<std::string> {
     auto parsed{parse_owned_source_declaration(original, declaration_head, name)};
     if (!parsed.has_value()) {
@@ -1899,6 +1922,9 @@ auto try_render_source_preserved_aggregate(std::string_view const declaration_he
     if (!patch_source_properties(*parsed, 1, properties, "    ", original, replacements)) {
         return std::nullopt;
     }
+    if (!patch_source_properties(*parsed, 1, extra_properties, "    ", original, replacements)) {
+        return std::nullopt;
+    }
 
     if (source_children.empty()) {
         return children.empty() ? apply_source_replacements(original, std::move(replacements))
@@ -1907,7 +1933,9 @@ auto try_render_source_preserved_aggregate(std::string_view const declaration_he
 
     auto const first_child_offset{source_children.front()->token.span.offset};
     for (auto const& child : parsed->children) {
-        if (child.token.span.offset > first_child_offset && child.head() != child_head) {
+        if (child.token.span.offset > first_child_offset && child.head() != child_head &&
+            !(retain_functions && child.head() == "function" &&
+              child.token.span.offset > source_children.back()->token.span.offset)) {
             return std::nullopt;
         }
     }
@@ -1965,6 +1993,14 @@ auto try_render_source_preserved_aggregate(std::string_view const declaration_he
             if constexpr (!std::is_same_v<Child, codegen::RecordMemberSchema>) {
                 return true;
             } else {
+                if (!source_property_matches(source,
+                                             2,
+                                             "initializer",
+                                             child.initializer
+                                                 ? std::optional{quote(*child.initializer)}
+                                                 : std::nullopt)) {
+                    return false;
+                }
                 Form const* source_relation{};
                 for (auto const& nested : source.children) {
                     if (nested.head() != "relation") {
@@ -2022,6 +2058,17 @@ auto try_render_source_preserved_aggregate(std::string_view const declaration_he
             return std::nullopt;
         }
         if constexpr (std::is_same_v<Child, codegen::RecordMemberSchema>) {
+            auto const initializer_properties{std::array<SourceProperty, 1>{std::pair{
+                "initializer",
+                child.initializer ? std::optional{quote(*child.initializer)} : std::nullopt}}};
+            if (!patch_source_properties(*found->second.form,
+                                         2,
+                                         initializer_properties,
+                                         "      ",
+                                         original,
+                                         child_replacements)) {
+                return std::nullopt;
+            }
             Form const* source_relation{};
             for (auto const& nested : found->second.form->children) {
                 if (nested.head() != "relation") {
@@ -2057,8 +2104,52 @@ auto try_render_source_preserved_aggregate(std::string_view const declaration_he
 auto try_render_source_preserved_record(codegen::RecordSchema const& schema,
                                         std::string_view const original)
     -> std::optional<std::string> {
-    return try_render_source_preserved_aggregate(
-        "record", "member", schema.name, schema.members, schema.export_specifier, original);
+    auto const parsed{parse_owned_source_declaration(original, "record", schema.name)};
+    if (!parsed) {
+        return std::nullopt;
+    }
+    std::size_t function_index{};
+    std::vector<SourceReplacement> function_replacements;
+    for (auto const& child : parsed->children) {
+        if (child.head() != "function") {
+            continue;
+        }
+        if (function_index >= schema.functions.size()) {
+            return std::nullopt;
+        }
+        std::ostringstream rendered;
+        render_function(rendered, schema.functions[function_index++], "");
+        if (!source_form_matches_rendered(child, rendered.str())) {
+            function_replacements.push_back({.begin = child.token.span.offset,
+                                             .end = child.closing.span.offset + 1,
+                                             .text = rendered.str()});
+        }
+    }
+    if (function_index != schema.functions.size()) {
+        return std::nullopt;
+    }
+    auto const patched{apply_source_replacements(original, std::move(function_replacements))};
+    if (!patched) {
+        return std::nullopt;
+    }
+    auto const properties{std::array<SourceProperty, 2>{
+        std::pair{"comparison",
+                  schema.comparison == codegen::RecordComparison::none
+                      ? std::nullopt
+                      : std::optional<std::string>{schema.comparison ==
+                                                           codegen::RecordComparison::equality
+                                                       ? "equality"
+                                                       : "three-way"}},
+        std::pair{"comparison-noexcept",
+                  schema.comparison_noexcept ? std::optional<std::string>{"true"} : std::nullopt}}};
+    return try_render_source_preserved_aggregate("record",
+                                                 "member",
+                                                 schema.name,
+                                                 schema.members,
+                                                 schema.export_specifier,
+                                                 *patched,
+                                                 properties,
+                                                 true);
 }
 
 auto try_render_source_preserved_union(codegen::UnionSchema const& schema,
@@ -3646,9 +3737,13 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
         auto const dependencies{function.dependencies.empty()
                                     ? std::nullopt
                                     : std::optional{render_quoted_values(function.dependencies)}};
-        return std::array<SourceProperty, 10>{
+        return std::array<SourceProperty, 12>{
             std::pair{"body", body},
             std::pair{"dependencies", dependencies},
+            std::pair{"constexpr",
+                      function.is_constexpr ? std::optional<std::string>{"true"} : std::nullopt},
+            std::pair{"nodiscard",
+                      function.is_nodiscard ? std::optional<std::string>{"true"} : std::nullopt},
             std::pair{"trailing-return-type",
                       function.trailing_return_type.has_value()
                           ? std::optional{render_type_ref(*function.trailing_return_type)}

@@ -462,7 +462,7 @@ auto fixed_container_set_nodes(SoaSchema const& schema, TypeRegistry const& type
     } else {
         for (auto const& function : schema.mutable_view_functions) {
             if (function.name == "set") {
-                setters.push_back(soa_function_spec(function, types));
+                setters.push_back(schema_function_spec(function, types));
             }
         }
     }

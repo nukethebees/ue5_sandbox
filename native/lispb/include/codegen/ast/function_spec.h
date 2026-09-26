@@ -29,6 +29,7 @@ struct FunctionSpec {
     std::vector<std::pair<std::string, std::string>> member_initializers;
     // Dependencies in unstructured declaration syntax, such as requires clauses.
     std::vector<TypeDependency> dependencies;
+    bool is_nodiscard{false};
 };
 
 } // namespace codegen

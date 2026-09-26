@@ -436,6 +436,15 @@ class TypeGraphBuilder {
                                     registration("validation dependency", name);
                                 }
                             }
+                            if (auto const* record{
+                                    std::get_if<codegen::RecordSchema>(&declaration)}) {
+                                for (auto const& function : record->functions) {
+                                    for (auto const& name : function.dependencies) {
+                                        registration("function " + function.name + " dependency",
+                                                     name);
+                                    }
+                                }
+                            }
                             if (auto const* soa{std::get_if<codegen::SoaSchema>(&declaration)}) {
                                 for (auto const& function : soa->functions) {
                                     for (auto const& name : function.dependencies) {
@@ -696,7 +705,8 @@ class TypeGraphBuilder {
                             {.name = member.name,
                              .semantic_type = resolve_ref(member.type, module_name),
                              .count = member.count,
-                             .relationship = std::move(relationship)});
+                             .relationship = std::move(relationship),
+                             .initializer = member.initializer});
                     }
                     return type;
                 } else if constexpr (std::is_same_v<T, codegen::UnionSchema>) {
@@ -1078,6 +1088,16 @@ class TypeGraphBuilder {
                     }
                 },
                 node.definition);
+        }
+        for (auto const& use : graph_.type_uses_) {
+            if (!use.declaration || !use.role.starts_with("function ")) {
+                continue;
+            }
+            auto const owner{graph_.find(*use.declaration)};
+            if (owner &&
+                std::holds_alternative<RecordType>(graph_.types_[owner->value].definition)) {
+                add_dependency(graph_.types_[owner->value], use.target.type);
+            }
         }
         for (std::uint32_t index{}; index < graph_.types_.size(); ++index) {
             auto const user{TypeId{index}};

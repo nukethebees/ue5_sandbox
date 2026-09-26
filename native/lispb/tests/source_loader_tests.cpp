@@ -58,6 +58,57 @@ auto schema_at(Manifest const& manifest,
     return std::get<Schema>(module.declarations.at(declaration_index));
 }
 
+TEST(SourceLoader, RecordValueSemanticsSurviveParsingGraphAndLowering) {
+    TemporaryManifest files;
+    files.write_root(R"((module records :header "Records.h" :backend standard-library
+      (record Value :comparison three-way :comparison-noexcept true
+        (member absent int)
+        (member zero int :initializer "")
+        (member explicit_value int :initializer "7")
+        (function read int :const true :noexcept true :constexpr true :nodiscard true
+          :body ("return explicit_value;"))
+        (function validate bool :const true :noexcept true))))");
+    auto const manifest{files.load()};
+    auto const& schema{schema_at<RecordSchema>(manifest, 0)};
+    EXPECT_FALSE(schema.members[0].initializer.has_value());
+    EXPECT_EQ(schema.members[1].initializer, "");
+    EXPECT_EQ(schema.members[2].initializer, "7");
+    EXPECT_EQ(schema.comparison, RecordComparison::three_way);
+    ASSERT_EQ(schema.functions.size(), 2U);
+    EXPECT_TRUE(schema.functions[0].is_constexpr);
+    auto const graph{lispb::schema::resolve_type_graph(manifest)};
+    auto const& record{std::get<lispb::schema::RecordType>(
+        graph.type(*graph.find_declared("records", "Value")).definition)};
+    EXPECT_FALSE(record.members[0].initializer.has_value());
+    EXPECT_EQ(record.members[1].initializer, "");
+    EXPECT_EQ(record.members[2].initializer, "7");
+    auto const output{render_modules(lower_modules(manifest)).front().content};
+    for (auto const expected : {"int absent;",
+                                "int zero{};",
+                                "int explicit_value{7};",
+                                "auto operator<=>(Value const&) const noexcept = default;",
+                                "[[nodiscard]] constexpr int read() const noexcept",
+                                "return explicit_value;",
+                                "bool validate() const noexcept;",
+                                "#include <compare>"}) {
+        EXPECT_NE(output.find(expected), std::string::npos) << expected;
+    }
+}
+
+TEST(SourceLoader, RecordRejectsStatementInitializersAndInvalidMethods) {
+    TemporaryManifest files;
+    for (auto const declaration :
+         {R"((record Value (member x int :initializer "0; int injected")))",
+          R"((record Value :comparison-noexcept true (member x int)))",
+          R"((record Value (member x int) (function x int)))",
+          R"((record Value (function read int :static true :const true)))",
+          R"((record Value (function read int :constexpr true)))",
+          R"((record Value (function read int) (function read int)))"}) {
+        files.write_root(std::string{"(module records :header \"Records.h\" "} + declaration + ")");
+        EXPECT_THROW(static_cast<void>(lower_modules(files.load())), std::exception) << declaration;
+    }
+}
+
 TEST(SourceLoader, SoaStoragePolicySelectsRepresentations) {
     TemporaryManifest files;
     files.write_root(R"((module rows :header "Rows.h" :backend standard-library

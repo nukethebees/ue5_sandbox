@@ -120,4 +120,38 @@ auto column_apply_array_pairs_function(std::vector<std::string> const& columns) 
     });
 }
 
+auto schema_function_spec(FunctionSchema const& schema, TypeRegistry const& types) -> FunctionSpec {
+    std::vector<FunctionParameter> parameters;
+    for (auto const& parameter : schema.parameters) {
+        auto resolved{resolve_type(parameter.type, types)};
+        if (parameter.default_value) {
+            parameters.emplace_back(std::move(resolved), parameter.name, *parameter.default_value);
+        } else {
+            parameters.emplace_back(std::move(resolved), parameter.name);
+        }
+    }
+    std::vector<TypeDependency> dependencies;
+    for (auto const& key : schema.dependencies) {
+        dependencies.push_back(dependency_for_key(key, types));
+    }
+    return FunctionSpec{
+        .name = schema.name,
+        .return_type = resolve_type(schema.return_type, types),
+        .parameters = std::move(parameters),
+        .body = {raw(join_lines(schema.body_lines), std::move(dependencies))},
+        .qualifiers = {.trailing_return_type = schema.trailing_return_type
+                                                 ? std::optional<CppType>{resolve_type(
+                                                       *schema.trailing_return_type, types)}
+                                                 : std::nullopt,
+                       .is_const = schema.is_const,
+                       .is_noexcept = schema.is_noexcept},
+        .is_static = schema.is_static,
+        .is_constexpr = schema.is_constexpr,
+        .is_inline = schema.is_inline,
+        .template_parameters = schema.template_parameters,
+        .requires_clause = schema.requires_clause,
+        .is_nodiscard = schema.is_nodiscard,
+    };
+}
+
 } // namespace codegen::detail

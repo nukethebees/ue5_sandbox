@@ -8,6 +8,8 @@
 
 namespace codegen::detail {
 
+auto schema_function_spec(FunctionSchema const& schema, TypeRegistry const& types) -> FunctionSpec;
+
 auto join(std::vector<std::string> const& values, std::string_view separator) -> std::string;
 auto join_lines(std::vector<std::string> const& values) -> std::string;
 auto source_include(ModuleSettings const& settings) -> std::string;

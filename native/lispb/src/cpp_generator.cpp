@@ -156,8 +156,8 @@ auto declaration_emission_order(NormalModuleSchema const& module,
     return order;
 }
 
-auto resolve_soa_cpp_references(Manifest const& manifest, lispb::schema::TypeGraph const& graph)
-    -> Manifest {
+auto resolve_declared_cpp_references(Manifest const& manifest,
+                                     lispb::schema::TypeGraph const& graph) -> Manifest {
     auto resolved{manifest};
     std::size_t next{};
     for (auto& variant : resolved.modules) {
@@ -183,13 +183,17 @@ auto resolve_soa_cpp_references(Manifest const& manifest, lispb::schema::TypeGra
                     return;
                 }
                 auto const& node{graph.type(*target)};
-                if (!std::holds_alternative<lispb::schema::SoaType>(node.definition)) {
+                if (node.identity.origin != lispb::schema::TypeOrigin::declaration) {
                     return;
                 }
                 auto const logical{node.identity.namespace_name.empty()
                                        ? node.identity.name
                                        : node.identity.namespace_name + "::" + node.identity.name};
-                if (node.cpp_spelling == logical) {
+                auto const cross_module{node.identity.module_name != module->settings.name};
+                auto const renamed_soa{
+                    std::holds_alternative<lispb::schema::SoaType>(node.definition) &&
+                    node.cpp_spelling != logical};
+                if (!renamed_soa && (!cross_module || reference.name.starts_with('@'))) {
                     return;
                 }
                 if (node.cpp_spelling.empty()) {
@@ -197,12 +201,28 @@ auto resolve_soa_cpp_references(Manifest const& manifest, lispb::schema::TypeGra
                                                 "' has no C++ owner for " + role};
                 }
                 auto type{resolve_type(reference, manifest.types)};
-                auto canonical{reference};
-                canonical.name = node.cpp_spelling;
-                type.spelling = resolve_type(canonical, {}).spelling;
+                if (renamed_soa) {
+                    auto canonical{reference};
+                    canonical.name = node.cpp_spelling;
+                    type.spelling = resolve_type(canonical, {}).spelling;
+                }
+                if (cross_module && !reference.name.starts_with('@')) {
+                    for (auto const& target_module : manifest.modules) {
+                        std::visit(
+                            [&](auto const& target_schema) {
+                                if (target_schema.settings.name == node.identity.module_name) {
+                                    type.dependencies.push_back(
+                                        {node.cpp_spelling,
+                                         detail::source_include(target_schema.settings),
+                                         {}});
+                                }
+                            },
+                            target_module);
+                    }
+                }
                 std::string key;
                 do {
-                    key = "resolved_soa_" + std::to_string(next++);
+                    key = "resolved_declaration_" + std::to_string(next++);
                 } while (resolved.types.contains(key));
                 resolved.types.emplace(key, RegisteredTypeSchema{type});
                 reference = TypeRef{"@" + key};
@@ -309,7 +329,7 @@ auto lower_scalar(IntegerScalarSchema const& scalar, TypeRegistry const& types)
 
 auto lower_modules(Manifest const& input) -> std::vector<Module> {
     auto const type_graph{lispb::schema::resolve_type_graph(input)};
-    auto const manifest{resolve_soa_cpp_references(input, type_graph)};
+    auto const manifest{resolve_declared_cpp_references(input, type_graph)};
     std::vector<Module> result;
     for (auto const& schema : manifest.modules) {
         std::visit(

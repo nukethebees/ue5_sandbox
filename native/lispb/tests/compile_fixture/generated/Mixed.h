@@ -3,9 +3,36 @@
 
 #pragma once
 
+#include <compare>
 #include <cstdint>
 
 namespace codegen_compile_fixture::mixed {
+struct Uninitialized {
+    int value;
+};
+
+struct ValueDefaults {
+    int uninitialized;
+
+    int zero{};
+
+    int seven{7};
+
+    bool operator==(ValueDefaults const&) const = default;
+
+    [[nodiscard]] bool valid() const noexcept;
+};
+
+struct SpanValue {
+    std::int32_t offset{0};
+
+    std::int32_t count{0};
+
+    auto operator<=>(SpanValue const&) const noexcept = default;
+
+    [[nodiscard]] constexpr std::int32_t end() const noexcept { return offset + count; }
+};
+
 struct Position {
     float x;
 

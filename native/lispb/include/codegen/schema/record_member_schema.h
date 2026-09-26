@@ -14,6 +14,8 @@ struct RecordMemberSchema {
     TypeRef type;
     std::optional<std::uint64_t> count;
     std::optional<SemanticRelationSchema> relationship;
+    // Absent means no initializer; an empty string means value initialization.
+    std::optional<std::string> initializer{};
 };
 
 } // namespace codegen

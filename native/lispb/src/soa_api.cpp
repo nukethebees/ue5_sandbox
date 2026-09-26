@@ -29,37 +29,6 @@ auto uses_native_vector_view(SoaSchema const& schema, TypeRegistry const& types)
     }
     return true;
 }
-auto soa_function_spec(FunctionSchema const& schema, TypeRegistry const& types) -> FunctionSpec {
-    std::vector<FunctionParameter> parameters;
-    for (auto const& parameter : schema.parameters) {
-        auto resolved{resolve_type(parameter.type, types)};
-        if (parameter.default_value) {
-            parameters.emplace_back(std::move(resolved), parameter.name, *parameter.default_value);
-        } else {
-            parameters.emplace_back(std::move(resolved), parameter.name);
-        }
-    }
-    std::vector<TypeDependency> dependencies;
-    for (auto const& key : schema.dependencies) {
-        dependencies.push_back(dependency_for_key(key, types));
-    }
-    return FunctionSpec{
-        .name = schema.name,
-        .return_type = resolve_type(schema.return_type, types),
-        .parameters = std::move(parameters),
-        .body = {raw(join_lines(schema.body_lines), std::move(dependencies))},
-        .qualifiers = {.trailing_return_type = schema.trailing_return_type
-                                                 ? std::optional<CppType>{resolve_type(
-                                                       *schema.trailing_return_type, types)}
-                                                 : std::nullopt,
-                       .is_const = schema.is_const,
-                       .is_noexcept = schema.is_noexcept},
-        .is_static = schema.is_static,
-        .is_inline = schema.is_inline,
-        .template_parameters = schema.template_parameters,
-        .requires_clause = schema.requires_clause,
-    };
-}
 
 auto logical_column_access(SoaSchema const& schema,
                            std::span<std::string const> const path,
@@ -160,7 +129,7 @@ auto lower_soa_api(SoaSchema const& schema,
                 line = expand_columns(
                     std::move(line), schema, representation, receiver, schemas, types);
             }
-            auto spec{soa_function_spec(function, types)};
+            auto spec{schema_function_spec(function, types)};
             if (backend == SoaBackend::standard_library) {
                 auto normalize = [](CppType& type) {
                     auto const physical{classify_physical_type_use(type.spelling)};

@@ -29,5 +29,4 @@ auto lower_soa_api(SoaSchema const& schema,
                    std::map<std::string, SoaSchema const*> const* schemas = nullptr,
                    SoaBackend backend = SoaBackend::unreal,
                    std::string_view equivalent_constructor = {}) -> LoweredSoa;
-auto soa_function_spec(FunctionSchema const& schema, TypeRegistry const& types) -> FunctionSpec;
 }

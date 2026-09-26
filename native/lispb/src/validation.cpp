@@ -1022,6 +1022,57 @@ void validate_record(RecordSchema const& record, TypeRegistry const& types) {
         member_names.push_back(member.name);
     }
     require_unique_names(member_names, "Record '" + record.name + "' members");
+    if (record.comparison_noexcept && record.comparison == RecordComparison::none) {
+        throw std::invalid_argument{"Record comparison-noexcept requires a comparison"};
+    }
+    for (auto const& member : record.members) {
+        if (member.initializer &&
+            member.initializer->find_first_of(";\r\n#") != std::string::npos) {
+            throw std::invalid_argument{
+                "Record initializer must be a brace initializer expression list"};
+        }
+    }
+    std::set<std::string> signatures;
+    for (auto const& function : record.functions) {
+        auto const context{"Record '" + record.name + "' function '" + function.name + "'"};
+        if (function.name != "operator[]") {
+            require_identifier(function.name, context);
+        }
+        if (function.name == record.name ||
+            std::ranges::find(member_names, function.name) != member_names.end()) {
+            throw std::invalid_argument{context + " collides with a member or owning type"};
+        }
+        if (function.definition_in_source || function.template_parameters ||
+            function.requires_clause) {
+            throw std::invalid_argument{
+                context + " requires an ordinary header method or bodyless declaration"};
+        }
+        if (function.is_static && function.is_const) {
+            throw std::invalid_argument{context + " must not be both static and const"};
+        }
+        if (function.is_constexpr && function.body_lines.empty()) {
+            throw std::invalid_argument{context + " constexpr method requires a header body"};
+        }
+        validate_type(function.return_type, types, context + " return");
+        if (function.trailing_return_type) {
+            if (function.return_type.name != "auto" || !function.return_type.suffix.empty() ||
+                function.return_type.nested) {
+                throw std::invalid_argument{context +
+                                            " trailing return type requires an auto return"};
+            }
+            validate_type(*function.trailing_return_type, types, context + " trailing return");
+        }
+        if (!signatures
+                 .insert(signature(function.name,
+                                   parameter_type_names(function.parameters, types, context),
+                                   function.is_const))
+                 .second) {
+            throw std::invalid_argument{"Duplicate " + context + " signature"};
+        }
+        for (auto const& dependency : function.dependencies) {
+            validate_dependency(dependency, types, context);
+        }
+    }
 }
 
 void validate_union(UnionSchema const& schema, TypeRegistry const& types) {

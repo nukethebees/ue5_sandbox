@@ -55,6 +55,15 @@ void visit_declaration_type_references(Declaration& declaration, Visitor const& 
                     visit("member " + member.name, member.type);
                     relationship("member " + member.name, member.relationship);
                 }
+                if constexpr (std::is_same_v<T, RecordSchema>) {
+                    for (std::size_t index{}; index < schema.functions.size(); ++index) {
+                        auto& method{schema.functions[index]};
+                        auto const role{"function " + method.name + " [" + std::to_string(index) +
+                                        "]"};
+                        function(role, method);
+                        optional(role + " trailing return", method.trailing_return_type);
+                    }
+                }
                 if constexpr (std::is_same_v<T, SoaSchema>) {
                     optional("equivalent type", schema.equivalent_type);
                     optional("array allocator", schema.array_allocator);

@@ -122,6 +122,9 @@ auto render_signature(Function const& function) -> std::string {
     if (spec.is_inline && function.owner.has_value() && function.is_header) {
         signature = "inline " + signature;
     }
+    if (spec.is_nodiscard) {
+        signature = "[[nodiscard]] " + signature;
+    }
     if (spec.export_specifier.has_value() && (function.declaration || function.is_header)) {
         signature += *spec.export_specifier + " ";
     }

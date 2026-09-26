@@ -6009,6 +6009,82 @@ TEST(EditableSchemaDocument, CreatesEditsDeletesAndReloadsOptionalPresenceBitRep
     EXPECT_EQ(optional_presence_bit_type(reloaded, *reloaded_declaration).encoded_bits, 3U);
 }
 
+TEST(EditableSchemaDocument, RecordValueSemanticsSurviveEditCopyMoveUndoAndReload) {
+    TemporarySchema files;
+    files.write_source("modules.lispb", R"((module values :header "Values.h"
+  (record Value
+    :comparison equality
+    ; Preserve initializer documentation.
+    (member absent int)
+    (member zero int :initializer "")
+    (member chosen int :initializer "7")
+    (function read int :const true :noexcept true :body ("return chosen;"))))
+(module moved :header "Moved.h"))");
+    auto document{files.load()};
+    auto const id{declaration_id(document, "values", "Value", "")};
+    auto changed{*document.record_schema(id)};
+    changed.members[2].initializer = "9";
+    ASSERT_TRUE(document.apply(ReplaceRecord{id, changed}).has_value());
+    auto const preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value());
+    EXPECT_NE(preview->front().updated.find("Preserve initializer documentation"),
+              std::string::npos);
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.record_schema(id)->members[2].initializer, "7");
+    ASSERT_TRUE(document.redo().value());
+    auto copied{*document.record_schema(id)};
+    copied.name = "Copy";
+    auto const copy_id{document.allocate_declaration_id()};
+    ASSERT_TRUE(document.apply(CreateRecord{copy_id, 0, copied, std::nullopt}).has_value());
+    ASSERT_TRUE(document.apply(RenameDeclaration{copy_id, "Renamed"}).has_value());
+    ASSERT_TRUE(document.apply(MoveDeclaration{copy_id, 1}).has_value());
+    auto const saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto const reloaded{files.load()};
+    for (auto const& [module, name] :
+         {std::pair{"values", "Value"}, std::pair{"moved", "Renamed"}}) {
+        auto const copy{declaration_id(reloaded, module, name, "")};
+        auto const& schema{*reloaded.record_schema(copy)};
+        EXPECT_FALSE(schema.members[0].initializer.has_value());
+        EXPECT_EQ(schema.members[1].initializer, "");
+        EXPECT_EQ(schema.members[2].initializer, "9");
+        EXPECT_EQ(schema.comparison, codegen::RecordComparison::equality);
+        ASSERT_EQ(schema.functions.size(), 1U);
+        EXPECT_EQ(schema.functions[0].body_lines.front(), "return chosen;");
+        EXPECT_TRUE(schema.functions[0].is_const);
+        EXPECT_TRUE(schema.functions[0].is_noexcept);
+    }
+}
+
+TEST(EditableSchemaDocument, RecordMethodSignaturesFollowTypeRenameAndMove) {
+    TemporarySchema files;
+    files.write_source("modules.lispb", R"((module api :header "Api.h" :namespace game
+      (record Result (member code int))
+      (record Reader
+        (function read Result :const true
+          (parameter other (type-ref Result :suffix " const&")))))
+    (module destination :header "Result.h" :namespace game))");
+    auto document{files.load()};
+    auto const result{declaration_id(document, "api", "Result", "game")};
+    auto const reader{declaration_id(document, "api", "Reader", "game")};
+    auto const result_type{*document.types().find_declared("api", "Result")};
+    auto const reader_type{*document.types().find_declared("api", "Reader")};
+    auto const dependencies{document.types().dependencies_of(reader_type)};
+    EXPECT_NE(std::ranges::find(dependencies, result_type), dependencies.end());
+    ASSERT_TRUE(document.apply(RenameDeclaration{result, "Outcome"}).has_value());
+    ASSERT_TRUE(document.apply(MoveDeclaration{result, 1}).has_value());
+    auto const& function{document.record_schema(reader)->functions.front()};
+    EXPECT_EQ(function.return_type.name, "game::Outcome");
+    EXPECT_EQ(function.parameters.front().type.name, "game::Outcome");
+    EXPECT_EQ(function.parameters.front().type.suffix, " const&");
+    ASSERT_TRUE(document.save().has_value());
+    auto const reloaded{files.load()};
+    EXPECT_EQ(reloaded.record_schema(declaration_id(reloaded, "api", "Reader", "game"))
+                  ->functions.front()
+                  .return_type.name,
+              "game::Outcome");
+}
+
 TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsRecords) {
     TemporarySchema files;
     auto document{files.load()};

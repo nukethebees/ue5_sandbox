@@ -67,6 +67,9 @@ auto resolve_type_use(TypeRef const& reference, TypeRegistry const& types) -> Re
         if (std::ranges::find(fixed_width_integers, reference.name) != fixed_width_integers.end()) {
             result.dependencies.push_back({reference.name, "cstdint", {}});
         }
+        if (reference.name == "std::size_t" || reference.name == "std::ptrdiff_t") {
+            result.dependencies.push_back({reference.name, "cstddef", {}});
+        }
     }
     auto const base{classify_physical_type_use(result.spelling)};
     if (reference.nested.has_value()) {

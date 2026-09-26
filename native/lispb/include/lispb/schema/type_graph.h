@@ -113,6 +113,7 @@ struct RecordMember {
     ResolvedTypeRef semantic_type;
     std::optional<std::uint64_t> count;
     std::optional<SemanticRelationship> relationship;
+    std::optional<std::string> initializer{};
 };
 
 struct RecordType {

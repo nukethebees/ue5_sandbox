@@ -207,6 +207,8 @@ auto parse_function(Form const& form) -> FunctionSchema {
                      "noexcept",
                      "static",
                      "inline",
+                     "constexpr",
+                     "nodiscard",
                      "definition-in-source",
                      "template-parameters",
                      "requires"},
@@ -243,6 +245,8 @@ auto parse_function(Form const& form) -> FunctionSchema {
         .definition_in_source = boolean_or(fields, "definition-in-source"),
         .template_parameters = optional_text(fields, "template-parameters"),
         .requires_clause = optional_text(fields, "requires"),
+        .is_constexpr = boolean_or(fields, "constexpr"),
+        .is_nodiscard = boolean_or(fields, "nodiscard"),
     };
 }
 
@@ -976,7 +980,7 @@ auto parse_setting(Form const& form) -> SettingSchema {
 
 auto parse_record_member(Form const& form) -> RecordMemberSchema {
     Fields const fields{form, "member", 2};
-    fields.validate({"count"}, {"relation"});
+    fields.validate({"count", "initializer"}, {"relation"});
     auto const* count{fields.optional("count")};
     std::optional<SemanticRelationSchema> relationship;
     for (auto const* declaration : fields.declarations()) {
@@ -1000,21 +1004,41 @@ auto parse_record_member(Form const& form) -> RecordMemberSchema {
                    ? std::nullopt
                    : std::optional<std::uint64_t>{unsigned_integer(*count, "record member count")},
         .relationship = std::move(relationship),
+        .initializer = optional_text(fields, "initializer"),
     };
 }
 
 auto parse_record(Form const& form) -> RecordSchema {
     Fields const fields{form, "record", 1};
-    fields.validate({"export-specifier"}, {"member"});
+    fields.validate({"export-specifier", "comparison", "comparison-noexcept"},
+                    {"member", "function"});
+    auto comparison{RecordComparison::none};
+    if (auto const value{optional_text(fields, "comparison")}) {
+        if (*value == "equality") {
+            comparison = RecordComparison::equality;
+        } else if (*value == "three-way") {
+            comparison = RecordComparison::three_way;
+        } else {
+            fail(fields.required("comparison").token.span, "expected equality or three-way");
+        }
+    }
+    std::vector<FunctionSchema> functions;
     std::vector<RecordMemberSchema> members;
     members.reserve(fields.declarations().size());
     for (auto const* declaration : fields.declarations()) {
-        members.push_back(parse_record_member(*declaration));
+        if (declaration->head() == "function") {
+            functions.push_back(parse_function(*declaration));
+        } else {
+            members.push_back(parse_record_member(*declaration));
+        }
     }
     return RecordSchema{
         .name = text(fields.positional(0), "record name"),
         .members = std::move(members),
         .export_specifier = optional_text(fields, "export-specifier"),
+        .comparison = comparison,
+        .comparison_noexcept = boolean_or(fields, "comparison-noexcept"),
+        .functions = std::move(functions),
     };
 }
 
