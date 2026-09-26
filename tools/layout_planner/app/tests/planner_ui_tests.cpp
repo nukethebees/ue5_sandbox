@@ -9,6 +9,14 @@
 namespace ioj::layout_planner {
 
 struct PlannerUiTestAccess {
+    static auto open_project(PlannerUi& ui, std::filesystem::path const& path) -> bool {
+        return ui.load_project(path, false, true);
+    }
+    static void project_dialogs(PlannerUi& ui) { ui.draw_project_path_dialogs(); }
+    static auto target_name(PlannerUi const& ui) -> std::string const& { return ui.target_name_; }
+    static auto project_path(PlannerUi const& ui) -> std::filesystem::path const& {
+        return ui.project_path_;
+    }
     static void browser(PlannerUi& ui) { ui.draw_project_panel(); }
     static void files(PlannerUi& ui) { ui.schema_file_view_ = true; }
     static auto session(PlannerUi& ui) -> layout::PlannerAnalysisSession& {
@@ -85,6 +93,33 @@ class PlannerActions : public testing::Test {
         ImGui::Render();
     }
 };
+
+TEST_F(PlannerActions, ProjectChooserLoadsSelectedProductionSchemas) {
+    auto initial{ui_fixture()};
+    initial.project_path = "previous/project.lispb";
+    PlannerUi ui{std::move(initial)};
+    auto const project{std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb"};
+    EXPECT_FALSE(PlannerUiTestAccess::open_project(ui, project));
+    auto const draw_dialog{[&] {
+        ImGui::NewFrame();
+        PlannerUiTestAccess::project_dialogs(ui);
+        ImGui::Render();
+    }};
+    draw_dialog();
+    draw_dialog();
+
+    auto const* dialog{ImGui::FindWindowByName("Choose schemas to open")};
+    ASSERT_NE(dialog, nullptr);
+    EXPECT_GE(dialog->Size.x, ImGui::GetFontSize() * 40.0F);
+    activate("Choose schemas to open", "sandbox-code\nGame and simulation types");
+    draw_dialog();
+
+    EXPECT_EQ(PlannerUiTestAccess::target_name(ui), "sandbox-code");
+    EXPECT_EQ(PlannerUiTestAccess::project_path(ui).lexically_normal(), project.lexically_normal());
+    auto const& types{PlannerUiTestAccess::session(ui).inputs.workspace.types()};
+    EXPECT_TRUE(types.find_declared("native_sim_state", "OrchestratorState").has_value());
+    EXPECT_TRUE(types.find_declared("native_simulation_phase", "SimulationPhase").has_value());
+}
 
 TEST_F(PlannerActions, GraphButtonsSeparateFocusSelectionAndStableModuleScope) {
     PlannerUi ui{ui_fixture()};

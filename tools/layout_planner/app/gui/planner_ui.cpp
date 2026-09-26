@@ -1411,21 +1411,45 @@ auto PlannerUi::draw_file_menu() -> bool {
 
 void PlannerUi::draw_project_path_dialogs() {
     if (std::exchange(open_project_target_dialog_, false)) {
-        ImGui::OpenPopup("Choose LispB target");
+        ImGui::OpenPopup("Choose schemas to open");
     }
-    if (ImGui::BeginPopupModal("Choose LispB target", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::TextWrapped("Choose a C++ schema target in %s",
-                           pending_project_path_.string().c_str());
+    auto const available_size{ImGui::GetMainViewport()->WorkSize};
+    auto const dialog_width{std::min(ImGui::GetFontSize() * 44.0F, available_size.x * 0.9F)};
+    ImGui::SetNextWindowSizeConstraints({dialog_width, 0.0F},
+                                        {dialog_width, available_size.y * 0.9F});
+    if (ImGui::BeginPopupModal(
+            "Choose schemas to open", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextWrapped("This project contains several groups of types. "
+                           "Choose a group to inspect and edit in the planner.");
+        ImGui::Spacing();
+        ImGui::TextUnformatted("Project");
+        ImGui::PushTextWrapPos(0.0F);
+        ImGui::TextDisabled("%s", pending_project_path_.string().c_str());
+        ImGui::PopTextWrapPos();
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
         for (auto const& name : pending_project_targets_) {
-            if (ImGui::Selectable(name.c_str())) {
+            auto label{name};
+            if (name == "sandbox-code") {
+                label += "\nGame and simulation types";
+            } else if (name == "cpp-compile-fixture" || name == "native-soa-fixture" ||
+                       name == "sandbox-core-test-fixture") {
+                label += "\nTest schemas for generated C++";
+            }
+            if (ImGui::Selectable(label.c_str())) {
                 auto const path{pending_project_path_};
+                auto const selected_target{name};
                 pending_project_path_.clear();
                 pending_project_targets_.clear();
                 ImGui::CloseCurrentPopup();
-                static_cast<void>(load_project(path, false, false, name));
+                static_cast<void>(load_project(path, false, false, selected_target));
                 break;
             }
+            ImGui::Spacing();
         }
+        ImGui::Separator();
+        ImGui::Spacing();
         if (ImGui::Button("Cancel")) {
             pending_project_path_.clear();
             pending_project_targets_.clear();
