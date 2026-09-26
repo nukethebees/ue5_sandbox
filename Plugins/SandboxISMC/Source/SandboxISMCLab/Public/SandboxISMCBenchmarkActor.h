@@ -182,6 +182,9 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark|Timing", meta = (ClampMin = "0.0"))
     float automatic_stop_seconds_{0.0f};
 
+    UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark|Timing", meta = (ClampMin = "0.0"))
+    float warmup_seconds_{0.0f};
+
     TArray<FVector3f> base_positions_;
     TArray<FVector3f> base_colours_;
     TArray<FTransform> engine_update_transforms_;
@@ -212,6 +215,9 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     FRendererSamples engine_samples_;
 
     float animation_elapsed_seconds_{0.0f};
+    double warmup_started_seconds_{0.0};
+    double measurement_started_seconds_{0.0};
+    bool measuring_{false};
     bool running_{false};
     bool request_end_pie_on_completion_{false};
     bool owns_insights_trace_{false};

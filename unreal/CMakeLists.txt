@@ -4,7 +4,7 @@ endif()
 
 set(CACHE{IOJ_ISMC_BENCHMARK_SECONDS}
   TYPE STRING
-  HELP "Duration of the offscreen SandboxISMC paired benchmark"
+  HELP "Measured duration of the offscreen SandboxISMC paired benchmark, excluding warmup"
   VALUE 10
 )
 set(CACHE{IOJ_ISMC_BENCHMARK_INSTANCES}
@@ -22,6 +22,7 @@ set(IOJ_ISMC_BENCHMARK_MIN_INSTANCES 1000 CACHE STRING "Minimum live population 
 set(IOJ_ISMC_BENCHMARK_HALF_CYCLE_UPDATES 120 CACHE STRING "Updates per grow/shrink half-cycle")
 set(IOJ_ISMC_BENCHMARK_REPLACEMENT_PERCENT 5 CACHE STRING "Percentage of survivors replaced per update")
 set(IOJ_ISMC_BENCHMARK_WARMUP_UPDATES 0 CACHE STRING "Initial updates excluded from benchmark samples")
+set(IOJ_ISMC_BENCHMARK_WARMUP_SECONDS 0 CACHE STRING "Initial seconds excluded from benchmark samples")
 set(CACHE{IOJ_ISMC_BENCHMARK_MODE}
   TYPE STRING
   HELP "SandboxISMC benchmark renderer mode: paired, custom, or engine_ismc"
@@ -405,6 +406,7 @@ add_unreal_editor_test(SandboxISMC.RemoteBenchmark
     "-SandboxISMCBenchmarkHalfCycleUpdates=${IOJ_ISMC_BENCHMARK_HALF_CYCLE_UPDATES}"
     "-SandboxISMCBenchmarkReplacementPercent=${IOJ_ISMC_BENCHMARK_REPLACEMENT_PERCENT}"
     "-SandboxISMCBenchmarkWarmupUpdates=${IOJ_ISMC_BENCHMARK_WARMUP_UPDATES}"
+    "-SandboxISMCBenchmarkWarmupSeconds=${IOJ_ISMC_BENCHMARK_WARMUP_SECONDS}"
     "-SandboxISMCBenchmarkUpdatePercent=${IOJ_ISMC_BENCHMARK_UPDATE_PERCENT}"
     "-SandboxISMCBenchmarkMode=${IOJ_ISMC_BENCHMARK_MODE}"
     "-SandboxISMCBenchmarkVisibility=${IOJ_ISMC_BENCHMARK_VISIBILITY}"

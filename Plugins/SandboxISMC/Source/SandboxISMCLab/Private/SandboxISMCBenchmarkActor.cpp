@@ -201,13 +201,17 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
     UE_LOG(LogSandboxISMCBenchmark,
            Display,
            TEXT("Workload: churn=%s, min=%d, max=%d, half-cycle=%d updates, "
-                "replacements=%.1f%%/update, warmup=%d updates"),
+                "replacements=%.1f%%/update, warmup=%d updates / %.2f seconds, measurement=%.2f "
+                "seconds"),
            churn_enabled_ ? TEXT("on") : TEXT("off"),
            minimum_live_count_,
            instance_count_,
            churn_half_cycle_updates_,
            replacement_percentage_,
-           warmup_updates_);
+           warmup_updates_,
+           warmup_seconds_,
+           automatic_stop_seconds_);
+    warmup_started_seconds_ = FPlatformTime::Seconds();
     running_ = true;
     TRACE_COUNTER_SET(BenchmarkRunning, 1);
     TRACE_COUNTER_SET(BenchmarkInstanceCount, base_positions_.Num());
@@ -254,7 +258,11 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
 
     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::Tick);
     advance_churn();
-    if (update_index_ == static_cast<int64>(warmup_updates_) + 1) {
+    auto const now_seconds{FPlatformTime::Seconds()};
+    if (!measuring_ && update_index_ > warmup_updates_ &&
+        now_seconds - warmup_started_seconds_ >= warmup_seconds_) {
+        measuring_ = true;
+        measurement_started_seconds_ = now_seconds;
         TRACE_BOOKMARK(TEXT("SandboxISMC benchmark measured updates begin"));
     }
     animation_elapsed_seconds_ += delta_seconds;
@@ -280,7 +288,7 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
     auto const gpu_ms{FPlatformTime::ToMilliseconds(RHIGetGPUFrameCycles())};
     auto const metrics{custom_ismc_->get_update_metrics()};
     auto const wait_ms{metrics.staging_wait_ms - previous_metrics_.staging_wait_ms};
-    if (update_index_ > warmup_updates_) {
+    if (measuring_) {
         frame_ms_.Add(static_cast<double>(delta_seconds) * 1000.0);
         game_thread_ms_.Add(game_thread_ms);
         render_thread_ms_.Add(render_thread_ms);
@@ -332,7 +340,8 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
     TRACE_COUNTER_SET_ALWAYS(BenchmarkEnginePrepareMs, engine_timing.prepare_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkEngineApiMs, engine_timing.api_ms);
 
-    if (automatic_stop_seconds_ > 0.0f && animation_elapsed_seconds_ >= automatic_stop_seconds_) {
+    if (measuring_ && automatic_stop_seconds_ > 0.0f &&
+        FPlatformTime::Seconds() - measurement_started_seconds_ >= automatic_stop_seconds_) {
         finish_benchmark();
         if (request_end_pie_on_completion_ && GUnrealEd != nullptr) {
             GUnrealEd->RequestEndPlayMap();
@@ -344,6 +353,8 @@ void ASandboxISMCBenchmarkActor::parse_command_line() {
     FParse::Value(
         FCommandLine::Get(), TEXT("SandboxISMCBenchmarkSeconds="), automatic_stop_seconds_);
     automatic_stop_seconds_ = FMath::Max(automatic_stop_seconds_, 0.0f);
+    FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkWarmupSeconds="), warmup_seconds_);
+    warmup_seconds_ = FMath::Max(warmup_seconds_, 0.0f);
     FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkInstances="), instance_count_);
     instance_count_ = FMath::Max(instance_count_, 1);
     int32 churn{churn_enabled_ ? 1 : 0};
@@ -778,7 +789,7 @@ auto ASandboxISMCBenchmarkActor::update_engine_ismc(float const vertical_offset,
 
 void ASandboxISMCBenchmarkActor::record_samples(FRendererSamples& samples,
                                                 FUpdateTiming const& timing) {
-    if (update_index_ <= warmup_updates_) {
+    if (!measuring_) {
         return;
     }
     auto& population_samples{live_count_ > previous_live_count_   ? samples.growing_update_ms
@@ -874,6 +885,8 @@ void ASandboxISMCBenchmarkActor::finish_benchmark() {
     }
 
     running_ = false;
+    auto const measured_seconds{measuring_ ? FPlatformTime::Seconds() - measurement_started_seconds_
+                                           : 0.0};
     TRACE_COUNTER_SET(BenchmarkRunning, 0);
     TRACE_BOOKMARK(TEXT("SandboxISMC continuous benchmark stop: %d frames"), frame_ms_.Num());
     FlushRenderingCommands();
@@ -885,8 +898,8 @@ void ASandboxISMCBenchmarkActor::finish_benchmark() {
 
     UE_LOG(LogSandboxISMCBenchmark,
            Display,
-           TEXT("Continuous benchmark complete after %.2f seconds and %d frames"),
-           animation_elapsed_seconds_,
+           TEXT("Continuous benchmark complete after %.2f measured seconds and %d measured frames"),
+           measured_seconds,
            frame_ms_.Num());
 }
 
@@ -985,7 +998,8 @@ void ASandboxISMCBenchmarkActor::save_report() const {
                TEXT("No measured updates: increase the run duration or reduce Warmup Updates"));
     }
     FString csv{TEXT("renderer,mode,visibility,bounds,custom_data,churn,min_instances,half_cycle_"
-                     "updates,replacement_percent,warmup_updates,instances,updated_instances,"
+                     "updates,replacement_percent,warmup_updates,warmup_seconds,measurement_"
+                     "seconds,instances,updated_instances,"
                      "update_percent,metric,unit,samples,min,median,p95,max\n")};
     auto const mode_name{get_mode_name()};
     auto const visibility_name{get_visibility_name()};
@@ -993,12 +1007,14 @@ void ASandboxISMCBenchmarkActor::save_report() const {
     auto const custom_data_name{get_custom_data_name()};
     auto const instance_count{base_positions_.Num()};
     auto const updated_instance_count{churn_enabled_ ? -1 : get_update_count()};
-    auto const workload{FString::Printf(TEXT("%d,%d,%d,%.3f,%d"),
+    auto const workload{FString::Printf(TEXT("%d,%d,%d,%.3f,%d,%.3f,%.3f"),
                                         churn_enabled_ ? 1 : 0,
                                         minimum_live_count_,
                                         churn_half_cycle_updates_,
                                         replacement_percentage_,
-                                        warmup_updates_)};
+                                        warmup_updates_,
+                                        warmup_seconds_,
+                                        automatic_stop_seconds_)};
     auto const append{[&](TCHAR const* renderer,
                           TCHAR const* metric,
                           TCHAR const* unit,
