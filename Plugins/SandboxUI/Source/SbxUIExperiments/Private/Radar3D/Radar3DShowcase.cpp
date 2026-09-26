@@ -1,18 +1,19 @@
 #include "SbxUIExperiments/Radar3D/Radar3DShowcase.h"
 
-#include <utility>
-
 #include "Benchmarks/Radar3D/Radar3DBenchmark.h"
+
 #include "SandboxUI/Radar/RadarTypes.h"
 #include "SandboxUI/Radar/SRadarWidget.h"
 #include "SandboxUI/slate/SlateSlots.h"
 #include "SandboxUI/widgets/SLabeledRow.h"
-#include "Widgets/SExperimentPanel.h"
 
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Widgets/Input/SSpinBox.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
+#include "Widgets/SExperimentPanel.h"
+
+#include <utility>
 
 #include "generated/URadar3DShowcase.slate.generated.h"
 

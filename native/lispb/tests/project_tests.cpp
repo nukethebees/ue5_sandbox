@@ -1,7 +1,6 @@
+#include <codegen/source_loader.h>
 #include <lispb/project.h>
 #include <lispb/schema/editable_document.h>
-
-#include <codegen/source_loader.h>
 
 #include <gtest/gtest.h>
 

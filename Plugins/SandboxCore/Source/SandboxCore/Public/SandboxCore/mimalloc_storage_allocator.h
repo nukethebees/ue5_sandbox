@@ -1,6 +1,7 @@
 #pragma once
 
 #include <CoreTypes.h>
+
 #include <cstddef>
 
 namespace ml::soa_storage {

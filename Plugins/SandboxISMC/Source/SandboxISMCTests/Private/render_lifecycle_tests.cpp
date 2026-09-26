@@ -1,14 +1,12 @@
 #include "SandboxISMCComponent.h"
 
 #include "Components/MapTestSpawner.h"
-
 #include "Components/SceneComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "RenderingThread.h"
 #include "UObject/UObjectGlobals.h"
-
 #include <CQTest.h>
 
 TEST_CLASS(SandboxISMCRenderLifecycle, "SandboxISMC.RenderTests")

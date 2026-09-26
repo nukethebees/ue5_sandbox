@@ -1,13 +1,12 @@
 #include "Sandbox/environment/SandboxActorSpawner.h"
 
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Components/ArrowComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/World.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 ASandboxActorSpawner::ASandboxActorSpawner()
     : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))}

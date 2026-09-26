@@ -1,8 +1,9 @@
 #pragma once
 
-#include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+
+#include "Blueprint/UserWidget.h"
+#include "CoreMinimal.h"
 
 #include "ShipThrusterEnergyWidget.generated.h"
 

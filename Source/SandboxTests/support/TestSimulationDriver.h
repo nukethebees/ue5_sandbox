@@ -1,10 +1,11 @@
 #pragma once
 #include <ioj/sim/entity_unique_id.h>
-#include <span>
 
 #include <sandbox/core/test_timeline.h>
 
 #include <HAL/Platform.h>
+
+#include <span>
 
 class UWorld;
 class AActor;

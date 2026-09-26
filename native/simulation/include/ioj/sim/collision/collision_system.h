@@ -1,14 +1,13 @@
 #pragma once
 
-#include <cstdint>
+#include <ioj/sim/collision/collision_uniform_grid.h>
+#include <ioj/sim/collision_events.h>
+#include <ioj/sim/entity_overlaps.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/line_traces.h>
+
+#include <cstdint>
 #include <span>
-
-#include <ioj/sim/collision_events.h>
-
-#include <ioj/sim/collision/collision_uniform_grid.h>
-#include <ioj/sim/entity_overlaps.h>
 
 namespace ml {
 class FrameScratch;

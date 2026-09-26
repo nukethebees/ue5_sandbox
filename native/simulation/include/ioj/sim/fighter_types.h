@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/sim/fighter_orders.h>
+
 #include <string_view>
 
 namespace ioj::sim {

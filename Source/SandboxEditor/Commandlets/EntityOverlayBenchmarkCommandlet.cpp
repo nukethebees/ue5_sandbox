@@ -1,12 +1,13 @@
 #include "SandboxEditor/Commandlets/EntityOverlayBenchmarkCommandlet.h"
-#include <ioj/sim/column_math.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include "ioj/sim/entity_identity_layout.h"
 #include "ioj/sim/entity_type_radii.h"
 #include "ioj/sim/turret_entity_data.h"
-#include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
+#include <ioj/sim/column_math.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
+
+#include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
 
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"

@@ -3,10 +3,6 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "Containers/AllowShrinking.h"
-#include "Containers/Array.h"
-#include "Containers/ArrayView.h"
 #include "sandbox/core/single_allocation/removal.h"
 #include "sandbox/core/soa_concepts.h"
 #include "SandboxCore/container_ops.h"
@@ -14,6 +10,11 @@
 #include "SandboxCore/single_allocation/operations.h"
 #include "SandboxCore/single_allocation/vector_views.h"
 #include "SandboxCore/soa_storage_ops.h"
+
+#include "Containers/AllowShrinking.h"
+#include "Containers/Array.h"
+#include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 #include "Templates/MemoryOps.h"
 
 #include <cstdint>

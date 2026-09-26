@@ -1,6 +1,6 @@
-#include "sandbox/image/image_generation.h"
-
 #include "test_support.h"
+
+#include "sandbox/image/image_generation.h"
 
 #include <algorithm>
 #include <cmath>

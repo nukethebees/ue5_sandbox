@@ -1,20 +1,22 @@
 #include "ioj/sim/spinners/sim.h"
-#include <algorithm>
-#include <cassert>
-#include <cstdint>
-#include <ioj/sim/column_math.h>
-#include <optional>
-#include <sandbox/core/countdown.h>
-#include <sandbox/core/frame_array.h>
-#include <sandbox/core/tick_countdown.h>
-#include <span>
-#include <utility>
-#include <vector>
 
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/lasers/frame_scratch.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_config.h>
+
+#include <sandbox/core/countdown.h>
+#include <sandbox/core/frame_array.h>
+#include <sandbox/core/tick_countdown.h>
+
+#include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <optional>
+#include <span>
+#include <utility>
+#include <vector>
 
 namespace ioj::sim::spinners {
 

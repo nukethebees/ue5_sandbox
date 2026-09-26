@@ -4,6 +4,7 @@
 #include "ioj/sim/laser_hit_details.h"
 #include "ioj/sim/laser_source.h"
 #include "ioj/sim/vector_types.h"
+
 #include "sandbox/core/frame_array.h"
 #include "sandbox/core/frame_memory_resource.h"
 

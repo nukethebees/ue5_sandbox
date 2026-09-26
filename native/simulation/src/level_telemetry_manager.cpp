@@ -1,20 +1,19 @@
 #include "ioj/sim/level_telemetry_manager.h"
-#include <cstdint>
-#include <optional>
-#include <span>
-#include <vector>
 
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/mission_manager.h>
 #include <ioj/sim/sim_clock.h>
 
 #include <algorithm>
+#include <bit>
 #include <cassert>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <format>
-
-#include <bit>
+#include <optional>
+#include <span>
+#include <vector>
 
 namespace ioj::sim {
 

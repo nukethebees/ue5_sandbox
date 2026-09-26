@@ -1,17 +1,18 @@
 #include "SGLegacy/learning/TestFlySeekDestroyEvade.h"
 
 #include "Sandbox/misc/learning/TestVolume.h"
-#include "SandboxCoreEngine/enums.h"
 #include "SandboxGameShared/utilities/actor_utils.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SandboxGameShared/utilities/vision_maths.h"
 #include "SGLegacy/combat/weapons/ShipLaser.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <ioj/sim/spatial.h>
+
+#include "SandboxCoreEngine/enums.h"
 
 #include <Components/ArrowComponent.h>
 #include <Components/BoxComponent.h>
 #include <Engine/World.h>
-#include <ioj/sim/spatial.h>
 #include <Kismet/KismetMathLibrary.h>
 
 ATestFlySeekDestroyEvade::ATestFlySeekDestroyEvade()

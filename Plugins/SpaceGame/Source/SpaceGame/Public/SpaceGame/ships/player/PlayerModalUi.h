@@ -1,8 +1,10 @@
 #pragma once
 
-#include <CoreMinimal.h>
 #include <ioj/sim/level_telemetry_snapshot.h>
 #include <SpaceGame/ships/player/PlayerControlContext.h>
+
+#include <CoreMinimal.h>
+
 #include "PlayerModalUi.generated.h"
 
 class ASpaceGamePlayerController;

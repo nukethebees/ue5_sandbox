@@ -1,4 +1,5 @@
 #include "SbxMeshGenLab/MeshAssemblyRecipe.h"
+
 #include "SbxMeshGenLab/NativeMeshTypes.h"
 
 auto FSbxMeshAssemblyRecipePart::from_part(FSbxMeshAssemblyPart const& part,

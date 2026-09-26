@@ -1,9 +1,7 @@
 #include "TestActorSpawning.h"
 
 #include "SoftTestAssertions.h"
-
 #include <SandboxTests/SandboxTestLogCategories.h>
-
 #include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>

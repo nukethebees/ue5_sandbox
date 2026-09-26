@@ -1,7 +1,7 @@
+#include "MaterialExpressionUSFLoader.h"
 #include "USFPathValidation.h"
 
 #include "CQTest.h"
-#include "MaterialExpressionUSFLoader.h"
 #include "Misc/Paths.h"
 
 TEST_CLASS(USFPathValidation, "USFLoader.UnitTests")

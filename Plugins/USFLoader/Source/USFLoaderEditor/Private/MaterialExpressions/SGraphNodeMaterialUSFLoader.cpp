@@ -1,13 +1,13 @@
 #include "SGraphNodeMaterialUSFLoader.h"
 
 #include "MaterialExpressionUSFLoader.h"
+#include "Text/HLSLSyntaxHighlighterMarshaller.h"
 #include "USFLoader.h"
 
 #include "GraphEditAction.h"
 #include "GraphEditorSettings.h"
 #include "MaterialGraph/MaterialGraphNode.h"
 #include "Materials/Material.h"
-#include "Text/HLSLSyntaxHighlighterMarshaller.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SCheckBox.h"

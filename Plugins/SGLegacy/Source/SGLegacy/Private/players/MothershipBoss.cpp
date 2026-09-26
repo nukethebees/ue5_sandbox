@@ -1,6 +1,7 @@
 #include "SGLegacy/players/MothershipBoss.h"
 
 #include "SandboxGameShared/constants/collision_channels.h"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SGLegacy/combat/DamageableShip.h"
 #include "SGLegacy/players/ShipHealthComponent.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
@@ -14,8 +15,6 @@
 #include "Materials/MaterialInstance.h"
 
 #include <type_traits>
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AMothershipBoss::AMothershipBoss()
     : mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("main_ship"))} {

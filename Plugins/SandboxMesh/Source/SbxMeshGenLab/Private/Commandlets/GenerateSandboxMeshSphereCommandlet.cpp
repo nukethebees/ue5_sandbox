@@ -1,7 +1,8 @@
 #include "Commandlets/GenerateSandboxMeshSphereCommandlet.h"
 
-#include "Commandlets/MeshGenerationCommandletUtils.h"
 #include "SbxMeshGenLab/SphereGenerator.h"
+
+#include "Commandlets/MeshGenerationCommandletUtils.h"
 
 UGenerateSandboxMeshSphereCommandlet::UGenerateSandboxMeshSphereCommandlet() {
     IsClient = false;

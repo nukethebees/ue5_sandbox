@@ -1,5 +1,4 @@
 #include "SpaceGame/ui/PauseMenuWidget.h"
-#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "LevelTelemetryPresentation.h"
 #include "SpaceGame/system/GameSubsystem.h"
@@ -9,6 +8,7 @@
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "SandboxUI/widgets/SGraphPlot.h"
 

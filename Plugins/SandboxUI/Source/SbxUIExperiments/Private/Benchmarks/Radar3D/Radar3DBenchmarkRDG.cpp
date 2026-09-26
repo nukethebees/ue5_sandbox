@@ -1,10 +1,11 @@
 #include "Benchmarks/Radar3D/Radar3DBenchmark.h"
 
+#include "SandboxUI/Radar/RadarBenchmarkSupport.h"
+#include "SandboxUI/Radar/SRadarWidget.h"
+
 #include "Engine/TextureRenderTarget2D.h"
 #include "HAL/PlatformTime.h"
 #include "RenderingThread.h"
-#include "SandboxUI/Radar/RadarBenchmarkSupport.h"
-#include "SandboxUI/Radar/SRadarWidget.h"
 #include "UObject/StrongObjectPtr.h"
 
 void benchmark_radar_3d_rdg(FRadarFrame const& frame,

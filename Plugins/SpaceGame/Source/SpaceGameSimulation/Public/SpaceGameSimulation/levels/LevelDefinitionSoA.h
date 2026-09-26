@@ -3,17 +3,18 @@
 
 #pragma once
 
+#include "SpaceGameSimulation/levels/LevelTypes.h"
+
+#include "sandbox/core/soa_concepts.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_storage_ops.h"
 #include "SandboxCore/soa_vectors_3d.h"
 
-#include "CoreMinimal.h"
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
-#include "sandbox/core/soa_concepts.h"
-#include "SpaceGameSimulation/levels/LevelTypes.h"
+#include "CoreMinimal.h"
 
 #include <utility>
 

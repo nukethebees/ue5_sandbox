@@ -1,7 +1,8 @@
 #include "Commandlets/GenerateSandboxMeshConeCommandlet.h"
 
-#include "Commandlets/MeshGenerationCommandletUtils.h"
 #include "SbxMeshGenLab/ConeGenerator.h"
+
+#include "Commandlets/MeshGenerationCommandletUtils.h"
 
 UGenerateSandboxMeshConeCommandlet::UGenerateSandboxMeshConeCommandlet() {
     IsClient = false;

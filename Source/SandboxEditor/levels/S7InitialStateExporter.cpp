@@ -1,7 +1,7 @@
 #include "SandboxEditor/levels/S7InitialStateExporter.h"
+
 #include "SandboxEditor/levels/S7InitialStateText.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
-
 #include <SandboxGameShared/core/levels/levels.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestEntity.h>

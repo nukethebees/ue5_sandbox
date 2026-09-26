@@ -1,11 +1,12 @@
 #pragma once
 
-#include <Components/PrimitiveComponent.h>
-#include <CoreMinimal.h>
 #include <SpaceGameRendering/SparkBurst.h>
 #include <SpaceGameRendering/SparkParticleRecord.h>
 #include <SpaceGameRendering/SparkRendererSettings.h>
 #include <SpaceGameRendering/SparkSubmissionResult.h>
+
+#include <Components/PrimitiveComponent.h>
+#include <CoreMinimal.h>
 
 #include "SparkRendererComponent.generated.h"
 

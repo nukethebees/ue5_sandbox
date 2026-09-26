@@ -2,6 +2,7 @@
 
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
+#include "Blueprint/WidgetTree.h"
 #include "Components/Border.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"

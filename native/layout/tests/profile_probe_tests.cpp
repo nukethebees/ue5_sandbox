@@ -3,6 +3,7 @@
 #include <ioj/layout/profile_probe.hpp>
 
 #include <codegen/schema/schema_version.h>
+
 #include <gtest/gtest.h>
 
 #include <algorithm>

@@ -1,6 +1,7 @@
 #include "SGLegacy/players/SpaceShip.h"
 
 #include "SandboxGameShared/utilities/actor_utils.h"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SGLegacy/combat/weapons/ShipLaser.h"
 #include "SGLegacy/players/ShipHealthComponent.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
@@ -14,8 +15,6 @@
 #include "Engine/World.h"
 #include "NiagaraComponent.h"
 #include "TimerManager.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 ASpaceShip::ASpaceShip()
     : camera(CreateDefaultSubobject<UCameraComponent>(TEXT("camera")))

@@ -3,17 +3,13 @@
 
 #pragma once
 
-#include <array>
-
-#include <cstdint>
-
-#include <cstddef>
-
-#include <optional>
-
-#include <string_view>
-
 #include "sandbox/core/enum_traits.h"
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <string_view>
 
 namespace ioj::sim::player {
 enum class BoostBrakeState : std::uint8_t {

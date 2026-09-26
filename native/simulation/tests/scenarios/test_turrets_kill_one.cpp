@@ -1,8 +1,8 @@
+#include "test_turrets_kill_one.h"
+
+#include "../support/simulation_test_support.h"
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/turrets/sim.h>
-#include "../support/simulation_test_support.h"
-
-#include "test_turrets_kill_one.h"
 
 namespace ioj::sim {
 namespace {

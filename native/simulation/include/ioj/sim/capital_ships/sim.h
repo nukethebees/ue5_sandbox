@@ -1,14 +1,5 @@
 #pragma once
-#include <cstdint>
 #include <ioj/sim/agent_accessor.h>
-#include <ioj/sim/levels/level_runtime_events.h>
-#include <ioj/sim/sim_config.h>
-#include <optional>
-#include <span>
-#include <vector>
-
-#include <ioj/sim/system_read_views.h>
-
 #include <ioj/sim/capital_entity_data.h>
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_tables.h>
@@ -16,8 +7,16 @@
 #include <ioj/sim/fighter_order_queue.h>
 #include <ioj/sim/fighters/command_interface.h>
 #include <ioj/sim/index_span.h>
+#include <ioj/sim/levels/level_runtime_events.h>
+#include <ioj/sim/sim_config.h>
+#include <ioj/sim/system_read_views.h>
 
 #include <sandbox/core/frame_memory_resource.h>
+
+#include <cstdint>
+#include <optional>
+#include <span>
+#include <vector>
 
 namespace ioj::sim {
 struct LevelSim;

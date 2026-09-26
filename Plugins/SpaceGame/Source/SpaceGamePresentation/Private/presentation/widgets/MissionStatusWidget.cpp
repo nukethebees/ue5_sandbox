@@ -1,13 +1,14 @@
 #include "SpaceGamePresentation/presentation/widgets/MissionStatusWidget.h"
+
+#include <SandboxGameShared/ui/widgets/ValueWidget.h>
+#include <SpaceGamePresentation/presentation/HUDManager.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/error_msg.h>
 #include <SandboxCoreEngine/enums.h>
 #include <SandboxCoreEngine/strings.h>
 #include <SandboxCoreEngine/uobject_utils.h>
-#include <SandboxGameShared/ui/widgets/ValueWidget.h>
-#include <SpaceGamePresentation/presentation/HUDManager.h>
-#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 void UMissionStatusWidget::NativeConstruct() {
     Super::NativeConstruct();

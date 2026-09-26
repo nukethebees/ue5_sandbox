@@ -1,33 +1,30 @@
 #pragma once
-#include <cassert>
-#include <cstddef>
-#include <cstdint>
 #include <ioj/sim/agent_accessor.h>
-#include <ioj/sim/fighter_navigation.h>
-#include <ioj/sim/fighter_navigation_scratch.h>
-#include <ioj/sim/navigation_telemetry.h>
-#include <span>
-#include <vector>
-
-#include <ioj/sim/system_read_views.h>
-
-#include <ioj/sim/sim_config.h>
-
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/fighter_entity_data.h>
+#include <ioj/sim/fighter_navigation.h>
+#include <ioj/sim/fighter_navigation_scratch.h>
 #include <ioj/sim/fighter_order_queue.h>
 #include <ioj/sim/fighter_spawn_queue.h>
 #include <ioj/sim/fighter_types.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/navigation_telemetry.h>
 #include <ioj/sim/sim_clock.h>
+#include <ioj/sim/sim_config.h>
+#include <ioj/sim/system_read_views.h>
 #include <ioj/sim/trace_hits.h>
 
 #include <sandbox/core/frame_memory_resource.h>
 #include <sandbox/core/multi_buffer.h>
 
 #include <array>
+#include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <span>
+#include <vector>
 
 namespace ioj::sim {
 class EntityLedger;

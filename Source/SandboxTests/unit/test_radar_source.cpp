@@ -1,4 +1,5 @@
 #include <ioj/sim/column_math.h>
+#include <ioj/sim/entity_identity_layout.h>
 #include <ioj/sim/entity_type.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/laser_source.h>
@@ -8,7 +9,7 @@
 #include <SpaceGamePresentation/presentation/RadarSource.h>
 
 #include <CQTest.h>
-#include <ioj/sim/entity_identity_layout.h>
+
 #include <vector>
 
 namespace ml::test_radar_source {

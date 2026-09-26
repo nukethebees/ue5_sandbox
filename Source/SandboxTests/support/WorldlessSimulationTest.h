@@ -1,12 +1,13 @@
 #pragma once
-#include <CoreMinimal.h>
-#include <SpaceGamePresentation/entities/TestTeam.h>
-#include <span>
-
 #include <ioj/sim/level_sim.h>
+#include <SpaceGamePresentation/entities/TestTeam.h>
+
 #include <sandbox/core/test_timeline.h>
 
+#include <CoreMinimal.h>
 #include <Misc/Optional.h>
+
+#include <span>
 
 class USpaceGameLevelConfig;
 

@@ -1,8 +1,7 @@
+#include <lispb/material_compiler.h>
 #include <material_gen/CompiledMaterial.h>
 #include <material_gen/MaterialFrontend.h>
 #include <material_gen/SourceHash.h>
-
-#include <lispb/material_compiler.h>
 
 #include <algorithm>
 #include <filesystem>

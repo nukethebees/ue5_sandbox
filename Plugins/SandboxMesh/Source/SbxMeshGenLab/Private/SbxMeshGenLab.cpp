@@ -1,7 +1,7 @@
-#include "Editor/SbxMeshGenLabEditorMode.h"
 #include "SbxMeshGenLabWidget.h"
 
 #include "Editor.h"
+#include "Editor/SbxMeshGenLabEditorMode.h"
 #include "EditorModeManager.h"
 #include "Framework/Docking/TabManager.h"
 #include "Modules/ModuleManager.h"

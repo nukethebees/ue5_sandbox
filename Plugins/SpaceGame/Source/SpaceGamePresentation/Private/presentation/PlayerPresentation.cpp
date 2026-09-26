@@ -1,11 +1,14 @@
+#include <SpaceGamePresentation/presentation/PlayerPresentation.h>
+
+#include <SpaceGamePresentation/integration/TransformConversion.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
+
+#include <SandboxShaders/SpaceDust/SpaceDustComponent.h>
+
 #include <Components/SceneComponent.h>
 #include <Components/StaticMeshComponent.h>
 #include <DrawDebugHelpers.h>
 #include <NiagaraComponent.h>
-#include <SandboxShaders/SpaceDust/SpaceDustComponent.h>
-#include <SpaceGamePresentation/integration/TransformConversion.h>
-#include <SpaceGamePresentation/presentation/PlayerPresentation.h>
-#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
                                          FPlayerShipConfig const& config,

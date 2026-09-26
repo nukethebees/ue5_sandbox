@@ -1,10 +1,4 @@
 #pragma once
-#include <algorithm>
-#include <cstdint>
-#include <optional>
-#include <span>
-#include <vector>
-
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/entity_unique_id.h>
 #include <ioj/sim/levels/level_mission_initialisation_data.h>
@@ -14,7 +8,12 @@
 #include <ioj/sim/ship_health.h>
 #include <ioj/sim/sim_clock.h>
 
+#include <algorithm>
+#include <cstdint>
+#include <optional>
+#include <span>
 #include <string>
+#include <vector>
 
 namespace ioj::sim {
 class EntityLedger;

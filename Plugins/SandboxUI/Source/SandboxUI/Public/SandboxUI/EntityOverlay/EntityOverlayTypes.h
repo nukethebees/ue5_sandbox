@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sandbox/core/ui/entity_overlay.h>
+
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 #include "Math/Color.h"
@@ -10,7 +12,6 @@
 #include "Templates/SharedPointer.h"
 
 #include <cstddef>
-#include <sandbox/core/ui/entity_overlay.h>
 #include <type_traits>
 
 enum class EEntityOverlayObjectiveRole : uint32 {

@@ -1,12 +1,15 @@
+#include <ioj/sim/level_sim.h>
+
+#include <ioj/sim/profiling.h>
+
+#include <sandbox/core/diagnostics.h>
+
 #include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstdint>
 #include <format>
-#include <ioj/sim/level_sim.h>
-#include <ioj/sim/profiling.h>
 #include <optional>
-#include <sandbox/core/diagnostics.h>
 #include <span>
 #include <thread>
 #include <vector>

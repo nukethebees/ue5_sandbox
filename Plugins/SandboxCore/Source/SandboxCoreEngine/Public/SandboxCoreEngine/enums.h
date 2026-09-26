@@ -1,13 +1,13 @@
 #pragma once
 
+#include <SandboxCore/string.h>
+
 #include <CoreMinimal.h>
 #include <Templates/IsUEnumClass.h>
 #include <UObject/Class.h>
 
 #include <type_traits>
 #include <utility>
-
-#include <SandboxCore/string.h>
 
 namespace ml {
 template <typename T>

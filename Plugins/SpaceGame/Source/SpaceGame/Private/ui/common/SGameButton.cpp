@@ -1,7 +1,6 @@
 #include "SpaceGame/ui/common/SGameButton.h"
 
 #include "Framework/Application/SlateApplication.h"
-
 #include <Styling/CoreStyle.h>
 #include <Widgets/Images/SImage.h>
 #include <Widgets/Input/SButton.h>

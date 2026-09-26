@@ -1,12 +1,11 @@
 #pragma once
+#include <ioj/sim/entity_unique_id.h>
+#include <ioj/sim/levels/level_runtime_events.h>
+
 #include <cstdint>
 #include <optional>
 #include <span>
 #include <vector>
-
-#include <ioj/sim/levels/level_runtime_events.h>
-
-#include <ioj/sim/entity_unique_id.h>
 
 namespace ioj::sim::capital_ships {
 struct Sim;

@@ -1,15 +1,15 @@
+#include "log_store.hpp"
+
 #include "jobserver/client.hpp"
 #include "jobserver/protocol.hpp"
 #include "jobserver/transport.hpp"
-#include "log_store.hpp"
 
 #include <Windows.h>
 
-#include <sddl.h>
-#include <tlhelp32.h>
-
 #include <gtest/gtest.h>
 #include <nlohmann/json.hpp>
+#include <sddl.h>
+#include <tlhelp32.h>
 
 #include <algorithm>
 #include <array>

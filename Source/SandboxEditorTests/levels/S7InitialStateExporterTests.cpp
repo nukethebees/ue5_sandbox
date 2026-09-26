@@ -1,7 +1,6 @@
 #include <SandboxEditor/levels/S7InitialStateExporter.h>
 #include <SandboxEditor/levels/S7InitialStateImporter.h>
 #include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
-
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>

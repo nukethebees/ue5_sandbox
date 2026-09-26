@@ -1,10 +1,10 @@
 #include "Benchmarks/VolumeHeatmap3D/VolumeHeatmap3DBenchmark.h"
+#include "VolumeHeatmap3D/VolumeHeatmap3DRenderer.h"
 
 #include "Engine/TextureRenderTarget2D.h"
 #include "HAL/PlatformTime.h"
 #include "RenderingThread.h"
 #include "UObject/StrongObjectPtr.h"
-#include "VolumeHeatmap3D/VolumeHeatmap3DRenderer.h"
 
 void benchmark_volume_heatmap_3d_rdg(FVolumeHeatmap3DGrid const& grid,
                                      FVolumeHeatmap3DView const view,

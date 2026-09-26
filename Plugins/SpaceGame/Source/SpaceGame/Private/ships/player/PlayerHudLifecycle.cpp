@@ -1,7 +1,5 @@
 #include <SpaceGame/ships/player/PlayerHudLifecycle.h>
-#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
-#include <Engine/GameInstance.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -9,7 +7,10 @@
 #include <SpaceGamePresentation/presentation/widgets/BattleViewerHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
+
+#include <Engine/GameInstance.h>
 
 auto FPlayerHudLifecycle::initialise(ASpaceGamePlayerController& owner,
                                      ATestBatchOrchestrator* orchestrator,

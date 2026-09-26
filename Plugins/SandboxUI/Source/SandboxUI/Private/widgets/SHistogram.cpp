@@ -1,11 +1,11 @@
 #include "SandboxUI/widgets/SHistogram.h"
 
+#include <sandbox/core/ui/chart_layout.h>
+#include <sandbox/core/ui/histogram.h>
+
 #include "Internationalization/Text.h"
 #include "Rendering/DrawElementTypes.h"
 #include "Styling/CoreStyle.h"
-
-#include <sandbox/core/ui/chart_layout.h>
-#include <sandbox/core/ui/histogram.h>
 
 namespace {
 void draw_histogram_box(FSlateWindowElementList& out_draw_elements,

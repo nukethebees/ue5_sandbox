@@ -2,10 +2,10 @@
 
 #include <ioj/sim/entity_type.h>
 #include <ioj/sim/entity_types.h>
-#include <SandboxCoreEngine/enums.h>
 #include <SpaceGamePresentation/entities/TestTeam.h>
 
 #include <SandboxCore/soa_array_mixin.h>
+#include <SandboxCoreEngine/enums.h>
 
 #include <Containers/Array.h>
 #include <Containers/StaticArray.h>

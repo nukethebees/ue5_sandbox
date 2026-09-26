@@ -2,9 +2,9 @@
 
 #include "../platform/file_dialog.hpp"
 #include "planner_ui_support.hpp"
+#include <ioj/layout/planner_type.hpp>
 
 #include <codegen/schema/fixed_point_value.h>
-#include <ioj/layout/planner_type.hpp>
 #include <lispb/target_compiler.h>
 
 #include <imgui.h>

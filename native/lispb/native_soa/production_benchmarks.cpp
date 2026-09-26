@@ -1,9 +1,9 @@
-#include <benchmark/benchmark.h>
-
 #include <ioj/sim/fighter_entity_data.h>
 #include <ioj/sim/laser_frame_output.h>
 #include <ioj/sim/laser_soa.h>
 #include <ioj/sim/spinner_entity_data.h>
+
+#include <benchmark/benchmark.h>
 
 #include <algorithm>
 #include <cstdint>

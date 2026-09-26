@@ -1,5 +1,4 @@
 #include <SandboxTests/support/test_setup.h>
-
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>

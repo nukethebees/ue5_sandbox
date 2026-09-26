@@ -1,5 +1,4 @@
 #include "SpaceGame/ui/main_menu/MainMenuWidget.h"
-#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "SMainMenuView.h"
 #include "SpaceGame/system/GameSubsystem.h"
@@ -10,6 +9,7 @@
 #include "SpaceGame/ui/telemetry/TelemetryDashboardWidget.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include <Engine/GameInstance.h>
 #include <Kismet/KismetSystemLibrary.h>

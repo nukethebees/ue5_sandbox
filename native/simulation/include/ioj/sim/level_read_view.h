@@ -1,11 +1,11 @@
 #pragma once
-#include <algorithm>
-#include <cstdint>
+#include <ioj/sim/player/player_read_view.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/system_read_views.h>
-#include <optional>
 
-#include <ioj/sim/player/player_read_view.h>
+#include <algorithm>
+#include <cstdint>
+#include <optional>
 
 namespace ioj::sim {
 struct MissionManager;

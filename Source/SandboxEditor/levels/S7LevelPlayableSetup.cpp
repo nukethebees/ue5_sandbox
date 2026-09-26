@@ -2,13 +2,13 @@
 
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
-
 #include <Sandbox/environment/effects/ShipPostProcessing.h>
-#include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+
+#include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
 
 #include <Editor.h>
 #include <Engine/Level.h>

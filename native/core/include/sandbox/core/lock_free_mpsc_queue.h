@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sandbox/core/lock_free_mpsc_queue_enums.h>
+
 #include <atomic>
 #include <concepts>
 #include <cstddef>
@@ -9,8 +11,6 @@
 #include <span>
 #include <type_traits>
 #include <utility>
-
-#include <sandbox/core/lock_free_mpsc_queue_enums.h>
 
 namespace ml {
 template <typename T, typename... Args>

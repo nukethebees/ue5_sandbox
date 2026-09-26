@@ -2,12 +2,11 @@
 
 #include "jobserver/types.hpp"
 
+#include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <functional>
 #include <string>
-
-#include <cstdint>
 
 namespace jobserver {
 struct RecoveryAssessment {

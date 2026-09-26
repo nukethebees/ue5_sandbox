@@ -1,7 +1,5 @@
 #include "ioj/sim/collision/collision_uniform_grid.h"
 
-#include <sandbox/core/diagnostics.h>
-
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/collision_grid.h>
 #include <ioj/sim/entity_cell_data_operations.h>
@@ -10,6 +8,8 @@
 #include <ioj/sim/rotator_math.h>
 #include <ioj/sim/trace_hits.h>
 #include <ioj/sim/world_aabb_operations.h>
+
+#include <sandbox/core/diagnostics.h>
 
 #include <algorithm>
 #include <cassert>

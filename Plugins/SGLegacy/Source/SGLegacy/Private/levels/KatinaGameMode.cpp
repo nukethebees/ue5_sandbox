@@ -1,14 +1,13 @@
 #include "SGLegacy/levels/KatinaGameMode.h"
 
-#include <SandboxCoreEngine/actor_utils.h>
-#include "EngineUtils.h"
 #include "Sandbox/environment/SandboxActorSpawner.h"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SGLegacy/players/MothershipBoss.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
-#include "EngineUtils.h"
+#include <SandboxCoreEngine/actor_utils.h>
 
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
+#include "EngineUtils.h"
 
 AKatinaGameMode::AKatinaGameMode() {
     PrimaryActorTick.bCanEverTick = false;

@@ -1,7 +1,8 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "SbxMeshGenLab/MeshData.h"
+
+#include "CoreMinimal.h"
 
 class UStaticMesh;
 

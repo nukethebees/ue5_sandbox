@@ -1,10 +1,11 @@
 #include "SpaceGamePresentation/presentation/widgets/TopKillersWidget.h"
-#include <SpaceGamePresentation/entities/EntityTypeDisplayNames.h>
 
 #include <ioj/sim/entity_types.h>
+#include <SpaceGamePresentation/entities/EntityTypeDisplayNames.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
+
 #include <SandboxCoreEngine/enums.h>
 #include <SandboxCoreEngine/strings.h>
-#include <SpaceGamePresentation/entities/TestTeamConversion.h>
 
 #include <Blueprint/WidgetTree.h>
 #include <Components/Border.h>

@@ -20,8 +20,9 @@
 
 #if WITH_EDITOR
 #include <ioj/sim/entity_world_bounds.h>
-#include <ScopedTransaction.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
+
+#include <ScopedTransaction.h>
 #endif
 
 ATestCapitalShipProxy::ATestCapitalShipProxy()

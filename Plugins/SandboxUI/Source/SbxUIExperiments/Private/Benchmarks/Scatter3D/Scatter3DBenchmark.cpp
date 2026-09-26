@@ -1,10 +1,10 @@
 #include "Benchmarks/Scatter3D/Scatter3DBenchmark.h"
 
 #include "Benchmarks/BenchmarkStatistics.h"
+#include "Scatter3D/Scatter3DRenderer.h"
 
 #include "Math/UnrealMathUtility.h"
 #include "RenderingThread.h"
-#include "Scatter3D/Scatter3DRenderer.h"
 
 namespace {
 auto make_scatter_3d_points(int32 const point_count) -> TArray<FScatter3DPoint> {

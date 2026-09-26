@@ -1,9 +1,9 @@
 #include "SGLegacy/ui/ShipRenderIconWidget.h"
 
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
+
 #include "Components/Image.h"
 #include "Materials/MaterialInterface.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 void UShipRenderIconWidget::NativeConstruct() {
     Super::NativeConstruct();

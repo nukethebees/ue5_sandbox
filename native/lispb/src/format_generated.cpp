@@ -10,9 +10,10 @@
 #define NOMINMAX
 #include <Windows.h>
 #else
-#include <cerrno>
 #include <sys/wait.h>
 #include <unistd.h>
+
+#include <cerrno>
 #endif
 
 namespace codegen::detail {
@@ -20,7 +21,8 @@ namespace {
 
 class FormatTemporary {
   public:
-    FormatTemporary() {
+    explicit FormatTemporary(std::filesystem::path const& destination)
+        : filename_{destination.filename()} {
         static std::atomic<unsigned> sequence{};
         auto const root{std::filesystem::temp_directory_path()};
         auto const stamp{std::chrono::steady_clock::now().time_since_epoch().count()};
@@ -36,9 +38,10 @@ class FormatTemporary {
     }
     FormatTemporary(FormatTemporary const&) = delete;
     auto operator=(FormatTemporary const&) -> FormatTemporary& = delete;
-    auto path() const -> std::filesystem::path { return directory_ / "generated.cpp"; }
+    auto path() const -> std::filesystem::path { return directory_ / filename_; }
   private:
     std::filesystem::path directory_;
+    std::filesystem::path filename_;
 };
 
 auto style_path(std::filesystem::path const& destination) -> std::filesystem::path {
@@ -154,7 +157,8 @@ void run_formatter(std::filesystem::path const& input, std::filesystem::path con
 auto format_generated(std::string const& content, std::filesystem::path const& destination)
     -> std::string {
     auto const style{style_path(destination)};
-    FormatTemporary temporary;
+    // Preserve the basename so clang-format recognizes the source's matching header.
+    FormatTemporary temporary{destination};
     {
         std::ofstream output{temporary.path(), std::ios::binary};
         output.write(content.data(), static_cast<std::streamsize>(content.size()));

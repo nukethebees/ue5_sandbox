@@ -1,12 +1,11 @@
 #include "Sandbox/environment/structures/HISMGrid.h"
 
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Engine/StaticMesh.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AHISMGrid::AHISMGrid()
     : ismc{CreateDefaultSubobject<UHierarchicalInstancedStaticMeshComponent>(TEXT("hismc"))} {

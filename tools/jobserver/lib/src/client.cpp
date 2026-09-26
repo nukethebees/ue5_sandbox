@@ -1,6 +1,7 @@
 #include "jobserver/client.hpp"
 
 #include "environment.hpp"
+
 #include "jobserver/authority.hpp"
 #include "jobserver/protocol.hpp"
 #include "jobserver/transport.hpp"

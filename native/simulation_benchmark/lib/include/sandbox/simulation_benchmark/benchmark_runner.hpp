@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/sim/sim_tick.h>
+
 #include <sandbox/simulation_benchmark/command_line.hpp>
 
 #include <cstddef>

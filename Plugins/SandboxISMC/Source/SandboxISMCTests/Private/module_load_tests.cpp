@@ -1,5 +1,4 @@
 #include "Modules/ModuleManager.h"
-
 #include <CQTest.h>
 
 TEST_CLASS(SandboxISMCModuleLoad, "SandboxISMC.ModuleLoadSmoke")

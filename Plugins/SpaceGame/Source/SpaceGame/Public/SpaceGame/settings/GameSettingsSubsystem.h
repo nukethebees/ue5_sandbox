@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Containers/Ticker.h"
 #include "SpaceGame/settings/ControlSettingsTypes.h"
 #include "SpaceGame/settings/GameSettings.generated.h"
 #include "SpaceGame/settings/GameSettingsBackend.h"
 #include "SpaceGame/settings/GameSettingsEditState.h"
-#include "Subsystems/GameInstanceSubsystem.h"
-
 #include <ioj/sim/player/flight_model_config.h>
+
+#include "Containers/Ticker.h"
+#include "Subsystems/GameInstanceSubsystem.h"
 
 #include "GameSettingsSubsystem.generated.h"
 

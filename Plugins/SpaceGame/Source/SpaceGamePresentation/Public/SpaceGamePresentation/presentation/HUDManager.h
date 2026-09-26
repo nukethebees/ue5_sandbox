@@ -8,12 +8,6 @@
 #include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/flight_model_config.h>
 #include <ioj/sim/player/space_ship_common.h>
-#include <sandbox/core/multi_buffer.h>
-#include <sandbox/core/periodic_tick_countdown.h>
-#include <SandboxUI/EntityOverlay/EntityOverlayFrameStore.h>
-#include <SandboxUI/EntityOverlay/EntityOverlayTypes.h>
-#include <SandboxUI/Radar/RadarFrameStore.h>
-#include <SandboxUI/Radar/RadarTypes.h>
 #include <SpaceGamePresentation/entities/ShipHealth.h>
 #include <SpaceGamePresentation/presentation/EntityOverlaySource.h>
 #include <SpaceGamePresentation/presentation/HudUpdateSettings.h>
@@ -22,6 +16,13 @@
 #include <SpaceGamePresentation/presentation/widgets/FlightVectorDebugData.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudKillData.h>
 #include <SpaceGamePresentation/presentation/WorldSoftTargetMaterialData.h>
+
+#include <sandbox/core/multi_buffer.h>
+#include <sandbox/core/periodic_tick_countdown.h>
+#include <SandboxUI/EntityOverlay/EntityOverlayFrameStore.h>
+#include <SandboxUI/EntityOverlay/EntityOverlayTypes.h>
+#include <SandboxUI/Radar/RadarFrameStore.h>
+#include <SandboxUI/Radar/RadarTypes.h>
 
 #include <CoreMinimal.h>
 #include <HAL/Platform.h>

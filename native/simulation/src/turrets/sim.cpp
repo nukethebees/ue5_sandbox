@@ -1,35 +1,37 @@
 #include "ioj/sim/turrets/sim.h"
-#include <algorithm>
-#include <array>
-#include <cassert>
-#include <cstdint>
-#include <execution>
+
+#include <ioj/sim/batch_operations.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/deterministic_bias.h>
-#include <numeric>
-#include <sandbox/core/countdown.h>
-#include <sandbox/core/fixed_array.h>
-#include <sandbox/core/periodic_tick_countdown.h>
-#include <sandbox/core/projectile_intercept.h>
-#include <sandbox/core/tick_countdown.h>
-#include <sandbox/core/vector_math.h>
-#include <sandbox/core/vector_normalization.h>
-#include <span>
-#include <thread>
-#include <utility>
-#include <vector>
-
-#include <ioj/sim/batch_operations.h>
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/frame_vectors3f.h>
 #include <ioj/sim/lasers/frame_scratch.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_config.h>
 #include <ioj/sim/spatial_query_manager.h>
+
+#include <sandbox/core/countdown.h>
+#include <sandbox/core/fixed_array.h>
 #include <sandbox/core/frame_array.h>
 #include <sandbox/core/frame_memory_resource.h>
 #include <sandbox/core/loop_bounds.h>
+#include <sandbox/core/periodic_tick_countdown.h>
+#include <sandbox/core/projectile_intercept.h>
+#include <sandbox/core/tick_countdown.h>
+#include <sandbox/core/vector_math.h>
+#include <sandbox/core/vector_normalization.h>
+
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstdint>
+#include <execution>
+#include <numeric>
+#include <span>
+#include <thread>
+#include <utility>
+#include <vector>
 
 namespace ioj::sim::turrets {
 /* **************************************** */

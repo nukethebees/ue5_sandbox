@@ -1,9 +1,10 @@
 #pragma once
 
-#include "EditorUtilityWidget.h"
-#include "Input/Reply.h"
 #include "SbxMeshGenLab/MeshAssembly.h"
 #include "SbxMeshGenLab/MeshGenerationRequest.h"
+
+#include "EditorUtilityWidget.h"
+#include "Input/Reply.h"
 
 #include "SbxMeshGenLabWidget.generated.h"
 

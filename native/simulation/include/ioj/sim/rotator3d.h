@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/sim/rotator_types.h>
+
 #include <sandbox/core/quaternion4d.h>
 
 namespace ioj::sim {

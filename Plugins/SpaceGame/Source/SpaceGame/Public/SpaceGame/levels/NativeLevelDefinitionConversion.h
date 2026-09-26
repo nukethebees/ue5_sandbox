@@ -1,8 +1,7 @@
 #pragma once
 
-#include <SpaceGame/levels/LevelDefinition.h>
-
 #include <ioj/sim/levels/level_definition.h>
+#include <SpaceGame/levels/LevelDefinition.h>
 
 namespace ml::level_authoring {
 [[nodiscard]] SPACEGAME_API auto to_native(FLevelDefinition const& definition)

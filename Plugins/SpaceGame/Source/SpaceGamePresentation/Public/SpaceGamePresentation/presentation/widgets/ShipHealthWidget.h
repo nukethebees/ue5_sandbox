@@ -3,8 +3,8 @@
 #include "SpaceGamePresentation/entities/ShipHealth.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
-#include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "CoreMinimal.h"
 
 #include "ShipHealthWidget.generated.h"
 

@@ -1,22 +1,20 @@
 #pragma once
-#include <cstdint>
-#include <optional>
-#include <span>
-#include <vector>
-
+#include "ioj/sim/level_telemetry_snapshot.h"
+#include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/level_telemetry_current_state.h>
 #include <ioj/sim/level_telemetry_history_stats.h>
 #include <ioj/sim/sim_tick.h>
-
-#include "ioj/sim/level_telemetry_snapshot.h"
-
-#include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/telemetry/level_telemetry_block_history.h>
 #include <ioj/sim/telemetry/level_telemetry_run_record.h>
+
 #include <sandbox/core/time_series_data.h>
 
 #include <array>
+#include <cstdint>
+#include <optional>
+#include <span>
 #include <string>
+#include <vector>
 
 namespace ioj::sim {
 

@@ -1,7 +1,7 @@
-#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
-#include "HAL/IConsoleManager.h"
-
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+
+#include "HAL/IConsoleManager.h"
 
 #if !NO_LOGGING
 static void cmd_sandbox_log(TArray<FString> const& args) {

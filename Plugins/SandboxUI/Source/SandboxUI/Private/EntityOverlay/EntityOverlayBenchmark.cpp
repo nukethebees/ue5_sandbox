@@ -1,6 +1,7 @@
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
 
 #include "EntityOverlayRenderer.h"
+
 #include "SandboxUI/EntityOverlay/EntityOverlayFrameStore.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 

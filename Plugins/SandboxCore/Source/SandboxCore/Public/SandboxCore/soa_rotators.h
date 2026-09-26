@@ -5,10 +5,10 @@
 
 #include "SandboxCore/array_utils.h"
 
-#include "CoreMinimal.h"
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 #include <type_traits>
 #include <utility>

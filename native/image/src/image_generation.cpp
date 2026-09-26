@@ -1,4 +1,5 @@
 #include "sandbox/image/image_generation.h"
+
 #include "image_generation_utilities.h"
 #include "noise_sampling.h"
 

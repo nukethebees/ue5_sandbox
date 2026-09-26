@@ -1,10 +1,9 @@
 #pragma once
+#include <ioj/sim/base_sim_config.h>
 #include <ioj/sim/transform3d.h>
 
 #include <cstdint>
 #include <vector>
-
-#include <ioj/sim/base_sim_config.h>
 
 namespace ioj::sim {
 

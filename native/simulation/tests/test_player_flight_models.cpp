@@ -1,3 +1,4 @@
+#include "support/simulation_test_support.h"
 #include <ioj/sim/level_sim.h>
 #include <ioj/sim/player/flight_model_evaluator.h>
 
@@ -6,8 +7,6 @@
 #include <array>
 #include <cmath>
 #include <utility>
-
-#include "support/simulation_test_support.h"
 
 namespace ioj::sim::tests {
 namespace player_flight_model_tests {

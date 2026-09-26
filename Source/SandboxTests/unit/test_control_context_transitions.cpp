@@ -1,14 +1,13 @@
-#include <SandboxTests/support/SimulationTestAssets.h>
-#include <SandboxTests/support/test_setup.h>
-#include <SandboxTests/support/TestActorSpawning.h>
-#include <SandboxTests/support/TestEnhancedInputSubsystem.h>
-
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spatial_query_manager.h>
+#include <SandboxTests/support/SimulationTestAssets.h>
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestActorSpawning.h>
+#include <SandboxTests/support/TestEnhancedInputSubsystem.h>
 #include <SpaceGame/ships/player/PlayerControlContexts.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>

@@ -1,9 +1,9 @@
 #include "Benchmarks/Scatter3D/Scatter3DBenchmark.h"
+#include "Scatter3D/Scatter3DRenderer.h"
 
 #include "Engine/TextureRenderTarget2D.h"
 #include "HAL/PlatformTime.h"
 #include "RenderingThread.h"
-#include "Scatter3D/Scatter3DRenderer.h"
 #include "UObject/StrongObjectPtr.h"
 
 void benchmark_scatter_3d_rdg(TConstArrayView<FScatter3DPoint> const points,

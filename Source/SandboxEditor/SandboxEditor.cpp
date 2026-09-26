@@ -6,6 +6,7 @@
 #include "SandboxEditor/slate/BoxSizeCustomisation.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
 #include "SandboxEditor/slate/TestVolumeDetailsCustomisation.h"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 #include "Editor.h"
 #include "Editor/EditorEngine.h"
@@ -21,8 +22,6 @@
 #include "Widgets/Docking/SDockTab.h"
 #include "WorkspaceMenuStructure.h"
 #include "WorkspaceMenuStructureModule.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 #define LOCTEXT_NAMESPACE "FSandboxEditorModule"
 

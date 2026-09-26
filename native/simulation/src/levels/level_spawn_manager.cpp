@@ -1,16 +1,18 @@
 #include "ioj/sim/levels/level_spawn_manager.h"
+
+#include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/spinners/sim.h>
+#include <ioj/sim/turrets/sim.h>
+
+#include <sandbox/core/diagnostics.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <format>
 #include <optional>
-#include <sandbox/core/diagnostics.h>
 #include <span>
 #include <vector>
-
-#include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/spinners/sim.h>
-#include <ioj/sim/turrets/sim.h>
 
 namespace ioj::sim {
 LevelSpawnManager::LevelSpawnManager(capital_ships::Sim& capital_ships,

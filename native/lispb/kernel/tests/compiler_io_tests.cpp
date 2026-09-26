@@ -1,7 +1,7 @@
 #include <kernel_codegen/compiler.h>
+#include <lispb/output.h>
 
 #include <gtest/gtest.h>
-#include <lispb/output.h>
 
 #include <filesystem>
 #include <fstream>

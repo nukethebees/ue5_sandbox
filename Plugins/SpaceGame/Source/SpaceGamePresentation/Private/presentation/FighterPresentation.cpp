@@ -1,19 +1,19 @@
 #include "SpaceGamePresentation/presentation/FighterPresentation.h"
+
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
-
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCoreEngine/uobject_utils.h>
-#include <SandboxISMCComponent.h>
 
 #include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
 #include <Engine/World.h>
+#include <SandboxISMCComponent.h>
 
 FFighterPresentation::FFighterPresentation(USandboxISMCComponent& component)
     : instances{&component} {}

@@ -1,13 +1,12 @@
 #include "SpaceShipGameMode.h"
 
 #include "Sandbox/environment/effects/ShipPostProcessing.h"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "Kismet/GameplayStatics.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 class AShipPostProcessing;
 

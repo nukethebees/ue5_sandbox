@@ -1,6 +1,6 @@
 #include "SandboxEditor/Commandlets/GenerateScriptedLevelAssetsCommandlet.h"
 
-#include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
+#include <SandboxGameShared/ui/widgets/ValueWidget.h>
 #include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/input/ControlBindingMetadata.h>
 #include <SpaceGame/input/SpaceGameInputModifier.h>
@@ -23,6 +23,8 @@
 #include <SpaceGamePresentation/presentation/widgets/TopKillersWidget.h>
 #include <SpaceGamePresentation/ui/common/MenuButtonWidget.h>
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
+
+#include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
 
 #include <AssetRegistry/AssetRegistryModule.h>
 #include <Blueprint/WidgetTree.h>
@@ -63,7 +65,6 @@
 #include <Kismet2/KismetEditorUtilities.h>
 #include <Misc/PackageName.h>
 #include <PlayerMappableKeySettings.h>
-#include <SandboxGameShared/ui/widgets/ValueWidget.h>
 #include <UObject/Package.h>
 #include <UObject/SavePackage.h>
 #include <UObject/UnrealType.h>

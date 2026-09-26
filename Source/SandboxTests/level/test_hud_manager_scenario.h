@@ -1,8 +1,7 @@
 #pragma once
 
-#include <SandboxTests/support/SimulationTestScenario.h>
-
 #include <ioj/sim/entity_type.h>
+#include <SandboxTests/support/SimulationTestScenario.h>
 #include <SpaceGame/missions/TestMissionState.h>
 #include <SpaceGamePresentation/entities/TestTeam.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>

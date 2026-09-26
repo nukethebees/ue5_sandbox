@@ -2,10 +2,10 @@
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/health_table.h>
 
+#include <gtest/gtest.h>
+
 #include <algorithm>
 #include <array>
-
-#include <gtest/gtest.h>
 
 namespace ioj::sim::tests {
 namespace {

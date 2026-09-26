@@ -8,7 +8,6 @@
 #include "E:\UE5\Projects\Sandbox\Source\Sandbox\shaders\utilities.ush"
 #else
 #include "/Engine/Private/Common.ush"
-
 #include "/Project/utilities.ush"
 #endif
 

@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 #include <variant>
 

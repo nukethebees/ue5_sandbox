@@ -1,6 +1,8 @@
 #pragma once
 #include <SpaceGamePresentation/ui/style/SpaceGameUiTheme.h>
+
 #include <Subsystems/GameInstanceSubsystem.h>
+
 #include "GameUiStyleSubsystem.generated.h"
 
 namespace ml::ioj {

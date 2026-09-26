@@ -1,6 +1,6 @@
+#include "support/simulation_test_support.h"
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/telemetry/level_telemetry_block_history.h>
-#include "support/simulation_test_support.h"
 
 namespace ioj::sim::tests {
 

@@ -5,6 +5,7 @@
 #include <Components/MapTestSpawner.h>
 #include <Components/SceneCaptureComponent2D.h>
 #include <CoreGlobals.h>
+#include <CQTest.h>
 #include <Engine/TextureRenderTarget2D.h>
 #include <Engine/World.h>
 #include <GameFramework/Actor.h>
@@ -21,8 +22,6 @@
 #include <RenderingThread.h>
 #include <RHI.h>
 #include <ShaderCompiler.h>
-
-#include <CQTest.h>
 
 namespace SparkBenchmark {
 struct FSummary {

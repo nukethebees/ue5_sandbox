@@ -1,7 +1,6 @@
+#include <ioj/sim/player/sim.h>
 #include <SandboxTests/support/PlayerControllerTestAccess.h>
 #include <SandboxTests/support/test_setup.h>
-
-#include <ioj/sim/player/sim.h>
 #include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/input/SpaceGameInputModifier.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>

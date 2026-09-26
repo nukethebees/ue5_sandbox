@@ -1,6 +1,7 @@
 #pragma once
 #include <Containers/StaticArray.h>
 #include <CoreMinimal.h>
+
 #include "HudUpdateSettings.generated.h"
 USTRUCT(BlueprintType)
 struct FTestBatchGameUiUpdateFrequencies {

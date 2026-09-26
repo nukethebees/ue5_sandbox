@@ -2,9 +2,10 @@
 
 #include <jobserver/client.hpp>
 
-#include <CLI/CLI.hpp>
-#include <Windows.h>
 #include <winsock2.h>
+#include <Windows.h>
+
+#include <CLI/CLI.hpp>
 
 #include <algorithm>
 #include <array>

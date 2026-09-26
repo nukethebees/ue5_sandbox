@@ -1,6 +1,6 @@
-#include <ioj/sim/column_math.h>
 #include <ioj/sim/levels/level_compilation.h>
 
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/levels/level_event_schedule.h>
 #include <ioj/sim/rotator_types.h>
 #include <ioj/sim/sim_clock.h>

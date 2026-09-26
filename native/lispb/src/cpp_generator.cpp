@@ -1,10 +1,9 @@
-#include <codegen/generator.h>
-#include <codegen/path_utils.h>
-#include <codegen/source_loader.h>
-
 #include "lowering.h"
 #include "lowering_utils.h"
 
+#include <codegen/generator.h>
+#include <codegen/path_utils.h>
+#include <codegen/source_loader.h>
 #include <codegen/validation.h>
 #include <lispb/schema/type_graph.h>
 

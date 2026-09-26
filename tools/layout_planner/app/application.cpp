@@ -3,7 +3,6 @@
 #include "gui/planner_ui.hpp"
 #include "platform/file_dialog.hpp"
 #include "platform/sdl_headers.hpp"
-
 #include <ioj/layout/frame_pacer.hpp>
 
 #include <imgui.h>

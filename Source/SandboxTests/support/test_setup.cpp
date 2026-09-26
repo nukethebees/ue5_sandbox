@@ -1,14 +1,12 @@
 #include "test_setup.h"
 
 #include "SimulationTestAssets.h"
-
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
-#include <SandboxCoreEngine/actor_utils.h>
-
 #include <SandboxCore/error_msg.h>
+#include <SandboxCoreEngine/actor_utils.h>
 
 #include <Commands/TestCommandBuilder.h>
 #include <Components/BoxComponent.h>

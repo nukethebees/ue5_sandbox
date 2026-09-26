@@ -1,13 +1,12 @@
 #include "Sandbox/environment/structures/IsmSpline.h"
 
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SplineComponent.h"
 #include "Engine/StaticMesh.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AIsmSpline::AIsmSpline()
     : ismc{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ismc"))}

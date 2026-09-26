@@ -1,14 +1,14 @@
 #include "SpaceGamePresentation/presentation/CapitalPresentation.h"
+
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
-#include <SpaceGamePresentation/entities/TestTeamConversion.h>
-#include <SpaceGamePresentation/integration/RotatorConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
-
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
+#include <SpaceGamePresentation/integration/RotatorConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGamePresentation/presentation/DelayedNiagaraSpawns.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 

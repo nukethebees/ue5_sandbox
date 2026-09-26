@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/sim/laser_source.h"
+
 #include "sandbox/core/native_soa/storage.h"
 
 #include <utility>

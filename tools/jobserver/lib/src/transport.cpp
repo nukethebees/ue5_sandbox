@@ -1,7 +1,8 @@
 #include "jobserver/transport.hpp"
 
-#include "jobserver/protocol.hpp"
 #include "test_barrier.hpp"
+
+#include "jobserver/protocol.hpp"
 
 #include <Windows.h>
 

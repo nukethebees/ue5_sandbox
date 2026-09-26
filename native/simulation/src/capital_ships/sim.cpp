@@ -1,26 +1,27 @@
 #include "ioj/sim/capital_ships/sim.h"
-#include <algorithm>
-#include <cassert>
-#include <cstdint>
-#include <ioj/sim/column_math.h>
-#include <ioj/sim/combat_events.h>
-#include <ioj/sim/sim_config.h>
-#include <optional>
-#include <sandbox/core/countdown.h>
-#include <span>
-#include <vector>
 
 #include <ioj/sim/batch_operations.h>
+#include <ioj/sim/column_math.h>
+#include <ioj/sim/combat_events.h>
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/fighter_diagnostics.h>
 #include <ioj/sim/fighter_frame_spawn_queue.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/health.h>
 #include <ioj/sim/profiling.h>
+#include <ioj/sim/sim_config.h>
 #include <ioj/sim/spatial_query_manager.h>
 
 #include <sandbox/core/array_math.h>
+#include <sandbox/core/countdown.h>
 #include <sandbox/core/frame_array.h>
+
+#include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <optional>
+#include <span>
+#include <vector>
 
 namespace ioj::sim::capital_ships {
 

@@ -1,6 +1,7 @@
 #pragma once
-#include <sandbox/core/test_timeline.h>
 #include "simulation_fixture.h"
+
+#include <sandbox/core/test_timeline.h>
 
 namespace ioj::sim::tests {
 class WorldlessSimulationTest {

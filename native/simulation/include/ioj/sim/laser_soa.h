@@ -7,6 +7,7 @@
 #include "ioj/sim/laser_source.h"
 #include "ioj/sim/rotator_types.h"
 #include "ioj/sim/vector_types.h"
+
 #include "sandbox/core/native_soa/storage.h"
 
 #include <utility>

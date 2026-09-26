@@ -1,6 +1,6 @@
-#include <mesh_gen/MeshGeneration.h>
-
 #include "MeshMath.h"
+
+#include <mesh_gen/MeshGeneration.h>
 
 #include <algorithm>
 #include <array>

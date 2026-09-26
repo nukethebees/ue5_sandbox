@@ -1,8 +1,10 @@
 #pragma once
 
+#include <SpaceGame/ships/player/PlayerControlContext.h>
+
 #include <Components/SlateWrapperTypes.h>
 #include <CoreMinimal.h>
-#include <SpaceGame/ships/player/PlayerControlContext.h>
+
 #include "PlayerHudLifecycle.generated.h"
 
 class ASpaceGamePlayerController;

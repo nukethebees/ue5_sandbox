@@ -1,7 +1,7 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Containers/AllowShrinking.h"
+#include "CoreMinimal.h"
 
 template <typename SizeType>
 auto DefaultCalculateSlackGrow(SizeType const requested, SizeType const current, SIZE_T, bool)

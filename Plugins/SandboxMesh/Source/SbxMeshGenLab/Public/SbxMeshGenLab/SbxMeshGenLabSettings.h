@@ -3,6 +3,7 @@
 #include "SbxMeshGenLab/MeshAssembly.h"
 #include "SbxMeshGenLab/MeshAssemblyRecipe.h"
 #include "SbxMeshGenLab/MeshGenerationRequest.h"
+
 #include "UObject/Object.h"
 
 #include "SbxMeshGenLabSettings.generated.h"

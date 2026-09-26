@@ -1,7 +1,8 @@
+#include "support/simulation_test_support.h"
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
+
 #include <sandbox/core/vector_normalization.h>
-#include "support/simulation_test_support.h"
 
 namespace ioj::sim::tests::fighter_target_refresh {
 

@@ -4,10 +4,12 @@
 #include <ioj/sim/damage_queue.h>
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_ledger.h>
+
 #include <sandbox/core/frame_memory_resource.h>
 
-#include <array>
 #include <gtest/gtest.h>
+
+#include <array>
 #include <utility>
 #include <vector>
 

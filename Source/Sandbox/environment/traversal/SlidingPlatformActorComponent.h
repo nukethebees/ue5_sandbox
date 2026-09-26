@@ -1,9 +1,9 @@
 #pragma once
 
-#include "CoreMinimal.h"
-#include "Components/ActorComponent.h"
-
 #include "SandboxGameShared/interaction/Clickable.h"
+
+#include "Components/ActorComponent.h"
+#include "CoreMinimal.h"
 
 #include "SlidingPlatformActorComponent.generated.h"
 

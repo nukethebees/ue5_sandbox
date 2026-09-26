@@ -1,8 +1,8 @@
 #include "Editor/SbxMeshGenLabEditorMode.h"
 
-#include "Editor/SbxMeshGenLabEditorModeToolkit.h"
 #include "Generation/MeshAssemblyRecipeAsset.h"
 #include "Generation/MeshAssetWriter.h"
+
 #include "SbxMeshGenLab/MeshAssemblyRecipe.h"
 #include "SbxMeshGenLab/MeshAssemblyRecipeJson.h"
 #include "SbxMeshGenLab/NativeMeshTypes.h"
@@ -14,6 +14,7 @@
 #include "Components/SceneComponent.h"
 #include "DesktopPlatformModule.h"
 #include "Editor.h"
+#include "Editor/SbxMeshGenLabEditorModeToolkit.h"
 #include "EditorViewportClient.h"
 #include "Engine/Engine.h"
 #include "Engine/Selection.h"

@@ -1,18 +1,19 @@
 #include "ioj/sim/spatial_query_manager.h"
+
+#include <ioj/sim/agent_accessor.h>
+#include <ioj/sim/entity_world_bounds.h>
+#include <ioj/sim/profiling.h>
+#include <ioj/sim/rotator_math.h>
+
+#include <sandbox/core/diagnostics.h>
+
 #include <algorithm>
 #include <array>
 #include <cassert>
 #include <cmath>
-#include <format>
-#include <ioj/sim/entity_world_bounds.h>
-#include <ioj/sim/profiling.h>
-#include <ioj/sim/rotator_math.h>
-#include <sandbox/core/diagnostics.h>
-#include <thread>
-
-#include <ioj/sim/agent_accessor.h>
-
 #include <cstddef>
+#include <format>
+#include <thread>
 #include <utility>
 
 namespace {

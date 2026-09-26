@@ -1,7 +1,8 @@
-#include <codegen/schema/schema_version.h>
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/physical_facts.hpp>
 #include <ioj/layout/profile_probe.hpp>
+
+#include <codegen/schema/schema_version.h>
 
 #include <array>
 #include <fstream>

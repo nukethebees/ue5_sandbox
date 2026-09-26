@@ -1,5 +1,7 @@
 #pragma once
 
+#include <sandbox/core/lock_free_mpsc_queue_enums.h>
+
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -12,8 +14,6 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
-
-#include <sandbox/core/lock_free_mpsc_queue_enums.h>
 
 template <typename View, typename... Ts>
 concept is_soa_queue_view = std::is_void_v<View> || std::constructible_from<View, std::span<Ts>...>;

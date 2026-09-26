@@ -1,12 +1,12 @@
 #pragma once
 
 #include "planner_ui.hpp"
-
 #include "planner_ui_support.hpp"
+#include <ioj/layout/planner_type.hpp>
 
 #include <codegen/path_utils.h>
+
 #include <imgui.h>
-#include <ioj/layout/planner_type.hpp>
 
 #include <algorithm>
 #include <charconv>

@@ -1,7 +1,8 @@
 #include <sandbox/perf/benchmark_comparison.hpp>
 
-#include <gtest/gtest.h>
 #include <Windows.h>
+
+#include <gtest/gtest.h>
 
 #include <chrono>
 #include <filesystem>

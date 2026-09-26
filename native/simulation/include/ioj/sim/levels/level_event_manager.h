@@ -1,12 +1,12 @@
 #pragma once
+#include <ioj/sim/levels/compiled_level_events.h>
+#include <ioj/sim/levels/level_spawn_manager.h>
+#include <ioj/sim/sim_tick.h>
+
 #include <cstdint>
 #include <optional>
 #include <span>
 #include <vector>
-
-#include <ioj/sim/levels/compiled_level_events.h>
-#include <ioj/sim/levels/level_spawn_manager.h>
-#include <ioj/sim/sim_tick.h>
 
 namespace ioj::sim {
 struct MissionManager;

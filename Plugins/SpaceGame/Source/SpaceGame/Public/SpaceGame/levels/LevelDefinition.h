@@ -1,7 +1,6 @@
 #pragma once
 #include <ioj/sim/levels/level_definition.h>
 #include <ioj/sim/levels/level_mission_mode.h>
-
 #include <ioj/sim/levels/level_runtime_events.h>
 #include <SpaceGameSimulation/levels/LevelDefinitionSoA.h>
 #include <SpaceGameSimulation/levels/LevelTypes.h>

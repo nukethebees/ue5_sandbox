@@ -1,7 +1,6 @@
 #include <codegen/generator.h>
-#include <codegen/source_loader.h>
-
 #include <codegen/manifest_error.h>
+#include <codegen/source_loader.h>
 #include <codegen/validation.h>
 #include <lispb/schema/type_graph.h>
 

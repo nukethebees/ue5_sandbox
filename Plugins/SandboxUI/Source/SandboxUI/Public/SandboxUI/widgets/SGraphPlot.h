@@ -1,8 +1,9 @@
 #pragma once
 
+#include "SandboxCore/graph_plot.h"
+
 #include "Containers/Array.h"
 #include "Fonts/SlateFontInfo.h"
-#include "SandboxCore/graph_plot.h"
 #include "Widgets/SLeafWidget.h"
 
 struct SANDBOXUI_API FGraphSeries {

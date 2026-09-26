@@ -1,5 +1,7 @@
 #include "SandboxISMCBenchmarkActor.h"
 
+#include "SandboxISMCComponent.h"
+
 #include "Camera/CameraComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
@@ -24,7 +26,6 @@
 #include "RenderingThread.h"
 #include "RenderTimer.h"
 #include "RHI.h"
-#include "SandboxISMCComponent.h"
 #include "UnrealEdGlobals.h"
 #include "UObject/ConstructorHelpers.h"
 

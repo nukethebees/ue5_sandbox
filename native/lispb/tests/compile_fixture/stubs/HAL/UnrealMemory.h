@@ -1,9 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include <malloc.h>
 
 #include <cstring>
-#include <malloc.h>
 
 struct FMemory {
     static auto Realloc(std::nullptr_t, SIZE_T const bytes, uint32 const alignment) -> void* {

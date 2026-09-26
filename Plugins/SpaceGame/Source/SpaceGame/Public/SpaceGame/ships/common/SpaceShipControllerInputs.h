@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "SpaceShipControllerInputs.generated.h"
 
 class UInputMappingContext;

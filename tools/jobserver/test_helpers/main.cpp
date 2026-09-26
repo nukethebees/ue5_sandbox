@@ -98,9 +98,10 @@ auto wmain(int argc, wchar_t** argv) -> int {
         startup.cb = sizeof(STARTUPINFOW);
         PROCESS_INFORMATION child{};
         auto const has_exit_root{argc >= 5 && std::wstring_view{argv[4]} == L"exit-root"};
-        auto const duration_argument{has_exit_root && argc >= 6
-                                         ? argv[5]
-                                         : (has_exit_root ? nullptr : (argc >= 5 ? argv[4] : nullptr))};
+        auto const duration_argument{
+            has_exit_root && argc >= 6
+                ? argv[5]
+                : (has_exit_root ? nullptr : (argc >= 5 ? argv[4] : nullptr))};
         auto command{L"jobserver-test-helper.exe ready-sleep \"" +
                      std::filesystem::path{argv[3]}.wstring() + L"\" " +
                      std::to_wstring(duration_or_default(duration_argument).count())};

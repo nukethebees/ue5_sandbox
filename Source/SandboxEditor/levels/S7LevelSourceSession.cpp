@@ -1,7 +1,6 @@
 #include "SandboxEditor/levels/S7LevelSourceSession.h"
 
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
-
 #include <SpaceGameS7/LevelScriptCatalog.h>
 
 #include <Containers/StringConv.h>

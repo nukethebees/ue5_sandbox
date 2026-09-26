@@ -1,10 +1,10 @@
 #pragma once
 
-#include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
 
 #include "TextPopupTriggerActor.generated.h"
 

@@ -2,6 +2,7 @@
 
 #include "ioj/sim/entity_type.h"
 #include "ioj/sim/vector_types.h"
+
 #include "sandbox/core/enum_array.h"
 
 #include <cstddef>
@@ -29,8 +30,7 @@ struct EntityAABBs {
             half_extent_xs_[type], half_extent_ys_[type], half_extent_zs_[type]);
     }
   private:
-    using Values =
-        ml::EnumArray<EntityType, float, static_cast<std::size_t>(EntityType::COUNT)>;
+    using Values = ml::EnumArray<EntityType, float, static_cast<std::size_t>(EntityType::COUNT)>;
 
     Values centre_xs_{};
     Values centre_ys_{};

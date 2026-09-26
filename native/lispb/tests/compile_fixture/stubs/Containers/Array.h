@@ -1,7 +1,7 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Containers/AllowShrinking.h"
+#include "CoreMinimal.h"
 
 #include <algorithm>
 #include <initializer_list>

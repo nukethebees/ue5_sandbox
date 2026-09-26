@@ -1,5 +1,4 @@
 #include <SandboxTests/support/test_setup.h>
-
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ui/common/GameUiRootLayout.h>
 #include <SpaceGame/ui/LevelCompletionWidget.h>

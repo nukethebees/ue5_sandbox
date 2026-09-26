@@ -1,8 +1,8 @@
+#include "test_fighters_standby_transition.h"
+
+#include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/fighters/sim.h>
-#include "../support/simulation_test_support.h"
-
-#include "test_fighters_standby_transition.h"
 
 namespace ioj::sim {
 namespace fighters_standby_test {

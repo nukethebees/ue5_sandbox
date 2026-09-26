@@ -3,9 +3,10 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "Containers/ArrayView.h"
 #include "SpaceGame/settings/GameSettingsTypes.h"
+
+#include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 #include <variant>
 

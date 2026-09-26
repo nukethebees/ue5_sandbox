@@ -1,12 +1,13 @@
 #include "SpaceGamePresentation/presentation/widgets/MissionEntityHealthRowWidget.h"
+
 #include <SpaceGamePresentation/entities/EntityTypeDisplayNames.h>
+#include <SpaceGamePresentation/presentation/widgets/ShipHealthWidget.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+#include <SpaceGamePresentation/ui/style/GameUiStyle.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/error_msg.h>
 #include <SandboxCoreEngine/uobject_utils.h>
-#include <SpaceGamePresentation/presentation/widgets/ShipHealthWidget.h>
-#include <SpaceGamePresentation/ui/style/GameUiStyle.h>
-#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <Components/HorizontalBox.h>
 #include <Components/HorizontalBoxSlot.h>

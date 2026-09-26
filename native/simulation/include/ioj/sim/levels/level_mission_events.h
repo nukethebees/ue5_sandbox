@@ -1,8 +1,8 @@
 #pragma once
+#include <ioj/sim/levels/level_runtime_events.h>
+
 #include <cstdint>
 #include <vector>
-
-#include <ioj/sim/levels/level_runtime_events.h>
 
 namespace ioj::sim {
 struct LevelMissionEvents {

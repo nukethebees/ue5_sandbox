@@ -1,10 +1,9 @@
 #include "BoxSizeCustomisation.h"
 
+#include "Sandbox/utilities/BoxSize.h"
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 #include "SandboxEditor/slate/BoxSizeEditMode.h"
 #include "SandboxEditor/slate/BoxSizePropInput.h"
-
-#include "Sandbox/utilities/BoxSize.h"
 
 #include "DetailLayoutBuilder.h"
 #include "DetailWidgetRow.h"

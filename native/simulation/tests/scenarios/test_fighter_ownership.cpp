@@ -1,9 +1,10 @@
 #include "test_fighter_ownership.h"
-#include <set>
-#include "../support/simulation_test_support.h"
 
+#include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/fighters/sim.h>
+
+#include <set>
 
 /*
 This test relies on a long spawn delay to ensure more fighters are not spawned.

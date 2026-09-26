@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/sim/entity_type.h"
+
 #include "sandbox/core/packed_value.h"
 
 #include <cassert>

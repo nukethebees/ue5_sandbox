@@ -1,8 +1,8 @@
+#include "Sandbox/utilities/tests/LocalTestEnum.h"
+
 #include "SandboxCoreEngine/enums.h"
 
 #include "Misc/AutomationTest.h"
-
-#include "Sandbox/utilities/tests/LocalTestEnum.h"
 
 BEGIN_DEFINE_SPEC(FWithoutEnumTypePrefixSpec,
                   "Sandbox.enum.without_class_prefix",

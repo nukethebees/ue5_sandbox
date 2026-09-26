@@ -7,7 +7,6 @@
 #include <SandboxEditor/levels/S7LevelReconciliation.h>
 #include <SandboxEditor/levels/S7LevelSourceSession.h>
 #include <SandboxEditor/SandboxEditor.h>
-
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>

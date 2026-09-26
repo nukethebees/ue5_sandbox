@@ -2,6 +2,7 @@
 
 #include "ioj/sim/direct_damage_events.h"
 #include "ioj/sim/entity_unique_id.h"
+
 #include "sandbox/core/frame_array.h"
 #include "sandbox/core/frame_memory_resource.h"
 

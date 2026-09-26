@@ -1,20 +1,18 @@
 #pragma once
 
-#include <SpaceGameRendering/SparkBurstStyle.h>
-#include <SpaceGameRendering/SparkRendererSettings.h>
-
 #include <SpaceGamePresentation/config/AttackDistanceBand.h>
 #include <SpaceGamePresentation/config/BarrelRollConfig.h>
+#include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
+#include <SpaceGameRendering/SparkBurstStyle.h>
+#include <SpaceGameRendering/SparkRendererSettings.h>
 
 #include <SandboxCoreEngine/collision_settings.h>
 
 #include <CoreMinimal.h>
 #include <Engine/DataAsset.h>
 #include <Engine/EngineTypes.h>
-
-#include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 
 #include "SpaceGameLevelConfig.generated.h"
 

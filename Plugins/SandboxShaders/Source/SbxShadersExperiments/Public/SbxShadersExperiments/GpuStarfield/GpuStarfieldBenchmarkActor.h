@@ -1,7 +1,8 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "SandboxShaders/GpuStarfield/GpuStarfieldActor.h"
+
+#include "CoreMinimal.h"
 
 #include "GpuStarfieldBenchmarkActor.generated.h"
 

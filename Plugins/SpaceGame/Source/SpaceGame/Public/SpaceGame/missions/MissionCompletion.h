@@ -1,8 +1,9 @@
 #pragma once
 
-#include <CoreMinimal.h>
 #include <SpaceGame/missions/TestMissionFailReason.h>
 #include <SpaceGame/missions/TestMissionState.h>
+
+#include <CoreMinimal.h>
 
 struct FTestMissionCompletion {
     FName level_id{NAME_None};

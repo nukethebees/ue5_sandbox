@@ -1,7 +1,6 @@
 #include "SandboxUI/widgets/SettingsWidgets.h"
 
 #include "SandboxUI/slate/SlateSlots.h"
-
 #include <sandbox/core/ui/settings_slider.h>
 
 #include "Framework/Application/SlateApplication.h"

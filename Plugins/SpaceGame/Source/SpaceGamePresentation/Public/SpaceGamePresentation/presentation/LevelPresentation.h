@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/sim/level_read_view.h>
 #include <SpaceGamePresentation/presentation/CapitalPresentation.h>
 #include <SpaceGamePresentation/presentation/DelayedNiagaraSpawns.h>
 #include <SpaceGamePresentation/presentation/FighterPresentation.h>
@@ -8,8 +9,6 @@
 #include <SpaceGamePresentation/presentation/SpinnerPresentation.h>
 #include <SpaceGamePresentation/presentation/TurretPresentation.h>
 #include <SpaceGameRendering/SparkEffects.h>
-
-#include <ioj/sim/level_read_view.h>
 
 struct SPACEGAMEPRESENTATION_API FLevelPresentationResources {
     USandboxISMCComponent* lasers{nullptr};

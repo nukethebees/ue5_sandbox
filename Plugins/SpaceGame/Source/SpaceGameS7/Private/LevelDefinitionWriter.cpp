@@ -1,8 +1,9 @@
 #include <SpaceGameS7/LevelDefinitionWriter.h>
 
+#include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
+
 #include <sandbox/level_authoring/LevelDefinitionWriter.h>
 #include <SandboxCoreEngine/strings.h>
-#include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
 
 namespace ml::s7 {
 auto emit_editor_level_source(FLevelDefinition const& definition)

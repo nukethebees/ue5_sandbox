@@ -1,13 +1,13 @@
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #pragma once
 
-#include "CoreMinimal.h"
-#include "Components/Widget.h"
-#include "Framework/SlateDelegates.h"
-#include "Widgets/SCompoundWidget.h"
-
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+
+#include "Components/Widget.h"
+#include "CoreMinimal.h"
+#include "Framework/SlateDelegates.h"
+#include "Widgets/SCompoundWidget.h"
 
 class SBox;
 

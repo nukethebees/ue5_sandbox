@@ -1,8 +1,7 @@
 #pragma once
 
-#include <CoreMinimal.h>
-
 #include <Components/PrimitiveComponent.h>
+#include <CoreMinimal.h>
 #include <Engine/EngineTypes.h>
 
 #include "collision_settings.generated.h"

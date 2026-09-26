@@ -1,11 +1,12 @@
 #include "Generation/MeshAssemblyRecipeAsset.h"
 
+#include "SbxMeshGenLab/MeshAssemblyRecipe.h"
+
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "HAL/FileManager.h"
 #include "Interfaces/IPluginManager.h"
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
-#include "SbxMeshGenLab/MeshAssemblyRecipe.h"
 #include "UObject/Package.h"
 #include "UObject/SavePackage.h"
 

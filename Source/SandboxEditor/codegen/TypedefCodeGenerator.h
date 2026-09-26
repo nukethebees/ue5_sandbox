@@ -1,8 +1,8 @@
 #pragma once
 
-#include "CoreMinimal.h"
-
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
+
+#include "CoreMinimal.h"
 
 /**
  * Editor utility for generating strong typedef wrapper structs.

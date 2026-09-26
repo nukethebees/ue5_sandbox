@@ -6,7 +6,6 @@
 
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
-
 #include "Engine/HitResult.h"
 #include "Engine/World.h"
 

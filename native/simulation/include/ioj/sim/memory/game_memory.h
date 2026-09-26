@@ -3,7 +3,6 @@
 #include "ioj/sim/memory/game_memory_backing.h"
 #include "ioj/sim/memory/game_memory_block.h"
 #include "ioj/sim/memory/game_memory_config.h"
-
 #include <native/memory/root_arena.h>
 
 #include <memory_resource>

@@ -1,5 +1,6 @@
 #include "SGLegacy/players/SpaceShipController.h"
 
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SGLegacy/players/ShipHealthComponent.h"
 #include "SGLegacy/players/SpaceShip.h"
 #include "SpaceGamePresentation/presentation/TestBatchGameUiData.h"
@@ -12,8 +13,6 @@
 #include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
 #include "InputMappingContext.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 ASpaceShipController::ASpaceShipController() {
     PrimaryActorTick.bCanEverTick = true;

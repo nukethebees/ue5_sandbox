@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/sim/levels/level_definition.h>
+
 #include <sandbox/level_authoring/CampaignDefinition.h>
 
 #include <cstddef>

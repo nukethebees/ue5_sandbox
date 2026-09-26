@@ -1,8 +1,8 @@
 #pragma once
 
-#include "CoreMinimal.h"
-
 #include <sandbox/core/speed_response.h>
+
+#include "CoreMinimal.h"
 
 #include "SpeedResponse.generated.h"
 

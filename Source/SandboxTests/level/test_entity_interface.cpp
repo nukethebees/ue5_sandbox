@@ -1,7 +1,9 @@
-#include <ioj/sim/agent_accessor.h>
 #include "test_entity_interface_scenario.h"
-
+#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/capital_ships/sim.h>
+#include <SandboxTests/support/SimulationTestAssets.h>
+#include <SandboxTests/support/TestActorSpawning.h>
+#include <SandboxTests/support/time_series_test_data.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
@@ -10,10 +12,6 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGamePresentation/entities/TestTeam.h>
-
-#include <SandboxTests/support/SimulationTestAssets.h>
-#include <SandboxTests/support/TestActorSpawning.h>
-#include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 

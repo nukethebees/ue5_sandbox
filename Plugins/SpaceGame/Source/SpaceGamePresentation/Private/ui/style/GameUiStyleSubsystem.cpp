@@ -1,5 +1,6 @@
-#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
+
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGamePresentation/ui/style/SpaceGameUiSettings.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 

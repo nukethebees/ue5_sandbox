@@ -1,6 +1,5 @@
-#include "ScalarValues.h"
-
 #include "Generated.h"
+#include "ScalarValues.h"
 
 #include <gtest/gtest.h>
 

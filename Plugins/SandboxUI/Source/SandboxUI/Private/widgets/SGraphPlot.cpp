@@ -1,10 +1,10 @@
 #include "SandboxUI/widgets/SGraphPlot.h"
 
+#include <sandbox/core/graph_plot.h>
+
 #include "Rendering/DrawElementTypes.h"
 #include "Styling/CoreStyle.h"
-
 #include <Framework/Application/SlateApplication.h>
-#include <sandbox/core/graph_plot.h>
 
 #include <vector>
 

@@ -1,6 +1,7 @@
+#include <ioj/layout/graph_view.hpp>
+
 #include <algorithm>
 #include <cmath>
-#include <ioj/layout/graph_view.hpp>
 #include <set>
 
 namespace ioj::layout {

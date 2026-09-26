@@ -1,9 +1,9 @@
 #include <lispb/project.h>
-#include <lispb/schema/type_graph.h>
 
 #include <codegen/path_utils.h>
 #include <codegen/sexpr/fields.h>
 #include <codegen/source_loader.h>
+#include <lispb/schema/type_graph.h>
 
 #include <algorithm>
 #include <cctype>

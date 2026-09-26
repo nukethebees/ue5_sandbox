@@ -1,14 +1,15 @@
 #include "SandboxUI/widgets/SHeatmap2D.h"
 
+#include "WidgetMath.h"
+
+#include <sandbox/core/ui/heatmap_2d.h>
+
 #include "Application/SlateApplicationBase.h"
 #include "Internationalization/Text.h"
 #include "Rendering/DrawElementTypes.h"
 #include "Rendering/SlateRenderer.h"
 #include "Styling/CoreStyle.h"
 #include "Textures/SlateShaderResource.h"
-#include "WidgetMath.h"
-
-#include <sandbox/core/ui/heatmap_2d.h>
 
 namespace {
 int32 constexpr color_lut_entry_count{256};

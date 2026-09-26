@@ -1,11 +1,11 @@
 #include "SpaceGame/ui/telemetry/TelemetryDashboardWidget.h"
-#include <ioj/sim/entity_types.h>
-#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include "STelemetryDashboardView.h"
+#include <ioj/sim/entity_types.h>
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include <SandboxCoreEngine/strings.h>
 

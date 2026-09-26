@@ -1,7 +1,8 @@
 #pragma once
 
-#include <cstddef>
 #include <HAL/UnrealMemory.h>
+
+#include <cstddef>
 #include <new>
 
 namespace ml::soa_storage {

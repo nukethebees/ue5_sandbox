@@ -1,6 +1,6 @@
-#include <ioj/sim/overlap_handler.h>
 #include "support/collision_agent_storage.h"
 #include "support/simulation_test_support.h"
+#include <ioj/sim/overlap_handler.h>
 
 namespace ioj::sim::tests {
 

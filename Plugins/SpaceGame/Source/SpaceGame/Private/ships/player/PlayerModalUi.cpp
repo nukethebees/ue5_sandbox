@@ -1,9 +1,7 @@
-#include <SpaceGame/missions/MissionCompletion.h>
 #include <SpaceGame/ships/player/PlayerModalUi.h>
 
-#include <Engine/GameInstance.h>
-#include <InputAction.h>
 #include <ioj/sim/mission_manager.h>
+#include <SpaceGame/missions/MissionCompletion.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/system/GameSubsystem.h>
@@ -11,6 +9,9 @@
 #include <SpaceGame/ui/LevelCompletionWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
+
+#include <Engine/GameInstance.h>
+#include <InputAction.h>
 
 /* **************************************** */
 // Root lifecycle

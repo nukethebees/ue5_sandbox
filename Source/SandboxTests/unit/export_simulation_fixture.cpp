@@ -1,15 +1,16 @@
 #include "ioj/sim/entity_type.h"
-
-#include <CQTest.h>
-#include <format>
-#include <fstream>
-#include <HAL/FileManager.h>
-#include <iterator>
-#include <limits>
-#include <Misc/Paths.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>
+
+#include <CQTest.h>
+#include <HAL/FileManager.h>
+#include <Misc/Paths.h>
+
+#include <format>
+#include <fstream>
+#include <iterator>
+#include <limits>
 #include <type_traits>
 
 namespace ml::fixture_export {

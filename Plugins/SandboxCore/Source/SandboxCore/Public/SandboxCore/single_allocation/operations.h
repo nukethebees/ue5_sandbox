@@ -2,10 +2,11 @@
 
 #include <SandboxCore/single_allocation/runtime.h>
 
-#include <algorithm>
 #include <Containers/AllowShrinking.h>
 #include <Containers/ArrayView.h>
 #include <Containers/ContainerAllocationPolicies.h>
+
+#include <algorithm>
 #include <span>
 #include <type_traits>
 

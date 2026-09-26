@@ -1,5 +1,4 @@
 #include <SandboxEditor/levels/S7InitialStateImporter.h>
-
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>

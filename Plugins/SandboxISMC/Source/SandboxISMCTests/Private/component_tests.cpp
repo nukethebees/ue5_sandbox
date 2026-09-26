@@ -2,7 +2,6 @@
 
 #include "Engine/StaticMesh.h"
 #include "UObject/UObjectGlobals.h"
-
 #include <CQTest.h>
 
 TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")

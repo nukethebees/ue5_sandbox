@@ -56,14 +56,48 @@ EmptyLineBeforeAccessModifier: Never
 FixNamespaceComments: false
 
 IfMacros: [IF_EXPR_ELSE_WARN]
-IncludeBlocks: Preserve
+IncludeBlocks: Regroup
+MainIncludeChar: Any
+# Reverse dependency order: matching header (category 0), project, internal
+# libraries, external libraries/platform headers, then the standard library.
+# Match paths, not quote style: first-party headers also use angle brackets.
 IncludeCategories:
+  # Slate expansions require their widget definitions to be included first.
+  - Regex: '\.slate\.generated\.h[">]$'
+    Priority: 99
+  # UHT includes are bare filenames and must come last. Qualified LispB
+  # generated headers are ordinary project dependencies.
+  - Regex: '^"[^/"]+\.generated\.h"$'
+    Priority: 100
+  - Regex: '^["<](ioj/|native/|SpaceGame[^/]*[/\.]|ShooterGame[^/]*/|Sandbox(GameShared|Editor|Tests)?/|SGLegacy/)'
+    Priority: 1
+    CaseSensitive: true
+  - Regex: '^["<](sandbox/|sbx/|codegen/|lispb/|kernel_codegen/|slate_codegen/|material_gen/|mesh_gen/|jobserver/|Sandbox(Core|CoreEngine|UI|UIExamples|Shaders|Celestials)/|Sbx(MeshGenLab|ShadersExperiments|UIExperiments)/)'
+    Priority: 2
+    CaseSensitive: true
+  # Winsock2 precedes Windows.h, which precedes SDK extensions such as sddl.h.
+  - Regex: '^["<]winsock2\.h[">]$'
+    Priority: 3
+    SortPriority: 2
+  - Regex: '^["<][Ww]indows\.h[">]$'
+    Priority: 3
+  # Third-party libraries and platform APIs, regardless of include delimiters.
+  - Regex: '^["<](benchmark/|gtest/|gmock/|CLI/|nlohmann/|SDL3/|tracy/|sys/|wrl/|imgui[^/]*\.h|mimalloc\.h|cpuinfo_[^/]*\.h|nfd\.h|s7\.h|HandmadeMath\.h|CQTest\.h|[Ww]indows\.h|winsock2\.h|unistd\.h|malloc\.h|DbgHelp\.h|Psapi\.h|sddl\.h|taskschd\.h|tlhelp32\.h|unknwn\.h)'
+    Priority: 4
+  # Unreal Engine directories and public headers without a module prefix.
+  - Regex: '^["<](AI/|Algo/|Application/|AssetRegistry/|Async/|BehaviorTree/|Blueprint/|Brushes/|Camera/|Commandlets/|Commands/|Components/|Containers/|Curves/|Delegates/|Dom/|DragAndDrop/|EdGraph/|Editor/|Engine/|Factories/|Fonts/|Framework/|GameFramework/|HAL/|Input/|Interfaces/|Internationalization/|Kismet2?/|Layout/|Logging/|MaterialEditor/|MaterialGraph/|Materials/|Math/|Microsoft/|Misc/|Modules/|Navigation/|Particles/|Perception/|PhysicsEngine/|Policies/|ProfilingDebugging/|Rendering/|Runtime[/\\]|Serialization/|Settings/|Sound/|Stats/|Styling/|Subsystems/|Templates/|Textures/|Toolkits/|UObject/|UserSettings/|Widgets/|Windows/)'
+    Priority: 4
+    CaseSensitive: true
+  - Regex: '^["<](Core(Minimal|Types|Globals)|AIController|AdvancedPreviewScene|AssetCompilingManager|AssetImportTask|AssetToolsModule|BlueprintEditorLibrary|BlueprintGraphClasses|CanvasItem|CanvasTypes|CollisionQueryParams|CollisionShape|CommonActivatableWidget|CommonButtonBase|CommonInputBaseTypes|CommonInputSettings|CommonInputSubsystem|CommonRenderResources|CommonTextBlock|CommonUISettings|DesktopPlatformModule|DetailCategoryBuilder|DetailLayoutBuilder|DetailWidgetRow|DrawDebugHelpers|DynamicRHI|Editor|EditorModeManager|EditorStyleSet|EditorSubsystem|EditorUtilityWidget|EditorUtilityWidgetBlueprint|EditorUtilityWidgetBlueprintFactory|EditorViewportClient|Engine|EngineUtils|EnhancedActionKeyMapping|EnhancedInputComponent|EnhancedInputDeveloperSettings|EnhancedInputSubsystemInterface|EnhancedInputSubsystems|EnhancedPlayerInput|FileHelpers|FindInBlueprintManager|GenericTeamAgentInterface|GlobalRenderResources|GlobalShader|GraphEditAction|GraphEditorModule|GraphEditorSettings|HitProxies|IDesktopPlatform|IDetailChildrenBuilder|IDetailCustomization|IDetailPropertyRow|IDetailsView|IPlatformCrypto|IPropertyTypeCustomization|ImageUtils|InputAction|InputActionValue|InputCoreTypes|InputKeyEventArgs|InputMappingContext|InputModifiers|InputTriggers|JsonObjectConverter|LevelEditor|LevelEditorSubsystem|LevelEditorViewport|LevelUtils|Mass[A-Za-z]+|MaterialCompiler|MaterialDomain|MaterialEditingLibrary|MaterialShared|MeshBatch|MeshDescription|MeshDrawShaderBindings|MeshElementCollector|MeshMaterialShader|NavigationSystem|Niagara[A-Za-z]+|ObjectTools|PipelineStateCache|PlayerMappableKeySettings|PreviewScene|PrimitiveDrawInterface|PrimitiveSceneProxy|PrimitiveUniformShaderParametersBuilder|PrimitiveViewRelevance|ProjectDescriptor|PropertyCustomizationHelpers|PropertyEditorDelegates|PropertyEditorModule|PropertyHandle|RHI[A-Za-z]*|RenderGraphBuilder|RenderGraphResources|RenderGraphUtils|RenderResource|RenderTargetPool|RenderTimer|RenderUtils|RenderingThread|SceneInterface|SceneManagement|SceneUtils|SceneView|ScopedTransaction|SEditorViewport|Selection|ShaderCompiler|ShaderCompilerCore|ShaderCore|ShaderParameterStruct|SlateMaterialBrush|SlateOptMacros|SourceCodeNavigation|StaticMeshAttributes|StaticMeshOperations|StaticMeshResources|TextureResource|TimerManager|ToolMenus|UnrealClient|UnrealEdGlobals|VertexFactory|WidgetBlueprint|WorkspaceMenuStructure|WorkspaceMenuStructureModule)\.h[">]$'
+    Priority: 4
+  # C++ standard headers have no path or extension; include C standard headers too.
+  - Regex: '^<([a-z0-9_]+|assert\.h|ctype\.h|errno\.h|fenv\.h|float\.h|inttypes\.h|iso646\.h|limits\.h|locale\.h|math\.h|setjmp\.h|signal\.h|std[a-z]+\.h|string\.h|time\.h|uchar\.h|wchar\.h|wctype\.h)>$'
+    Priority: 5
   - Regex: '^<.*>$'
-    Priority: 1   # STL
-  - Regex: '^"CoreMinimal.h"'
-    Priority: 2   # Unreal core
-  - Regex: '^".*"' 
-    Priority: 3   # Project headers
+    Priority: 4
+  # Relative/local project headers.
+  - Regex: '.*'
+    Priority: 1
 IndentAccessModifiers: false
 IndentCaseBlocks: false
 IndentCaseLabels: true

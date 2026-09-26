@@ -1,11 +1,12 @@
 #pragma once
 
-#include <cstdint>
-
 #include <ioj/sim/player/scalar_response.h>
 #include <ioj/sim/player/space_ship_common.h>
 #include <ioj/sim/transform3d.h>
+
 #include <sandbox/core/vector2d.h>
+
+#include <cstdint>
 
 namespace ioj::sim::player {
 struct PhysicalMovementState {

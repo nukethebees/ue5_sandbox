@@ -1,9 +1,9 @@
 #pragma once
 
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-
-#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 
 #include "BenchmarkOrchestratorActor.generated.h"
 

@@ -1,16 +1,16 @@
 #include "WorldlessSimulationTest.h"
-#include <ioj/sim/column_math.h>
-#include <ioj/sim/testing/level_sim_test_access.h>
-#include <SpaceGame/simulation/SimulationConfigConversion.h>
-#include <SpaceGamePresentation/integration/TransformConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/sim_config.h>
+#include <ioj/sim/testing/level_sim_test_access.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
+#include <SpaceGame/simulation/SimulationConfigConversion.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGamePresentation/integration/TransformConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGamePresentation/support/mesh.h>
 
 #include <Engine/StaticMesh.h>

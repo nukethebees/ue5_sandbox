@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SbxMeshGenLab/MeshAssembly.h"
+
 #include "UObject/Object.h"
 
 #include "MeshAssemblyRecipe.generated.h"

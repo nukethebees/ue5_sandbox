@@ -1,8 +1,8 @@
 #pragma once
 
-#include <CoreMinimal.h>
-
 #include <sandbox/core/enum_array.h>
+
+#include <CoreMinimal.h>
 
 #include <type_traits>
 

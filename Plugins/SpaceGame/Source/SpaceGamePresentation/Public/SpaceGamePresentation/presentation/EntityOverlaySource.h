@@ -2,9 +2,9 @@
 
 #include "ioj/sim/agent_display_batch.h"
 #include "ioj/sim/entity_type_radii.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "SpaceGamePresentation/entities/TeamColours.h"
 
-#include "ioj/sim/entity_unique_id.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 
 #include <span>

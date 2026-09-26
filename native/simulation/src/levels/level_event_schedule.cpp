@@ -1,6 +1,7 @@
+#include <ioj/sim/levels/level_event_schedule.h>
+
 #include <cassert>
 #include <cstdint>
-#include <ioj/sim/levels/level_event_schedule.h>
 #include <optional>
 #include <span>
 #include <vector>

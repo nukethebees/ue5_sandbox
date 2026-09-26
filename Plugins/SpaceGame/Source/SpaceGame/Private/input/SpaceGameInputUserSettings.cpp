@@ -1,10 +1,11 @@
 #include "SpaceGame/input/SpaceGameInputUserSettings.h"
 
+#include "SpaceGame/input/CanonicalShipControls.h"
+#include "SpaceGame/input/ControlBindingMetadata.h"
+
 #include "EnhancedActionKeyMapping.h"
 #include "InputMappingContext.h"
 #include "PlayerMappableKeySettings.h"
-#include "SpaceGame/input/CanonicalShipControls.h"
-#include "SpaceGame/input/ControlBindingMetadata.h"
 
 namespace ml::ioj {
 

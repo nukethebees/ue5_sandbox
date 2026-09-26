@@ -1,9 +1,8 @@
 #include "Generation/MeshAssetWriter.h"
+
 #include "SbxMeshGenLab/MeshAssetWriter.h"
 #include "SbxMeshGenLab/MeshMaterialRole.h"
 #include "SbxMeshGenLab/NativeMeshTypes.h"
-
-#include <cstddef>
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Engine/StaticMesh.h"
@@ -20,6 +19,8 @@
 #include "UObject/MetaData.h"
 #include "UObject/Package.h"
 #include "UObject/SavePackage.h"
+
+#include <cstddef>
 
 DEFINE_LOG_CATEGORY_STATIC(LogSbxMeshGenLab, Log, All);
 

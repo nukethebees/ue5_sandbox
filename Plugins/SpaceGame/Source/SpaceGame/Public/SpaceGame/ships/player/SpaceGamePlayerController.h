@@ -1,11 +1,13 @@
 #pragma once
 
-#include <CoreMinimal.h>
-#include <GameFramework/PlayerController.h>
 #include <SpaceGame/ships/player/PlayerControlContexts.h>
 #include <SpaceGame/ships/player/PlayerHudLifecycle.h>
 #include <SpaceGame/ships/player/PlayerModalUi.h>
 #include <SpaceGamePresentation/support/logging/ActorLoggingConfig.h>
+
+#include <CoreMinimal.h>
+#include <GameFramework/PlayerController.h>
+
 #include "SpaceGamePlayerController.generated.h"
 
 class ATestBatchOrchestrator;

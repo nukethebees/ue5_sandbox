@@ -1,13 +1,15 @@
 #include "ioj/sim/levels/level_event_manager.h"
+
+#include <ioj/sim/mission_manager.h>
+
+#include <sandbox/core/diagnostics.h>
+
 #include <cassert>
 #include <cstdint>
 #include <optional>
-#include <sandbox/core/diagnostics.h>
 #include <span>
 #include <utility>
 #include <vector>
-
-#include <ioj/sim/mission_manager.h>
 
 namespace ioj::sim {
 LevelEventManager::LevelEventManager(capital_ships::Sim& capital_ships,

@@ -1,5 +1,4 @@
 #include <SandboxTests/support/test_setup.h>
-
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <SpaceGame/ui/main_menu/DebugSettingsWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>

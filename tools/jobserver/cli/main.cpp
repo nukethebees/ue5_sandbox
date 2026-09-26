@@ -1,8 +1,8 @@
 #include "doctor.hpp"
+#include "supervisor.hpp"
 
 #include "jobserver/client.hpp"
 #include "jobserver/protocol.hpp"
-#include "supervisor.hpp"
 
 #include <Windows.h>
 

@@ -14,6 +14,5 @@ struct WorldAABB {
                                             EntityType type,
                                             Vector3f position,
                                             Quaternion4f orientation) noexcept -> WorldAABB;
-[[nodiscard]] auto get_entity_radius(EntityAABBs const& bounds, EntityType type) noexcept
-    -> float;
+[[nodiscard]] auto get_entity_radius(EntityAABBs const& bounds, EntityType type) noexcept -> float;
 } // namespace ioj::sim::collision

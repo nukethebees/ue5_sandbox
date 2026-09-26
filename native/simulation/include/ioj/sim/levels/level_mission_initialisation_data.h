@@ -1,7 +1,8 @@
 #pragma once
 
-#include <cstdint>
 #include <ioj/sim/levels/level_mission_mode.h>
+
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>

@@ -1,7 +1,7 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 
 #include <ioj/sim/mission_manager.h>
-#include <SandboxCoreEngine/actor_utils.h>
+#include <SandboxGameShared/utilities/macros/null_checks.hpp>
 #include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
@@ -12,6 +12,8 @@
 #include <SpaceGame/ui/PauseMenuWidget.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
+
+#include <SandboxCoreEngine/actor_utils.h>
 
 #include <Camera/CameraActor.h>
 #include <CommonInputSubsystem.h>
@@ -31,8 +33,6 @@
 #include <UnrealClient.h>
 #include <UObject/ConstructorHelpers.h>
 #include <UserSettings/EnhancedInputUserSettings.h>
-
-#include <SandboxGameShared/utilities/macros/null_checks.hpp>
 
 namespace spacegame::input_trace {
 static TAutoConsoleVariable<int32> enabled{

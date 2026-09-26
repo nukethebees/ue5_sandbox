@@ -1,6 +1,7 @@
-#include <CQTest.h>
 #include <ioj/sim/memory/game_memory.h>
 #include <SpaceGameSimulation/memory/GameMemoryBootstrap.h>
+
+#include <CQTest.h>
 
 TEST_CLASS(GameMemoryBootstrap, "Sandbox.UnitTests")
 {

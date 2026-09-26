@@ -1,6 +1,6 @@
 #include "test_turret_acquisition_regressions.h"
-#include "../support/simulation_test_support.h"
 
+#include "../support/simulation_test_support.h"
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/turrets/sim.h>
 

@@ -1,7 +1,7 @@
-#include <ioj/sim/spatial_query_manager.h>
-#include "../support/simulation_test_support.h"
-
 #include "test_spatial_query_manager.h"
+
+#include "../support/simulation_test_support.h"
+#include <ioj/sim/spatial_query_manager.h>
 
 namespace ioj::sim {
 void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& config) {
@@ -66,8 +66,7 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
         SCOPED_TRACE(::testing::Message() << "index " << i);
         EXPECT_EQ(LineQueryResult{1}, has_los[i]) << "Clear line remains visible";
         EXPECT_EQ(LineQueryResult{0}, has_los[i + count]) << "Other target is blocked";
-        EXPECT_EQ(LineQueryResult{0}, has_los[i + 2 * count])
-            << "Other target past hit is blocked";
+        EXPECT_EQ(LineQueryResult{0}, has_los[i + 2 * count]) << "Other target past hit is blocked";
     }
 }
 

@@ -1,12 +1,4 @@
 #pragma once
-#include <cstdint>
-#include <functional>
-#include <memory>
-#include <optional>
-#include <span>
-#include <string>
-#include <vector>
-
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/capital_ships/phase_interface.h>
 #include <ioj/sim/capital_ships/sim.h>
@@ -18,6 +10,7 @@
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/lasers/phase_interface.h>
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/level_read_view.h>
 #include <ioj/sim/level_telemetry_manager.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/memory/game_memory.h>
@@ -26,15 +19,22 @@
 #include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/phase_interface.h>
 #include <ioj/sim/player/sim.h>
+#include <ioj/sim/sim_state.h>
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/spinners/phase_interface.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/turrets/phase_interface.h>
 #include <ioj/sim/turrets/sim.h>
 
-#include <ioj/sim/level_read_view.h>
-#include <ioj/sim/sim_state.h>
 #include <sandbox/core/frame_memory_resource.h>
+
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <span>
+#include <string>
+#include <vector>
 
 namespace ioj::sim {
 

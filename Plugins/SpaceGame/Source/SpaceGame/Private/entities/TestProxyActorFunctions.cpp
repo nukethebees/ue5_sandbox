@@ -4,9 +4,10 @@
 
 #include <GameFramework/Actor.h>
 #if WITH_EDITOR
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+
 #include <Editor/EditorEngine.h>
 #include <EngineUtils.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #endif
 
 namespace ml {

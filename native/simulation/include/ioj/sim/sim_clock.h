@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ioj/sim/fixed_tick_loop.h>
-
 #include <ioj/sim/sim_time.h>
 
 namespace ioj::sim {

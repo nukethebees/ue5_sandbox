@@ -1,11 +1,12 @@
 #include "SpaceGame/settings/GameSettingsBackend.h"
 
+#include "SpaceGame/input/SpaceGameInputUserSettings.h"
+#include "SpaceGame/settings/SpaceGameUserSettings.h"
+
 #include "Engine/Engine.h"
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputSubsystems.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "SpaceGame/input/SpaceGameInputUserSettings.h"
-#include "SpaceGame/settings/SpaceGameUserSettings.h"
 
 namespace ml::ioj {
 namespace {

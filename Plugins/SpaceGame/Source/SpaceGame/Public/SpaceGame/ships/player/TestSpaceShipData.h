@@ -1,10 +1,10 @@
 #pragma once
 
-#include <SandboxCoreEngine/SpeedResponse.h>
 #include <SpaceGamePresentation/config/BarrelRollConfig.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
 
 #include <SandboxCoreEngine/collision_settings.h>
+#include <SandboxCoreEngine/SpeedResponse.h>
 
 #include <CoreMinimal.h>
 #include <Engine/DataAsset.h>

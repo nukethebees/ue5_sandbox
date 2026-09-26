@@ -1,15 +1,16 @@
-#include <Components/BoxComponent.h>
-#include <Components/InstancedStaticMeshComponent.h>
-#include <CQTest.h>
-#include <Engine/World.h>
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/collision/collision_uniform_grid.h>
-#include <Misc/ScopeExit.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestCollisionActor.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
+
+#include <Components/BoxComponent.h>
+#include <Components/InstancedStaticMeshComponent.h>
+#include <CQTest.h>
+#include <Engine/World.h>
+#include <Misc/ScopeExit.h>
 
 TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
 {

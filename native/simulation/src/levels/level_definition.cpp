@@ -1,5 +1,6 @@
-#include <ioj/sim/collision_grid.h>
 #include <ioj/sim/levels/level_definition.h>
+
+#include <ioj/sim/collision_grid.h>
 
 #include <algorithm>
 #include <cctype>

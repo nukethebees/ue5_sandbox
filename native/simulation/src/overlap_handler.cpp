@@ -1,8 +1,9 @@
 #include "ioj/sim/overlap_handler.h"
-#include <cassert>
 
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/combat_events.h>
+
+#include <cassert>
 
 namespace ioj::sim {
 OverlapHandler::OverlapHandler(CombatEvents& events,

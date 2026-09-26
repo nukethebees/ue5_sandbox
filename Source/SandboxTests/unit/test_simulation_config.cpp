@@ -1,6 +1,5 @@
-#include <SandboxTests/support/SimulationTestAssets.h>
-
 #include <ioj/sim/entity_world_bounds.h>
+#include <SandboxTests/support/SimulationTestAssets.h>
 #include <SpaceGame/combat/lasers/TestLasersConfig.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnersConfig.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsConfig.h>

@@ -1,8 +1,9 @@
 #include "SpaceGame/settings/SpaceGameUserSettings.h"
 
+#include "SpaceGame/settings/FlightModelSettingsCodec.h"
+
 #include "HAL/IConsoleManager.h"
 #include "SceneUtils.h"
-#include "SpaceGame/settings/FlightModelSettingsCodec.h"
 
 namespace ml::ioj {
 namespace {

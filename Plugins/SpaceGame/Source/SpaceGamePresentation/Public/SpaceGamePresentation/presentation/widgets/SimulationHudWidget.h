@@ -1,9 +1,10 @@
 #pragma once
 
 #include "ioj/sim/entity_telemetry.h"
+#include "SpaceGamePresentation/entities/TestTeamVisualData.h"
+
 #include "SandboxUI/EntityOverlay/EntityOverlayFrameStore.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
-#include "SpaceGamePresentation/entities/TestTeamVisualData.h"
 
 #include <Blueprint/UserWidget.h>
 #include <CoreMinimal.h>

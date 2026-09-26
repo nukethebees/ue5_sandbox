@@ -1,5 +1,4 @@
 #include <SandboxTests/support/test_setup.h>
-
 #include <SpaceGame/persistence/SaveGameBrowser.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
 

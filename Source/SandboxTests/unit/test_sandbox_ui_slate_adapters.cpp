@@ -3,10 +3,10 @@
 #include "SandboxUI/widgets/SHistogram.h"
 #include "SandboxUI/widgets/SRadar2D.h"
 #include "SandboxUI/widgets/SStackedBarChart.h"
+#include <sandbox/core/ui/entity_overlay.h>
 
 #include <CQTest.h>
 #include <Input/Events.h>
-#include <sandbox/core/ui/entity_overlay.h>
 #include <Widgets/DeclarativeSyntaxSupport.h>
 
 TEST_CLASS(SandboxUISlateAdapters, "Sandbox.UnitTests")

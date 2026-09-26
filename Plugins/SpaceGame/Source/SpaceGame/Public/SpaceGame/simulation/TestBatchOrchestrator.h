@@ -1,15 +1,14 @@
 #pragma once
+#include <ioj/sim/level_sim.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
+#include <SpaceGame/missions/LevelMissionDefinition.h>
 #include <SpaceGame/missions/MissionCompletion.h>
 #include <SpaceGame/simulation/FixedTickLoopConfig.h>
-#include <SpaceGame/telemetry/LevelTelemetryReport.h>
-
-#include <ioj/sim/level_sim.h>
-#include <SpaceGame/missions/LevelMissionDefinition.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/system/GameSubsystem.h>
+#include <SpaceGame/telemetry/LevelTelemetryReport.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 

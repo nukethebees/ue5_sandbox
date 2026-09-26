@@ -2,6 +2,7 @@
 
 #include "SandboxGameShared/constants/collision_channels.h"
 #include "SandboxGameShared/utilities/actor_utils.h"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SGLegacy/combat/DamageableShip.h"
 #include "SGLegacy/combat/weapons/ShipLaserConfig.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
@@ -12,8 +13,6 @@
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
 #include "Materials/MaterialInstance.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AShipLaser::AShipLaser()
     : mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("MeshComponent"))} {

@@ -1,8 +1,9 @@
 #include "SandboxEditor/Commandlets/GenerateWorldSoftTargetAssetsCommandlet.h"
 
+#include "SpaceGame/simulation/SpaceGameLevelConfig.h"
+
 #include <SbxMeshGenLab/HexFrameGenerator.h>
 #include <SbxMeshGenLab/MeshAssetWriter.h>
-#include "SpaceGame/simulation/SpaceGameLevelConfig.h"
 
 #include <Engine/StaticMesh.h>
 #include <Materials/MaterialInterface.h>

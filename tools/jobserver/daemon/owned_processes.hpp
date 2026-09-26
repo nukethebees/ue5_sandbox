@@ -1,7 +1,8 @@
 #pragma once
 
-#include "jobserver/types.hpp"
 #include "supervisor.hpp"
+
+#include "jobserver/types.hpp"
 
 #include <chrono>
 #include <expected>

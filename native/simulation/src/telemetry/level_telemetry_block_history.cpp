@@ -1,8 +1,10 @@
 #include "ioj/sim/telemetry/level_telemetry_block_history.h"
+
+#include <sandbox/core/diagnostics.h>
+
 #include <algorithm>
 #include <cassert>
 #include <format>
-#include <sandbox/core/diagnostics.h>
 
 namespace ioj::sim {
 

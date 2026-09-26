@@ -1,8 +1,7 @@
 #include <codegen/ast.h>
+#include <codegen/cpp_string.h>
 
 #include <gtest/gtest.h>
-
-#include <codegen/cpp_string.h>
 
 #include <type_traits>
 

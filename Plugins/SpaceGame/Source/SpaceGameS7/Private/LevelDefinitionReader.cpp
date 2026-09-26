@@ -1,8 +1,9 @@
 #include <SpaceGameS7/LevelDefinitionReader.h>
 
+#include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
+
 #include <sandbox/level_authoring/LevelDefinitionReader.h>
 #include <SandboxCoreEngine/strings.h>
-#include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
 
 #include <Misc/FileHelper.h>
 #include <Misc/Paths.h>

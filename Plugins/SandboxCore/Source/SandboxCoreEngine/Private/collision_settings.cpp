@@ -1,7 +1,7 @@
 #include <SandboxCoreEngine/collision_settings.h>
 
-#include <Components/PrimitiveComponent.h>
 #include "CoreMinimal.h"
+#include <Components/PrimitiveComponent.h>
 
 namespace ml {
 auto copy_collision_settings(UPrimitiveComponent const& component) -> FCollisionSettings {

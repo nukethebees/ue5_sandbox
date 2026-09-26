@@ -1,10 +1,9 @@
 #pragma once
 #include <ioj/sim/capital_death_event.h>
-#include <ioj/sim/laser_hit_details.h>
-
 #include <ioj/sim/capital_entity_data.h>
 #include <ioj/sim/fighter_entity_data.h>
 #include <ioj/sim/health_table.h>
+#include <ioj/sim/laser_hit_details.h>
 #include <ioj/sim/laser_soa.h>
 #include <ioj/sim/rotator_types.h>
 #include <ioj/sim/sim_tick.h>

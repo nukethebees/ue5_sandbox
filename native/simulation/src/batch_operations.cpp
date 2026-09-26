@@ -3,7 +3,6 @@
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_ledger.h>
-
 #include <ioj/sim/health.h>
 #include <ioj/sim/profiling.h>
 

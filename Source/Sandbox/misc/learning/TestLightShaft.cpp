@@ -1,13 +1,12 @@
 #include "Sandbox/misc/learning/TestLightShaft.h"
 
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstance.h"
 #include "Materials/MaterialInstanceDynamic.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 ATestLightShaft::ATestLightShaft()
     : light_shaft_mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("light_shaft"))} {

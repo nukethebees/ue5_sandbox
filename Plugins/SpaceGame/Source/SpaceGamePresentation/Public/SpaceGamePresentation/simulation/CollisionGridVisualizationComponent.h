@@ -1,8 +1,9 @@
 #pragma once
 
-#include <Components/PrimitiveComponent.h>
 #include <ioj/sim/entity_cell_data.h>
 #include <ioj/sim/world_aabbs.h>
+
+#include <Components/PrimitiveComponent.h>
 
 #include "CollisionGridVisualizationComponent.generated.h"
 

@@ -1,15 +1,13 @@
+#include "test_capital_ship_proxy_scenario.h"
+#include <ioj/sim/capital_ships/sim.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
-#include "test_capital_ship_proxy_scenario.h"
-
-#include <ioj/sim/capital_ships/sim.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-
-#include <SandboxTests/support/SoftTestAssertions.h>
 
 namespace ml {
 FTestCapitalShipProxyScenario::FTestCapitalShipProxyScenario(FSimulationTestContext& context)

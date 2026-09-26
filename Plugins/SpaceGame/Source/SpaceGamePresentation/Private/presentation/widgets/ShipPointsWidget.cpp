@@ -1,9 +1,8 @@
 #include "SpaceGamePresentation/presentation/widgets/ShipPointsWidget.h"
 
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
-#include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
+#include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 void UShipPointsWidget::set_points(int32 points) {
     RETURN_IF_NULLPTR(widget);

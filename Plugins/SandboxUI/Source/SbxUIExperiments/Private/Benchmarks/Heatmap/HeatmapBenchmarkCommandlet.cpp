@@ -1,6 +1,7 @@
 #include "Benchmarks/Heatmap/HeatmapBenchmarkCommandlet.h"
 
 #include "Benchmarks/Heatmap/HeatmapBenchmark.h"
+
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Parse.h"

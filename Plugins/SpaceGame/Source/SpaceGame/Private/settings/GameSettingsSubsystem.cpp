@@ -1,13 +1,14 @@
 #include "SpaceGame/settings/GameSettingsSubsystem.h"
 
+#include "SpaceGame/input/CanonicalShipControls.h"
+#include "SpaceGame/input/SpaceGameInputUserSettings.h"
+#include "SpaceGame/settings/SpaceGameUserSettings.h"
+
 #include "Containers/Ticker.h"
 #include "Engine/Engine.h"
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputSubsystems.h"
 #include "HAL/PlatformTime.h"
-#include "SpaceGame/input/CanonicalShipControls.h"
-#include "SpaceGame/input/SpaceGameInputUserSettings.h"
-#include "SpaceGame/settings/SpaceGameUserSettings.h"
 
 namespace ml::ioj {
 constexpr double display_confirmation_duration_seconds{15.0};

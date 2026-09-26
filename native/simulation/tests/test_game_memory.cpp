@@ -1,5 +1,5 @@
-#include <ioj/sim/memory/game_memory.h>
 #include "support/simulation_test_support.h"
+#include <ioj/sim/memory/game_memory.h>
 
 namespace ioj::sim::tests {
 

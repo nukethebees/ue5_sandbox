@@ -2,6 +2,7 @@
 #include <SpaceGame/levels/LevelDefinition.h>
 
 #include <CQTest.h>
+
 #include <limits>
 
 namespace {

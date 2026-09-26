@@ -1,6 +1,7 @@
 #include "ioj/sim/fighter_navigation.h"
 
 #include "ioj/sim/deterministic_bias.h"
+
 #include "sandbox/core/trigonometry.h"
 #include "sandbox/core/vector_normalization.h"
 

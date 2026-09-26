@@ -1,8 +1,9 @@
 #pragma once
 
-#include "CoreMinimal.h"
-#include "Blueprint/UserWidget.h"
 #include "SandboxUI/widgets/SGraphPlot.h"
+
+#include "Blueprint/UserWidget.h"
+#include "CoreMinimal.h"
 
 #include "DebugGraphWidget.generated.h"
 

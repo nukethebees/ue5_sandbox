@@ -1,20 +1,19 @@
 #pragma once
-#include <cassert>
-#include <cstdint>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_ledger.h>
-#include <ioj/sim/profiling.h>
-#include <ioj/sim/system_read_views.h>
-#include <span>
-#include <vector>
-
-#include <ioj/sim/sim_config.h>
-
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_clock.h>
+#include <ioj/sim/sim_config.h>
 #include <ioj/sim/spinner_entity_data.h>
+#include <ioj/sim/system_read_views.h>
 
 #include <sandbox/core/frame_memory_resource.h>
+
+#include <cassert>
+#include <cstdint>
+#include <span>
+#include <vector>
 
 namespace ioj::sim {
 struct LevelSim;

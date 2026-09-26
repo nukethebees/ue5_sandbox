@@ -11,7 +11,6 @@
 #include "RenderingThread.h"
 #include "ShaderCompiler.h"
 #include "TextureResource.h"
-
 #include <CQTest.h>
 
 TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")

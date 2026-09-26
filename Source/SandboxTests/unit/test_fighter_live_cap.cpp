@@ -1,5 +1,6 @@
-#include <CQTest.h>
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
+
+#include <CQTest.h>
 #include <UObject/UObjectGlobals.h>
 
 TEST_CLASS(FighterLiveCap, "Sandbox.UnitTests")

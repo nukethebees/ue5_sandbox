@@ -1,7 +1,7 @@
 #pragma once
 #include <ioj/sim/column_math.h>
-
 #include <ioj/sim/level_sim.h>
+
 #include <utility>
 
 namespace ioj::sim {

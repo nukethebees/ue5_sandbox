@@ -3,8 +3,9 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Project/Target.h"
+
+#include "CoreMinimal.h"
 
 namespace codegen_compile_fixture {
 class FInlineFacade {

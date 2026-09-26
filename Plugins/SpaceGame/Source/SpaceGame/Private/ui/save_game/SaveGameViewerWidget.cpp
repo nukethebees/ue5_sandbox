@@ -1,5 +1,4 @@
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
-#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "SpaceGame/persistence/SaveGameBrowser.h"
 #include "SpaceGame/persistence/SaveProfileManager.h"
@@ -8,6 +7,7 @@
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include "SSaveGameViewerView.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include <Engine/GameInstance.h>
 

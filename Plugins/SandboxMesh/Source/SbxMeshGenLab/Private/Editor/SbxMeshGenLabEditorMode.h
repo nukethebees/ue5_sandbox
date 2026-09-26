@@ -1,9 +1,11 @@
 #pragma once
 
+#include "Tools/LegacyEdModeWidgetHelpers.h"
+
 #include "SbxMeshGenLab/MeshAssembly.h"
 #include "SbxMeshGenLab/MeshAssemblyRecipe.h"
+
 #include "ScopedTransaction.h"
-#include "Tools/LegacyEdModeWidgetHelpers.h"
 
 #include "SbxMeshGenLabEditorMode.generated.h"
 

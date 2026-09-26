@@ -1,7 +1,6 @@
 #include <sandbox/level_authoring/CampaignDefinitionReader.h>
 
 #include "reader_utilities.h"
-
 #include <native/s7/interpreter.h>
 #include <native/s7/value.h>
 

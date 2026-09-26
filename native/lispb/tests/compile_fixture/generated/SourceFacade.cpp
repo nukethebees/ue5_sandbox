@@ -3,8 +3,9 @@
 
 #include "SourceFacade.h"
 
-#include "CoreMinimal.h"
 #include "Project/Target.h"
+
+#include "CoreMinimal.h"
 
 namespace codegen_compile_fixture {
 void FSourceFacade::bind(FTarget& new_target) {

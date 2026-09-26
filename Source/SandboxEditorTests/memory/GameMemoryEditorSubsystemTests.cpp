@@ -1,8 +1,7 @@
-#include <memory/GameMemoryEditorSubsystem.h>
-
 #include <SpaceGameSimulation/memory/GameMemoryBootstrap.h>
 
 #include <Editor.h>
+#include <memory/GameMemoryEditorSubsystem.h>
 #include <Misc/AutomationTest.h>
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGameMemoryEditorSubsystemTest,

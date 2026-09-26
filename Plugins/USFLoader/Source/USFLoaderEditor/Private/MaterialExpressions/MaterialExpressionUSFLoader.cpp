@@ -1,14 +1,15 @@
 #include "MaterialExpressionUSFLoader.h"
 
-#include <type_traits>
+#include "SGraphNodeMaterialUSFLoader.h"
+#include "USFPathValidation.h"
 
 #include "Materials/MaterialExpressionConstant.h"
 #include "Materials/MaterialExpressionConstant2Vector.h"
 #include "Materials/MaterialExpressionConstant3Vector.h"
 #include "Materials/MaterialExpressionConstant4Vector.h"
 #include "Materials/MaterialExpressionCustom.h"
-#include "SGraphNodeMaterialUSFLoader.h"
-#include "USFPathValidation.h"
+
+#include <type_traits>
 
 #define LOCTEXT_NAMESPACE "MaterialExpressionUSFLoader"
 

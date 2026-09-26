@@ -1,8 +1,7 @@
 #pragma once
 
-#include <SandboxTests/support/SimulationTestScenario.h>
-
 #include <ioj/sim/entity_types.h>
+#include <SandboxTests/support/SimulationTestScenario.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
 
 namespace ml {

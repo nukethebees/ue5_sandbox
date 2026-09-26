@@ -1,12 +1,11 @@
 #pragma once
+#include "ioj/sim/agent_display_batch.h"
+#include "ioj/sim/entity_unique_id.h"
+#include "SpaceGamePresentation/presentation/LevelPresentationSettings.h"
 #include <SpaceGamePresentation/entities/TestTeam.h>
 
-#include "ioj/sim/agent_display_batch.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 #include "SandboxUI/Radar/RadarTypes.h"
-#include "SpaceGamePresentation/presentation/LevelPresentationSettings.h"
-
-#include "ioj/sim/entity_unique_id.h"
 
 struct SPACEGAMEPRESENTATION_API FRadarContactColours {
     FLinearColor friendly{0.12f, 0.72f, 1.0f, 1.0f};

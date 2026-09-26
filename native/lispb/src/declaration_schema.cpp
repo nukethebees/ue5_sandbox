@@ -1,4 +1,5 @@
 #include <codegen/schema/declaration_schema.h>
+
 #include <codegen/schema/normal_module_schema.h>
 
 #include <algorithm>

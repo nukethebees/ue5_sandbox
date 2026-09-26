@@ -2,10 +2,11 @@
 
 #include "Benchmarks/BenchmarkStatistics.h"
 
+#include "SandboxUI/Radar/RadarTypes.h"
+
 #include "HAL/PlatformTime.h"
 #include "Math/UnrealMathUtility.h"
 #include "RenderingThread.h"
-#include "SandboxUI/Radar/RadarTypes.h"
 
 namespace {
 auto make_frame(int32 const contact_count) -> FRadarFrame {

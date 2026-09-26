@@ -1,10 +1,11 @@
+#include "support/collision_agent_storage.h"
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/agent_indexes.h>
 #include <ioj/sim/column_math.h>
 
-#include <array>
 #include <gtest/gtest.h>
-#include "support/collision_agent_storage.h"
+
+#include <array>
 
 namespace ioj::sim::tests {
 TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {

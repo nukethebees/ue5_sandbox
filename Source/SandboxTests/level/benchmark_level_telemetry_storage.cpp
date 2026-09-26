@@ -1,21 +1,22 @@
 #include <ioj/sim/level_telemetry_manager.h>
 #include <ioj/sim/telemetry/level_telemetry_block_history.h>
 
-#include <Containers/StaticArray.h>
 #include <sandbox/core/time_series_data.h>
 #include <SandboxCore/mimalloc_storage_allocator.h>
 
+#include <Containers/StaticArray.h>
 #include <HAL/PlatformTime.h>
 #include <Misc/AutomationTest.h>
 #include <Misc/CommandLine.h>
 #include <Misc/Parse.h>
 
+// Windows platform type wrappers must surround the SDK headers.
+// clang-format off
 #include "Windows/AllowWindowsPlatformTypes.h"
-
-#include <Psapi.h>
 #include <windows.h>
-
+#include <Psapi.h>
 #include "Windows/HideWindowsPlatformTypes.h"
+// clang-format on
 
 #undef far
 #undef near

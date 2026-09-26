@@ -1,15 +1,13 @@
 #include "SpaceGame/system/GameSubsystem.h"
 
-#include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
-#include "SpaceGameSimulation/memory/GameMemoryBootstrap.h"
-
 #include "persistence/ExistingSaveGameBrowserSource.h"
-
 #include "SpaceGame/persistence/SpaceSaveSubsystem.h"
 #include "SpaceGame/settings/GameSettingsSubsystem.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiSettings.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
+#include "SpaceGameSimulation/memory/GameMemoryBootstrap.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 
 #include <Engine/GameInstance.h>
 #include <Engine/World.h>

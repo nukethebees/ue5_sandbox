@@ -1,5 +1,6 @@
-#include <SandboxCore/single_allocation/runtime.h>
 #include "generated/soa_fixture.h"
+
+#include <SandboxCore/single_allocation/runtime.h>
 
 #include <CQTest.h>
 

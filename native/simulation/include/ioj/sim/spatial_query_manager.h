@@ -1,18 +1,16 @@
 #pragma once
 
-#include <cstddef>
-#include <cstdint>
+#include <ioj/sim/collision/collision_system.h>
 #include <ioj/sim/entity_type_radii.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/line_traces.h>
 #include <ioj/sim/query_result_types.h>
-#include <span>
-
 #include <ioj/sim/query_thread_buffer_pool.h>
-
-#include <ioj/sim/collision/collision_system.h>
 #include <ioj/sim/trace_hits.h>
 
+#include <cstddef>
+#include <cstdint>
+#include <span>
 #include <utility>
 
 namespace ioj::sim {

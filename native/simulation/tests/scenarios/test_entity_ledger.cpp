@@ -1,6 +1,6 @@
 #include "test_entity_ledger.h"
-#include "../support/simulation_test_support.h"
 
+#include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 
 namespace ioj::sim {

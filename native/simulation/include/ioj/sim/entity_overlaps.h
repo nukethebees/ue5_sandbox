@@ -5,6 +5,7 @@
 
 #include "ioj/sim/collision_types.h"
 #include "ioj/sim/entity_unique_id.h"
+
 #include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/native_soa/vector_storage_ops.h"

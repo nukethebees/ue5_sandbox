@@ -1,12 +1,13 @@
 #include "SpaceGame/ships/player/TestSpaceShip.h"
-#include <SpaceGame/simulation/SimulationConfigConversion.h>
-#include <SpaceGamePresentation/integration/TransformConversion.h>
 
-#include <SandboxShaders/SpaceDust/SpaceDustComponent.h>
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
+#include <SpaceGame/simulation/SimulationConfigConversion.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
+#include <SpaceGamePresentation/integration/TransformConversion.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCoreEngine/uobject_utils.h>
+#include <SandboxShaders/SpaceDust/SpaceDustComponent.h>
 
 #include <Camera/CameraComponent.h>
 #include <Components/SceneComponent.h>
@@ -19,8 +20,6 @@
 #include <NiagaraComponent.h>
 
 #include <utility>
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 namespace {
 #if !UE_BUILD_SHIPPING

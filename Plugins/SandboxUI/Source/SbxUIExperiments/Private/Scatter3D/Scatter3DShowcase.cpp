@@ -1,17 +1,18 @@
 #include "SbxUIExperiments/Scatter3D/Scatter3DShowcase.h"
 
-#include <utility>
-
 #include "Benchmarks/Scatter3D/Scatter3DBenchmark.h"
+#include "SScatter3DWidget.h"
+
 #include "SandboxUI/slate/SlateSlots.h"
 #include "SandboxUI/widgets/SLabeledRow.h"
-#include "SScatter3DWidget.h"
-#include "Widgets/SExperimentPanel.h"
 
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Widgets/Input/SSpinBox.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
+#include "Widgets/SExperimentPanel.h"
+
+#include <utility>
 
 #include "generated/UScatter3DShowcase.slate.generated.h"
 

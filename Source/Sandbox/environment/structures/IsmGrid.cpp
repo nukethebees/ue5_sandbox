@@ -1,12 +1,11 @@
 #include "Sandbox/environment/structures/IsmGrid.h"
 
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Engine/StaticMesh.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AIsmGrid::AIsmGrid()
     : ismc{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("ismc"))} {

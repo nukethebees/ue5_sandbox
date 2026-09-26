@@ -1,11 +1,11 @@
 #include "Sandbox/players/PawnSpawner.h"
 
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
+
 #include "AIController.h"
 #include "Engine/World.h"
 #include "GameFramework/Pawn.h"
 #include "GenericTeamAgentInterface.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 APawnSpawner::APawnSpawner() {
     PrimaryActorTick.bCanEverTick = true;

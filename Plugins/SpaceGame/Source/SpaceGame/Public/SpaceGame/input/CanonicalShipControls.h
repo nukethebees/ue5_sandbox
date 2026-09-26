@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SpaceGame/input/ControlBindingMetadata.h"
-
 #include <ioj/sim/player/flight_model_config.h>
 
 class UInputMappingContext;

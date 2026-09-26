@@ -1,10 +1,10 @@
 #include "SandboxUI/widgets/SStackedBarChart.h"
 
-#include "Rendering/DrawElementTypes.h"
-#include "Styling/CoreStyle.h"
-
 #include <sandbox/core/ui/chart_layout.h>
 #include <sandbox/core/ui/stacked_bar_chart.h>
+
+#include "Rendering/DrawElementTypes.h"
+#include "Styling/CoreStyle.h"
 
 namespace {
 void draw_stacked_bar_box(FSlateWindowElementList& out_draw_elements,

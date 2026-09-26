@@ -1,14 +1,15 @@
 #pragma once
 
 #include "ioj/sim/missions/mission_state.h"
-#include "SandboxUI/Radar/RadarFrameStore.h"
-#include "SandboxUI/Radar/RadarTypes.h"
 #include "SpaceGamePresentation/entities/ShipHealth.h"
 #include "SpaceGamePresentation/presentation/HudCrosshairDistances.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
 
-#include "CoreMinimal.h"
+#include "SandboxUI/Radar/RadarFrameStore.h"
+#include "SandboxUI/Radar/RadarTypes.h"
+
 #include "Blueprint/UserWidget.h"
+#include "CoreMinimal.h"
 
 #include "ShipHudWidget.generated.h"
 

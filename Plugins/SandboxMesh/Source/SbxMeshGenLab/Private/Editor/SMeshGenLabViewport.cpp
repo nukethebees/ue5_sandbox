@@ -1,11 +1,12 @@
 #include "Editor/SMeshGenLabViewport.h"
 
+#include "Slate/SceneViewport.h"
+
 #include "Components/StaticMeshComponent.h"
 #include "EditorViewportClient.h"
 #include "Engine/StaticMesh.h"
 #include "InputCoreTypes.h"
 #include "PreviewScene.h"
-#include "Slate/SceneViewport.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/SBoxPanel.h"
 

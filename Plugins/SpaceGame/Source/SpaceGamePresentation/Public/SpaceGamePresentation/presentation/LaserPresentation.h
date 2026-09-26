@@ -1,13 +1,12 @@
 #pragma once
 
 #include <ioj/sim/laser_source.h>
-
 #include <ioj/sim/system_read_views.h>
+#include <SpaceGamePresentation/entities/TeamColours.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
 
 #include <CoreMinimal.h>
-#include <SpaceGamePresentation/entities/TeamColours.h>
 
 class USandboxISMCComponent;
 class FLaserPresentationIndexingTest;

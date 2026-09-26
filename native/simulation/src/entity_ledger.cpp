@@ -1,8 +1,9 @@
 #include <ioj/sim/entity_ledger.h>
 
+#include <sandbox/core/diagnostics.h>
+
 #include <cassert>
 #include <format>
-#include <sandbox/core/diagnostics.h>
 
 namespace ioj::sim {
 void EntityLedger::reset() {

@@ -1,12 +1,13 @@
 #include "SGameOptionsView.h"
 
-#include "SandboxUI/slate/SlateSlots.h"
-#include "SandboxUI/widgets/SettingsWidgets.h"
 #include "SpaceGame/settings/GameSettingsBackend.h"
 #include "SpaceGame/settings/GameSettingsSubsystem.h"
 #include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGame/ui/common/HiveWidgets.h"
 #include "SpaceGame/ui/common/SGameButton.h"
+
+#include "SandboxUI/slate/SlateSlots.h"
+#include "SandboxUI/widgets/SettingsWidgets.h"
 
 #include "Framework/Application/SlateApplication.h"
 #include "InputCoreTypes.h"

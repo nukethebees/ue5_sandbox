@@ -1,7 +1,8 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "SpaceGame/input/ControlBindingMetadata.h"
+
+#include "CoreMinimal.h"
 #include "UserSettings/EnhancedInputUserSettings.h"
 
 namespace ml::ioj {

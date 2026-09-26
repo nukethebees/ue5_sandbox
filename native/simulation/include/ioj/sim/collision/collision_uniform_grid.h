@@ -1,20 +1,20 @@
 #pragma once
 
-#include <ioj/sim/line_traces.h>
-#include <string>
-
 #include <ioj/sim/collision_grid.h>
 #include <ioj/sim/collision_grid_entity_storage.h>
 #include <ioj/sim/collision_grid_static_storage.h>
 #include <ioj/sim/collision_types.h>
 #include <ioj/sim/entity_world_bounds.h>
+#include <ioj/sim/line_traces.h>
 #include <ioj/sim/trace_hits.h>
+
 #include <sandbox/core/frame_array.h>
 
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string>
 
 namespace ioj::sim {
 class AgentAccessor;

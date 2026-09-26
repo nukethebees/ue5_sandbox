@@ -7,6 +7,7 @@
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/health_table.h"
 #include "ioj/sim/index_span.h"
+
 #include "sandbox/core/native_soa/storage.h"
 
 #include <utility>

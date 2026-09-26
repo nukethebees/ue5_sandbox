@@ -3,10 +3,11 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "Containers/StaticArray.h"
 #include "Project/Row.h"
 #include "Project/Vector3f.h"
+
+#include "Containers/StaticArray.h"
+#include "CoreMinimal.h"
 
 #include <utility>
 

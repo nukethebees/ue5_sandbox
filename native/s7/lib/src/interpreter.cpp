@@ -1,7 +1,8 @@
 #include <native/s7/interpreter.h>
 
-#include "s7.h"
 #include "s7_sandbox.h"
+
+#include "s7.h"
 
 #if !defined(_WIN32)
 #error The sandboxed s7 loader currently requires Windows.

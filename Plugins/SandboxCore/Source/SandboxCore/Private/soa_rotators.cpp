@@ -5,8 +5,8 @@
 
 #include "SandboxCore/soa_permutation.h"
 
-#include "CoreMinimal.h"
 #include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 void FRotatorsd::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();

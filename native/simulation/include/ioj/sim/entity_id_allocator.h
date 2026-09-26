@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/sim/entity_identity_layout.h>
+
 #include <sandbox/core/diagnostics.h>
 
 #include <format>

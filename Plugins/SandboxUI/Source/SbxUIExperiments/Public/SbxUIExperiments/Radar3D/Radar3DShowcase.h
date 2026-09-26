@@ -1,8 +1,9 @@
 #pragma once
 
+#include "SandboxUI/Radar/RadarFrameStore.h"
+
 #include "EditorUtilityWidget.h"
 #include "Input/Reply.h"
-#include "SandboxUI/Radar/RadarFrameStore.h"
 
 #include "Radar3DShowcase.generated.h"
 

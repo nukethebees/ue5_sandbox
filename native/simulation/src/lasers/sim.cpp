@@ -1,21 +1,22 @@
 #include "ioj/sim/lasers/sim.h"
-#include <cstdint>
-#include <ioj/sim/column_math.h>
-#include <span>
-#include <vector>
 
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spatial_query_manager.h>
 
+#include <sandbox/core/frame_array.h>
+#include <sandbox/core/generated/array_math_kernels.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <cstdint>
 #include <execution>
 #include <functional>
 #include <numeric>
-#include <sandbox/core/frame_array.h>
-#include <sandbox/core/generated/array_math_kernels.h>
+#include <span>
+#include <vector>
 
 namespace ioj::sim::lasers {
 

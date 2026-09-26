@@ -3,14 +3,14 @@
 
 #pragma once
 
+#include "sandbox/core/soa_concepts.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_storage_ops.h"
 
-#include "CoreMinimal.h"
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
-#include "sandbox/core/soa_concepts.h"
+#include "CoreMinimal.h"
 
 #include <utility>
 

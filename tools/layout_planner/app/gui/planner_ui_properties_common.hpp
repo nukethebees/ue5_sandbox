@@ -1,7 +1,6 @@
 #pragma once
 
 #include "planner_ui.hpp"
-
 #include "planner_ui_support.hpp"
 
 #include <imgui.h>

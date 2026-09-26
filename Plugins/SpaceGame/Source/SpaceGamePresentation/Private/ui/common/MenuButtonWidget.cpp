@@ -1,9 +1,9 @@
 #include "SpaceGamePresentation/ui/common/MenuButtonWidget.h"
-#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
-#include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+#include <SpaceGamePresentation/ui/style/GameUiStyleSubsystem.h>
 
 #include <Components/Border.h>
 #include <Engine/GameInstance.h>

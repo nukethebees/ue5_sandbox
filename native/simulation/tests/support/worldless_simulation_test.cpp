@@ -1,8 +1,10 @@
 #include "worldless_simulation_test.h"
-#include <algorithm>
-#include <cmath>
+
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
+
+#include <algorithm>
+#include <cmath>
 namespace ioj::sim::tests {
 WorldlessSimulationTest::WorldlessSimulationTest(LevelSimInitData data)
     : simulation_{std::move(data)} {}

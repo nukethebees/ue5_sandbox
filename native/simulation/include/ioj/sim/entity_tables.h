@@ -2,6 +2,7 @@
 
 #include <ioj/sim/agent_indexes.h>
 #include <ioj/sim/health_table.h>
+
 #include <sandbox/core/enum_array.h>
 
 #include <cassert>

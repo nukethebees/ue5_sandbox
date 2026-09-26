@@ -1,9 +1,9 @@
 #include "SandboxCore/graph_plot.h"
 
+#include <sandbox/core/graph_plot.h>
+
 #include "Math/UnrealMathUtility.h"
 #include "Misc/AssertionMacros.h"
-
-#include <sandbox/core/graph_plot.h>
 
 #include <span>
 #include <vector>

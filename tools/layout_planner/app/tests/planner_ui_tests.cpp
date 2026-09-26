@@ -1,8 +1,10 @@
-#include <codegen/schema/schema_version.h>
-#include <gtest/gtest.h>
-#include <imgui_internal.h>
 #include "gui/planner_ui.hpp"
 #include "gui/planner_ui_support.hpp"
+
+#include <codegen/schema/schema_version.h>
+
+#include <gtest/gtest.h>
+#include <imgui_internal.h>
 
 namespace ioj::layout_planner {
 

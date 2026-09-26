@@ -1,7 +1,7 @@
 #include "ioj/sim/collision_grid_static_storage.h"
 
-#include <ioj/sim/profiling.h>
 #include "ioj/sim/world_aabb_operations.h"
+#include <ioj/sim/profiling.h>
 
 #include <cassert>
 #include <cstddef>

@@ -1,8 +1,8 @@
 #pragma once
+#include <ioj/sim/levels/level_mission_initialisation_data.h>
+
 #include <cstdint>
 #include <optional>
-
-#include <ioj/sim/levels/level_mission_initialisation_data.h>
 
 namespace ioj::sim {
 struct LevelInitialisationData {

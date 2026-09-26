@@ -1,10 +1,11 @@
 #include "SandboxISMCLabActor.h"
 
+#include "SandboxISMCComponent.h"
+
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Math/RandomStream.h"
 #include "ProfilingDebugging/CpuProfilerTrace.h"
-#include "SandboxISMCComponent.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(SandboxISMCLabActor)
 

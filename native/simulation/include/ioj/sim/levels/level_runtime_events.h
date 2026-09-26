@@ -7,6 +7,7 @@
 #include "ioj/sim/entity_types.h"
 #include "ioj/sim/health.h"
 #include "ioj/sim/level_event_types.h"
+
 #include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/native_soa/vector_storage_ops.h"

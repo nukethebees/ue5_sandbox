@@ -1,10 +1,9 @@
-#include <ioj/sim/testing/level_sim_test_access.h>
-#include "../support/simulation_test_support.h"
-
 #include "test_mission_manager.h"
 
+#include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/mission_manager.h>
+#include <ioj/sim/testing/level_sim_test_access.h>
 
 namespace ioj::sim {
 namespace {

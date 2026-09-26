@@ -1,9 +1,9 @@
 #pragma once
 #include <ioj/sim/column_math.h>
-
 #include <ioj/sim/rotator_math.h>
 #include <ioj/sim/rotators3f.h>
 #include <ioj/sim/vectors3f.h>
+
 #include <sandbox/core/generated/vector_lerp_kernels.h>
 #include <sandbox/core/vector_math.h>
 

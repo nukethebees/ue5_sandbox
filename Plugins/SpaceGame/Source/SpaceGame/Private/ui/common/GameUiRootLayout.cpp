@@ -1,5 +1,4 @@
 #include "SpaceGame/ui/common/GameUiRootLayout.h"
-#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "SpaceGame/presentation/TestBatchGameUiData.h"
 #include "SpaceGame/ui/LevelCompletionWidget.h"
@@ -7,6 +6,7 @@
 #include "SpaceGame/ui/main_menu/MainMenuWidget.h"
 #include "SpaceGame/ui/PauseMenuWidget.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include <Input/UIActionBindingHandle.h>
 #include <InputAction.h>

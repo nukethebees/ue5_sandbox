@@ -1,27 +1,28 @@
 #include "ioj/sim/player/sim.h"
-#include <cassert>
-#include <cmath>
-#include <cstdint>
-#include <ioj/sim/column_math.h>
-#include <ioj/sim/player/flight_model_evaluator.h>
-#include <ioj/sim/profiling.h>
-#include <ioj/sim/ship_health.h>
-#include <ioj/sim/transform3d.h>
-#include <sandbox/core/diagnostics.h>
-#include <sandbox/core/vector2d.h>
-#include <sandbox/core/vector3d.h>
-#include <span>
 
-#include <algorithm>
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/player/flight_model_evaluator.h>
+#include <ioj/sim/profiling.h>
+#include <ioj/sim/ship_health.h>
 #include <ioj/sim/spatial_query_manager.h>
+#include <ioj/sim/transform3d.h>
 
+#include <sandbox/core/diagnostics.h>
+#include <sandbox/core/vector2d.h>
+#include <sandbox/core/vector3d.h>
+
+#include <algorithm>
 #include <array>
+#include <cassert>
+#include <cmath>
+#include <cstdint>
 #include <limits>
+#include <span>
 #include <utility>
 
 namespace ioj::sim::player::player_movement {

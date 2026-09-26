@@ -3,8 +3,8 @@
 #include <SandboxTests/SandboxTestLogCategories.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <UObject/Package.h>
 
+#include <UObject/Package.h>
 #include <UObject/SoftObjectPath.h>
 #include <UObject/SoftObjectPtr.h>
 #include <UObject/UObjectGlobals.h>

@@ -1,6 +1,6 @@
+#include "support/simulation_test_support.h"
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
-#include "support/simulation_test_support.h"
 
 namespace ioj::sim::tests::fighter_membership_refresh {
 

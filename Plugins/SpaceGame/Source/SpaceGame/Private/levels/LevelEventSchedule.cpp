@@ -1,8 +1,7 @@
+#include <ioj/sim/levels/level_compilation.h>
 #include <SpaceGame/levels/CompileLevelEvents.h>
-
 #include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
 
-#include <ioj/sim/levels/level_compilation.h>
 #include <SandboxCoreEngine/strings.h>
 
 namespace ml {

@@ -1,9 +1,8 @@
 #pragma once
 
-#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-
 #include "SpaceGame/entities/TestEntity.h"
 #include "SpaceGamePresentation/entities/TestTeam.h"
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>

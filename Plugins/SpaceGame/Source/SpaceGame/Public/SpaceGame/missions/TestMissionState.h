@@ -4,6 +4,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "TestMissionState.generated.h"
 UENUM()
 enum class ETestMissionState : uint8 {

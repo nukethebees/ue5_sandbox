@@ -1,9 +1,8 @@
 #include "SpaceGamePresentation/presentation/widgets/ShipSpeedWidget.h"
 
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
-#include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
+#include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 void UShipSpeedWidget::set_speed(float speed) {
     RETURN_IF_NULLPTR(widget);

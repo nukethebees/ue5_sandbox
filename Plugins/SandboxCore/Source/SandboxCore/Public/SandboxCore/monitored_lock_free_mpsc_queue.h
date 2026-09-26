@@ -1,8 +1,8 @@
 #pragma once
 
-#include "CoreMinimal.h"
-
 #include <sandbox/core/monitored_lock_free_mpsc_queue.h>
+
+#include "CoreMinimal.h"
 
 #include <string_view>
 

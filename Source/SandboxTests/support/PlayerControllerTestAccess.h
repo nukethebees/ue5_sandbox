@@ -1,8 +1,9 @@
 #pragma once
 
-#include <InputMappingContext.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ui/LevelCompletionWidget.h>
+
+#include <InputMappingContext.h>
 
 struct FPlayerControllerTestAccess {
     static void prepare_completion(ASpaceGamePlayerController& controller) {

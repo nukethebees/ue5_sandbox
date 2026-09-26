@@ -1,10 +1,11 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-
-#include <sandbox/core/time_series_data.h>
 #include <SpaceGame/missions/TestMissionMode.h>
 #include <SpaceGame/missions/TestMissionState.h>
+
+#include <sandbox/core/time_series_data.h>
+
 #include <UObject/StrongObjectPtr.h>
 
 class USpaceGameLevelConfig;

@@ -1,10 +1,11 @@
 #include <SpaceGameS7/LevelScriptCatalog.h>
 
-#include <sandbox/level_authoring/CatalogValidation.h>
-#include <SandboxCoreEngine/strings.h>
 #include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
 #include <SpaceGameS7/CampaignDefinitionReader.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
+
+#include <sandbox/level_authoring/CatalogValidation.h>
+#include <SandboxCoreEngine/strings.h>
 
 #include <HAL/FileManager.h>
 #include <Misc/FileHelper.h>

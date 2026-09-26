@@ -1,11 +1,11 @@
 #pragma once
 
-#include "CoreMinimal.h"
-#include "Subsystems/GameInstanceSubsystem.h"
-
 #include "Sandbox/logging/FrameLogTracker.h"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+
+#include "CoreMinimal.h"
+#include "Subsystems/GameInstanceSubsystem.h"
 
 #include "FrameLogFooterSubsystem.generated.h"
 

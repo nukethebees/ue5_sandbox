@@ -1,17 +1,14 @@
-#include <SandboxISMCComponent.h>
-#include <SandboxTests/support/test_setup.h>
 #include "test_batch_orchestrator_reset_scenario.h"
-
-#include <SandboxTests/support/level_checks.h>
-#include <SandboxTests/support/SoftTestAssertions.h>
-#include <SandboxTests/support/TestActorSpawning.h>
-#include <SandboxTests/support/time_series_test_data.h>
-
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/turrets/sim.h>
+#include <SandboxTests/support/level_checks.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestActorSpawning.h>
+#include <SandboxTests/support/time_series_test_data.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -30,6 +27,7 @@
 #include <GameFramework/PlayerState.h>
 #include <GameFramework/WorldSettings.h>
 #include <Misc/Optional.h>
+#include <SandboxISMCComponent.h>
 
 namespace ml {
 FTestBatchOrchestratorResetScenario::FTestBatchOrchestratorResetScenario(

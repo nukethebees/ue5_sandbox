@@ -1,8 +1,8 @@
 #pragma once
 
-#include <CoreMinimal.h>
-
 #include "ioj/sim/memory/game_memory.h"
+
+#include <CoreMinimal.h>
 
 DECLARE_DELEGATE_RetVal(std::optional<::ioj::sim::GameMemoryBackingLease>,
                         FAcquireGameMemoryBackingDelegate);

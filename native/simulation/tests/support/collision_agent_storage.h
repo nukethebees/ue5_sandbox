@@ -1,7 +1,6 @@
 #pragma once
-#include <ioj/sim/column_math.h>
-
 #include <ioj/sim/agent_accessor.h>
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/entity_tables.h>

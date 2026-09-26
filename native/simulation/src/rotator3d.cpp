@@ -1,6 +1,7 @@
+#include <ioj/sim/rotator3d.h>
+
 #include <algorithm>
 #include <cmath>
-#include <ioj/sim/rotator3d.h>
 #include <numbers>
 
 namespace ioj::sim {

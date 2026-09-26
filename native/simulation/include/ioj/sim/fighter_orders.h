@@ -3,25 +3,18 @@
 
 #pragma once
 
+#include "sandbox/core/enum_traits.h"
 #include "sandbox/core/packed_value.h"
 
+#include <array>
 #include <cassert>
 #include <compare>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <type_traits>
-
-#include <array>
-
-#include <cstdint>
-
-#include <cstddef>
-
 #include <optional>
-
 #include <string_view>
-
-#include "sandbox/core/enum_traits.h"
+#include <type_traits>
 
 namespace ioj::sim {
 enum class FighterTask : std::uint8_t {

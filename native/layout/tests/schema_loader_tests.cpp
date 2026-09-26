@@ -1,8 +1,7 @@
+#include "../lib/src/schema_loader_transaction.hpp"
 #include <ioj/layout/analyzer.hpp>
 #include <ioj/layout/planner_session.hpp>
 #include <ioj/layout/schema_loader.hpp>
-
-#include "../lib/src/schema_loader_transaction.hpp"
 
 #include <gtest/gtest.h>
 

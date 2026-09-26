@@ -1,4 +1,5 @@
 #include "Generation/MeshAssetWriter.h"
+
 #include "SbxMeshGenLab/MeshGenerationRequest.h"
 #include "SbxMeshGenLab/NativeMeshTypes.h"
 
@@ -7,7 +8,6 @@
 #include "Engine/StaticMesh.h"
 #include "HAL/FileManager.h"
 #include "Misc/Paths.h"
-
 #include <CQTest.h>
 
 namespace SandboxMesh {

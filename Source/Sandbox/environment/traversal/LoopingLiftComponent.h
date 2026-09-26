@@ -1,9 +1,9 @@
 #pragma once
 
-#include <limits>
-
-#include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "CoreMinimal.h"
+
+#include <limits>
 
 #include "LoopingLiftComponent.generated.h"
 

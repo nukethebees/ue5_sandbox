@@ -1,15 +1,15 @@
 #include "server.hpp"
 
+#include "test_barrier.hpp"
+
 #include "jobserver/authority.hpp"
 #include "jobserver/protocol.hpp"
 #include "jobserver/transport.hpp"
-#include "test_barrier.hpp"
 
 #include <Windows.h>
 
-#include <sddl.h>
-
 #include <nlohmann/json.hpp>
+#include <sddl.h>
 
 #include <chrono>
 #include <cstdlib>

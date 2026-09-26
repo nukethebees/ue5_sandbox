@@ -1,8 +1,6 @@
-#include "Editor/SbxMeshGenLabEditorMode.h"
-
 #include "Editor.h"
+#include "Editor/SbxMeshGenLabEditorMode.h"
 #include "EditorModeManager.h"
-
 #include <CQTest.h>
 
 TEST_CLASS(MeshGenLabUi, "SandboxMesh.UnitTests")

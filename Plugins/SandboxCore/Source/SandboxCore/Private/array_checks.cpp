@@ -1,4 +1,5 @@
 #include <SandboxCore/array_checks.h>
+
 #include <SandboxCore/log_categories.h>
 
 #include <CoreMinimal.h>

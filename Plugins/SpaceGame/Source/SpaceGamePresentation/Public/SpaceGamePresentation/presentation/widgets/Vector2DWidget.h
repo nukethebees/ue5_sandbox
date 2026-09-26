@@ -2,8 +2,8 @@
 
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
-#include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "CoreMinimal.h"
 
 #include "Vector2DWidget.generated.h"
 

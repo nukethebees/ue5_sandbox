@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-
 #include "SandboxCore/enum_array.h"
+
+#include "CoreMinimal.h"
 namespace codegen_compile_fixture {
 enum class EPlainFixture : uint8 {
     First,

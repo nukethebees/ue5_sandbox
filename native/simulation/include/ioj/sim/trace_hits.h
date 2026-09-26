@@ -5,6 +5,7 @@
 #include "ioj/sim/query_result_types.h"
 #include "ioj/sim/vector_types.h"
 #include "ioj/sim/vectors3f.h"
+
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/native_soa/vector_storage_ops.h"
 

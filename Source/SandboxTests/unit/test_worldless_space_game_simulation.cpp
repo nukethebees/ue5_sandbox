@@ -1,5 +1,4 @@
 #include "../level/test_hud_manager_scenario.h"
-
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 

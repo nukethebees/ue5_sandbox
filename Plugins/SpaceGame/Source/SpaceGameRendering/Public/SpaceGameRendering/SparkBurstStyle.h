@@ -1,7 +1,8 @@
 #pragma once
 
-#include <CoreMinimal.h>
 #include <SpaceGameRendering/SparkScalarRange.h>
+
+#include <CoreMinimal.h>
 
 #include "SparkBurstStyle.generated.h"
 

@@ -1,11 +1,8 @@
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
-#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
-
-#include <SpaceGamePresentation/presentation/HUDManager.h>
 
 #include "ioj/sim/entity_telemetry.h"
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
-#include "SandboxUI/Radar/SRadarWidget.h"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SpaceGamePresentation/presentation/widgets/DebugGraphWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ForceStatusWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/MissionStatusWidget.h"
@@ -16,6 +13,10 @@
 #include "SpaceGamePresentation/presentation/widgets/Vector2DWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <SpaceGamePresentation/presentation/HUDManager.h>
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+
+#include "SandboxUI/Radar/SRadarWidget.h"
 
 #include <Blueprint/WidgetTree.h>
 #include <Components/Border.h>
@@ -27,8 +28,6 @@
 #include <Components/Widget.h>
 #include <Materials/MaterialInstanceDynamic.h>
 #include <Materials/MaterialInterface.h>
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 namespace {
 template <typename... WidgetTypes>

@@ -1,5 +1,7 @@
 #include "SandboxShaders/SpaceDust/SpaceDustComponent.h"
 
+#include <sandbox/core/space_dust_math.h>
+
 #include "MaterialDomain.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialInterface.h"
@@ -15,8 +17,6 @@
 #include "SceneManagement.h"
 #include "UObject/ConstructorHelpers.h"
 #include "VertexFactory.h"
-
-#include <sandbox/core/space_dust_math.h>
 
 DEFINE_LOG_CATEGORY_STATIC(LogSpaceDust, Log, All);
 

@@ -4,8 +4,8 @@
 
 #include "SpaceGamePresentation/entities/ShipHealth.h"
 
-#include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "CoreMinimal.h"
 
 #include "ShipHealthComponent.generated.h"
 

@@ -2,8 +2,8 @@
 
 #include "SpaceGamePresentation/support/DrawDebugConfig.h"
 
-#include "CoreMinimal.h"
 #include "CollisionShape.h"
+#include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
 
 #include "TestTurretsConfig.generated.h"

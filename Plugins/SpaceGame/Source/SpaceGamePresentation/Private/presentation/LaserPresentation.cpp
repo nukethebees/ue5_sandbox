@@ -1,20 +1,20 @@
 #include "SpaceGamePresentation/presentation/LaserPresentation.h"
-#include <ioj/sim/column_math.h>
 
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/laser_source.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
+#include <SpaceGameRendering/SparkEffects.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
-#include <SandboxISMCComponent.h>
-#include <SpaceGameRendering/SparkEffects.h>
 
 #include <Components/SceneComponent.h>
 #include <ProfilingDebugging/CountersTrace.h>
+#include <SandboxISMCComponent.h>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
 

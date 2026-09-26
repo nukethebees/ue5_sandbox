@@ -1,17 +1,16 @@
 #pragma once
-#include <cstdint>
-#include <ioj/sim/system_read_views.h>
-#include <span>
-#include <vector>
-
-#include <ioj/sim/sim_config.h>
-
 #include <ioj/sim/laser_frame_output.h>
 #include <ioj/sim/laser_soa.h>
 #include <ioj/sim/lasers/frame_scratch.h>
 #include <ioj/sim/sim_clock.h>
+#include <ioj/sim/sim_config.h>
+#include <ioj/sim/system_read_views.h>
 
 #include <sandbox/core/frame_memory_resource.h>
+
+#include <cstdint>
+#include <span>
+#include <vector>
 
 namespace ioj::sim {
 class CombatEvents;

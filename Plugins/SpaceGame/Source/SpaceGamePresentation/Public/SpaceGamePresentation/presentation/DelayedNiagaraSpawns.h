@@ -1,7 +1,7 @@
 #pragma once
 
-#include <UObject/GCObject.h>
 #include "CoreMinimal.h"
+#include <UObject/GCObject.h>
 
 class UWorld;
 

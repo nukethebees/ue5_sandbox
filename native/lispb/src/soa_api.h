@@ -1,11 +1,13 @@
 #pragma once
 
+#include "lowered_soa.h"
+
 #include <codegen/schema/registered_type_schema.h>
 #include <codegen/schema/soa_backend.h>
 #include <codegen/schema/soa_schema.h>
+
 #include <span>
 #include <string_view>
-#include "lowered_soa.h"
 
 namespace codegen::detail {
 enum class SoaReceiver { owner, const_view, mutable_view };

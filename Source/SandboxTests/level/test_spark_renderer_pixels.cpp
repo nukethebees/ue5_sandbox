@@ -4,14 +4,13 @@
 #include <AssetCompilingManager.h>
 #include <Components/MapTestSpawner.h>
 #include <Components/SceneCaptureComponent2D.h>
+#include <CQTest.h>
 #include <Engine/TextureRenderTarget2D.h>
 #include <Engine/World.h>
 #include <GameFramework/Actor.h>
 #include <RenderingThread.h>
 #include <ShaderCompiler.h>
 #include <TextureResource.h>
-
-#include <CQTest.h>
 
 TEST_CLASS(SparkRendererPixels, "Sandbox.SparkRenderTests")
 {

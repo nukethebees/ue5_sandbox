@@ -1,8 +1,11 @@
-#include <algorithm>
-#include <codegen/schema/schema_version.h>
-#include <gtest/gtest.h>
 #include <ioj/layout/graph_view.hpp>
 #include <ioj/layout/schema_loader.hpp>
+
+#include <codegen/schema/schema_version.h>
+
+#include <gtest/gtest.h>
+
+#include <algorithm>
 
 namespace ioj::layout {
 namespace {

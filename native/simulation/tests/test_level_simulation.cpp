@@ -1,11 +1,12 @@
-#include <algorithm>
+#include "support/simulation_test_support.h"
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <ioj/sim/world_aabb_operations.h>
+
+#include <algorithm>
 #include <type_traits>
 #include <utility>
-#include "support/simulation_test_support.h"
 
 namespace ioj::sim::tests {
 

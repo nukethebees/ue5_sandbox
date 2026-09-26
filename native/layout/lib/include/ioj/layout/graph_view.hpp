@@ -1,7 +1,8 @@
 #pragma once
 
-#include <array>
 #include <lispb/schema/type_graph.h>
+
+#include <array>
 #include <span>
 
 namespace ioj::layout {

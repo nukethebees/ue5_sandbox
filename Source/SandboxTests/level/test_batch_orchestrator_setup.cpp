@@ -1,10 +1,4 @@
-#include <SandboxTests/support/test_setup.h>
-#include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
 #include "test_batch_orchestrator_setup_scenario.h"
-
-#include <SandboxTests/support/SoftTestAssertions.h>
-#include <SandboxTests/support/TestActorSpawning.h>
-
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entity_ledger.h>
@@ -15,14 +9,18 @@
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/turrets/sim.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestActorSpawning.h>
+#include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
-#include <SandboxISMCComponent.h>
 
 #include <Misc/AutomationTest.h>
+#include <SandboxISMCComponent.h>
 
 #include <bit>
 

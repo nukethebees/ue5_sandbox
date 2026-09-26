@@ -1,6 +1,7 @@
 #include "Benchmarks/Scatter3D/Scatter3DBenchmarkCommandlet.h"
 
 #include "Benchmarks/Scatter3D/Scatter3DBenchmark.h"
+
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Parse.h"

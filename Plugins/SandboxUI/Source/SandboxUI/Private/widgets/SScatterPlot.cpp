@@ -1,9 +1,10 @@
 #include "SandboxUI/widgets/SScatterPlot.h"
 
+#include "WidgetMath.h"
+
 #include "Internationalization/Text.h"
 #include "Rendering/DrawElementTypes.h"
 #include "Styling/CoreStyle.h"
-#include "WidgetMath.h"
 
 namespace {
 void draw_scatter_plot_box(FSlateWindowElementList& out_draw_elements,

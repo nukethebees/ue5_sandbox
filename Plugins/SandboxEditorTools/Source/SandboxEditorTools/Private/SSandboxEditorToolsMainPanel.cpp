@@ -7,6 +7,7 @@
 #include "LayoutSettings.h"
 #include "SandboxEditorToolsLogCategories.h"
 #include "SandboxEditorToolsSubsystem.h"
+
 #include "SandboxUI/slate/SlateSlots.h"
 #include "SandboxUI/widgets/SSectionPanel.h"
 

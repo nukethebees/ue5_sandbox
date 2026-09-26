@@ -1,6 +1,6 @@
-#include <SandboxCore/array_math_kernels.h>
-
 #include <sandbox/core/generated/array_math_kernels.h>
+
+#include <SandboxCore/array_math_kernels.h>
 
 #include <span>
 

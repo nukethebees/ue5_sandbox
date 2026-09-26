@@ -1,6 +1,6 @@
 #include "test_fighters_intercept_capital.h"
-#include "../support/simulation_test_support.h"
 
+#include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/fighters/sim.h>
 

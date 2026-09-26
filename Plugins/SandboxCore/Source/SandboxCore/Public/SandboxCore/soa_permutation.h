@@ -2,9 +2,10 @@
 
 #include <sandbox/core/soa_permutation.h>
 
-#include <concepts>
 #include <Containers/Array.h>
 #include <Containers/ArrayView.h>
+
+#include <concepts>
 #include <span>
 #include <utility>
 

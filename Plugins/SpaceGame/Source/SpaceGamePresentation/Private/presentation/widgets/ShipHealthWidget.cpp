@@ -1,11 +1,10 @@
 #include "SpaceGamePresentation/presentation/widgets/ShipHealthWidget.h"
 
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 #include "Components/HorizontalBoxSlot.h"
 #include "Components/ProgressBar.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 void UShipHealthWidget::set_health(FShipHealth health) {
     check(health_bar);

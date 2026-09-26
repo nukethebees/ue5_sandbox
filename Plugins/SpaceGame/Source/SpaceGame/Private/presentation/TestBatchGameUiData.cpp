@@ -1,5 +1,4 @@
 #include "SpaceGame/presentation/TestBatchGameUiData.h"
-#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
 #include "SpaceGame/ui/common/GameUiRootLayout.h"
@@ -20,6 +19,7 @@
 #include "SpaceGamePresentation/presentation/widgets/TopKillersWidget.h"
 #include "SpaceGamePresentation/ui/common/MenuButtonWidget.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include <Misc/PackageName.h>
 #include <UObject/UObjectGlobals.h>

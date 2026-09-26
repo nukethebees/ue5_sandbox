@@ -1,8 +1,9 @@
 #pragma once
 
-#include <CoreMinimal.h>
 #include <SpaceGameRendering/SparkBurst.h>
 #include <SpaceGameRendering/SparkParticleRecord.h>
+
+#include <CoreMinimal.h>
 
 class USparkRendererComponent;
 

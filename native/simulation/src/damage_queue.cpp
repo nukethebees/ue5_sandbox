@@ -1,5 +1,7 @@
 #include <ioj/sim/damage_queue.h>
+
 #include <ioj/sim/profiling.h>
+
 #include <sandbox/core/frame_array.h>
 
 namespace ioj::sim {

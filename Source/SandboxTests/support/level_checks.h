@@ -1,8 +1,9 @@
 #pragma once
 
+#include <SpaceGamePresentation/entities/TestTeam.h>
+
 #include <Containers/ArrayView.h>
 #include <CoreMinimal.h>
-#include <SpaceGamePresentation/entities/TestTeam.h>
 
 namespace ml {
 struct FSoftTestAssertions;

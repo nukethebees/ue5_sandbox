@@ -2,7 +2,6 @@
 
 #include <codegen/schema.h>
 #include <codegen/source_loader.h>
-
 #include <lispb/schema/type_graph.h>
 
 #include <compare>

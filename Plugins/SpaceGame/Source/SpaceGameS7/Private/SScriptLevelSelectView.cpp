@@ -1,9 +1,10 @@
 #include "SScriptLevelSelectView.h"
 
-#include <SandboxUI/slate/SlateSlots.h>
 #include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGame/ui/common/HiveWidgets.h>
 #include <SpaceGame/ui/common/SGameButton.h>
+
+#include <SandboxUI/slate/SlateSlots.h>
 
 #include <InputCoreTypes.h>
 #include <Widgets/Input/SCheckBox.h>

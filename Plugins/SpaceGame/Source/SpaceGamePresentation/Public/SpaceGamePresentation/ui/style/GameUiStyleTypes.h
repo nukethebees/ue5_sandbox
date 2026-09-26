@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-
 #include "SandboxCore/enum_array.h"
+
+#include "CoreMinimal.h"
 
 #include "GameUiStyleTypes.generated.h"
 

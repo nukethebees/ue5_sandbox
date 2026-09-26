@@ -1,10 +1,10 @@
 #pragma once
 
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Math/Color.h"
-
-#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 
 #include "TiledWallActor.generated.h"
 

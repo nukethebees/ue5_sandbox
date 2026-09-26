@@ -1,6 +1,6 @@
-#include <codegen/generator.h>
-
 #include "test_utilities.h"
+
+#include <codegen/generator.h>
 
 #include <gtest/gtest.h>
 

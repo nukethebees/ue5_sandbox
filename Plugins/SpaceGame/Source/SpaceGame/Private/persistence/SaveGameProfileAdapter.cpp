@@ -1,13 +1,13 @@
 #include "SpaceGame/persistence/SaveGameProfileAdapter.h"
 
 #include "SpaceGame/persistence/SpaceSaveGame.h"
-
-#include <SandboxCoreEngine/enums.h>
-#include <SandboxCoreEngine/strings.h>
 #include <SandboxGameShared/core/levels/levels.h>
 #include <SpaceGame/missions/TestMissionFailReasonConversion.h>
 #include <SpaceGame/missions/TestMissionModeConversion.h>
 #include <SpaceGame/missions/TestMissionStateConversion.h>
+
+#include <SandboxCoreEngine/enums.h>
+#include <SandboxCoreEngine/strings.h>
 
 namespace ml::ioj::save_profile {
 namespace profile_adapter {

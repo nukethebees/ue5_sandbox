@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Math/Color.h>
 #include "CoreMinimal.h"
 #include "Misc/Optional.h"
+#include <Math/Color.h>
 
 #include "DrawDebugConfig.generated.h"
 

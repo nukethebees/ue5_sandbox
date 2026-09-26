@@ -1,14 +1,13 @@
 #include "TestSimulationDriver.h"
-#include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
-
-#include <SandboxTests/SandboxTestLogCategories.h>
-#include <SandboxTests/support/SpaceGameTestSettings.h>
 
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/fighters/sim.h>
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
+#include <SandboxTests/SandboxTestLogCategories.h>
+#include <SandboxTests/support/SpaceGameTestSettings.h>
+#include <SandboxTests/support/TestBatchOrchestratorTestAccess.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 

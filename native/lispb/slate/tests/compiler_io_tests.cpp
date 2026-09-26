@@ -1,10 +1,10 @@
-#include <slate_codegen/compiler.h>
-
 #include "syntax.h"
 
 #include <codegen/sexpr/lexer.h>
-#include <gtest/gtest.h>
 #include <lispb/output.h>
+#include <slate_codegen/compiler.h>
+
+#include <gtest/gtest.h>
 
 #include <filesystem>
 #include <fstream>

@@ -1,11 +1,11 @@
 #include "Sandbox/environment/structures/TiledWallActor.h"
 
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
+
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/Texture2D.h"
 #include "Materials/MaterialInstanceDynamic.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 FName const ATiledWallActor::face_material_name{TEXT("Face")};
 FName const ATiledWallActor::edge_material_name{TEXT("Edge")};

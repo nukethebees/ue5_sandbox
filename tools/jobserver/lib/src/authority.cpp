@@ -4,9 +4,8 @@
 
 #include <Windows.h>
 
-#include <sddl.h>
-
 #include <nlohmann/json.hpp>
+#include <sddl.h>
 
 #include <chrono>
 #include <cstddef>

@@ -1,8 +1,7 @@
-#include <lispb/output.h>
+#include "format_generated.h"
 
 #include <codegen/path_utils.h>
-
-#include "format_generated.h"
+#include <lispb/output.h>
 
 #include <algorithm>
 #include <fstream>

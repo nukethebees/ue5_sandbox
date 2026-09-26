@@ -1,11 +1,5 @@
 #include "SpaceGamePresentation/presentation/HUDManager.h"
-#include <SpaceGamePresentation/integration/TransformConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
-#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
-#include <ioj/sim/entity_types.h>
-#include <SpaceGamePresentation/entities/TestTeamConversion.h>
-#include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include "ioj/sim/agent_accessor.h"
 #include "ioj/sim/mission_manager.h"
 #include "ioj/sim/player/sim.h"
@@ -14,6 +8,12 @@
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <ioj/sim/entity_types.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
+#include <SpaceGamePresentation/integration/TransformConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
+#include <SpaceGamePresentation/presentation/LevelActorSettings.h>
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include <sandbox/core/timing.h>
 #include <SandboxCoreEngine/strings.h>

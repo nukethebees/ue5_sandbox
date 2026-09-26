@@ -1,9 +1,9 @@
 #include "support.h"
 
+#include <memory>
+
 #include "CompileSmoke/Host.slate.generated.h"
 #include "CompileSmoke/Widgets.slate.generated.h"
-
-#include <memory>
 
 namespace CompileSmoke {
 

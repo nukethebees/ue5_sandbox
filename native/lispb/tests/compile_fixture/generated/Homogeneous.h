@@ -3,14 +3,16 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "Containers/AllowShrinking.h"
-#include "Containers/Array.h"
-#include "Containers/ArrayView.h"
 #include "Project/Point2f.h"
 #include "Project/Vector2d.h"
 #include "Project/Vector2f.h"
+
 #include "SandboxCore/array_utils.h"
+
+#include "Containers/AllowShrinking.h"
+#include "Containers/Array.h"
+#include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 #include <type_traits>
 #include <utility>

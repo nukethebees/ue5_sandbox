@@ -1,9 +1,11 @@
 #include "SbxUIExperiments/HeatmapRDG/HeatmapRDGShowcase.h"
 
 #include "Benchmarks/Heatmap/HeatmapBenchmark.h"
+
 #include "SandboxUI/slate/SlateSlots.h"
 #include "SandboxUI/widgets/SLabeledRow.h"
 #include "SbxUIExperiments/HeatmapRDG/HeatmapRDGWidget.h"
+
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Widgets/Layout/SBox.h"

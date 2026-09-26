@@ -2,11 +2,11 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "SandboxGameShared/players/TeamID.h"
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
 
 #include "PawnSpawner.generated.h"
 

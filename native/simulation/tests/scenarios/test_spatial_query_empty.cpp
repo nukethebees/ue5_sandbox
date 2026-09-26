@@ -1,6 +1,6 @@
 #include "test_spatial_query_empty.h"
-#include "../support/simulation_test_support.h"
 
+#include "../support/simulation_test_support.h"
 #include <ioj/sim/spatial_query_manager.h>
 
 namespace ioj::sim {

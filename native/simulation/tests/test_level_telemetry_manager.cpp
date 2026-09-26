@@ -1,7 +1,3 @@
-#include <bit>
-#include <cstdint>
-#include <utility>
-
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entity_ledger.h>
@@ -11,6 +7,10 @@
 #include <ioj/sim/spatial_query_manager.h>
 
 #include <gtest/gtest.h>
+
+#include <bit>
+#include <cstdint>
+#include <utility>
 
 namespace ioj::sim {
 

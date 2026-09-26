@@ -1,19 +1,21 @@
 #include "ioj/sim/mission_manager.h"
-#include <algorithm>
-#include <cassert>
-#include <cstdint>
-#include <format>
-#include <ioj/sim/profiling.h>
-#include <optional>
-#include <sandbox/core/diagnostics.h>
-#include <span>
-#include <string>
-#include <utility>
-#include <vector>
 
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/levels/level_runtime_events.h>
+#include <ioj/sim/profiling.h>
+
+#include <sandbox/core/diagnostics.h>
+
+#include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <format>
+#include <optional>
+#include <span>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace ioj::sim {
 

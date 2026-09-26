@@ -1,8 +1,7 @@
 #pragma once
 
-#include <EnhancedInputSubsystemInterface.h>
-
 #include <CoreMinimal.h>
+#include <EnhancedInputSubsystemInterface.h>
 
 #include "TestEnhancedInputSubsystem.generated.h"
 

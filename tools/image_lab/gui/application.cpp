@@ -1,4 +1,5 @@
 #include "application.hpp"
+
 #include "platform/sdl_headers.hpp"
 
 #include <sandbox/image/image_generation.h>

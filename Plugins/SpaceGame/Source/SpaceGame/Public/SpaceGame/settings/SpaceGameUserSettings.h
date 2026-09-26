@@ -1,9 +1,9 @@
 #pragma once
 
-#include "GameFramework/GameUserSettings.h"
 #include "SpaceGame/settings/GameSettingsTypes.h"
-
 #include <ioj/sim/player/flight_model_config.h>
+
+#include "GameFramework/GameUserSettings.h"
 
 #include "SpaceGameUserSettings.generated.h"
 

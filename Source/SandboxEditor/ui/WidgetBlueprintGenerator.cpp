@@ -2,6 +2,7 @@
 
 #include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 #include "SpaceGame/presentation/TestBatchGameUiData.h"
+#include "WidgetBlueprintOperationUtils.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Blueprint/WidgetTree.h"
@@ -12,7 +13,6 @@
 #include "UObject/Package.h"
 #include "UObject/UnrealType.h"
 #include "WidgetBlueprint.h"
-#include "WidgetBlueprintOperationUtils.h"
 
 #define LOG_ERR(FORMAT_STR, ...) UE_LOG(LogSandboxEditor, Error, TEXT(FORMAT_STR), ##__VA_ARGS__)
 #define LOG_LOG(FORMAT_STR, ...) UE_LOG(LogSandboxEditor, Log, TEXT(FORMAT_STR), ##__VA_ARGS__)

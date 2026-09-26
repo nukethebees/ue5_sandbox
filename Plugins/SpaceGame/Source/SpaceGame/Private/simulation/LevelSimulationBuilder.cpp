@@ -1,5 +1,7 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
+
 #include <ioj/sim/column_math.h>
+#include <ioj/sim/entity_type.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/entity_world_bounds.h>
 #include <ioj/sim/laser_source.h>
@@ -9,24 +11,21 @@
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>
 #include <ioj/sim/rotator_math.h>
-#include <SpaceGame/missions/TestMissionModeConversion.h>
-#include <SpaceGamePresentation/entities/TestTeamConversion.h>
-#include <SpaceGamePresentation/integration/RotatorConversion.h>
-#include <SpaceGamePresentation/integration/TransformConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
-
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/levels/CompileLevelEvents.h>
 #include <SpaceGame/levels/LevelEntityResolution.h>
+#include <SpaceGame/missions/TestMissionModeConversion.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/simulation/SimulationConfigConversion.h>
-
-#include <ioj/sim/entity_type.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
+#include <SpaceGame/simulation/SimulationConfigConversion.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
+#include <SpaceGamePresentation/integration/RotatorConversion.h>
+#include <SpaceGamePresentation/integration/TransformConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include <Engine/StaticMesh.h>
 #include <Engine/StaticMeshSocket.h>

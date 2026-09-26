@@ -1,11 +1,12 @@
-#include <algorithm>
+#include "support/simulation_test_support.h"
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/fighter_types.h>
 #include <ioj/sim/health.h>
 #include <ioj/sim/level_sim.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
+
+#include <algorithm>
 #include <type_traits>
-#include "support/simulation_test_support.h"
 
 namespace ioj::sim::tests {
 

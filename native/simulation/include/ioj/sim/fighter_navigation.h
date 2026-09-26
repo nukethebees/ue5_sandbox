@@ -1,10 +1,9 @@
 #pragma once
 
 #include "ioj/sim/collision_grid.h"
+#include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/fighter_navigation_types.h"
 #include "ioj/sim/trace_hits.h"
-
-#include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/vector_types.h"
 #include "ioj/sim/vectors3f.h"
 

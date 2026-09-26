@@ -1,18 +1,18 @@
-#include <SandboxTests/support/test_setup.h>
-#include <SandboxTests/support/TestActorSpawning.h>
-
-#include <SandboxTests/support/level_checks.h>
-#include <SandboxTests/support/SoftTestAssertions.h>
-#include <SandboxTests/support/time_series_test_data.h>
-#include <SandboxTests/support/WorldlessSimulationTest.h>
 #include "test_hud_manager_scenario.h"
-
-#include <sandbox/core/time_series_data.h>
-#include <SandboxCoreEngine/actor_utils.h>
-
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/mission_manager.h>
-#include <SandboxCoreEngine/enums.h>
+#include <ioj/sim/missions/mission_fail_reason.h>
+#include <ioj/sim/missions/mission_mode.h>
+#include <ioj/sim/missions/mission_state.h>
+#include <SandboxTests/support/level_checks.h>
+#include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestActorSpawning.h>
+#include <SandboxTests/support/time_series_test_data.h>
+#include <SandboxTests/support/WorldlessSimulationTest.h>
+#include <SpaceGame/missions/TestMissionFailReasonConversion.h>
+#include <SpaceGame/missions/TestMissionModeConversion.h>
+#include <SpaceGame/missions/TestMissionStateConversion.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -21,17 +21,16 @@
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
 
-#include <array>
+#include <sandbox/core/time_series_data.h>
+#include <SandboxCoreEngine/actor_utils.h>
+#include <SandboxCoreEngine/enums.h>
+
 #include <Engine/World.h>
 #include <GameFramework/PlayerController.h>
-#include <ioj/sim/missions/mission_fail_reason.h>
-#include <ioj/sim/missions/mission_mode.h>
-#include <ioj/sim/missions/mission_state.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/Optional.h>
-#include <SpaceGame/missions/TestMissionFailReasonConversion.h>
-#include <SpaceGame/missions/TestMissionModeConversion.h>
-#include <SpaceGame/missions/TestMissionStateConversion.h>
+
+#include <array>
 
 namespace ml {
 namespace {

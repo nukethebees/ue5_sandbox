@@ -1,14 +1,13 @@
 #include "SGLegacy/items/ShipHealthItem.h"
 
 #include "SandboxGameShared/environment/effects/RotatingActorComponent.h"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SGLegacy/items/ShipHealthItemConfig.h"
 #include "SGLegacy/players/SpaceShip.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
-
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 AShipHealthItem::AShipHealthItem()
     : mesh(CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh")))

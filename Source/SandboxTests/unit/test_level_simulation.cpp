@@ -7,9 +7,6 @@
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <ioj/sim/world_aabb_operations.h>
-#include <NiagaraComponent.h>
-#include <NiagaraSystem.h>
-#include <SandboxISMCComponent.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
@@ -34,6 +31,9 @@
 #include <Misc/Guid.h>
 #include <Misc/Paths.h>
 #include <Misc/ScopeExit.h>
+#include <NiagaraComponent.h>
+#include <NiagaraSystem.h>
+#include <SandboxISMCComponent.h>
 #include <Serialization/JsonSerializer.h>
 
 #include <type_traits>

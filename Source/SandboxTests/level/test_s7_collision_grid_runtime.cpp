@@ -1,12 +1,10 @@
+#include <ioj/sim/spatial_query_manager.h>
 #include <SandboxTests/support/test_setup.h>
-
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelLoader.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-
-#include <ioj/sim/spatial_query_manager.h>
 
 #include <CQTest.h>
 

@@ -1,10 +1,10 @@
 #pragma once
 
+#include "SandboxGameShared/logging/LogMsgMixin.hpp"
+
 #include "CoreMinimal.h"
 #include "Delegates/IDelegateInstance.h"
 #include "Modules/ModuleManager.h"
-
-#include "SandboxGameShared/logging/LogMsgMixin.hpp"
 
 class FMenuBarBuilder;
 class FMenuBuilder;

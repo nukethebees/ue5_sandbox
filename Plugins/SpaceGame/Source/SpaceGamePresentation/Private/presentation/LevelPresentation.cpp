@@ -1,8 +1,9 @@
-#include <SandboxISMCComponent.h>
-#include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 
+#include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
+
+#include <SandboxISMCComponent.h>
 
 auto FLevelPresentationResources::is_valid() const -> bool {
     return IsValid(lasers) && IsValid(capital_ships) && IsValid(fighters) && IsValid(turrets) &&

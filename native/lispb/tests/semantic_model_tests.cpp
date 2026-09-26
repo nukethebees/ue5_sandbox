@@ -1,7 +1,6 @@
-#include <lispb/schema/type_graph.h>
-
 #include <codegen/source_loader.h>
 #include <lispb/project.h>
+#include <lispb/schema/type_graph.h>
 
 #include <gtest/gtest.h>
 

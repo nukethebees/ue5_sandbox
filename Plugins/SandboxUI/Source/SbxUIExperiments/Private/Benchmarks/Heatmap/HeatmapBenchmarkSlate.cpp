@@ -1,9 +1,9 @@
 #include "Benchmarks/Heatmap/HeatmapBenchmark.h"
 
-#include "HAL/PlatformTime.h"
 #include "SandboxUI/widgets/SHeatmap2D.h"
-
 #include <sandbox/core/ui/heatmap_2d.h>
+
+#include "HAL/PlatformTime.h"
 
 #include <span>
 #include <vector>

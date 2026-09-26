@@ -1,8 +1,9 @@
 #pragma once
 
+#include "SandboxCelestials/CelestialBackdropActor.h"
+
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"
-#include "SandboxCelestials/CelestialBackdropActor.h"
 
 #include "CelestialBackdropProfile.generated.h"
 

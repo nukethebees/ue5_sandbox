@@ -2,6 +2,7 @@
 
 #include <ioj/layout/analyzer.hpp>
 #include <ioj/layout/diagnostic.hpp>
+
 #include <lispb/schema/type_graph.h>
 
 #include <imgui.h>

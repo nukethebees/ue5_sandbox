@@ -1,7 +1,8 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "SbxMeshGenLab/MeshAssemblyRecipe.h"
+
+#include "CoreMinimal.h"
 
 class USbxMeshAssemblyRecipe;
 

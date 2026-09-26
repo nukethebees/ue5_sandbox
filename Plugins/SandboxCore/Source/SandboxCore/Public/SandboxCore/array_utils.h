@@ -4,11 +4,11 @@
 
 #include <sandbox/core/array_utils.h>
 
+#include "Containers/Array.h"
+#include "Containers/ArrayView.h"
 #include <Containers/AllowShrinking.h>
 #include <HAL/Platform.h>
 #include <Math/UnrealMathUtility.h>
-#include "Containers/Array.h"
-#include "Containers/ArrayView.h"
 
 #include <concepts>
 #include <type_traits>

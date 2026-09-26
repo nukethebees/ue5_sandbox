@@ -1,8 +1,9 @@
 #pragma once
 
+#include "SandboxISMCUpdateMetrics.h"
+
 #include "GameFramework/Actor.h"
 #include "Math/Box.h"
-#include "SandboxISMCUpdateMetrics.h"
 
 #include "SandboxISMCBenchmarkActor.generated.h"
 

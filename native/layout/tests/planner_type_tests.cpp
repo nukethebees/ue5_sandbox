@@ -1,5 +1,4 @@
 #include "analyzer_test_fixtures.hpp"
-
 #include <ioj/layout/planner_session.hpp>
 #include <ioj/layout/planner_type.hpp>
 #include <ioj/layout/schema_loader.hpp>

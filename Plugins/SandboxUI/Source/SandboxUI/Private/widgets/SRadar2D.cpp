@@ -1,9 +1,9 @@
 #include "SandboxUI/widgets/SRadar2D.h"
 
+#include <sandbox/core/ui/radar_2d.h>
+
 #include "Brushes/SlateColorBrush.h"
 #include "Rendering/DrawElementTypes.h"
-
-#include <sandbox/core/ui/radar_2d.h>
 
 namespace {
 auto to_native(FVectors2f const& positions) -> ml::ui::radar_2d::Positions {

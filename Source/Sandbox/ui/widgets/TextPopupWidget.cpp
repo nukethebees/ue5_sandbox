@@ -1,5 +1,9 @@
 #include "Sandbox/ui/widgets/TextPopupWidget.h"
 
+#include "SandboxGameShared/ui/SandboxStyle.h"
+#include "SandboxGameShared/ui/ui.h"
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
+
 #include "Fonts/CompositeFont.h"
 #include "Misc/Optional.h"
 #include "SlateOptMacros.h"
@@ -9,10 +13,6 @@
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
-
-#include "SandboxGameShared/ui/SandboxStyle.h"
-#include "SandboxGameShared/ui/ui.h"
-#include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 BEGIN_SLATE_FUNCTION_BUILD_OPTIMIZATION
 void STextPopupWidget::Construct(FArguments const& InArgs) {

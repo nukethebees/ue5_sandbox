@@ -5,11 +5,9 @@
 #include "test_hud_manager_scenario.h"
 #include "test_level_loader_scenario.h"
 #include "test_player_ship_death_scenario.h"
-
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/SpaceGameTestSettings.h>
 #include <SandboxTests/support/test_setup.h>
-
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <CQTest.h>

@@ -1,19 +1,10 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
-#include <HAL/IConsoleManager.h>
-#include <ioj/sim/column_math.h>
-#include <ioj/sim/entity_types.h>
-#include <SpaceGame/missions/TestMissionFailReasonConversion.h>
-#include <SpaceGame/missions/TestMissionModeConversion.h>
-#include <SpaceGame/missions/TestMissionStateConversion.h>
-#include <SpaceGame/telemetry/LevelTelemetryJson.h>
-#include <SpaceGamePresentation/integration/RotatorConversion.h>
-#include <SpaceGamePresentation/integration/TransformConversion.h>
-#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include "SpaceGame/levels/LevelLoader.h"
 #include "SpaceGame/system/GameSubsystem.h"
-
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/entity_types.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
 #include <ioj/sim/mission_manager.h>
 #include <ioj/sim/sim_time.h>
@@ -21,22 +12,30 @@
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestEntity.h>
+#include <SpaceGame/missions/TestMissionFailReasonConversion.h>
+#include <SpaceGame/missions/TestMissionModeConversion.h>
+#include <SpaceGame/missions/TestMissionStateConversion.h>
+#include <SpaceGame/persistence/SpaceSaveGame.h>
+#include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
+#include <SpaceGame/telemetry/LevelTelemetryJson.h>
 #include <SpaceGame/telemetry/LevelTelemetryMetadata.h>
+#include <SpaceGamePresentation/integration/RotatorConversion.h>
+#include <SpaceGamePresentation/integration/TransformConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 #include <SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h>
 #include <SpaceGamePresentation/support/mesh.h>
+#include <SpaceGameRendering/SparkRendererComponent.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <sandbox/core/invoke.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/uobject_utils.h>
-#include <SandboxISMCComponent.h>
-#include <SpaceGameRendering/SparkRendererComponent.h>
 
 #include <CoreGlobals.h>
 #include <Engine/GameInstance.h>
@@ -51,10 +50,10 @@
 #include <GameFramework/PlayerController.h>
 #include <GameFramework/PlayerState.h>
 #include <GameFramework/WorldSettings.h>
+#include <HAL/IConsoleManager.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/DateTime.h>
-#include <SpaceGame/persistence/SpaceSaveGame.h>
-#include <SpaceGame/persistence/SpaceSaveSubsystem.h>
+#include <SandboxISMCComponent.h>
 
 namespace ml::fighter_diagnostics {
 inline TAutoConsoleVariable<int32> enabled{

@@ -1,9 +1,8 @@
 #include "TestVolumeDetailsCustomisation.h"
 
 #include "BoxSizeAttrPropInput.h"
-#include "SandboxEditor/logging/SandboxEditorLogCategories.h"
-
 #include "Sandbox/misc/learning/TestVolume.h"
+#include "SandboxEditor/logging/SandboxEditorLogCategories.h"
 
 #include <Components/BoxComponent.h>
 #include <DetailCategoryBuilder.h>

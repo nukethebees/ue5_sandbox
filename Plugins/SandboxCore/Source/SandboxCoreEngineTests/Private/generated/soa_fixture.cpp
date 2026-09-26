@@ -3,10 +3,11 @@
 
 #include "soa_fixture.h"
 
-#include "Containers/AllowShrinking.h"
-#include "Containers/ArrayView.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_storage_ops.h"
+
+#include "Containers/AllowShrinking.h"
+#include "Containers/ArrayView.h"
 
 namespace ml::soa_test_fixture {
 

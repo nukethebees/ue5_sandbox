@@ -1,19 +1,18 @@
+#include "ioj/sim/entity_type.h"
+#include "ioj/sim/entity_type_radii.h"
+#include "SpaceGamePresentation/entities/TestTeam.h"
+#include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
 #include <ioj/sim/column_math.h>
+#include <ioj/sim/entity_identity_layout.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/laser_source.h>
 #include <SandboxTests/support/DisplayEntityTestData.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
-#include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
-
-#include "ioj/sim/entity_type.h"
-#include "ioj/sim/entity_type_radii.h"
-#include "SpaceGamePresentation/entities/TestTeam.h"
 
 #include <CQTest.h>
-#include <vector>
 
-#include <ioj/sim/entity_identity_layout.h>
+#include <vector>
 
 namespace {
 using EntityTypeRadii = ::ioj::sim::EntityTypeRadii;

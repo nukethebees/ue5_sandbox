@@ -1,6 +1,7 @@
 #pragma once
-#include <CoreMinimal.h>
 #include <ioj/sim/telemetry/level_telemetry_run_record.h>
+
+#include <CoreMinimal.h>
 
 #include <array>
 #include <optional>

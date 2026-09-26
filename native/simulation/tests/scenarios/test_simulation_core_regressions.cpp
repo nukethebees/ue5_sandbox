@@ -1,6 +1,6 @@
 #include "test_simulation_core_regressions.h"
-#include "../support/simulation_test_support.h"
 
+#include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/player/sim.h>
 

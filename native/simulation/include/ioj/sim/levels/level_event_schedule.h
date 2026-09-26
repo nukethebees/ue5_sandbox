@@ -1,13 +1,13 @@
 #pragma once
-#include <cstdint>
-#include <optional>
-#include <span>
-#include <vector>
-
 #include <ioj/sim/level_event_types.h>
 #include <ioj/sim/levels/level_mission_events.h>
 #include <ioj/sim/levels/level_runtime_events.h>
 #include <ioj/sim/sim_tick.h>
+
+#include <cstdint>
+#include <optional>
+#include <span>
+#include <vector>
 
 namespace ioj::sim {
 struct LevelEventSchedule {

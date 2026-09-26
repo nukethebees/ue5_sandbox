@@ -1,10 +1,10 @@
 #include "support.h"
 
-#include "CompileSmoke/Host.slate.generated.h"
-#include "CompileSmoke/Widgets.slate.generated.h"
-
 #include <iostream>
 #include <memory>
+
+#include "CompileSmoke/Host.slate.generated.h"
+#include "CompileSmoke/Widgets.slate.generated.h"
 
 namespace {
 

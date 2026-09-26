@@ -1,6 +1,5 @@
-#include <SandboxEditor/ui/WidgetBlueprintGenerator.h>
-
 #include "WidgetBlueprintGeneratorTestWidgets.h"
+#include <SandboxEditor/ui/WidgetBlueprintGenerator.h>
 
 #include <AssetRegistry/AssetData.h>
 #include <AssetRegistry/AssetRegistryModule.h>

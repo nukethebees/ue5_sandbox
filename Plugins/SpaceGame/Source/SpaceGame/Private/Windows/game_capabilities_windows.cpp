@@ -3,14 +3,14 @@
 #if PLATFORM_WINDOWS
 
 #include "game_capabilities_windows.h"
-
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
+// Windows platform type wrappers must surround the SDK headers.
+// clang-format off
 #include "Windows/AllowWindowsPlatformTypes.h"
-
 #include <windows.h>
-
 #include "Windows/HideWindowsPlatformTypes.h"
+// clang-format on
 
 namespace ml::ioj::detail {
 auto query_windows_platform_capabilities() -> FWindowsGameCapabilities {

@@ -1,8 +1,8 @@
 #pragma once
-#include <ioj/sim/column_math.h>
-
+#include <ioj/sim/agent_display_batch.h>
 #include <ioj/sim/agent_indexes.h>
 #include <ioj/sim/capital_entity_data.h>
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/fighter_entity_data.h>
 #include <ioj/sim/health_table.h>
 #include <ioj/sim/rotator_math.h>
@@ -11,7 +11,6 @@
 #include <ioj/sim/turret_entity_data.h>
 
 #include <array>
-#include <ioj/sim/agent_display_batch.h>
 #include <optional>
 
 namespace ioj::sim {

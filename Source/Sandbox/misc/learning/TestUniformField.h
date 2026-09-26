@@ -3,8 +3,8 @@
 #include "SandboxGameShared/core/Cooldown.h"
 #include "TestUniformFieldSource.h"
 
-#include "CoreMinimal.h"
 #include "Containers/Array.h"
+#include "CoreMinimal.h"
 #include "Delegates/IDelegateInstance.h"
 #include "GameFramework/Actor.h"
 #include "HAL/Platform.h"

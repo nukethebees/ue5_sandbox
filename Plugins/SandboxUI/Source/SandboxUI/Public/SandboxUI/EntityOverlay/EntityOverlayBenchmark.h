@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Containers/Array.h"
-#include "Containers/UnrealString.h"
-
 #include "SandboxUI/EntityOverlay/EntityOverlayFrameStore.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
+
+#include "Containers/Array.h"
+#include "Containers/UnrealString.h"
 
 struct SANDBOXUI_API FEntityOverlayBenchmarkResult {
     FString stage;

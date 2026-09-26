@@ -1,11 +1,11 @@
 #include "SpaceGamePresentation/presentation/RadarSource.h"
+
+#include "ioj/sim/entity_type.h"
+#include "ioj/sim/health.h"
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
-
-#include "ioj/sim/entity_type.h"
-#include "ioj/sim/health.h"
 
 namespace ml::radar_source {
 inline constexpr float hex_inradius{0.8660254f};

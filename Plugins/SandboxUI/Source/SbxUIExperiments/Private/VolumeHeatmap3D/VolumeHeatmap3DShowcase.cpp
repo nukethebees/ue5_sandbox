@@ -1,18 +1,19 @@
 #include "SbxUIExperiments/VolumeHeatmap3D/VolumeHeatmap3DShowcase.h"
 
-#include <utility>
-
 #include "Benchmarks/VolumeHeatmap3D/VolumeHeatmap3DBenchmark.h"
+#include "SVolumeHeatmap3DWidget.h"
+
 #include "SandboxUI/slate/SlateSlots.h"
 #include "SandboxUI/widgets/SLabeledRow.h"
-#include "SVolumeHeatmap3DWidget.h"
-#include "Widgets/SExperimentPanel.h"
 
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Widgets/Input/SSpinBox.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
+#include "Widgets/SExperimentPanel.h"
+
+#include <utility>
 
 #include "generated/UVolumeHeatmap3DShowcase.slate.generated.h"
 

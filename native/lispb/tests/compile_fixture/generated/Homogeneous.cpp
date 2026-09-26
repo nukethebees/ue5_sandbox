@@ -3,9 +3,10 @@
 
 #include "Homogeneous.h"
 
-#include "CoreMinimal.h"
-#include "Containers/ArrayView.h"
 #include "SandboxCore/soa_permutation.h"
+
+#include "Containers/ArrayView.h"
+#include "CoreMinimal.h"
 
 namespace codegen_compile_fixture {
 void FValuesf::apply_permutation(TArrayView<int32> indices) {

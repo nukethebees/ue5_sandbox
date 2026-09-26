@@ -1,10 +1,11 @@
 #include "SbxMeshGenLabWidget.h"
 
-#include "Editor/SMeshGenLabViewport.h"
 #include "Generation/MeshAssetWriter.h"
+
 #include "SbxMeshGenLab/NativeMeshTypes.h"
 #include "SbxMeshGenLab/SbxMeshGenLabSettings.h"
 
+#include "Editor/SMeshGenLabViewport.h"
 #include "Engine/StaticMesh.h"
 #include "IDetailsView.h"
 #include "Modules/ModuleManager.h"

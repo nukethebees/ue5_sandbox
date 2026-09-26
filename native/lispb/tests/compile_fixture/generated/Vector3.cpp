@@ -3,10 +3,11 @@
 
 #include "Vector3.h"
 
-#include "Containers/AllowShrinking.h"
-#include "Containers/ArrayView.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_storage_ops.h"
+
+#include "Containers/AllowShrinking.h"
+#include "Containers/ArrayView.h"
 
 namespace codegen_compile_fixture {
 

@@ -1,7 +1,9 @@
 #include "SpaceGamePresentation/presentation/widgets/DebugGraphWidget.h"
 
-#include "SandboxUI/widgets/SGraphPlot.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+
+#include "SandboxUI/widgets/SGraphPlot.h"
+
 #include "Widgets/DeclarativeSyntaxSupport.h"
 
 void UDebugGraphWidget::set_samples(TConstArrayView<FVector2d> const in_samples,

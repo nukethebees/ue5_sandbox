@@ -1,9 +1,10 @@
 #include <SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h>
 
-#include <SandboxUI/EntityOverlay/SEntityOverlayWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/ForceStatusWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/MissionStatusWidget.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyle.h>
+
+#include <SandboxUI/EntityOverlay/SEntityOverlayWidget.h>
 
 #include <Engine/GameViewportClient.h>
 #include <Engine/LocalPlayer.h>

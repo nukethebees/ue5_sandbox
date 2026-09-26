@@ -1,7 +1,6 @@
 #pragma once
 
 #include "SandboxGameShared/core/Cooldown.h"
-
 #include "TestUniformFieldPointSourceData.h"
 
 #include "CoreMinimal.h"

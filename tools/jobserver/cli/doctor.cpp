@@ -6,10 +6,9 @@
 
 #include <Windows.h>
 
+#include <nlohmann/json.hpp>
 #include <taskschd.h>
 #include <wrl/client.h>
-
-#include <nlohmann/json.hpp>
 
 #include <cstdlib>
 #include <filesystem>

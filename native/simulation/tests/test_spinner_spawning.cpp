@@ -1,3 +1,4 @@
+#include "support/simulation_test_support.h"
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entity_ledger.h>
@@ -6,8 +7,8 @@
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/spinners/sim.h>
+
 #include <sandbox/core/tick_countdown.h>
-#include "support/simulation_test_support.h"
 
 namespace ioj::sim::spinners {
 struct SpinnerSpawnTestAccess {

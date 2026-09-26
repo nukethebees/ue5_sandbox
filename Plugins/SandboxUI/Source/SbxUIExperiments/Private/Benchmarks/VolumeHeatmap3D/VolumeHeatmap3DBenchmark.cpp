@@ -1,10 +1,10 @@
 #include "Benchmarks/VolumeHeatmap3D/VolumeHeatmap3DBenchmark.h"
 
 #include "Benchmarks/BenchmarkStatistics.h"
+#include "VolumeHeatmap3D/VolumeHeatmap3DRenderer.h"
 
 #include "Math/UnrealMathUtility.h"
 #include "RenderingThread.h"
-#include "VolumeHeatmap3D/VolumeHeatmap3DRenderer.h"
 
 namespace ml::ui::volume_heatmap_3d_benchmark {
 auto make_grid(int32 const dimension) -> FVolumeHeatmap3DGrid {
