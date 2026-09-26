@@ -1,5 +1,6 @@
 #include "fixed_soa_internal.h"
 #include "lowering_utils.h"
+#include "soa_api.h"
 
 #include <set>
 #include <utility>

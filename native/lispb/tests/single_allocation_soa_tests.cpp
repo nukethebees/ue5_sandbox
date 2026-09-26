@@ -387,4 +387,114 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
     EXPECT_NE(output.find("source.view_second().view_nested().wide()"), std::string::npos);
 }
 
+TEST(SingleAllocationSoa, CommonApiIsEmittedForEveryRequestedRepresentation) {
+    for (auto const backend : {SoaBackend::unreal, SoaBackend::standard_library}) {
+        for (auto const policy :
+             {SoaStorage::vector, SoaStorage::single_allocation, SoaStorage::both}) {
+            SCOPED_TRACE(static_cast<int>(backend));
+            SCOPED_TRACE(soa_storage_name(policy));
+            SoaSchema schema{
+                .name = "LogicalRows",
+                .view_name = "NamedView",
+                .const_view_name = "NamedConstView",
+                .members = {{"values", SoaMemberKind::array, TypeRef{"float"}}},
+                .operations = {StorageOperation::set_num},
+                .export_specifier = "ROWS_API",
+                .functions = {{.name = "first",
+                               .return_type = TypeRef{"float"},
+                               .body_lines = {"return $column(values)[0];"},
+                               .is_const = true},
+                              {.name = "external_first",
+                               .return_type = TypeRef{"float"},
+                               .body_lines = {"return $column(values)[0];"},
+                               .is_const = true,
+                               .definition_in_source = true}},
+                .mutable_view_functions = {{.name = "clear_first",
+                                            .return_type = TypeRef{"void"},
+                                            .body_lines = {"$column(values)[0] = 0;"}}},
+                .using_declarations = {"Value = float"},
+                .storage = policy,
+                .const_view_functions = {{.name = "read_first",
+                                          .return_type = TypeRef{"float"},
+                                          .body_lines = {"return $column(values)[0];"},
+                                          .is_const = true}}};
+            if (policy != SoaStorage::vector) {
+                schema.single_allocation = "CompactRows";
+            }
+            auto const files{render_modules(lower_modules(
+                Manifest{.schema_version = manifest_schema_version,
+                         .modules = {NormalModuleSchema{
+                             .settings = {.name = "api", .header = "Api.h", .source = "Api.cpp"},
+                             .declarations = {schema},
+                             .soa_backend = backend}}}))};
+            auto const& header{files.front().content};
+            auto const& source{files.back().content};
+            EXPECT_NE(header.find("struct ROWS_API NamedView"), std::string::npos);
+            EXPECT_NE(header.find("struct ROWS_API NamedConstView"), std::string::npos);
+            EXPECT_NE(header.find("using Value = float;"), std::string::npos);
+            EXPECT_NE(header.find("read_first() const"), std::string::npos);
+            EXPECT_NE(header.find("clear_first()"), std::string::npos);
+            EXPECT_EQ(header.find("$column("), std::string::npos);
+            if (policy != SoaStorage::vector) {
+                EXPECT_NE(header.find("struct ROWS_API CompactRows"), std::string::npos);
+                EXPECT_NE(source.find("CompactRows::external_first() const"), std::string::npos);
+                EXPECT_NE(header.find("using Operations::set_num;"), std::string::npos);
+                EXPECT_EQ(header.find("using Operations::reserve;"), std::string::npos);
+            }
+            if (policy == SoaStorage::single_allocation) {
+                EXPECT_EQ(header.find("struct LogicalRows {"), std::string::npos);
+                EXPECT_EQ(header.find("LogicalRowsSingleViewImpl"), std::string::npos);
+            }
+            if (policy == SoaStorage::both) {
+                EXPECT_NE(header.find("struct ROWS_API LogicalRowsSingleView"), std::string::npos);
+                EXPECT_NE(source.find("LogicalRows::external_first() const"), std::string::npos);
+            }
+        }
+    }
+}
+
+TEST(SingleAllocationSoa, RejectsIncompatibleRepresentationSettingsWithLocalDiagnostics) {
+    auto check = [](SoaSchema schema, std::string_view message) {
+        try {
+            render({std::move(schema)});
+            FAIL() << "Expected rejection containing " << message;
+        } catch (std::invalid_argument const& error) {
+            EXPECT_NE(std::string_view{error.what()}.find(message), std::string_view::npos);
+        }
+    };
+    SoaSchema const compact{.name = "Rows",
+                            .members = {{"values", SoaMemberKind::array, TypeRef{"float"}}},
+                            .single_allocation = "Owner"};
+    auto schema{compact};
+    schema.array_allocator = TypeRef{"Allocator"};
+    check(schema, "array-allocator requires vector storage");
+    schema = compact;
+    schema.copy_element_memberwise = true;
+    check(schema, "single-allocation leaves use trivial copying");
+    schema = compact;
+    schema.storage = SoaStorage::vector;
+    check(schema, "storage vector cannot declare");
+    schema = compact;
+    schema.layout_only = true;
+    check(schema, "layout-only cannot declare");
+    for (auto const policy : {SoaStorage::single_allocation, SoaStorage::both}) {
+        schema = compact;
+        schema.single_allocation.reset();
+        schema.storage = policy;
+        check(schema, "requires a single-allocation owner");
+    }
+    schema = compact;
+    schema.single_allocation.reset();
+    schema.single_allocation_allocator = TypeRef{"Allocator"};
+    check(schema, "allocators require a single-allocation owner");
+    schema.single_allocation_allocator.reset();
+    schema.single_allocation_variants = {{"Variant", TypeRef{"Allocator"}}};
+    check(schema, "allocators require a single-allocation owner");
+    schema = compact;
+    schema.functions = {{.name = "broken",
+                         .return_type = TypeRef{"float"},
+                         .body_lines = {"return $column(missing)[0];"}}};
+    check(schema, "has no column 'missing'");
+}
+
 }

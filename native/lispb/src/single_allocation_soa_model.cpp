@@ -85,12 +85,13 @@ auto build_single_allocation_model(SoaSchema const& schema,
     SingleAllocationModel result{
         .schema = &schema,
         .schemas = &schemas,
+        .types = &types,
+        .backend = backend,
         .dialect = std::move(dialect),
         .owner_name = *schema.single_allocation,
         .layout_name = schema.name + "SingleLayout",
-        .view_name = schema.name + "SingleView",
-        .const_view_name = schema.name + "SingleConstView",
-        .emit_shared_types = !schema.single_allocation_allocator.has_value(),
+        .view_name = schema.compact_view_name(),
+        .const_view_name = schema.compact_const_view_name(),
     };
     result.dependencies = result.dialect.dependencies;
 
@@ -126,6 +127,8 @@ auto build_single_allocation_model(SoaSchema const& schema,
         throw std::invalid_argument{"Missing resolved single-allocation SOA: " + schema.name};
     }
     auto const& root_type{std::get<lispb::schema::SoaType>(type_graph.type(*root_id).definition)};
+    result.equivalent_constructors.emplace(schema.name,
+                                           root_type.equivalent_constructor.value_or(""));
     std::set<std::string> layout_names{"ColLayout", "LayoutStart", result.layout_name};
     auto collect_columns = [&](auto&& self,
                                lispb::schema::SoaType const& current,
@@ -136,8 +139,14 @@ auto build_single_allocation_model(SoaSchema const& schema,
             if (member.kind == SoaMemberKind::nested) {
                 auto const& nested{std::get<lispb::schema::SoaType>(
                     type_graph.type(*member.nested_type).definition)};
-                if (auto const shape{recognize_compact_vector(nested, backend)}) {
-                    result.compact_vectors.emplace(join(path, "_"), *shape);
+                auto const& nested_schema{
+                    *schemas.at(type_graph.type(*member.nested_type).identity.name)};
+                result.equivalent_constructors.emplace(nested_schema.name,
+                                                       nested.equivalent_constructor.value_or(""));
+                if (nested_schema.uses_compact_vector_runtime()) {
+                    if (auto const shape{recognize_compact_vector(nested, backend)}) {
+                        result.compact_vectors.emplace(join(path, "_"), *shape);
+                    }
                 }
                 self(self, nested, path);
                 continue;

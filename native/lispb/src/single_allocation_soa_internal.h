@@ -45,6 +45,8 @@ struct CompactVectorShape {
 struct SingleAllocationModel {
     SoaSchema const* schema{};
     std::map<std::string, SoaSchema const*> const* schemas{};
+    TypeRegistry const* types{};
+    SoaBackend backend{};
     SingleAllocationDialect dialect;
     std::string owner_name;
     std::string layout_name;
@@ -54,10 +56,10 @@ struct SingleAllocationModel {
     CppType allocate_function;
     CppType free_function;
     bool free_requires_alignment{};
-    bool emit_shared_types{};
     std::vector<SingleAllocationColumn> columns;
     std::map<std::string, std::size_t> column_indices;
     std::map<std::string, CompactVectorShape> compact_vectors;
+    std::map<std::string, std::string> equivalent_constructors;
     std::vector<TypeDependency> dependencies;
 };
 
@@ -74,7 +76,9 @@ auto compact_vector_for(SingleAllocationModel const& model, std::vector<std::str
     -> CompactVectorShape const*;
 
 auto emit_single_allocation_layout(SingleAllocationModel const& model) -> Nodes;
-auto emit_single_allocation_views(SingleAllocationModel const& model) -> Nodes;
-auto emit_single_allocation_container(SingleAllocationModel const& model) -> Node;
+auto emit_single_allocation_views(SingleAllocationModel const& model, NodeListBuilder& source)
+    -> Nodes;
+auto emit_single_allocation_container(SingleAllocationModel const& model, NodeListBuilder& source)
+    -> Node;
 
 } // namespace codegen::detail

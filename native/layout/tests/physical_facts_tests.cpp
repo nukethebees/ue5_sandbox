@@ -55,6 +55,31 @@ TEST(PhysicalFacts, GeneratedCppAgreesForPointersNestedRecordsAndAlignedExternal
     EXPECT_EQ(rows.columns[1].total_bytes, generated.pointers.size() * sizeof(Node*));
 }
 
+TEST(PhysicalFacts, SingleOnlySchemasUseOwnerFactsAndLayoutsHaveNoPhysicalObject) {
+    using namespace ml::native_soa_fixture;
+    auto const types{physical_fixture()};
+    auto profile{AbiProfile::host_common()};
+    TypeFacts const owner_facts{.size_bytes = sizeof(ApiOwner),
+                                .alignment_bytes = alignof(ApiOwner),
+                                .integer_signed = std::nullopt,
+                                .unsigned_value_bits = std::nullopt,
+                                .provenance = "compiled compact owner",
+                                .origin = FactOrigin::compiler_probe};
+    profile.set("ml::native_soa_fixture::ApiOwner", owner_facts);
+    PhysicalFactsResolver resolver{types, profile};
+    auto const logical{types.find_declared("native_soa_fixture", "ApiRows")};
+    ASSERT_TRUE(logical);
+    auto const facts{resolver.resolve(*logical)};
+    ASSERT_TRUE(facts.facts);
+    EXPECT_EQ(facts.facts->size_bytes, sizeof(ApiOwner));
+    auto const layout{types.find_declared("native_soa_fixture", "ApiCoordinates")};
+    ASSERT_TRUE(layout);
+    auto const absent{resolver.resolve(*layout)};
+    EXPECT_FALSE(absent.facts);
+    ASSERT_FALSE(absent.diagnostics.empty());
+    EXPECT_NE(absent.diagnostics.front().message.find("has no C++ owner"), std::string::npos);
+}
+
 TEST(PhysicalFacts, MissingPointeeFactsDoNotBlockPointersAndProfilesStaySeparate) {
     auto const types{physical_fixture()};
     auto profile{AbiProfile::host_common()};

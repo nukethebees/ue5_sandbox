@@ -451,6 +451,8 @@ TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
     auto const& local{std::get<SoaType>(graph.type(*local_vectors).definition)};
     EXPECT_EQ(local.source_kind, SoaSourceKind::structure);
     EXPECT_EQ(local.vector_components, vector_type.vector_components);
+    EXPECT_EQ(vector_type.equivalent_constructor, "HMM_V3");
+    EXPECT_EQ(local.equivalent_constructor, vector_type.equivalent_constructor);
 }
 
 TEST(SemanticTypeGraph, RejectsVectorComponentsThatDisagreeWithDeclaredEquivalent) {
@@ -898,6 +900,46 @@ TEST(SemanticTypeGraph, TreatsRawCppSpellingsAsExplicitExternalLeaves) {
     ASSERT_EQ(soa.columns.size(), 1U);
     EXPECT_EQ(graph.type(soa.columns.front().semantic_type.type).identity.origin,
               TypeOrigin::cpp_spelling);
+}
+
+TEST(SemanticTypeGraph, SingleOnlyPhysicalOwnerDoesNotRenameLogicalIdentity) {
+    codegen::SoaSchema rows{
+        .name = "LogicalRows",
+        .members = {{"values", codegen::SoaMemberKind::array, codegen::TypeRef{"float"}}},
+        .equivalent_type = codegen::TypeRef{"Row"},
+        .single_allocation = "CompactOwner"};
+    codegen::Manifest const manifest{
+        .schema_version = codegen::manifest_schema_version,
+        .types = {{"logical", {{"model::LogicalRows"}, {}}},
+                  {"physical", {{"model::CompactOwner"}, {}}}},
+        .modules = {codegen::NormalModuleSchema{
+            .settings = {.name = "model", .header = "Model.h", .namespace_name = "model"},
+            .declarations =
+                {rows,
+                 codegen::SoaSchema{
+                     .name = "Layout",
+                     .members = {{"xs", codegen::SoaMemberKind::array, codegen::TypeRef{"float"}}},
+                     .layout_only = true},
+                 codegen::RecordSchema{
+                     .name = "Reference",
+                     .members = {{.name = "owner", .type = codegen::TypeRef{"LogicalRows", "*"}}}}},
+            .soa_backend = codegen::SoaBackend::standard_library}}};
+    auto const graph{resolve_type_graph(manifest)};
+    auto const id{graph.find_declared("model", "LogicalRows")};
+    ASSERT_TRUE(id);
+    EXPECT_EQ(graph.type(*id).identity.name, "LogicalRows");
+    EXPECT_EQ(graph.type(*id).cpp_spelling, "model::CompactOwner");
+    EXPECT_EQ(graph.find_registered("logical"), id);
+    EXPECT_EQ(graph.find_registered("physical"), id);
+    EXPECT_EQ(graph.find_reference(codegen::TypeRef{"CompactOwner"}, "model"), id);
+    auto const& soa{std::get<SoaType>(graph.type(*id).definition)};
+    ASSERT_TRUE(soa.equivalent_type);
+    EXPECT_EQ(graph.type(soa.equivalent_type->type).identity.name, "Row");
+    EXPECT_TRUE(graph.type(*graph.find_declared("model", "Layout")).cpp_spelling.empty());
+    auto const& reference{
+        std::get<RecordType>(graph.type(*graph.find_declared("model", "Reference")).definition)};
+    EXPECT_EQ(reference.members.front().semantic_type.type, *id);
+    EXPECT_EQ(reference.members.front().semantic_type.cpp_type.spelling, "model::CompactOwner*");
 }
 
 } // namespace

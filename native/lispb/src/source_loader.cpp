@@ -199,7 +199,7 @@ auto parse_parameter(Form const& form) -> ParameterSchema {
 }
 
 auto parse_function(Form const& form) -> FunctionSchema {
-    Fields const fields{form, "function", 2};
+    Fields const fields{form, form.head(), 2};
     fields.validate({"body",
                      "dependencies",
                      "trailing-return-type",
@@ -219,16 +219,26 @@ auto parse_function(Form const& form) -> FunctionSchema {
     if (auto const* value{fields.optional("trailing-return-type")}) {
         trailing_return_type = parse_type_ref(*value);
     }
+    auto const is_static{boolean_or(fields, "static")};
+    auto const is_const{boolean_or(fields, "const", form.head() == "view-function" && !is_static)};
+    if (form.head() == "view-function" && !is_static && !is_const) {
+        fail(form.token.span,
+             "view-function must be const; use mutable-view-function for a mutable receiver");
+    }
+    auto body_lines{cpp_lines_or(fields, "body")};
+    if (fields.optional("body") != nullptr && body_lines.empty()) {
+        body_lines.emplace_back();
+    }
     return FunctionSchema{
         .name = text(fields.positional(0), "function name"),
         .return_type = parse_type_ref(fields.positional(1)),
         .parameters = std::move(parameters),
-        .body_lines = cpp_lines_or(fields, "body"),
+        .body_lines = std::move(body_lines),
         .dependencies = text_list_or(fields, "dependencies"),
         .trailing_return_type = std::move(trailing_return_type),
-        .is_const = boolean_or(fields, "const"),
+        .is_const = is_const,
         .is_noexcept = boolean_or(fields, "noexcept"),
-        .is_static = boolean_or(fields, "static"),
+        .is_static = is_static,
         .is_inline = boolean_or(fields, "inline"),
         .definition_in_source = boolean_or(fields, "definition-in-source"),
         .template_parameters = optional_text(fields, "template-parameters"),
@@ -364,16 +374,25 @@ auto parse_soa(Form const& form) -> SoaSchema {
                      "operations",
                      "export-specifier",
                      "using-declarations",
+                     "array-allocator",
+                     "single-allocation-allocator",
                      "equivalent-type",
                      "vector-components",
                      "copy-element-memberwise",
                      "layout-only",
                      "field-mask-name",
                      "field-enum-name"},
-                    {"member", "function", "fixed", "single-allocation"});
+                    {"member",
+                     "function",
+                     "view-function",
+                     "mutable-view-function",
+                     "fixed",
+                     "single-allocation"});
 
     std::vector<SoaMemberSchema> members;
     std::vector<FunctionSchema> functions;
+    std::vector<FunctionSchema> const_view_functions;
+    std::vector<FunctionSchema> mutable_view_functions;
     std::optional<FixedSoaSchema> fixed;
     std::optional<std::string> single_allocation;
     std::vector<SingleAllocationVariant> variants;
@@ -383,6 +402,10 @@ auto parse_soa(Form const& form) -> SoaSchema {
             members.push_back(parse_member(*declaration));
         } else if (head == "function") {
             functions.push_back(parse_function(*declaration));
+        } else if (head == "view-function") {
+            const_view_functions.push_back(parse_function(*declaration));
+        } else if (head == "mutable-view-function") {
+            mutable_view_functions.push_back(parse_function(*declaration));
         } else if (head == "fixed") {
             if (fixed.has_value()) {
                 fail(declaration->token.span, "duplicate 'fixed' declaration");
@@ -424,17 +447,26 @@ auto parse_soa(Form const& form) -> SoaSchema {
         .operations = std::move(operations),
         .export_specifier = optional_text(fields, "export-specifier"),
         .functions = std::move(functions),
+        .mutable_view_functions = std::move(mutable_view_functions),
         .using_declarations = text_list_or(fields, "using-declarations"),
         .equivalent_type = std::move(equivalent_type),
         .copy_element_memberwise = boolean_or(fields, "copy-element-memberwise"),
         .layout_only = boolean_or(fields, "layout-only"),
         .fixed = std::move(fixed),
         .single_allocation = std::move(single_allocation),
+        .array_allocator = fields.optional("array-allocator")
+                             ? std::optional{parse_type_ref(*fields.optional("array-allocator"))}
+                             : std::nullopt,
         .single_allocation_variants = std::move(variants),
+        .single_allocation_allocator =
+            fields.optional("single-allocation-allocator")
+                ? std::optional{parse_type_ref(*fields.optional("single-allocation-allocator"))}
+                : std::nullopt,
         .field_mask_name = optional_text(fields, "field-mask-name"),
         .field_enum_name = optional_text(fields, "field-enum-name"),
         .vector_components = text_list_or(fields, "vector-components"),
         .storage = storage,
+        .const_view_functions = std::move(const_view_functions),
     };
 }
 

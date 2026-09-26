@@ -32,6 +32,8 @@ struct FVectors1fConstView {
         return (*this)[index];
     }
 
+    using value_type = float;
+    using size_type = TArray<value_type>::SizeType;
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.xs);
@@ -65,10 +67,10 @@ struct FVectors1fView {
         return (*this)[index];
     }
 
+    using value_type = float;
+    using size_type = TArray<value_type>::SizeType;
     void set(int32 const i, float const x) const { xs[i] = x; }
-
     void set(int32 const i, FScalar1f const value) const { set(i, value.X); }
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.xs);
@@ -116,30 +118,19 @@ struct FVectors1f {
     }
 
     using value_type = float;
-
     using size_type = TArray<value_type>::SizeType;
-
     auto get_data() -> Data { return Data{xs.GetData()}; }
-
     auto get_data() const -> ConstData { return ConstData{xs.GetData()}; }
-
     auto add(value_type const x) -> size_type {
         auto const index{xs.Add(x)};
         return index;
     }
-
     auto add(FScalar1f const& value) -> size_type { return add(value.X); }
-
     void set(int32 const i, value_type const x) { xs[i] = x; }
-
     void set(int32 const i, FScalar1f const value) { set(i, value.X); }
-
     void empty() { xs.Empty(); }
-
     void set_num_uninitialised(size_type const count) { xs.SetNumUninitialized(count); }
-
     void add_zeroed(size_type const count) { xs.AddZeroed(count); }
-
     void reset();
 
     void reserve(int32 const count);

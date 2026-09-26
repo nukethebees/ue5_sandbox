@@ -217,6 +217,7 @@ struct SoaType {
     std::optional<std::string> related_storage_name;
     std::vector<std::string> vector_components;
     bool layout_only{};
+    std::optional<std::string> equivalent_constructor{};
 };
 
 struct StaticTableGroup {

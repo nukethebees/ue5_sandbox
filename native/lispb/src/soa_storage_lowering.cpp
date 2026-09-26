@@ -1,4 +1,5 @@
 #include "lowering_utils.h"
+#include "soa_api.h"
 #include "soa_internal.h"
 
 #include <algorithm>
@@ -18,41 +19,6 @@ TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
 auto container_function(std::string spelling) -> Expr {
     TypeDependency dependency{spelling, "SandboxCore/container_ops.h", {}};
     return named(std::move(spelling), {std::move(dependency)});
-}
-
-auto function_spec(FunctionSchema const& schema, TypeRegistry const& types) -> FunctionSpec {
-    std::vector<FunctionParameter> parameters;
-    for (auto const& parameter : schema.parameters) {
-        auto resolved{resolve_type(parameter.type, types)};
-        if (parameter.default_value.has_value()) {
-            parameters.emplace_back(std::move(resolved), parameter.name, *parameter.default_value);
-        } else {
-            parameters.emplace_back(std::move(resolved), parameter.name);
-        }
-    }
-    std::vector<TypeDependency> dependencies;
-    for (auto const& key : schema.dependencies) {
-        dependencies.push_back(dependency_for_key(key, types));
-    }
-    return FunctionSpec{
-        .name = schema.name,
-        .return_type = resolve_type(schema.return_type, types),
-        .parameters = std::move(parameters),
-        .body = {raw(join_lines(schema.body_lines), std::move(dependencies))},
-        .qualifiers =
-            {
-                .trailing_return_type =
-                    schema.trailing_return_type.has_value()
-                        ? std::optional<CppType>{resolve_type(*schema.trailing_return_type, types)}
-                        : std::nullopt,
-                .is_const = schema.is_const,
-                .is_noexcept = schema.is_noexcept,
-            },
-        .is_static = schema.is_static,
-        .is_inline = schema.is_inline,
-        .template_parameters = schema.template_parameters,
-        .requires_clause = schema.requires_clause,
-    };
 }
 
 auto has_custom_function(std::vector<FunctionSchema> const& functions, std::string_view const name)
@@ -99,10 +65,6 @@ auto explicit_remove_at_swap_body(std::vector<ResolvedMember> const& members) ->
 }
 
 } // namespace
-
-auto soa_function_spec(FunctionSchema const& schema, TypeRegistry const& types) -> FunctionSpec {
-    return function_spec(schema, types);
-}
 
 auto soa_set_spec(SoaSchema const& schema,
                   std::vector<ResolvedMember> const& members,
@@ -379,8 +341,9 @@ auto soa_storage_node(SoaSchema const& schema,
                       std::string const& view_name,
                       std::string const& const_view_name,
                       TypeRegistry const& types,
-                      std::vector<FunctionSpec>& custom_source,
-                      Nodes storage_prelude) -> Node {
+                      Nodes& custom_source,
+                      Nodes storage_prelude,
+                      std::map<std::string, SoaSchema const*> const* schemas) -> Node {
     NodeListBuilder nodes;
     nodes.add(UsingDeclaration{"View", CppType{view_name}}, 1)
         .add(UsingDeclaration{"ConstView", CppType{const_view_name}}, 2);
@@ -388,18 +351,10 @@ auto soa_storage_node(SoaSchema const& schema,
     if (schema.equivalent_type.has_value()) {
         nodes.append(soa_equivalent_nodes(*schema.equivalent_type, members, types)).new_lines(2);
     }
-    for (auto const& declaration_text : schema.using_declarations) {
-        nodes.add(raw("using " + declaration_text + ";"), 2);
-    }
-    for (auto const& function : schema.functions) {
-        auto spec{soa_function_spec(function, types)};
-        if (function.definition_in_source) {
-            custom_source.push_back(spec);
-            nodes.add(declaration(spec), 2);
-        } else {
-            nodes.add(header_function(spec), 2);
-        }
-    }
+    auto api{lower_soa_api(
+        schema, types, SoaRepresentation::vector, SoaReceiver::owner, schema.name, schemas)};
+    nodes.append(std::move(api.header)).new_lines(1);
+    custom_source = std::move(api.source);
     if (auto set{soa_set_spec(schema, members, false)}; set.has_value()) {
         nodes.add(header_function(*set), 2);
     }

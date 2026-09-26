@@ -1355,11 +1355,63 @@ void validate_soa(NormalModuleSchema const& module,
                   TypeRegistry const& types) {
     for (auto const& schema : schemas) {
         require_identifier(schema.name, "SOA name");
-        if (schema.storage && (schema.layout_only || ((*schema.storage == SoaStorage::vector) ==
-                                                      schema.single_allocation.has_value()))) {
+        auto const context{"SOA '" + schema.name + "'"};
+        if (schema.layout_only && (schema.storage || schema.single_allocation)) {
+            throw std::invalid_argument{context +
+                                        " layout-only cannot declare an ownership policy"};
+        }
+        switch (schema.selected_storage()) {
+            case SoaStorage::vector:
+                if (schema.single_allocation) {
+                    throw std::invalid_argument{
+                        context + " storage vector cannot declare a single-allocation owner"};
+                }
+                break;
+            case SoaStorage::single_allocation:
+            case SoaStorage::both:
+                if (!schema.single_allocation) {
+                    throw std::invalid_argument{context + " storage " +
+                                                soa_storage_name(schema.selected_storage()) +
+                                                " requires a single-allocation owner"};
+                }
+                break;
+        }
+        if (!schema.emits_vector_storage()) {
+            if (schema.array_allocator) {
+                throw std::invalid_argument{context + " array-allocator requires vector storage"};
+            }
+            if (schema.copy_element_memberwise) {
+                throw std::invalid_argument{
+                    context + " copy-element-memberwise selects vector container copying; "
+                              "single-allocation leaves use trivial copying"};
+            }
+            if (schema.fixed) {
+                throw std::invalid_argument{context + " fixed storage requires vector storage"};
+            }
+        }
+        if (!schema.single_allocation &&
+            (schema.single_allocation_allocator || !schema.single_allocation_variants.empty())) {
             throw std::invalid_argument{
-                "SOA '" + schema.name +
-                "' storage policy conflicts with its layout-only or single-allocation declaration"};
+                context + " single-allocation allocators require a single-allocation owner"};
+        }
+        if (schema.array_allocator) {
+            validate_type(*schema.array_allocator, types, context + " array allocator");
+            if (module.soa_backend == SoaBackend::standard_library) {
+                throw std::invalid_argument{context +
+                                            " array-allocator selects an Unreal TArray allocator; "
+                                            "native vector storage uses its runtime allocator"};
+            }
+        }
+        if (schema.single_allocation_allocator) {
+            validate_type(*schema.single_allocation_allocator,
+                          types,
+                          context + " single-allocation allocator");
+        }
+        if (schema.layout_only && (!schema.functions.empty() || !schema.operations.empty() ||
+                                   schema.view_name || schema.const_view_name)) {
+            throw std::invalid_argument{context +
+                                        " layout-only has no owner or standalone named views; use "
+                                        "view functions on its nested compact views"};
         }
         if (schema.view_name.has_value()) {
             require_identifier(*schema.view_name, "SOA '" + schema.name + "' view name");
@@ -1498,47 +1550,78 @@ void validate_soa(NormalModuleSchema const& module,
         if (schema.equivalent_type.has_value()) {
             validate_type(*schema.equivalent_type, types, "SOA '" + schema.name + "' equivalent");
         }
-        std::set<std::string> function_signatures;
-        for (auto const& function : schema.functions) {
-            auto const context{"SOA '" + schema.name + "' function '" + function.name + "'"};
-            require_identifier(function.name, "SOA '" + schema.name + "' function name");
-            if (function.name == schema.name) {
-                throw std::invalid_argument{context + " collides with its owning type"};
-            }
-            reject_generated_name_collision(function.name, context, false);
-            if (function.is_inline && function.definition_in_source) {
-                throw std::invalid_argument{context +
-                                            " must not be both inline and defined in the source"};
-            }
-            if (function.is_static && function.is_const) {
-                throw std::invalid_argument{context + " must not be both static and const"};
-            }
-            if (function.template_parameters.has_value()) {
-                require_non_blank_value(*function.template_parameters,
-                                        context + " template parameters");
-            }
-            if (function.requires_clause.has_value()) {
-                require_non_blank_value(*function.requires_clause, context + " requires clause");
-            }
-            validate_type(function.return_type, types, context + " return");
-            if (function.trailing_return_type.has_value()) {
-                if (function.return_type.name != "auto" || !function.return_type.suffix.empty() ||
-                    function.return_type.nested.has_value()) {
+        auto validate_functions = [&](std::vector<FunctionSchema> const& functions,
+                                      std::set<std::string>& function_signatures,
+                                      bool const read_only) {
+            for (auto const& function : functions) {
+                if (read_only && !function.is_const && !function.is_static) {
                     throw std::invalid_argument{context +
-                                                " trailing return type requires an auto return"};
+                                                " read-only view functions must be const"};
                 }
-                validate_type(*function.trailing_return_type, types, context + " trailing return");
+                if (function.definition_in_source && !module.settings.source) {
+                    throw std::invalid_argument{context +
+                                                " out-of-line function requires a source output"};
+                }
+                if (function.definition_in_source && function.template_parameters) {
+                    throw std::invalid_argument{
+                        context + " function templates must be defined in the header"};
+                }
+                if (function.is_static &&
+                    std::ranges::any_of(function.body_lines, [](auto const& line) {
+                        return line.find("$column(") != std::string::npos;
+                    })) {
+                    throw std::invalid_argument{context +
+                                                " static function cannot access a receiver column"};
+                }
+                auto const context{"SOA '" + schema.name + "' function '" + function.name + "'"};
+                require_identifier(function.name, "SOA '" + schema.name + "' function name");
+                if (function.name == schema.name) {
+                    throw std::invalid_argument{context + " collides with its owning type"};
+                }
+                reject_generated_name_collision(function.name, context, false);
+                if (function.is_inline && function.definition_in_source) {
+                    throw std::invalid_argument{
+                        context + " must not be both inline and defined in the source"};
+                }
+                if (function.is_static && function.is_const) {
+                    throw std::invalid_argument{context + " must not be both static and const"};
+                }
+                if (function.template_parameters.has_value()) {
+                    require_non_blank_value(*function.template_parameters,
+                                            context + " template parameters");
+                }
+                if (function.requires_clause.has_value()) {
+                    require_non_blank_value(*function.requires_clause,
+                                            context + " requires clause");
+                }
+                validate_type(function.return_type, types, context + " return");
+                if (function.trailing_return_type.has_value()) {
+                    if (function.return_type.name != "auto" ||
+                        !function.return_type.suffix.empty() ||
+                        function.return_type.nested.has_value()) {
+                        throw std::invalid_argument{
+                            context + " trailing return type requires an auto return"};
+                    }
+                    validate_type(
+                        *function.trailing_return_type, types, context + " trailing return");
+                }
+                auto const parameter_types{
+                    parameter_type_names(function.parameters, types, context)};
+                auto const function_signature{
+                    signature(function.name, parameter_types, function.is_const)};
+                if (!function_signatures.insert(function_signature).second) {
+                    throw std::invalid_argument{"Duplicate " + context + " signature"};
+                }
+                for (auto const& dependency : function.dependencies) {
+                    validate_dependency(dependency, types, context);
+                }
             }
-            auto const parameter_types{parameter_type_names(function.parameters, types, context)};
-            auto const function_signature{
-                signature(function.name, parameter_types, function.is_const)};
-            if (!function_signatures.insert(function_signature).second) {
-                throw std::invalid_argument{"Duplicate " + context + " signature"};
-            }
-            for (auto const& dependency : function.dependencies) {
-                validate_dependency(dependency, types, context);
-            }
-        }
+        };
+        std::set<std::string> owner_signatures;
+        std::set<std::string> view_signatures;
+        validate_functions(schema.functions, owner_signatures, false);
+        validate_functions(schema.const_view_functions, view_signatures, true);
+        validate_functions(schema.mutable_view_functions, view_signatures, false);
     }
     for (auto const& root : schemas) {
         if (!root.single_allocation) {
@@ -1615,7 +1698,9 @@ void validate_soa(NormalModuleSchema const& module,
         validate_type(variant.allocator, types, "SoA allocator variant");
     }
     validate_soa_allocator_variants(module.soa_backend, schemas, module.soa_array_allocators);
-    if (!module.settings.source.has_value() && module.soa_backend == SoaBackend::unreal) {
+    if (!module.settings.source.has_value() && module.soa_backend == SoaBackend::unreal &&
+        std::ranges::any_of(schemas,
+                            [](auto const& schema) { return schema.emits_vector_storage(); })) {
         throw std::invalid_argument{"SOA module '" + module.settings.name +
                                     "' must have a source output"};
     }

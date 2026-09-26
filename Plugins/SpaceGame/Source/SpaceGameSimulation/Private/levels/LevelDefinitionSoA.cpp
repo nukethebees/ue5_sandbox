@@ -10,6 +10,7 @@
 #include "Containers/ArrayView.h"
 
 namespace ml {
+
 auto FLevelEntityTableConstView::get_view() const -> ConstView {
     return get_view(0, num());
 }

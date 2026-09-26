@@ -9,6 +9,7 @@
 #include "SandboxCore/soa_storage_ops.h"
 
 namespace ml::soa_test_fixture {
+
 auto VectorsConstView::get_view() const -> ConstView {
     return get_view(0, num());
 }
@@ -224,4 +225,23 @@ auto Vectors::left(int32 const count) const -> ConstView {
 auto Vectors::right(int32 const count) const -> ConstView {
     return slice(num() - count, count);
 }
+
+auto ApiConstView::first_x() const -> float {
+    return this->view_positions().xs()[0];
+}
+
+auto ApiView::first_x() const -> float {
+    return this->view_positions().xs()[0];
+}
+
+auto ApiOwner::total() const -> Value {
+    auto values = get_view().values();
+    float result{};
+    auto const count = num();
+    for (std::int32_t i{}; i < count; ++i) {
+        result += values[i];
+    }
+    return result;
+}
+
 } // namespace ml::soa_test_fixture

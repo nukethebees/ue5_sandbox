@@ -186,3 +186,70 @@ and ordinary-view APIs where those differences are real. Keep generated headers 
 regenerate both the compile fixture and production output after changing schema, planning, or
 emission. Focused `codegen` and `native-soa` workflows cover rejection, layout, aliasing, growth,
 view lifetime, and allocator variants; `native-tests` covers production simulation consumers.
+
+### Logical API and storage policy
+
+`SoaSchema` is the logical declaration. The type graph resolves its columns and relationships
+before vector and single-allocation lowering split. Both lowerers use `soa_api` for function
+signatures, receiver selection, aliases, and logical column expressions. A compact owner never
+needs an ordinary owner or aggregate view to implement this API.
+
+Every `SoaSchema` field has an explicit role:
+
+| Field | Classification | Contract |
+| --- | --- | --- |
+| `name` | A: logical | Stable schema identity, independent of the owner name. |
+| `members` | A: logical | Ordered logical columns, nesting, relationships and mask annotations. |
+| `view_name`, `const_view_name` | D: naming decision | Name the sole compact pair for single-only; name vector views with vector or both. Compact names with both remain `NameSingleView` / `NameSingleConstView`. Layout-only has no standalone pair to name. |
+| `operations` | A: API | Selects public storage mutations independently for each requested owner. |
+| `export_specifier` | A: API | Applies to the schema's public owner and named mutable/const views. |
+| `functions` | A: API | Owner functions, emitted on every requested owner, including allocator variants. |
+| `const_view_functions` | A: API | Read-only functions on both mutable and const views. |
+| `mutable_view_functions` | A: API | Functions on mutable views only. |
+| `using_declarations` | A: API | Declarations in every canonical owner and view. Raw C++ must be valid in those receivers. |
+| `equivalent_type` | A: logical/API | Semantic equivalent row type; `equivalent_type` alias and value-returning `operator[]` aggregate-initialize it from columns in declaration order. |
+| `copy_element_memberwise` | B: vector | Chooses direct element assignment instead of container copying for ordinary nested storage. Compact leaves already require trivial copying, so single-only rejects it. |
+| `layout_only` | D: logical layout decision | No physical owner or standalone views. Supplies columns and view API to nested compact occurrences. Rejects owner functions, operations, standalone view names and ownership settings. |
+| `fixed` | B: vector | Additional fixed/container ownership using the ordinary storage abstraction; incompatible with single-only. |
+| `single_allocation` | C: single allocation | Physical owner name; required for single-allocation or both, forbidden with vector. |
+| `array_allocator` | B: vector | Unreal TArray allocation policy; rejected on single-only and by the standard-library vector backend. |
+| `single_allocation_variants` | C: single allocation | Additional owners sharing the root compact view/layout family. |
+| `single_allocation_allocator` | C: single allocation | Allocation policy for this owner; requires a single-allocation declaration. |
+| `field_mask_name`, `field_enum_name` | A: logical/API | Generated once from the logical columns, before either owner backend, including layout-only schemas. |
+| `vector_components` | A: logical | Component semantics and validation. Runtime vector-view substitution is permitted only when it preserves the entire declared view API. |
+| `storage` | D: policy decision | Explicit physical representations. Default is single-only with a single-allocation declaration, vector otherwise; never implicit both. |
+
+`function`, `view-function`, and `mutable-view-function` forms select owner, read-only-view,
+and mutable-view receivers respectively. Read-only view functions are const. A body is emitted
+inline unless `:definition-in-source true` requests an out-of-line definition; this requires a
+source output and is forbidden for templates. A bodyless function remains an explicit C++
+declaration for a handwritten definition. Mutable-view membership controls pointee mutation;
+const qualification on a mutable view itself does not make its columns const.
+
+Function bodies remain raw C++. LispB expands explicit `$column(values)` and
+`$column(positions.xs)` expressions through logical member access. The same expression becomes
+an ordinary column member or a compact accessor, with owner access through `get_view()`.
+The expansion is textual (including inside raw C++ comments and literals); other identifiers
+are untouched. Storage-specific handwritten bodies remain storage-specific C++, and `both`
+requires such bodies to compile against both receivers. LispB does not guess how arbitrary C++
+identifiers, containers, macros, or local variables should be rewritten. Custom nested view APIs
+use generated state-relative compact views rather than losing functions through a vector alias.
+
+`:operations` selects `reset`, `reserve`, `set-num`, `add-uninitialised`, `add-defaulted`,
+`remove-at-swap`, `copy-element` (including `copy_elements`) and `append-from`. An omitted or
+empty list exposes none of these. Construction, move/destruction, borrowing, size/capacity,
+iteration and direct column access remain intrinsic. Ordinary owners also retain their existing
+row `set`/`add` and permutation helpers, which are distinct from these bulk operations. Compact
+owners privately inherit runtime implementations and expose only selected operations; internal
+dependencies such as `set_num` growing defaulted rows do not expose additional public mutations.
+Compact copy accepts the same structural sources as append and supports overlapping row ranges.
+
+The type graph retains the logical declaration identity while recording the single owner as
+its physical C++ spelling for single-only storage. C++ type references and forward declarations
+use that spelling. Layout-only nodes have an empty C++ spelling and cannot be used as physical
+record members or function parameter types. They remain valid logical relationship targets and
+nested schemas. Registered names, dependency edges and planner identity remain logical; ABI
+facts for an owner are keyed by its physical spelling, never a deleted vector class name.
+When a logical vector schema has a declared vector equivalent, the resolved model also retains
+that vector declaration's `equivalent_constructor`. Compact row conversion uses it (for example,
+`HMM_V3` for Handmade Math's union representation) instead of assuming aggregate construction.

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/sim/agent_display_batch.h>
-#include <ioj/sim/laser_soa.h>
+#include <ioj/sim/fighter_entity_data.h>
 
 #include <cstdint>
 #include <vector>
@@ -32,7 +32,7 @@ struct FDisplayEntityTestData {
         health_table.get_view(health_indices, entity_ids).health(row) = health;
     }
 
-    ::ioj::sim::lasers::SingleAllocationLaserEntities motion;
+    ::ioj::sim::SingleAllocationFighterEntityData motion;
     ::ioj::sim::HealthTable health_table;
     std::vector<::ioj::sim::HealthIndex> health_indices;
     std::vector<::ioj::sim::EntityUniqueId> entity_ids;

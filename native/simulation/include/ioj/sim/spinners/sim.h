@@ -1,5 +1,9 @@
 #pragma once
+#include <cassert>
 #include <cstdint>
+#include <ioj/sim/column_math.h>
+#include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/profiling.h>
 #include <ioj/sim/system_read_views.h>
 #include <span>
 #include <vector>
@@ -61,10 +65,50 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto spawn_instances(Vectors3fConstView new_locations,
-                         std::span<float const> new_yaws,
-                         std::span<std::int32_t const> new_fire_point_indices)
-        -> std::span<EntityUniqueId const>;
+    template <VectorColumns Locations>
+    auto spawn_instances(Locations const new_locations,
+                         std::span<float const> const new_yaws,
+                         std::span<std::int32_t const> const new_fire_point_indices)
+        -> std::span<EntityUniqueId const> {
+        SANDBOX_PROFILE_SCOPE("spinners::Sim::spawn_instances");
+        assert(simulation_clock.permits_preparation_mutation());
+
+        auto const n{new_locations.num()};
+
+        assert(new_yaws.size() == static_cast<std::size_t>(n));
+        assert(new_fire_point_indices.size() == static_cast<std::size_t>(n));
+
+        entities.add_uninitialised(n);
+        auto const appended{entities.right(n)};
+        auto const locations{appended.view_locations()};
+        auto const xs{locations.xs()};
+        auto const ys{locations.ys()};
+        auto const zs{locations.zs()};
+        auto const new_xs{new_locations.xs()};
+        auto const new_ys{new_locations.ys()};
+        auto const new_zs{new_locations.zs()};
+        auto const yaws{appended.yaws()};
+        auto const laser_cooldowns{appended.laser_cooldowns()};
+        auto const next_fire_point_indices{appended.next_fire_point_indices()};
+        auto const entity_ids{appended.entity_ids()};
+
+        for (std::int32_t i{}; i < n; ++i) {
+            xs[i] = new_xs[i];
+            ys[i] = new_ys[i];
+            zs[i] = new_zs[i];
+            yaws[i] = new_yaws[i];
+            laser_cooldowns[i] = 0;
+            next_fire_point_indices[i] = new_fire_point_indices[i];
+        }
+
+        entities.get_const_view().validate();
+
+        for (std::int32_t i{0}; i < n; ++i) {
+            entity_ids[i] = ledger_.record_spawn(EntityType::TubeSpinner, Team::White, true);
+        }
+
+        return entity_ids;
+    }
 
     /* **************************************** */
     // Movement

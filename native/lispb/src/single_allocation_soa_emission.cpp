@@ -1,5 +1,6 @@
 #include "lowering_utils.h"
 #include "single_allocation_soa_internal.h"
+#include "soa_api.h"
 
 #include <algorithm>
 #include <utility>
@@ -48,21 +49,16 @@ auto copy_function(SingleAllocationModel const& model) -> Expr {
     return named(model.dialect.runtime_namespace + "copy_n");
 }
 
-auto source_member_expression(SingleAllocationColumn const& column) -> Expr {
-    auto result{named("source")};
-    auto const count{column.member_path.size()};
-    for (std::size_t index{}; index < count; ++index) {
-        auto const& member{column.member_path[index]};
-        result =
-            call(member_access(std::move(result), index + 1 == count ? member : "view_" + member));
-    }
-    return result;
+auto source_member_expression(SingleAllocationModel const& model,
+                              SingleAllocationColumn const& column) -> Expr {
+    return named(logical_column_access(
+        *model.schema, column.member_path, SoaRepresentation::compact, "source", model.schemas));
 }
 
 auto source_data_expression(SingleAllocationModel const& model,
                             SingleAllocationColumn const& column) -> Expr {
     return call(named(model.dialect.runtime_namespace + "source_data"),
-                {source_member_expression(column)});
+                {source_member_expression(model, column)});
 }
 
 auto storage_lifetime_nodes(SingleAllocationModel const& model) -> Nodes {
@@ -675,12 +671,11 @@ auto storage_implementation_nodes(SingleAllocationModel const& model) -> Nodes {
         "    { source.num() } -> std::convertible_to<size_type>;\n"
         "    source.validate();\n"};
     for (auto const& column : model.columns) {
-        std::string accessor{"source"};
-        auto const count{column.member_path.size()};
-        for (std::size_t index{}; index < count; ++index) {
-            accessor += "." + (index + 1 == count ? std::string{} : "view_") +
-                        column.member_path[index] + "()";
-        }
+        auto const accessor{logical_column_access(*model.schema,
+                                                  column.member_path,
+                                                  SoaRepresentation::compact,
+                                                  "source",
+                                                  model.schemas)};
         source_contract += "    { " + model.dialect.runtime_namespace + "source_data(" + accessor +
                            ") } -> std::convertible_to<" + column.type.spelling + " const*>;\n";
     }
@@ -715,7 +710,8 @@ auto storage_implementation_nodes(SingleAllocationModel const& model) -> Nodes {
     return children.build();
 }
 
-auto emit_single_allocation_views(SingleAllocationModel const& model) -> Nodes {
+auto emit_single_allocation_views(SingleAllocationModel const& model, NodeListBuilder& source)
+    -> Nodes {
     auto const implementation{model.view_name + "Impl"};
     auto wrapper = [&](bool const is_const) -> Node {
         auto const& name{is_const ? model.const_view_name : model.view_name};
@@ -751,7 +747,20 @@ auto emit_single_allocation_views(SingleAllocationModel const& model) -> Nodes {
                 .qualifiers = {.trailing_return_type = CppType{"ConstView"}, .is_const = true},
             }),
         }));
-        return Struct{.name = name, .children = children.build(), .bases = {CppType{base}}};
+        auto api{lower_soa_api(*model.schema,
+                               *model.types,
+                               SoaRepresentation::compact,
+                               is_const ? SoaReceiver::const_view : SoaReceiver::mutable_view,
+                               name,
+                               model.schemas,
+                               model.backend,
+                               model.equivalent_constructors.at(model.schema->name))};
+        children.new_lines(1).append(std::move(api.header));
+        source.append(std::move(api.source)).new_lines(2);
+        return Struct{.name = name,
+                      .children = children.build(),
+                      .bases = {CppType{base}},
+                      .export_specifier = model.schema->export_specifier};
     };
     NodeListBuilder result;
     for (auto const& member : model.schema->members) {
@@ -763,7 +772,7 @@ auto emit_single_allocation_views(SingleAllocationModel const& model) -> Nodes {
                 .new_lines(1)
                 .add(ForwardDeclaration{nested.const_view_name})
                 .new_lines(1)
-                .append(emit_single_allocation_views(nested))
+                .append(emit_single_allocation_views(nested, source))
                 .new_lines(1);
         }
     }
@@ -782,8 +791,45 @@ auto emit_single_allocation_views(SingleAllocationModel const& model) -> Nodes {
     return result.build();
 }
 
-auto emit_single_allocation_container(SingleAllocationModel const& model) -> Node {
+auto emit_single_allocation_container(SingleAllocationModel const& model, NodeListBuilder& source)
+    -> Node {
     NodeListBuilder children;
+    auto const operations{model.dialect.runtime_namespace + "StorageOperations"};
+    children.add(raw("using Operations = " + operations + ";")).new_lines(1);
+    for (auto const* name : {"num", "capacity", "is_empty", "allocated_bytes"}) {
+        children.add(raw(std::string{"using Operations::"} + name + ";")).new_lines(1);
+    }
+    for (auto const operation : model.schema->operations) {
+        std::string name;
+        switch (operation) {
+            case StorageOperation::reset:
+                name = "reset";
+                break;
+            case StorageOperation::reserve:
+                name = "reserve";
+                break;
+            case StorageOperation::add_uninitialised:
+                name = "add_uninitialised";
+                break;
+            case StorageOperation::add_defaulted:
+                name = "add_defaulted";
+                break;
+            case StorageOperation::remove_at_swap:
+                name = "remove_at_swap";
+                break;
+            case StorageOperation::set_num:
+                name = "set_num";
+                break;
+            case StorageOperation::copy_element:
+                children.add(raw("using Operations::copy_elements;")).new_lines(1);
+                name = "copy_element";
+                break;
+            case StorageOperation::append_from:
+                name = "append_from";
+                break;
+        }
+        children.add(raw("using Operations::" + name + ";")).new_lines(1);
+    }
     children
         .add(raw("using Layout = " + model.layout_name +
                  ";\n"
@@ -895,11 +941,22 @@ auto emit_single_allocation_container(SingleAllocationModel const& model) -> Nod
                 .requires_clause = "std::is_lvalue_reference_v<Self>",
             }),
         }));
+    auto api{lower_soa_api(*model.schema,
+                           *model.types,
+                           SoaRepresentation::compact,
+                           SoaReceiver::owner,
+                           model.owner_name,
+                           model.schemas,
+                           model.backend,
+                           model.equivalent_constructors.at(model.schema->name))};
+    children.new_lines(1).append(std::move(api.header));
+    source.append(std::move(api.source)).new_lines(2);
     return Struct{
         .name = model.owner_name,
         .children = children.build(),
         .bases = {CppType{"protected " + model.dialect.runtime_namespace + "StorageState"},
-                  CppType{model.dialect.runtime_namespace + "StorageOperations"}},
+                  CppType{"private " + operations}},
+        .export_specifier = model.schema->export_specifier,
         .dependencies = model.dependencies,
     };
 }

@@ -26,4 +26,7 @@ struct FMemory {
     static void Memcpy(void* const dst, void const* const src, SIZE_T const bytes) {
         std::memcpy(dst, src, bytes);
     }
+    static void Memmove(void* const dst, void const* const src, SIZE_T const bytes) {
+        std::memmove(dst, src, bytes);
+    }
 };

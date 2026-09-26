@@ -33,6 +33,8 @@ struct SANDBOXCORE_API FVectors3dConstView {
         return (*this)[index];
     }
 
+    using value_type = double;
+    using size_type = TArray<value_type>::SizeType;
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.xs, self.ys, self.zs);
@@ -70,14 +72,14 @@ struct SANDBOXCORE_API FVectors3dView {
         return (*this)[index];
     }
 
+    using value_type = double;
+    using size_type = TArray<value_type>::SizeType;
     void set(int32 const i, double const x, double const y, double const z) const {
         xs[i] = x;
         ys[i] = y;
         zs[i] = z;
     }
-
     void set(int32 const i, FVector3d const value) const { set(i, value.X, value.Y, value.Z); }
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.xs, self.ys, self.zs);
@@ -137,50 +139,39 @@ struct SANDBOXCORE_API FVectors3d {
     }
 
     using value_type = double;
-
     using size_type = TArray<value_type>::SizeType;
-
     auto get_data() -> Data { return Data{xs.GetData(), ys.GetData(), zs.GetData()}; }
-
     auto get_data() const -> ConstData {
         return ConstData{xs.GetData(), ys.GetData(), zs.GetData()};
     }
-
     auto add(value_type const x, value_type const y, value_type const z) -> size_type {
         auto const index{xs.Add(x)};
         ys.Add(y);
         zs.Add(z);
         return index;
     }
-
     auto add(FVector3d const& value) -> size_type { return add(value.X, value.Y, value.Z); }
-
     void set(int32 const i, value_type const x, value_type const y, value_type const z) {
         xs[i] = x;
         ys[i] = y;
         zs[i] = z;
     }
-
     void set(int32 const i, FVector3d const value) { set(i, value.X, value.Y, value.Z); }
-
     void empty() {
         xs.Empty();
         ys.Empty();
         zs.Empty();
     }
-
     void set_num_uninitialised(size_type const count) {
         xs.SetNumUninitialized(count);
         ys.SetNumUninitialized(count);
         zs.SetNumUninitialized(count);
     }
-
     void add_zeroed(size_type const count) {
         xs.AddZeroed(count);
         ys.AddZeroed(count);
         zs.AddZeroed(count);
     }
-
     void reset();
 
     void reserve(int32 const count);

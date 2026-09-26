@@ -24,7 +24,6 @@ struct FLevelEntityTableConstView;
 struct SPACEGAMESIMULATION_API FLevelEntityTableConstView {
     using View = FLevelEntityTableView;
     using ConstView = FLevelEntityTableConstView;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.ids,
@@ -72,7 +71,6 @@ struct SPACEGAMESIMULATION_API FLevelEntityTableView {
         rotations.set(index, new_rotations);
         spawn_times_seconds[index] = new_spawn_times_seconds;
     }
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.ids,
@@ -110,7 +108,6 @@ struct SPACEGAMESIMULATION_API FLevelEntityTableView {
 struct SPACEGAMESIMULATION_API FLevelEntityTable {
     using View = FLevelEntityTableView;
     using ConstView = FLevelEntityTableConstView;
-
     void set(int32 const index,
              ml::FLevelEntityId const new_ids,
              ml::FEntityArchetypeId const new_archetypes,

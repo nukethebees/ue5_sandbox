@@ -63,7 +63,7 @@ void validate_soa_allocator_variants(SoaBackend const backend,
             if (schema.fixed.has_value() || schema.field_mask_name.has_value() ||
                 schema.field_enum_name.has_value() || schema.equivalent_type.has_value() ||
                 !schema.functions.empty() || !schema.mutable_view_functions.empty() ||
-                !schema.using_declarations.empty()) {
+                !schema.const_view_functions.empty() || !schema.using_declarations.empty()) {
                 throw std::invalid_argument{"SoA allocator variants require plain dynamic schemas"};
             }
             for (auto const& member : schema.members) {
@@ -111,6 +111,7 @@ auto expand_soa_allocator_variants(SoaBackend const backend,
             copy.storage = SoaStorage::vector;
             copy.single_allocation.reset();
             copy.single_allocation_variants.clear();
+            copy.single_allocation_allocator.reset();
             copy.array_allocator = variant.allocator;
             for (auto& member : copy.members) {
                 if (member.kind == SoaMemberKind::nested) {

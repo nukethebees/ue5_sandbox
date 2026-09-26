@@ -1,5 +1,6 @@
 #include "fixed_soa_internal.h"
 #include "lowering_utils.h"
+#include "soa_api.h"
 
 #include <array>
 #include <ranges>
@@ -32,40 +33,51 @@ void render_arguments(std::ostringstream& out, std::span<RowParameter const> con
     }
 }
 
-void render_vector_storage_operations(std::ostringstream& out) {
-    out << "void reserve(size_type const count) { "
-           "ml::native_soa::vector_storage_ops::reserve(*this, count); }\n"
-        << "void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }\n"
-        << "void set_num(size_type const count) { "
-           "ml::native_soa::vector_storage_ops::set_num(*this, count); }\n"
-        << "void add_uninitialised(size_type const count) { "
-           "ml::native_soa::vector_storage_ops::add_uninitialised(*this, count); }\n"
-        << "void add_defaulted(size_type const count) { "
-           "ml::native_soa::vector_storage_ops::add_defaulted(*this, count); }\n"
-        << "void remove_at_swap(size_type const index, size_type const count) { "
-           "ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count); }\n"
-        << "void apply_permutation(std::span<size_type> const indices) { "
+void render_vector_storage_operations(std::ostringstream& out, SoaSchema const& schema) {
+    for (auto const operation : schema.operations) {
+        std::string name;
+        std::string parameters;
+        std::string arguments;
+        switch (operation) {
+            case StorageOperation::reserve:
+                name = "reserve";
+                break;
+            case StorageOperation::reset:
+                name = "reset";
+                break;
+            case StorageOperation::set_num:
+                name = "set_num";
+                break;
+            case StorageOperation::add_uninitialised:
+                name = "add_uninitialised";
+                break;
+            case StorageOperation::add_defaulted:
+                name = "add_defaulted";
+                break;
+            case StorageOperation::remove_at_swap:
+                name = "remove_at_swap";
+                break;
+            default:
+                continue;
+        }
+        if (operation == StorageOperation::remove_at_swap) {
+            parameters = "size_type const index, size_type const count";
+            arguments = ", index, count";
+        } else if (operation != StorageOperation::reset) {
+            parameters = "size_type const count";
+            arguments = ", count";
+        }
+        out << "void " << name << "(" << parameters
+            << ") { ml::native_soa::vector_storage_ops::" << name << "(*this" << arguments
+            << "); }\n";
+    }
+    out << "void apply_permutation(std::span<size_type> const indices) { "
            "ml::native_soa::vector_storage_ops::apply_permutation(*this, indices); }\n"
         << "template <typename Compare> void sort(Compare&& compare, std::span<size_type> const "
            "scratch_indices) { ml::native_soa::vector_storage_ops::sort("
            "*this, std::forward<Compare>(compare), scratch_indices); }\n";
 }
 
-auto is_vector3f_schema(SoaSchema const& schema, TypeRegistry const& types) -> bool {
-    if (schema.members.size() != 3) {
-        return false;
-    }
-
-    static constexpr std::array<std::string_view, 3> components{"xs", "ys", "zs"};
-    for (std::size_t index{}; index < components.size(); ++index) {
-        auto const& member{schema.members[index]};
-        if (member.kind != SoaMemberKind::array || member.name != components[index] ||
-            native_spelling(resolve_type(member.type, types).spelling) != "float") {
-            return false;
-        }
-    }
-    return true;
-}
 }
 
 auto lower_native_soa(SoaSchema const& schema,
@@ -74,17 +86,15 @@ auto lower_native_soa(SoaSchema const& schema,
                       bool const allow_equivalent_type,
                       std::span<std::string const> const equivalent_members,
                       std::string_view const equivalent_constructor) -> LoweredSoa {
-    if (schema.fixed || !schema.functions.empty() || !schema.mutable_view_functions.empty() ||
-        !schema.using_declarations.empty() ||
-        (schema.equivalent_type.has_value() && !allow_equivalent_type)) {
-        throw std::invalid_argument{"Standard-library SoA does not support custom functions, "
-                                    "fixed storage, using declarations or equivalent types"};
+    if (schema.fixed) {
+        throw std::invalid_argument{"Standard-library SoA does not support fixed storage"};
     }
     auto const layout{build_soa_layout(schema, schemas, types, false)};
     auto const equivalent_type{schema.equivalent_type.has_value()
                                    ? std::optional{resolve_type(*schema.equivalent_type, types)}
                                    : std::nullopt};
-    if (equivalent_type.has_value() && equivalent_members.size() != layout.members.size()) {
+    if (allow_equivalent_type && equivalent_type.has_value() &&
+        equivalent_members.size() != layout.members.size()) {
         throw std::invalid_argument{
             "Standard-library SoA equivalent members must match its columns"};
     }
@@ -97,7 +107,7 @@ auto lower_native_soa(SoaSchema const& schema,
 
     auto const view{schema.view_name.value_or(schema.name + "View")};
     auto const const_view{schema.const_view_name.value_or(schema.name + "ConstView")};
-    auto const vector3f_schema{is_vector3f_schema(schema, types)};
+    auto const vector3f_schema{uses_native_vector_view(schema, types)};
     std::vector<TypeDependency> dependencies{
         {"address_cast", "sandbox/core/address_cast.h", {}},
         {"native_storage", "sandbox/core/native_soa/storage.h", {}},
@@ -137,6 +147,27 @@ auto lower_native_soa(SoaSchema const& schema,
                             equivalent_type->dependencies.end());
     }
     std::ostringstream out;
+    NodeListBuilder header;
+    NodeListBuilder source;
+    auto flush = [&] {
+        header.add(raw(out.str(), dependencies));
+        out.str("");
+    };
+    auto api = [&](SoaReceiver const receiver, std::string const& name) {
+        flush();
+        auto lowered{lower_soa_api(schema,
+                                   types,
+                                   receiver == SoaReceiver::owner
+                                       ? SoaRepresentation::vector
+                                       : SoaRepresentation::native_vector_view,
+                                   receiver,
+                                   name,
+                                   &schemas,
+                                   SoaBackend::standard_library)};
+        header.append(std::move(lowered.header));
+        source.append(std::move(lowered.source)).new_lines(2);
+    };
+    auto const exported{schema.export_specifier ? *schema.export_specifier + " " : ""};
 
     if (vector3f_schema) {
         out << "using " << view << " = ml::Vector3fSoAView;\n"
@@ -150,7 +181,7 @@ auto lower_native_soa(SoaSchema const& schema,
         auto const member = std::ranges::find_if(
             layout.members, [&](auto const& value) { return value.schema->name == member_name; });
         return member != layout.members.end() && member->schema->kind == SoaMemberKind::nested &&
-               is_vector3f_schema(*schemas.at(*member->schema->nested_schema), types);
+               uses_native_vector_view(*schemas.at(*member->schema->nested_schema), types);
     };
     auto const view_leaf = [&](auto const& leaf, std::string_view const prefix = {}) {
         auto expression{std::string{prefix} + join(leaf.path, ".")};
@@ -166,7 +197,7 @@ auto lower_native_soa(SoaSchema const& schema,
     if (!vector3f_schema) {
         for (bool const immutable : {true, false}) {
             auto const view_type{immutable ? const_view : view};
-            out << "struct " << view_type << " {\n"
+            out << "struct " << exported << view_type << " {\n"
                 << "using View = " << view << ";\n"
                 << "using ConstView = " << const_view << ";\n"
                 << "using size_type = std::int32_t;\n";
@@ -265,7 +296,7 @@ auto lower_native_soa(SoaSchema const& schema,
                     }
                 }
                 out << "}\n";
-                if (equivalent_type.has_value()) {
+                if (equivalent_type.has_value() && allow_equivalent_type) {
                     out << "void set(size_type const index, equivalent_type const value) const { "
                            "set(index";
                     for (std::size_t index{}; index < layout.members.size(); ++index) {
@@ -274,11 +305,12 @@ auto lower_native_soa(SoaSchema const& schema,
                     out << "); }\n";
                 }
             }
+            api(immutable ? SoaReceiver::const_view : SoaReceiver::mutable_view, view_type);
             out << "};\n";
         }
     }
 
-    out << "struct " << schema.name << " {\n"
+    out << "struct " << exported << schema.name << " {\n"
         << "using View = " << view << ";\n"
         << "using ConstView = " << const_view << ";\n"
         << "using size_type = std::int32_t;\n";
@@ -311,7 +343,7 @@ auto lower_native_soa(SoaSchema const& schema,
     out << "}\n"
         << "void validate_array_sizes() const { get_const_view().validate_array_sizes(); }\n";
 
-    render_vector_storage_operations(out);
+    render_vector_storage_operations(out, schema);
 
     {
         out << "void set(size_type const index";
@@ -331,7 +363,7 @@ auto lower_native_soa(SoaSchema const& schema,
             }
         }
         out << "}); }\n";
-        if (equivalent_type.has_value()) {
+        if (equivalent_type.has_value() && allow_equivalent_type) {
             out << "void set(size_type const index, equivalent_type const value) { "
                    "get_view().set(index, value); }\n"
                 << "auto add(equivalent_type const value) -> size_type { return add(";
@@ -345,24 +377,27 @@ auto lower_native_soa(SoaSchema const& schema,
         }
     }
 
-    out << "void append_from(ConstView source) { auto const count{source.num()};\n"
-        << "ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());\n"
-        << "source.validate_array_sizes(); if (count == 0) { return; }\n";
-    for (auto const& leaf : layout.leaves) {
-        auto const column{join(leaf.path, ".")};
-        out << "{ auto const address{ml::address_cast(" << view_leaf_data(leaf, "source.")
-            << ")}; auto const begin{ml::address_cast(" << column
-            << ".data())}; ml::native_soa::require(address < begin || address >= begin + " << column
-            << ".size() * sizeof(" << native_spelling(leaf.type.spelling) << ")); }\n";
+    if (schema.has_operation(StorageOperation::append_from)) {
+        out << "void append_from(ConstView source) { auto const count{source.num()};\n"
+            << "ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());\n"
+            << "source.validate_array_sizes(); if (count == 0) { return; }\n";
+        for (auto const& leaf : layout.leaves) {
+            auto const column{join(leaf.path, ".")};
+            out << "{ auto const address{ml::address_cast(" << view_leaf_data(leaf, "source.")
+                << ")}; auto const begin{ml::address_cast(" << column
+                << ".data())}; ml::native_soa::require(address < begin || address >= begin + "
+                << column << ".size() * sizeof(" << native_spelling(leaf.type.spelling)
+                << ")); }\n";
+        }
+        out << "ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {\n";
+        for (auto const& leaf : layout.leaves) {
+            auto const column{join(leaf.path, ".")};
+            auto const source_data{view_leaf_data(leaf, "source.")};
+            out << column << ".insert(" << column << ".end(), " << source_data << ", "
+                << source_data << " + count);\n";
+        }
+        out << "});\n}\n";
     }
-    out << "ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {\n";
-    for (auto const& leaf : layout.leaves) {
-        auto const column{join(leaf.path, ".")};
-        auto const source_data{view_leaf_data(leaf, "source.")};
-        out << column << ".insert(" << column << ".end(), " << source_data << ", " << source_data
-            << " + count);\n";
-    }
-    out << "});\n}\n";
 
     for (bool const immutable : {false, true}) {
         out << "auto get_view()" << (immutable ? " const" : "") << " -> "
@@ -400,24 +435,29 @@ auto lower_native_soa(SoaSchema const& schema,
         << "auto right(size_type const count) -> View { return slice(num() - count, count); }\n"
         << "auto left(size_type const count) const -> ConstView { return slice(0, count); }\n"
         << "auto right(size_type const count) const -> ConstView { return slice(num() - count, "
-           "count); }\n"
-        << "template <typename Other> void copy_element(size_type const dst_index, Other const& "
-           "other, size_type const src_index) {\n";
-    for (auto const& member : layout.members) {
-        if (member.schema->kind == SoaMemberKind::array) {
-            out << member.schema->name << "[static_cast<std::size_t>(dst_index)] = other."
-                << member.schema->name << "[static_cast<std::size_t>(src_index)];\n";
-        } else {
-            out << member.schema->name << ".copy_element(dst_index, other." << member.schema->name
-                << ", src_index);\n";
+           "count); }\n";
+    if (schema.has_operation(StorageOperation::copy_element)) {
+        out << "template <typename Other> void copy_element(size_type const dst_index, Other "
+               "const& "
+               "other, size_type const src_index) {\n";
+        for (auto const& member : layout.members) {
+            if (schema.copy_element_memberwise || member.schema->kind == SoaMemberKind::array) {
+                out << member.schema->name << "[static_cast<std::size_t>(dst_index)] = other."
+                    << member.schema->name << "[static_cast<std::size_t>(src_index)];\n";
+            } else {
+                out << member.schema->name << ".copy_element(dst_index, other."
+                    << member.schema->name << ", src_index);\n";
+            }
         }
+        out << "}\n"
+            << "template <typename Other> void copy_elements(size_type const dst_index, Other "
+               "const& "
+               "other, size_type const src_index, size_type const count) { for (size_type i{}; i < "
+               "count; ++i) { copy_element(dst_index + i, other, src_index + i); } }\n";
     }
-    out << "}\n"
-        << "template <typename Other> void copy_elements(size_type const dst_index, Other const& "
-           "other, size_type const src_index, size_type const count) { for (size_type i{}; i < "
-           "count; ++i) { copy_element(dst_index + i, other, src_index + i); } }\n"
-        << "};\n";
-
-    return LoweredSoa{{raw(out.str(), std::move(dependencies))}, {}};
+    api(SoaReceiver::owner, schema.name);
+    out << "};\n";
+    flush();
+    return LoweredSoa{header.build(), source.build()};
 }
 }

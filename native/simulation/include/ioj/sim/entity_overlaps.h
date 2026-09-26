@@ -132,12 +132,9 @@ struct EntityEntityOverlaps {
         fn(second_entities);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reset() { ml::native_soa::vector_storage_ops::reset(*this); }
     void reserve(size_type const count) {
         ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
     }
     void add_uninitialised(size_type const count) {
         ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
@@ -147,6 +144,9 @@ struct EntityEntityOverlaps {
     }
     void remove_at_swap(size_type const index, size_type const count) {
         ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
+    }
+    void set_num(size_type const count) {
+        ml::native_soa::vector_storage_ops::set_num(*this, count);
     }
     void apply_permutation(std::span<size_type> const indices) {
         ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
@@ -366,12 +366,9 @@ struct EntityStaticOverlaps {
         fn(static_geometry_indices);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reset() { ml::native_soa::vector_storage_ops::reset(*this); }
     void reserve(size_type const count) {
         ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
     }
     void add_uninitialised(size_type const count) {
         ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
@@ -381,6 +378,9 @@ struct EntityStaticOverlaps {
     }
     void remove_at_swap(size_type const index, size_type const count) {
         ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
+    }
+    void set_num(size_type const count) {
+        ml::native_soa::vector_storage_ops::set_num(*this, count);
     }
     void apply_permutation(std::span<size_type> const indices) {
         ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);

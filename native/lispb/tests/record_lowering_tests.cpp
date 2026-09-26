@@ -146,8 +146,7 @@ TEST(RecordLowering, ForwardDeclarationsMatchGeneratedRecordKindsAndExcludeAlias
                             "FValuesf",
                             "Alias",
                             "Tag",
-                            "External",
-                            "LayoutOnly"}) {
+                            "External"}) {
         uses.members.push_back({.name = std::string{"p"} + name, .type = TypeRef{name, "*"}});
     }
     uses.members.push_back({.name = "facade_reference", .type = TypeRef{"Facade", "&"}});

@@ -14,6 +14,22 @@ static_assert(!native_soa::supported_leaf<float&>);
 static_assert(!native_soa::supported_leaf<float[3]>);
 static_assert(!native_soa::supported_leaf<void>);
 static_assert(!std::is_copy_constructible_v<SingleRows>);
+template <typename T>
+concept CanReset = requires(T& value) { value.reset(); };
+template <typename T>
+concept CanAddUninitialised = requires(T& value) { value.add_uninitialised(1); };
+template <typename T>
+concept CanAssignFirst = requires(T value) { value.assign_first(1.0f); };
+static_assert(!CanReset<ApiOwner>);
+static_assert(!CanAddUninitialised<ApiOwner>);
+static_assert(CanAssignFirst<ApiView>);
+static_assert(!CanAssignFirst<ApiConstView>);
+static_assert(!CanReset<DualApiRows>);
+static_assert(!CanReset<DualCompactRows>);
+static_assert(soa_storage_detail::validate_compact_view<ApiView>());
+static_assert(soa_storage_detail::validate_compact_view<ApiConstView>());
+static_assert(std::is_same_v<ApiOwner::Value, ApiConstView::Value>);
+static_assert(std::is_same_v<decltype(ApiReference::owner), ApiOwner*>);
 static_assert(std::is_same_v<decltype(std::declval<SingleRows const&>().get_view().values()),
                              std::span<std::int32_t const>>);
 
@@ -34,6 +50,85 @@ TEST(NativeSoa, MutuallyReferencingPointersCompileInBothOrdersAndAcrossDeclarati
     MixedRecord record{&rows};
     rows.add(&record);
     EXPECT_EQ(record.rows->get_view().records[0], &record);
+}
+
+TEST(NativeSoa, LogicalApiSurvivesCompactOnlyStorageAndNestedLayouts) {
+    ApiOwner owner;
+    owner.set_num(2);
+    auto view{owner.get_view()};
+    view.assign_first(7.0f);
+    view.values()[1] = 9.0f;
+    auto positions{view.view_positions()};
+    positions.xs()[0] = 2.0f;
+    positions.ys()[0] = 3.0f;
+    positions.shift_x(4.0f);
+    view.masks()[0].set(ApiField::Values);
+
+    EXPECT_EQ(owner.first_value(), 7.0f);
+    EXPECT_EQ(owner.total(), 16.0f);
+    EXPECT_EQ(view.first_x(), 6.0f);
+    EXPECT_EQ(owner.get_const_view().first_x(), 6.0f);
+    EXPECT_EQ(positions.x_at(0), 6.0f);
+    EXPECT_EQ(positions[0].y, 3.0f);
+    EXPECT_TRUE(view.masks()[0].has(ApiField::Values));
+
+    owner.reserve(owner.capacity() + 1);
+    EXPECT_EQ(view.first_x(), 6.0f);
+    EXPECT_EQ(positions.x_at(0), 6.0f);
+    EXPECT_EQ(owner.append_from(view.slice(0, 1)), 2);
+    owner.copy_elements(1, owner.get_const_view(), 0, 2);
+    EXPECT_EQ(owner.get_const_view().values()[2], 9.0f);
+    EXPECT_EQ(owner.get_const_view().view_positions()[1].x, 6.0f);
+
+    EquivalentOwner equivalent;
+    equivalent.set_num(1);
+    equivalent.get_view().xs()[0] = 5.0f;
+    equivalent.get_view().ys()[0] = 8.0f;
+    EXPECT_EQ(equivalent[0].x, 5.0f);
+    EXPECT_EQ(equivalent.get_const_view()[0].y, 8.0f);
+}
+
+TEST(NativeSoa, BothStorageImplementationsShareLogicalFunctionsAndOperationSelection) {
+    auto verify = []<typename Owner>() {
+        Owner owner;
+        owner.set_num(1);
+        owner.get_view().assign(4.0f);
+        EXPECT_EQ(owner.row_count(), 1);
+        EXPECT_EQ(owner.get_const_view().first(), 4.0f);
+    };
+    verify.operator()<DualApiRows>();
+    verify.operator()<DualCompactRows>();
+}
+
+struct ApiSource {
+    struct Positions {
+        std::array<float, 2> x{2.0f, 4.0f};
+        std::array<float, 2> y{3.0f, 5.0f};
+        auto xs() const -> std::span<float const> { return x; }
+        auto ys() const -> std::span<float const> { return y; }
+    } positions;
+    std::array<float, 2> value_columns{11.0f, 13.0f};
+    std::array<ApiMask, 2> mask_columns{};
+    auto num() const -> std::int32_t { return 2; }
+    void validate() const {}
+    auto values() const -> std::span<float const> { return value_columns; }
+    auto masks() const -> std::span<ApiMask const> { return mask_columns; }
+    auto view_positions() const -> Positions const& { return positions; }
+};
+
+TEST(NativeSoa, LogicalApiAcceptsIndependentColumnsAndCompactSourcesDuringGrowth) {
+    ApiSource source;
+    source.mask_columns[1].set(ApiField::Values);
+    ApiOwner owner;
+    owner.append_from(source);
+    EXPECT_EQ(owner.total(), 24.0f);
+    owner.set_num(owner.capacity());
+    auto const compact{owner.get_const_view().left(2)};
+    auto const first{owner.append_from(compact)};
+    EXPECT_EQ(owner.get_const_view().values()[first + 1], 13.0f);
+    EXPECT_EQ(owner.get_const_view().view_positions()[first + 1].y, 5.0f);
+    EXPECT_TRUE(owner.get_const_view().masks()[first + 1].has(ApiField::Values));
+    EXPECT_EQ(compact.first_x(), 2.0f);
 }
 
 TEST(NativeSoa, LayoutGrowthAndMoves) {

@@ -140,12 +140,9 @@ struct LevelSpawnGroups {
         fn(counts);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reset() { ml::native_soa::vector_storage_ops::reset(*this); }
     void reserve(size_type const count) {
         ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
     }
     void add_uninitialised(size_type const count) {
         ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
@@ -155,6 +152,9 @@ struct LevelSpawnGroups {
     }
     void remove_at_swap(size_type const index, size_type const count) {
         ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
+    }
+    void set_num(size_type const count) {
+        ml::native_soa::vector_storage_ops::set_num(*this, count);
     }
     void apply_permutation(std::span<size_type> const indices) {
         ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
@@ -518,7 +518,21 @@ inline LevelCapitalSpawnEventsSingleConstView::LevelCapitalSpawnEventsSingleCons
     : Base{other} {}
 struct SingleAllocationLevelCapitalSpawnEvents
     : protected ml::native_soa::StorageState
-    , ml::native_soa::StorageOperations {
+    , private ml::native_soa::StorageOperations {
+    using Operations = ml::native_soa::StorageOperations;
+    using Operations::add_defaulted;
+    using Operations::add_uninitialised;
+    using Operations::allocated_bytes;
+    using Operations::append_from;
+    using Operations::capacity;
+    using Operations::copy_element;
+    using Operations::copy_elements;
+    using Operations::is_empty;
+    using Operations::num;
+    using Operations::remove_at_swap;
+    using Operations::reserve;
+    using Operations::reset;
+    using Operations::set_num;
     using Layout = LevelCapitalSpawnEventsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -1109,7 +1123,21 @@ inline LevelTurretSpawnEventsSingleConstView::LevelTurretSpawnEventsSingleConstV
     : Base{other} {}
 struct SingleAllocationLevelTurretSpawnEvents
     : protected ml::native_soa::StorageState
-    , ml::native_soa::StorageOperations {
+    , private ml::native_soa::StorageOperations {
+    using Operations = ml::native_soa::StorageOperations;
+    using Operations::add_defaulted;
+    using Operations::add_uninitialised;
+    using Operations::allocated_bytes;
+    using Operations::append_from;
+    using Operations::capacity;
+    using Operations::copy_element;
+    using Operations::copy_elements;
+    using Operations::is_empty;
+    using Operations::num;
+    using Operations::remove_at_swap;
+    using Operations::reserve;
+    using Operations::reset;
+    using Operations::set_num;
     using Layout = LevelTurretSpawnEventsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -1553,7 +1581,21 @@ inline LevelSpinnerSpawnEventsSingleConstView::LevelSpinnerSpawnEventsSingleCons
     : Base{other} {}
 struct SingleAllocationLevelSpinnerSpawnEvents
     : protected ml::native_soa::StorageState
-    , ml::native_soa::StorageOperations {
+    , private ml::native_soa::StorageOperations {
+    using Operations = ml::native_soa::StorageOperations;
+    using Operations::add_defaulted;
+    using Operations::add_uninitialised;
+    using Operations::allocated_bytes;
+    using Operations::append_from;
+    using Operations::capacity;
+    using Operations::copy_element;
+    using Operations::copy_elements;
+    using Operations::is_empty;
+    using Operations::num;
+    using Operations::remove_at_swap;
+    using Operations::reserve;
+    using Operations::reset;
+    using Operations::set_num;
     using Layout = LevelSpinnerSpawnEventsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -1951,12 +1993,9 @@ struct LevelMissionEventGroups {
         fn(counts);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reset() { ml::native_soa::vector_storage_ops::reset(*this); }
     void reserve(size_type const count) {
         ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
     }
     void add_uninitialised(size_type const count) {
         ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
@@ -1966,6 +2005,9 @@ struct LevelMissionEventGroups {
     }
     void remove_at_swap(size_type const index, size_type const count) {
         ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
+    }
+    void set_num(size_type const count) {
+        ml::native_soa::vector_storage_ops::set_num(*this, count);
     }
     void apply_permutation(std::span<size_type> const indices) {
         ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);

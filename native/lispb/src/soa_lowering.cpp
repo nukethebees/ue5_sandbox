@@ -1,5 +1,6 @@
 #include "lowering.h"
 #include "lowering_utils.h"
+#include "soa_api.h"
 #include "soa_internal.h"
 
 #include <codegen/schema/soa_allocator_variants.h>
@@ -165,26 +166,27 @@ auto field_mask_nodes(SoaSchema const& schema, bool const standard_library = fal
                  TypeDependency{"std::uint64_t", "cstdint", {}}})};
 }
 
-auto lower_soa_impl(SoaSchema const& schema, TypeRegistry const& types, Nodes storage_prelude)
+auto lower_soa_impl(SoaSchema const& schema,
+                    TypeRegistry const& types,
+                    Nodes storage_prelude,
+                    std::map<std::string, SoaSchema const*> const* schemas = nullptr)
     -> LoweredSoa {
     auto const members{resolve_members(schema, types)};
     auto const view_name{schema.view_name.value_or(schema.name + "View")};
     auto const const_view_name{schema.const_view_name.value_or(schema.name + "ConstView")};
-    std::vector<FunctionSpec> custom_source;
+    Nodes custom_source;
     auto storage{soa_storage_node(schema,
                                   members,
                                   view_name,
                                   const_view_name,
                                   types,
                                   custom_source,
-                                  std::move(storage_prelude))};
+                                  std::move(storage_prelude),
+                                  schemas)};
 
     NodeListBuilder header;
-    auto mask_nodes{field_mask_nodes(schema)};
-    if (!mask_nodes.empty()) {
-        header.append(std::move(mask_nodes)).new_lines(2);
-    }
-    header.append(soa_view_struct_nodes(schema, members, types, view_name, const_view_name))
+    header
+        .append(soa_view_struct_nodes(schema, members, types, view_name, const_view_name, schemas))
         .add(std::move(storage));
 
     NodeListBuilder source;
@@ -196,9 +198,25 @@ auto lower_soa_impl(SoaSchema const& schema, TypeRegistry const& types, Nodes st
         source.add(definition(spec, owner));
         has_source_definition = true;
     };
-    for (auto const& spec : custom_source) {
-        add_definition(spec, schema.name);
-    }
+    source.append(std::move(custom_source)).new_lines(2);
+    source
+        .append(lower_soa_api(schema,
+                              types,
+                              SoaRepresentation::vector,
+                              SoaReceiver::const_view,
+                              const_view_name,
+                              schemas)
+                    .source)
+        .new_lines(2);
+    source
+        .append(lower_soa_api(schema,
+                              types,
+                              SoaRepresentation::vector,
+                              SoaReceiver::mutable_view,
+                              view_name,
+                              schemas)
+                    .source)
+        .new_lines(2);
     auto append_definitions = [&](std::vector<FunctionSpec> const& specs,
                                   std::string const& owner) {
         for (auto const& spec : specs) {
@@ -224,18 +242,24 @@ auto lower_one_soa(SoaSchema const& schema,
                    TypeRegistry const& types,
                    lispb::schema::TypeGraph const& type_graph,
                    std::string const& module_name) -> LoweredSoa {
-    if (schema.layout_only) {
-        return {};
-    }
     auto const standard_library{backend == SoaBackend::standard_library};
+    if (schema.layout_only) {
+        return {.header = field_mask_nodes(schema, standard_library)};
+    }
     LoweredSoa lowered;
     if (schema.emits_vector_storage()) {
-        lowered = standard_library ? lower_native_soa(schema, schemas, types)
-                                   : lower_soa_impl(schema, types, {});
+        auto const id{type_graph.find_declared(module_name, schema.name)};
+        auto const constructor{
+            id ? std::get<lispb::schema::SoaType>(type_graph.type(*id).definition)
+                     .equivalent_constructor.value_or("")
+               : std::string{}};
+        lowered = standard_library
+                    ? lower_native_soa(schema, schemas, types, false, {}, constructor)
+                    : lower_soa_impl(schema, types, {}, &schemas);
     }
-    if (standard_library && schema.field_mask_name.has_value()) {
+    if (schema.field_mask_name.has_value()) {
         NodeListBuilder header;
-        header.append(field_mask_nodes(schema, true))
+        header.append(field_mask_nodes(schema, standard_library))
             .new_lines(2)
             .append(std::move(lowered.header));
         lowered.header = header.build();
@@ -249,18 +273,23 @@ auto lower_one_soa(SoaSchema const& schema,
     }
     if (schema.single_allocation.has_value()) {
         NodeListBuilder header;
-        header.append(std::move(lowered.header))
-            .new_lines(2)
-            .append(lower_single_allocation_nodes(
-                schema, schemas, types, type_graph, module_name, backend));
+        NodeListBuilder source;
+        header.append(std::move(lowered.header));
+        source.append(std::move(lowered.source));
+        auto append = [&](SoaSchema const& item, bool const shared) {
+            auto compact{lower_single_allocation(
+                item, schemas, types, type_graph, module_name, backend, shared)};
+            header.new_lines(2).append(std::move(compact.header));
+            source.new_lines(2).append(std::move(compact.source));
+        };
+        append(schema, true);
         for (auto const& variant : schema.single_allocation_variants) {
             auto copy{schema};
             copy.single_allocation = variant.name;
             copy.single_allocation_allocator = variant.allocator;
-            header.new_lines(2).append(lower_single_allocation_nodes(
-                copy, schemas, types, type_graph, module_name, backend));
+            append(copy, false);
         }
-        lowered.header = header.build();
+        lowered = {header.build(), source.build()};
     }
     return lowered;
 }

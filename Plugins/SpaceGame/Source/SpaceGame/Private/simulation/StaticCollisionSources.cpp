@@ -11,8 +11,8 @@
 #include "Engine/EngineTypes.h"
 
 namespace ml::ioj {
-void FStaticCollisionSources::add(UPrimitiveComponent* component,
-                                  ECollisionEnabled::Type const original_collision_mode) {
+auto FStaticCollisionSources::add(UPrimitiveComponent* component,
+                                  ECollisionEnabled::Type const original_collision_mode) -> void {
     components.Add(component);
     original_collision_modes.Add(original_collision_mode);
 }

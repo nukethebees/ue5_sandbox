@@ -1390,7 +1390,7 @@ TEST(SourceLoader, AcceptsEmptyCppBodyAndRejectsWrongRawTag) {
 )");
     auto const manifest{files.load()};
     auto const& function{schema_at<SoaSchema>(manifest, 0).functions[0]};
-    EXPECT_TRUE(function.body_lines.empty());
+    EXPECT_EQ(function.body_lines, std::vector<std::string>{""});
 
     files.write_root(R"(
 (module example
@@ -1460,6 +1460,53 @@ TEST(SourceLoader, SettingsDeviceDefaultsToShared) {
     auto const manifest{files.load()};
     auto const& module{std::get<SettingsModuleSchema>(manifest.modules.front())};
     EXPECT_EQ(module.settings_list.front().device, SettingDevice::shared);
+}
+
+TEST(SourceLoader, SingleOnlyLogicalApiAndAllocatorFieldsArePreserved) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(module api :header "Api.h" :source "Api.cpp" :backend standard-library
+  (struct Rows :view-name Values :const-view-name ConstValues
+    :export-specifier API :using-declarations ("Value = float")
+    :operations (set-num append-from) :equivalent-type ValueRow
+    :single-allocation-allocator Allocator
+    (member values array float)
+    (function first float :const true :body #cpp{return $column(values)[0];}cpp#)
+    (function noop void :body ())
+    (view-function read float :body #cpp{return $column(values)[0];}cpp#)
+    (mutable-view-function write void :body #cpp{$column(values)[0] = 1;}cpp#)
+    (single-allocation Owner)))
+)");
+    auto const manifest{files.load()};
+    auto const& schema{schema_at<SoaSchema>(manifest, 0)};
+    EXPECT_EQ(schema.selected_storage(), SoaStorage::single_allocation);
+    EXPECT_EQ(schema.single_allocation_allocator->name, "Allocator");
+    ASSERT_EQ(schema.const_view_functions.size(), 1U);
+    EXPECT_TRUE(schema.const_view_functions.front().is_const);
+    ASSERT_EQ(schema.mutable_view_functions.size(), 1U);
+    auto const output{render_modules(lower_modules(manifest)).front().content};
+    EXPECT_NE(output.find("struct API Owner"), std::string::npos);
+    EXPECT_NE(output.find("Allocator::allocate"), std::string::npos);
+    EXPECT_NE(output.find("return this->values()[0];"), std::string::npos);
+    EXPECT_EQ(output.find("struct Rows {"), std::string::npos);
+    EXPECT_NE(output.find("void noop() {"), std::string::npos);
+}
+
+TEST(SourceLoader, ReadOnlyViewFunctionRejectsMutableReceiver) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(module api :header "Api.h" :backend standard-library
+  (struct Rows
+    (member values array float)
+    (view-function read float :const false :body #cpp{return 0;}cpp#)
+    (single-allocation Owner)))
+)");
+    try {
+        static_cast<void>(files.load());
+        FAIL() << "Expected a const receiver diagnostic";
+    } catch (ManifestError const& error) {
+        EXPECT_TRUE(std::string{error.what()}.contains("view-function must be const"));
+    }
 }
 
 } // namespace

@@ -10,6 +10,7 @@
 #include "Containers/ArrayView.h"
 
 namespace ml::sandbox_ismc {
+
 auto InstanceDataConstView::get_view() const -> ConstView {
     return get_view(0, num());
 }

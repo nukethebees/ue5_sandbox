@@ -9,7 +9,26 @@
 #include "SandboxCore/soa_storage_ops.h"
 
 namespace codegen_compile_fixture {
-float FRows::weight_sum() {
+
+auto ApiConstView::first_x() const -> float {
+    return this->view_positions().xs()[0];
+}
+
+auto ApiView::first_x() const -> float {
+    return this->view_positions().xs()[0];
+}
+
+auto ApiOwner::total() const -> Value {
+    auto values = get_view().values();
+    float result{};
+    auto const count = num();
+    for (std::int32_t i{}; i < count; ++i) {
+        result += values[i];
+    }
+    return result;
+}
+
+auto FRows::weight_sum() -> float {
     return weights[0] + weights[1];
 }
 

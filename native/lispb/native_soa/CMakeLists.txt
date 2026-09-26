@@ -1,6 +1,6 @@
 set(NATIVE_SOA_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/generated")
 add_custom_command(
-  OUTPUT "${NATIVE_SOA_GENERATED}/native_soa_types.h"
+  OUTPUT "${NATIVE_SOA_GENERATED}/native_soa_types.h" "${NATIVE_SOA_GENERATED}/native_soa_types.cpp"
   COMMAND lispb generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
@@ -29,12 +29,12 @@ target_include_directories(native-soa INTERFACE "${PROJECT_SOURCE_DIR}/native/co
 target_sources(native-soa INTERFACE "${NATIVE_SOA_GENERATED}/native_soa_types.h")
 target_link_libraries(native-soa INTERFACE sandbox::handmade_math sandbox::native_defaults)
 
-add_executable(native-soa-tests tests.cpp)
+add_executable(native-soa-tests tests.cpp "${NATIVE_SOA_GENERATED}/native_soa_types.cpp")
 target_link_libraries(native-soa-tests PRIVATE native-soa GTest::gtest_main)
 add_test(NAME native-soa-tests COMMAND native-soa-tests)
 set_tests_properties(native-soa-tests PROPERTIES LABELS "unit;all;native;native-soa")
 
-add_executable(native-soa-tests-mimalloc tests.cpp)
+add_executable(native-soa-tests-mimalloc tests.cpp "${NATIVE_SOA_GENERATED}/native_soa_types.cpp")
 target_compile_definitions(native-soa-tests-mimalloc PRIVATE NATIVE_SOA_MIMALLOC=1)
 target_link_libraries(native-soa-tests-mimalloc PRIVATE native-soa GTest::gtest_main sandbox::mimalloc)
 target_link_libraries(native-soa-tests-mimalloc PRIVATE

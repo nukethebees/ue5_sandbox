@@ -59,6 +59,13 @@ auto PhysicalFactsResolver::resolve(lispb::schema::ResolvedTypeRef const& use)
 
 auto PhysicalFactsResolver::resolve(lispb::schema::TypeId const type) -> PhysicalFactsResult {
     PhysicalFactsResult result{};
+    auto const& node{types_.type(type)};
+    if (node.cpp_spelling.empty()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::warning,
+             "Logical layout schema '" + node.identity.name + "' has no C++ owner."});
+        return result;
+    }
     std::vector<lispb::schema::TypeId> active;
     result.facts = facts_for(type, active, result.diagnostics, types_.type(type).cpp_spelling);
     return result;
@@ -212,6 +219,9 @@ auto PhysicalFactsResolver::facts_for(lispb::schema::TypeId const type,
     } else if (auto const* scalar{std::get_if<lispb::schema::IntegerScalarType>(&node.definition)};
                scalar != nullptr && scalar->cpp_representation.has_value()) {
         facts = facts_for(*scalar->cpp_representation, active, diagnostics, context);
+    } else if (auto const* soa{std::get_if<lispb::schema::SoaType>(&node.definition)};
+               soa != nullptr && !node.cpp_spelling.empty()) {
+        facts = lookup(node.cpp_spelling, diagnostics, context);
     } else {
         diagnostics.push_back({DiagnosticSeverity::warning,
                                context + " has no supported complete-object representation."});

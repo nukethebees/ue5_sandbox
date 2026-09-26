@@ -21,7 +21,6 @@ struct InstanceDataConstView;
 struct SANDBOXISMC_API InstanceDataConstView {
     using View = InstanceDataView;
     using ConstView = InstanceDataConstView;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.positions, self.rotations, self.scales);
@@ -55,7 +54,6 @@ struct SANDBOXISMC_API InstanceDataView {
         rotations[index] = new_rotations;
         scales[index] = new_scales;
     }
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.positions, self.rotations, self.scales);
@@ -85,7 +83,6 @@ struct SANDBOXISMC_API InstanceDataView {
 struct SANDBOXISMC_API InstanceData {
     using View = InstanceDataView;
     using ConstView = InstanceDataConstView;
-
     void set(int32 const index,
              FVector3f const new_positions,
              FQuat4f const new_rotations,

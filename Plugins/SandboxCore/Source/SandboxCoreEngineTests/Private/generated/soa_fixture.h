@@ -16,16 +16,19 @@
 #include "SandboxCore/soa_storage_ops.h"
 #include "Templates/MemoryOps.h"
 
+#include <cstdint>
+#include <type_traits>
 #include <utility>
 
 namespace ml::soa_test_fixture {
+struct ApiOwner;
+
 struct VectorsView;
 struct VectorsConstView;
 
 struct VectorsConstView {
     using View = VectorsView;
     using ConstView = VectorsConstView;
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.xs, self.ys, self.zs);
@@ -56,7 +59,6 @@ struct VectorsView {
         ys[index] = new_ys;
         zs[index] = new_zs;
     }
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.xs, self.ys, self.zs);
@@ -86,7 +88,6 @@ struct VectorsView {
 struct Vectors {
     using View = VectorsView;
     using ConstView = VectorsConstView;
-
     void set(int32 const index, float const new_xs, float const new_ys, float const new_zs) {
         xs[index] = new_xs;
         ys[index] = new_ys;
@@ -305,7 +306,21 @@ inline RowsSingleConstView::RowsSingleConstView(RowsSingleView const& other)
     : Base{other} {}
 struct SingleRows
     : protected ml::soa_storage::StorageState
-    , ml::soa_storage::StorageOperations {
+    , private ml::soa_storage::StorageOperations {
+    using Operations = ml::soa_storage::StorageOperations;
+    using Operations::add_defaulted;
+    using Operations::add_uninitialised;
+    using Operations::allocated_bytes;
+    using Operations::append_from;
+    using Operations::capacity;
+    using Operations::copy_element;
+    using Operations::copy_elements;
+    using Operations::is_empty;
+    using Operations::num;
+    using Operations::remove_at_swap;
+    using Operations::reserve;
+    using Operations::reset;
+    using Operations::set_num;
     using Layout = RowsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -526,5 +541,810 @@ struct SingleRows
     {
         return {&self, offset, count};
     }
+};
+
+struct ApiPair {
+    float x;
+
+    float y;
+};
+
+enum class ApiField : uint8 {
+    Values = 0,
+    Count = static_cast<uint8>(Values) + 1,
+};
+
+struct ApiMask {
+    inline static constexpr int32 field_count{static_cast<int32>(ApiField::Count)};
+    static_assert(field_count <= 64, "Field mask exceeds 64 bits.");
+    using storage_type = std::conditional_t<
+        field_count <= 8,
+        uint8,
+        std::conditional_t<field_count <= 16,
+                           uint16,
+                           std::conditional_t<field_count <= 32, uint32, uint64>>>;
+
+    constexpr ApiMask() noexcept = default;
+    explicit constexpr ApiMask(storage_type const value) noexcept
+        : value_{value} {}
+
+    [[nodiscard]] constexpr auto value() const noexcept -> storage_type { return value_; }
+    [[nodiscard]] constexpr auto is_empty() const noexcept -> bool { return value_ == 0; }
+    [[nodiscard]] constexpr auto has(ApiField const field) const noexcept -> bool {
+        return (value_ & bit(field)) != 0;
+    }
+    [[nodiscard]] static constexpr auto index(ApiField const field) noexcept -> int32 {
+        return static_cast<int32>(field);
+    }
+    constexpr void set(ApiField const field) noexcept { value_ |= bit(field); }
+    constexpr void set(ApiMask const fields) noexcept { value_ |= fields.value_; }
+    constexpr void clear(ApiField const field) noexcept {
+        value_ = static_cast<storage_type>(value_ & ~bit(field));
+    }
+  private:
+    [[nodiscard]] static constexpr auto bit(ApiField const field) noexcept -> storage_type {
+        return static_cast<storage_type>(uint64{1} << static_cast<uint8>(field));
+    }
+
+    storage_type value_{};
+};
+static_assert(sizeof(ApiMask) == sizeof(ApiMask::storage_type));
+static_assert(std::is_trivially_copyable_v<ApiMask>);
+
+struct ApiView;
+struct ApiConstView;
+struct ApiRowsSingleLayout {
+    using size_type = int32;
+    using byte_size_type = SIZE_T;
+
+    inline static constexpr size_type capacity_granularity{
+        ml::soa_storage::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
+
+    template <typename T>
+    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+    inline static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{};
+
+    inline static constexpr ColLayout<float> ValuesColumn{LayoutStart};
+    inline static constexpr ColLayout<ApiMask> MasksColumn{ValuesColumn};
+    inline static constexpr ColLayout<float> PositionsXsColumn{MasksColumn};
+    inline static constexpr ColLayout<float> PositionsYsColumn{PositionsXsColumn};
+
+    inline static constexpr byte_size_type allocation_alignment{
+        PositionsYsColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::soa_storage::capacity_block_bound(PositionsYsColumn)};
+    inline static constexpr size_type max_capacity{
+        ml::soa_storage::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : PositionsYsColumn.data_end(blocks);
+    }
+    static_assert(
+        allocation_alignment <= std::numeric_limits<uint32>::max(),
+        "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
+    static_assert(max_capacity >= capacity_granularity);
+};
+
+struct ApiView_positions;
+struct ApiConstView_positions;
+template <bool Const>
+struct ApiView_positionsImpl : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = ApiView_positions;
+    using ConstView = ApiConstView_positions;
+    ApiView_positionsImpl() = default;
+    template <bool Enabled = Const>
+    ApiView_positionsImpl(ApiView_positionsImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::offset_;
+    using Base::state_;
+  public:
+    auto xs() const -> TArrayView<Element<float>> {
+        return {this->template column_data<float>(
+                    ApiRowsSingleLayout::PositionsXsColumn.offset(capacity_blocks())),
+                count_};
+    }
+    auto ys() const -> TArrayView<Element<float>> {
+        return {this->template column_data<float>(
+                    ApiRowsSingleLayout::PositionsYsColumn.offset(capacity_blocks())),
+                count_};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto column_0{xs()};
+        auto column_1{ys()};
+        return std::forward<Func>(func)(column_0, column_1);
+    }
+};
+struct ApiConstView_positions : ApiView_positionsImpl<true> {
+    using Base = ApiView_positionsImpl<true>;
+    using Base::Base;
+    using View = ApiView_positions;
+    using ConstView = ApiConstView_positions;
+    ApiConstView_positions() = default;
+    ApiConstView_positions(ApiView_positions const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    float x_at(std::int32_t index) const { return this->xs()[index]; }
+    using equivalent_type = ApiPair;
+    auto operator[](std::int32_t index) const -> equivalent_type {
+        return equivalent_type{xs()[index], ys()[index]};
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<ApiConstView_positions>());
+struct ApiView_positions : ApiView_positionsImpl<false> {
+    using Base = ApiView_positionsImpl<false>;
+    using Base::Base;
+    using View = ApiView_positions;
+    using ConstView = ApiConstView_positions;
+    ApiView_positions() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    float x_at(std::int32_t index) const { return this->xs()[index]; }
+    void shift_x(float amount) {
+        auto xs = this->xs();
+        auto const count = num();
+        for (std::int32_t i{}; i < count; ++i) {
+            xs[i] += amount;
+        }
+    }
+    using equivalent_type = ApiPair;
+    auto operator[](std::int32_t index) const -> equivalent_type {
+        return equivalent_type{xs()[index], ys()[index]};
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<ApiView_positions>());
+inline ApiConstView_positions::ApiConstView_positions(ApiView_positions const& other)
+    : Base{other} {}
+template <bool Const>
+struct ApiViewImpl : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = ApiView;
+    using ConstView = ApiConstView;
+    ApiViewImpl() = default;
+    template <bool Enabled = Const>
+    ApiViewImpl(ApiViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::offset_;
+    using Base::state_;
+  public:
+    auto values() const -> TArrayView<Element<float>> {
+        return {this->template column_data<float>(
+                    ApiRowsSingleLayout::ValuesColumn.offset(capacity_blocks())),
+                count_};
+    }
+    auto masks() const -> TArrayView<Element<ApiMask>> {
+        return {this->template column_data<ApiMask>(
+                    ApiRowsSingleLayout::MasksColumn.offset(capacity_blocks())),
+                count_};
+    }
+    auto view_positions() const
+        -> std::conditional_t<Const, ApiConstView_positions, ApiView_positions> {
+        return {state_, offset_, count_};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto column_0{values()};
+        auto column_1{masks()};
+        auto column_2{view_positions().xs()};
+        auto column_3{view_positions().ys()};
+        return std::forward<Func>(func)(column_0, column_1, column_2, column_3);
+    }
+};
+struct SANDBOXCOREENGINETESTS_API ApiConstView : ApiViewImpl<true> {
+    using Base = ApiViewImpl<true>;
+    using Base::Base;
+    using View = ApiView;
+    using ConstView = ApiConstView;
+    ApiConstView() = default;
+    ApiConstView(ApiView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    using Value = float;
+    float first_x() const;
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<ApiConstView>());
+struct SANDBOXCOREENGINETESTS_API ApiView : ApiViewImpl<false> {
+    using Base = ApiViewImpl<false>;
+    using Base::Base;
+    using View = ApiView;
+    using ConstView = ApiConstView;
+    ApiView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    using Value = float;
+    float first_x() const;
+    void assign_first(float value) { this->values()[0] = value; }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<ApiView>());
+inline ApiConstView::ApiConstView(ApiView const& other)
+    : Base{other} {}
+struct SANDBOXCOREENGINETESTS_API ApiOwner
+    : protected ml::soa_storage::StorageState
+    , private ml::soa_storage::StorageOperations {
+    using Operations = ml::soa_storage::StorageOperations;
+    using Operations::allocated_bytes;
+    using Operations::append_from;
+    using Operations::capacity;
+    using Operations::copy_element;
+    using Operations::copy_elements;
+    using Operations::is_empty;
+    using Operations::num;
+    using Operations::reserve;
+    using Operations::set_num;
+    using Layout = ApiRowsSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+    using View = ApiView;
+    using ConstView = ApiConstView;
+    template <typename Source>
+    inline static constexpr bool accepts_source = requires(Source const& source) {
+        { source.num() } -> std::convertible_to<size_type>;
+        source.validate();
+        { ml::soa_storage::source_data(source.values()) } -> std::convertible_to<float const*>;
+        { ml::soa_storage::source_data(source.masks()) } -> std::convertible_to<ApiMask const*>;
+        {
+            ml::soa_storage::source_data(source.view_positions().xs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::soa_storage::source_data(source.view_positions().ys())
+        } -> std::convertible_to<float const*>;
+    };
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    ApiOwner() noexcept = default;
+    ~ApiOwner() { ml::soa_storage::MimallocStorageAllocator::free(data_); }
+    ApiOwner(ApiOwner const&) = delete;
+    auto operator=(ApiOwner const&) -> ApiOwner& = delete;
+    ApiOwner(ApiOwner&& other) noexcept
+        : StorageState{std::exchange(other.data_, nullptr),
+                       std::exchange(other.num_, 0),
+                       std::exchange(other.capacity_, 0)} {}
+    auto operator=(ApiOwner&& other) noexcept -> ApiOwner& {
+        if (this != &other) {
+            ml::soa_storage::MimallocStorageAllocator::free(data_);
+            data_ = std::exchange(other.data_, nullptr);
+            num_ = std::exchange(other.num_, 0);
+            capacity_ = std::exchange(other.capacity_, 0);
+        }
+        return *this;
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<float>* values{};
+        Element<ApiMask>* masks{};
+        Element<float>* positions_xs{};
+        Element<float>* positions_ys{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (values == nullptr) {
+                return {};
+            }
+            return {values + offset, masks + offset, positions_xs + offset, positions_ys + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    friend struct ml::soa_storage::StorageOperations;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ml::soa_storage::LayoutCursor cursor{blocks};
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
+            using Column = std::remove_cvref_t<decltype(column)>;
+            using Pointer = std::conditional_t<std::is_const_v<Byte>,
+                                               typename Column::const_pointer,
+                                               typename Column::pointer>;
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
+        };
+        return {pointer_at(Layout::ValuesColumn, cursor.advance(Layout::ValuesColumn)),
+                pointer_at(Layout::MasksColumn, cursor.advance(Layout::MasksColumn)),
+                pointer_at(Layout::PositionsXsColumn, cursor.advance(Layout::PositionsXsColumn)),
+                pointer_at(Layout::PositionsYsColumn, cursor.advance(Layout::PositionsYsColumn))};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        ml::soa_storage::default_construct_n(columns.values, count);
+        ml::soa_storage::default_construct_n(columns.masks, count);
+        ml::soa_storage::default_construct_n(columns.positions_xs, count);
+        ml::soa_storage::default_construct_n(columns.positions_ys, count);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        ml::soa_storage::copy_n(columns.values + index, columns.values + source, move_count);
+        ml::soa_storage::copy_n(columns.masks + index, columns.masks + source, move_count);
+        ml::soa_storage::copy_n(
+            columns.positions_xs + index, columns.positions_xs + source, move_count);
+        ml::soa_storage::copy_n(
+            columns.positions_ys + index, columns.positions_ys + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_,
+            indices,
+            ml::soa_storage::require,
+            [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count) {
+        auto const destination{get_data(first)};
+        ml::soa_storage::copy_n(destination.values,
+                                ml::soa_storage::source_data(source.values()) + source_first,
+                                count);
+        ml::soa_storage::copy_n(
+            destination.masks, ml::soa_storage::source_data(source.masks()) + source_first, count);
+        ml::soa_storage::copy_n(destination.positions_xs,
+                                ml::soa_storage::source_data(source.view_positions().xs()) +
+                                    source_first,
+                                count);
+        ml::soa_storage::copy_n(destination.positions_ys,
+                                ml::soa_storage::source_data(source.view_positions().ys()) +
+                                    source_first,
+                                count);
+    }
+    void reallocate(size_type const new_capacity) {
+        auto* const new_data{ml::soa_storage::MimallocStorageAllocator::allocate(
+            layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
+            static_cast<uint32>(allocation_alignment))};
+        if (num_ > 0) {
+            auto const old_blocks{capacity_blocks()};
+            auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+            auto const source{
+                make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+            auto const destination{make_data_unchecked(new_data, new_blocks)};
+            ml::soa_storage::copy_n(destination.values, source.values, num_);
+            ml::soa_storage::copy_n(destination.masks, source.masks, num_);
+            ml::soa_storage::copy_n(destination.positions_xs, source.positions_xs, num_);
+            ml::soa_storage::copy_n(destination.positions_ys, source.positions_ys, num_);
+        }
+        ml::soa_storage::MimallocStorageAllocator::free(data_);
+        data_ = new_data;
+        capacity_ = new_capacity;
+    }
+  public:
+    template <typename Self>
+    using ViewFor =
+        std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, ConstView, View>;
+    template <typename Self>
+    auto get_view(this Self&& self) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, 0, self.num()};
+    }
+    template <typename Self>
+    auto get_view(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, offset, count};
+    }
+    template <typename Self>
+    auto slice(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view(offset, count);
+    }
+    template <typename Self>
+    auto left(this Self&& self, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view().left(count);
+    }
+    template <typename Self>
+    auto right(this Self&& self, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view().right(count);
+    }
+    template <typename Self>
+    auto get_const_view(this Self&& self) -> ConstView
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, 0, self.num()};
+    }
+    template <typename Self>
+    auto get_const_view(this Self&& self, size_type offset, size_type count) -> ConstView
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, offset, count};
+    }
+    using Value = float;
+    float first_value() const { return get_view().values()[0]; }
+    Value total() const;
+};
+
+struct EquivalentRowsSingleView;
+struct EquivalentRowsSingleConstView;
+struct EquivalentRowsSingleLayout {
+    using size_type = int32;
+    using byte_size_type = SIZE_T;
+
+    inline static constexpr size_type capacity_granularity{
+        ml::soa_storage::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
+
+    template <typename T>
+    using ColLayout = ml::soa_storage::ColumnLayout<T>;
+    inline static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{};
+
+    inline static constexpr ColLayout<float> XsColumn{LayoutStart};
+    inline static constexpr ColLayout<float> YsColumn{XsColumn};
+
+    inline static constexpr byte_size_type allocation_alignment{YsColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::soa_storage::capacity_block_bound(YsColumn)};
+    inline static constexpr size_type max_capacity{
+        ml::soa_storage::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : YsColumn.data_end(blocks);
+    }
+    static_assert(
+        allocation_alignment <= std::numeric_limits<uint32>::max(),
+        "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
+    static_assert(max_capacity >= capacity_granularity);
+};
+
+template <bool Const>
+struct EquivalentRowsSingleViewImpl : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = EquivalentRowsSingleView;
+    using ConstView = EquivalentRowsSingleConstView;
+    EquivalentRowsSingleViewImpl() = default;
+    template <bool Enabled = Const>
+    EquivalentRowsSingleViewImpl(EquivalentRowsSingleViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::offset_;
+    using Base::state_;
+  public:
+    auto xs() const -> TArrayView<Element<float>> {
+        return {this->template column_data<float>(
+                    EquivalentRowsSingleLayout::XsColumn.offset(capacity_blocks())),
+                count_};
+    }
+    auto ys() const -> TArrayView<Element<float>> {
+        return {this->template column_data<float>(
+                    EquivalentRowsSingleLayout::YsColumn.offset(capacity_blocks())),
+                count_};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto column_0{xs()};
+        auto column_1{ys()};
+        return std::forward<Func>(func)(column_0, column_1);
+    }
+};
+struct EquivalentRowsSingleConstView : EquivalentRowsSingleViewImpl<true> {
+    using Base = EquivalentRowsSingleViewImpl<true>;
+    using Base::Base;
+    using View = EquivalentRowsSingleView;
+    using ConstView = EquivalentRowsSingleConstView;
+    EquivalentRowsSingleConstView() = default;
+    EquivalentRowsSingleConstView(EquivalentRowsSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    using equivalent_type = ApiPair;
+    auto operator[](std::int32_t index) const -> equivalent_type {
+        return equivalent_type{xs()[index], ys()[index]};
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<EquivalentRowsSingleConstView>());
+struct EquivalentRowsSingleView : EquivalentRowsSingleViewImpl<false> {
+    using Base = EquivalentRowsSingleViewImpl<false>;
+    using Base::Base;
+    using View = EquivalentRowsSingleView;
+    using ConstView = EquivalentRowsSingleConstView;
+    EquivalentRowsSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    using equivalent_type = ApiPair;
+    auto operator[](std::int32_t index) const -> equivalent_type {
+        return equivalent_type{xs()[index], ys()[index]};
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<EquivalentRowsSingleView>());
+inline EquivalentRowsSingleConstView::EquivalentRowsSingleConstView(
+    EquivalentRowsSingleView const& other)
+    : Base{other} {}
+struct EquivalentOwner
+    : protected ml::soa_storage::StorageState
+    , private ml::soa_storage::StorageOperations {
+    using Operations = ml::soa_storage::StorageOperations;
+    using Operations::allocated_bytes;
+    using Operations::capacity;
+    using Operations::is_empty;
+    using Operations::num;
+    using Operations::set_num;
+    using Layout = EquivalentRowsSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+    using View = EquivalentRowsSingleView;
+    using ConstView = EquivalentRowsSingleConstView;
+    template <typename Source>
+    inline static constexpr bool accepts_source = requires(Source const& source) {
+        { source.num() } -> std::convertible_to<size_type>;
+        source.validate();
+        { ml::soa_storage::source_data(source.xs()) } -> std::convertible_to<float const*>;
+        { ml::soa_storage::source_data(source.ys()) } -> std::convertible_to<float const*>;
+    };
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    EquivalentOwner() noexcept = default;
+    ~EquivalentOwner() { ml::soa_storage::MimallocStorageAllocator::free(data_); }
+    EquivalentOwner(EquivalentOwner const&) = delete;
+    auto operator=(EquivalentOwner const&) -> EquivalentOwner& = delete;
+    EquivalentOwner(EquivalentOwner&& other) noexcept
+        : StorageState{std::exchange(other.data_, nullptr),
+                       std::exchange(other.num_, 0),
+                       std::exchange(other.capacity_, 0)} {}
+    auto operator=(EquivalentOwner&& other) noexcept -> EquivalentOwner& {
+        if (this != &other) {
+            ml::soa_storage::MimallocStorageAllocator::free(data_);
+            data_ = std::exchange(other.data_, nullptr);
+            num_ = std::exchange(other.num_, 0);
+            capacity_ = std::exchange(other.capacity_, 0);
+        }
+        return *this;
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<float>* xs{};
+        Element<float>* ys{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (xs == nullptr) {
+                return {};
+            }
+            return {xs + offset, ys + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    friend struct ml::soa_storage::StorageOperations;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ml::soa_storage::LayoutCursor cursor{blocks};
+        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
+            using Column = std::remove_cvref_t<decltype(column)>;
+            using Pointer = std::conditional_t<std::is_const_v<Byte>,
+                                               typename Column::const_pointer,
+                                               typename Column::pointer>;
+            return std::launder(reinterpret_cast<Pointer>(data + offset));
+        };
+        return {pointer_at(Layout::XsColumn, cursor.advance(Layout::XsColumn)),
+                pointer_at(Layout::YsColumn, cursor.advance(Layout::YsColumn))};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        ml::soa_storage::default_construct_n(columns.xs, count);
+        ml::soa_storage::default_construct_n(columns.ys, count);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        ml::soa_storage::copy_n(columns.xs + index, columns.xs + source, move_count);
+        ml::soa_storage::copy_n(columns.ys + index, columns.ys + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_,
+            indices,
+            ml::soa_storage::require,
+            [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count) {
+        auto const destination{get_data(first)};
+        ml::soa_storage::copy_n(
+            destination.xs, ml::soa_storage::source_data(source.xs()) + source_first, count);
+        ml::soa_storage::copy_n(
+            destination.ys, ml::soa_storage::source_data(source.ys()) + source_first, count);
+    }
+    void reallocate(size_type const new_capacity) {
+        auto* const new_data{ml::soa_storage::MimallocStorageAllocator::allocate(
+            layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
+            static_cast<uint32>(allocation_alignment))};
+        if (num_ > 0) {
+            auto const old_blocks{capacity_blocks()};
+            auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+            auto const source{
+                make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+            auto const destination{make_data_unchecked(new_data, new_blocks)};
+            ml::soa_storage::copy_n(destination.xs, source.xs, num_);
+            ml::soa_storage::copy_n(destination.ys, source.ys, num_);
+        }
+        ml::soa_storage::MimallocStorageAllocator::free(data_);
+        data_ = new_data;
+        capacity_ = new_capacity;
+    }
+  public:
+    template <typename Self>
+    using ViewFor =
+        std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, ConstView, View>;
+    template <typename Self>
+    auto get_view(this Self&& self) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, 0, self.num()};
+    }
+    template <typename Self>
+    auto get_view(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, offset, count};
+    }
+    template <typename Self>
+    auto slice(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view(offset, count);
+    }
+    template <typename Self>
+    auto left(this Self&& self, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view().left(count);
+    }
+    template <typename Self>
+    auto right(this Self&& self, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view().right(count);
+    }
+    template <typename Self>
+    auto get_const_view(this Self&& self) -> ConstView
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, 0, self.num()};
+    }
+    template <typename Self>
+    auto get_const_view(this Self&& self, size_type offset, size_type count) -> ConstView
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, offset, count};
+    }
+    using equivalent_type = ApiPair;
+    auto operator[](std::int32_t index) const -> equivalent_type { return get_const_view()[index]; }
+};
+
+struct ApiReference {
+    ml::soa_test_fixture::ApiOwner* owner;
 };
 } // namespace ml::soa_test_fixture

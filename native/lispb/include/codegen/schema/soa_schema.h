@@ -6,6 +6,7 @@
 #include <codegen/schema/storage_operation.h>
 #include <codegen/schema/type_ref.h>
 
+#include <algorithm>
 #include <optional>
 #include <string>
 #include <vector>
@@ -56,11 +57,31 @@ struct SoaSchema {
     std::optional<std::string> field_enum_name;
     std::vector<std::string> vector_components;
     std::optional<SoaStorage> storage;
+    std::vector<FunctionSchema> const_view_functions;
+
+    auto uses_compact_vector_runtime() const -> bool {
+        return !vector_components.empty() && !equivalent_type && const_view_functions.empty() &&
+               mutable_view_functions.empty() && using_declarations.empty() && !export_specifier;
+    }
+
+    auto selected_storage() const -> SoaStorage {
+        return storage.value_or(single_allocation ? SoaStorage::single_allocation
+                                                  : SoaStorage::vector);
+    }
+    auto has_operation(StorageOperation operation) const -> bool {
+        return std::ranges::find(operations, operation) != operations.end();
+    }
+    auto compact_view_name() const -> std::string {
+        return emits_vector_storage() ? name + "SingleView"
+                                      : view_name.value_or(name + "SingleView");
+    }
+    auto compact_const_view_name() const -> std::string {
+        return emits_vector_storage() ? name + "SingleConstView"
+                                      : const_view_name.value_or(name + "SingleConstView");
+    }
 
     auto emits_vector_storage() const -> bool {
-        return !layout_only && storage.value_or(single_allocation ? SoaStorage::single_allocation
-                                                                  : SoaStorage::vector) !=
-                                   SoaStorage::single_allocation;
+        return !layout_only && selected_storage() != SoaStorage::single_allocation;
     }
 };
 

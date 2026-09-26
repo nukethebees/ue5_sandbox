@@ -742,7 +742,7 @@ TEST(Lowering, LowersCustomFunctionsToTheirRequestedFile) {
     EXPECT_NE(output.header.find("using Index = int32;"), std::string::npos);
     EXPECT_NE(output.header.find("return ids[0];"), std::string::npos);
     EXPECT_EQ(output.header.find("return helper(ids);"), std::string::npos);
-    EXPECT_NE(output.source.find("int32 FData::sum()"), std::string::npos);
+    EXPECT_NE(output.source.find("auto FData::sum() -> int32"), std::string::npos);
     EXPECT_NE(output.source.find("return helper(ids);"), std::string::npos);
     EXPECT_NE(output.source.find("#include \"Project/Helper.h\""), std::string::npos);
 }

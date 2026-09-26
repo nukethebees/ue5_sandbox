@@ -76,45 +76,6 @@ auto Sim::get_num_instances() const noexcept -> std::int32_t {
 }
 
 /* **************************************** */
-// Spawning
-/* **************************************** */
-auto Sim::spawn_instances(Vectors3fConstView const new_locations,
-                          std::span<float const> const new_yaws,
-                          std::span<std::int32_t const> const new_fire_point_indices)
-    -> std::span<EntityUniqueId const> {
-    SANDBOX_PROFILE_SCOPE("spinners::Sim::spawn_instances");
-    assert(simulation_clock.permits_preparation_mutation());
-
-    auto const n{new_locations.num()};
-
-    assert(new_yaws.size() == static_cast<std::size_t>(n));
-    assert(new_fire_point_indices.size() == static_cast<std::size_t>(n));
-
-    entities.add_uninitialised(n);
-    auto const appended{entities.right(n)};
-    auto const locations{appended.view_locations()};
-    auto const yaws{appended.yaws()};
-    auto const laser_cooldowns{appended.laser_cooldowns()};
-    auto const next_fire_point_indices{appended.next_fire_point_indices()};
-    auto const entity_ids{appended.entity_ids()};
-
-    for (std::int32_t i{}; i < n; ++i) {
-        set_vector(locations, i, new_locations[i]);
-        yaws[i] = new_yaws[i];
-        laser_cooldowns[i] = 0;
-        next_fire_point_indices[i] = new_fire_point_indices[i];
-    }
-
-    entities.get_const_view().validate();
-
-    for (std::int32_t i{0}; i < n; ++i) {
-        entity_ids[i] = ledger_.record_spawn(EntityType::TubeSpinner, Team::White, true);
-    }
-
-    return entity_ids;
-}
-
-/* **************************************** */
 // Firing
 /* **************************************** */
 void Sim::fire_lasers() {

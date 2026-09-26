@@ -33,6 +33,8 @@ struct SANDBOXCORE_API FVectors2fConstView {
         return (*this)[index];
     }
 
+    using value_type = float;
+    using size_type = TArray<value_type>::SizeType;
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.xs, self.ys);
@@ -69,13 +71,13 @@ struct SANDBOXCORE_API FVectors2fView {
         return (*this)[index];
     }
 
+    using value_type = float;
+    using size_type = TArray<value_type>::SizeType;
     void set(int32 const i, float const x, float const y) const {
         xs[i] = x;
         ys[i] = y;
     }
-
     void set(int32 const i, FVector2f const value) const { set(i, value.X, value.Y); }
-
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(self.xs, self.ys);
@@ -130,43 +132,32 @@ struct SANDBOXCORE_API FVectors2f {
     }
 
     using value_type = float;
-
     using size_type = TArray<value_type>::SizeType;
-
     auto get_data() -> Data { return Data{xs.GetData(), ys.GetData()}; }
-
     auto get_data() const -> ConstData { return ConstData{xs.GetData(), ys.GetData()}; }
-
     auto add(value_type const x, value_type const y) -> size_type {
         auto const index{xs.Add(x)};
         ys.Add(y);
         return index;
     }
-
     auto add(FVector2f const& value) -> size_type { return add(value.X, value.Y); }
-
     void set(int32 const i, value_type const x, value_type const y) {
         xs[i] = x;
         ys[i] = y;
     }
-
     void set(int32 const i, FVector2f const value) { set(i, value.X, value.Y); }
-
     void empty() {
         xs.Empty();
         ys.Empty();
     }
-
     void set_num_uninitialised(size_type const count) {
         xs.SetNumUninitialized(count);
         ys.SetNumUninitialized(count);
     }
-
     void add_zeroed(size_type const count) {
         xs.AddZeroed(count);
         ys.AddZeroed(count);
     }
-
     void reset();
 
     void reserve(int32 const count);

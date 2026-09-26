@@ -837,8 +837,9 @@ void render_quoted_list(std::ostringstream& output, std::vector<std::string> con
 
 void render_function(std::ostringstream& output,
                      codegen::FunctionSchema const& function,
-                     std::string_view const indent) {
-    output << indent << "(function " << function.name << ' '
+                     std::string_view const indent,
+                     std::string_view const kind = "function") {
+    output << indent << "(" << kind << " " << function.name << ' '
            << render_type_ref(function.return_type);
     if (!function.body_lines.empty()) {
         output << "\n" << indent << "  :body ";
@@ -2315,6 +2316,21 @@ auto render_soa(codegen::SoaSchema const& schema) -> std::string {
         output << '\n';
         render_function(output, function, "    ");
     }
+    for (auto const& function : schema.const_view_functions) {
+        output << '\n';
+        render_function(output, function, "    ", "view-function");
+    }
+    for (auto const& function : schema.mutable_view_functions) {
+        output << '\n';
+        render_function(output, function, "    ", "mutable-view-function");
+    }
+    if (schema.array_allocator) {
+        output << "\n    :array-allocator " << render_type_ref(*schema.array_allocator);
+    }
+    if (schema.single_allocation_allocator) {
+        output << "\n    :single-allocation-allocator "
+               << render_type_ref(*schema.single_allocation_allocator);
+    }
     if (schema.fixed.has_value()) {
         output << "\n    (fixed " << schema.fixed->storage_name;
         if (!schema.fixed->containers.empty()) {
@@ -3277,13 +3293,21 @@ auto patch_source_single_allocation(codegen::SoaSchema const& schema,
 auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                                      std::string_view const original)
     -> std::optional<std::string> {
-    if (!schema.mutable_view_functions.empty() || schema.array_allocator.has_value() ||
-        schema.single_allocation_allocator.has_value()) {
+    if (!schema.const_view_functions.empty() || !schema.mutable_view_functions.empty() ||
+        schema.array_allocator.has_value() || schema.single_allocation_allocator.has_value()) {
         return std::nullopt;
     }
     auto parsed{parse_owned_source_declaration(original, "struct")};
     if (!parsed.has_value()) {
         return std::nullopt;
+    }
+
+    for (auto const& child : parsed->children) {
+        if (child.head() == "view-function" || child.head() == "mutable-view-function" ||
+            child.token.text == ":array-allocator" ||
+            child.token.text == ":single-allocation-allocator") {
+            return std::nullopt;
+        }
     }
 
     std::vector<SourceReplacement> replacements;

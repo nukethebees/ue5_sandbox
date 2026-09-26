@@ -13,4 +13,52 @@
     :operations (all)
     (member bytes array uint8)
     (member nested nested Vectors :nested-schema Vectors)
-    (single-allocation SingleRows)))
+    (single-allocation SingleRows))
+  (record ApiPair (member x float) (member y float))
+  (struct ApiCoordinates
+    :layout-only true
+    :equivalent-type ApiPair
+    :vector-components (xs ys)
+    (member xs array float)
+    (member ys array float)
+    (view-function x_at float
+      (parameter index std::int32_t)
+      :body #cpp{return $column(xs)[index];}cpp#)
+    (mutable-view-function shift_x void
+      (parameter amount float)
+      :body #cpp{auto xs = $column(xs);
+auto const count = num();
+for (std::int32_t i{}; i < count; ++i) { xs[i] += amount; }}cpp#))
+  (struct ApiRows
+    :view-name ApiView
+    :const-view-name ApiConstView
+    :export-specifier SANDBOXCOREENGINETESTS_API
+    :operations (set-num reserve append-from copy-element)
+    :using-declarations ("Value = float")
+    :field-mask-name ApiMask
+    :field-enum-name ApiField
+    (member values array float :mask-field true)
+    (member masks array ApiMask)
+    (member positions nested ApiCoordinates :nested-schema ApiCoordinates)
+    (function first_value float :const true :inline true
+      :body #cpp{return $column(values)[0];}cpp#)
+    (function total Value :const true :definition-in-source true
+      :body #cpp{auto values = $column(values);
+float result{};
+auto const count = num();
+for (std::int32_t i{}; i < count; ++i) { result += values[i]; }
+return result;}cpp#)
+    (view-function first_x float :definition-in-source true
+      :body #cpp{return $column(positions.xs)[0];}cpp#)
+    (mutable-view-function assign_first void
+      (parameter value float)
+      :body #cpp{$column(values)[0] = value;}cpp#)
+    (single-allocation ApiOwner))
+  (struct EquivalentRows
+    :operations (set-num)
+    :equivalent-type ApiPair
+    (member xs array float)
+    (member ys array float)
+    (single-allocation EquivalentOwner))
+  (record ApiReference (member owner (type-ref ApiRows :suffix "*")))
+)

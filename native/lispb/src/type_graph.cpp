@@ -69,8 +69,9 @@ class TypeGraphBuilder {
                 if (!column.nested_type.has_value()) {
                     continue;
                 }
-                auto const& nested{graph_.type(*column.nested_type)};
-                if (column.semantic_type.cpp_type.spelling != nested.identity.name) {
+                if (column.semantic_type.type != *column.nested_type &&
+                    graph_.type(column.semantic_type.type).identity.name !=
+                        graph_.type(*column.nested_type).identity.name) {
                     throw std::invalid_argument{"Nested SOA type does not match nested_schema: " +
                                                 column.name};
                 }
@@ -86,7 +87,7 @@ class TypeGraphBuilder {
         }
     }
 
-    void validate_vector_equivalents() const {
+    void validate_vector_equivalents() {
         std::map<TypeId, SoaType const*> declared_vectors;
         for (auto const& node : graph_.types_) {
             auto const* soa{std::get_if<SoaType>(&node.definition)};
@@ -95,8 +96,8 @@ class TypeGraphBuilder {
                 declared_vectors.emplace(soa->equivalent_type->type, soa);
             }
         }
-        for (auto const& node : graph_.types_) {
-            auto const* soa{std::get_if<SoaType>(&node.definition)};
+        for (auto& node : graph_.types_) {
+            auto* soa{std::get_if<SoaType>(&node.definition)};
             if (soa == nullptr || soa->source_kind != SoaSourceKind::structure ||
                 soa->vector_components.empty() || !soa->equivalent_type.has_value()) {
                 continue;
@@ -106,6 +107,7 @@ class TypeGraphBuilder {
                 continue;
             }
             auto const& declared{*found->second};
+            soa->equivalent_constructor = declared.equivalent_constructor;
             if (soa->vector_components != declared.vector_components ||
                 soa->columns.size() != declared.columns.size()) {
                 throw std::invalid_argument{"SOA '" + node.identity.name +
@@ -153,17 +155,27 @@ class TypeGraphBuilder {
                  std::size_t const declaration_index,
                  codegen::ModuleSettings const& settings,
                  std::string const& name,
-                 Definition definition) {
+                 Definition definition,
+                 std::optional<std::string> const& physical_name = std::nullopt) {
         auto const namespace_name{settings.namespace_name.value_or("")};
         auto const id{add_type(TypeIdentity{.origin = TypeOrigin::declaration,
                                             .module_name = settings.name,
                                             .namespace_name = namespace_name,
                                             .name = name},
-                               qualified_name(settings, name),
+                               physical_name && physical_name->empty()
+                                   ? ""
+                                   : qualified_name(settings, physical_name.value_or(name)),
                                std::move(definition))};
         declarations_.push_back({id, module_index, declaration_index});
         graph_.declarations_by_module_name_.emplace(std::pair{settings.name, name}, id);
-        graph_.declarations_by_spelling_[graph_.type(id).cpp_spelling].push_back(id);
+        auto const& spelling{graph_.type(id).cpp_spelling};
+        if (!spelling.empty()) {
+            graph_.declarations_by_spelling_[spelling].push_back(id);
+        }
+        auto const logical{qualified_name(settings, name)};
+        if (logical != spelling) {
+            graph_.declarations_by_spelling_[logical].push_back(id);
+        }
         declarations_by_name_[name].push_back(id);
     }
 
@@ -237,11 +249,20 @@ class TypeGraphBuilder {
                         }
                     },
                     source)};
+                std::optional<std::string> physical_name;
+                if (auto const* soa{std::get_if<codegen::SoaSchema>(&source)}) {
+                    if (soa->layout_only) {
+                        physical_name = "";
+                    } else if (!soa->emits_vector_storage()) {
+                        physical_name = soa->single_allocation;
+                    }
+                }
                 declare(module_index,
                         index,
                         module->settings,
                         codegen::declaration_name(source),
-                        std::move(definition));
+                        std::move(definition),
+                        physical_name);
             }
         }
     }
@@ -344,8 +365,25 @@ class TypeGraphBuilder {
 
     auto resolve_ref(codegen::TypeRef const& reference, std::string const& module_name)
         -> ResolvedTypeRef {
-        auto const resolved{codegen::resolve_type_use(reference, manifest_.types)};
+        auto resolved{codegen::resolve_type_use(reference, manifest_.types)};
         if (auto const found{graph_.find_reference(reference, module_name)}) {
+            auto const& node{graph_.type(*found)};
+            auto const logical{node.identity.namespace_name.empty()
+                                   ? node.identity.name
+                                   : node.identity.namespace_name + "::" + node.identity.name};
+            if (std::holds_alternative<SoaType>(node.definition) && node.cpp_spelling != logical) {
+                if (node.cpp_spelling.empty()) {
+                    resolved.cpp_type.spelling.clear();
+                    resolved.physical = {.diagnostic = "Logical layout schema '" +
+                                                       node.identity.name + "' has no C++ owner"};
+                } else {
+                    auto canonical{reference};
+                    canonical.name = node.cpp_spelling;
+                    auto normalized{codegen::resolve_type_use(canonical, {})};
+                    resolved.cpp_type.spelling = std::move(normalized.cpp_type.spelling);
+                    resolved.physical = std::move(normalized.physical);
+                }
+            }
             return {.type = *found, .cpp_type = resolved.cpp_type, .physical = resolved.physical};
         }
         if (reference.name.starts_with('@')) {
@@ -409,6 +447,13 @@ class TypeGraphBuilder {
                                     for (auto const& name : function.dependencies) {
                                         registration(
                                             "view function " + function.name + " dependency", name);
+                                    }
+                                }
+                                for (auto const& function : soa->const_view_functions) {
+                                    for (auto const& name : function.dependencies) {
+                                        registration("const view function " + function.name +
+                                                         " dependency",
+                                                     name);
                                     }
                                 }
                             }
@@ -763,7 +808,8 @@ class TypeGraphBuilder {
                                  .equivalent_type =
                                      resolve_ref(source.equivalent_type, module_name),
                                  .related_storage_name = std::nullopt,
-                                 .vector_components = source.components};
+                                 .vector_components = source.components,
+                                 .equivalent_constructor = source.equivalent_constructor};
                     auto const value_type{resolve_ref(source.value_type, module_name)};
                     type.columns.reserve(source.components.size());
                     for (auto const& component : source.components) {
@@ -1083,6 +1129,16 @@ auto TypeGraph::find_reference(codegen::TypeRef const& reference,
     }
     if (auto const local{find_declared(module_name, reference.name)}) {
         return local;
+    }
+    for (auto const& node : types_) {
+        if (node.identity.module_name != module_name || node.cpp_spelling.empty()) {
+            continue;
+        }
+        auto const separator{node.cpp_spelling.rfind("::")};
+        if (node.cpp_spelling.substr(separator == std::string::npos ? 0 : separator + 2) ==
+            reference.name) {
+            return find(node.identity);
+        }
     }
     auto const found{declarations_by_spelling_.find(reference.name)};
     if (found != declarations_by_spelling_.end() && found->second.size() == 1) {

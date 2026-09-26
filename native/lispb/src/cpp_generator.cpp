@@ -74,8 +74,11 @@ auto generated_forward_declarations(NormalModuleSchema const& module,
     NodeListBuilder declarations;
     for (auto const target : targets) {
         auto const& node{graph.type(target)};
-        declarations.add(
-            ForwardDeclaration{node.identity.name, std::string{*forward_declaration_kind(node)}});
+        declarations.add(ForwardDeclaration{
+            node.cpp_spelling.substr(node.cpp_spelling.rfind("::") == std::string::npos
+                                         ? 0
+                                         : node.cpp_spelling.rfind("::") + 2),
+            std::string{*forward_declaration_kind(node)}});
     }
     return {.header = declarations.build(), .source_dependencies = false};
 }
@@ -152,6 +155,62 @@ auto declaration_emission_order(NormalModuleSchema const& module,
         visit(visit, index);
     }
     return order;
+}
+
+auto resolve_soa_cpp_references(Manifest const& manifest, lispb::schema::TypeGraph const& graph)
+    -> Manifest {
+    auto resolved{manifest};
+    std::size_t next{};
+    for (auto& variant : resolved.modules) {
+        auto* module{std::get_if<NormalModuleSchema>(&variant)};
+        if (module == nullptr) {
+            continue;
+        }
+        for (auto& declaration : module->declarations) {
+            visit_type_references(declaration, [&](std::string const& role, TypeRef& reference) {
+                if (role.find("relationship") != std::string::npos) {
+                    return;
+                }
+                if (auto const* soa{std::get_if<SoaSchema>(&declaration)}) {
+                    for (auto const& member : soa->members) {
+                        if (member.kind == SoaMemberKind::nested &&
+                            role == "member " + member.name) {
+                            return;
+                        }
+                    }
+                }
+                auto const target{graph.find_reference(reference, module->settings.name)};
+                if (!target) {
+                    return;
+                }
+                auto const& node{graph.type(*target)};
+                if (!std::holds_alternative<lispb::schema::SoaType>(node.definition)) {
+                    return;
+                }
+                auto const logical{node.identity.namespace_name.empty()
+                                       ? node.identity.name
+                                       : node.identity.namespace_name + "::" + node.identity.name};
+                if (node.cpp_spelling == logical) {
+                    return;
+                }
+                if (node.cpp_spelling.empty()) {
+                    throw std::invalid_argument{"Logical layout schema '" + node.identity.name +
+                                                "' has no C++ owner for " + role};
+                }
+                auto type{resolve_type(reference, manifest.types)};
+                auto canonical{reference};
+                canonical.name = node.cpp_spelling;
+                type.spelling = resolve_type(canonical, {}).spelling;
+                std::string key;
+                do {
+                    key = "resolved_soa_" + std::to_string(next++);
+                } while (resolved.types.contains(key));
+                resolved.types.emplace(key, RegisteredTypeSchema{type});
+                reference = TypeRef{"@" + key};
+            });
+        }
+    }
+    return resolved;
 }
 
 auto lower_umbrella(UmbrellaModuleSchema const& module) -> Module {
@@ -249,8 +308,9 @@ auto lower_scalar(IntegerScalarSchema const& scalar, TypeRegistry const& types)
 
 } // namespace
 
-auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
-    auto const type_graph{lispb::schema::resolve_type_graph(manifest)};
+auto lower_modules(Manifest const& input) -> std::vector<Module> {
+    auto const type_graph{lispb::schema::resolve_type_graph(input)};
+    auto const manifest{resolve_soa_cpp_references(input, type_graph)};
     std::vector<Module> result;
     for (auto const& schema : manifest.modules) {
         std::visit(

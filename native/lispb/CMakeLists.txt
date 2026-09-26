@@ -60,6 +60,7 @@ target_sources(codegen-lib PRIVATE
   src/module_assembly.cpp
   src/settings_lowering.cpp
   src/soa_lowering.cpp
+  src/soa_api.cpp
   src/soa_member_resolution.cpp
   src/soa_storage_lowering.cpp
   src/single_allocation_soa_emission.cpp

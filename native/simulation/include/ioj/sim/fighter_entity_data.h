@@ -508,7 +508,21 @@ inline FighterEntityDataSingleConstView::FighterEntityDataSingleConstView(
     : Base{other} {}
 struct SingleAllocationFighterEntityData
     : protected ml::native_soa::StorageState
-    , ml::native_soa::StorageOperations {
+    , private ml::native_soa::StorageOperations {
+    using Operations = ml::native_soa::StorageOperations;
+    using Operations::add_defaulted;
+    using Operations::add_uninitialised;
+    using Operations::allocated_bytes;
+    using Operations::append_from;
+    using Operations::capacity;
+    using Operations::copy_element;
+    using Operations::copy_elements;
+    using Operations::is_empty;
+    using Operations::num;
+    using Operations::remove_at_swap;
+    using Operations::reserve;
+    using Operations::reset;
+    using Operations::set_num;
     using Layout = FighterEntityDataSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;

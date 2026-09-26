@@ -148,6 +148,7 @@ class TemporarySchema {
 
 (module authored_soa
   :header "AuthoredSoa.h"
+  :source "AuthoredSoa.cpp"
   :namespace authored
   :backend standard-library
   (struct ExistingSoa
@@ -6488,6 +6489,7 @@ TEST(EditableSchemaDocument, PreparesAndReloadsAdvancedSoaDuplicates) {
         codegen::FixedSoaSchema{.storage_name = "ExistingSoaFixedStorage",
                                 .containers = {"ExistingSoaFixed", "CustomFixedContainer"}};
     advanced.single_allocation = "ExistingSoaSingle";
+    advanced.storage = codegen::SoaStorage::both;
     advanced.single_allocation_variants = {codegen::SingleAllocationVariant{
         .name = "ExistingSoaPool", .allocator = codegen::TypeRef{"@existing"}}};
     auto applied{document.apply(ReplaceSoa{.declaration = source, .schema = std::move(advanced)})};
@@ -7423,7 +7425,6 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSoaGenerationPolicy) {
     replacement.export_specifier = "SOA_API";
     replacement.equivalent_type = codegen::TypeRef{"@existing"};
     replacement.copy_element_memberwise = true;
-    replacement.layout_only = true;
     auto applied{
         document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
     ASSERT_TRUE(applied.has_value()) << applied.error().message;
@@ -7435,7 +7436,7 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSoaGenerationPolicy) {
     ASSERT_TRUE(schema->equivalent_type.has_value());
     EXPECT_EQ(schema->equivalent_type->name, "@existing");
     EXPECT_TRUE(schema->copy_element_memberwise);
-    EXPECT_TRUE(schema->layout_only);
+    EXPECT_FALSE(schema->layout_only);
     ASSERT_TRUE(soa_type(document, declaration).equivalent_type.has_value());
     EXPECT_EQ(soa_type(document, declaration).equivalent_type->type, *equivalent);
     auto const type{document.types().find(document.declaration(declaration)->identity)};
@@ -7458,7 +7459,7 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSoaGenerationPolicy) {
     EXPECT_NE(source.find(":export-specifier SOA_API"), std::string::npos);
     EXPECT_NE(source.find(":equivalent-type @existing"), std::string::npos);
     EXPECT_NE(source.find(":copy-element-memberwise true"), std::string::npos);
-    EXPECT_NE(source.find(":layout-only true"), std::string::npos);
+    EXPECT_EQ(source.find(":layout-only true"), std::string::npos);
     EXPECT_NE(source.find("; Keep the SoA declaration note"), std::string::npos);
     EXPECT_NE(source.find("; Keep the custom function note"), std::string::npos);
 
@@ -7472,7 +7473,7 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSoaGenerationPolicy) {
     EXPECT_EQ(schema->export_specifier, "SOA_API");
     EXPECT_EQ(schema->equivalent_type->name, "@existing");
     EXPECT_TRUE(schema->copy_element_memberwise);
-    EXPECT_TRUE(schema->layout_only);
+    EXPECT_FALSE(schema->layout_only);
 
     replacement = *schema;
     replacement.export_specifier.reset();
@@ -10136,6 +10137,48 @@ TEST(EditableSchemaDocument, SavePreservesLineEndingPolicyForGeneratedLinesAndNo
         EXPECT_TRUE(document.save().value().empty());
         EXPECT_EQ(files.read_source("modules.lispb"), saved);
     }
+}
+
+TEST(EditableSchemaDocument, CompactApiRoundTripsAndRemovedViewFunctionsStayRemoved) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const id{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto schema{*document.soa_schema(id)};
+    schema.single_allocation = "CompactExisting";
+    schema.single_allocation_allocator = codegen::TypeRef{"@existing"};
+    schema.using_declarations = {"Value = std::uint32_t"};
+    schema.functions = {{.name = "first",
+                         .return_type = codegen::TypeRef{"std::uint32_t"},
+                         .body_lines = {"return $column(values)[0];"},
+                         .is_const = true}};
+    schema.const_view_functions = {{.name = "read",
+                                    .return_type = codegen::TypeRef{"std::uint32_t"},
+                                    .body_lines = {"return $column(values)[0];"},
+                                    .is_const = true}};
+    schema.mutable_view_functions = {{.name = "write",
+                                      .return_type = codegen::TypeRef{"void"},
+                                      .body_lines = {"$column(values)[0] = 1;"}}};
+    auto applied{document.apply(ReplaceSoa{.declaration = id, .schema = schema})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(document.save().has_value());
+    auto loaded{files.load()};
+    auto const loaded_id{declaration_id(loaded, "authored_soa", "ExistingSoa", "authored")};
+    auto replacement{*loaded.soa_schema(loaded_id)};
+    ASSERT_EQ(replacement.const_view_functions.size(), 1U);
+    ASSERT_EQ(replacement.mutable_view_functions.size(), 1U);
+    EXPECT_EQ(replacement.single_allocation_allocator->name, "@existing");
+    EXPECT_EQ(replacement.functions.front().body_lines, schema.functions.front().body_lines);
+    replacement.const_view_functions.clear();
+    replacement.mutable_view_functions.clear();
+    replacement.single_allocation_allocator.reset();
+    ASSERT_TRUE(
+        loaded.apply(ReplaceSoa{.declaration = loaded_id, .schema = replacement}).has_value());
+    ASSERT_TRUE(loaded.save().has_value());
+    auto cleared{files.load()};
+    auto const cleared_id{declaration_id(cleared, "authored_soa", "ExistingSoa", "authored")};
+    EXPECT_TRUE(cleared.soa_schema(cleared_id)->const_view_functions.empty());
+    EXPECT_TRUE(cleared.soa_schema(cleared_id)->mutable_view_functions.empty());
+    EXPECT_FALSE(cleared.soa_schema(cleared_id)->single_allocation_allocator);
 }
 
 } // namespace

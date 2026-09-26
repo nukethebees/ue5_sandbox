@@ -128,7 +128,7 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
     EXPECT_NE(native_header.find("sandbox/core/native_soa/vector_storage_ops.h"),
               std::string::npos);
     EXPECT_NE(native_header.find("#include <utility>"), std::string::npos);
-    EXPECT_NE(native_header.find("ml::native_soa::vector_storage_ops::reserve(*this, count);"),
+    EXPECT_EQ(native_header.find("ml::native_soa::vector_storage_ops::reserve(*this, count);"),
               std::string::npos);
     EXPECT_NE(native_header.find("std::forward<Compare>(compare)"), std::string::npos);
     EXPECT_NE(native_header.find("std::int32_t const row_index"), std::string::npos);

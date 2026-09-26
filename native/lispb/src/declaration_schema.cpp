@@ -68,6 +68,11 @@ void visit_declaration_type_references(Declaration& declaration, Visitor const& 
                         function(role, method);
                         optional(role + " trailing return", method.trailing_return_type);
                     }
+                    for (auto& method : schema.const_view_functions) {
+                        function("const view function " + method.name, method);
+                        optional("const view function " + method.name + " trailing return",
+                                 method.trailing_return_type);
+                    }
                     for (std::size_t index{}; index < schema.mutable_view_functions.size();
                          ++index) {
                         auto& method{schema.mutable_view_functions[index]};
@@ -136,9 +141,9 @@ auto soa_generated_cpp_names(SoaSchema const& schema,
     if (schema.single_allocation.has_value()) {
         result.push_back(*schema.single_allocation);
         result.push_back(schema.name + "SingleLayout");
-        result.push_back(schema.name + "SingleView");
-        result.push_back(schema.name + "SingleConstView");
-        result.push_back(schema.name + "SingleViewImpl");
+        result.push_back(schema.compact_view_name());
+        result.push_back(schema.compact_const_view_name());
+        result.push_back(schema.compact_view_name() + "Impl");
         std::vector<std::string> ancestors{schema.name};
         auto collect_nested =
             [&](auto&& self, SoaSchema const& parent, std::string const& suffix) -> void {
@@ -149,14 +154,14 @@ auto soa_generated_cpp_names(SoaSchema const& schema,
                 for (auto const& declaration : module.declarations) {
                     auto const* nested{std::get_if<SoaSchema>(&declaration)};
                     if (!nested || nested->name != *member.nested_schema ||
-                        !nested->vector_components.empty() ||
+                        nested->uses_compact_vector_runtime() ||
                         std::ranges::find(ancestors, nested->name) != ancestors.end()) {
                         continue;
                     }
                     auto const path{suffix + "_" + member.name};
-                    result.push_back(schema.name + "SingleView" + path);
-                    result.push_back(schema.name + "SingleConstView" + path);
-                    result.push_back(schema.name + "SingleView" + path + "Impl");
+                    result.push_back(schema.compact_view_name() + path);
+                    result.push_back(schema.compact_const_view_name() + path);
+                    result.push_back(schema.compact_view_name() + path + "Impl");
                     ancestors.push_back(nested->name);
                     self(self, *nested, path);
                     ancestors.pop_back();

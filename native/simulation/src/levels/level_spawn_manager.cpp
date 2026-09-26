@@ -124,9 +124,8 @@ void LevelSpawnManager::spawn_turrets(
 void LevelSpawnManager::spawn_spinners(
     SingleAllocationLevelSpinnerSpawnEvents::ConstView const events) {
     auto const locations{events.view_locations()};
-    auto const ids{spinners_.spawn_instances({locations.xs(), locations.ys(), locations.zs()},
-                                             events.yaws(),
-                                             events.initial_fire_point_indices())};
+    auto const ids{
+        spinners_.spawn_instances(locations, events.yaws(), events.initial_fire_point_indices())};
     auto const count{events.num()};
     auto const entity_indices{events.entity_indices()};
 

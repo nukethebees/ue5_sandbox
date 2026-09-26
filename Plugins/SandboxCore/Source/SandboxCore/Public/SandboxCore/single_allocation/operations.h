@@ -51,6 +51,29 @@ struct StorageOperations {
     }
     template <typename Self, typename Source>
         requires (Self::template accepts_source<Source>)
+    void copy_elements(this Self& self,
+                       std::int32_t const destination,
+                       Source const& source,
+                       std::int32_t const offset,
+                       std::int32_t const count) {
+        source.validate();
+        require(destination >= 0 && destination <= self.num_ && count >= 0 &&
+                count <= self.num_ - destination && offset >= 0 && offset <= source.num() &&
+                count <= source.num() - offset);
+        if (count > 0) {
+            self.append_columns(source, offset, destination, count);
+        }
+    }
+    template <typename Self, typename Source>
+        requires (Self::template accepts_source<Source>)
+    void copy_element(this Self& self,
+                      std::int32_t const destination,
+                      Source const& source,
+                      std::int32_t const offset) {
+        self.copy_elements(destination, source, offset, 1);
+    }
+    template <typename Self, typename Source>
+        requires (Self::template accepts_source<Source>)
     auto append_from(this Self& self, Source const& source) -> std::int32_t {
         return self.append_from(source, 0, source.num());
     }

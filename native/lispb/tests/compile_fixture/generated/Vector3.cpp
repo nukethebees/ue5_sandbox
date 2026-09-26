@@ -9,6 +9,7 @@
 #include "SandboxCore/soa_storage_ops.h"
 
 namespace codegen_compile_fixture {
+
 auto FVectors3fConstView::get_view() const -> ConstView {
     return get_view(0, num());
 }

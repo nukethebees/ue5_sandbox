@@ -1,4 +1,5 @@
 #include "lowering_utils.h"
+#include "soa_api.h"
 #include "soa_internal.h"
 
 #include <utility>
@@ -53,7 +54,8 @@ auto view_struct(std::string name,
                  std::vector<ResolvedMember> const& members,
                  SoaSchema const& schema,
                  TypeRegistry const& types,
-                 bool const_only) -> Struct {
+                 bool const_only,
+                 std::map<std::string, SoaSchema const*> const* schemas) -> Struct {
     NodeListBuilder nodes;
     nodes.add(UsingDeclaration{"View", CppType{view_name}}, 1)
         .add(UsingDeclaration{"ConstView", CppType{const_view_name}}, 2);
@@ -61,13 +63,19 @@ auto view_struct(std::string name,
         nodes.append(soa_equivalent_nodes(*schema.equivalent_type, members, types)).new_lines(2);
     }
     if (!const_only) {
-        for (auto const& function : schema.mutable_view_functions) {
-            nodes.add(header_function(soa_function_spec(function, types)), 2);
-        }
         if (auto set{soa_set_spec(schema, members, true)}; set.has_value()) {
             nodes.add(header_function(*set), 2);
         }
     }
+    nodes
+        .append(lower_soa_api(schema,
+                              types,
+                              SoaRepresentation::vector,
+                              const_only ? SoaReceiver::const_view : SoaReceiver::mutable_view,
+                              name,
+                              schemas)
+                    .header)
+        .new_lines(1);
     nodes.add(column_apply_arrays_function(column_names(members)), 2)
         .append(declaration_nodes(soa_view_specs(members, const_only)))
         .new_lines(2);
@@ -241,13 +249,18 @@ auto soa_view_struct_nodes(SoaSchema const& schema,
                            std::vector<ResolvedMember> const& members,
                            TypeRegistry const& types,
                            std::string const& view_name,
-                           std::string const& const_view_name) -> Nodes {
+                           std::string const& const_view_name,
+                           std::map<std::string, SoaSchema const*> const* schemas) -> Nodes {
     NodeListBuilder result;
     return result.add(ForwardDeclaration{view_name}, 1)
         .add(ForwardDeclaration{const_view_name}, 2)
-        .add(view_struct(const_view_name, view_name, const_view_name, members, schema, types, true),
+        .add(
+            view_struct(
+                const_view_name, view_name, const_view_name, members, schema, types, true, schemas),
+            2)
+        .add(view_struct(
+                 view_name, view_name, const_view_name, members, schema, types, false, schemas),
              2)
-        .add(view_struct(view_name, view_name, const_view_name, members, schema, types, false), 2)
         .build();
 }
 
