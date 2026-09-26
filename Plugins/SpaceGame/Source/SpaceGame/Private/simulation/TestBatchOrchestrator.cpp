@@ -142,6 +142,8 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
     soft_target_instances_->SetupAttachment(RootComponent);
 
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
+    laser_instances_->SetMobility(EComponentMobility::Movable);
+    fighter_instances_->SetMobility(EComponentMobility::Movable);
     soft_target_instances_->SetMobility(EComponentMobility::Movable);
 }
 

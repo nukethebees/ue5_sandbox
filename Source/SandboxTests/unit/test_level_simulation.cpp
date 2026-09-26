@@ -682,39 +682,42 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
         presentation.update_visual_data();
 
         auto const live_count{lasers.get_num_instances()};
-        if (!TestEqual(TEXT("Presentation and simulation retain the same row count"),
-                       presentation.material_data.Num(),
-                       live_count)) {
+        auto const active{lasers.get_read_view().entities.active()};
+        int32 active_count{0};
+        for (int32 index{}; index < live_count; ++index) {
+            active_count += active[index] != 0;
+        }
+        if (!TestEqual(TEXT("Only active lasers are submitted"),
+                       component->get_instance_count(),
+                       active_count)) {
             return false;
         }
-
-        for (int32 index{}; index < live_count; ++index) {
-            auto const id{FMath::RoundToInt(
-                lasers.get_read_view().entities.view_locations().ys()[index] / 10.f)};
+        TArray<FSandboxISMCRenderInstance> packed;
+        TArray<float> custom_data;
+        packed.SetNumUninitialized(active_count);
+        custom_data.SetNumUninitialized(active_count * FLaserPresentation::n_custom_ismc_floats);
+        FSandboxISMCInstanceChunkWriter writer{packed,
+                                               custom_data,
+                                               FLaserPresentation::n_custom_ismc_floats,
+                                               0,
+                                               FVector3f::ZeroVector,
+                                               FVector3f::ZeroVector,
+                                               false};
+        presentation.fill_chunk(writer);
+        for (int32 index{}; index < active_count; ++index) {
+            auto const id{FMath::RoundToInt(packed[index].origin.Y / 10.f)};
             auto const& expected{expected_material_data[id - 1]};
-            auto const& actual{presentation.material_data[index]};
-            auto const matches{actual.colour.X == expected.colour.R &&
-                               actual.colour.Y == expected.colour.G &&
-                               actual.colour.Z == expected.colour.B &&
-                               actual.initial_lifetime == expected.initial_lifetime &&
-                               actual.spawn_time == expected.spawn_time};
+            auto const actual{writer.custom_data(index)};
+            auto const matches{actual[0] == expected.colour.R && actual[1] == expected.colour.G &&
+                               actual[2] == expected.colour.B &&
+                               actual[3] == expected.initial_lifetime &&
+                               actual[4] == expected.spawn_time};
             if (!matches) {
                 AddError(FString::Printf(
-                    TEXT("Tick %d row %d (laser %d) has material (%.2f, %.2f, %.2f, %.6f, "
-                         "%.6f), expected (%.2f, %.2f, %.2f, %.6f, %.6f)"),
+                    TEXT("Tick %d packed row %d (laser %d) has incorrect custom data"),
                     tick,
                     index,
-                    id,
-                    actual.colour.X,
-                    actual.colour.Y,
-                    actual.colour.Z,
-                    actual.initial_lifetime,
-                    actual.spawn_time,
-                    expected.colour.R,
-                    expected.colour.G,
-                    expected.colour.B,
-                    expected.initial_lifetime,
-                    expected.spawn_time));
+                    id));
                 return false;
             }
         }

@@ -33,7 +33,7 @@ FLaserPresentation::FLaserPresentation(USandboxISMCComponent& component)
 
 void FLaserPresentation::clear_runtime_state_presentation() {
     instances->clear_instances();
-    material_data.Reset();
+    visible_indices_.Reset();
 }
 
 void FLaserPresentation::begin_play_presentation() {
@@ -48,7 +48,8 @@ void FLaserPresentation::begin_play_presentation() {
     }
 
     configure_ismc();
-    material_data.Reserve(actor_config->n_preallocated_instances);
+    visible_indices_.Reserve(actor_config->n_preallocated_instances);
+    instances->reserve_instances(actor_config->n_preallocated_instances);
 
 #if WITH_EDITOR
     debug_drawer.world = instances->GetWorld();
@@ -60,7 +61,6 @@ void FLaserPresentation::begin_play_presentation() {
 
 void FLaserPresentation::update_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_visual_data);
-    synchronize_material_data();
     update_ismc();
     queue_hit_sparks();
 }
@@ -75,7 +75,6 @@ void FLaserPresentation::configure_ismc() {
     instances->SetMobility(EComponentMobility::Movable);
     instances->set_static_mesh(*actor_config->mesh);
     check(instances->get_static_mesh() == actor_config->mesh);
-    instances->SetMobility(EComponentMobility::Static);
     instances->SetMaterial(0, actor_config->material);
 
     instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
@@ -99,55 +98,48 @@ auto FLaserPresentation::source_colour(::ioj::sim::LaserSource const source) con
             return FLinearColor::White;
     }
 }
-void FLaserPresentation::synchronize_material_data() {
-    auto const entities{view().entities};
-    auto const count{entities.num()};
-    material_data.SetNum(count, EAllowShrinking::No);
+void FLaserPresentation::update_ismc() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_ismc);
+    auto const active{view().entities.active()};
+    auto const count{view().entities.num()};
     visible_indices_.Reset();
-    auto const active{entities.active()};
+    for (int32 index{}; index < count; ++index) {
+        if (active[index] != 0) {
+            visible_indices_.Add(index);
+        }
+    }
+    instances->set_instances(visible_indices_.Num(),
+                             ESandboxISMCParallelism::Auto,
+                             [this](auto& chunk) { fill_chunk(chunk); });
+}
+
+void FLaserPresentation::fill_chunk(FSandboxISMCInstanceChunkWriter& chunk) const {
+    auto const entities{view().entities};
+    auto const first_index{chunk.first_index()};
+    auto const chunk_count{chunk.num()};
+    auto const locations{entities.view_locations()};
+    auto const rotations{entities.view_rotations()};
+    auto const pitches{rotations.pitches()};
+    auto const yaws{rotations.yaws()};
+    auto const rolls{rotations.rolls()};
     auto const sources{entities.sources()};
     auto const initial_lifetimes{entities.initial_lifetimes()};
     auto const spawn_times{entities.spawn_times()};
+    for (int32 local_index{}; local_index < chunk_count; ++local_index) {
+        auto const index{visible_indices_[first_index + local_index]};
+        auto const location{
+            FVector3f{locations.xs()[index], locations.ys()[index], locations.zs()[index]}};
+        auto const rotation{FRotator3f{pitches[index], yaws[index], rolls[index]}.Quaternion()};
+        chunk.set_transform(local_index, location, rotation, FVector3f::OneVector);
 
-    for (int32 i{}; i < count; ++i) {
-        if (active[i] != 0) {
-            visible_indices_.Add(i);
-        }
-        auto const colour{source_colour(sources[i])};
-        material_data[i] = {{colour.R, colour.G, colour.B}, initial_lifetimes[i], spawn_times[i]};
+        auto const colour{source_colour(sources[index])};
+        auto custom_data{chunk.custom_data(local_index)};
+        custom_data[0] = colour.R;
+        custom_data[1] = colour.G;
+        custom_data[2] = colour.B;
+        custom_data[3] = initial_lifetimes[index];
+        custom_data[4] = spawn_times[index];
     }
-}
-
-void FLaserPresentation::update_ismc() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_ismc);
-
-    auto const& laser_simulation{view()};
-    auto const count{visible_indices_.Num()};
-    instances->set_instances(
-        count, ESandboxISMCParallelism::Auto, [this, &laser_simulation](auto& chunk) {
-            auto const first_index{chunk.first_index()};
-            auto const chunk_count{chunk.num()};
-            auto const locations{laser_simulation.entities.view_locations()};
-            auto const pitches{laser_simulation.entities.view_rotations().pitches()};
-            auto const yaws{laser_simulation.entities.view_rotations().yaws()};
-            auto const rolls{laser_simulation.entities.view_rotations().rolls()};
-            for (int32 local_index{0}; local_index < chunk_count; ++local_index) {
-                auto const index{visible_indices_[first_index + local_index]};
-                auto const location{
-                    FVector3f{locations.xs()[index], locations.ys()[index], locations.zs()[index]}};
-                auto const rotation{
-                    FRotator3f{pitches[index], yaws[index], rolls[index]}.Quaternion()};
-                chunk.set_transform(local_index, location, rotation, FVector3f::OneVector);
-
-                auto custom_data{chunk.custom_data(local_index)};
-                auto const& data{material_data[index]};
-                custom_data[0] = data.colour.X;
-                custom_data[1] = data.colour.Y;
-                custom_data[2] = data.colour.Z;
-                custom_data[3] = data.initial_lifetime;
-                custom_data[4] = data.spawn_time;
-            }
-        });
 }
 
 void FLaserPresentation::queue_hit_sparks() {
@@ -182,10 +174,6 @@ void FLaserPresentation::queue_hit_sparks() {
 
 void FLaserPresentation::validate_array_sizes() const {
     view().entities.validate();
-    ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(view().get_num_instances()),
-        SANDBOX_NAMED_NUM(material_data.Num()),
-    });
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(visible_indices_.Num()),
         SANDBOX_NAMED_NUM(instances->get_instance_count()),

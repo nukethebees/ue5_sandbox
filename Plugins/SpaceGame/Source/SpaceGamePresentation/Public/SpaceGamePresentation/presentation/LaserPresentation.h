@@ -9,6 +9,7 @@
 #include <CoreMinimal.h>
 
 class USandboxISMCComponent;
+class FSandboxISMCInstanceChunkWriter;
 class FLaserPresentationIndexingTest;
 class FSparkEffects;
 
@@ -34,21 +35,14 @@ struct SPACEGAMEPRESENTATION_API FLaserPresentation {
     void end_tick_presentation();
 
     void configure_ismc();
-    void synchronize_material_data();
+    void fill_chunk(FSandboxISMCInstanceChunkWriter& chunk) const;
     void update_ismc();
     void queue_hit_sparks();
     void validate_array_sizes() const;
 
     FLaserProjectileConfig const* actor_config{nullptr};
 
-    struct FMaterialData {
-        FVector3f colour;
-        float initial_lifetime;
-        float spawn_time;
-    };
-
     USandboxISMCComponent* instances{nullptr};
-    TArray<FMaterialData> material_data;
     TArray<int32> visible_indices_;
 
     FSparkEffects* spark_effects_{nullptr};

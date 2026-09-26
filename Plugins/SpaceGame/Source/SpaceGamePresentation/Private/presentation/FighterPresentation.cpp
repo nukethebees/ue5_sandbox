@@ -67,7 +67,6 @@ void FFighterPresentation::configure_ismc() {
     instances->SetMobility(EComponentMobility::Movable);
     instances->set_static_mesh(*actor_config->mesh);
     check(instances->get_static_mesh() == actor_config->mesh);
-    instances->SetMobility(EComponentMobility::Static);
 
     instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     instances->SetGenerateOverlapEvents(false);
