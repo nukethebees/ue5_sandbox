@@ -118,7 +118,9 @@ header filter. Run the plugin's registration, semantic and nested-policy tests a
 ctest --test-dir out/build/win-x64-clangcl-debug/clang-tidy -L clang-tidy --output-on-failure
 ```
 
-LLVM `24.0.0git` revision `688a1498b3ce` currently asserts in `GenericDomTree.h:400` when the
-full audit analyzes `native/lispb/src/packed_value_internal.cpp`, also without loading the plugin.
-The simulation audit works. Resolve this upstream analyzer failure before treating the full
-compiler-uplift gate as green; no checks are disabled to hide it.
+LLVM `24.0.0git` revision `688a1498b3ce` also needs the local
+[analyzer lifetime fix](../cmake/clang_tidy/llvm-patches/control-dependency-node-lifetime.patch).
+It prevents a control-dependency visitor from retaining a recycled analyzer node, which crashed
+the full audit in `native/lispb/src/packed_value_internal.cpp`. Apply the patch at the LLVM source
+root before building/installing LLVM. It includes a C++23 regression test and preserves analyzer
+diagnostics; no checks are disabled. The installation at `C:/dev/llvm/install` includes this fix.
