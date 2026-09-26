@@ -4,6 +4,20 @@
 #include <cmath>
 
 namespace ioj::sim::player::flight_model_config_detail {
+auto& select_profile(auto& loadout, FlightModelSlot const slot) noexcept {
+    switch (slot) {
+        case FlightModelSlot::Up:
+            return loadout.up;
+        case FlightModelSlot::Right:
+            return loadout.right;
+        case FlightModelSlot::Down:
+            return loadout.down;
+        case FlightModelSlot::Left:
+            return loadout.left;
+    }
+    return loadout.up;
+}
+
 [[nodiscard]] auto valid_enum(TranslationSemantic const value) noexcept -> bool {
     switch (value) {
         case TranslationSemantic::Disabled:
@@ -450,22 +464,11 @@ auto make_default_flight_model_loadout() -> FlightModelLoadout {
 
 auto flight_model_profile(FlightModelLoadout& loadout, FlightModelSlot const slot) noexcept
     -> FlightModelProfile& {
-    return const_cast<FlightModelProfile&>(
-        flight_model_profile(static_cast<FlightModelLoadout const&>(loadout), slot));
+    return flight_model_config_detail::select_profile(loadout, slot);
 }
 
 auto flight_model_profile(FlightModelLoadout const& loadout, FlightModelSlot const slot) noexcept
     -> FlightModelProfile const& {
-    switch (slot) {
-        case FlightModelSlot::Up:
-            return loadout.up;
-        case FlightModelSlot::Right:
-            return loadout.right;
-        case FlightModelSlot::Down:
-            return loadout.down;
-        case FlightModelSlot::Left:
-            return loadout.left;
-    }
-    return loadout.up;
+    return flight_model_config_detail::select_profile(loadout, slot);
 }
 }

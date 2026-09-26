@@ -156,7 +156,7 @@ TEST(SourceLoader, ScalarEmissionOnlyEstablishesRepresentationForAliases) {
             "\n    (code Unknown :value 0)\n"
             "    (code Invalid :value 255 :sentinel true)\n"
             "    (relation references Context)))");
-        files.write("types.lispb", "(type byte :spelling \"std::uint8_t\" :header \"cstdint\")");
+        files.write("types.lispb", R"((type byte :spelling "std::uint8_t" :header "cstdint"))");
         auto const manifest{files.load()};
         EXPECT_EQ(schema_at<IntegerScalarSchema>(manifest, 0, 1).cpp_emission, mode);
         auto const graph{lispb::schema::resolve_type_graph(manifest)};
@@ -213,7 +213,7 @@ TEST(SourceLoader, ScalarAliasesShareCppTypeIncludeResolution) {
                          "    :cpp-emission alias :cpp-type " +
                          std::string{representation} + "))");
         files.write("types.lispb",
-                    "(type native_int32 :spelling \"std::int32_t\" :header \"cstdint\")");
+                    R"((type native_int32 :spelling "std::int32_t" :header "cstdint"))");
         auto const header{render_modules(lower_modules(files.load())).front().content};
         auto const standard{std::string_view{representation}.starts_with('@') ||
                             std::string_view{representation}.starts_with("std::")};

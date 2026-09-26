@@ -11,7 +11,7 @@
 
 namespace codegen {
 
-auto lower_modules(Manifest const& manifest) -> std::vector<Module>;
+auto lower_modules(Manifest const& input) -> std::vector<Module>;
 auto render_modules(std::vector<Module> const& modules) -> std::vector<GeneratedFile>;
 auto compile_sources(std::filesystem::path const& types,
                      std::span<std::filesystem::path const> modules) -> lispb::Compilation;

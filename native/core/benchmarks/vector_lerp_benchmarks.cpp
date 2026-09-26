@@ -72,8 +72,7 @@ void run_benchmark(benchmark::State& state, Kernel const kernel, std::int32_t co
 void register_case(std::string_view const name, Kernel const kernel, std::int32_t const count) {
     auto const benchmark_name{std::string{"vector_lerp/"} + std::string{name} + "/" +
                               std::to_string(count)};
-    benchmark::RegisterBenchmark(benchmark_name.c_str(), run_benchmark, kernel, count)
-        ->UseRealTime();
+    benchmark::RegisterBenchmark(benchmark_name, run_benchmark, kernel, count)->UseRealTime();
 }
 
 auto register_benchmarks() -> bool {

@@ -7,6 +7,9 @@
 namespace ioj::sim {
 
 struct LevelSimTestAccess {
+    static auto player_simulation(LevelSim& simulation) -> player::Sim& {
+        return simulation.player_ship_simulation_.value();
+    }
     static void queue_fighter_spawns(LevelSim& simulation,
                                      SingleAllocationFighterSpawnQueue::ConstView spawns) {
         fighters::CommandInterface{simulation.fighters_simulation_}.queue_spawns(spawns);

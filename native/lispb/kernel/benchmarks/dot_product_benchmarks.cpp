@@ -7,6 +7,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -22,9 +23,11 @@ using ChunkKernel = float (*)(Chunk const*, Chunk const*, std::int32_t) noexcept
 struct AlignedBuffer {
     explicit AlignedBuffer(std::int32_t const count, std::int32_t const offset)
         : storage(static_cast<std::size_t>(count) + 32) {
-        auto const address{reinterpret_cast<std::uintptr_t>(storage.data())};
-        auto const aligned_address{(address + 63u) & ~std::uintptr_t{63u}};
-        data = reinterpret_cast<float*>(aligned_address) + offset;
+        void* buffer{storage.data()};
+        auto space{storage.size() * sizeof(float)};
+        data = static_cast<float*>(std::align(
+                   64, static_cast<std::size_t>(count + offset) * sizeof(float), buffer, space)) +
+               offset;
     }
 
     std::vector<float> storage;
@@ -181,7 +184,7 @@ void register_case(std::string_view const policy,
                     std::string{backend.name} + "/ordinary/" +
                     (offset == 0 ? "aligned/" : "unaligned/") + std::to_string(count)};
     benchmark::RegisterBenchmark(
-        name.c_str(), run_benchmark, backend.kernel, count, offset, backend.requires_avx512)
+        name, run_benchmark, backend.kernel, count, offset, backend.requires_avx512)
         ->UseRealTime();
 }
 
@@ -191,7 +194,7 @@ void register_chunk_case(std::string_view const policy,
     auto const name{std::string{"dot_product/"} + std::string{policy} + "/chunked16/" +
                     std::string{backend.name} + "/ordinary/aligned/" + std::to_string(count)};
     benchmark::RegisterBenchmark(
-        name.c_str(), run_chunk_benchmark, backend.kernel, count, backend.requires_avx512)
+        name, run_chunk_benchmark, backend.kernel, count, backend.requires_avx512)
         ->UseRealTime();
 }
 

@@ -430,7 +430,7 @@ class TemporaryPlannerSchema {
         directory_ = std::filesystem::temp_directory_path() /
                      ("planner-save-schema-" + std::to_string(++sequence));
         std::filesystem::create_directories(directory_);
-        std::ofstream{directory_ / "types.lispb", std::ios::binary};
+        std::ofstream types{directory_ / "types.lispb", std::ios::binary};
         std::ofstream output{directory_ / "modules.lispb", std::ios::binary};
         output << R"((module unions
   :header "Unions.h"

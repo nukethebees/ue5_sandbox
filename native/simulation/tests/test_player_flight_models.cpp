@@ -1,6 +1,7 @@
 #include "support/simulation_test_support.h"
 #include <ioj/sim/level_sim.h>
 #include <ioj/sim/player/flight_model_evaluator.h>
+#include <ioj/sim/testing/level_sim_test_access.h>
 
 #include <gtest/gtest.h>
 
@@ -59,7 +60,7 @@ auto player_sim(LevelSim const& simulation) -> player::Sim const& {
 }
 
 auto mutable_player_sim(LevelSim& simulation) -> player::Sim& {
-    return const_cast<player::Sim&>(player_sim(simulation));
+    return LevelSimTestAccess::player_simulation(simulation);
 }
 
 void set_test_turn(player::CommandInterface* const commands, ml::Vector2d const direction) {

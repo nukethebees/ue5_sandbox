@@ -297,7 +297,7 @@ auto register_benchmarks() -> bool {
     for (auto const count : counts) {
         auto const name{"dot_product_3d/elementwise/aos/scalar/ordinary/aligned/" +
                         std::to_string(count)};
-        benchmark::RegisterBenchmark(name.c_str(),
+        benchmark::RegisterBenchmark(name,
                                      run_aos_benchmark,
                                      static_cast<AosKernel>(dot::backend::scalar::dot_product_3d),
                                      count,
@@ -309,19 +309,19 @@ auto register_benchmarks() -> bool {
             auto const prefix{std::string{"dot_product_3d/elementwise/"}};
             auto const suffix{"/" + std::string{backend.name} + "/ordinary/aligned/" +
                               std::to_string(count)};
-            benchmark::RegisterBenchmark((prefix + "aos" + suffix).c_str(),
+            benchmark::RegisterBenchmark(prefix + "aos" + suffix,
                                          run_aos_benchmark,
                                          backend.aos,
                                          count,
                                          backend.requires_avx512)
                 ->UseRealTime();
-            benchmark::RegisterBenchmark((prefix + "soa-flat" + suffix).c_str(),
+            benchmark::RegisterBenchmark(prefix + "soa-flat" + suffix,
                                          run_soa_benchmark,
                                          backend.soa,
                                          count,
                                          backend.requires_avx512)
                 ->UseRealTime();
-            benchmark::RegisterBenchmark((prefix + "soa-chunked16" + suffix).c_str(),
+            benchmark::RegisterBenchmark(prefix + "soa-chunked16" + suffix,
                                          run_chunk_benchmark,
                                          backend.chunk,
                                          count,

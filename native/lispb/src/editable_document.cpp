@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cstdio>
 #include <fstream>
 #include <functional>
 #include <initializer_list>
@@ -5208,10 +5209,16 @@ auto EditableSchemaDocument::save()
         }
         for (auto const& file : recovery) {
             try {
-                std::error_code ignored;
-                std::filesystem::remove_all(file.directory, ignored);
+                std::error_code error;
+                std::filesystem::remove_all(file.directory, error);
+                if (error) {
+                    std::fputs("LispB: unable to remove a temporary save recovery directory.\n",
+                               stderr);
+                }
             } catch (...) {
                 // Cleanup must not turn a committed save into a reported failure.
+                std::fputs("LispB: exception removing a temporary save recovery directory.\n",
+                           stderr);
             }
         }
     }};
