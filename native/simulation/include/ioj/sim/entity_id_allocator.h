@@ -43,7 +43,8 @@ class EntityIdAllocator {
 
     void reset() noexcept {
         issued_counts_ = {};
-        for (std::size_t i{}; i < EntityTypeSizes::size(); ++i) {
+        auto const entity_type_count{EntityTypeSizes::size()};
+        for (std::size_t i{}; i < entity_type_count; ++i) {
             history_rows_[static_cast<EntityType>(i)].clear();
         }
     }

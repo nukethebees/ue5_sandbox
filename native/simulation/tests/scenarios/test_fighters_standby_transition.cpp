@@ -76,7 +76,8 @@ void run_worldless_fighters_standby_transition(tests::SimulationFixture const& c
         << "Standby tasks and velocities have matching counts";
     std::int32_t standby_fighters{};
     std::int32_t orphaned_fighters{};
-    for (std::int32_t i{}; i < static_cast<std::int32_t>(after.tasks.size()); ++i) {
+    auto const fighter_count{static_cast<std::int32_t>(after.tasks.size())};
+    for (std::int32_t i{}; i < fighter_count; ++i) {
         if (after.parents[i].is_valid()) {
             EXPECT_EQ(fighters::Sim::Task::Standby, after.tasks[i])
                 << "Owned fighter transitioned to standby";

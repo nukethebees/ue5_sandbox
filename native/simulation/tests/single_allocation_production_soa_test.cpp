@@ -89,7 +89,8 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
     SingleAllocationSpinnerEntityData spinners;
     spinners.add_defaulted(65);
     auto spinner_columns{spinners.get_view()};
-    for (std::int32_t index{}; index < spinners.num(); ++index) {
+    auto const spinner_count{spinners.num()};
+    for (std::int32_t index{}; index < spinner_count; ++index) {
         set_vector(
             spinner_columns.view_locations(), index, HMM_V3(static_cast<float>(index), 2.f, 3.f));
         spinner_columns.yaws()[index] = static_cast<float>(index * 2);
@@ -110,7 +111,8 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
     SingleAllocationLaserHitDetails hits;
     hits.add_defaulted(65);
     auto hit_columns{hits.get_view()};
-    for (std::int32_t index{}; index < hits.num(); ++index) {
+    auto const hit_count{hits.num()};
+    for (std::int32_t index{}; index < hit_count; ++index) {
         set_vector(
             hit_columns.view_locations(), index, HMM_V3(static_cast<float>(index), 4.f, 5.f));
         set_vector(hit_columns.view_emission_directions(), index, HMM_V3(0.f, 1.f, 0.f));

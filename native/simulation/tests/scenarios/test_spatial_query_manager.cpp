@@ -20,7 +20,8 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
     harness.finish_initialisation();
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     std::vector<EntityUniqueId> expected{};
-    for (std::int32_t i{}; i < static_cast<std::int32_t>(locations.size()); ++i) {
+    auto const location_count{static_cast<std::int32_t>(locations.size())};
+    for (std::int32_t i{}; i < location_count; ++i) {
         expected.push_back(capitals.get_id(i));
     }
 
@@ -29,7 +30,7 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
     std::vector<EntityUniqueId> targets{};
     std::array<float, 3> const scales{0.5f, 1.f, 2.f};
     for (auto const scale : scales) {
-        for (std::int32_t i{}; i < static_cast<std::int32_t>(locations.size()); ++i) {
+        for (std::int32_t i{}; i < location_count; ++i) {
             starts.add(ml::make_vector3f(0.f, 0.f, 0.f));
             ends.add(locations[i] * scale);
             targets.push_back(expected[i]);
@@ -51,7 +52,8 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
     has_los.resize(static_cast<std::size_t>(ends.num()));
     harness.get_simulation().get_spatial_query_manager().has_line_of_sight_to_targets(
         ml::make_vector3f(0.f, 0.f, 0.f), ends.get_const_view(), targets, has_los);
-    for (std::int32_t i{}; i < static_cast<std::int32_t>(has_los.size()); ++i) {
+    auto const result_count{static_cast<std::int32_t>(has_los.size())};
+    for (std::int32_t i{}; i < result_count; ++i) {
         SCOPED_TRACE(::testing::Message() << "index " << i);
         EXPECT_EQ(LineQueryResult{1}, has_los[i]) << "Clear or target hit has line of sight";
     }

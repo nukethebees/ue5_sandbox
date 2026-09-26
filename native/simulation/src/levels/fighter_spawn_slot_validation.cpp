@@ -32,7 +32,8 @@ auto validate_fighter_spawn_slots(CapitalShipSimConfig const& capital_config,
     fighter_bounds.reserve(slots.size());
     std::vector<FighterSpawnSlotValidationError> errors;
 
-    for (std::size_t index{}; index < slots.size(); ++index) {
+    auto const slot_count{slots.size()};
+    for (std::size_t index{}; index < slot_count; ++index) {
         auto const& slot{slots[index]};
         fighter_bounds.push_back(collision::make_entity_world_bounds(
             entity_bounds,
@@ -45,8 +46,9 @@ auto validate_fighter_spawn_slots(CapitalShipSimConfig const& capital_config,
                               .clearance = clearance});
         }
     }
-    for (std::size_t first{}; first < fighter_bounds.size(); ++first) {
-        for (std::size_t second{first + 1}; second < fighter_bounds.size(); ++second) {
+    auto const fighter_bound_count{fighter_bounds.size()};
+    for (std::size_t first{}; first < fighter_bound_count; ++first) {
+        for (std::size_t second{first + 1}; second < fighter_bound_count; ++second) {
             if (intersects(fighter_bounds[first], fighter_bounds[second], clearance, clearance)) {
                 errors.push_back({.kind = FighterSpawnSlotValidationErrorKind::SlotsOverlap,
                                   .first_slot = static_cast<std::int32_t>(first),

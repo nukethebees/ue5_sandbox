@@ -17,9 +17,9 @@ enum class HistoryField : std::uint8_t {
     ActiveEntities = 0,
     ActiveEntitiesByType = static_cast<std::uint8_t>(ActiveEntities) + 1,
     ActiveEntitiesByTeamAndType =
-        static_cast<std::uint8_t>(ActiveEntitiesByType) + (entity_type_count),
-    SpawnedEntities =
-        static_cast<std::uint8_t>(ActiveEntitiesByTeamAndType) + (team_count) * (entity_type_count),
+            static_cast<std::uint8_t>(ActiveEntitiesByType) + (entity_type_count),
+    SpawnedEntities = static_cast<std::uint8_t>(ActiveEntitiesByTeamAndType) +
+        (team_count) * (entity_type_count),
     DestroyedEntities = static_cast<std::uint8_t>(SpawnedEntities) + 1,
     Kills = static_cast<std::uint8_t>(DestroyedEntities) + 1,
     ActiveLasers = static_cast<std::uint8_t>(Kills) + 1,

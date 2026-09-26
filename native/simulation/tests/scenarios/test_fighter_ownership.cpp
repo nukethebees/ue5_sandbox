@@ -200,7 +200,8 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
             << "Every capital spawns its fighter slots";
         EXPECT_EQ(expected_fighters, static_cast<std::int32_t>(capitals.get_fighter_ids().size()))
             << "Capital-owned and simulation fighter counts match";
-        for (std::int32_t i{}; i < capitals.get_num_instances(); ++i) {
+        auto const capital_count{capitals.get_num_instances()};
+        for (std::int32_t i{}; i < capital_count; ++i) {
             EXPECT_NE(capitals.get_id(i), capitals.get_target_id(i))
                 << "Capital does not target itself";
         }

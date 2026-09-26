@@ -199,7 +199,8 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
     auto const counts{agents.entity_counts()};
     EntityTypeSizes offsets;
     std::uint32_t total_count{};
-    for (std::size_t i{}; i < EntityTypeSizes::size(); ++i) {
+    auto const entity_type_count{EntityTypeSizes::size()};
+    for (std::size_t i{}; i < entity_type_count; ++i) {
         auto const type{static_cast<EntityType>(i)};
         offsets[type] = total_count;
         total_count += counts[type];

@@ -66,5 +66,5 @@ D:/llvm/build/bin/clang-tidy.exe '-checks=-*,ioj-loop-condition-call' -list-chec
 python tools/llvm/clang_tidy/tests/test_loop_condition_call.py --clang-tidy D:/llvm/build/bin/clang-tidy.exe --source-dir .
 ```
 
-Run the semantic tests before installation. See [project tidy workflows](../../docs/clang-tidy.md)
-for scope selection when auditing native code with the updated `LLVM_ROOT`.
+Run the semantic tests before installation, then configure and run `clang-tidy-simulation` against
+the updated `LLVM_ROOT`. See [project tidy workflows](../../docs/clang-tidy.md) for scope selection.

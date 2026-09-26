@@ -1,0 +1,3 @@
+InheritParentConfig: true
+Checks:
+  - ioj-loop-condition-call

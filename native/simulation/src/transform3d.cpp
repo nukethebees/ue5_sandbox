@@ -19,7 +19,8 @@ auto Transform3d::operator*(Transform3d const& parent) const -> Transform3d {
     std::array const signs{result.scale.x < 0.0 ? -1.0 : 1.0,
                            result.scale.y < 0.0 ? -1.0 : 1.0,
                            result.scale.z < 0.0 ? -1.0 : 1.0};
-    for (std::size_t i{}; i < axes.size(); ++i) {
+    auto const axis_count{axes.size()};
+    for (std::size_t i{}; i < axis_count; ++i) {
         auto& axis{axes[i]};
         axis = parent.rotation.rotate_vector(parent.scale * rotation.rotate_vector(axis));
         auto const squared{axis.size_squared()};

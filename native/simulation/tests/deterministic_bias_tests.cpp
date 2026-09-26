@@ -20,7 +20,8 @@ TEST(DeterministicBias, StableGeneration) {
     std::array<float, 2> floating_out{};
     ASSERT_TRUE(make_deterministic_biases(first_values, second_values, integral_out, floating_out));
 
-    for (std::size_t i{0}; i < first_values.size(); ++i) {
+    auto const value_count{first_values.size()};
+    for (std::size_t i{0}; i < value_count; ++i) {
         auto const expected{make_deterministic_biases(first_values[i], second_values[i])};
         EXPECT_EQ(integral_out[i], expected.integral);
         EXPECT_FLOAT_EQ(floating_out[i], expected.floating);

@@ -49,6 +49,7 @@ auto WorldlessSimulationTest::run_until_timeline_finished(time_type const maximu
     simulation_.start();
     auto const tick_period{simulation_.get_clock().get_tick_period()};
     auto const maximum_ticks{static_cast<SimTick>(std::ceil(maximum_time / tick_period))};
+    // NOLINTNEXTLINE(ioj-loop-condition-call) -- advancing the simulation can finish the timeline.
     for (SimTick tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
         advance(tick_period);
     }

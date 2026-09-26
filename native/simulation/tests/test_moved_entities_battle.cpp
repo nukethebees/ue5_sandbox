@@ -66,7 +66,8 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     auto capture_current_transforms = [&](fighters::Sim const& fighters) {
         previous_transforms.clear();
         auto const entities{fighters.get_read_view().entities};
-        for (std::int32_t index{}; index < entities.num(); ++index) {
+        auto const entity_count{entities.num()};
+        for (std::int32_t index{}; index < entity_count; ++index) {
             previous_transforms.emplace(
                 entities.entity_ids()[index],
                 FighterTransformSnapshot{.location = vector_at(entities.view_locations(), index),
@@ -82,7 +83,8 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     harness.on_end_tick = [&](LevelSim& level) {
         auto const entities{level.get_fighters().get_read_view().entities};
         std::set<EntityUniqueId> expected_moved;
-        for (std::int32_t index{}; index < entities.num(); ++index) {
+        auto const entity_count{entities.num()};
+        for (std::int32_t index{}; index < entity_count; ++index) {
             auto const id{entities.entity_ids()[index]};
             auto const current{FighterTransformSnapshot{
                 .location = vector_at(entities.view_locations(), index),

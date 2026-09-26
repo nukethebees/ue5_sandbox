@@ -129,7 +129,8 @@ auto analyze(AnalysisInput const input) -> Analysis {
                                           Metric::CapitalShips,
                                           Metric::CapitalShipFighters,
                                           Metric::TubeSpinners};
-        for (std::size_t index{1}; index < ticks.size(); ++index) {
+        auto const tick_count{ticks.size()};
+        for (std::size_t index{1}; index < tick_count; ++index) {
             auto const begin_tick{ticks[index - 1]};
             auto const end_tick{ticks[index]};
             if (end_tick == begin_tick) {
@@ -211,7 +212,8 @@ auto analyze(AnalysisInput const input) -> Analysis {
             }
             return total;
         }};
-        for (std::size_t index{1}; index < input.battle_samples.size(); ++index) {
+        auto const sample_count{input.battle_samples.size()};
+        for (std::size_t index{1}; index < sample_count; ++index) {
             auto const& begin{input.battle_samples[index - 1]};
             auto const& end{input.battle_samples[index]};
             auto const duration{end.simulated_elapsed_seconds - begin.simulated_elapsed_seconds};

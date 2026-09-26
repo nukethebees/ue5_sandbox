@@ -247,7 +247,8 @@ void Sim::resolve_damage_events() {
 }
 void Sim::publish_deaths() {
     auto const deaths{entity_death_info.get_const_view()};
-    for (std::int32_t i{}; i < deaths.num(); ++i) {
+    auto const death_count{deaths.num()};
+    for (std::int32_t i{}; i < death_count; ++i) {
         ledger_.record_death(deaths.victims[i], deaths.killers[i], deaths.reasons[i]);
     }
 }

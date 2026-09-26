@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -79,6 +80,28 @@ class LoopConditionCallTests(unittest.TestCase):
                     source.write_text(DECLARATIONS + "void test(Items items) {\n" + body + "\n}\n", encoding="utf-8")
                     output = self.run_tidy(f"-checks=-*,{CHECK}", str(source), "--", "-std=c++23")
                     self.assertEqual(output.count(f"[{CHECK}]"), warnings, output)
+
+    def test_nested_simulation_policy(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="ioj tidy policy ") as directory:
+            native = Path(directory) / "native"
+            simulation = native / "simulation"
+            benchmark = native / "simulation_benchmark"
+            simulation.mkdir(parents=True)
+            benchmark.mkdir()
+            shutil.copyfile(self.source_dir / "native/.clang-tidy", native / ".clang-tidy")
+            shutil.copyfile(self.source_dir / "native/simulation/.clang-tidy", simulation / ".clang-tidy")
+            for scope, expected in ((simulation, 1), (benchmark, 0)):
+                with self.subTest(scope=scope.name):
+                    source = scope / "input.cpp"
+                    source.write_text(
+                        "int get_count();\nvoid test() { for (int i = 0; i < get_count(); ++i) {} }\n",
+                        encoding="utf-8",
+                    )
+                    output = self.run_tidy(str(source), "--", "--driver-mode=cl", "/std:c++23")
+                    self.assertEqual(output.count(f"[{CHECK}]"), expected, output)
+            effective = self.run_tidy(str(simulation / "input.cpp"), "-list-checks")
+            self.assertIn("clang-analyzer-core.CallAndMessage", effective)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

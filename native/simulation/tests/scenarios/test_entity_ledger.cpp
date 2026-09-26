@@ -17,10 +17,10 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         tests::add_player_spawn(data, tests::make_player_spawn(config));
     }
     std::int32_t actor_index{};
-    for (std::int32_t team_index{};
-         team_index < static_cast<std::int32_t>(expected_team_counts.size());
-         ++team_index) {
-        for (std::int32_t i{}; i < expected_team_counts[team_index]; ++i) {
+    auto const team_count{static_cast<std::int32_t>(expected_team_counts.size())};
+    for (std::int32_t team_index{}; team_index < team_count; ++team_index) {
+        auto const team_entity_count{expected_team_counts[team_index]};
+        for (std::int32_t i{}; i < team_entity_count; ++i) {
             tests::add_capital_spawn(data,
                                      HMM_V3(static_cast<float>(actor_index * 5000),
                                             static_cast<float>(team_index * 5000),
@@ -49,9 +49,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
             total_count += count;
         }
         EXPECT_EQ(15, total_count) << "Check entity total";
-        for (std::int32_t team_index{};
-             team_index < static_cast<std::int32_t>(expected_team_counts.size());
-             ++team_index) {
+        for (std::int32_t team_index{}; team_index < team_count; ++team_index) {
             auto const team{static_cast<Team>(team_index)};
             EXPECT_EQ(expected_team_counts[team_index], counts[team_index])
                 << "Count team " + ::testing::PrintToString(team);
@@ -73,7 +71,8 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     auto const initial_alive_count{harness.get_ledger().count_alive()};
     std::vector<EntityUniqueId> available_targets;
     auto const capitals{harness.get_simulation().get_capital_ships().get_read_view().entities};
-    for (std::int32_t index{}; index < capitals.num(); ++index) {
+    auto const capital_count{capitals.num()};
+    for (std::int32_t index{}; index < capital_count; ++index) {
         if (capitals.teams()[index] != player->team) {
             available_targets.push_back(capitals.entity_ids()[index]);
         }

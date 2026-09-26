@@ -2,7 +2,7 @@
 
 Native clang-tidy uses clang-cl and LLVM's `run-clang-tidy`. Targeted subsystem audits are the
 normal developer and agent workflow. Full and scoped audits inherit `native/.clang-tidy`,
-including its static-analyzer checks.
+including its static-analyzer checks. Simulation adds its nested policy described below.
 Unreal Engine, generated sources,
 third-party code, `sbx_mimalloc`, compile/rejection fixtures, and the existing specifically
 excluded translation units remain outside the audit.
@@ -93,6 +93,32 @@ Set `IOJ_CLANG_TIDY_JOBS=0` to restore the automatic worker count.
 
 The enabled checks and audit compiler arguments are defined in `native/.clang-tidy`.
 
+## Simulation policy
+
+`native/simulation/.clang-tidy` inherits the native policy and enables exactly one custom check,
+`ioj-loop-condition-call`. It rejects source-level function and member calls in C-style `for`
+conditions, including function-object `operator()`. Operator syntax such as overloaded `<`, `!=`
+and `==` is allowed; a function call inside an operator's operands still warns. Explicit calls
+such as `index.operator<(end)` also warn.
+Hoist stable bounds into const locals. It does not inspect initializers, increments, loop bodies,
+range-for, `while`, or `do` conditions, and supplies no automatic fix.
+
+For deliberately changing conditions, use a local suppression with a reason:
+
+```cpp
+// NOLINTNEXTLINE(ioj-loop-condition-call) -- advancing can finish the timeline.
+for (SimTick tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
+    advance(tick_period);
+}
+```
+
+`simulation_benchmark` is included in the execution scope but does not inherit this custom policy.
+The existing translation-unit diagnostic scope is explicit because LLVM 24 changed its default
+header filter. When IOJ checks are available, run the registration, semantic and nested-policy tests:
+
+```powershell
+ctest --test-dir out/build/win-x64-clangcl-debug/clang-tidy -L clang-tidy --output-on-failure
+```
 
 The pinned LLVM toolchain also includes an independent analyzer lifetime fix. Its build script
 applies that patch separately from IOJ integration; see [toolchain patches](../tools/llvm/README.md).

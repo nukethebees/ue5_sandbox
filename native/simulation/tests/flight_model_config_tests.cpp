@@ -22,7 +22,8 @@ TEST(FlightModelConfig, DefaultLoadoutContainsFourValidDistinctPresets) {
         FlightModelSlot::Down,
         FlightModelSlot::Left,
     };
-    for (std::size_t index{}; index < slots.size(); ++index) {
+    auto const slot_count{slots.size()};
+    for (std::size_t index{}; index < slot_count; ++index) {
         auto const& profile{flight_model_profile(loadout, slots[index])};
         EXPECT_EQ(profile.base_preset, expected[index]);
         EXPECT_FALSE(profile.customized);

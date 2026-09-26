@@ -38,7 +38,8 @@ TEST(HealthTable, AllocatesCrossTypeRowsAndExposesBulkViews) {
 
     auto healths{table.get_view(indices, owners)};
     ASSERT_EQ(healths.num(), static_cast<std::int32_t>(owners.size()));
-    for (std::int32_t row{}; row < healths.num(); ++row) {
+    auto const health_count{healths.num()};
+    for (std::int32_t row{}; row < health_count; ++row) {
         EXPECT_EQ(healths.health(row), values[static_cast<std::size_t>(row)]);
         EXPECT_EQ(healths.owner(row), owners[static_cast<std::size_t>(row)]);
         EXPECT_TRUE(table.contains(indices[static_cast<std::size_t>(row)],
@@ -151,7 +152,8 @@ TEST(HealthTable, DenseBatchRemovalHandlesBoundaryAndBatchShapes) {
 
         EXPECT_EQ(table.num_slots(),
                   static_cast<std::int32_t>(owners.size() - removed_rows.size()));
-        for (std::size_t row{}; row < owners.size(); ++row) {
+        auto const owner_count{owners.size()};
+        for (std::size_t row{}; row < owner_count; ++row) {
             auto const removed{std::ranges::find(removed_rows, static_cast<std::int32_t>(row)) !=
                                removed_rows.end()};
             EXPECT_EQ(table.contains(indices[row], owners[row]), !removed);
