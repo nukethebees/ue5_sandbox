@@ -256,6 +256,31 @@ TEST(SchemaLoader, LoadsSemanticEnumsPackedValuesAndSoas) {
     ASSERT_EQ(vector_soa.columns.size(), 3U);
 }
 
+TEST(SchemaLoader, AnalyzesComposedFlightModelAndCollisionRecords) {
+    auto const loaded{load_lispb_schema(
+        std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb", "sandbox-code")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    auto const& graph{loaded.document->types()};
+    auto abi{AbiProfile::host_common()};
+    abi.set("Vector3f",
+            {.size_bytes = 12,
+             .alignment_bytes = 4,
+             .integer_signed = std::nullopt,
+             .unsigned_value_bits = std::nullopt,
+             .provenance = "HandmadeMath HMM_Vec3 contract",
+             .origin = FactOrigin::manual_assumption});
+    for (auto const& [module, name] :
+         {std::pair{"native_player_flight_model_data", "FlightModelLoadout"},
+          std::pair{"native_collision_grid_geometry", "GridGeometry"},
+          std::pair{"native_collision_grid_geometry", "CellCoordBounds"},
+          std::pair{"native_collision_world_aabb", "WorldAABB"}}) {
+        auto const id{graph.find_declared(module, name)};
+        ASSERT_TRUE(id.has_value()) << name;
+        auto const analysis{Analyzer::analyze_record(graph, *id, abi, 1)};
+        EXPECT_TRUE(analysis.diagnostics.empty()) << name;
+    }
+}
+
 TEST(SchemaLoader, DerivesFactsThroughSemanticRepresentations) {
     auto const project_path{std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb"};
     auto const loaded{load_lispb_schema(project_path, "sandbox-code")};

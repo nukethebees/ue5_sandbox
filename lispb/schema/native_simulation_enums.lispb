@@ -1,5 +1,6 @@
 (module native_team
   :header "native/simulation/include/ioj/sim/team.h"
+  :header-include "ioj/sim/team.h"
   :namespace ioj::sim
   (enum Team @native_uint8
     :native-api true
@@ -69,6 +70,7 @@
 
 (module native_boost_brake_state
   :header "native/simulation/include/ioj/sim/player/space_ship_common.h"
+  :header-include "ioj/sim/player/space_ship_common.h"
   :namespace ioj::sim::player
   (enum BoostBrakeState @native_uint8
     :native-api true

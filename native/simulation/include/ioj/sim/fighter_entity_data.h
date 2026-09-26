@@ -3,10 +3,11 @@
 
 #pragma once
 
-#include "ioj/sim/entity_types.h"
 #include "ioj/sim/entity_unique_id.h"
+#include "ioj/sim/fighter_navigation_types.h"
 #include "ioj/sim/fighter_types.h"
-#include "ioj/sim/health_table.h"
+#include "ioj/sim/health_index.h"
+#include "ioj/sim/team.h"
 
 #include "sandbox/core/native_soa/storage.h"
 
@@ -63,8 +64,8 @@ struct FighterEntityDataSingleLayout {
     inline static constexpr ColLayout<float> VelocitiesZsColumn{VelocitiesYsColumn};
     inline static constexpr ColLayout<float> MoveDistancesColumn{VelocitiesZsColumn};
     inline static constexpr ColLayout<float> SpeedsColumn{MoveDistancesColumn};
-    inline static constexpr ColLayout<Team> TeamsColumn{SpeedsColumn};
-    inline static constexpr ColLayout<HealthIndex> HealthIndicesColumn{TeamsColumn};
+    inline static constexpr ColLayout<ioj::sim::Team> TeamsColumn{SpeedsColumn};
+    inline static constexpr ColLayout<ioj::sim::HealthIndex> HealthIndicesColumn{TeamsColumn};
     inline static constexpr ColLayout<EntityUniqueId> ParentIdsColumn{HealthIndicesColumn};
     inline static constexpr ColLayout<std::int8_t> AwarenessScanCountdownsColumn{ParentIdsColumn};
     inline static constexpr ColLayout<std::int16_t> NavigationUpdateCountdownsRemainingTicksColumn{
@@ -75,14 +76,14 @@ struct FighterEntityDataSingleLayout {
         NavigationUpdateCountdownsPeriodsColumn};
     inline static constexpr ColLayout<float> SeparationSteeringYsColumn{SeparationSteeringXsColumn};
     inline static constexpr ColLayout<float> SeparationSteeringZsColumn{SeparationSteeringYsColumn};
-    inline static constexpr ColLayout<std::uint8_t> NavigationRiskTiersColumn{
-        SeparationSteeringZsColumn};
-    inline static constexpr ColLayout<std::uint8_t> NavigationLowerRiskScanCountsColumn{
-        NavigationRiskTiersColumn};
-    inline static constexpr ColLayout<std::int8_t> AvoidanceChoiceIndicesColumn{
-        NavigationLowerRiskScanCountsColumn};
-    inline static constexpr ColLayout<std::uint8_t> AvoidanceClearScanCountsColumn{
-        AvoidanceChoiceIndicesColumn};
+    inline static constexpr ColLayout<ioj::sim::fighters::NavigationRiskCode>
+        NavigationRiskTiersColumn{SeparationSteeringZsColumn};
+    inline static constexpr ColLayout<ioj::sim::fighters::NavigationScanCount>
+        NavigationLowerRiskScanCountsColumn{NavigationRiskTiersColumn};
+    inline static constexpr ColLayout<ioj::sim::fighters::AvoidanceChoice>
+        AvoidanceChoiceIndicesColumn{NavigationLowerRiskScanCountsColumn};
+    inline static constexpr ColLayout<ioj::sim::fighters::NavigationScanCount>
+        AvoidanceClearScanCountsColumn{AvoidanceChoiceIndicesColumn};
     inline static constexpr ColLayout<std::int16_t> AttackRepositionCountdownsColumn{
         AvoidanceClearScanCountsColumn};
     inline static constexpr ColLayout<std::int16_t> AttackCooldownsColumn{
@@ -269,13 +270,13 @@ struct FighterEntityDataSingleViewImpl : ml::native_soa::CompactViewState<Const>
                     FighterEntityDataSingleLayout::SpeedsColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto teams() const -> std::span<Element<Team>> {
-        return {this->template column_data<Team>(
+    auto teams() const -> std::span<Element<ioj::sim::Team>> {
+        return {this->template column_data<ioj::sim::Team>(
                     FighterEntityDataSingleLayout::TeamsColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto health_indices() const -> std::span<Element<HealthIndex>> {
-        return {this->template column_data<HealthIndex>(
+    auto health_indices() const -> std::span<Element<ioj::sim::HealthIndex>> {
+        return {this->template column_data<ioj::sim::HealthIndex>(
                     FighterEntityDataSingleLayout::HealthIndicesColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -316,26 +317,30 @@ struct FighterEntityDataSingleViewImpl : ml::native_soa::CompactViewState<Const>
                           first};
         return {this->template column_data_unchecked<float>(first), stride, count_};
     }
-    auto navigation_risk_tiers() const -> std::span<Element<std::uint8_t>> {
+    auto navigation_risk_tiers() const
+        -> std::span<Element<ioj::sim::fighters::NavigationRiskCode>> {
         return {
-            this->template column_data<std::uint8_t>(
+            this->template column_data<ioj::sim::fighters::NavigationRiskCode>(
                 FighterEntityDataSingleLayout::NavigationRiskTiersColumn.offset(capacity_blocks())),
             static_cast<std::size_t>(count_)};
     }
-    auto navigation_lower_risk_scan_counts() const -> std::span<Element<std::uint8_t>> {
-        return {this->template column_data<std::uint8_t>(
+    auto navigation_lower_risk_scan_counts() const
+        -> std::span<Element<ioj::sim::fighters::NavigationScanCount>> {
+        return {this->template column_data<ioj::sim::fighters::NavigationScanCount>(
                     FighterEntityDataSingleLayout::NavigationLowerRiskScanCountsColumn.offset(
                         capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto avoidance_choice_indices() const -> std::span<Element<std::int8_t>> {
-        return {this->template column_data<std::int8_t>(
+    auto avoidance_choice_indices() const
+        -> std::span<Element<ioj::sim::fighters::AvoidanceChoice>> {
+        return {this->template column_data<ioj::sim::fighters::AvoidanceChoice>(
                     FighterEntityDataSingleLayout::AvoidanceChoiceIndicesColumn.offset(
                         capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto avoidance_clear_scan_counts() const -> std::span<Element<std::uint8_t>> {
-        return {this->template column_data<std::uint8_t>(
+    auto avoidance_clear_scan_counts() const
+        -> std::span<Element<ioj::sim::fighters::NavigationScanCount>> {
+        return {this->template column_data<ioj::sim::fighters::NavigationScanCount>(
                     FighterEntityDataSingleLayout::AvoidanceClearScanCountsColumn.offset(
                         capacity_blocks())),
                 static_cast<std::size_t>(count_)};
@@ -615,10 +620,12 @@ struct SingleAllocationFighterEntityData
             ml::native_soa::source_data(source.move_distances())
         } -> std::convertible_to<float const*>;
         { ml::native_soa::source_data(source.speeds()) } -> std::convertible_to<float const*>;
-        { ml::native_soa::source_data(source.teams()) } -> std::convertible_to<Team const*>;
+        {
+            ml::native_soa::source_data(source.teams())
+        } -> std::convertible_to<ioj::sim::Team const*>;
         {
             ml::native_soa::source_data(source.health_indices())
-        } -> std::convertible_to<HealthIndex const*>;
+        } -> std::convertible_to<ioj::sim::HealthIndex const*>;
         {
             ml::native_soa::source_data(source.parent_ids())
         } -> std::convertible_to<EntityUniqueId const*>;
@@ -642,16 +649,16 @@ struct SingleAllocationFighterEntityData
         } -> std::convertible_to<float const*>;
         {
             ml::native_soa::source_data(source.navigation_risk_tiers())
-        } -> std::convertible_to<std::uint8_t const*>;
+        } -> std::convertible_to<ioj::sim::fighters::NavigationRiskCode const*>;
         {
             ml::native_soa::source_data(source.navigation_lower_risk_scan_counts())
-        } -> std::convertible_to<std::uint8_t const*>;
+        } -> std::convertible_to<ioj::sim::fighters::NavigationScanCount const*>;
         {
             ml::native_soa::source_data(source.avoidance_choice_indices())
-        } -> std::convertible_to<std::int8_t const*>;
+        } -> std::convertible_to<ioj::sim::fighters::AvoidanceChoice const*>;
         {
             ml::native_soa::source_data(source.avoidance_clear_scan_counts())
-        } -> std::convertible_to<std::uint8_t const*>;
+        } -> std::convertible_to<ioj::sim::fighters::NavigationScanCount const*>;
         {
             ml::native_soa::source_data(source.attack_reposition_countdowns())
         } -> std::convertible_to<std::int16_t const*>;
@@ -753,8 +760,8 @@ struct SingleAllocationFighterEntityData
         Element<float>* velocities_zs{};
         Element<float>* move_distances{};
         Element<float>* speeds{};
-        Element<Team>* teams{};
-        Element<HealthIndex>* health_indices{};
+        Element<ioj::sim::Team>* teams{};
+        Element<ioj::sim::HealthIndex>* health_indices{};
         Element<EntityUniqueId>* parent_ids{};
         Element<std::int8_t>* awareness_scan_countdowns{};
         Element<std::int16_t>* navigation_update_countdowns_remaining_ticks{};
@@ -762,10 +769,10 @@ struct SingleAllocationFighterEntityData
         Element<float>* separation_steering_xs{};
         Element<float>* separation_steering_ys{};
         Element<float>* separation_steering_zs{};
-        Element<std::uint8_t>* navigation_risk_tiers{};
-        Element<std::uint8_t>* navigation_lower_risk_scan_counts{};
-        Element<std::int8_t>* avoidance_choice_indices{};
-        Element<std::uint8_t>* avoidance_clear_scan_counts{};
+        Element<ioj::sim::fighters::NavigationRiskCode>* navigation_risk_tiers{};
+        Element<ioj::sim::fighters::NavigationScanCount>* navigation_lower_risk_scan_counts{};
+        Element<ioj::sim::fighters::AvoidanceChoice>* avoidance_choice_indices{};
+        Element<ioj::sim::fighters::NavigationScanCount>* avoidance_clear_scan_counts{};
         Element<std::int16_t>* attack_reposition_countdowns{};
         Element<std::int16_t>* attack_cooldowns{};
         Element<EntityUniqueId>* target_ids{};

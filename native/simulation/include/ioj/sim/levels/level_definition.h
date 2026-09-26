@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ioj/sim/levels/level_mission_mode.h>
+#include <ioj/sim/levels/level_validation_error_code.h>
 
 #include <cstdint>
 #include <optional>
@@ -73,55 +74,6 @@ struct LevelDefinition {
     std::vector<LevelMissionObjectiveEvent> mission_events{};
     std::vector<std::string> teams{};
     std::vector<EntitySpawnDefinition> entities{};
-};
-
-enum class LevelValidationErrorCode : std::uint8_t {
-    MissingLevelId,
-    MissingTitle,
-    InvalidParTime,
-    UnexpectedParTime,
-    MissingViewpoint,
-    ConflictingViewpoints,
-    PlayerEntityNotFound,
-    MismatchedEntityColumns,
-    EmptyTeamId,
-    DuplicateTeamId,
-    UnsupportedTeamId,
-    UnknownTeamReference,
-    EmptyArchetypeId,
-    UnsupportedArchetype,
-    ArchetypeRoleMismatch,
-    DuplicateEntityId,
-    InvalidPlacement,
-    InvalidSpawnTime,
-    DelayedPlayerSpawn,
-    MissingCameraTarget,
-    DuplicateCameraTarget,
-    CameraTargetNotFound,
-    InvalidCameraDistance,
-    InvalidCameraOffsetDirection,
-    InvalidLevelSize,
-    InvalidGridCellSize,
-    InvalidGridDimensions,
-    MissingMissionMode,
-    UnsupportedMissionMode,
-    InvalidMissionTimeLimit,
-    UnexpectedMissionTimeLimit,
-    InvalidMissionKillCount,
-    UnexpectedMissionKillCount,
-    MissingMissionHeroes,
-    MissingMissionSurvivors,
-    MissionEntityNotFound,
-    DuplicateMissionEntityReference,
-    ConflictingMissionEntityRoles,
-    AmbiguousAutomaticKillTeams,
-    MissingUnlockLevelId,
-    DuplicateUnlockCriterion,
-    SelfUnlockDependency,
-    UnexpectedMissionEvent,
-    InvalidMissionEventTime,
-    InvalidMissionKillIncrease,
-    MissionEventBeforeEntitySpawn,
 };
 
 struct LevelValidationError {

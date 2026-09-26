@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "ioj/sim/entity_types.h"
 #include "ioj/sim/entity_unique_id.h"
+#include "ioj/sim/team.h"
 
 #include "sandbox/core/native_soa/storage.h"
 
@@ -32,7 +32,7 @@ struct FighterSpawnQueueSingleLayout {
     inline static constexpr ColLayout<float> RotationsPitchesColumn{LocationsZsColumn};
     inline static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
     inline static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
-    inline static constexpr ColLayout<Team> TeamsColumn{RotationsRollsColumn};
+    inline static constexpr ColLayout<ioj::sim::Team> TeamsColumn{RotationsRollsColumn};
     inline static constexpr ColLayout<EntityUniqueId> ParentsColumn{TeamsColumn};
     inline static constexpr ColLayout<EntityUniqueId> TargetsColumn{ParentsColumn};
 
@@ -173,8 +173,8 @@ struct FighterSpawnQueueSingleViewImpl : ml::native_soa::CompactViewState<Const>
                                                       FighterSpawnQueueSingleView_rotations> {
         return {state_, offset_, count_};
     }
-    auto teams() const -> std::span<Element<Team>> {
-        return {this->template column_data<Team>(
+    auto teams() const -> std::span<Element<ioj::sim::Team>> {
+        return {this->template column_data<ioj::sim::Team>(
                     FighterSpawnQueueSingleLayout::TeamsColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -280,7 +280,9 @@ struct SingleAllocationFighterSpawnQueue
         {
             ml::native_soa::source_data(source.view_rotations().rolls())
         } -> std::convertible_to<float const*>;
-        { ml::native_soa::source_data(source.teams()) } -> std::convertible_to<Team const*>;
+        {
+            ml::native_soa::source_data(source.teams())
+        } -> std::convertible_to<ioj::sim::Team const*>;
         {
             ml::native_soa::source_data(source.parents())
         } -> std::convertible_to<EntityUniqueId const*>;
@@ -321,7 +323,7 @@ struct SingleAllocationFighterSpawnQueue
         Element<float>* rotations_pitches{};
         Element<float>* rotations_yaws{};
         Element<float>* rotations_rolls{};
-        Element<Team>* teams{};
+        Element<ioj::sim::Team>* teams{};
         Element<EntityUniqueId>* parents{};
         Element<EntityUniqueId>* targets{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {

@@ -41,7 +41,7 @@ struct SpawnRequestsSingleLayout {
     inline static constexpr ColLayout<float> SpeedsColumn{DamagesColumn};
     inline static constexpr ColLayout<float> MaxDistancesColumn{SpeedsColumn};
     inline static constexpr ColLayout<EntityUniqueId> InstigatorIdsColumn{MaxDistancesColumn};
-    inline static constexpr ColLayout<LaserSource> SourcesColumn{InstigatorIdsColumn};
+    inline static constexpr ColLayout<ioj::sim::LaserSource> SourcesColumn{InstigatorIdsColumn};
 
     inline static constexpr byte_size_type allocation_alignment{SourcesColumn.allocation_alignment};
 
@@ -376,8 +376,8 @@ struct SpawnRequestsSingleViewImpl : ml::native_soa::CompactViewState<Const> {
                     SpawnRequestsSingleLayout::InstigatorIdsColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto sources() const -> std::span<Element<LaserSource>> {
-        return {this->template column_data<LaserSource>(
+    auto sources() const -> std::span<Element<ioj::sim::LaserSource>> {
+        return {this->template column_data<ioj::sim::LaserSource>(
                     SpawnRequestsSingleLayout::SourcesColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -499,7 +499,7 @@ struct SingleAllocationLaserSpawnRequests
         } -> std::convertible_to<EntityUniqueId const*>;
         {
             ml::native_soa::source_data(source.sources())
-        } -> std::convertible_to<LaserSource const*>;
+        } -> std::convertible_to<ioj::sim::LaserSource const*>;
     };
     /* **************************************** */
     // Lifetime
@@ -541,7 +541,7 @@ struct SingleAllocationLaserSpawnRequests
         Element<float>* speeds{};
         Element<float>* max_distances{};
         Element<EntityUniqueId>* instigator_ids{};
-        Element<LaserSource>* sources{};
+        Element<ioj::sim::LaserSource>* sources{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (locations_xs == nullptr) {
                 return {};
@@ -885,7 +885,7 @@ struct EntitiesSingleLayout {
     inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
     inline static constexpr ColLayout<std::uint8_t> ActiveColumn{LayoutStart};
-    inline static constexpr ColLayout<LaserSource> SourcesColumn{ActiveColumn};
+    inline static constexpr ColLayout<ioj::sim::LaserSource> SourcesColumn{ActiveColumn};
     inline static constexpr ColLayout<float> LocationsXsColumn{SourcesColumn};
     inline static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
     inline static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
@@ -1196,8 +1196,8 @@ struct EntitiesSingleViewImpl : ml::native_soa::CompactViewState<Const> {
                     EntitiesSingleLayout::ActiveColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto sources() const -> std::span<Element<LaserSource>> {
-        return {this->template column_data<LaserSource>(
+    auto sources() const -> std::span<Element<ioj::sim::LaserSource>> {
+        return {this->template column_data<ioj::sim::LaserSource>(
                     EntitiesSingleLayout::SourcesColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -1323,7 +1323,7 @@ struct SingleAllocationLaserEntities
         } -> std::convertible_to<std::uint8_t const*>;
         {
             ml::native_soa::source_data(source.sources())
-        } -> std::convertible_to<LaserSource const*>;
+        } -> std::convertible_to<ioj::sim::LaserSource const*>;
         {
             ml::native_soa::source_data(source.view_locations().xs())
         } -> std::convertible_to<float const*>;
@@ -1392,7 +1392,7 @@ struct SingleAllocationLaserEntities
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
         Element<std::uint8_t>* active{};
-        Element<LaserSource>* sources{};
+        Element<ioj::sim::LaserSource>* sources{};
         Element<float>* locations_xs{};
         Element<float>* locations_ys{};
         Element<float>* locations_zs{};

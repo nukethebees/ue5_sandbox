@@ -182,6 +182,7 @@ auto AbiProfile::host_common() -> AbiProfile {
     result.set("std::int16_t", integer_facts<std::int16_t>());
     result.set("std::int32_t", integer_facts<std::int32_t>());
     result.set("std::int64_t", integer_facts<std::int64_t>());
+    result.set("int", integer_facts<int>());
     result.set("float", value_facts<float>());
     result.set("double", value_facts<double>());
     result.set("void*", value_facts<void*>());

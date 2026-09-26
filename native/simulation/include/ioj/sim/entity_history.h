@@ -5,8 +5,8 @@
 
 #include "ioj/sim/entity_life_state.h"
 #include "ioj/sim/entity_type.h"
-#include "ioj/sim/entity_types.h"
 #include "ioj/sim/entity_unique_id.h"
+#include "ioj/sim/team.h"
 
 #include "sandbox/core/native_soa/storage.h"
 
@@ -30,7 +30,7 @@ struct EntityHistoryColumnsSingleLayout {
 
     inline static constexpr ColLayout<EntityUniqueId> EntityIdsColumn{LayoutStart};
     inline static constexpr ColLayout<ioj::sim::EntityType> EntityTypesColumn{EntityIdsColumn};
-    inline static constexpr ColLayout<Team> TeamsColumn{EntityTypesColumn};
+    inline static constexpr ColLayout<ioj::sim::Team> TeamsColumn{EntityTypesColumn};
     inline static constexpr ColLayout<std::uint32_t> KillsColumn{TeamsColumn};
     inline static constexpr ColLayout<EntityUniqueId> KilledByColumn{KillsColumn};
     inline static constexpr ColLayout<LifeState> LifeStateColumn{KilledByColumn};
@@ -86,8 +86,8 @@ struct EntityHistoryColumnsSingleViewImpl : ml::native_soa::CompactViewState<Con
                     EntityHistoryColumnsSingleLayout::EntityTypesColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto teams() const -> std::span<Element<Team>> {
-        return {this->template column_data<Team>(
+    auto teams() const -> std::span<Element<ioj::sim::Team>> {
+        return {this->template column_data<ioj::sim::Team>(
                     EntityHistoryColumnsSingleLayout::TeamsColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -183,7 +183,9 @@ struct EntityHistory
         {
             ml::native_soa::source_data(source.entity_types())
         } -> std::convertible_to<ioj::sim::EntityType const*>;
-        { ml::native_soa::source_data(source.teams()) } -> std::convertible_to<Team const*>;
+        {
+            ml::native_soa::source_data(source.teams())
+        } -> std::convertible_to<ioj::sim::Team const*>;
         {
             ml::native_soa::source_data(source.kills())
         } -> std::convertible_to<std::uint32_t const*>;
@@ -221,7 +223,7 @@ struct EntityHistory
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
         Element<EntityUniqueId>* entity_ids{};
         Element<ioj::sim::EntityType>* entity_types{};
-        Element<Team>* teams{};
+        Element<ioj::sim::Team>* teams{};
         Element<std::uint32_t>* kills{};
         Element<EntityUniqueId>* killed_by{};
         Element<LifeState>* life_state{};

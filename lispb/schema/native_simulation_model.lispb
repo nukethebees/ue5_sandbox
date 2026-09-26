@@ -1,0 +1,505 @@
+(module native_sim_state
+  :header "native/simulation/include/ioj/sim/sim_state.h"
+  :header-include "ioj/sim/sim_state.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (enum OrchestratorState std::uint8_t
+    (value Uninitialised)
+    (value Paused)
+    (value Running)
+    (value Stopped)))
+
+(module native_simulation_phase
+  :header "native/simulation/include/ioj/sim/simulation_phase.h"
+  :header-include "ioj/sim/simulation_phase.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (enum SimulationPhase int
+    (value Initialisation)
+    (value Preparation)
+    (value Thinking)
+    (value Action)
+    (value Resolution)
+    (value ResolutionCommit)
+    (value Idle)))
+
+(module native_collision_trace_entity_filter
+  :header "native/simulation/include/ioj/sim/collision/trace_entity_filter.h"
+  :header-include "ioj/sim/collision/trace_entity_filter.h"
+  :backend standard-library
+  :namespace ioj::sim::collision
+  (enum TraceEntityFilter std::uint8_t
+    (value None)
+    (value ExcludeFighters)))
+
+(module native_levels_level_mission_mode
+  :header "native/simulation/include/ioj/sim/levels/level_mission_mode.h"
+  :header-include "ioj/sim/levels/level_mission_mode.h"
+  :backend standard-library
+  :namespace ioj::sim::levels
+  (enum LevelMissionMode std::uint8_t
+    (value Unspecified)
+    (value SurviveTime)
+    (value KillEnemies)
+    (value KillEnemiesWithinTime)))
+
+(module native_levels_level_validation_error_code
+  :header "native/simulation/include/ioj/sim/levels/level_validation_error_code.h"
+  :header-include "ioj/sim/levels/level_validation_error_code.h"
+  :backend standard-library
+  :namespace ioj::sim::levels
+  (enum LevelValidationErrorCode std::uint8_t
+    (value MissingLevelId)
+    (value MissingTitle)
+    (value InvalidParTime)
+    (value UnexpectedParTime)
+    (value MissingViewpoint)
+    (value ConflictingViewpoints)
+    (value PlayerEntityNotFound)
+    (value MismatchedEntityColumns)
+    (value EmptyTeamId)
+    (value DuplicateTeamId)
+    (value UnsupportedTeamId)
+    (value UnknownTeamReference)
+    (value EmptyArchetypeId)
+    (value UnsupportedArchetype)
+    (value ArchetypeRoleMismatch)
+    (value DuplicateEntityId)
+    (value InvalidPlacement)
+    (value InvalidSpawnTime)
+    (value DelayedPlayerSpawn)
+    (value MissingCameraTarget)
+    (value DuplicateCameraTarget)
+    (value CameraTargetNotFound)
+    (value InvalidCameraDistance)
+    (value InvalidCameraOffsetDirection)
+    (value InvalidLevelSize)
+    (value InvalidGridCellSize)
+    (value InvalidGridDimensions)
+    (value MissingMissionMode)
+    (value UnsupportedMissionMode)
+    (value InvalidMissionTimeLimit)
+    (value UnexpectedMissionTimeLimit)
+    (value InvalidMissionKillCount)
+    (value UnexpectedMissionKillCount)
+    (value MissingMissionHeroes)
+    (value MissingMissionSurvivors)
+    (value MissionEntityNotFound)
+    (value DuplicateMissionEntityReference)
+    (value ConflictingMissionEntityRoles)
+    (value AmbiguousAutomaticKillTeams)
+    (value MissingUnlockLevelId)
+    (value DuplicateUnlockCriterion)
+    (value SelfUnlockDependency)
+    (value UnexpectedMissionEvent)
+    (value InvalidMissionEventTime)
+    (value InvalidMissionKillIncrease)
+    (value MissionEventBeforeEntitySpawn)))
+
+(module native_player_flight_model_enums
+  :header "native/simulation/include/ioj/sim/player/flight_model_enums.h"
+  :header-include "ioj/sim/player/flight_model_enums.h"
+  :backend standard-library
+  :namespace ioj::sim::player
+  (enum FlightModelPreset std::uint8_t
+    (value Starfox)
+    (value Fighter)
+    (value Skater)
+    (value Gunship))
+  (enum FlightModelSlot std::uint8_t
+    (value Up)
+    (value Right)
+    (value Down)
+    (value Left))
+  (enum TranslationSemantic std::uint8_t
+    (value Disabled)
+    (value TargetSpeed)
+    (value TargetVelocity)
+    (value Acceleration))
+  (enum RotationSemantic std::uint8_t
+    (value Disabled)
+    (value TargetAngularVelocity)
+    (value AngularAcceleration))
+  (enum ReferenceFrame std::uint8_t
+    (value Ship)
+    (value World))
+  (enum TranslationInputSource std::uint8_t
+    (value Axis)
+    (value Accelerator))
+  (enum ResponseMode std::uint8_t
+    (value Direct)
+    (value RateLimited)
+    (value SecondOrder))
+  (enum FacingVelocityCoupling std::uint8_t
+    (value Independent)
+    (value AlignToFacing)
+    (value LockedToFacing))
+  (enum FlightModelConfigError std::uint8_t
+    (value InvalidEnumValue)
+    (value NonFiniteValue)
+    (value NegativeValue)
+    (value InputValueOutOfRange)
+    (value InvalidManualChannel)
+    (value InvalidAutomaticChannel)
+    (value AmbiguousTargetChannels)
+    (value InvalidSecondOrderSettlingTime)
+    (value InvalidSecondOrderDampingRatio)))
+
+(module native_fighters_navigation_records
+  :header "native/simulation/include/ioj/sim/fighters/navigation_records.h"
+  :header-include "ioj/sim/fighters/navigation_records.h"
+  :backend standard-library
+  :namespace ioj::sim::fighters
+  (record AvoidanceFrame
+    (member preferred_direction @native_vector_3f)
+    (member first_lateral @native_vector_3f)
+    (member second_lateral @native_vector_3f)
+    (member roll_sin float)
+    (member roll_cos float))
+  (record NavigationRiskUpdate
+    (member tier ioj::sim::fighters::NavigationRiskTier)
+    (member lower_risk_scan_count std::uint8_t))
+  (record SeparationObservationParameters
+    (member separation_radius float)
+    (member immediate_distance_squared float)
+    (member close_distance_squared float)
+    (member memory_retention float)
+    (member separation_strength float)
+    (member dense_traffic_neighbour_threshold std::int32_t)
+    (member integral_bias std::uint32_t)
+    (member float_bias float))
+  (record SeparationObservation
+    (member steering_memory @native_vector_3f)
+    (member risk_tier ioj::sim::fighters::NavigationRiskTier)
+    (member dense_direction_selected bool))
+  (record SeparationNeighbour
+    (member id @native_unique_id)
+    (member location @native_vector_3f)))
+
+(module native_collision_grid_geometry
+  :header "native/simulation/include/ioj/sim/collision/grid_geometry.h"
+  :header-include "ioj/sim/collision/grid_geometry.h"
+  :backend standard-library
+  :namespace ioj::sim::collision
+  (record CellCoord
+    :comparison equality
+    :comparison-noexcept true
+    (member x int :initializer "")
+    (member y int :initializer "")
+    (member z int :initializer "")
+    (function operator[] (type-ref int :suffix "&") :noexcept true
+      (parameter index std::size_t))
+    (function operator[] int :const true :noexcept true
+      (parameter index std::size_t)))
+  (record CellCoordBounds
+    (member min ioj::sim::collision::CellCoord)
+    (member max ioj::sim::collision::CellCoord))
+  (record GridGeometry
+    (member dimensions ioj::sim::collision::CellCoord)
+    (member cell_dimensions @native_vector_3f)))
+
+(module native_collision_world_aabb
+  :header "native/simulation/include/ioj/sim/collision/world_aabb.h"
+  :header-include "ioj/sim/collision/world_aabb.h"
+  :backend standard-library
+  :namespace ioj::sim::collision
+  (record WorldAABB
+    (member min @native_vector_3f)
+    (member max @native_vector_3f)))
+
+(module native_attack_distance_band
+  :header "native/simulation/include/ioj/sim/attack_distance_band.h"
+  :header-include "ioj/sim/attack_distance_band.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (record AttackDistanceBand
+    (member minimum_ratio float :initializer "0.4f")
+    (member desired_ratio float :initializer "0.5f")
+    (member maximum_ratio float :initializer "0.6f")
+    (function values_are_valid bool :const true :noexcept true :nodiscard true)))
+
+(module native_base_sim_config
+  :header "native/simulation/include/ioj/sim/base_sim_config.h"
+  :header-include "ioj/sim/base_sim_config.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (record LaserWeaponSimConfig
+    (member damage std::int32_t :initializer "5")
+    (member projectile_speed float :initializer "10000.f")
+    (member max_distance float :initializer "10000.f")
+    (member fire_cooldown float :initializer "0.33f"))
+  (record LaserSimConfig
+    (member n_preallocated_instances std::int32_t :initializer "5000")
+    (member collision_jobs std::int32_t :initializer "8"))
+  (record OverlapResponseConfig
+    (member damage_per_overlap_detection std::int32_t :initializer "50"))
+  (record FighterSimConfig
+    (member max_live_fighters std::int32_t :initializer "2000")
+    (member fire_dot_product_threshold float :initializer "0.95f")
+    (member speed float :initializer "2000.f")
+    (member turn_speed_unitless float :initializer "1.f")
+    (member avoidance_clear_update_frequency float :initializer "2.f")
+    (member avoidance_update_frequency float :initializer "5.f")
+    (member avoidance_active_update_frequency float :initializer "12.f")
+    (member avoidance_immediate_update_frequency float :initializer "30.f")
+    (member avoidance_lookahead_time float :initializer "1.f")
+    (member avoidance_clearance_buffer float :initializer "100.f")
+    (member separation_radius float :initializer "2000.f")
+    (member separation_strength float :initializer "1.f")
+    (member steering_memory_duration float :initializer "0.75f")
+    (member dense_traffic_neighbour_threshold std::int32_t :initializer "4")
+    (member laser ioj::sim::LaserWeaponSimConfig :initializer "")
+    (member health @native_health :initializer "50")
+    (member attack_retry_cooldown float :initializer "0.15f")
+    (member attack_engagement_threshold float :initializer "5000.f")
+    (member attack_reposition_frequency float :initializer "10.f")
+    (member attack_distance_band ioj::sim::AttackDistanceBand)
+    (member arrival_distance float :initializer "500.f")
+    (member los_check_buffer float :initializer "100.f")
+    (member awareness_radius float :initializer "10000.f")
+    (member awareness_scan_frequency float :initializer "6.f")
+    (member minimum_opportunistic_intercept_deviation_dot_product float :initializer "0.5f")))
+
+(module native_player_flight_model_data
+  :header "native/simulation/include/ioj/sim/player/flight_model_data.h"
+  :header-include "ioj/sim/player/flight_model_data.h"
+  :backend standard-library
+  :namespace ioj::sim::player
+  :prelude ("#include <ioj/sim/player/flight_model_constants.h>")
+  (record RateLimitedResponseConfig
+    :comparison equality
+    (member increasing_rate float :initializer "")
+    (member decreasing_rate float :initializer ""))
+  (record SecondOrderResponseConfig
+    :comparison equality
+    (member settling_time float :initializer "3.f")
+    (member damping_ratio float :initializer "0.5f"))
+  (record ResponseConfig
+    :comparison equality
+    (member mode ioj::sim::player::ResponseMode :initializer "ResponseMode::Direct")
+    (member rate_limited ioj::sim::player::RateLimitedResponseConfig :initializer "")
+    (member second_order ioj::sim::player::SecondOrderResponseConfig :initializer ""))
+  (record TranslationChannelConfig
+    :comparison equality
+    (member semantic ioj::sim::player::TranslationSemantic :initializer "TranslationSemantic::Disabled")
+    (member reference_frame ioj::sim::player::ReferenceFrame :initializer "ReferenceFrame::Ship")
+    (member input_source ioj::sim::player::TranslationInputSource :initializer "TranslationInputSource::Axis")
+    (member automatic_value float :initializer "")
+    (member response ioj::sim::player::ResponseConfig :initializer ""))
+  (record TranslationDriveConfig
+    :comparison equality
+    (member positive_target_speed float :initializer "")
+    (member negative_target_speed float :initializer "")
+    (member positive_speed_limit float :initializer "effectively_unlimited_speed")
+    (member negative_speed_limit float :initializer "effectively_unlimited_speed")
+    (member positive_acceleration float :initializer "")
+    (member negative_acceleration float :initializer ""))
+  (record TranslationAxisConfig
+    :comparison equality
+    (member manual ioj::sim::player::TranslationChannelConfig :initializer "")
+    (member automatic ioj::sim::player::TranslationChannelConfig :initializer "")
+    (member normal ioj::sim::player::TranslationDriveConfig :initializer "")
+    (member boosted ioj::sim::player::TranslationDriveConfig :initializer "")
+    (member passive_drag float :initializer "")
+    (member passive_drag_reference_frame ioj::sim::player::ReferenceFrame :initializer "ReferenceFrame::Ship")
+    (member active_stabilization_rate float :initializer "")
+    (member active_stabilization_reference_frame ioj::sim::player::ReferenceFrame :initializer "ReferenceFrame::Ship"))
+  (record TranslationAxesConfig
+    :comparison equality
+    (member forward ioj::sim::player::TranslationAxisConfig :initializer "")
+    (member right ioj::sim::player::TranslationAxisConfig :initializer "")
+    (member up ioj::sim::player::TranslationAxisConfig :initializer ""))
+  (record RotationStabilizationConfig
+    :comparison equality
+    (member enabled bool :initializer "")
+    (member target_angle float :initializer "")
+    (member delay float :initializer "")
+    (member response ioj::sim::player::ResponseConfig :initializer ""))
+  (record RotationAxisConfig
+    :comparison equality
+    (member manual_semantic ioj::sim::player::RotationSemantic :initializer "RotationSemantic::Disabled")
+    (member maximum_rate float :initializer "")
+    (member acceleration float :initializer "")
+    (member response ioj::sim::player::ResponseConfig :initializer "")
+    (member stabilization ioj::sim::player::RotationStabilizationConfig :initializer ""))
+  (record RotationAxesConfig
+    :comparison equality
+    (member pitch ioj::sim::player::RotationAxisConfig :initializer "")
+    (member yaw ioj::sim::player::RotationAxisConfig :initializer "")
+    (member roll ioj::sim::player::RotationAxisConfig :initializer ""))
+  (record FacingVelocityConfig
+    :comparison equality
+    (member mode ioj::sim::player::FacingVelocityCoupling :initializer "FacingVelocityCoupling::Independent")
+    (member alignment_rate float :initializer "")
+    (member response ioj::sim::player::ResponseConfig :initializer ""))
+  (record BoostConfig
+    :comparison equality
+    (member available bool :initializer "")
+    (member accelerator_activates_boost bool :initializer "")
+    (member energy_drain_per_second float :initializer "")
+    (member response ioj::sim::player::ResponseConfig :initializer ""))
+  (record BrakeConfig
+    :comparison equality
+    (member available bool :initializer "")
+    (member target_speed float :initializer "")
+    (member deceleration float :initializer "")
+    (member energy_drain_per_second float :initializer "")
+    (member response ioj::sim::player::ResponseConfig :initializer ""))
+  (record FlightModelConfig
+    :comparison equality
+    (member translation ioj::sim::player::TranslationAxesConfig :initializer "")
+    (member rotation ioj::sim::player::RotationAxesConfig :initializer "")
+    (member facing_velocity ioj::sim::player::FacingVelocityConfig :initializer "")
+    (member boost ioj::sim::player::BoostConfig :initializer "")
+    (member brake ioj::sim::player::BrakeConfig :initializer "")
+    (member emergency_brake ioj::sim::player::BrakeConfig :initializer "")
+    (member energy_recharge_per_second float :initializer "")
+    (member maximum_resultant_speed float :initializer "effectively_unlimited_speed")
+    (member boosted_maximum_resultant_speed float :initializer "effectively_unlimited_speed"))
+  (record FlightModelProfile
+    :comparison equality
+    (member base_preset ioj::sim::player::FlightModelPreset :initializer "FlightModelPreset::Starfox")
+    (member customized bool :initializer "")
+    (member config ioj::sim::player::FlightModelConfig :initializer ""))
+  (record FlightModelLoadout
+    :comparison equality
+    (member up ioj::sim::player::FlightModelProfile :initializer "")
+    (member right ioj::sim::player::FlightModelProfile :initializer "")
+    (member down ioj::sim::player::FlightModelProfile :initializer "")
+    (member left ioj::sim::player::FlightModelProfile :initializer "")
+    (member initial_slot ioj::sim::player::FlightModelSlot :initializer "FlightModelSlot::Up")))
+
+(module native_player_flight_model_runtime
+  :header "native/simulation/include/ioj/sim/player/flight_model_runtime.h"
+  :header-include "ioj/sim/player/flight_model_runtime.h"
+  :backend standard-library
+  :namespace ioj::sim::player
+  (record PhysicalMovementState
+    (member transform @native_transform3d :initializer "")
+    (member velocity @native_vector3d :initializer ""))
+  (record PlayerFlightIntent
+    (member translation @native_vector3d :initializer "")
+    (member rotation @native_vector3d :initializer "")
+    (member accelerator float :initializer "")
+    (member boost_held bool :initializer "")
+    (member brake_held bool :initializer "")
+    (member emergency_brake_held bool :initializer ""))
+  (record FlightModelControllerState
+    (member forward_manual_response @native_scalar_response :initializer "")
+    (member forward_automatic_response @native_scalar_response :initializer "")
+    (member right_manual_response @native_scalar_response :initializer "")
+    (member right_automatic_response @native_scalar_response :initializer "")
+    (member up_manual_response @native_scalar_response :initializer "")
+    (member up_automatic_response @native_scalar_response :initializer "")
+    (member pitch_response @native_scalar_response :initializer "")
+    (member yaw_response @native_scalar_response :initializer "")
+    (member roll_response @native_scalar_response :initializer "")
+    (member pitch_stabilization_response @native_scalar_response :initializer "")
+    (member yaw_stabilization_response @native_scalar_response :initializer "")
+    (member roll_stabilization_response @native_scalar_response :initializer "")
+    (member facing_alignment_response @native_scalar_response :initializer "")
+    (member brake_engagement_response @native_scalar_response :initializer "")
+    (member angular_velocity @native_vector3d :initializer "")
+    (member persistent_forward_target_speed float :initializer "")
+    (member persistent_right_target_speed float :initializer "")
+    (member persistent_up_target_speed float :initializer "")
+    (member time_since_rotation_input @native_vector3d :initializer "100.0, 100.0, 100.0")
+    (member effective_action ioj::sim::player::BoostBrakeState :initializer ""))
+  (record PlayerResourceState
+    (member thrust_energy float :initializer "1.f")
+    (member thrust_change_rate float :initializer ""))
+  (record PlayerPresentationState
+    (member body_transform @native_transform3d :initializer "")
+    (member boost_start_sequence std::uint64_t :initializer ""))
+  (record PlayerSimulationState
+    (member physical ioj::sim::player::PhysicalMovementState :initializer "")
+    (member controller ioj::sim::player::FlightModelControllerState :initializer "")
+    (member resources ioj::sim::player::PlayerResourceState :initializer "")
+    (member presentation ioj::sim::player::PlayerPresentationState :initializer "")))
+
+(module native_laser_source
+  :header "native/simulation/include/ioj/sim/laser_source.h"
+  :header-include "ioj/sim/laser_source.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (record LaserSource
+    :comparison equality
+    :comparison-noexcept true
+    (member team ioj::sim::Team :initializer "Team::White")
+    (member type ioj::sim::EntityType :initializer "EntityType::TubeSpinner")))
+
+(module native_index_span
+  :header "native/simulation/include/ioj/sim/index_span.h"
+  :header-include "ioj/sim/index_span.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (record IndexSpan
+    :comparison three-way
+    :comparison-noexcept true
+    (member offset std::int32_t :initializer "0")
+    (member count std::int32_t :initializer "0")
+    (function is_empty bool :const true :noexcept true :constexpr true :nodiscard true :body ("return count == 0;"))
+    (function start std::int32_t :const true :noexcept true :constexpr true :nodiscard true :body ("return offset;"))
+    (function end std::int32_t :const true :noexcept true :constexpr true :nodiscard true :body ("return offset + count;"))))
+
+(module native_health_move
+  :header "native/simulation/include/ioj/sim/health_move.h"
+  :header-include "ioj/sim/health_move.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (record HealthMove
+    (member owner @native_unique_id :initializer "")
+    (member old_index @native_health_index :initializer "")
+    (member new_index @native_health_index :initializer "")))
+
+(module native_line_trace_result
+  :header "native/simulation/include/ioj/sim/line_trace_result.h"
+  :header-include "ioj/sim/line_trace_result.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (record LineTraceResult
+    (member location @native_vector_3f :initializer "")
+    (member entity @native_unique_id)
+    (member static_geometry_index @native_static_geometry_index :initializer "collision::invalid_static_geometry_index")
+    (member hit bool :initializer "false")))
+
+(module native_capital_death_event
+  :header "native/simulation/include/ioj/sim/capital_death_event.h"
+  :header-include "ioj/sim/capital_death_event.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (record CapitalDeathEvent
+    (member location @native_vector_3f)
+    (member batch_index std::int32_t :initializer "")))
+
+(module native_navigation_telemetry
+  :header "native/simulation/include/ioj/sim/navigation_telemetry.h"
+  :header-include "ioj/sim/navigation_telemetry.h"
+  :backend standard-library
+  :namespace ioj::sim::fighters
+  (record NavigationTelemetrySnapshot
+    (member separating_fighter_count std::int32_t :initializer "")
+    (member avoiding_fighter_count std::int32_t :initializer "")
+    (member clear_risk_count std::int32_t :initializer "")
+    (member nearby_risk_count std::int32_t :initializer "")
+    (member active_risk_count std::int32_t :initializer "")
+    (member immediate_risk_count std::int32_t :initializer "")
+    (member separation_query_count std::int32_t :initializer "")
+    (member separation_candidate_count std::int32_t :initializer "")
+    (member dense_direction_selection_count std::int32_t :initializer "")
+    (member steering_memory_fighter_count std::int32_t :initializer "")
+    (member hard_trace_count std::int32_t :initializer "")))
+
+(module native_level_telemetry_current_state
+  :header "native/simulation/include/ioj/sim/level_telemetry_current_state.h"
+  :header-include "ioj/sim/level_telemetry_current_state.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (record LevelTelemetryCurrentState
+    (member active_entities_by_team_and_type @level_telemetry_entity_counts :initializer "")
+    (member active_entities std::int32_t :initializer "")
+    (member spawned_entities std::int32_t :initializer "")
+    (member destroyed_entities std::int32_t :initializer "")
+    (member kills std::int32_t :initializer "")
+    (member active_lasers std::int32_t :initializer "")
+    (member lasers_fired std::int32_t :initializer "")))

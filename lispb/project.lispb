@@ -5,6 +5,8 @@
   (cpp-schema sandbox-code
     :types "lispb/schema/types.lispb"
     :sources (
+      "lispb/schema/native_simulation_model.lispb"
+      "lispb/schema/native_traces.lispb"
       "lispb/schema/core_layouts.lispb"
       "lispb/schema/level_telemetry_history.lispb"
       "lispb/schema/native_collision.lispb"

@@ -1,11 +1,11 @@
 (include "common_scalars.lispb")
 
 (type level_telemetry_entity_type_counts
-  :spelling "EntityTypeCounts"
+  :spelling "ioj::sim::telemetry::EntityTypeCounts"
   :header "ioj/sim/entity_telemetry.h")
 
 (type level_telemetry_entity_counts
-  :spelling "EntityCounts"
+  :spelling "ioj::sim::telemetry::EntityCounts"
   :header "ioj/sim/entity_telemetry.h")
 
 (type collision_enabled
@@ -73,17 +73,20 @@
 (type native_uint8
   :spelling "std::uint8_t"
   :header "cstdint"
-  :pass-by value)
+  :pass-by value
+  (integer :signed false :bit-width 8))
 
 (type native_int32
   :spelling "std::int32_t"
   :header "cstdint"
-  :pass-by value)
+  :pass-by value
+  (integer :signed true :bit-width 32))
 
 (type native_uint64
   :spelling "std::uint64_t"
   :header "cstdint"
-  :pass-by value)
+  :pass-by value
+  (integer :signed false :bit-width 64))
 
 (type native_level_mission_event_type
   :spelling "LevelMissionEventType"
@@ -106,8 +109,8 @@
   :pass-by value)
 
 (type native_team
-  :spelling "Team"
-  :header "ioj/sim/entity_types.h"
+  :spelling "ioj::sim::Team"
+  :header "ioj/sim/team.h"
   :pass-by value)
 
 (type native_health
@@ -115,10 +118,13 @@
   :header "ioj/sim/health.h"
   :pass-by value)
 
+; The explicit constructor and private representation remain owned by C++.
 (type native_health_index
-  :spelling "HealthIndex"
-  :header "ioj/sim/health_table.h"
-  :pass-by value)
+  :spelling "ioj::sim::HealthIndex"
+  :header "ioj/sim/health_index.h"
+  :pass-by value
+  (integer :signed false :bit-width 32 :minimum 0 :maximum 4294967294
+    (code Invalid :value 4294967295 :sentinel true)))
 
 (type native_health_const_view
   :spelling "HealthConstView"
@@ -146,7 +152,7 @@
   :pass-by value)
 
 (type native_index_span
-  :spelling "IndexSpan"
+  :spelling "ioj::sim::IndexSpan"
   :header "ioj/sim/index_span.h"
   :pass-by value)
 
@@ -272,10 +278,22 @@
   :header "ioj/sim/spinners/sim.h")
 
 (type laser_source
-  :spelling "LaserSource"
+  :spelling "ioj::sim::LaserSource"
   :header "ioj/sim/laser_source.h"
   :pass-by value)
 
 (type frame_fighter_spawn_queue
   :spelling "FrameSpawnQueue"
   :header "ioj/sim/fighter_frame_spawn_queue.h")
+
+(type native_scalar_response :spelling "ioj::sim::player::ScalarResponse" :header "ioj/sim/player/scalar_response.h")
+(type native_trace_hit :spelling "ioj::sim::TraceHit" :header "ioj/sim/query_result_types.h" :pass-by value)
+(type native_navigation_risk_code :spelling "ioj::sim::fighters::NavigationRiskCode" :header "ioj/sim/fighter_navigation_types.h" :pass-by value)
+(type native_navigation_scan_count :spelling "ioj::sim::fighters::NavigationScanCount" :header "ioj/sim/fighter_navigation_types.h" :pass-by value)
+(type native_avoidance_choice :spelling "ioj::sim::fighters::AvoidanceChoice" :header "ioj/sim/fighter_navigation_types.h" :pass-by value)
+; EntityOwnerId retains its nested aliases, sentinel and validity member in C++.
+(type native_entity_owner_id :spelling "ioj::sim::EntityOwnerId" :header "ioj/sim/entity_types.h" :pass-by value
+  (integer :signed false :bit-width 8 :minimum 0 :maximum 254
+    (code Null :value 255 :sentinel true)))
+(type native_transform3d :spelling "ioj::sim::Transform3d" :header "ioj/sim/transform3d.h")
+(type native_vector3d :spelling "ml::Vector3d" :header "sandbox/core/vector3d.h")

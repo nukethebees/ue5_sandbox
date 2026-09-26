@@ -14,4 +14,9 @@ enum class NavigationRiskTier : std::uint8_t {
     Count = 4,
 };
 
+using NavigationRiskCode = std::uint8_t;
+
+using NavigationScanCount = std::uint8_t;
+
+using AvoidanceChoice = std::int8_t;
 } // namespace ioj::sim::fighters

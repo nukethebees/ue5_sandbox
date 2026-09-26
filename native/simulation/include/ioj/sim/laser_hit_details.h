@@ -31,7 +31,8 @@ struct LaserHitDetailsSingleLayout {
     inline static constexpr ColLayout<float> EmissionDirectionsXsColumn{LocationsZsColumn};
     inline static constexpr ColLayout<float> EmissionDirectionsYsColumn{EmissionDirectionsXsColumn};
     inline static constexpr ColLayout<float> EmissionDirectionsZsColumn{EmissionDirectionsYsColumn};
-    inline static constexpr ColLayout<LaserSource> SourcesColumn{EmissionDirectionsZsColumn};
+    inline static constexpr ColLayout<ioj::sim::LaserSource> SourcesColumn{
+        EmissionDirectionsZsColumn};
 
     inline static constexpr byte_size_type allocation_alignment{SourcesColumn.allocation_alignment};
 
@@ -99,8 +100,8 @@ struct LaserHitDetailsSingleViewImpl : ml::native_soa::CompactViewState<Const> {
                           first};
         return {this->template column_data_unchecked<float>(first), stride, count_};
     }
-    auto sources() const -> std::span<Element<LaserSource>> {
-        return {this->template column_data<LaserSource>(
+    auto sources() const -> std::span<Element<ioj::sim::LaserSource>> {
+        return {this->template column_data<ioj::sim::LaserSource>(
                     LaserHitDetailsSingleLayout::SourcesColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -196,7 +197,7 @@ struct SingleAllocationLaserHitDetails
         } -> std::convertible_to<float const*>;
         {
             ml::native_soa::source_data(source.sources())
-        } -> std::convertible_to<LaserSource const*>;
+        } -> std::convertible_to<ioj::sim::LaserSource const*>;
     };
     /* **************************************** */
     // Lifetime
@@ -231,7 +232,7 @@ struct SingleAllocationLaserHitDetails
         Element<float>* emission_directions_xs{};
         Element<float>* emission_directions_ys{};
         Element<float>* emission_directions_zs{};
-        Element<LaserSource>* sources{};
+        Element<ioj::sim::LaserSource>* sources{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (locations_xs == nullptr) {
                 return {};

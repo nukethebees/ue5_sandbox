@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "ioj/sim/entity_types.h"
 #include "ioj/sim/entity_unique_id.h"
-#include "ioj/sim/health_table.h"
+#include "ioj/sim/health_index.h"
+#include "ioj/sim/team.h"
 
 #include "sandbox/core/native_soa/storage.h"
 
@@ -38,7 +38,7 @@ struct TurretEntityDataSingleLayout {
     inline static constexpr ColLayout<float> RotationsPitchesColumn{FirePointLocationsZsColumn};
     inline static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
     inline static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
-    inline static constexpr ColLayout<Team> TeamsColumn{RotationsRollsColumn};
+    inline static constexpr ColLayout<ioj::sim::Team> TeamsColumn{RotationsRollsColumn};
     inline static constexpr ColLayout<std::int16_t> LaserCooldownsColumn{TeamsColumn};
     inline static constexpr ColLayout<std::int32_t> LaserDamagesColumn{LaserCooldownsColumn};
     inline static constexpr ColLayout<std::int16_t> TargetRefreshCountdownsPeriodsColumn{
@@ -53,7 +53,8 @@ struct TurretEntityDataSingleLayout {
     inline static constexpr ColLayout<float> TargetVelocitiesXsColumn{TargetLocationsZsColumn};
     inline static constexpr ColLayout<float> TargetVelocitiesYsColumn{TargetVelocitiesXsColumn};
     inline static constexpr ColLayout<float> TargetVelocitiesZsColumn{TargetVelocitiesYsColumn};
-    inline static constexpr ColLayout<HealthIndex> HealthIndicesColumn{TargetVelocitiesZsColumn};
+    inline static constexpr ColLayout<ioj::sim::HealthIndex> HealthIndicesColumn{
+        TargetVelocitiesZsColumn};
 
     inline static constexpr byte_size_type allocation_alignment{
         HealthIndicesColumn.allocation_alignment};
@@ -215,8 +216,8 @@ struct TurretEntityDataSingleViewImpl : ml::native_soa::CompactViewState<Const> 
                                                       TurretEntityDataSingleView_rotations> {
         return {state_, offset_, count_};
     }
-    auto teams() const -> std::span<Element<Team>> {
-        return {this->template column_data<Team>(
+    auto teams() const -> std::span<Element<ioj::sim::Team>> {
+        return {this->template column_data<ioj::sim::Team>(
                     TurretEntityDataSingleLayout::TeamsColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -276,8 +277,8 @@ struct TurretEntityDataSingleViewImpl : ml::native_soa::CompactViewState<Const> 
                           first};
         return {this->template column_data_unchecked<float>(first), stride, count_};
     }
-    auto health_indices() const -> std::span<Element<HealthIndex>> {
-        return {this->template column_data<HealthIndex>(
+    auto health_indices() const -> std::span<Element<ioj::sim::HealthIndex>> {
+        return {this->template column_data<ioj::sim::HealthIndex>(
                     TurretEntityDataSingleLayout::HealthIndicesColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -403,7 +404,9 @@ struct SingleAllocationTurretEntityData
         {
             ml::native_soa::source_data(source.view_rotations().rolls())
         } -> std::convertible_to<float const*>;
-        { ml::native_soa::source_data(source.teams()) } -> std::convertible_to<Team const*>;
+        {
+            ml::native_soa::source_data(source.teams())
+        } -> std::convertible_to<ioj::sim::Team const*>;
         {
             ml::native_soa::source_data(source.laser_cooldowns())
         } -> std::convertible_to<std::int16_t const*>;
@@ -439,7 +442,7 @@ struct SingleAllocationTurretEntityData
         } -> std::convertible_to<float const*>;
         {
             ml::native_soa::source_data(source.health_indices())
-        } -> std::convertible_to<HealthIndex const*>;
+        } -> std::convertible_to<ioj::sim::HealthIndex const*>;
     };
     /* **************************************** */
     // Lifetime
@@ -479,7 +482,7 @@ struct SingleAllocationTurretEntityData
         Element<float>* rotations_pitches{};
         Element<float>* rotations_yaws{};
         Element<float>* rotations_rolls{};
-        Element<Team>* teams{};
+        Element<ioj::sim::Team>* teams{};
         Element<std::int16_t>* laser_cooldowns{};
         Element<std::int32_t>* laser_damages{};
         Element<std::int16_t>* target_refresh_countdowns_periods{};
@@ -491,7 +494,7 @@ struct SingleAllocationTurretEntityData
         Element<float>* target_velocities_xs{};
         Element<float>* target_velocities_ys{};
         Element<float>* target_velocities_zs{};
-        Element<HealthIndex>* health_indices{};
+        Element<ioj::sim::HealthIndex>* health_indices{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (entity_ids == nullptr) {
                 return {};

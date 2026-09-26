@@ -1,5 +1,6 @@
 (module fighter_navigation_types
   :header "native/simulation/include/ioj/sim/fighter_navigation_types.h"
+  :header-include "ioj/sim/fighter_navigation_types.h"
   :backend standard-library
   :namespace ioj::sim::fighters
   (enum NavigationRiskTier @native_uint8
@@ -7,4 +8,17 @@
     (value Nearby :value "1")
     (value Active :value "2")
     (value Immediate :value "3")
-    (value Count :value "4")))
+    (value Count :value "4"))
+  ; Stored risk codes exclude the enum's Count marker.
+  (integer-scalar NavigationRiskCode
+    :signed false :minimum 0 :maximum 3 :bit-width 2
+    :cpp-type @native_uint8 :cpp-emission alias)
+  ; Update counters deliberately retain their full wrapping uint8 domain.
+  (integer-scalar NavigationScanCount
+    :signed false :minimum 0 :maximum 255 :bit-width 8
+    :cpp-type @native_uint8 :cpp-emission alias)
+  (integer-scalar AvoidanceChoice
+    :signed true :minimum 0 :maximum 7 :bit-width 8
+    :cpp-type std::int8_t :cpp-emission alias
+    (code DirectMovement :value -1 :sentinel true)
+    (code StopMovement :value -2 :sentinel true)))

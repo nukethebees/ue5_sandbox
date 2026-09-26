@@ -5,12 +5,10 @@
 
 #include "ioj/sim/vector_types.h"
 
-#include <cstdint>
+namespace ioj::sim::collision {
+struct WorldAABB {
+    Vector3f min;
 
-namespace ioj::sim {
-struct CapitalDeathEvent {
-    Vector3f location;
-
-    std::int32_t batch_index{};
+    Vector3f max;
 };
-} // namespace ioj::sim
+} // namespace ioj::sim::collision

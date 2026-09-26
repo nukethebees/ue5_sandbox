@@ -98,10 +98,10 @@ struct HistoryRowsSingleLayout {
     inline static constexpr ColLayout<SimTick> CompletedTicksColumn{LayoutStart};
     inline static constexpr ColLayout<HistoryFieldMask> ValidityMasksColumn{CompletedTicksColumn};
     inline static constexpr ColLayout<std::int32_t> ActiveEntitiesColumn{ValidityMasksColumn};
-    inline static constexpr ColLayout<EntityTypeCounts> ActiveEntitiesByTypeColumn{
-        ActiveEntitiesColumn};
-    inline static constexpr ColLayout<EntityCounts> ActiveEntitiesByTeamAndTypeColumn{
-        ActiveEntitiesByTypeColumn};
+    inline static constexpr ColLayout<ioj::sim::telemetry::EntityTypeCounts>
+        ActiveEntitiesByTypeColumn{ActiveEntitiesColumn};
+    inline static constexpr ColLayout<ioj::sim::telemetry::EntityCounts>
+        ActiveEntitiesByTeamAndTypeColumn{ActiveEntitiesByTypeColumn};
     inline static constexpr ColLayout<std::int32_t> SpawnedEntitiesColumn{
         ActiveEntitiesByTeamAndTypeColumn};
     inline static constexpr ColLayout<std::int32_t> DestroyedEntitiesColumn{SpawnedEntitiesColumn};
@@ -165,13 +165,15 @@ struct HistoryRowsSingleViewImpl : ml::native_soa::CompactViewState<Const> {
                     HistoryRowsSingleLayout::ActiveEntitiesColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto active_entities_by_type() const -> std::span<Element<EntityTypeCounts>> {
-        return {this->template column_data<EntityTypeCounts>(
+    auto active_entities_by_type() const
+        -> std::span<Element<ioj::sim::telemetry::EntityTypeCounts>> {
+        return {this->template column_data<ioj::sim::telemetry::EntityTypeCounts>(
                     HistoryRowsSingleLayout::ActiveEntitiesByTypeColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto active_entities_by_team_and_type() const -> std::span<Element<EntityCounts>> {
-        return {this->template column_data<EntityCounts>(
+    auto active_entities_by_team_and_type() const
+        -> std::span<Element<ioj::sim::telemetry::EntityCounts>> {
+        return {this->template column_data<ioj::sim::telemetry::EntityCounts>(
                     HistoryRowsSingleLayout::ActiveEntitiesByTeamAndTypeColumn.offset(
                         capacity_blocks())),
                 static_cast<std::size_t>(count_)};
@@ -286,10 +288,10 @@ struct SingleAllocationHistoryRows
         } -> std::convertible_to<std::int32_t const*>;
         {
             ml::native_soa::source_data(source.active_entities_by_type())
-        } -> std::convertible_to<EntityTypeCounts const*>;
+        } -> std::convertible_to<ioj::sim::telemetry::EntityTypeCounts const*>;
         {
             ml::native_soa::source_data(source.active_entities_by_team_and_type())
-        } -> std::convertible_to<EntityCounts const*>;
+        } -> std::convertible_to<ioj::sim::telemetry::EntityCounts const*>;
         {
             ml::native_soa::source_data(source.spawned_entities())
         } -> std::convertible_to<std::int32_t const*>;
@@ -332,8 +334,8 @@ struct SingleAllocationHistoryRows
         Element<SimTick>* completed_ticks{};
         Element<HistoryFieldMask>* validity_masks{};
         Element<std::int32_t>* active_entities{};
-        Element<EntityTypeCounts>* active_entities_by_type{};
-        Element<EntityCounts>* active_entities_by_team_and_type{};
+        Element<ioj::sim::telemetry::EntityTypeCounts>* active_entities_by_type{};
+        Element<ioj::sim::telemetry::EntityCounts>* active_entities_by_team_and_type{};
         Element<std::int32_t>* spawned_entities{};
         Element<std::int32_t>* destroyed_entities{};
         Element<std::int32_t>* kills{};

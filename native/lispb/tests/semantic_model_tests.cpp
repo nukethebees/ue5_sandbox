@@ -27,6 +27,65 @@ auto production_graph() -> TypeGraph {
     return resolve_type_graph(manifest);
 }
 
+TEST(SemanticTypeGraph, SimulationModelCompositionUsesDeclaredNodesAndStrongScalarDomain) {
+    auto const graph{production_graph()};
+    auto const loadout{
+        graph.find_declared("native_player_flight_model_data", "FlightModelLoadout")};
+    ASSERT_TRUE(loadout.has_value());
+    auto current{*loadout};
+    for (auto const& [member_name, expected] :
+         {std::pair{"up", "FlightModelProfile"},
+          std::pair{"config", "FlightModelConfig"},
+          std::pair{"translation", "TranslationAxesConfig"},
+          std::pair{"forward", "TranslationAxisConfig"},
+          std::pair{"manual", "TranslationChannelConfig"},
+          std::pair{"response", "ResponseConfig"},
+          std::pair{"second_order", "SecondOrderResponseConfig"}}) {
+        auto const& record{std::get<RecordType>(graph.type(current).definition)};
+        auto const member{std::ranges::find(record.members, member_name, &RecordMember::name)};
+        ASSERT_NE(member, record.members.end());
+        auto const next{member->semantic_type.type};
+        EXPECT_EQ(graph.type(next).identity.origin, TypeOrigin::declaration);
+        EXPECT_EQ(graph.type(next).identity.name, expected);
+        EXPECT_NE(std::ranges::find(graph.dependencies_of(current), next),
+                  graph.dependencies_of(current).end());
+        current = next;
+    }
+    auto const& response{std::get<RecordType>(graph.type(current).definition)};
+    EXPECT_EQ(response.members[0].initializer, "3.f");
+    EXPECT_EQ(response.members[1].initializer, "0.5f");
+    EXPECT_EQ(graph.find_registered("laser_source"),
+              graph.find_declared("native_laser_source", "LaserSource"));
+    EXPECT_EQ(graph.find_registered("native_index_span"),
+              graph.find_declared("native_index_span", "IndexSpan"));
+    EXPECT_EQ(graph.find_registered("native_trace_hit"),
+              graph.find_declared("query_results", "TraceHit"));
+    auto const health{graph.find_registered("native_health_index")};
+    ASSERT_TRUE(health.has_value());
+    auto const& external{std::get<ExternalType>(graph.type(*health).definition)};
+    auto const& integer{std::get<IntegerScalarType>(external.semantics)};
+    EXPECT_FALSE(integer.signedness);
+    EXPECT_EQ(integer.bit_width, 32U);
+    EXPECT_EQ(integer.minimum_value, codegen::PackedIntegerValue{0});
+    EXPECT_EQ(integer.maximum_value, codegen::PackedIntegerValue{4294967294ULL});
+    ASSERT_EQ(integer.named_codes.size(), 1U);
+    EXPECT_EQ(integer.named_codes[0].value, codegen::PackedIntegerValue{4294967295ULL});
+    EXPECT_TRUE(integer.named_codes[0].sentinel);
+    for (auto const& [module, name, column_name, registration] :
+         {std::tuple{"fighters_soa", "FighterEntityData", "health_indices", "native_health_index"},
+          std::tuple{
+              "capital_ships_soa", "CapitalEntityData", "health_indices", "native_health_index"},
+          std::tuple{"turrets_soa", "TurretEntityData", "health_indices", "native_health_index"},
+          std::tuple{"native_trace_hits", "TraceHits", "hits", "native_trace_hit"}}) {
+        auto const owner{graph.find_declared(module, name)};
+        ASSERT_TRUE(owner.has_value()) << module;
+        auto const& soa{std::get<SoaType>(graph.type(*owner).definition)};
+        auto const column{std::ranges::find(soa.columns, column_name, &SoaColumn::name)};
+        ASSERT_NE(column, soa.columns.end());
+        EXPECT_EQ(column->semantic_type.type, *graph.find_registered(registration));
+    }
+}
+
 TEST(SemanticTypeGraph, PreservesEntityTypeEnumSemantics) {
     auto const graph{production_graph()};
     auto const id{graph.find_declared("native_entity_type", "EntityType")};

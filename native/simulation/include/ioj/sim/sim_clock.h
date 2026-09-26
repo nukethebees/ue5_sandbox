@@ -2,18 +2,9 @@
 
 #include <ioj/sim/fixed_tick_loop.h>
 #include <ioj/sim/sim_time.h>
+#include <ioj/sim/simulation_phase.h>
 
 namespace ioj::sim {
-
-enum class SimulationPhase {
-    Initialisation,
-    Preparation,
-    Thinking,
-    Action,
-    Resolution,
-    ResolutionCommit,
-    Idle
-};
 
 struct SimClock {
     using tick_type = SimTick;

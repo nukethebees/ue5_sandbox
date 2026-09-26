@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "ioj/sim/entity_types.h"
 #include "ioj/sim/entity_unique_id.h"
-#include "ioj/sim/health_table.h"
+#include "ioj/sim/health_index.h"
 #include "ioj/sim/index_span.h"
+#include "ioj/sim/team.h"
 
 #include "sandbox/core/native_soa/storage.h"
 
@@ -37,9 +37,10 @@ struct CapitalEntityDataSingleLayout {
     inline static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
     inline static constexpr ColLayout<float> FighterSpawnTimersColumn{RotationsRollsColumn};
     inline static constexpr ColLayout<float> FighterSpawnCooldownsColumn{FighterSpawnTimersColumn};
-    inline static constexpr ColLayout<Team> TeamsColumn{FighterSpawnCooldownsColumn};
-    inline static constexpr ColLayout<HealthIndex> HealthIndicesColumn{TeamsColumn};
-    inline static constexpr ColLayout<IndexSpan> FighterIdSpansColumn{HealthIndicesColumn};
+    inline static constexpr ColLayout<ioj::sim::Team> TeamsColumn{FighterSpawnCooldownsColumn};
+    inline static constexpr ColLayout<ioj::sim::HealthIndex> HealthIndicesColumn{TeamsColumn};
+    inline static constexpr ColLayout<ioj::sim::IndexSpan> FighterIdSpansColumn{
+        HealthIndicesColumn};
     inline static constexpr ColLayout<EntityUniqueId> TargetIdsColumn{FighterIdSpansColumn};
 
     inline static constexpr byte_size_type allocation_alignment{
@@ -197,18 +198,18 @@ struct CapitalEntityDataSingleViewImpl : ml::native_soa::CompactViewState<Const>
                         capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto teams() const -> std::span<Element<Team>> {
-        return {this->template column_data<Team>(
+    auto teams() const -> std::span<Element<ioj::sim::Team>> {
+        return {this->template column_data<ioj::sim::Team>(
                     CapitalEntityDataSingleLayout::TeamsColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto health_indices() const -> std::span<Element<HealthIndex>> {
-        return {this->template column_data<HealthIndex>(
+    auto health_indices() const -> std::span<Element<ioj::sim::HealthIndex>> {
+        return {this->template column_data<ioj::sim::HealthIndex>(
                     CapitalEntityDataSingleLayout::HealthIndicesColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
-    auto fighter_id_spans() const -> std::span<Element<IndexSpan>> {
-        return {this->template column_data<IndexSpan>(
+    auto fighter_id_spans() const -> std::span<Element<ioj::sim::IndexSpan>> {
+        return {this->template column_data<ioj::sim::IndexSpan>(
                     CapitalEntityDataSingleLayout::FighterIdSpansColumn.offset(capacity_blocks())),
                 static_cast<std::size_t>(count_)};
     }
@@ -322,13 +323,15 @@ struct SingleAllocationCapitalEntityData
         {
             ml::native_soa::source_data(source.fighter_spawn_cooldowns())
         } -> std::convertible_to<float const*>;
-        { ml::native_soa::source_data(source.teams()) } -> std::convertible_to<Team const*>;
+        {
+            ml::native_soa::source_data(source.teams())
+        } -> std::convertible_to<ioj::sim::Team const*>;
         {
             ml::native_soa::source_data(source.health_indices())
-        } -> std::convertible_to<HealthIndex const*>;
+        } -> std::convertible_to<ioj::sim::HealthIndex const*>;
         {
             ml::native_soa::source_data(source.fighter_id_spans())
-        } -> std::convertible_to<IndexSpan const*>;
+        } -> std::convertible_to<ioj::sim::IndexSpan const*>;
         {
             ml::native_soa::source_data(source.target_ids())
         } -> std::convertible_to<EntityUniqueId const*>;
@@ -369,9 +372,9 @@ struct SingleAllocationCapitalEntityData
         Element<float>* rotations_rolls{};
         Element<float>* fighter_spawn_timers{};
         Element<float>* fighter_spawn_cooldowns{};
-        Element<Team>* teams{};
-        Element<HealthIndex>* health_indices{};
-        Element<IndexSpan>* fighter_id_spans{};
+        Element<ioj::sim::Team>* teams{};
+        Element<ioj::sim::HealthIndex>* health_indices{};
+        Element<ioj::sim::IndexSpan>* fighter_id_spans{};
         Element<EntityUniqueId>* target_ids{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (entity_ids == nullptr) {

@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "ioj/sim/entity_types.h"
 #include "ioj/sim/health.h"
 #include "ioj/sim/player/sim.h"
+#include "ioj/sim/team.h"
 
 namespace ioj::sim::player {
 class CommandInterface {
@@ -15,7 +15,7 @@ class CommandInterface {
 
     void set_config(PlayerSimConfig const& config) noexcept { simulation.set_config(config); }
 
-    void set_team(Team team) noexcept { simulation.set_team(team); }
+    void set_team(ioj::sim::Team team) noexcept { simulation.set_team(team); }
 
     void set_speed_sampling_enabled(bool enabled) noexcept {
         simulation.set_speed_sampling_enabled(enabled);

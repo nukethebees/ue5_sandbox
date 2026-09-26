@@ -2,6 +2,7 @@
 
 #include "ioj/sim/collision_scalar_types.h"
 #include "ioj/sim/vectors3f.h"
+#include <ioj/sim/collision/grid_geometry.h>
 
 #include <cstdint>
 #include <limits>
@@ -15,25 +16,6 @@ inline constexpr float no_trace_hit{std::numeric_limits<float>::infinity()};
 /* **************************************** */
 // Grid geometry
 /* **************************************** */
-struct CellCoord {
-    int x{};
-    int y{};
-    int z{};
-
-    auto operator[](std::size_t index) noexcept -> int&;
-    auto operator[](std::size_t index) const noexcept -> int;
-    auto operator==(CellCoord const&) const noexcept -> bool = default;
-};
-
-struct CellCoordBounds {
-    CellCoord min;
-    CellCoord max;
-};
-
-struct GridGeometry {
-    CellCoord dimensions;
-    Vec3f cell_dimensions;
-};
 
 [[nodiscard]] auto is_configured(GridGeometry geometry) noexcept -> bool;
 [[nodiscard]] auto calculate_grid_dimensions(Vector3f grid_size, Vector3f cell_size) noexcept

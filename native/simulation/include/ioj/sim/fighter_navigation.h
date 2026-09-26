@@ -6,6 +6,7 @@
 #include "ioj/sim/trace_hits.h"
 #include "ioj/sim/vector_types.h"
 #include "ioj/sim/vectors3f.h"
+#include <ioj/sim/fighters/navigation_records.h>
 
 #include <array>
 #include <cstdint>
@@ -15,41 +16,6 @@
 namespace ioj::sim::fighters {
 inline constexpr std::int8_t avoidance_direction_count{8};
 inline constexpr std::int32_t separation_neighbour_limit{32};
-
-struct AvoidanceFrame {
-    Vector3f preferred_direction;
-    Vector3f first_lateral;
-    Vector3f second_lateral;
-    float roll_sin;
-    float roll_cos;
-};
-
-struct NavigationRiskUpdate {
-    NavigationRiskTier tier;
-    std::uint8_t lower_risk_scan_count;
-};
-
-struct SeparationObservationParameters {
-    float separation_radius;
-    float immediate_distance_squared;
-    float close_distance_squared;
-    float memory_retention;
-    float separation_strength;
-    std::int32_t dense_traffic_neighbour_threshold;
-    std::uint32_t integral_bias;
-    float float_bias;
-};
-
-struct SeparationObservation {
-    Vector3f steering_memory;
-    NavigationRiskTier risk_tier;
-    bool dense_direction_selected;
-};
-
-struct SeparationNeighbour {
-    EntityUniqueId id;
-    Vector3f location;
-};
 
 [[nodiscard]] constexpr auto is_avoidance_direction_choice(std::int8_t choice) noexcept -> bool {
     return choice >= 0 && choice < avoidance_direction_count;

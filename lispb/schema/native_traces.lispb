@@ -1,0 +1,42 @@
+(module native_line_traces
+  :header "native/simulation/include/ioj/sim/line_traces.h"
+  :header-include "ioj/sim/line_traces.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (struct Vectors3f
+    :layout-only true
+    :equivalent-type @native_vector_3f
+    :vector-components (xs ys zs)
+    (member xs array float)
+    (member ys array float)
+    (member zs array float))
+  (struct LineTraces
+    :storage vector
+    :operations (reserve set-num add-uninitialised add-defaulted remove-at-swap copy-element)
+    (member starts nested @native_vectors_3f :nested-schema Vectors3f)
+    (member ends nested @native_vectors_3f :nested-schema Vectors3f)
+    (function reset void :noexcept true
+      :body ("ml::native_soa::vector_storage_ops::reset(*this);"))))
+
+(module native_trace_hits
+  :header "native/simulation/include/ioj/sim/trace_hits.h"
+  :header-include "ioj/sim/trace_hits.h"
+  :backend standard-library
+  :namespace ioj::sim
+  :prelude ("#include <ioj/sim/line_trace_result.h>")
+  (struct Vectors3f
+    :layout-only true
+    :equivalent-type @native_vector_3f
+    :vector-components (xs ys zs)
+    (member xs array float)
+    (member ys array float)
+    (member zs array float))
+  (struct TraceHits
+    :storage vector
+    :operations (reserve set-num add-uninitialised add-defaulted remove-at-swap copy-element)
+    (member locations nested @native_vectors_3f :nested-schema Vectors3f)
+    (member entities array @native_unique_id)
+    (member static_geometry_indices array @native_static_geometry_index)
+    (member hits array @native_trace_hit)
+    (function reset void :noexcept true
+      :body ("ml::native_soa::vector_storage_ops::reset(*this);"))))
