@@ -1,5 +1,6 @@
 #include "Generated.h"
 #include "ScalarValues.h"
+#include "SignatureDefinitions.h"
 
 #include <gtest/gtest.h>
 
@@ -15,6 +16,34 @@
 #define check(expression) EXPECT_TRUE(expression)
 
 namespace codegen_compile_fixture {
+
+auto first::A::make() -> second::B {
+    return {};
+}
+void first::A::accept(second::B value) {
+    (void)value;
+}
+auto first::A::pointer() -> second::B* {
+    return nullptr;
+}
+auto first::A::ref(second::B const& value) -> second::B const& {
+    return value;
+}
+auto first::A::move(second::B&& value) -> second::B&& {
+    return std::move(value);
+}
+auto first::A::payload() -> second::Payload {
+    return {};
+}
+auto second::B::make() -> first::A {
+    return {};
+}
+auto second::B::pointer() -> first::A* {
+    return nullptr;
+}
+auto second::B::ref(first::A const& value) -> first::A const& {
+    return value;
+}
 
 auto mixed::MethodConsumer::make() -> mixed::MethodProvider {
     return {};
@@ -75,6 +104,28 @@ TEST(GeneratedRecords, MethodSignaturesCompileWithForwardAndCompleteDependencies
     constexpr ApiConstView view{};
     static_assert(view.schema_version() == 7);
     static_assert(ApiView{}.mutable_version() == 8);
+}
+
+TEST(GeneratedRecords, CrossModuleSignaturesSupportOutOfLineDefinitions) {
+    first::A a;
+    second::B b;
+    static_assert(std::is_same_v<decltype(a.make()), second::B>);
+    static_assert(std::is_same_v<decltype(b.make()), first::A>);
+    static_assert(std::is_same_v<decltype(a.move(std::declval<second::B&&>())), second::B&&>);
+    a.accept(a.make());
+    b.make().accept(b);
+    EXPECT_EQ(a.pointer(), nullptr);
+    EXPECT_EQ(b.pointer(), nullptr);
+    EXPECT_EQ(&a.ref(b), &b);
+    EXPECT_EQ(&b.ref(a), &a);
+    auto&& moved{a.move(static_cast<second::B&&>(b))};
+    EXPECT_EQ(&moved, &b);
+    EXPECT_EQ(a.payload().value, 0);
+    CrossModuleFactory factory;
+    factory.accept(factory.make());
+    factory.make_second().make().accept(b);
+    static_assert(std::is_same_v<decltype(factory.count()), StandardInt>);
+    static_assert(std::is_same_v<decltype(factory.tag()), mixed::Kind>);
 }
 
 TEST(GeneratedScalarAlias, UsesConfiguredCppType) {

@@ -72,6 +72,15 @@ auto is_record_signature(lispb::schema::TypeUse const& use, lispb::schema::TypeG
            std::holds_alternative<lispb::schema::RecordType>(graph.type(*owner).definition);
 }
 
+auto
+    uses_cross_module_signature_forward_declaration(lispb::schema::ResolvedTypeRef const& reference,
+                                                    TypeReferenceKind const kind,
+                                                    lispb::schema::TypeGraph const& graph) -> bool {
+    return kind == TypeReferenceKind::function_declaration &&
+           reference.cpp_type.dependencies.empty() &&
+           uses_forward_declaration(reference, graph, true);
+}
+
 auto generated_forward_declarations(NormalModuleSchema const& module,
                                     lispb::schema::TypeGraph const& graph)
     -> detail::DeclarationEmission {
@@ -82,20 +91,33 @@ auto generated_forward_declarations(NormalModuleSchema const& module,
                                      graph,
                                      is_record_signature(use, graph) &&
                                          use.kind == TypeReferenceKind::function_declaration) &&
-            graph.type(use.target.type).identity.module_name == module.settings.name) {
+            (graph.type(use.target.type).identity.module_name == module.settings.name ||
+             (is_record_signature(use, graph) &&
+              uses_cross_module_signature_forward_declaration(use.target, use.kind, graph)))) {
             targets.insert(use.target.type);
         }
     }
     NodeListBuilder declarations;
+    NodeListBuilder prefix;
     for (auto const target : targets) {
         auto const& node{graph.type(target)};
-        declarations.add(ForwardDeclaration{
-            node.cpp_spelling.substr(node.cpp_spelling.rfind("::") == std::string::npos
-                                         ? 0
-                                         : node.cpp_spelling.rfind("::") + 2),
-            std::string{*forward_declaration_kind(node)}});
+        auto const& namespace_name{node.identity.namespace_name};
+        ForwardDeclaration declaration{
+            node.cpp_spelling.substr(namespace_name.empty() ? 0 : namespace_name.size() + 2),
+            std::string{*forward_declaration_kind(node)}};
+        if (node.identity.module_name == module.settings.name) {
+            declarations.add(std::move(declaration));
+        } else if (namespace_name.empty()) {
+            prefix.add(std::move(declaration));
+        } else {
+            NodeListBuilder children;
+            children.add(std::move(declaration));
+            prefix.add(Namespace{namespace_name, children.build()});
+        }
     }
-    return {.header = declarations.build(), .source_dependencies = false};
+    return {.header_prefix = prefix.build(),
+            .header = declarations.build(),
+            .source_dependencies = false};
 }
 
 template <typename Visitor>
@@ -228,67 +250,77 @@ auto resolve_declared_cpp_references(Manifest const& manifest,
             continue;
         }
         for (auto& declaration : module->declarations) {
-            visit_type_references(declaration, [&](std::string const& role, TypeRef& reference) {
-                if (role.find("relationship") != std::string::npos) {
-                    return;
-                }
-                if (auto const* soa{std::get_if<SoaSchema>(&declaration)}) {
-                    for (auto const& member : soa->members) {
-                        if (member.kind == SoaMemberKind::nested &&
-                            role == "member " + member.name) {
-                            return;
+            visit_type_references(
+                declaration,
+                [&](std::string const& role, TypeRef& reference, TypeReferenceKind const kind) {
+                    if (role.find("relationship") != std::string::npos) {
+                        return;
+                    }
+                    if (auto const* soa{std::get_if<SoaSchema>(&declaration)}) {
+                        for (auto const& member : soa->members) {
+                            if (member.kind == SoaMemberKind::nested &&
+                                role == "member " + member.name) {
+                                return;
+                            }
                         }
                     }
-                }
-                auto const target{graph.find_reference(reference, module->settings.name)};
-                if (!target) {
-                    return;
-                }
-                auto const& node{graph.type(*target)};
-                if (node.identity.origin != lispb::schema::TypeOrigin::declaration) {
-                    return;
-                }
-                auto const logical{node.identity.namespace_name.empty()
-                                       ? node.identity.name
-                                       : node.identity.namespace_name + "::" + node.identity.name};
-                auto const cross_module{node.identity.module_name != module->settings.name};
-                auto const renamed_soa{
-                    std::holds_alternative<lispb::schema::SoaType>(node.definition) &&
-                    node.cpp_spelling != logical};
-                if (!renamed_soa && (!cross_module || reference.name.starts_with('@'))) {
-                    return;
-                }
-                if (node.cpp_spelling.empty()) {
-                    throw std::invalid_argument{"Logical layout schema '" + node.identity.name +
-                                                "' has no C++ owner for " + role};
-                }
-                auto type{resolve_type(reference, manifest.types)};
-                if (renamed_soa) {
-                    auto canonical{reference};
-                    canonical.name = node.cpp_spelling;
-                    type.spelling = resolve_type(canonical, {}).spelling;
-                }
-                if (cross_module && !reference.name.starts_with('@')) {
-                    for (auto const& target_module : manifest.modules) {
-                        std::visit(
-                            [&](auto const& target_schema) {
-                                if (target_schema.settings.name == node.identity.module_name) {
-                                    type.dependencies.push_back(
-                                        {node.cpp_spelling,
-                                         detail::source_include(target_schema.settings),
-                                         {}});
-                                }
-                            },
-                            target_module);
+                    auto const target{graph.find_reference(reference, module->settings.name)};
+                    if (!target) {
+                        return;
                     }
-                }
-                std::string key;
-                do {
-                    key = "resolved_declaration_" + std::to_string(next++);
-                } while (resolved.types.contains(key));
-                resolved.types.emplace(key, RegisteredTypeSchema{type});
-                reference = TypeRef{"@" + key};
-            });
+                    auto const& node{graph.type(*target)};
+                    if (node.identity.origin != lispb::schema::TypeOrigin::declaration) {
+                        return;
+                    }
+                    auto const logical{node.identity.namespace_name.empty()
+                                           ? node.identity.name
+                                           : node.identity.namespace_name +
+                                                 "::" + node.identity.name};
+                    auto const cross_module{node.identity.module_name != module->settings.name};
+                    auto const renamed_soa{
+                        std::holds_alternative<lispb::schema::SoaType>(node.definition) &&
+                        node.cpp_spelling != logical};
+                    if (!renamed_soa && (!cross_module || reference.name.starts_with('@'))) {
+                        return;
+                    }
+                    if (node.cpp_spelling.empty()) {
+                        throw std::invalid_argument{"Logical layout schema '" + node.identity.name +
+                                                    "' has no C++ owner for " + role};
+                    }
+                    auto resolved_use{resolve_type_use(reference, manifest.types)};
+                    if (renamed_soa) {
+                        auto canonical{reference};
+                        canonical.name = node.cpp_spelling;
+                        auto normalized{resolve_type_use(canonical, {})};
+                        resolved_use.cpp_type.spelling = std::move(normalized.cpp_type.spelling);
+                        resolved_use.physical = std::move(normalized.physical);
+                    }
+                    auto const forward_signature{
+                        std::holds_alternative<RecordSchema>(declaration) &&
+                        uses_cross_module_signature_forward_declaration(
+                            {*target, resolved_use.cpp_type, resolved_use.physical}, kind, graph)};
+                    auto& type{resolved_use.cpp_type};
+                    if (cross_module && !reference.name.starts_with('@') && !forward_signature) {
+                        for (auto const& target_module : manifest.modules) {
+                            std::visit(
+                                [&](auto const& target_schema) {
+                                    if (target_schema.settings.name == node.identity.module_name) {
+                                        type.dependencies.push_back(
+                                            {node.cpp_spelling,
+                                             detail::source_include(target_schema.settings),
+                                             {}});
+                                    }
+                                },
+                                target_module);
+                        }
+                    }
+                    std::string key;
+                    do {
+                        key = "resolved_declaration_" + std::to_string(next++);
+                    } while (resolved.types.contains(key));
+                    resolved.types.emplace(key, RegisteredTypeSchema{type});
+                    reference = TypeRef{"@" + key};
+                });
         }
     }
     return resolved;

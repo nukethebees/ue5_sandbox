@@ -536,6 +536,42 @@ return result;}cpp#)
     (member y float))
   (enum Kind @standard_uint8 (value Data)))
 
+(module signature_first
+  :header "SignatureFirst.h"
+  :source "SignatureFirst.cpp"
+  :namespace codegen_compile_fixture::first
+  (record A
+    (function make codegen_compile_fixture::second::B)
+    (function accept void (parameter value codegen_compile_fixture::second::B))
+    (function pointer (type-ref codegen_compile_fixture::second::B :suffix "*"))
+    (function ref (type-ref codegen_compile_fixture::second::B :suffix " const&")
+      (parameter value (type-ref codegen_compile_fixture::second::B :suffix " const&")))
+    (function move auto :trailing-return-type (type-ref codegen_compile_fixture::second::B :suffix "&&")
+      (parameter value (type-ref codegen_compile_fixture::second::B :suffix "&&")))
+    (function payload codegen_compile_fixture::second::Payload)))
+
+(module signature_second
+  :header "SignatureSecond.h"
+  :source "SignatureSecond.cpp"
+  :namespace codegen_compile_fixture::second
+  (record B
+    (function make auto :trailing-return-type codegen_compile_fixture::first::A)
+    (function pointer auto :trailing-return-type (type-ref codegen_compile_fixture::first::A :suffix "*"))
+    (function ref auto :trailing-return-type (type-ref codegen_compile_fixture::first::A :suffix " const&")
+      (parameter value (type-ref codegen_compile_fixture::first::A :suffix " const&"))))
+  (union Payload (alternative value int)))
+
+(module signature_definitions
+  :header "SignatureDefinitions.h"
+  :source "SignatureDefinitions.cpp"
+  :namespace codegen_compile_fixture
+  (record CrossModuleFactory
+    (function make codegen_compile_fixture::first::A :body ("return {};"))
+    (function make_second auto :trailing-return-type codegen_compile_fixture::second::B :body ("return {};"))
+    (function accept void (parameter value codegen_compile_fixture::first::A) :body ("(void)value;"))
+    (function count codegen_compile_fixture::StandardInt)
+    (function tag codegen_compile_fixture::mixed::Kind)))
+
 (umbrella-module all_fixture
   :header "Generated.h"
   :headers ("Homogeneous.h" "Soa.h" "Vector1.h" "Vector2.h" "Vector3.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "ReflectedEnums.h" "PackedEnums.h" "ScalarValues.h" "Representations.h" "PackedValues.h" "Settings.h" "StaticTables.h" "Mixed.h"))

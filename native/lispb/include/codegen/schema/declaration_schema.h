@@ -76,6 +76,9 @@ enum class TypeReferenceKind { ordinary, function_declaration, function_definiti
 void visit_type_references(
     DeclarationSchema const& declaration,
     std::function<void(std::string const&, TypeRef const&, TypeReferenceKind)> const& visit);
+void visit_type_references(
+    DeclarationSchema& declaration,
+    std::function<void(std::string const&, TypeRef&, TypeReferenceKind)> const& visit);
 void visit_type_references(DeclarationSchema const& declaration,
                            std::function<void(std::string const&, TypeRef const&)> const& visit);
 void visit_type_references(DeclarationSchema& declaration,

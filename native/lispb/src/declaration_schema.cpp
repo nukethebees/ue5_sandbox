@@ -294,6 +294,12 @@ void visit_type_references(
     visit_declaration_type_references(declaration, visit);
 }
 
+void visit_type_references(
+    DeclarationSchema& declaration,
+    std::function<void(std::string const&, TypeRef&, TypeReferenceKind)> const& visit) {
+    visit_declaration_type_references(declaration, visit);
+}
+
 auto declaration_name(DeclarationSchema const& declaration) -> std::string const& {
     return std::visit([](auto const& value) -> std::string const& { return value.name; },
                       declaration);

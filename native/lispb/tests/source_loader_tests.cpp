@@ -11,6 +11,7 @@
 #include <fstream>
 #include <limits>
 #include <string>
+#include <utility>
 
 namespace codegen {
 namespace {
@@ -127,6 +128,22 @@ TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareLaterAndMutualTypes) {
         return use.target.type == b && use.kind == TypeReferenceKind::function_declaration &&
                use.target.physical.form == PhysicalTypeForm::value;
     }));
+    auto editable{std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front()};
+    std::vector<std::pair<std::string, TypeReferenceKind>> const_uses;
+    visit_type_references(std::as_const(editable),
+                          [&](std::string const& role, TypeRef const&, TypeReferenceKind kind) {
+                              const_uses.emplace_back(role, kind);
+                          });
+    std::vector<std::pair<std::string, TypeReferenceKind>> mutable_uses;
+    visit_type_references(editable,
+                          [&](std::string const& role, TypeRef& reference, TypeReferenceKind kind) {
+                              mutable_uses.emplace_back(role, kind);
+                              if (reference.name == "B") {
+                                  reference.name = "Renamed";
+                              }
+                          });
+    EXPECT_EQ(mutable_uses, const_uses);
+    EXPECT_EQ(std::get<RecordSchema>(editable).functions.front().return_type.name, "Renamed");
     auto const output{render_modules(lower_modules(manifest)).front().content};
     EXPECT_LT(output.find("struct B;"), output.find("struct A {"));
     EXPECT_LT(output.find("struct A;"), output.find("struct B {"));
@@ -165,7 +182,7 @@ TEST(SourceLoader, RecordMethodSignaturesOrderAliasesEnumsAndHeaderBodyValues) {
               "Consumer");
 }
 
-TEST(SourceLoader, RecordMethodSignaturesIncludeCrossModuleHeaders) {
+TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareCrossModuleTypes) {
     TemporaryManifest files;
     files.write_root(R"((module consumers :header "Consumers.h" :namespace consumers
       (record Consumer
@@ -175,10 +192,89 @@ TEST(SourceLoader, RecordMethodSignaturesIncludeCrossModuleHeaders) {
       (module providers :header "generated/Provider.h" :header-include "api/Provider.h"
         :namespace providers (record Provider)))");
     auto const output{render_modules(lower_modules(files.load())).front().content};
-    EXPECT_NE(output.find("#include \"api/Provider.h\""), std::string::npos);
+    EXPECT_EQ(output.find("#include \"api/Provider.h\""), std::string::npos);
+    EXPECT_LT(output.find("namespace providers {"), output.find("struct Provider;"));
+    EXPECT_LT(output.find("struct Provider;"), output.find("namespace consumers {"));
+    EXPECT_EQ(output.find("struct Provider;", output.find("struct Provider;") + 1),
+              std::string::npos);
     EXPECT_NE(output.find("providers::Provider make();"), std::string::npos);
     EXPECT_NE(output.find("providers::Provider const& value"), std::string::npos);
     EXPECT_NE(output.find("-> providers::Provider*;"), std::string::npos);
+}
+
+TEST(SourceLoader, RecordMethodDeclarationsForwardDeclareMutualCrossModuleTypes) {
+    TemporaryManifest files;
+    files.write_root(R"((module first :header "First.h" :namespace first
+      (record A
+        (function make second::B)
+        (function accept void (parameter value second::B))
+        (function pointer (type-ref second::B :suffix "*"))
+        (function ref (type-ref second::B :suffix " const&"))
+        (function move auto :trailing-return-type (type-ref second::B :suffix "&&"))))
+      (module second :header "Second.h" :namespace second
+        (record B
+          (function make auto :trailing-return-type first::A)
+          (function pointer (type-ref first::A :suffix "*"))
+          (function ref auto :trailing-return-type (type-ref first::A :suffix " const&")))))");
+    auto const output{render_modules(lower_modules(files.load()))};
+    ASSERT_EQ(output.size(), 2U);
+    EXPECT_EQ(output[0].content.find("#include \"Second.h\""), std::string::npos);
+    EXPECT_EQ(output[1].content.find("#include \"First.h\""), std::string::npos);
+    EXPECT_LT(output[0].content.find("namespace second {"), output[0].content.find("struct B;"));
+    EXPECT_LT(output[0].content.find("struct B;"), output[0].content.find("namespace first {"));
+    EXPECT_LT(output[1].content.find("namespace first {"), output[1].content.find("struct A;"));
+    EXPECT_LT(output[1].content.find("struct A;"), output[1].content.find("namespace second {"));
+}
+
+TEST(SourceLoader, RecordMethodCrossModuleCompleteTypesRetainIncludes) {
+    TemporaryManifest files;
+    files.write_root(R"((module consumers :header "Consumers.h" :namespace consumers
+      (record Consumer
+        (function make providers::Provider :body ("return {};"))
+        (function accept void (parameter value providers::Provider) :body ("(void)value;"))
+        (function tag providers::Tag)
+        (function count (type-ref providers::Count :suffix " const&"))))
+      (module providers :header "generated/Provider.h" :header-include "api/Provider.h"
+        :namespace providers (record Provider))
+      (module tags :header "Tags.h" :namespace providers
+        (enum Tag std::uint8_t (value Value)))
+      (module counts :header "Counts.h" :namespace providers
+        (integer-scalar Count :signed false :minimum 0 :maximum 255 :bit-width 8
+          :cpp-emission alias :cpp-type std::uint8_t)))");
+    auto const output{render_modules(lower_modules(files.load())).front().content};
+    for (auto const header : {"api/Provider.h", "Tags.h", "Counts.h"}) {
+        EXPECT_NE(output.find(std::string{"#include \""} + header + "\""), std::string::npos);
+    }
+    for (auto const type : {"Provider", "Tag", "Count"}) {
+        EXPECT_EQ(output.find(std::string{"struct "} + type + ";"), std::string::npos);
+    }
+}
+
+TEST(SourceLoader, RecordMethodCrossModuleForwardsRespectPhysicalOwnersAndExternalHeaders) {
+    TemporaryManifest files;
+    files.write_root(R"((module consumers :header "Consumers.h" :namespace consumers
+      (record Consumer
+        (function rows providers::Rows)
+        (function value @external)
+        (function registered @registered)
+        (function global Global)))
+      (module providers :header "Providers.h" :namespace providers :backend standard-library
+        (struct Rows :storage single-allocation (member xs array float)
+          (single-allocation OwnedRows))
+        (record Registered))
+      (module global :header "Global.h" (record Global)))");
+    files.write("types.lispb", R"(
+      (type external :spelling "external::Value" :header "External.h")
+      (type registered :spelling "providers::Registered" :header "Providers.h"))");
+    auto const output{render_modules(lower_modules(files.load())).front().content};
+    EXPECT_NE(output.find("struct OwnedRows;"), std::string::npos);
+    EXPECT_NE(output.find("providers::OwnedRows rows();"), std::string::npos);
+    EXPECT_NE(output.find("struct Global;"), std::string::npos);
+    EXPECT_EQ(output.find("#include \"Global.h\""), std::string::npos);
+    EXPECT_NE(output.find("#include \"External.h\""), std::string::npos);
+    EXPECT_NE(output.find("#include \"Providers.h\""), std::string::npos);
+    EXPECT_EQ(output.find("struct Value;"), std::string::npos);
+    EXPECT_EQ(output.find("struct Registered;"), std::string::npos);
 }
 
 TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinitionCycles) {
@@ -198,6 +294,16 @@ TEST(SourceLoader, RecordMethodSignaturesRejectLayoutOnlyTypesAndCompleteDefinit
         } catch (std::invalid_argument const& error) {
             EXPECT_TRUE(std::string{error.what()}.contains("has no C++ owner")) << error.what();
         }
+    }
+    files.write_root(R"((module consumers :header "Consumers.h"
+      (record Consumer (function make (type-ref providers::Layout :suffix "*"))))
+      (module providers :header "Providers.h" :namespace providers :backend standard-library
+        (struct Layout :layout-only true (member xs array float))))");
+    try {
+        static_cast<void>(lower_modules(files.load()));
+        FAIL();
+    } catch (std::invalid_argument const& error) {
+        EXPECT_TRUE(std::string{error.what()}.contains("has no C++ owner")) << error.what();
     }
     files.write_root(R"((module values :header "Values.h"
       (record A (function make B :body ("return {};")))

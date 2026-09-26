@@ -3,11 +3,12 @@
 
 #pragma once
 
-#include "Soa.h"
-
 #include <compare>
 #include <cstdint>
 
+namespace codegen_compile_fixture {
+struct ApiPair;
+} // namespace codegen_compile_fixture
 namespace codegen_compile_fixture::mixed {
 struct MethodConsumer;
 

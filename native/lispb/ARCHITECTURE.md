@@ -21,6 +21,10 @@ handling. As with SoA functions, identifiers inside C++ expressions and bodies a
 Signature type uses distinguish declarations from header definitions. Bodyless record methods may
 use forward-declared value types; header bodies require complete by-value return and parameter
 types. Pointer/reference uses use forward declarations where the generated C++ kind allows them.
+Across modules, bodyless record signatures emit these declarations in the target namespace before
+the owning namespace, without adding a generated-header include. Explicit registered header
+dependencies are retained. Header-defined by-value uses and record members still require the target
+header; enums and aliases also retain their normal definition dependencies.
 Aliases and enums precede their users, and complete-definition cycles are rejected across modules
 as well as within a header. These emission dependencies do not reorder authored declarations.
 Record and SoA owner/view functions share qualifier, return-type, parameter, overload and dependency

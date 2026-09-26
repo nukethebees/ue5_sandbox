@@ -15,6 +15,12 @@ Representations.h
 ScalarValues.h
 Settings.cpp
 Settings.h
+SignatureDefinitions.cpp
+SignatureDefinitions.h
+SignatureFirst.cpp
+SignatureFirst.h
+SignatureSecond.cpp
+SignatureSecond.h
 Soa.cpp
 Soa.h
 SourceFacade.cpp
