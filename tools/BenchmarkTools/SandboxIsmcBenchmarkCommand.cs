@@ -80,7 +80,7 @@ internal static class SandboxIsmcBenchmarkCommand
         try
         {
             await using var revisions = comparison ? await RevisionComparisonSession.CreateAsync(application, repository,
-                parsed.Required("--baseline"), context.Manifest.RunId, supplied.Length == 0 ? null : supplied,
+                parsed.Required("--baseline"), supplied.Length == 0 ? null : supplied,
                 parsed.HasFlag("--keep-baseline-worktree"), token, context.DirectoryPath) : null;
             var candidate = revisions?.Candidate ?? await BenchmarkRunContext.SourceAsync(application, repository.Root, token, context.DirectoryPath);
             var baseline = revisions?.Baseline ?? candidate;

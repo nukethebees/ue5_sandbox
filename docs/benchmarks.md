@@ -129,7 +129,7 @@ It is the caller's responsibility to ensure those binaries match their recorded 
 
 Preparation and validation modes are mutually exclusive. Preparation writes `preparation.json`
 with effective source identities and prints the retained baseline path. Retained worktrees remain
-disposable benchmark-owned state under `.local/benchmarks/worktrees/`; preparation does not delete
+disposable benchmark-owned state under `.local/benchmarks/wt/`; preparation does not delete
 them. Supplied baselines remain untouched. A retained overlaid baseline is useful for inspection;
 the existing clean-worktree requirement still applies when supplying a baseline to a later run.
 
@@ -175,8 +175,10 @@ is selected by timestamp, and no files are collected from `Saved/Benchmarks` or 
 
 Comparisons use the current executable as the outer orchestrator even when the baseline predates
 BenchmarkTools. Baseline refs resolve once to exact commits. Owned inputs are detached worktrees
-under `.local/benchmarks/worktrees/<run-id>/baseline`; no feature branches are created. Only owned
-worktrees are removed, including after failures. `--keep-baseline-worktree` retains an owned input
+under `.local/benchmarks/wt/<number>`; the next unused slot is reserved exclusively, keeping Windows
+build paths short. The manifest records the path independently of the unique artifact run ID.
+No feature branches are created. Only owned worktrees are removed, including after failures.
+`--keep-baseline-worktree` retains an owned input
 for inspection. An explicitly supplied baseline must be a clean worktree root at the resolved
 commit and is never removed or patched. Candidate source files are never swapped or overwritten.
 

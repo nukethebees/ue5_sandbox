@@ -41,6 +41,7 @@ internal sealed class RevisionComparisonSession : IAsyncDisposable
     private readonly string parent_;
     private bool keep_;
     private bool owned_;
+    private FileStream? reservation_;
 
     private RevisionComparisonSession(BenchmarkToolsApplication application, RevisionIdentity candidate, string baseline_root, string parent, bool keep)
     {
@@ -58,15 +59,15 @@ internal sealed class RevisionComparisonSession : IAsyncDisposable
     public void RetainBaseline() => keep_ = true;
 
     public static async Task<RevisionComparisonSession> CreateAsync(BenchmarkToolsApplication application, RepositoryPaths repository,
-        string baseline, string run_id, string? supplied, bool keep, CancellationToken token, string? artifact_root = null)
+        string baseline, string? supplied, bool keep, CancellationToken token, string? artifact_root = null)
     {
         var candidate = await BenchmarkRunContext.SourceAsync(application, repository.Root, token, artifact_root);
         var commit = await BenchmarkGit.TextAsync(application, repository.Root, ["rev-parse", "--verify", "--end-of-options", baseline + "^{commit}"], token);
-        var parent = Path.Combine(repository.Root, ".local", "benchmarks", "worktrees");
-        var path = supplied is null ? Path.Combine(parent, run_id, "baseline") : Path.GetFullPath(supplied, repository.Root);
+        var parent = Path.Combine(repository.Root, ".local", "benchmarks", "wt");
+        var (path, reservation) = supplied is null ? ReserveOwnedPath(parent) : (Path.GetFullPath(supplied, repository.Root), (FileStream?)null);
         if (string.Equals(path.TrimEnd(Path.DirectorySeparatorChar), Path.GetFullPath(repository.Root).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
             throw new BenchmarkToolException("The baseline must be a separate worktree from the candidate.");
-        var session = new RevisionComparisonSession(application, candidate, path, parent, keep);
+        var session = new RevisionComparisonSession(application, candidate, path, parent, keep) { reservation_ = reservation };
         try
         {
             if (supplied is null)
@@ -97,6 +98,30 @@ internal sealed class RevisionComparisonSession : IAsyncDisposable
         }
     }
 
+    internal static (string Path, FileStream Reservation) ReserveOwnedPath(string parent)
+    {
+        ValidateOwnedPath(Path.Combine(parent, "0"), parent);
+        Directory.CreateDirectory(parent);
+        for (var slot = 0; ; ++slot)
+        {
+            var path = Path.Combine(parent, slot.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            var lock_path = path + ".lock";
+            if (Directory.Exists(path) || File.Exists(path)) continue;
+            FileStream reservation;
+            try
+            {
+                reservation = new FileStream(lock_path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 1, FileOptions.DeleteOnClose);
+            }
+            catch (IOException) when (File.Exists(lock_path))
+            {
+                continue;
+            }
+            // A retained worktree may have appeared while its previous reservation was released.
+            if (!Directory.Exists(path) && !File.Exists(path)) return (path, reservation);
+            reservation.Dispose();
+        }
+    }
+
     internal static void ValidateOwnedPath(string path, string parent)
     {
         var full = Path.GetFullPath(path);
@@ -112,14 +137,22 @@ internal sealed class RevisionComparisonSession : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (!owned_ || keep_) return;
-        ValidateOwnedPath(BaselineRoot, parent_);
-        // A rejected add can leave no registration at all. Do not mask that error with remove.
-        if (!Directory.Exists(BaselineRoot) && !File.Exists(BaselineRoot)) return;
-        var result = await application_.ProcessRunner.RunAsync(BenchmarkGit.Request(Candidate.Root, ["worktree", "remove", "--force", "--force", BaselineRoot]), CancellationToken.None);
-        if (result.ExitCode != 0)
-            throw new BenchmarkToolException($"Could not clean owned benchmark worktree '{BaselineRoot}': {result.StandardError.Trim()}");
-        owned_ = false;
+        try
+        {
+            if (!owned_ || keep_) return;
+            ValidateOwnedPath(BaselineRoot, parent_);
+            // A rejected add can leave no registration at all. Do not mask that error with remove.
+            if (!Directory.Exists(BaselineRoot) && !File.Exists(BaselineRoot)) return;
+            var result = await application_.ProcessRunner.RunAsync(BenchmarkGit.Request(Candidate.Root, ["worktree", "remove", "--force", "--force", BaselineRoot]), CancellationToken.None);
+            if (result.ExitCode != 0)
+                throw new BenchmarkToolException($"Could not clean owned benchmark worktree '{BaselineRoot}': {result.StandardError.Trim()}");
+            owned_ = false;
+        }
+        finally
+        {
+            reservation_?.Dispose();
+            reservation_ = null;
+        }
     }
 }
 

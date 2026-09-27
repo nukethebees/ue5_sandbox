@@ -35,7 +35,7 @@ internal static class FrameMemoryRevisionAbBenchmarkCommand
         try
         {
             await using var revisions = await RevisionComparisonSession.CreateAsync(application, repository_paths, parsed.Value("--baseline", "HEAD"),
-                run.Manifest.RunId, provided.Length == 0 ? null : provided, parsed.HasFlag("--keep-baseline-worktree"), cancellation_token, run.DirectoryPath);
+                provided.Length == 0 ? null : provided, parsed.HasFlag("--keep-baseline-worktree"), cancellation_token, run.DirectoryPath);
             run.Manifest.Provenance = new { revisions.Candidate, revisions.Baseline, revisions.OwnsBaseline, Orchestrator = application.ExecutablePath, EffectiveArguments = arguments };
             run.Publish();
             if (!parsed.HasFlag("--skip-build"))

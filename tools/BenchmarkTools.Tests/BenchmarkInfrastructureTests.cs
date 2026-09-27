@@ -109,22 +109,49 @@ public sealed class BenchmarkInfrastructureTests
         File.WriteAllText(Path.Combine(directory.Root, "tracked.txt"), "candidate edit");
         var before = await Git("status", "--porcelain");
         string owned;
-        await using (var session = await RevisionComparisonSession.CreateAsync(app, new RepositoryPaths(directory.Root), "HEAD", "test-owned", null, false, default))
+        await using (var session = await RevisionComparisonSession.CreateAsync(app, new RepositoryPaths(directory.Root), "HEAD", null, false, default))
         {
             owned = session.BaselineRoot;
+            Assert.AreEqual(Path.Combine(directory.Root, ".local", "benchmarks", "wt", "0"), owned);
             Assert.IsTrue(session.Candidate.Dirty);
             Assert.AreEqual(head, session.Baseline.Commit);
             var detached = await runner.RunAsync(BenchmarkGit.Request(owned, ["symbolic-ref", "-q", "HEAD"]), default);
             Assert.AreNotEqual(0, detached.ExitCode);
-            await using var supplied = await RevisionComparisonSession.CreateAsync(app, new RepositoryPaths(directory.Root), "HEAD", "supplied", owned, false, default);
+            await using var supplied = await RevisionComparisonSession.CreateAsync(app, new RepositoryPaths(directory.Root), "HEAD", owned, false, default);
             Assert.IsFalse(supplied.OwnsBaseline);
         }
         Assert.IsFalse(Directory.Exists(owned));
+        Assert.IsFalse(File.Exists(owned + ".lock"));
         Assert.AreEqual(before, await Git("status", "--porcelain"));
         Assert.AreEqual("candidate", await Git("branch", "--show-current"));
         Assert.AreEqual("candidate edit", File.ReadAllText(Path.Combine(directory.Root, "tracked.txt")));
 
         async Task<string> Git(params string[] args) => await BenchmarkGit.TextAsync(app, directory.Root, args, default);
+    }
+
+    [TestMethod]
+    public async Task Numbered_worktree_slots_are_exclusive_skip_existing_paths_and_reuse_released_slots()
+    {
+        using var directory = new BenchmarkTestDirectory();
+        var parent = Path.Combine(directory.Root, ".local", "benchmarks", "wt");
+        Directory.CreateDirectory(Path.Combine(parent, "0"));
+        File.WriteAllText(Path.Combine(parent, "1"), "unowned");
+        var slots = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => Task.Run(() => RevisionComparisonSession.ReserveOwnedPath(parent))));
+        try
+        {
+            CollectionAssert.AreEquivalent(Enumerable.Range(2, 8).Select(value => Path.Combine(parent, value.ToString())).ToArray(),
+                slots.Select(slot => slot.Path).ToArray());
+            Directory.CreateDirectory(Path.Combine(parent, "2")); // A retained worktree keeps its slot.
+        }
+        finally
+        {
+            foreach (var slot in slots) slot.Reservation.Dispose();
+        }
+        Assert.AreEqual(0, Directory.GetFiles(parent, "*.lock").Length);
+        var reused = RevisionComparisonSession.ReserveOwnedPath(parent);
+        using (reused.Reservation) Assert.AreEqual(Path.Combine(parent, "3"), reused.Path);
+        Assert.IsTrue(Directory.Exists(Path.Combine(parent, "0")));
+        Assert.AreEqual("unowned", File.ReadAllText(Path.Combine(parent, "1")));
     }
 
     [TestMethod]
@@ -169,8 +196,8 @@ public sealed class BenchmarkInfrastructureTests
     public void Worktree_paths_reject_escape_and_parent_itself()
     {
         using var directory = new BenchmarkTestDirectory();
-        var parent = Path.Combine(directory.Root, ".local", "benchmarks", "worktrees");
-        RevisionComparisonSession.ValidateOwnedPath(Path.Combine(parent, "run", "baseline"), parent);
+        var parent = Path.Combine(directory.Root, ".local", "benchmarks", "wt");
+        RevisionComparisonSession.ValidateOwnedPath(Path.Combine(parent, "0"), parent);
         Assert.ThrowsException<BenchmarkToolException>(() => RevisionComparisonSession.ValidateOwnedPath(parent, parent));
         Assert.ThrowsException<BenchmarkToolException>(() => RevisionComparisonSession.ValidateOwnedPath(Path.Combine(parent, "..", "escape"), parent));
         Assert.ThrowsException<BenchmarkToolException>(() => RevisionComparisonSession.ValidateOwnedPath(Path.Combine(directory.Root, ".local", "worktrees", "branch"), parent));
@@ -206,7 +233,7 @@ public sealed class BenchmarkInfrastructureTests
         await Git("apply", "--", patch);
         var before = await Git("diff", "HEAD", "--binary");
         var run = BenchmarkRunContext.Create(new RepositoryPaths(directory.Root), "overlay-test");
-        await using (var session = await RevisionComparisonSession.CreateAsync(app, new RepositoryPaths(directory.Root), "HEAD", run.Manifest.RunId, null, false, default))
+        await using (var session = await RevisionComparisonSession.CreateAsync(app, new RepositoryPaths(directory.Root), "HEAD", null, false, default))
         {
             await SandboxIsmcCompatibility.ApplyAsync(app, session, "sandbox-ismc-v1", run, default);
             var effective = await BenchmarkRunContext.SourceAsync(app, session.BaselineRoot, default);
