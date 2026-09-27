@@ -1,5 +1,9 @@
 # Included by LLVM after clangTidy and the clang-tidy executable exist.
 add_library(ioj-tidy-checks OBJECT
+  lib/SimulationPolicy.cpp
+  lib/SimulationPolicy.hpp
+  lib/LoopViewConstructionCheck.cpp
+  lib/LoopViewConstructionCheck.hpp
   lib/IojTidyModule.cpp
   lib/LoopConditionCallCheck.cpp
   lib/LoopConditionCallCheck.hpp)

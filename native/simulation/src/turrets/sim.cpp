@@ -358,6 +358,8 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
             auto const target_count{target_ids.num()};
             auto const count{static_cast<std::size_t>(target_count)};
             has_line_of_sight.set_num_uninitialised(target_count);
+            // NOLINTBEGIN(ioj-loop-view-construction) -- each turret produces a differently sized
+            // candidate batch.
             Vectors3fView const candidate_locations_view{std::span{candidate_xs}.first(count),
                                                          std::span{candidate_ys}.first(count),
                                                          std::span{candidate_zs}.first(count)};
@@ -370,6 +372,7 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
                                     {},
                                     std::span{teams}.first(count),
                                     std::span{alive}.first(count)});
+            // NOLINTEND(ioj-loop-view-construction)
 
             spatial_query_manager.has_line_of_sight_to_targets(
                 vector_at(fire_point_locations, i),

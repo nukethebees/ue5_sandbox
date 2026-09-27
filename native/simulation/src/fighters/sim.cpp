@@ -285,7 +285,8 @@ void Sim::think(float const dt, ml::FrameScratch& scratch) {
     auto const dot_threshold{config.minimum_opportunistic_intercept_deviation_dot_product};
     bool targets_changed{};
 
-    auto const awareness_countdowns{data.awareness_scan_countdowns()};
+    ml::TickCountdownView<std::int8_t> const awareness_countdowns{data.awareness_scan_countdowns(),
+                                                                  awareness_restart_ticks_};
     auto const locations{data.view_locations()};
     auto const target_ids{data.target_ids()};
     auto const target_distance_sq{data.target_distance_sq()};
@@ -295,8 +296,7 @@ void Sim::think(float const dt, ml::FrameScratch& scratch) {
     {
         SANDBOX_PROFILE_SCOPE("fighters::Sim::awareness_scan");
         for (std::int32_t i{0}; i < n; ++i) {
-            if (!ml::TickCountdownView<std::int8_t>{awareness_countdowns, awareness_restart_ticks_}
-                     .try_consume(i)) {
+            if (!awareness_countdowns.try_consume(i)) {
                 continue;
             }
 
@@ -960,7 +960,11 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
         auto const chosen_choice{fighters::choose_navigation_alternative(
             fighter_location,
             safe_progress_distance,
+            // NOLINTNEXTLINE(ioj-loop-view-construction) -- each fighter owns a distinct candidate
+            // subrange.
             {scratch.trace_choice_indices.data() + candidate_begin, candidate_count},
+            // NOLINTNEXTLINE(ioj-loop-view-construction) -- results use the same per-fighter
+            // subrange.
             {scratch.line_of_sight_results.data() + candidate_begin, candidate_count},
             scratch.trace_hits.hits.view().subspan(candidate_begin, candidate_count),
             scratch.trace_hits.locations.get_const_view().slice(candidate_begin,
@@ -1605,7 +1609,11 @@ void Sim::handle_firing(TaskView data, ml::FrameScratch& scratch) {
         spatial_query_manager.have_clear_lines(
             line_of_sight_starts.get_const_view(),
             line_of_sight_ends.get_const_view(),
+            // NOLINTNEXTLINE(ioj-loop-view-construction) -- candidates resize these buffers each
+            // iteration.
             {line_of_sight_results.data(), static_cast<std::size_t>(line_of_sight_results.num())},
+            // NOLINTNEXTLINE(ioj-loop-view-construction) -- the remaining fighter set shrinks each
+            // iteration.
             {firing_ignored_entities.data(),
              static_cast<std::size_t>(firing_ignored_entities.num())});
 
