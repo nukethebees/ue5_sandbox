@@ -87,6 +87,7 @@ inline void implementation() { auto value = std::make_tuple(1, 2.f); }
             ("lambda_return", "auto f = [] { return std::make_tuple(1, 2.f); };", 1),
             ("lambda_boundary", "auto value = [] { consume(std::make_tuple(1, 2.f)); return std::make_tuple(3, 4.f); }();", 3),
             ("dependent", "template<class T> void f(Holder<std::tuple<T, int>> value);", 1),
+            ("dependent_expression", "template<class T> void f(T x) { consume(std::tuple<T, int>{x, 1}); }", 1),
             ("function_pointer", "void (*callback)(std::tuple<int, float>);", 1),
             ("function_pointer_alias", "using Callback = void (*)(std::tuple<int, float>);", 1),
             ("function_pointer_field", "struct S { void (*callback)(std::tuple<int, float>); };", 1),

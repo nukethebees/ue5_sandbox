@@ -5,27 +5,63 @@
 #include <clang/AST/DeclTemplate.h>
 #include <clang/AST/ParentMapContext.h>
 #include <clang/ASTMatchers/ASTMatchers.h>
+#include <clang/Basic/IdentifierTable.h>
 #include <clang/Lex/Lexer.h>
 #include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/ADT/STLExtras.h>
 
 namespace clang::tidy::ioj {
 
-static bool is_forbidden_template(TemplateDecl const* declaration, ForbiddenStdType forbidden) {
-    auto const name{forbidden == ForbiddenStdType::Pair ? "pair" : "tuple"};
-    if (!declaration || !isa<ClassTemplateDecl>(declaration) || declaration->getName() != name) {
-        return false;
-    }
-    auto const* context{declaration->getDeclContext()};
+static bool is_standard_template(TemplateDecl const& declaration) {
+    auto const* context{declaration.getDeclContext()};
     while (context->isInlineNamespace()) {
         context = context->getParent();
     }
     return context->isStdNamespace();
 }
 
+static bool is_forbidden_template(TemplateDecl const* declaration, ForbiddenStdType forbidden) {
+    auto const name{forbidden == ForbiddenStdType::Pair ? "pair" : "tuple"};
+    if (!declaration || !isa<ClassTemplateDecl>(declaration) || declaration->getName() != name) {
+        return false;
+    }
+    return is_standard_template(*declaration);
+}
+
+static bool is_forbidden_value(QualType type, ForbiddenStdType forbidden) {
+    if (type.isNull()) {
+        return false;
+    }
+    auto const* canonical{type.getNonReferenceType().getCanonicalType().getTypePtr()};
+    if (auto const* record{
+            dyn_cast_or_null<ClassTemplateSpecializationDecl>(canonical->getAsCXXRecordDecl())}) {
+        return is_forbidden_template(record->getSpecializedTemplate(), forbidden);
+    }
+    if (auto const* specialization{dyn_cast<TemplateSpecializationType>(canonical)}) {
+        return is_forbidden_template(specialization->getTemplateName().getAsTemplateDecl(),
+                                     forbidden);
+    }
+    return false;
+}
+
 static bool contains_type(QualType type,
                           ForbiddenStdType forbidden,
                           llvm::SmallPtrSetImpl<Type const*>& visited);
+
+static bool is_std_implementation(TemplateDecl const& declaration) {
+    auto const* identifier{declaration.getIdentifier()};
+    if (!identifier || !isReservedInAllContexts(
+                           identifier->isReserved(declaration.getASTContext().getLangOpts()))) {
+        return false;
+    }
+    for (auto const* context{declaration.getDeclContext()}; context;
+         context = context->getParent()) {
+        if (context->isStdNamespace()) {
+            return true;
+        }
+    }
+    return false;
+}
 
 static bool contains_argument(TemplateArgument const& argument,
                               ForbiddenStdType forbidden,
@@ -89,8 +125,24 @@ static bool contains_type(QualType type,
     if (is_forbidden_template(declaration, forbidden)) {
         return true;
     }
-    for (auto const& argument : arguments) {
-        if (contains_argument(argument, forbidden, visited)) {
+    if (declaration && is_std_implementation(*declaration)) {
+        return false;
+    }
+    auto const argument_count{arguments.size()};
+    for (std::size_t index{}; index < argument_count; ++index) {
+        // Defaulted standard policy parameters (e.g. allocators) do not expose
+        // additional value types. Use the parameter declaration, not whichever
+        // spelling first instantiated this canonical specialization.
+        if (declaration && is_standard_template(*declaration)) {
+            auto const* parameters{declaration->getTemplateParameters()};
+            if (index < parameters->size()) {
+                auto const* parameter{dyn_cast<TemplateTypeParmDecl>(parameters->getParam(index))};
+                if (parameter && parameter->hasDefaultArgument()) {
+                    continue;
+                }
+            }
+        }
+        if (contains_argument(arguments[index], forbidden, visited)) {
             return true;
         }
     }
@@ -136,14 +188,18 @@ static bool is_value_expression(Expr const& expression) {
     if (auto const* member{dyn_cast<MemberExpr>(&expression)}) {
         return isa<FieldDecl, VarDecl>(member->getMemberDecl());
     }
-    return isa<CallExpr, CXXConstructExpr, ExplicitCastExpr, InitListExpr>(&expression);
+    return isa<CallExpr,
+               CXXConstructExpr,
+               CXXUnresolvedConstructExpr,
+               ExplicitCastExpr,
+               InitListExpr>(&expression);
 }
 
 static bool
     owns_expression(Expr const& expression, ForbiddenStdType forbidden, ASTContext& context) {
     if (!is_value_expression(expression) ||
         !is_policy_source(expression.getBeginLoc(), context.getSourceManager()) ||
-        !contains_forbidden_std_type(expression.getType(), forbidden)) {
+        !is_forbidden_value(expression.getType(), forbidden)) {
         return false;
     }
     // Clang can locate an omitted aggregate field's implicit constructor at '}'.
@@ -203,6 +259,7 @@ void register_forbidden_std_type_matchers(ast_matchers::MatchFinder& finder,
     finder.addMatcher(traverse(TK_IgnoreUnlessSpelledInSource,
                                expr(anyOf(callExpr(),
                                           cxxConstructExpr(),
+                                          cxxUnresolvedConstructExpr(),
                                           explicitCastExpr(),
                                           initListExpr(),
                                           declRefExpr(),

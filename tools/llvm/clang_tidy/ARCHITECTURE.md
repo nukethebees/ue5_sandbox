@@ -41,7 +41,13 @@ are outside the initial simulation-data view family set.
 in `lib/ForbiddenStdType.cpp`. Canonical Clang types remove aliases and cv qualification;
 the standard class-template declarations, including inline standard namespaces, identify
 pair and tuple. References, pointers, arrays, function signatures, template type arguments
-and argument packs are inspected recursively. Unrelated records are not searched for
+and argument packs are inspected recursively. Standard templates' defaulted type-policy
+parameters (allocators, comparators, deleters) and standard implementation templates with
+C++ reserved identifiers are opaque. This keeps map/iterator implementation types outside
+the policy while still checking actual pair-valued insertion results and user-selected
+value arguments such as `vector<pair<...>>` or `map<Key, pair<...>>`. The default-parameter
+boundary uses the template declaration, so explicitly supplying the default produces the
+same classification as omitting it. Unrelated records are not searched for
 hidden members or bases. Unresolved dependent types are not guessed, and a bare template
 argument such as `Holder<std::pair>` is not itself a pair specialization.
 
@@ -52,7 +58,8 @@ each warn once. Neither nested type arguments nor desugaring layers multiply war
 Function-pointer declarations also own parameters nested in their prototype; a function's
 actual parameters remain independent of its return type.
 
-Source calls, construction, explicit casts and references to forbidden values are checked
+Source calls, construction, explicit casts and references whose result is directly pair
+or tuple (rather than a containing wrapper) are checked
 outside diagnosed declarations. An enclosing forbidden-valued expression owns its nested
 expressions. Initializers belong to their declaration; return expressions belong to a
 diagnosed function return type. Ownership does not cross a nested callable body. Suppressed

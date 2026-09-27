@@ -9,6 +9,8 @@ DECLARATIONS = """
 #include <tuple>
 #include <vector>
 #include <optional>
+#include <map>
+#include <unordered_map>
 template<class... Ts> struct Holder {};
 template<class T> void consume(T const&);
 namespace user {
@@ -44,6 +46,12 @@ inline void implementation() { auto value = std::make_pair(1, 2.f); }
             ("nested_aliases", "using P = std::pair<int, float>; using Q = std::vector<P>; Q value;", 3),
             ("typedef", "typedef std::pair<int, float> P; P value;", 2),
             ("vector", "std::vector<std::pair<int, float>> values;", 1),
+            ("map_defaults", "std::map<int, float> values; values.clear();", 0),
+            ("map_default_identity", "std::map<int, float, std::less<int>, std::allocator<std::pair<int const, float>>> explicit_defaults; std::map<int, float> implicit_defaults;", 0),
+            ("unordered_map_defaults", "std::unordered_map<int, float> values; values.reserve(10);", 0),
+            ("map_iterator", "std::map<int, float> values; auto it = values.find(1);", 0),
+            ("map_pair_value", "std::map<int, std::pair<int, float>> values;", 1),
+            ("map_insert_result", "std::map<int, float> values; auto result = values.emplace(1, 2.f);", 1),
             ("optional", "std::optional<std::pair<int, float>> value;", 1),
             ("nested_pack", "Holder<int, Holder<std::pair<int, float>>> value;", 1),
             ("nested", "std::pair<int, std::pair<int, int>> value;", 1),
@@ -87,6 +95,7 @@ inline void implementation() { auto value = std::make_pair(1, 2.f); }
             ("lambda_return", "auto f = [] { return std::make_pair(1, 2.f); };", 1),
             ("lambda_boundary", "auto value = [] { consume(std::make_pair(1, 2.f)); return std::make_pair(3, 4.f); }();", 3),
             ("dependent", "template<class T> void f(Holder<std::pair<T, int>> value);", 1),
+            ("dependent_expression", "template<class T> void f(T x) { consume(std::pair<T, int>{x, 1}); }", 1),
             ("function_pointer", "void (*callback)(std::pair<int, float>);", 1),
             ("function_pointer_alias", "using Callback = void (*)(std::pair<int, float>);", 1),
             ("function_pointer_field", "struct S { void (*callback)(std::pair<int, float>); };", 1),
