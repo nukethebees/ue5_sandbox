@@ -161,8 +161,11 @@ AB then BA (ABBA across two pairs); `sequence.json` records the exact ordering. 
 the lease releases. Keep actual campaigns within the repository's three-minute benchmark budget.
 
 SandboxISMC writes `captures.json` with each process's original sample count/min/median/p95/max.
-`comparison.json`, `.csv`, and `.md` compare distributions of complete-run medians, with nearest-rank
-quantiles, absolute deltas and percentage deltas (null for a zero baseline). They never count
+`comparison.json`, `.csv`, and `.md` preserve baseline/candidate distributions of complete-run
+medians, but report changes from **paired candidate-minus-baseline run medians**, matched by
+repetition ID. Samples count independent complete repetitions. Medians average the two middle
+values for even sample counts; p95 uses nearest rank. Percentage distributions are null if any
+paired baseline is zero (individual pairs retain defined percentages). They never count
 adjacent frame samples as independent repetitions. CPU upload, CPU thread/frame, GPU, submission
 bytes, waits and churn metrics retain distinct identities and units. Generic pairing rejects
 duplicate identities, missing metrics, units/dimensions mismatches and non-finite values. All

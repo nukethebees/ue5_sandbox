@@ -49,7 +49,7 @@ public sealed class BenchmarkInfrastructureTests
         Assert.AreEqual(20, result.Metrics.Single().DeltaPercent);
         var summary = MetricSummary.AcrossRuns([1, 4, 2, 3]);
         Assert.AreEqual(4, summary.Samples);
-        Assert.AreEqual(2, summary.Median);
+        Assert.AreEqual(2.5, summary.Median);
         Assert.AreEqual(4, summary.P95);
     }
 

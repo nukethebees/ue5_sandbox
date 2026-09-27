@@ -19,13 +19,19 @@ internal sealed record MetricSummary(int Samples, double Min, double Median, dou
     {
         var sorted = values.Order().ToArray();
         if (sorted.Length == 0 || !sorted.All(double.IsFinite)) throw new BenchmarkToolException("Run summaries must contain finite values.");
-        return new MetricSummary(sorted.Length, sorted[0], sorted[(sorted.Length - 1) / 2], sorted[(int)Math.Ceiling(.95 * sorted.Length) - 1], sorted[^1]);
+        var middle = sorted.Length / 2;
+        var median = sorted.Length % 2 == 0 ? sorted[middle - 1] / 2 + sorted[middle] / 2 : sorted[middle];
+        return new MetricSummary(sorted.Length, sorted[0], median, sorted[(int)Math.Ceiling(.95 * sorted.Length) - 1], sorted[^1]);
     }
 }
 
 internal sealed record BenchmarkMetric(MetricIdentity Identity, MetricSummary Summary);
 internal sealed record MetricDelta(MetricIdentity Identity, MetricSummary Baseline, MetricSummary Candidate, double Delta, double? DeltaPercent);
 internal sealed record BenchmarkComparison(bool Comparable, IReadOnlyList<string> Errors, IReadOnlyList<MetricDelta> Metrics);
+internal sealed record PairedMetricDelta(int Repetition, double Baseline, double Candidate, double Delta, double? DeltaPercent);
+internal sealed record PairedMetricSummary(MetricIdentity Identity, MetricSummary Baseline, MetricSummary Candidate,
+    MetricSummary Delta, MetricSummary? DeltaPercent, IReadOnlyList<PairedMetricDelta> Pairs);
+internal sealed record PairedBenchmarkComparison(bool Comparable, IReadOnlyList<string> Errors, IReadOnlyList<PairedMetricSummary> Metrics);
 
 internal static class BenchmarkMetrics
 {

@@ -90,28 +90,42 @@ internal static class SandboxIsmcResults
         return metrics;
     }
 
-    public static BenchmarkComparison Compare(IReadOnlyList<SandboxIsmcCapture> captures)
+    public static PairedBenchmarkComparison Compare(IReadOnlyList<SandboxIsmcCapture> captures)
     {
         var measured = captures.Where(item => !item.Repetition.Warmup).ToArray();
         if (measured.Length == 0) throw new BenchmarkToolException("No complete measured repetitions.");
+        var pairs = measured.GroupBy(item => item.Repetition.Repetition).OrderBy(pair => pair.Key).ToArray();
+        foreach (var pair in pairs)
+            if (pair.Key <= 0 || pair.Count() != 2 || pair.Count(item => item.Repetition.Side == "baseline") != 1 || pair.Count(item => item.Repetition.Side == "candidate") != 1)
+                throw new BenchmarkToolException($"Repetition {pair.Key} requires exactly one measured baseline and one candidate; missing or duplicate side.");
         var reference = measured[0];
         foreach (var capture in measured.Skip(1))
         {
             var validation = BenchmarkMetrics.Compare(reference.Metrics, capture.Metrics, reference.Conditions, capture.Conditions);
-            if (!validation.Comparable) return validation;
+            if (!validation.Comparable) return new PairedBenchmarkComparison(false, validation.Errors, []);
         }
-        IReadOnlyList<BenchmarkMetric> Aggregate(string side)
+        var deltas = new Dictionary<string, List<PairedMetricDelta>>(StringComparer.Ordinal);
+        foreach (var pair in pairs)
         {
-            var runs = measured.Where(item => item.Repetition.Side == side).ToArray();
-            if (runs.Length == 0) throw new BenchmarkToolException($"No {side} repetitions.");
-            var indexes = runs.Select(run => BenchmarkMetrics.Index(run.Metrics)).ToArray();
-            return runs[0].Metrics.Select(metric => new BenchmarkMetric(metric.Identity,
-                MetricSummary.AcrossRuns(indexes.Select(index => index[metric.Identity.Key].Summary.Median)))).ToArray();
+            var baseline = pair.Single(item => item.Repetition.Side == "baseline");
+            var candidate = pair.Single(item => item.Repetition.Side == "candidate");
+            var comparison = BenchmarkMetrics.Compare(baseline.Metrics, candidate.Metrics, baseline.Conditions, candidate.Conditions);
+            foreach (var metric in comparison.Metrics)
+            {
+                if (!deltas.TryGetValue(metric.Identity.Key, out var values)) deltas[metric.Identity.Key] = values = [];
+                values.Add(new PairedMetricDelta(pair.Key, metric.Baseline.Median, metric.Candidate.Median, metric.Delta, metric.DeltaPercent));
+            }
         }
-        return BenchmarkMetrics.Compare(Aggregate("baseline"), Aggregate("candidate"), reference.Conditions, reference.Conditions);
+        return new PairedBenchmarkComparison(true, [], reference.Metrics.OrderBy(metric => metric.Identity.Key, StringComparer.Ordinal).Select(metric =>
+        {
+            var values = deltas[metric.Identity.Key];
+            return new PairedMetricSummary(metric.Identity, MetricSummary.AcrossRuns(values.Select(value => value.Baseline)),
+                MetricSummary.AcrossRuns(values.Select(value => value.Candidate)), MetricSummary.AcrossRuns(values.Select(value => value.Delta)),
+                values.All(value => value.DeltaPercent.HasValue) ? MetricSummary.AcrossRuns(values.Select(value => value.DeltaPercent!.Value)) : null, values);
+        }).ToArray());
     }
 
-    public static void WriteReport(string directory, BenchmarkComparison comparison)
+    public static void WriteReport(string directory, PairedBenchmarkComparison comparison)
     {
         BenchmarkCommandSupport.WriteJson(Path.Combine(directory, "comparison.json"), comparison);
         var report = new StringBuilder("# SandboxISMC revision comparison\n\n");
@@ -122,16 +136,16 @@ internal static class SandboxIsmcResults
         }
         else
         {
-            report.AppendLine("Values compare distributions of complete-run medians. Samples in this table count independent repetitions; captures.json preserves within-run frame summaries. CPU upload, thread and GPU timings retain their original identities.\n");
-            report.AppendLine("| Renderer | Metric | Unit | Runs A/B | Baseline median | Candidate median | Delta | Delta % |\n|---|---|---|---:|---:|---:|---:|---:|");
+            report.AppendLine("Baseline/candidate values summarize complete-run medians. Deltas summarize paired candidate-minus-baseline complete-run differences by repetition ID. Samples count independent complete repetitions; captures.json preserves within-run frame summaries. Medians average the two middle values for even sample counts; p95 uses nearest rank. Percent summaries are unavailable if any baseline is zero.\n");
+            report.AppendLine("| Renderer | Metric | Unit | Pairs | Baseline median | Candidate median | Paired delta median | Paired delta % median |\n|---|---|---|---:|---:|---:|---:|---:|");
             foreach (var item in comparison.Metrics)
-                report.AppendLine(FormattableString.Invariant($"| {item.Identity.Dimensions.GetValueOrDefault("renderer")} | {item.Identity.Metric} | {item.Identity.Unit} | {item.Baseline.Samples}/{item.Candidate.Samples} | {item.Baseline.Median:G6} | {item.Candidate.Median:G6} | {item.Delta:G6} | {item.DeltaPercent:G6} |"));
+                report.AppendLine(FormattableString.Invariant($"| {item.Identity.Dimensions.GetValueOrDefault("renderer")} | {item.Identity.Metric} | {item.Identity.Unit} | {item.Delta.Samples} | {item.Baseline.Median:G6} | {item.Candidate.Median:G6} | {item.Delta.Median:G6} | {item.DeltaPercent?.Median:G6} |"));
         }
         File.WriteAllText(Path.Combine(directory, "comparison.md"), report.ToString());
-        BenchmarkCommandSupport.WriteCsv(Path.Combine(directory, "comparison.csv"), new[] { new[] { "renderer", "metric", "unit", "baseline_runs", "candidate_runs", "baseline_median", "candidate_median", "delta", "delta_percent" } }
+        BenchmarkCommandSupport.WriteCsv(Path.Combine(directory, "comparison.csv"), new[] { new[] { "renderer", "metric", "unit", "baseline_runs", "candidate_runs", "baseline_run_median", "candidate_run_median", "paired_delta_median", "paired_delta_percent_median" } }
             .Concat(comparison.Metrics.Select(item => new[] { item.Identity.Dimensions.GetValueOrDefault("renderer", ""), item.Identity.Metric, item.Identity.Unit,
                 item.Baseline.Samples.ToString(CultureInfo.InvariantCulture), item.Candidate.Samples.ToString(CultureInfo.InvariantCulture),
                 item.Baseline.Median.ToString("R", CultureInfo.InvariantCulture), item.Candidate.Median.ToString("R", CultureInfo.InvariantCulture),
-                item.Delta.ToString("R", CultureInfo.InvariantCulture), item.DeltaPercent?.ToString("R", CultureInfo.InvariantCulture) ?? "" })));
+                item.Delta.Median.ToString("R", CultureInfo.InvariantCulture), item.DeltaPercent?.Median.ToString("R", CultureInfo.InvariantCulture) ?? "" })));
     }
 }
