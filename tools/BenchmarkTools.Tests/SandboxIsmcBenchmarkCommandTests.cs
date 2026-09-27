@@ -43,6 +43,14 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         var processes = fixture.Runner.Requests.Where(item => item.FileName == fixture.Editor).ToArray();
         Assert.AreEqual(2, processes.Length);
         Assert.IsTrue(processes.All(item => item.Arguments.Contains("-SandboxISMCBenchmarkSeconds=0.5") && item.Timeout == TimeSpan.FromSeconds(60)));
+        foreach (var process in processes)
+        {
+            var cache = process.Arguments.Single(value => value.StartsWith("-LocalDataCachePath=", StringComparison.Ordinal))["-LocalDataCachePath=".Length..];
+            var relative = Path.GetRelativePath(process.WorkingDirectory, cache);
+            // Reproduce the Windows workspace depth that hit Unreal's 119-character DDC limit.
+            var representative = Path.Combine(@"C:\Users\matthew\source\repos\nukethebees\wt\dev1\.local\benchmarks\wt\0", relative);
+            Assert.IsTrue(representative.Length <= 119, representative);
+        }
         var report = File.ReadAllText(Path.Combine(fixture.RunDirectory, "comparison.md"));
         StringAssert.Contains(report, "Validation only");
         StringAssert.Contains(report, "no performance conclusions");

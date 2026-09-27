@@ -50,7 +50,7 @@ internal sealed record SandboxIsmcRequest(string Editor, int Width, int Height, 
     public IReadOnlyList<string> EditorArguments(string root, BenchmarkRunContext run)
     {
         return [Path.Combine(root, "Sandbox.uproject"), "-unattended", "-nop4", "-nosplash", "-nosound", "-stdout", "-FullStdOutLogOutput", "-RenderOffscreen",
-            "-ddc=NoZenLocalFallback", $"-LocalDataCachePath={Path.Combine(root, "out", "build", "sandbox-ismc-benchmark", "local-derived-data-cache")}",
+            "-ddc=NoZenLocalFallback", $"-LocalDataCachePath={Path.Combine(root, ".local", "benchmarks", "ddc")}",
             "-ExecCmds=r.VSync 0;r.ScreenPercentage 100;r.DynamicRes.OperationMode 0;Automation Now;RunTests SandboxISMC.RemoteBenchmark;Quit",
             "-SandboxISMCBenchmarkEndPIE", $"-abslog={run.Artifact("unreal.log")}",
             $"-ResX={Width}", $"-ResY={Height}", "-ForceRes", "-windowed",
