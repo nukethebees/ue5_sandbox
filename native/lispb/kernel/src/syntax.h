@@ -82,6 +82,7 @@ struct Emission {
     std::filesystem::path header;
     std::filesystem::path source;
     std::optional<std::filesystem::path> avx512_source;
+    std::optional<std::filesystem::path> highway_source;
     std::optional<std::filesystem::path> dispatch_source;
     std::optional<std::filesystem::path> relaxed_avx2_source;
     std::optional<std::filesystem::path> relaxed_avx512_source;

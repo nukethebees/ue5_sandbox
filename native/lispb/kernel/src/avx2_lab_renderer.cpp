@@ -18,6 +18,31 @@ struct VectorIntrinsics {
     std::string_view multiply;
     std::string_view store;
     std::string_view aligned_store;
+    bool highway{};
+
+    auto zero_expression() const -> std::string {
+        return highway ? "hn::Zero(hn::ScalableTag<float>{})" : std::string{set_zero} + "()";
+    }
+    auto broadcast_expression(std::string const& value) const -> std::string {
+        return highway ? "hn::Set(hn::ScalableTag<float>{}, " + value + ")"
+                       : std::string{set1} + "(" + value + ")";
+    }
+    auto load_expression(std::string const& pointer, bool aligned = false) const -> std::string {
+        if (highway) {
+            return std::string{aligned ? "hn::Load(" : "hn::LoadU("} +
+                   "hn::ScalableTag<float>{}, " + pointer + ")";
+        }
+        return std::string{aligned ? aligned_load : load} + "(" + pointer + ")";
+    }
+    auto store_expression(std::string const& pointer,
+                          std::string const& value,
+                          bool aligned = false) const -> std::string {
+        if (highway) {
+            return std::string{aligned ? "hn::Store(" : "hn::StoreU("} + value +
+                   ", hn::ScalableTag<float>{}, " + pointer + ")";
+        }
+        return std::string{aligned ? aligned_store : store} + "(" + pointer + ", " + value + ")";
+    }
 };
 
 constexpr VectorIntrinsics Avx2{8,
@@ -233,8 +258,8 @@ class VectorExpressionRenderer {
         }
 
         auto const result{"vector_" + std::to_string(next_value_++)};
-        statements_ += indentation_ + "auto const " + result + "{" + std::string{intrinsics_.load} +
-                       "(" + operand->name + " + i" + offset_ + ")};\n";
+        statements_ += indentation_ + "auto const " + result + "{" +
+                       intrinsics_.load_expression(operand->name + " + i" + offset_) + "};\n";
         return result;
     }
 
@@ -297,8 +322,9 @@ class SoaosVectorExpressionRenderer {
         auto const result{"vector_" + std::to_string(next_value_++)};
         auto const offset{lane_offset_ == 0 ? std::string{} : " + " + std::to_string(lane_offset_)};
         statements_ += indentation_ + "auto const " + result + "{" +
-                       std::string{intrinsics_.aligned_load} + "(" + operand->name + "[" +
-                       block_index_ + "].values.data()" + offset + ")};\n";
+                       intrinsics_.load_expression(
+                           operand->name + "[" + block_index_ + "].values.data()" + offset, true) +
+                       "};\n";
         return result;
     }
 
@@ -363,8 +389,10 @@ auto render_vector_chunk(ExpandedVariant const& expanded,
     VectorExpressionRenderer expression_renderer{
         expanded, intrinsics, indentation, offset_expression};
     auto const result_value{expression_renderer.render(expanded.operation->expression)};
-    return expression_renderer.statements() + indentation + std::string{intrinsics.store} + "(" +
-           expanded.operation->output + " + i" + offset_expression + ", " + result_value + ");\n";
+    return expression_renderer.statements() + indentation +
+           intrinsics.store_expression(expanded.operation->output + " + i" + offset_expression,
+                                       result_value) +
+           ";\n";
 }
 
 auto render_scalar_tail_expression(Expression const& expression,
@@ -475,8 +503,8 @@ auto render_map_vector_function(ExpandedVariant const& expanded,
     for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
         if (expanded.storage[index] == StorageKind::scalar) {
             auto const& name{expanded.operation->operands[index].name};
-            result += "    auto const " + name + "_vector{" + std::string{intrinsics.set1} + "(" +
-                      name + ")};\n";
+            result += "    auto const " + name + "_vector{" +
+                      intrinsics.broadcast_expression(name) + "};\n";
         }
     }
     result += "    " + std::string{count_type} + " i{};\n";
@@ -557,7 +585,7 @@ auto render_sum_vector_function(ExpandedVariant const& expanded,
                 raw_parameters(expanded, count_type, restriction) + ") noexcept {\n"};
     for (int accumulator{}; accumulator < unroll; ++accumulator) {
         result += "    auto accumulator_" + std::to_string(accumulator) + "{" +
-                  std::string{intrinsics.set_zero} + "()};\n";
+                  intrinsics.zero_expression() + "};\n";
     }
     result += "    " + std::string{count_type} + " i{};\n";
     if (unroll > 1) {
@@ -610,8 +638,8 @@ auto render_sum_vector_function(ExpandedVariant const& expanded,
         "    float lanes[" + std::to_string(intrinsics.width) +
         "]{};\n"
         "    " +
-        std::string{intrinsics.store} +
-        "(lanes, accumulator_0);\n"
+        intrinsics.store_expression("lanes", "accumulator_0") +
+        ";\n"
         "    float result{};\n"
         "    for (int lane{}; lane < " +
         std::to_string(intrinsics.width) +
@@ -703,9 +731,11 @@ auto render_soaos_map_block(ExpandedVariant const& expanded,
             expanded, intrinsics, nested_indentation, chunk_index, lane_offset)};
         auto const offset{lane_offset == 0 ? std::string{} : " + " + std::to_string(lane_offset)};
         result += indentation + "{\n" + statements + nested_indentation +
-                  std::string{intrinsics.aligned_store} + "(" + expanded.operation->output + "[" +
-                  chunk_index + "].values.data()" + offset + ", " + value + ");\n" + indentation +
-                  "}\n";
+                  intrinsics.store_expression(expanded.operation->output + "[" + chunk_index +
+                                                  "].values.data()" + offset,
+                                              value,
+                                              true) +
+                  ";\n" + indentation + "}\n";
     }
     return result;
 }
@@ -719,8 +749,8 @@ auto render_soaos_map_vector_function(ExpandedVariant const& expanded,
     for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
         if (expanded.storage[index] == StorageKind::scalar) {
             auto const& name{expanded.operation->operands[index].name};
-            result += "    auto const " + name + "_vector{" + std::string{intrinsics.set1} + "(" +
-                      name + ")};\n";
+            result += "    auto const " + name + "_vector{" +
+                      intrinsics.broadcast_expression(name) + "};\n";
         }
     }
     result += "    std::int32_t chunk_index{};\n";
@@ -753,7 +783,7 @@ auto render_soaos_sum_vector_function(ExpandedVariant const& expanded,
                 soaos_parameters(expanded, "ML_KERNEL_LAB_RESTRICT ") + ") noexcept {\n"};
     for (int accumulator{}; accumulator < unroll; ++accumulator) {
         result += "    auto accumulator_" + std::to_string(accumulator) + "{" +
-                  std::string{intrinsics.set_zero} + "()};\n";
+                  intrinsics.zero_expression() + "};\n";
     }
     result += "    std::int32_t chunk_index{};\n";
     auto const vectors_per_block{16 / intrinsics.width};
@@ -806,8 +836,8 @@ auto render_soaos_sum_vector_function(ExpandedVariant const& expanded,
     result += "    float lanes[" + std::to_string(intrinsics.width) +
               "]{};\n"
               "    " +
-              std::string{intrinsics.store} +
-              "(lanes, accumulator_0);\n"
+              intrinsics.store_expression("lanes", "accumulator_0") +
+              ";\n"
               "    float result{};\n"
               "    for (int lane{}; lane < " +
               std::to_string(intrinsics.width) +
@@ -984,15 +1014,24 @@ class Vector3ExpressionRenderer {
                             std::to_string(component.component)};
             auto const arguments{intrinsics_.width == 8 ? base + ", gather_indices, 4"
                                                         : "gather_indices, " + base + ", 4"};
-            statements_ += "        auto const " + value + "{" + gather + "(" + arguments + ")};\n";
+            if (intrinsics_.highway) {
+                statements_ += "        auto const " + value +
+                               "{hn::GatherIndex(hn::ScalableTag<float>{}, " + base +
+                               ", gather_indices)};\n";
+            } else {
+                statements_ +=
+                    "        auto const " + value + "{" + gather + "(" + arguments + ")};\n";
+            }
         } else {
             auto const offset{lane_offset_ == 0 ? std::string{}
                                                 : " + " + std::to_string(lane_offset_)};
-            statements_ += "        auto const " + value + "{" +
-                           std::string{intrinsics_.aligned_load} + "(" +
-                           std::string{component.group} + "[" + std::string{outer_index_} + "]." +
-                           std::string{vector3_member(component.component, true)} + ".data()" +
-                           offset + ")};\n";
+            statements_ +=
+                "        auto const " + value + "{" +
+                intrinsics_.load_expression(
+                    std::string{component.group} + "[" + std::string{outer_index_} + "]." +
+                        std::string{vector3_member(component.component, true)} + ".data()" + offset,
+                    true) +
+                "};\n";
         }
         return value;
     }
@@ -1059,6 +1098,10 @@ auto render_vector3_chunk_loop_function(Emission const& emission,
 }
 
 auto render_gather_indices(VectorIntrinsics const& intrinsics) -> std::string {
+    if (intrinsics.highway) {
+        return "    auto const gather_indices{hn::Mul(hn::Iota(hn::ScalableTag<std::int32_t>{}, "
+               "0), hn::Set(hn::ScalableTag<std::int32_t>{}, 3))};\n";
+    }
     std::string result{"    auto const gather_indices{"};
     result += intrinsics.width == 8 ? "_mm256_setr_epi32(" : "_mm512_setr_epi32(";
     for (int lane{}; lane < intrinsics.width; ++lane) {
@@ -1084,8 +1127,8 @@ auto render_vector3_aos_vector_function(Emission const& emission,
            ")};\n"
            "    for (; i < vectorized_count; i += " +
            std::to_string(intrinsics.width) + ") {\n" + renderer.statements() + "        " +
-           std::string{intrinsics.store} + "(" + expanded.operation->output + " + i, " + value +
-           ");\n"
+           intrinsics.store_expression(expanded.operation->output + " + i", value) +
+           ";\n"
            "    }\n"
            "    for (; i < count; ++i) {\n"
            "        " +
@@ -1111,9 +1154,11 @@ auto render_vector3_chunk_vector_function(Emission const& emission,
         auto const value{renderer.render(expanded.operation->expression)};
         auto const lane_offset{offset == 0 ? std::string{} : " + " + std::to_string(offset)};
         result += "        {\n" + renderer.statements() + "        " +
-                  std::string{intrinsics.aligned_store} + "(" + expanded.operation->output +
-                  "[chunk_index].values.data()" + lane_offset + ", " + value +
-                  ");\n"
+                  intrinsics.store_expression(expanded.operation->output +
+                                                  "[chunk_index].values.data()" + lane_offset,
+                                              value,
+                                              true) +
+                  ";\n"
                   "        }\n";
     }
     return result + "    }\n}\n\n";
@@ -1143,6 +1188,11 @@ auto render_vector3_header(Emission const& emission, ExpandedVariant const& expa
                                "backend::autovec_avx512",
                                "backend::avx512"}) {
         result += wrap_namespace(backend, render_vector3_declaration(emission, expanded));
+    }
+    if (emission.highway_source) {
+        for (auto const backend : {"backend::highway_avx2", "backend::highway_avx512"}) {
+            result += wrap_namespace(backend, render_vector3_declaration(emission, expanded));
+        }
     }
     return result + "}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
 }
@@ -1298,6 +1348,17 @@ auto render_native_simd_lab_header(Emission const& emission, ExpandedVariant con
                 render_backend_declarations(expanded, "relaxed::backend::avx512_unrolled", chunks);
         }
     }
+    if (emission.highway_source) {
+        auto const prefix{expanded.operation->kind == OperationKind::sum ? "relaxed::backend::"
+                                                                         : "backend::"};
+        for (auto const backend : {"highway_avx2", "highway_avx2_unrolled", "highway_avx512"}) {
+            result += render_backend_declarations(expanded, std::string{prefix} + backend, chunks);
+        }
+        if (expanded.operation->kind == OperationKind::sum) {
+            result += render_backend_declarations(
+                expanded, "relaxed::backend::highway_avx512_unrolled", chunks);
+        }
+    }
     if (emission.dispatch_source) {
         auto declarations{
             std::string{"enum class X86SimdBackend : std::uint8_t {\n"
@@ -1314,6 +1375,66 @@ auto render_native_simd_lab_header(Emission const& emission, ExpandedVariant con
             declarations);
     }
     return result + "}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
+}
+
+auto render_native_highway_source(Emission const& emission, ExpandedVariant const& expanded)
+    -> std::string {
+    validate_lab_variant(expanded);
+    std::string result{std::string{generated_warning} + "#include \"" + emission.header_include +
+                       "\"\n#include <hwy/highway.h>\n\n" +
+                       std::string{native_restrict_definition()} +
+                       "HWY_BEFORE_NAMESPACE();\nnamespace " + emission.cpp_namespace +
+                       " {\nnamespace hn = hwy::HWY_NAMESPACE;\n"};
+    for (auto const width : {8, 16}) {
+        auto const isa{width == 8 ? "avx2" : "avx512"};
+        result += std::string{width == 8 ? "#if HWY_TARGET == HWY_AVX2\n"
+                                         : "#elif HWY_TARGET == HWY_AVX3\n"};
+        result += "static_assert(HWY_LANES(float) == " + std::to_string(width) + ");\n";
+        VectorIntrinsics const intrinsics{
+            width, {}, {}, {}, {}, "hn::Add", "hn::Mul", {}, {}, true};
+        auto const prefix{expanded.operation->kind == OperationKind::sum
+                              ? "relaxed::backend::highway_"
+                              : "backend::highway_"};
+        for (auto const unroll : {1, 4}) {
+            if (unroll != 1 && (!emission.vector3_groups.empty() ||
+                                (width == 16 && expanded.operation->kind == OperationKind::map))) {
+                continue;
+            }
+            std::string functions;
+            if (!emission.vector3_groups.empty()) {
+                functions =
+                    render_map_vector_function(
+                        expanded, intrinsics, "", 1, "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
+                    render_vector3_aos_vector_function(emission, expanded, intrinsics) +
+                    render_vector3_chunk_vector_function(emission, expanded, intrinsics);
+            } else if (expanded.operation->kind == OperationKind::map) {
+                functions =
+                    append_chunk_function(render_map_vector_function(expanded,
+                                                                     intrinsics,
+                                                                     "",
+                                                                     unroll,
+                                                                     "std::int32_t",
+                                                                     "ML_KERNEL_LAB_RESTRICT "),
+                                          emission.soaos_lanes,
+                                          render_soaos_map_vector_function(
+                                              expanded, intrinsics, "", unroll == 1 ? 1 : 2));
+            } else {
+                functions = append_chunk_function(
+                    render_sum_vector_function(expanded,
+                                               intrinsics,
+                                               "",
+                                               unroll,
+                                               "std::int32_t",
+                                               "ML_KERNEL_LAB_RESTRICT "),
+                    emission.soaos_lanes,
+                    render_soaos_sum_vector_function(expanded, intrinsics, "", unroll));
+            }
+            result += wrap_namespace(std::string{prefix} + isa + (unroll == 1 ? "" : "_unrolled"),
+                                     functions);
+        }
+    }
+    return result + "#else\n#error Unsupported Highway kernel comparison "
+                    "target\n#endif\n}\nHWY_AFTER_NAMESPACE();\n#undef ML_KERNEL_LAB_RESTRICT\n";
 }
 
 auto render_native_avx2_lab_source(Emission const& emission, ExpandedVariant const& expanded)

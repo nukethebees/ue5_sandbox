@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -813,5 +814,65 @@ TEST(KernelRenderer, RejectsCollidingPublicSignatures) {
     EXPECT_THROW(static_cast<void>(render_source(source)), std::invalid_argument);
 }
 
+TEST(KernelRenderer, HighwayEmissionKeepsOriginalSourcesAndAddsBothWidths) {
+    auto source{std::string{sum_lab_source}};
+    auto const original{parse("test.lispb", codegen::sexpr::read_forms("test.lispb", source))};
+    auto const original_files{render(original.modules[0], Profile::native_x86_simd_lab)};
+    source.insert(source.find("    (dispatch-source"),
+                  "    (highway-source \"native/DotHighway.cpp\")\n");
+    auto const document{parse("test.lispb", codegen::sexpr::read_forms("test.lispb", source))};
+    auto const files{render(document.modules[0], Profile::native_x86_simd_lab)};
+    ASSERT_EQ(files.size(), original_files.size() + 1);
+    for (auto const& original_file : original_files) {
+        if (original_file.path == original_files[0].path) {
+            continue;
+        }
+        auto const found{std::ranges::find_if(
+            files, [&](auto const& file) { return file.path == original_file.path; })};
+        ASSERT_NE(found, files.end());
+        EXPECT_EQ(found->content, original_file.content);
+    }
+    auto const& highway{files[3].content};
+    EXPECT_EQ(files[3].path.generic_string(), "native/DotHighway.cpp");
+    EXPECT_TRUE(highway.contains("hn::LoadU"));
+    EXPECT_TRUE(highway.contains("hn::Mul"));
+    EXPECT_TRUE(highway.contains("highway_avx512_unrolled"));
+    EXPECT_FALSE(highway.contains("_mm256"));
+    EXPECT_FALSE(highway.contains("_mm512"));
+    EXPECT_TRUE(files[0].content.contains("highway_avx2"));
 }
+
+TEST(KernelParser, HighwayReductionRequiresExplicitRelaxedSemantics) {
+    auto source{std::string{sum_lab_source}};
+    source.insert(source.find("    (dispatch-source"),
+                  "    (highway-source \"native/DotHighway.cpp\")\n");
+    for (auto const field : {"    (relaxed-avx2-source", "    (relaxed-avx512-source"}) {
+        auto const start{source.find(field)};
+        source.erase(start, source.find('\n', start) + 1 - start);
+    }
+    auto const modes{source.find("(floating-point-modes strict relaxed)")};
+    ASSERT_NE(modes, std::string::npos);
+    source.replace(modes,
+                   std::string{"(floating-point-modes strict relaxed)"}.size(),
+                   "(floating-point-modes strict)");
+    EXPECT_THROW(
+        static_cast<void>(parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", source))),
+        std::runtime_error);
+}
+
+TEST(KernelParser, HighwayOutputRequiresNativeProfileAndRelativePath) {
+    auto standard{std::string{standard_source}};
+    standard.insert(standard.find("    (source"), "    (highway-source \"Highway.cpp\")\n");
+    EXPECT_THROW(
+        static_cast<void>(parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", standard))),
+        std::exception);
+    auto native{std::string{sum_lab_source}};
+    native.insert(native.find("    (source"), "    (highway-source \"../Highway.cpp\")\n");
+    EXPECT_THROW(
+        static_cast<void>(parse("bad.lispb", codegen::sexpr::read_forms("bad.lispb", native))),
+        std::exception);
+}
+
+}
+
 }
