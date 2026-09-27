@@ -63,9 +63,8 @@ read that same environment variable. Set `IOJ_WITH_UNREAL=OFF` for standalone na
 ## Development validation
 
 Use the cheapest tier that validates the changed boundary. Native code is the normal inner loop;
-Unreal is an integration boundary. The final integration planner selects the relevant gate from
-the changed component graph; the normal DebugGame game/native workflow is reserved for
-Unreal-facing or cross-cutting candidates.
+Unreal is an integration boundary. Select validation from the affected dependencies; reserve the
+normal DebugGame game/native workflow for Unreal-facing or cross-cutting candidates.
 
 ### Clean task start
 
@@ -80,7 +79,6 @@ and manages PATH; agents assume it is available. On a fresh setup, run
 `agent-task install-central-tools` for the canonical jobserver and `set-live-coding-disabled`.
 It initializes/updates submodules before configuring the native build and running the install targets.
 Preparation checks for the jobserver before removing output; it does not install missing tools.
-AgentGit remains separately maintainer-controlled through `install-agent-git`.
 See the [Rust tooling instructions](../tools/rust/README.md).
 Preparation removes only the worktree-root `out` directory, synchronizes and initializes/updates
 recursive submodules, runs `python cmake/presets/generate.py`, then runs the `generate-code`
@@ -89,7 +87,7 @@ It does not perform a broad project/test build. Build only the targets relevant 
 
 For an explicit broad baseline, `cmake --workflow --preset task-start` remains available separately
 from normal task preparation. It builds native tests (including the soak), native developer-tool
-tests, all nine C# test assemblies, and generated-output consistency checks. It executes no tests and uses no
+tests, all registered C# test assemblies, and generated-output consistency checks. It executes no tests and uses no
 Unreal resources. Binaries and C# intermediates are isolated under `out/build/native`.
 The `check-generated-code` build target owns the committed codegen fixture consistency check.
 
@@ -106,14 +104,13 @@ ctest --test-dir out/build/native -L '^formatting$' --output-on-failure
 CTest never rebuilds the C# assemblies. Each registered project uses `dotnet test --no-build
 --no-restore`; a source fingerprint rejects stale binaries with the precise rebuild target.
 Adding/removing files and changing transitive C# dependencies also invalidate the fingerprint.
-Use `csharp-tests-build` after shared C# infrastructure changes. The canonical AgentGit installer
-still performs its real private validation build and security tests.
+Use `csharp-tests-build` after shared C# infrastructure changes.
 
 Labels are regular expressions, not shell globs. One `-L` selects any matching label; repeated
 `-L` options require every expression to match. `-LE 'soak|compile-contract'` excludes either
 category. `ctest --test-dir out/build/native -N -L <label>` previews selection without executing.
 
-C# labels include `csharp`, `agent-git`, `installer`, `architecture`, `benchmark`, `formatting`,
+C# labels include `csharp`, `architecture`, `benchmark`, `formatting`,
 `game-package`, `git`, `native-binary`, and `unreal-build`. The `developer-tool` label includes
 all standalone C# projects, Rust tests, and the registered layout, image-lab, and perf tests.
 Mixed integration assemblies carry `integration;subprocess`; pure assemblies carry `unit`.
@@ -164,22 +161,21 @@ repeated inner loop.
 
 `tool-tests` builds its prerequisites before running the per-project tests, with no duplicate
 umbrella C# test. Use it for shared/unknown tool infrastructure or broad tool validation. Known
-C# tools select explicit projects; GitSupport expands to AgentGit, AgentGitInstaller, and GitTools.
-Layout planner and image lab select their native workflows, jobserver its dedicated gate, Rust
-its own CTest label, and perf its benchmark validation. Unknown tool paths retain broad tool and
-native validation. CMake owns physical test registration in `cmake/csharp_tests.cmake`; the
-`.integration-gates.json` owns paths, gates, affected consumers, and `testProjects`. AgentGit
-loads it from the pinned base commit and unions it with an immutable copy embedded in the
-installed executable as its minimum safety policy. No policy is loaded from the feature worktree.
-AgentGit implementation changes also validate its installer consumer; AgentGit test-only edits
-retain the dedicated test gate. Older pinned manifests without project metadata widen C# coverage.
+C# tools use focused project builds and labels; GitSupport changes require GitTools validation.
+Layout planner and image lab use their native workflows, jobserver its focused tests, and perf its
+benchmark validation. AgentTask uses `cargo test --package agent-task --locked` from `tools/rust`.
 
-CMake configure cross-checks registered projects against `Tools.slnx`, transitive MSBuild
-references, and manifest ownership. `CMakeChecks` checks generated presets, configures `native`,
-and runs the `cmake` infrastructure regressions, including `CMake.CSharpTests`. It excludes
-`CMake.Presets` from that CTest invocation because the same check already ran before configure.
-Shared C# build files and routing changes select this gate automatically. Python validation
-covers all repository-owned Python under `Scripts` and `cmake` with Ruff and Pyright.
+CMake owns test registration in `cmake/csharp_tests.cmake` and cross-checks registered projects
+against `Tools.slnx` and transitive MSBuild references. Run the `cmake` infrastructure regressions
+when changing this wiring, including `CMake.CSharpTests`.
+
+After required validation and explicit user authorization, `integrate-feature` queues the
+exclusive integration/dev resource and runs the privileged AgentTask Git transaction. Integration
+performs pinned rebase, cheap sanity checks, atomic dev promotion, refresh and cleanup. It does
+not select or rerun build/test gates. Resolve a conflicting final rebase outside the queue with
+`agent-task git rebase dev`, validate, and requeue.
+Validate shared C# build and registration changes with the CMake infrastructure checks.
+Python validation covers repository-owned Python under `Scripts` and `cmake` with Ruff and Pyright.
 
 Do not rebuild Unreal merely because a native implementation has a thin Unreal adapter. Settle
 the native behavior with the smallest target and test subset first.

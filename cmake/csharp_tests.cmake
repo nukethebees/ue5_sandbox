@@ -8,7 +8,6 @@ set(sandbox_csharp_runner "${PROJECT_SOURCE_DIR}/cmake/csharp_tests.py")
 set(sandbox_csharp_entries "")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
   "${PROJECT_SOURCE_DIR}/tools/Tools.slnx"
-  "${PROJECT_SOURCE_DIR}/.integration-gates.json"
   "${sandbox_csharp_runner}")
 
 add_custom_target(csharp-tests-build
@@ -57,10 +56,6 @@ function(sandbox_add_csharp_test name project labels)
 endfunction()
 
 # Explicit transitive source ownership keeps no-build tests honest after shared edits.
-sandbox_add_csharp_test(AgentGit "tools/AgentGit.Tests/AgentGit.Tests.csproj"
-  "agent-git;integration;subprocess" tools/AgentGit.Tests tools/AgentGit tools/GitSupport)
-sandbox_add_csharp_test(AgentGitInstaller "tools/AgentGitInstaller.Tests/AgentGitInstaller.Tests.csproj"
-  "installer;integration;subprocess" tools/AgentGitInstaller.Tests tools/AgentGitInstaller tools/AgentGit tools/GitSupport)
 sandbox_add_csharp_test(ArchitectureChecks "tools/ArchitectureChecks.Tests/ArchitectureChecks.Tests.csproj"
   "architecture;integration;subprocess" tools/ArchitectureChecks.Tests tools/ArchitectureChecks)
 sandbox_add_csharp_test(BenchmarkTools "tools/BenchmarkTools.Tests/BenchmarkTools.Tests.csproj"

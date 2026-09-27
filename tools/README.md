@@ -32,15 +32,9 @@ and native validation does not run this suite.
 - `NativeBinaryTools/` inspects native object files for build integration checks. Its staged
   executable can be run as `tools/bin/NativeBinaryTools.exe mimalloc-symbols <generate|verify> ...`.
   Native CMake builds use a configuration-local copy built on demand.
-- `AgentGit/` is the repository-aware, policy-enforcing Git interface intended for autonomous
-  agents. Its repository build output is deliberately not trusted for mutations; use
-  `install-agent-git` to create the canonical per-user installation described in
-  [the agent-git documentation](../docs/agent-git.md). The installer builds and validates in a
-  private per-install output directory rather than installing from shared `tools/bin` state.
-- `AgentGitInstaller/` owns the AgentGit installation transaction. The `install-agent-git`
-  PowerShell command privately builds this project for each invocation; the installer is
-  intentionally not staged into `tools/bin` and remains outside the unconditional AgentGit allow
-  rule.
+- `rust/crates/agent-task/` provides worktree preparation, the cooperative `agent-task git`
+  guardrail, and privileged integration through `integrate-feature`. Install with
+  `. .\dev.ps1` then `install-agent-task`; see the [Rust guide](rust/README.md).
 - `CodeFormatTools/` is the C# formatter for repository C++ and shader files. CMake builds it for
   the `format-code` and `format-all-code` workflows; it can also be run directly as
   `tools/bin/CodeFormatTools.exe [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` after
@@ -76,8 +70,7 @@ scientific analysis.
 Executable command projects that are safe to invoke from shared build output opt into staging with
 `IsStandaloneTool=true`; their normal Debug and Release output remains project-local, while the
 post-build target copies the complete runtime output tree for the most recently built configuration
-into `tools/bin/` using the tool's unique executable name. AgentGitInstaller deliberately uses only
-its privately built bootstrap output. Test projects, class libraries, and the installer are not
+into `tools/bin/` using the tool's unique executable name. Test projects and class libraries are not
 staged. Add shared infrastructure only when more than one tool needs it.
 
 Normal development uses the jobserver indirectly through CMake workflows and `dev.ps1`. Query its
