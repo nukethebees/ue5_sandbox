@@ -87,7 +87,7 @@ record and its nested fields. Encoding and decoding remain in handwritten C++ an
 | Byte offset | Storage | Meaning |
 | --- | --- | --- |
 | 0, 2, 4 | three signed int16 | XYZ position offsets |
-| 6 | uint16 | reserved, zero; aligns the quaternion |
+| 6 | uint16 | unused; aligns the quaternion; contents unspecified and ignored by the decoder |
 | 8 | uint32 | smallest-three quaternion |
 
 At 40000 instances the transform payload is 480000 bytes per snapshot, excluding custom data:
@@ -189,7 +189,7 @@ The benchmark's generated-layout domain is prepared outside measured updates. Do
 is therefore excluded consistently from both Phase 1 and packed benchmark cases.
 
 Native tests cover bit patterns, signed lanes, field offsets, quaternion error, domain selection,
-position range/rounding and zero reserved storage. Component tests cover decoded
+position range/rounding and byte layout. Component tests cover decoded
 bounds and source ownership. Pixel tests compare the actual custom-VF silhouettes against engine
 ISMC instances transformed by the CPU decoder, using arbitrary rotations,
 positive/negative offsets, rounding boundaries, changing distant roots, and proxy recreation.
