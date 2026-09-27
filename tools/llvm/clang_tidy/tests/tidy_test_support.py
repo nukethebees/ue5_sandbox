@@ -46,12 +46,15 @@ class TidyTest(unittest.TestCase):
     def test_registration(self) -> None:
         self.assertIn(self.check, self.run_tidy(f"-checks=-*,{self.check}", "-list-checks"))
 
-    def assert_cases(self, declarations: str, cases: tuple, checks: str | None = None) -> None:
+    def assert_cases(self, declarations: str, cases: tuple, checks: str | None = None,
+                     *, at_namespace_scope: bool = False) -> None:
         with tempfile.TemporaryDirectory(prefix="ioj tidy semantics ") as directory:
             source = Path(directory) / "input.cpp"
             for name, body, warnings in cases:
                 with self.subTest(case=name):
-                    source.write_text(declarations + "\nvoid test() {\n" + body + "\n}\n", encoding="utf-8")
+                    source.write_text(declarations + "\n" +
+                                      (body if at_namespace_scope else "void test() {\n" + body + "\n}\n"),
+                                      encoding="utf-8")
                     output = self.run_tidy(f"-checks=-*,{checks or self.check}", str(source), "--", "-std=c++23")
                     self.assertEqual(output.count(f"[{self.check}]"), warnings, output)
 

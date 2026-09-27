@@ -37,14 +37,29 @@ columns should still be hoisted out of those loops. No accessor-name exceptions 
 cost/optimizer heuristics are used. String views and arbitrary standard range adapters
 are outside the initial simulation-data view family set.
 
-`ioj-no-pair` and `ioj-no-tuple` share only explicit type-location recognition in
-`lib/ExplicitStdType.cpp`. Template declaration identity (including inline standard
-namespaces) distinguishes the standard templates from user types. Both written
-template specializations and class template argument deduction are covered, including
-cv-qualified types, locals, members, parameters, returns, alias definitions, nested
-type arguments and temporaries. Uses of an alias do not repeat the diagnostic on its
-definition. Deduced `auto` results, factory calls such as `make_pair`/`make_tuple`, and
-structured-binding/tuple-protocol machinery are not explicit type spellings and are
-not diagnosed. Template-template arguments are recognized separately from type
-locations. A bare using-declaration is not a type use; subsequent written
-specializations of the imported template are diagnosed normally.
+`ioj-no-pair` and `ioj-no-tuple` share semantic type recognition and diagnostic ownership
+in `lib/ForbiddenStdType.cpp`. Canonical Clang types remove aliases and cv qualification;
+the standard class-template declarations, including inline standard namespaces, identify
+pair and tuple. References, pointers, arrays, function signatures, template type arguments
+and argument packs are inspected recursively. Unrelated records are not searched for
+hidden members or bases. Unresolved dependent types are not guessed, and a bare template
+argument such as `Holder<std::pair>` is not itself a pair specialization.
+
+Variables (including parameters, static members and structured-binding backing objects),
+fields, function returns and aliases each own one diagnostic per forbidden family.
+An alias definition and a subsequent variable using it are independent declarations and
+each warn once. Neither nested type arguments nor desugaring layers multiply warnings.
+Function-pointer declarations also own parameters nested in their prototype; a function's
+actual parameters remain independent of its return type.
+
+Source calls, construction, explicit casts and references to forbidden values are checked
+outside diagnosed declarations. An enclosing forbidden-valued expression owns its nested
+expressions. Initializers belong to their declaration; return expressions belong to a
+diagnosed function return type. Ownership does not cross a nested callable body. Suppressed
+owners still own their expressions, so normal `NOLINT` does not uncover duplicate warnings.
+
+Factories, including arbitrary project functions, are recognized by semantic result type,
+never by function name. `auto`, `make_pair`, `make_tuple`, `tie`, `forward_as_tuple` and
+`tuple_cat` therefore follow the same rule. Structured bindings backed by pair/tuple warn;
+user aggregates and other tuple-protocol types remain clean. The same main-file ownership
+boundary as the view checks applies, and no fix-its are supplied.

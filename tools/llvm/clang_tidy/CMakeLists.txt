@@ -1,7 +1,7 @@
 # Included by LLVM after clangTidy and the clang-tidy executable exist.
 add_library(ioj-tidy-checks OBJECT
-  lib/ExplicitStdType.cpp
-  lib/ExplicitStdType.hpp
+  lib/ForbiddenStdType.cpp
+  lib/ForbiddenStdType.hpp
   lib/NoPairCheck.cpp
   lib/NoPairCheck.hpp
   lib/NoTupleCheck.cpp

@@ -121,7 +121,8 @@ The additional checks are:
 
 - `ioj-loop-view-construction`: resolve known simulation views before repeated loop execution.
 - `ioj-loop-view-accessor-call`: resolve calls returning those views before repeated loop execution.
-- `ioj-no-pair` and `ioj-no-tuple`: replace explicit standard pair/tuple types with named aggregates.
+- `ioj-no-pair` and `ioj-no-tuple`: replace semantic standard pair/tuple types with named aggregates,
+  including aliases, deduced types, nested template arguments and expression-only uses.
 
 The view checks cover classic for, range-for, while and do/while, respecting nested callable
 boundaries. They do not estimate cost or prove loop invariance. All four checks preserve the
