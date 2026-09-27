@@ -17,7 +17,7 @@
   :namespace ml::sandbox_ismc
   (record Quat32
     (member bits std::uint32_t :initializer ""))
-  ; 12-byte GPU ABI: position XYZ, explicit zero padding, then aligned quat32.
+  ; 12-byte GPU ABI: position XYZ, unused padding, then aligned quat32.
   (record PackedTransform
     (member position std::int16_t :count 3 :initializer "")
     (member reserved std::uint16_t :initializer "")

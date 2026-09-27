@@ -1,6 +1,6 @@
 #pragma once
 
-// 12-byte ABI: signed int16 XYZ at 0/2/4; reserved zero at 6; quat32 at 8.
+// 12-byte ABI: signed int16 XYZ at 0/2/4; unused bytes at 6/7; quat32 at 8.
 float4 SandboxISMCDecodeQuat32(uint bits) {
     float const limit = 0.7071067811865475244f;
     float3 const stored = float3((bits >> 2) & 1023u, (bits >> 12) & 1023u, (bits >> 22) & 1023u) *

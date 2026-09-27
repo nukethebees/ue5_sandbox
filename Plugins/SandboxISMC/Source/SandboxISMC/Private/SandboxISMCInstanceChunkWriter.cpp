@@ -83,6 +83,8 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
     auto* const RESTRICT instances{instances_.GetData()};
     auto const* RESTRICT position_data{positions.GetData()};
     auto const* RESTRICT rotation_data{rotations.GetData()};
+    [[maybe_unused]] FBox3f batch_bounds{ForceInit};
+
     for (int32 local_index{0}; local_index < count; ++local_index) {
         auto const position{position_data[local_index]};
         auto const rotation{rotation_data[local_index]};
@@ -91,7 +93,6 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
             instance.position[axis] =
                 ml::sandbox_ismc::quantize_position_unchecked(position[axis], position_root_[axis]);
         }
-        instance.reserved = 0;
         instance.rotation = ml::sandbox_ismc::pack_normalized_quat32(
             rotation.X, rotation.Y, rotation.Z, rotation.W);
 
@@ -104,8 +105,12 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
             auto const extent{row_0.GetAbs() * mesh_bounds_extent_.X +
                               row_1.GetAbs() * mesh_bounds_extent_.Y +
                               row_2.GetAbs() * mesh_bounds_extent_.Z};
-            bounds_ += FBox3f{center - extent, center + extent};
+            batch_bounds += FBox3f{center - extent, center + extent};
         }
+    }
+
+    if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
+        bounds_ = batch_bounds;
     }
 }
 

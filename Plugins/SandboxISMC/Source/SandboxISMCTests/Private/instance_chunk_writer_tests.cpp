@@ -40,7 +40,6 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
 
         for (auto index = 0; index < packed.Num(); ++index) {
             auto const& value{packed[index]};
-            TestRunner->TestEqual(TEXT("Reserved storage is zero"), value.reserved, uint16{0});
             auto const decoded{ml::sandbox_ismc::unpack_quat32(value.rotation)};
             FQuat4f const orientation{decoded.X, decoded.Y, decoded.Z, decoded.W};
             TestRunner->TestTrue(TEXT("Quaternion error stays below 0.3 degrees"),
