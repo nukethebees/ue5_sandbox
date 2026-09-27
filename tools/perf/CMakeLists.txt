@@ -18,6 +18,7 @@ target_compile_definitions(tracy-benchmark-comparison-lib PRIVATE
 )
 
 add_executable(tracy-benchmark-compare cli/main.cpp)
+target_compile_definitions(tracy-benchmark-compare PRIVATE IOJ_PERF_VERSION="1")
 target_compile_features(tracy-benchmark-compare PRIVATE cxx_std_23)
 target_link_libraries(tracy-benchmark-compare PRIVATE
   tracy-benchmark-comparison-lib
@@ -31,6 +32,9 @@ install(TARGETS tracy-benchmark-compare
   RUNTIME DESTINATION bin
   COMPONENT tracy-benchmark-compare
 )
+add_test(NAME tracy-benchmark-compare-version COMMAND tracy-benchmark-compare --version)
+set_tests_properties(tracy-benchmark-compare-version PROPERTIES
+  LABELS "perf;developer-tool" PASS_REGULAR_EXPRESSION "tracy-benchmark-compare 1")
 
 add_executable(tracy-benchmark-compare-tests tests/benchmark_comparison_tests.cpp)
 target_compile_features(tracy-benchmark-compare-tests PRIVATE cxx_std_23)

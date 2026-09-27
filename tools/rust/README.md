@@ -26,7 +26,9 @@ agent-task install-central-tools
 
 This synchronizes and initializes/updates recursive submodules, generates presets, configures
 `native`, then runs the canonical `install-jobserver` and
-`install-set-live-coding-disabled` CMake targets, stopping on failure.
+`install-set-live-coding-disabled` CMake targets, then the UnrealBuildTools and CodeFormatTools
+installers, stopping on failure. Each tool lives in its own per-user bin directory; see
+[developer tools](../README.md). This is a maintainer command, never an agent preflight.
 
 The maintainer installs/updates `agent-task` itself from the repository root with:
 
@@ -36,7 +38,7 @@ install-agent-task
 ```
 
 This runs the package tests, installs only `agent-task` with the pinned Rust toolchain, and
-smoke-tests the installed executable with `--help`. The maintainer manages PATH; add
+smoke-tests the installed executable with `--version`. The maintainer manages PATH; add
 `%LOCALAPPDATA%\NukeTheBees\agent-task\bin`. Agents assume `agent-task` is already available.
 
 Use the intentionally limited Git interface for routine feature work:
@@ -112,7 +114,7 @@ cargo test --package set-live-coding-disabled
 The canonical Windows installation is:
 
 ```text
-%LOCALAPPDATA%\NukeTheBees\bin\set-live-coding-disabled.exe
+%LOCALAPPDATA%\NukeTheBees\set-live-coding-disabled\bin\set-live-coding-disabled.exe
 ```
 
 From a configured repository build directory, install or update it explicitly with:
@@ -121,11 +123,8 @@ From a configured repository build directory, install or update it explicitly wi
 cmake --build --preset <preset> --target install-set-live-coding-disabled
 ```
 
-CMake call sites use that canonical path and do not fall back to repository build outputs. The
-installer stages and smoke-tests a replacement before atomically activating it. It treats the
-directory as shared per-user state.
-
-A future jobserver installation barrier can admit this installer only after tool users have drained,
-then stage, validate, and activate the replacement before allowing queued work to resume. This
-experiment does not implement that barrier. The installed executable currently has an existence
-check only; a future barrier must also account for worktrees expecting different tool versions.
+CMake call sites resolve the executable from PATH with no local fallback. The installer stages and
+smoke-tests the candidate (including `--version`) before atomically activating it. The CMake install
+target runs focused Rust tests first. Use `-InstallRoot` on the installer for isolated validation.
+Both Rust CLIs report the package version from their Cargo.toml with `--version`; maintainers bump
+that version when shipping changes. Version comparison is manual.

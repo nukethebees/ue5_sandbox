@@ -2,7 +2,7 @@ sandbox_unreal_exclusive_jobserver_command(generate_project_files_command genera
   "Generate Unreal project files")
 
 add_custom_target(generate-project-files
-  COMMAND "${IOJ_SET_LIVE_CODING_DISABLED_TOOL}"
+  COMMAND ${IOJ_SET_LIVE_CODING_DISABLED_TOOL}
     --settings-path
     "${PROJECT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
   COMMAND ${generate_project_files_command}

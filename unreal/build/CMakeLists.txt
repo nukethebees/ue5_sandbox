@@ -69,7 +69,7 @@ foreach(sandbox_unreal_packaging_target IN ITEMS
 endforeach()
 
 add_custom_target(worktree-dependencies
-  COMMAND "${IOJ_SET_LIVE_CODING_DISABLED_TOOL}"
+  COMMAND ${IOJ_SET_LIVE_CODING_DISABLED_TOOL}
     --settings-path
     "${PROJECT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
   DEPENDS

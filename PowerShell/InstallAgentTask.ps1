@@ -1,7 +1,8 @@
 function install-agent-task {
+    param([string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'NukeTheBees/agent-task'))
     $ErrorActionPreference = 'Stop'
     $PSNativeCommandUseErrorActionPreference = $false
-    $install_root = Join-Path $env:LOCALAPPDATA 'NukeTheBees\agent-task'
+    $install_root = [IO.Path]::GetFullPath($InstallRoot)
     $installed_tool = Join-Path $install_root 'bin\agent-task.exe'
 
     # Run Cargo inside the workspace so rustup selects its pinned toolchain.
@@ -17,7 +18,7 @@ function install-agent-task {
             throw "agent-task installation exited with code $LASTEXITCODE."
         }
 
-        & $installed_tool --help
+        & $installed_tool --version
         if ($LASTEXITCODE -ne 0) {
             throw "Installed agent-task smoke test exited with code $LASTEXITCODE."
         }

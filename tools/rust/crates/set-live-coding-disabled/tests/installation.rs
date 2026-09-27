@@ -103,4 +103,17 @@ fn install_and_update_activate_the_staged_executable_safely() {
             .expect("previous executable should be retained"),
         old_bytes
     );
+
+    let invalid = PathBuf::from(std::env::var_os("SystemRoot").unwrap()).join("System32/where.exe");
+    let failure = Command::new("pwsh")
+        .args(["-NoProfile", "-File"])
+        .arg(install_script())
+        .arg("-BuiltToolPath")
+        .arg(invalid)
+        .arg("-InstallRoot")
+        .arg(&root)
+        .output()
+        .unwrap();
+    assert!(!failure.status.success());
+    assert_eq!(fs::read(&installed).unwrap(), source_bytes);
 }

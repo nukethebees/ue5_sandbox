@@ -3,6 +3,10 @@ use std::process::ExitCode;
 
 fn main() -> ExitCode {
     let arguments = std::env::args().skip(1).collect::<Vec<_>>();
+    if arguments == ["--version"] {
+        println!("set-live-coding-disabled {}", env!("CARGO_PKG_VERSION"));
+        return ExitCode::SUCCESS;
+    }
     if arguments.len() != 2 || arguments[0] != "--settings-path" || arguments[1].trim().is_empty() {
         eprintln!("Usage: set-live-coding-disabled --settings-path <path>");
         return ExitCode::from(2);

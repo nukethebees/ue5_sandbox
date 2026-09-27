@@ -70,6 +70,12 @@ fn invoke(root: &Path, arguments: &[&str]) -> Output {
 #[test]
 fn help_and_invalid_arguments_do_not_start_initialization() {
     let directory = TemporaryDirectory::new();
+    let version = invoke(&directory.0, &["--version"]);
+    assert!(version.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&version.stdout).trim(),
+        concat!("agent-task ", env!("CARGO_PKG_VERSION"))
+    );
     let help = invoke(&directory.0, &["--help"]);
     assert!(help.status.success());
     let help = String::from_utf8_lossy(&help.stdout);
@@ -249,10 +255,10 @@ fn central_tool_installation_initializes_submodules_without_jobserver_or_clearin
     assert!(String::from_utf8_lossy(&output.stderr).contains("23"));
     assert!(directory.0.join("dependency/marker.txt").is_file());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("[1/6] Synchronizing submodules"));
-    assert!(stdout.contains("[2/6] Updating submodules"));
-    assert!(stdout.contains("[3/6] Generating CMake presets"));
-    assert!(!stdout.contains("[4/6]"));
+    assert!(stdout.contains("[1/8] Synchronizing submodules"));
+    assert!(stdout.contains("[2/8] Updating submodules"));
+    assert!(stdout.contains("[3/8] Generating CMake presets"));
+    assert!(!stdout.contains("[4/8]"));
     assert_eq!(
         fs::read_to_string(directory.0.join("out/keep.txt")).unwrap(),
         "build output"

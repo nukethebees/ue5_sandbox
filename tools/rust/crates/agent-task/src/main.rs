@@ -87,23 +87,23 @@ fn prepare_worktree() -> Result<(), String> {
 fn install_central_tools() -> Result<(), String> {
     let root = worktree_root()?;
 
-    println!("[1/6] Synchronizing submodules");
+    println!("[1/8] Synchronizing submodules");
     run(&root, "git", &["submodule", "sync", "--recursive"])?;
 
-    println!("[2/6] Updating submodules");
+    println!("[2/8] Updating submodules");
     run(
         &root,
         "git",
         &["submodule", "update", "--init", "--recursive"],
     )?;
 
-    println!("[3/6] Generating CMake presets");
+    println!("[3/8] Generating CMake presets");
     run(&root, "python", &["cmake/presets/generate.py"])?;
 
-    println!("[4/6] Configuring native build");
+    println!("[4/8] Configuring native build");
     run(&root, "cmake", &["--preset", "native"])?;
 
-    println!("[5/6] Installing canonical jobserver");
+    println!("[5/8] Installing canonical jobserver");
     run(
         &root,
         "cmake",
@@ -116,7 +116,7 @@ fn install_central_tools() -> Result<(), String> {
         ],
     )?;
 
-    println!("[6/6] Installing canonical set-live-coding-disabled");
+    println!("[6/8] Installing canonical set-live-coding-disabled");
     run(
         &root,
         "cmake",
@@ -127,7 +127,23 @@ fn install_central_tools() -> Result<(), String> {
             "--target",
             "install-set-live-coding-disabled",
         ],
-    )
+    )?;
+
+    for (step, tool) in [(7, "UnrealBuildTools"), (8, "CodeFormatTools")] {
+        println!("[{step}/8] Installing canonical {tool}");
+        run(
+            &root,
+            "pwsh",
+            &[
+                "-NoProfile",
+                "-File",
+                "tools/install/Install-CentralDotnetTool.ps1",
+                "-ToolName",
+                tool,
+            ],
+        )?;
+    }
+    Ok(())
 }
 
 fn main() -> ExitCode {
@@ -149,6 +165,10 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         };
+    }
+    if arguments.len() == 1 && arguments[0] == "--version" {
+        println!("agent-task {}", env!("CARGO_PKG_VERSION"));
+        return ExitCode::SUCCESS;
     }
     if arguments.len() == 1 && (arguments[0] == "--help" || arguments[0] == "-h") {
         println!("{USAGE}");

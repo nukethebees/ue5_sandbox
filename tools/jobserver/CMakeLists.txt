@@ -141,6 +141,9 @@ add_dependencies(jobserver-tests
   jobserverd
 )
 add_test(NAME jobserver-tests COMMAND jobserver-tests)
+add_test(NAME jobserver-version COMMAND jobserver --version)
+set_tests_properties(jobserver-version PROPERTIES
+  LABELS "jobserver" PASS_REGULAR_EXPRESSION "jobserver 0.1.0")
 set_tests_properties(jobserver-tests PROPERTIES LABELS "jobserver;integration;subprocess")
 add_test(NAME jobserver-unreal-integration-tests
   COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_unreal_integration.py"

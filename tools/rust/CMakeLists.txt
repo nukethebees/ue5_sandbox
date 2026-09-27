@@ -11,11 +11,9 @@ if(NOT DEFINED ENV{LOCALAPPDATA} OR "$ENV{LOCALAPPDATA}" STREQUAL "")
 endif()
 
 cmake_path(SET IOJ_DEVELOPER_TOOLS_INSTALL_ROOT NORMALIZE
-  "$ENV{LOCALAPPDATA}/NukeTheBees")
-cmake_path(APPEND IOJ_DEVELOPER_TOOLS_INSTALL_ROOT bin set-live-coding-disabled.exe
-  OUTPUT_VARIABLE IOJ_SET_LIVE_CODING_DISABLED_TOOL)
-set(IOJ_SET_LIVE_CODING_DISABLED_TOOL "${IOJ_SET_LIVE_CODING_DISABLED_TOOL}"
-  CACHE INTERNAL "Canonical set-live-coding-disabled executable")
+  "$ENV{LOCALAPPDATA}/NukeTheBees/set-live-coding-disabled")
+include("${PROJECT_SOURCE_DIR}/cmake/central_tools.cmake")
+sandbox_central_tool_command(IOJ_SET_LIVE_CODING_DISABLED_TOOL set-live-coding-disabled)
 
 sandbox_jobserver_command(rust_build_command STANDARD build "Build set-live-coding-disabled")
 sandbox_jobserver_command(rust_test_command STANDARD test "Test set-live-coding-disabled")
@@ -31,6 +29,10 @@ add_custom_target(set-live-coding-disabled
 )
 
 add_custom_target(install-set-live-coding-disabled
+  COMMAND ${rust_test_command} cargo test
+    --manifest-path "${IOJ_SET_LIVE_CODING_DISABLED_MANIFEST}"
+    --package set-live-coding-disabled --release
+    --target-dir "${IOJ_SET_LIVE_CODING_DISABLED_TARGET_DIRECTORY}"
   COMMAND pwsh -NoProfile -File
     "${IOJ_RUST_TOOLS_ROOT}/install/Install-SetLiveCodingDisabled.ps1"
     -BuiltToolPath "${IOJ_SET_LIVE_CODING_DISABLED_BUILD_OUTPUT}"
@@ -43,8 +45,8 @@ add_custom_target(install-set-live-coding-disabled
 
 add_custom_target(require-set-live-coding-disabled
   COMMAND "${CMAKE_COMMAND}"
-    "-DToolPath=${IOJ_SET_LIVE_CODING_DISABLED_TOOL}"
-    -P "${IOJ_RUST_TOOLS_ROOT}/cmake/RequireInstalledTool.cmake"
+    "-DToolName=set-live-coding-disabled"
+    -P "${PROJECT_SOURCE_DIR}/cmake/run_central_tool.cmake" -- --version
   COMMENT "Checking for canonical set-live-coding-disabled installation"
   VERBATIM
 )

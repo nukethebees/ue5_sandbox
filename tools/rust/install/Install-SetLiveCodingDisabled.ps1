@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory)]
     [string]$BuiltToolPath,
 
-    [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'NukeTheBees')
+    [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'NukeTheBees/set-live-coding-disabled')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -58,6 +58,8 @@ try {
 
     New-Item -ItemType Directory -Path $staging -Force | Out-Null
     Copy-Item -LiteralPath $builtTool -Destination $stagedTool
+    & $stagedTool --version
+    if ($LASTEXITCODE -ne 0) { throw 'The staged executable failed its version smoke test.' }
     & $stagedTool --settings-path (Join-Path $staging 'missing-settings.ini')
     if ($LASTEXITCODE -ne 0) {
         throw 'The staged set-live-coding-disabled executable failed validation.'
@@ -76,6 +78,7 @@ try {
         Move-Item -LiteralPath $stagedTool -Destination $installedTool
     }
 
+    Write-Host "The maintainer must ensure bin directory '$bin' is on PATH."
     Write-Host "Installed canonical set-live-coding-disabled at '$installedTool'."
 } finally {
     if (Test-Path -LiteralPath $staging) {

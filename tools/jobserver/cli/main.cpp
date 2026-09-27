@@ -739,7 +739,7 @@ auto wmain(int argc, wchar_t** argv) -> int {
         }
         return failed ? 4 : 0;
     }
-    if (command == "version") {
+    if (command == "version" || command == "--version") {
         std::cout << "jobserver 0.1.0 (protocol " << jobserver::protocol::major_version << '.'
                   << jobserver::protocol::minor_version << ")\n";
         return 0;
