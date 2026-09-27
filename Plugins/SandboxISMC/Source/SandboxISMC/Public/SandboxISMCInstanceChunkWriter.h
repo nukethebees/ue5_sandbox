@@ -52,9 +52,9 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
     }
 
     // Views cover this entire chunk and must not overlap the packed output storage.
-    // The full batch is validated before any packed instances or bounds are written.
+    // With checks enabled, the full batch is validated before any instances or bounds are written.
     // Positions must be finite and in the snapshot domain, rotations finite and normalized,
-    // and scales finite and in [0, 31.875]. Invalid input is fatal in all configurations.
+    // and scales finite and in [0, 31.875]. Builds without checks assume valid input.
     template <ESandboxISMCBoundsMode BoundsMode>
     auto set_transforms(TConstArrayView<FVector3f> positions,
                         TConstArrayView<FQuat4f> rotations,
