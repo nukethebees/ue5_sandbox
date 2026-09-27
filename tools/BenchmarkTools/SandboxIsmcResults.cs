@@ -5,7 +5,10 @@ using System.Text.Json;
 namespace BenchmarkTools;
 
 internal sealed record SandboxIsmcCapture(string RunId, string Directory, BenchmarkRepetition Repetition,
-    IReadOnlyDictionary<string, string> Conditions, IReadOnlyList<BenchmarkMetric> Metrics);
+    IReadOnlyDictionary<string, string> Conditions, IReadOnlyList<BenchmarkMetric> Metrics, int SchemaVersion = 1);
+internal sealed record SandboxIsmcReportMetadata(string RunId, string? Label, bool ValidationOnly,
+    RevisionIdentity Baseline, RevisionIdentity Candidate, int Repetitions, IReadOnlyList<BenchmarkRepetition> Sequence,
+    IReadOnlyDictionary<string, string> Conditions);
 
 internal static class SandboxIsmcResults
 {
@@ -138,10 +141,53 @@ internal static class SandboxIsmcResults
         }).ToArray());
     }
 
-    public static void WriteReport(string directory, PairedBenchmarkComparison comparison)
+    public static PairedBenchmarkComparison GenerateReports(string directory, BenchmarkManifest manifest, BenchmarkMeasurementPlan plan,
+        IReadOnlyList<SandboxIsmcCapture> captures)
     {
-        BenchmarkCommandSupport.WriteJson(Path.Combine(directory, "comparison.json"), comparison);
+        if (plan.Ismc is null) throw new BenchmarkToolException("Comparison plan has no SandboxISMC workload.");
+        if (captures.Any(item => item is null) || plan.Sequence.Any(item => item is null))
+            throw new BenchmarkToolException("Null capture or sequence entry.");
+        if (captures.Count != plan.Sequence.Count ||
+            !captures.Select(item => item.Repetition).OrderBy(item => item.Sequence).SequenceEqual(plan.Sequence.OrderBy(item => item.Sequence)))
+            throw new BenchmarkToolException("Incomplete comparison: captures do not match the planned sequence.");
+        if (captures.Select(item => item.RunId).Distinct(StringComparer.Ordinal).Count() != captures.Count ||
+            captures.Select(item => item.Repetition.Sequence).Distinct().Count() != captures.Count)
+            throw new BenchmarkToolException("Duplicate capture run or sequence identity.");
+        foreach (var capture in captures)
+        {
+            if (capture.SchemaVersion != 1 || string.IsNullOrWhiteSpace(capture.RunId) || capture.Repetition.Sequence <= 0 ||
+                capture.Repetition.Repetition <= 0 || capture.Repetition.Side is not ("baseline" or "candidate"))
+                throw new BenchmarkToolException("Unsupported capture schema or invalid capture identity.");
+            ValidateConditions(capture.Conditions);
+            _ = BenchmarkMetrics.Index(capture.Metrics);
+        }
+        var comparison = Compare(captures);
+        if (comparison.Comparable)
+            foreach (var capture in captures.Where(item => !item.Repetition.Warmup)) ValidateRequest(capture.Conditions, plan.Ismc);
+        var metadata = new SandboxIsmcReportMetadata(manifest.RunId, manifest.Label, plan.ValidationOnly,
+            plan.Baseline, plan.Candidate, captures.Where(item => !item.Repetition.Warmup).Select(item => item.Repetition.Repetition).Distinct().Count(),
+            plan.Sequence.OrderBy(item => item.Sequence).ToArray(), captures.First(item => !item.Repetition.Warmup).Conditions);
+        WriteReport(directory, comparison, metadata);
+        return comparison;
+    }
+
+    private static void WriteReport(string directory, PairedBenchmarkComparison comparison, SandboxIsmcReportMetadata metadata)
+    {
+        BenchmarkCommandSupport.WriteJson(Path.Combine(directory, "comparison.json"), new { SchemaVersion = 2, Metadata = metadata,
+            comparison.Comparable, comparison.Errors, comparison.Metrics });
         var report = new StringBuilder("# SandboxISMC revision comparison\n\n");
+        if (!string.IsNullOrWhiteSpace(metadata.Label)) report.AppendLine($"{Text(metadata.Label)}\n");
+        if (metadata.ValidationOnly) report.AppendLine("**Validation only — protocol/comparability smoke; no performance conclusions.**\n");
+        report.AppendLine($"Run: {Text(metadata.RunId)}. Baseline: {Revision(metadata.Baseline)}. Candidate: {Revision(metadata.Candidate)}.");
+        report.AppendLine($"Measured repetitions per side: {metadata.Repetitions}. Order: {string.Join(", ", metadata.Sequence.Select(item => $"{(item.Side == "baseline" ? "A" : "B")}{item.Repetition}{(item.Warmup ? " (warmup)" : "")}"))}.\n");
+        var c = metadata.Conditions;
+        string Condition(string key) => Text(c.GetValueOrDefault(key, "unknown"));
+        report.AppendLine($"Viewport requested/observed: {Condition("requested_width")}×{Condition("requested_height")} / {Condition("observed_width")}×{Condition("observed_height")}; RHI: {Condition("rhi")}.");
+        report.AppendLine($"Mode: {Condition("mode")}; instances: {Condition("instances")}; update: {Condition("update_percent")}%.");
+        report.AppendLine($"Bounds: {Condition("bounds")}; visibility: {Condition("visibility")}; custom data: {Condition("custom_data")}; shadows: {Condition("shadows")}; trace: {Condition("trace")}.");
+        report.AppendLine($"Churn: {Condition("churn")}; minimum: {Condition("min_instances")}; half-cycle: {Condition("half_cycle_updates")} updates; replacement: {Condition("replacement_percent")}%.");
+        report.AppendLine($"Warmup: {Condition("warmup_seconds")} s / {Condition("warmup_updates")} updates; measurement: {Condition("measurement_seconds")} s per process.");
+        report.AppendLine($"Frame limits disabled: {Condition("frame_limits_disabled")}; VSync/Editor: {Condition("r.VSync")}/{Condition("r.VSyncEditor")}; MaxFPS: {Condition("t.MaxFPS")}; screen percentage: {Condition("r.ScreenPercentage")}; dynamic resolution: {Condition("r.DynamicRes.OperationMode")}.\n");
         if (!comparison.Comparable)
         {
             report.AppendLine("Incomparable. No performance deltas were calculated.");
@@ -154,11 +200,16 @@ internal static class SandboxIsmcResults
             foreach (var item in comparison.Metrics)
                 report.AppendLine(FormattableString.Invariant($"| {item.Identity.Dimensions.GetValueOrDefault("renderer")} | {item.Identity.Metric} | {item.Identity.Unit} | {item.Delta.Samples} | {item.Baseline.Median:G6} | {item.Candidate.Median:G6} | {item.Delta.Median:G6} | {item.DeltaPercent?.Median:G6} |"));
         }
-        File.WriteAllText(Path.Combine(directory, "comparison.md"), report.ToString());
+        BenchmarkCommandSupport.WriteText(Path.Combine(directory, "comparison.md"), report.ToString());
         BenchmarkCommandSupport.WriteCsv(Path.Combine(directory, "comparison.csv"), new[] { new[] { "renderer", "metric", "unit", "baseline_runs", "candidate_runs", "baseline_run_median", "candidate_run_median", "paired_delta_median", "paired_delta_percent_median" } }
             .Concat(comparison.Metrics.Select(item => new[] { item.Identity.Dimensions.GetValueOrDefault("renderer", ""), item.Identity.Metric, item.Identity.Unit,
                 item.Baseline.Samples.ToString(CultureInfo.InvariantCulture), item.Candidate.Samples.ToString(CultureInfo.InvariantCulture),
                 item.Baseline.Median.ToString("R", CultureInfo.InvariantCulture), item.Candidate.Median.ToString("R", CultureInfo.InvariantCulture),
                 item.Delta.Median.ToString("R", CultureInfo.InvariantCulture), item.DeltaPercent?.Median.ToString("R", CultureInfo.InvariantCulture) ?? "" })));
     }
+
+    private static string Revision(RevisionIdentity identity) => Text(identity.Commit[..Math.Min(12, identity.Commit.Length)]) + (identity.Dirty ? " (dirty)" : " (clean)");
+    private static string Text(string value) => value.Replace("&", "&amp;", StringComparison.Ordinal).Replace("<", "&lt;", StringComparison.Ordinal)
+        .Replace(">", "&gt;", StringComparison.Ordinal).Replace("|", "\\|", StringComparison.Ordinal).Replace("*", "\\*", StringComparison.Ordinal)
+        .Replace("\r", " ", StringComparison.Ordinal).Replace("\n", " ", StringComparison.Ordinal);
 }

@@ -8,6 +8,116 @@ namespace BenchmarkTools.Tests;
 public sealed class SandboxIsmcBenchmarkCommandTests
 {
     [TestMethod]
+    public async Task Prepare_only_builds_both_sides_and_retains_owned_baseline_without_measurement()
+    {
+        using var fixture = new Fixture();
+        Assert.AreEqual(0, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--prepare-only", "--label", "packed transform"), fixture.Errors.ToString());
+        Assert.AreEqual(4, fixture.Runner.Requests.Count(item => item.FileName == "cmake"));
+        Assert.IsFalse(fixture.Runner.Requests.Any(item => item.FileName == fixture.Editor || item.FileName == "test-jobserver" || item.Arguments.Contains("remove")));
+        Assert.IsTrue(fixture.Runner.Requests.Any(item => item.Arguments.Contains("submodule")));
+        Assert.AreEqual("prepared", fixture.Document("manifest.json").GetProperty("status").GetString());
+        Assert.AreEqual("packed transform", fixture.Document("manifest.json").GetProperty("label").GetString());
+        var path = fixture.Document("preparation.json").GetProperty("retainedBaselinePath").GetString()!;
+        Assert.IsTrue(Directory.Exists(path));
+        Assert.IsTrue(fixture.Document("preparation.json").GetProperty("baselineOwned").GetBoolean());
+        var last_build = fixture.Runner.Requests.FindLastIndex(item => item.FileName == "cmake");
+        Assert.AreEqual(2, fixture.Runner.Requests.Skip(last_build + 1).Count(item => item.Arguments.Contains("diff")));
+    }
+
+    [TestMethod]
+    public async Task Prepare_only_rejects_changed_source_and_cleans_failed_preparation()
+    {
+        using var fixture = new Fixture { SourceChangeStage = "build" };
+        Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--prepare-only"));
+        StringAssert.Contains(fixture.Errors.ToString(), "Source changed");
+        Assert.IsTrue(fixture.Runner.Requests.Any(item => item.Arguments.Contains("remove")));
+    }
+
+    [TestMethod]
+    public async Task Validation_is_one_short_pair_in_one_lease_and_identifies_reports()
+    {
+        using var fixture = new Fixture();
+        Assert.AreEqual(0, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--validate-only",
+            "--repetitions", "10", "--warmup-runs", "3", "--seconds", "90", "--label", "12-byte packed transform"), fixture.Errors.ToString());
+        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == "test-jobserver"));
+        var processes = fixture.Runner.Requests.Where(item => item.FileName == fixture.Editor).ToArray();
+        Assert.AreEqual(2, processes.Length);
+        Assert.IsTrue(processes.All(item => item.Arguments.Contains("-SandboxISMCBenchmarkSeconds=0.5") && item.Timeout == TimeSpan.FromSeconds(60)));
+        var report = File.ReadAllText(Path.Combine(fixture.RunDirectory, "comparison.md"));
+        StringAssert.Contains(report, "Validation only");
+        StringAssert.Contains(report, "no performance conclusions");
+        StringAssert.Contains(report, "12-byte packed transform");
+        StringAssert.Contains(report, "Baseline: commit");
+        StringAssert.Contains(report, "Candidate: commit");
+        StringAssert.Contains(report, "instances: 40000");
+        StringAssert.Contains(report, "RHI: D3D12");
+        Assert.IsTrue(fixture.Document("comparison.json").GetProperty("metadata").GetProperty("validationOnly").GetBoolean());
+        Assert.AreEqual("validation", fixture.Document("manifest.json").GetProperty("purpose").GetString());
+        Assert.IsFalse(File.Exists(Path.Combine(fixture.RunDirectory, "runs", "latest.txt")));
+    }
+
+    [TestMethod]
+    public async Task Validation_preserves_normal_protocol_failures()
+    {
+        using var fixture = new Fixture { TerminalError = "Viewport verification failed" };
+        Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--validate-only"));
+        StringAssert.Contains(fixture.Errors.ToString(), "Viewport verification failed");
+    }
+
+    [TestMethod]
+    public async Task Offline_report_matches_live_report_without_processes_or_raw_mutation()
+    {
+        using var fixture = new Fixture();
+        Assert.AreEqual(0, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--label", "offline comparison"), fixture.Errors.ToString());
+        var files = Directory.GetFiles(fixture.RunDirectory, "*", SearchOption.AllDirectories).ToDictionary(path => path, File.ReadAllBytes);
+        fixture.Runner.Requests.Clear();
+        File.WriteAllText(Path.Combine(fixture.Output, "latest.txt"), "does-not-exist");
+        Assert.AreEqual(0, await fixture.Report(), fixture.Errors.ToString());
+        Assert.AreEqual(0, fixture.Runner.Requests.Count);
+        foreach (var (path, bytes) in files) CollectionAssert.AreEqual(bytes, File.ReadAllBytes(path), path);
+        Assert.AreEqual(0, Directory.GetFiles(fixture.RunDirectory, "*.tmp", SearchOption.AllDirectories).Length);
+    }
+
+    [TestMethod]
+    [DataRow("missing")]
+    [DataRow("duplicate")]
+    [DataRow("schema")]
+    [DataRow("conditions")]
+    [DataRow("incomplete")]
+    public async Task Offline_report_rejects_incomplete_or_invalid_capture_data(string failure)
+    {
+        using var fixture = new Fixture();
+        Assert.AreEqual(0, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old"));
+        var captures = SandboxIsmcReportCommand.Read<List<SandboxIsmcCapture>>(fixture.RunDirectory, "captures.json");
+        if (failure == "missing") captures.RemoveAt(0);
+        if (failure == "duplicate") captures[1] = captures[0];
+        if (failure == "schema") captures[0] = captures[0] with { SchemaVersion = 99 };
+        if (failure == "conditions") captures[0] = captures[0] with { Conditions = new Dictionary<string, string>() };
+        if (failure == "incomplete")
+        {
+            var manifest = SandboxIsmcReportCommand.Read<BenchmarkManifest>(fixture.RunDirectory, "manifest.json");
+            manifest.Status = "failed";
+            BenchmarkCommandSupport.WriteJson(Path.Combine(fixture.RunDirectory, "manifest.json"), manifest);
+        }
+        BenchmarkCommandSupport.WriteJson(Path.Combine(fixture.RunDirectory, "captures.json"), captures);
+        fixture.Runner.Requests.Clear();
+        Assert.AreEqual(1, await fixture.Report());
+        Assert.AreEqual(0, fixture.Runner.Requests.Count);
+    }
+
+    [TestMethod]
+    public async Task Offline_incomparable_report_has_no_deltas()
+    {
+        using var fixture = new Fixture { RhiMismatch = true };
+        Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old"));
+        fixture.Runner.Requests.Clear();
+        Assert.AreEqual(1, await fixture.Report());
+        Assert.AreEqual(0, fixture.Runner.Requests.Count);
+        Assert.IsFalse(fixture.Document("comparison.json").GetProperty("comparable").GetBoolean());
+        Assert.AreEqual(0, fixture.Document("comparison.json").GetProperty("metrics").GetArrayLength());
+    }
+
+    [TestMethod]
     public async Task Comparison_builds_before_one_lease_and_interleaves_complete_runs()
     {
         using var fixture = new Fixture();
@@ -235,6 +345,8 @@ public sealed class SandboxIsmcBenchmarkCommandTests
             using var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(RunDirectory, name)));
             return document.RootElement.Clone();
         }
+
+        public Task<int> Report() => Application(false).RunAsync(["sandbox-ismc-report", "--run-dir", RunDirectory], Path.GetTempPath());
 
         private BenchmarkToolsApplication Application(bool child) => new(Runner, new TestJobserver(), new TestEnvironment(child ? "lease" : null), TextWriter.Null, Errors, "current-benchmark-tools");
 

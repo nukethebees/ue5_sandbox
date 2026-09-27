@@ -4,7 +4,7 @@ namespace BenchmarkTools;
 
 // The parent owns preparation, analysis and cleanup. Only this immutable plan crosses the lease boundary.
 internal sealed record BenchmarkMeasurementPlan(string Output, RevisionIdentity Candidate, RevisionIdentity Baseline,
-    IReadOnlyList<BenchmarkRepetition> Sequence, SandboxIsmcRequest? Ismc = null);
+    IReadOnlyList<BenchmarkRepetition> Sequence, SandboxIsmcRequest? Ismc = null, bool ValidationOnly = false);
 
 internal static class BenchmarkMeasurement
 {

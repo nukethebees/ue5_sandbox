@@ -32,6 +32,7 @@ internal static class GpuStarfieldBenchmarkCommand
             throw new BenchmarkToolException($"GPU starfield output directory already exists: '{run_directory}'.");
         }
         Directory.CreateDirectory(run_directory);
+        BenchmarkRunContext.PublishLatest(run_directory);
 
         var captures = new List<Capture>();
         foreach (var configuration in request.Configurations)
@@ -59,7 +60,6 @@ internal static class GpuStarfieldBenchmarkCommand
         Validate(captures, deltas, request);
         WriteOutputs(run_directory, request, captures, deltas);
         var report = WriteMarkdown(Path.Combine(run_directory, "GpuStarfieldBenchmark.md"), deltas, request);
-        File.WriteAllText(Path.Combine(request.Output, "latest.txt"), run_directory, new UTF8Encoding(false));
         application.StandardOutput.WriteLine(report);
         application.StandardOutput.WriteLine($"Artifacts: {run_directory}");
         return 0;

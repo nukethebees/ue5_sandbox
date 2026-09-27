@@ -12,6 +12,8 @@ internal sealed class BenchmarkManifest
     public int ToolSchemaVersion { get; init; } = 1;
     public required string RunId { get; init; }
     public required string Benchmark { get; init; }
+    public string? Label { get; init; }
+    public string Purpose { get; set; } = "measurement";
     public DateTimeOffset CreatedUtc { get; init; } = DateTimeOffset.UtcNow;
     public string Status { get; set; } = "preparing";
     public object? Configuration { get; set; }
@@ -34,16 +36,21 @@ internal sealed class BenchmarkRunContext
     public BenchmarkManifest Manifest { get; }
     public string Artifact(string name) => Path.Combine(DirectoryPath, name);
 
-    public static BenchmarkRunContext Create(RepositoryPaths repository, string benchmark, string? output = null, object? configuration = null)
+    public static BenchmarkRunContext Create(RepositoryPaths repository, string benchmark, string? output = null, object? configuration = null,
+        string? label = null, bool publish_latest = true)
     {
         var id = $"{DateTimeOffset.UtcNow:yyyyMMddTHHmmssfffZ}-{Guid.NewGuid():N}";
         var parent = BenchmarkCommandSupport.ResolveOutputDirectory(repository, output ?? $".local/benchmarks/{benchmark}");
         var directory = Path.Combine(parent, id);
         Directory.CreateDirectory(directory);
-        var run = new BenchmarkRunContext(directory, new BenchmarkManifest { RunId = id, Benchmark = benchmark, Configuration = configuration });
+        var run = new BenchmarkRunContext(directory, new BenchmarkManifest { RunId = id, Benchmark = benchmark, Configuration = configuration, Label = label });
         run.Publish();
+        if (publish_latest) PublishLatest(directory);
         return run;
     }
+
+    public static void PublishLatest(string directory) => BenchmarkCommandSupport.WriteText(
+        Path.Combine(Path.GetDirectoryName(directory)!, "latest.txt"), Path.GetFullPath(directory) + Environment.NewLine);
 
     public void Expect(string name)
     {

@@ -40,6 +40,7 @@ internal static class BenchmarkMetrics
         var result = new Dictionary<string, BenchmarkMetric>(StringComparer.Ordinal);
         foreach (var metric in metrics)
         {
+            if (metric is null) throw new BenchmarkToolException("Null metric entry.");
             metric.Summary.Validate();
             if (string.IsNullOrWhiteSpace(metric.Identity.Metric) || string.IsNullOrWhiteSpace(metric.Identity.Unit))
                 throw new BenchmarkToolException("Metric name and unit are required.");

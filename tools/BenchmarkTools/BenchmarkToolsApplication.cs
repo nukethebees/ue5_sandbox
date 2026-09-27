@@ -10,7 +10,7 @@ internal sealed class BenchmarkToolsApplication(
     TextWriter standard_error,
     string executable_path)
 {
-    private const string usage = "Usage: BenchmarkTools <native-simulation|fighter-simulation|frame-memory-level|frame-memory-revision-ab|level-telemetry|gpu-starfield|sandbox-ismc|sandbox-ismc-revision-ab> [options]";
+    private const string usage = "Usage: BenchmarkTools <native-simulation|fighter-simulation|frame-memory-level|frame-memory-revision-ab|level-telemetry|gpu-starfield|sandbox-ismc|sandbox-ismc-revision-ab|sandbox-ismc-report> [options]";
 
     internal IProcessRunner ProcessRunner => process_runner;
     internal string ExecutablePath => executable_path;
@@ -35,11 +35,19 @@ internal sealed class BenchmarkToolsApplication(
         }
         if (arguments.Count == 2 && arguments[1] is "--help" or "-h")
         {
-            standard_output.WriteLine(usage);
+            standard_output.WriteLine(arguments[0] switch
+            {
+                "sandbox-ismc-report" => "Usage: BenchmarkTools sandbox-ismc-report --run-dir <comparison-run>\nRegenerates derived reports without builds or measurements.",
+                "sandbox-ismc" => "Usage: BenchmarkTools sandbox-ismc [--label <text>] [--output-dir <parent>] [--skip-build] [workload options]\nSee docs/benchmarks.md for typed workload options.",
+                "sandbox-ismc-revision-ab" => "Usage: BenchmarkTools sandbox-ismc-revision-ab --baseline <revision> [--prepare-only | --validate-only] [--baseline-worktree <path>] [--skip-build] [--repetitions <count>] [--warmup-runs <count>] [--label <text>] [--output-dir <parent>] [workload options]\nSee docs/benchmarks.md for compatibility and workload options.",
+                _ => usage,
+            });
             return 0;
         }
         try
         {
+            if (arguments[0] == "sandbox-ismc-report")
+                return SandboxIsmcReportCommand.Run(this, arguments.Skip(1).ToArray(), working_directory);
             var repository_paths = RepositoryPaths.Find(working_directory);
             return arguments[0] switch
             {

@@ -100,11 +100,18 @@ internal static class BenchmarkCommandSupport
     }
 
     public static void WriteJson(string path, object value)
+        => WriteText(path, JsonSerializer.Serialize(value, JsonOptions) + Environment.NewLine);
+
+    public static void WriteText(string path, string content)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        var temporary_path = path + ".tmp";
-        File.WriteAllText(temporary_path, JsonSerializer.Serialize(value, JsonOptions) + Environment.NewLine, new UTF8Encoding(false));
-        File.Move(temporary_path, path, overwrite: true);
+        var temporary_path = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            File.WriteAllText(temporary_path, content, new UTF8Encoding(false));
+            File.Move(temporary_path, path, overwrite: true);
+        }
+        finally { if (File.Exists(temporary_path)) File.Delete(temporary_path); }
     }
 
     public static IEnumerable<JsonElement> JsonLines(string output)
@@ -132,12 +139,12 @@ internal static class BenchmarkCommandSupport
 
     public static void WriteCsv(string path, IEnumerable<string[]> rows)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        using var writer = new StreamWriter(path, false, new UTF8Encoding(false));
+        var content = new StringBuilder();
         foreach (var row in rows)
         {
-            writer.WriteLine(string.Join(',', row.Select(EscapeCsv)));
+            content.AppendLine(string.Join(',', row.Select(EscapeCsv)));
         }
+        WriteText(path, content.ToString());
     }
 
     internal static List<string> ParseCsv(string line)

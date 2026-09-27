@@ -39,7 +39,7 @@ internal sealed class RevisionComparisonSession : IAsyncDisposable
 {
     private readonly BenchmarkToolsApplication application_;
     private readonly string parent_;
-    private readonly bool keep_;
+    private bool keep_;
     private bool owned_;
 
     private RevisionComparisonSession(BenchmarkToolsApplication application, RevisionIdentity candidate, string baseline_root, string parent, bool keep)
@@ -55,6 +55,7 @@ internal sealed class RevisionComparisonSession : IAsyncDisposable
     public RevisionIdentity Baseline { get; private set; } = null!;
     public string BaselineRoot { get; }
     public bool OwnsBaseline => owned_;
+    public void RetainBaseline() => keep_ = true;
 
     public static async Task<RevisionComparisonSession> CreateAsync(BenchmarkToolsApplication application, RepositoryPaths repository,
         string baseline, string run_id, string? supplied, bool keep, CancellationToken token, string? artifact_root = null)

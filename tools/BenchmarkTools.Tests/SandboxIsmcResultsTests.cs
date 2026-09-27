@@ -27,6 +27,23 @@ public sealed class SandboxIsmcResultsTests
     }
 
     [TestMethod]
+    [DataRow("frame_limits_disabled")]
+    [DataRow("r.VSync")]
+    [DataRow("r.VSyncEditor")]
+    [DataRow("t.MaxFPS")]
+    [DataRow("r.ScreenPercentage")]
+    [DataRow("r.DynamicRes.OperationMode")]
+    public void Actual_render_controls_participate_in_comparability(string key)
+    {
+        var baseline = Capture(1, "baseline", 10) with { Conditions = new Dictionary<string, string> { [key] = "0" } };
+        var candidate = Capture(1, "candidate", 12) with { Conditions = new Dictionary<string, string> { [key] = "1" } };
+        var result = SandboxIsmcResults.Compare([baseline, candidate]);
+        Assert.IsFalse(result.Comparable);
+        Assert.AreEqual(0, result.Metrics.Count);
+        StringAssert.Contains(result.Errors.Single(), key);
+    }
+
+    [TestMethod]
     public void Missing_or_duplicate_repetition_sides_fail()
     {
         Assert.ThrowsException<BenchmarkToolException>(() => SandboxIsmcResults.Compare([Capture(1, "baseline", 1)]));

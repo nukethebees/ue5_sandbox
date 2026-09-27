@@ -30,6 +30,31 @@ public sealed class BenchmarkInfrastructureTests
     }
 
     [TestMethod]
+    public void Latest_points_to_newest_invocation_including_failure_without_affecting_identity()
+    {
+        using var temporary = new BenchmarkTestDirectory();
+        var repository = new RepositoryPaths(temporary.Root);
+        var label = "../packed | transform";
+        var first = BenchmarkRunContext.Create(repository, "test", label: label);
+        var second = BenchmarkRunContext.Create(repository, "test", label: label);
+        var latest = Path.Combine(Path.GetDirectoryName(first.DirectoryPath)!, "latest.txt");
+        Assert.AreEqual(second.DirectoryPath, File.ReadAllText(latest).Trim());
+        Assert.AreNotEqual(first.Manifest.RunId, second.Manifest.RunId);
+        Assert.AreEqual(label, second.Manifest.Label);
+        Assert.IsFalse(second.DirectoryPath.Contains("packed", StringComparison.Ordinal));
+        second.Fail(new IOException("failure"));
+        Assert.AreEqual(second.DirectoryPath, File.ReadAllText(latest).Trim());
+        File.WriteAllText(latest, "invalid/navigation/only");
+        first.Expect("result.json");
+        File.WriteAllText(first.Artifact("result.json"), "result");
+        first.ValidateArtifacts();
+        first.Complete();
+        var child = BenchmarkRunContext.Create(repository, "test", Path.Combine(second.DirectoryPath, "runs"), publish_latest: false);
+        Assert.IsFalse(File.Exists(Path.Combine(Path.GetDirectoryName(child.DirectoryPath)!, "latest.txt")));
+        Assert.AreEqual(0, Directory.GetFiles(temporary.Root, "*.tmp", SearchOption.AllDirectories).Length);
+    }
+
+    [TestMethod]
     public void Ordering_is_balanced_with_separate_complete_warmup_runs()
     {
         var sequence = BenchmarkOrdering.Balanced(4, 1);
@@ -114,7 +139,7 @@ public sealed class BenchmarkInfrastructureTests
         File.WriteAllText(tracked, "original\n");
         await Git("add", ".");
         await Git("commit", "-m", "fixture");
-        var output = BenchmarkRunContext.Create(new RepositoryPaths(directory.Root), "test", "artifacts");
+        var output = BenchmarkRunContext.Create(new RepositoryPaths(directory.Root), "test", "artifacts", publish_latest: false);
         var original = await BenchmarkRunContext.SourceAsync(app, directory.Root, default, output.DirectoryPath);
         Assert.IsFalse(original.Dirty);
         File.WriteAllText(output.Artifact("process.log"), "growing log");
@@ -182,6 +207,9 @@ public sealed class BenchmarkInfrastructureTests
         await using (var session = await RevisionComparisonSession.CreateAsync(app, new RepositoryPaths(directory.Root), "HEAD", run.Manifest.RunId, null, false, default))
         {
             await SandboxIsmcCompatibility.ApplyAsync(app, session, "sandbox-ismc-v1", run, default);
+            var effective = await BenchmarkRunContext.SourceAsync(app, session.BaselineRoot, default);
+            Assert.IsTrue(effective.Dirty);
+            await BenchmarkRunContext.VerifySourceAsync(app, effective, default);
             SandboxIsmcBenchmarkCommand.RequireProtocol(session.BaselineRoot);
             foreach (var path in paths)
                 Assert.AreEqual(File.ReadAllText(Path.Combine(directory.Root, path)), File.ReadAllText(Path.Combine(session.BaselineRoot, path)));

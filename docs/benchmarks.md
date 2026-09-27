@@ -25,6 +25,7 @@ Results are disposable local data unless a specific experiment says otherwise; w
 | GPU starfield | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe gpu-starfield` | Runs, validates, and writes versioned JSON/CSV/Markdown artifacts. |
 | SandboxISMC | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe sandbox-ismc` | Builds and runs the existing PIE benchmark with owned CSV, log, trace, and conditions artifacts. |
 | SandboxISMC revision comparison | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe sandbox-ismc-revision-ab` | Builds detached baseline/current candidate inputs, then measures complete interleaved repetitions under one reservation. |
+| SandboxISMC offline report | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe sandbox-ismc-report --run-dir <comparison-run>` | Regenerates reports from captured data, with no builds, processes, worktrees or lease. |
 | Unreal-backed measurements | Benchmark CMake presets and commandlet targets | Presets are in `cmake/presets/*benchmarks.json`. |
 
 Run the fighter benchmark with:
@@ -87,6 +88,18 @@ Editor installation, or pass `--editor <Engine/Binaries/Win64/UnrealEditor-Cmd.e
 .\out\build\native\host-tools\BenchmarkTools\Debug\BenchmarkTools.exe sandbox-ismc-revision-ab `
   --baseline <commit-or-ref> --repetitions 2 --width 1280 --height 720 `
   --instances 40000 --mode custom --update-percent 100 --seconds 5
+
+# Prepare both binaries and retain the detached baseline without measuring.
+.\out\build\native\host-tools\BenchmarkTools\Debug\BenchmarkTools.exe sandbox-ismc-revision-ab `
+  --baseline <commit-or-ref> --prepare-only --label "packed transform"
+
+# A short protocol/comparability smoke, using a prepared clean baseline.
+.\out\build\native\host-tools\BenchmarkTools\Debug\BenchmarkTools.exe sandbox-ismc-revision-ab `
+  --baseline <commit-or-ref> --baseline-worktree <retained-path> --skip-build --validate-only
+
+# Re-analyse a completed experiment without Unreal or its source worktrees.
+.\out\build\native\host-tools\BenchmarkTools\Debug\BenchmarkTools.exe sandbox-ismc-report `
+  --run-dir .local/benchmarks/sandbox-ismc-revision-ab/<run-id>
 ```
 
 Both commands retain the benchmark actor's workload generation, per-frame sampling and summary
@@ -110,6 +123,19 @@ It is the caller's responsibility to ensure those binaries match their recorded 
 | `--seconds`, `--trace` | 5, 1 | Measured duration and Insights capture toggle |
 | `--repetitions`, `--warmup-runs` | 2, 0 | Comparison only: complete measured/warmup processes per side |
 | `--output-dir` | `.local/benchmarks/<command>` | Parent directory; every invocation allocates a unique child |
+| `--label` | empty | Human-readable manifest/report label; never a path or comparability input |
+| `--prepare-only` | off | Comparison only: prepare/build and verify both sources; retain owned baseline, no measurement lease |
+| `--validate-only` | off | Comparison only: one A/B pair, 0.25 s warmup and 0.5 s measurement per process, no warmup processes |
+
+Preparation and validation modes are mutually exclusive. Preparation writes `preparation.json`
+with effective source identities and prints the retained baseline path. Retained worktrees remain
+disposable benchmark-owned state under `.local/benchmarks/worktrees/`; preparation does not delete
+them. Supplied baselines remain untouched. A retained overlaid baseline is useful for inspection;
+the existing clean-worktree requirement still applies when supplying a baseline to a later run.
+
+Validation overrides repetition and timing options and caps each Editor process at 60 seconds.
+It uses the normal single comparison lease and artifacts, but its reports explicitly make **no
+performance conclusions**. Cold shader compilation may exceed that cap; prepare caches separately.
 
 PIE requests a fixed scene viewport, observes its actual size on a later tick, and fails before
 warmup if it differs. It never writes Editor viewport preferences. Requested and observed sizes,
@@ -120,6 +146,9 @@ changing the workload schema; no hardware inventory is collected today.
 
 Run IDs combine UTC time with a GUID. Each command owns
 `.local/benchmarks/<command>/<run-id>/manifest.json`, `measurement-plan.json`, and `sequence.json`.
+The family directory's atomically replaced `latest.txt` contains the absolute path of the newest
+created run, including failures. It is only a navigation convenience and is never read to select
+benchmark artifacts. Per-process `runs/` directories have no pointer.
 SandboxISMC process artifacts live beneath `runs/<process-run-id>/`:
 
 ```text
@@ -174,6 +203,12 @@ bytes, waits and churn metrics retain distinct identities and units. Generic pai
 duplicate identities, missing metrics, units/dimensions mismatches and non-finite values. All
 observed comparability conditions must match across measured runs; an incomparable result contains
 errors and no performance deltas. Provenance such as revision, timestamp and artifact paths may differ.
+Reports include the label, source SHAs/dirty markers, ordering, workload and observed render controls.
+`sandbox-ismc-report --run-dir <path>` validates the manifest, sequence and `captures.json`, then
+atomically regenerates the three derived reports through the same comparison code. Raw captures
+are unchanged. Incomplete/failed runs or unsupported capture schemas fail clearly; incomparable
+captures produce an incomparable report without deltas. Captures must contain the required render
+conditions, including Editor VSync and MaxFPS; older captures missing these cannot establish comparability.
 
 Frame-memory uses the same ownership, run manifest, ordering and lease infrastructure while retaining
 its existing `raw-results.csv` and `paired-results.csv` reports. `--iterations` counts complete
