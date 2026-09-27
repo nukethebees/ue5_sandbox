@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <bit>
-#include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -41,8 +40,8 @@ struct Quat32 {
     std::uint32_t bits{};
 };
 
+// Precondition: finite normalized input, validated before entering the packing loop.
 [[nodiscard]] inline auto pack_normalized_quat32(Quaternion4f quaternion) noexcept -> Quat32 {
-    assert(is_normalized_quaternion(quaternion));
     auto const xy{std::abs(quaternion.Y) > std::abs(quaternion.X) ? 1U : 0U};
     auto const xyz{std::abs(quaternion.Z) > std::abs(quaternion.Elements[xy]) ? 2U : xy};
     auto const largest{std::abs(quaternion.W) > std::abs(quaternion.Elements[xyz]) ? 3U : xyz};
@@ -84,31 +83,49 @@ struct Quat32 {
     return quaternion;
 }
 
-[[nodiscard]] inline auto quantize_position(float position, float root) noexcept
-    -> std::optional<std::int16_t> {
+[[nodiscard]] inline auto can_quantize_position(float position, float root) noexcept -> bool {
+    auto const offset{(static_cast<double>(position) - root) * (1.0 / position_quantum)};
+    return offset >= -32767.5 && offset < 32767.5;
+}
+
+// Precondition: can_quantize_position(position, root).
+[[nodiscard]] inline auto quantize_position_unchecked(float position, float root) noexcept
+    -> std::int16_t {
     // Round ties toward +infinity, independent of the process rounding mode.
     // Double subtraction is necessary at rounding boundaries: e.g. root=262144,
     // position=nextafter(8, 0) loses its side of the tie in float. Multiplication
-    // and truncation avoid division/floor; the guard makes conversion safe even for NaN.
+    // and truncation avoid division/floor.
     auto const offset{(static_cast<double>(position) - root) * (1.0 / position_quantum)};
-    if (!(offset >= -32767.5 && offset < 32767.5)) {
-        return std::nullopt;
-    }
     auto const integral{static_cast<std::int32_t>(offset)};
     auto const fraction{offset - integral};
     return static_cast<std::int16_t>(integral + (fraction >= 0.5) - (fraction < -0.5));
 }
 
-// Specialized float encoder for the existing generated unsigned Q5.3 storage type.
-[[nodiscard]] inline auto pack_scale(float scale) noexcept -> std::optional<Scale8> {
-    if (!(scale >= 0.0f && scale <= maximum_scale)) {
+// Checked entry point for domain setup and tests, not the render hot path.
+[[nodiscard]] inline auto quantize_position(float position, float root) noexcept
+    -> std::optional<std::int16_t> {
+    if (!can_quantize_position(position, root)) {
         return std::nullopt;
     }
+    return quantize_position_unchecked(position, root);
+}
+
+// Specialized float encoder for the existing generated unsigned Q5.3 storage type.
+// Precondition: finite scale in [0, maximum_scale].
+[[nodiscard]] inline auto pack_scale_unchecked(float scale) noexcept -> Scale8 {
     auto const scaled{scale * 8.0f};
     auto const integral{static_cast<std::uint32_t>(scaled)};
     auto const fraction{scaled - static_cast<float>(integral)};
     auto const round_up{fraction > 0.5f || (fraction == 0.5f && (integral & 1U) != 0)};
     return Scale8::from_raw(static_cast<std::uint8_t>(integral + round_up));
+}
+
+// Checked entry point for tests/debugging, not the render hot path.
+[[nodiscard]] inline auto pack_scale(float scale) noexcept -> std::optional<Scale8> {
+    if (!(scale >= 0.0f && scale <= maximum_scale)) {
+        return std::nullopt;
+    }
+    return pack_scale_unchecked(scale);
 }
 
 // Radius is measured about the mesh origin, including an off-centre mesh AABB.

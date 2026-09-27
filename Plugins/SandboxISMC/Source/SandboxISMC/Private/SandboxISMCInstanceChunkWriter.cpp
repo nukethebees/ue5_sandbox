@@ -1,11 +1,104 @@
 #include "SandboxISMCInstanceChunkWriter.h"
 
+auto FSandboxISMCInstanceChunkWriter::validate_transforms(TConstArrayView<FVector3f> positions,
+                                                          TConstArrayView<FQuat4f> rotations,
+                                                          TConstArrayView<FVector3f> scales) const
+    -> bool {
+    auto const count{instances_.Num()};
+    if (positions.Num() != count || rotations.Num() != count || scales.Num() != count) {
+        UE_LOG(LogTemp,
+               Fatal,
+               TEXT("SandboxISMC chunk at %d requires %d transforms; received %d positions, "
+                    "%d rotations and %d scales"),
+               first_index_,
+               count,
+               positions.Num(),
+               rotations.Num(),
+               scales.Num());
+        return false;
+    }
+    if (count == 0) {
+        return true;
+    }
+
+    // Valid endpoints plus domain membership guarantee safe unchecked integer conversion.
+    for (int32 axis{0}; axis < 3; ++axis) {
+        if (!position_bounds_.IsValid ||
+            !(position_bounds_.Min[axis] <= position_bounds_.Max[axis]) ||
+            !ml::sandbox_ismc::can_quantize_position(position_bounds_.Min[axis],
+                                                     position_root_[axis]) ||
+            !ml::sandbox_ismc::can_quantize_position(position_bounds_.Max[axis],
+                                                     position_root_[axis])) {
+            UE_LOG(LogTemp,
+                   Fatal,
+                   TEXT("SandboxISMC chunk at %d has invalid position domain on axis %d: "
+                        "[%g, %g], root=%g (16 UU, +/-32767 offsets)"),
+                   first_index_,
+                   axis,
+                   position_bounds_.Min[axis],
+                   position_bounds_.Max[axis],
+                   position_root_[axis]);
+            return false;
+        }
+    }
+
+    auto const* position_data{positions.GetData()};
+    auto const* rotation_data{rotations.GetData()};
+    auto const* scale_data{scales.GetData()};
+    for (int32 local_index{0}; local_index < count; ++local_index) {
+        auto const position{position_data[local_index]};
+        auto const rotation{rotation_data[local_index]};
+        auto const scale{scale_data[local_index]};
+        // Ordered comparisons against the finite domain also reject NaN and infinity.
+        if (!position_bounds_.IsInsideOrOn(position)) {
+            UE_LOG(LogTemp,
+                   Fatal,
+                   TEXT("SandboxISMC instance %d requires a finite position inside the snapshot "
+                        "domain; received (%g, %g, %g)"),
+                   first_index_ + local_index,
+                   position.X,
+                   position.Y,
+                   position.Z);
+            return false;
+        }
+        if (!ml::sandbox_ismc::is_normalized_quaternion(
+                ml::make_quaternion4f(rotation.X, rotation.Y, rotation.Z, rotation.W))) {
+            UE_LOG(LogTemp,
+                   Fatal,
+                   TEXT("SandboxISMC instance %d requires finite normalized rotation (length "
+                        "squared tolerance 1e-4); received (%g, %g, %g, %g)"),
+                   first_index_ + local_index,
+                   rotation.X,
+                   rotation.Y,
+                   rotation.Z,
+                   rotation.W);
+            return false;
+        }
+        // Ordered range comparisons also reject NaN and infinity.
+        if (!supports_scale(scale)) {
+            UE_LOG(LogTemp,
+                   Fatal,
+                   TEXT("SandboxISMC instance %d requires finite scale in [0, 31.875]; "
+                        "received (%g, %g, %g)"),
+                   first_index_ + local_index,
+                   scale.X,
+                   scale.Y,
+                   scale.Z);
+            return false;
+        }
+    }
+    return true;
+}
+
 template <ESandboxISMCBoundsMode BoundsMode>
 auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> positions,
                                                      TConstArrayView<FQuat4f> rotations,
                                                      TConstArrayView<FVector3f> scales) -> void {
+    if (!validate_transforms(positions, rotations, scales)) {
+        return;
+    }
+
     auto const count{instances_.Num()};
-    check(positions.Num() == count && rotations.Num() == count && scales.Num() == count);
     auto* const RESTRICT instances{instances_.GetData()};
     auto const* RESTRICT position_data{positions.GetData()};
     auto const* RESTRICT rotation_data{rotations.GetData()};
@@ -15,32 +108,12 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
         auto const rotation{rotation_data[local_index]};
         auto const scale{scale_data[local_index]};
         auto& instance{instances[local_index]};
-        checkfSlow(position_bounds_.IsInsideOrOn(position),
-                   TEXT("SandboxISMC instance %d position is outside the snapshot domain"),
-                   first_index_ + local_index);
         auto const quaternion{
             ml::make_quaternion4f(rotation.X, rotation.Y, rotation.Z, rotation.W)};
-        checkfSlow(
-            ml::sandbox_ismc::is_normalized_quaternion(quaternion),
-            TEXT(
-                "SandboxISMC requires finite normalized rotation (length squared tolerance 1e-4)"));
         for (int32 axis{0}; axis < 3; ++axis) {
-            auto const offset{
-                ml::sandbox_ismc::quantize_position(position[axis], position_root_[axis])};
-            auto const packed_scale{ml::sandbox_ismc::pack_scale(scale[axis])};
-            if (!offset || !packed_scale) [[unlikely]] {
-                UE_LOG(LogTemp,
-                       Fatal,
-                       TEXT("SandboxISMC instance %d axis %d cannot pack position=%g root=%g (16 "
-                            "UU, +/-524272), scale=%g (0..31.875)"),
-                       first_index_ + local_index,
-                       axis,
-                       position[axis],
-                       position_root_[axis],
-                       scale[axis]);
-            }
-            instance.position[axis] = *offset;
-            instance.scale[axis] = *packed_scale;
+            instance.position[axis] =
+                ml::sandbox_ismc::quantize_position_unchecked(position[axis], position_root_[axis]);
+            instance.scale[axis] = ml::sandbox_ismc::pack_scale_unchecked(scale[axis]);
         }
         instance.rotation = ml::sandbox_ismc::pack_normalized_quat32(quaternion);
         instance.reserved_0 = 0;
