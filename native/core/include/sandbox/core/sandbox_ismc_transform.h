@@ -1,7 +1,7 @@
 #pragma once
 
 #include "sandbox/core/math_types.h"
-#include "sandbox/core/sandbox_ismc_scale.h"
+#include "sandbox/core/sandbox_ismc_render.h"
 
 #include <algorithm>
 #include <bit>
@@ -36,10 +36,6 @@ inline constexpr float scale_error{0.0625f};
 
 // Smallest three: bits 0..1 select omitted XYZW, followed by three unsigned
 // 10-bit components in XYZW order, mapped from [-1/sqrt(2), +1/sqrt(2)].
-struct Quat32 {
-    std::uint32_t bits{};
-};
-
 // Precondition: finite normalized input, validated before entering the packing loop.
 [[nodiscard]] inline auto pack_normalized_quat32(Quaternion4f quaternion) noexcept -> Quat32 {
     auto const xy{std::abs(quaternion.Y) > std::abs(quaternion.X) ? 1U : 0U};
@@ -133,14 +129,6 @@ struct Quat32 {
     return position_quantum * 0.5f +
            mesh_radius * (scale_error + rotation_error_chord * maximum_scale);
 }
-
-struct PackedTransform {
-    std::int16_t position[3]{};
-    std::uint16_t reserved_0{};
-    Quat32 rotation{};
-    Scale8 scale[3]{};
-    std::uint8_t reserved_1{};
-};
 
 [[nodiscard]] inline auto position_root(Vector3f minimum, Vector3f maximum) noexcept
     -> std::optional<Vector3f> {
