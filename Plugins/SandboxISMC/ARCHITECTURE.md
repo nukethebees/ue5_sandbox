@@ -268,3 +268,67 @@ figures diagnose the codec; they are not additive or directly comparable to the 
 The dominant avoidable cost was general fixed-point conversion. Quaternion normalization and
 loop/index bookkeeping were also removed. Supplied bounds have no per-instance bounds work;
 automatic bounds no longer decode position, quaternion or scale immediately after packing.
+
+## Optimized matched comparison and decision (2026-09-27)
+
+**Recommendation: retain Phase 1 for production.** Keep this branch as the completed experiment,
+not an integration candidate. The specialized encoder substantially improves on the reference
+implementation, but it does not provide a compelling overall replacement for the production
+automatic-bounds path. This is a result for this implementation/workload, not a claim that transform
+compression is inherently too slow.
+
+One new matched comparison used the same configuration and workload listed above, with the original
+1250x452 viewport reset before each run. Each case had 5 seconds warmup and 60 seconds measurement,
+under the jobserver's exclusive machine reservation. No builds, tests or static analysis ran alongside
+these measurements. Phase 1 sources were temporarily installed from `c58aa5fce`, with only the existing
+supplied-bounds CLI option added; the optimized sources were then restored byte-for-byte. The local
+engine hook remained installed for both versions, with its ordinary LocalVF path unchanged for Phase 1.
+
+Times are median / p95 milliseconds.
+
+| Metric | Phase 1 automatic | Optimized automatic | Phase 1 supplied | Optimized supplied |
+| --- | ---: | ---: | ---: | ---: |
+| Measured frames | 7199 | 7199 | 7200 | 7199 |
+| Custom total update | 0.2132 / 0.2519 | 0.3657 / 0.4264 | 0.1635 / 0.1981 | 0.2571 / 0.3059 |
+| Build/packing and bounds | 0.2088 / 0.2477 | 0.3614 / 0.4222 | 0.1590 / 0.1933 | 0.2526 / 0.3009 |
+| Render-thread upload CPU | 0.1148 / 0.1262 | 0.0312 / 0.0356 | 0.1213 / 0.1332 | 0.0327 / 0.0451 |
+| Submitted bytes/snapshot | 2560000 | 640000 | 2560000 | 640000 |
+| Uploaded bytes/snapshot | 2560000 | 640000 | 2560000 | 640000 |
+| Staging waits | 0 | 0 | 0 | 0 |
+| Whole-scene GPU | 1.3603 / 1.5921 | 1.3507 / 1.5622 | 1.3426 / 1.5812 | 1.3269 / 1.5460 |
+| Frame | 8.3335 / 8.3335 | 8.3335 / 8.3335 | 8.3335 / 8.3335 | 8.3335 / 8.3335 |
+
+Compared with the initial packed encoder, build medians improve 43% (0.6307 -> 0.3614 ms) with
+automatic bounds and 54% (0.5437 -> 0.2526 ms) with supplied bounds. Against the fresh Phase 1 runs,
+build remains 73% and 59% slower, respectively. The producer spends an additional 0.1526/0.0936 ms;
+the render thread saves 0.0836/0.0886 ms. These are different threads and asynchronous metric samples;
+their medians cannot be added to infer critical-path or frame improvement. Supplying bounds narrows
+the tradeoff considerably, but current fighter/laser callers use automatic bounds.
+
+GPU medians differ by about 0.7%/1.2% and frame pacing remains effectively 120 Hz. This supplies no
+convincing GPU or end-to-end speedup, and the cube workload establishes nothing about decode ALU on
+representative high-vertex fighter meshes. No new production benchmark suite was introduced.
+
+The 75% transform staging/upload/storage reduction is real. At 40000 instances, live transform data
+falls from 2.56 MB to 0.64 MB per snapshot (three live-sized staging copies: 7.68 MB to 1.92 MB), before
+custom data and allocation slack. Root metadata remains 16 bytes per snapshot, not per instance.
+The producer regression, lossy transform contract, and small engine-hook maintenance requirement
+outweigh that benefit for this production replacement decision. No SIMD packer, alternate codec,
+GPU pre-expansion, extra buffer, multi-mesh rendering or native render-preparation architecture was added.
+
+Retained branch history was reconstructed from the shader-free native ABI commit. The final source
+tree was preserved exactly, and the copied engine shader blob is absent from branch ancestry.
+Only the plugin-owned wrapper/adapter/decoder and the surgical reapplication script remain in public
+source. Superseded commits remain local recovery objects, not ancestors intended for publication.
+
+The raw optimized and fresh baseline CSVs/editor logs remain under
+`.local/benchmarks/sandbox-ismc-packed/{optimized-auto,optimized-supplied,phase1-auto-rerun,phase1-supplied-rerun}`.
+
+Final validation of the optimized candidate passed: lispb regeneration/consistency checks; native
+core tests (including all nine packing cases and the compile contract); 23 Unreal unit/component,
+producer, render-contract, lifecycle and pixel tests; DebugGame and Development editor builds;
+and the full 319-file native clang-tidy audit with no diagnostics. The final test/audit phase followed
+the matched benchmark comparison. Formatting and the final scope/history diff were reviewed.
+No sanitizer run was requested. Pixel tests found no CPU/GPU decode mismatch; no subjective
+production visual-quality claim is made. Existing render-only restrictions and unsupported negative
+scale remain unchanged; normalized quaternion input is now an explicit producer contract.
