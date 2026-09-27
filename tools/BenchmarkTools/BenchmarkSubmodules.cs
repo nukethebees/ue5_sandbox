@@ -67,7 +67,7 @@ internal static class BenchmarkSubmodules
         var listing = await BenchmarkGit.TextAsync(application, target, ["lfs", "ls-files", "--json", commit], token);
         using var document = JsonDocument.Parse(listing);
         var files = document.RootElement.GetProperty("files");
-        if (files.GetArrayLength() == 0) return;
+        if (files.ValueKind == JsonValueKind.Null || files.GetArrayLength() == 0) return;
         var source_cache = await MediaDirectory(source);
         var target_cache = await MediaDirectory(target);
         foreach (var file in files.EnumerateArray())

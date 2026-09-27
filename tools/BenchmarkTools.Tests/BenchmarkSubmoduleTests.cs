@@ -6,9 +6,11 @@ namespace BenchmarkTools.Tests;
 public sealed class BenchmarkSubmoduleTests
 {
     [DataTestMethod]
-    [DataRow(false)]
-    [DataRow(true)]
-    public async Task Seeds_exact_commit_and_lfs_without_copying_candidate_edits_and_fetches_only_missing_data(bool missing_commit)
+    [DataRow(false, true)]
+    [DataRow(true, true)]
+    [DataRow(false, false)]
+    [DataRow(true, false)]
+    public async Task Seeds_exact_commit_and_lfs_without_copying_candidate_edits_and_fetches_only_missing_data(bool missing_commit, bool lfs)
     {
         using var directory = new BenchmarkTestDirectory();
         var runner = new RecordingGitRunner();
@@ -17,7 +19,7 @@ public sealed class BenchmarkSubmoduleTests
         var remote = Path.Combine(directory.Root, "origin");
         var local = Path.Combine(candidate, "deps", "library with spaces");
         await Init(remote);
-        File.WriteAllText(Path.Combine(remote, ".gitattributes"), "*.bin filter=lfs diff=lfs merge=lfs -text\n");
+        if (lfs) File.WriteAllText(Path.Combine(remote, ".gitattributes"), "*.bin filter=lfs diff=lfs merge=lfs -text\n");
         await Commit(remote, "baseline");
         var old_commit = await Git(remote, "rev-parse", "HEAD");
         Directory.CreateDirectory(candidate);
