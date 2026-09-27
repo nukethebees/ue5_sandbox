@@ -9,7 +9,7 @@ Rustup selects the pinned toolchain from `rust-toolchain.toml` when commands run
 Begin each new task from anywhere in its Git worktree with:
 
 ```powershell
-agent-task start
+agent-task prepare-worktree
 ```
 
 This removes the worktree-root `out`, synchronizes and initializes recursive submodules,
@@ -17,28 +17,30 @@ regenerates CMake presets and code, then builds the `task-start` baseline. It st
 failure and streams subprocess output. Git, Python, CMake, and the repository build prerequisites
 must be available in the environment.
 
-From the repository root, install or update the developer tools:
+Preparation checks for the canonical jobserver before clearing output. Install/update central
+per-user build tools explicitly when needed:
 
 ```powershell
-.\install-dev-tools.ps1
+agent-task install-central-tools
 ```
 
-The script builds and installs only `agent-task` with Cargo, then uses the existing trusted
-AgentGit and canonical jobserver installers. It does not run the task-start baseline.
-Each installation is attempted independently. The final summary shows green/red pass/fail results,
-installation and PATH locations, and errors with recent output. Any failure returns exit code 1.
-The maintainer is responsible for installation and PATH setup; agents assume the tools are ready.
-Add `%LOCALAPPDATA%\NukeTheBees\agent-task\bin` to PATH.
+This generates presets, configures `native`, then runs the canonical `install-jobserver` and
+`install-set-live-coding-disabled` CMake targets, stopping on failure. It does not install AgentGit;
+that remains separately maintainer-controlled through `install-agent-git`.
 
-To install only `agent-task`:
+The maintainer installs/updates `agent-task` itself from the repository root with:
 
 ```powershell
-Set-Location tools/rust
-cargo install --path crates/agent-task --root "$env:LOCALAPPDATA\NukeTheBees\agent-task" --locked --force
+. .\dev.ps1
+install-agent-task
 ```
 
-The installed executable lives outside `out`, so it can clear build output while running.
-Build and test it directly from `tools/rust`:
+This runs the package tests, installs only `agent-task` with the pinned Rust toolchain, and
+smoke-tests the installed executable with `--help`. The maintainer manages PATH; add
+`%LOCALAPPDATA%\NukeTheBees\agent-task\bin`. Agents assume `agent-task` is already available.
+
+The executable lives outside `out`, so it can clear build output while running. For development,
+build and test directly from `tools/rust`; these tests are not part of broad CTest bundles:
 
 ```powershell
 cargo build --release --package agent-task --locked

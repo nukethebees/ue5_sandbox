@@ -72,11 +72,15 @@ Unreal-facing or cross-cutting candidates.
 Load `dev.ps1`, then begin each new task from anywhere in its Git worktree:
 
 ```powershell
-agent-task start
+agent-task prepare-worktree
 ```
 
-The maintainer installs developer tools with `.\install-dev-tools.ps1` and ensures `agent-task`
-is on PATH; agents assume it is available. See the [Rust tooling instructions](../tools/rust/README.md).
+The maintainer installs/updates `agent-task` with `. .\dev.ps1` followed by `install-agent-task`
+and manages PATH; agents assume it is available. On a fresh setup, run
+`agent-task install-central-tools` for the canonical jobserver and `set-live-coding-disabled`.
+Preparation checks for the jobserver before removing output; it does not install missing tools.
+AgentGit remains separately maintainer-controlled through `install-agent-git`.
+See the [Rust tooling instructions](../tools/rust/README.md).
 It removes only the worktree-root `out` directory, synchronizes and initializes recursive
 submodules, runs `python cmake/presets/generate.py`, then runs the `generate-code` and `task-start`
 CMake workflows. Each phase streams its output and a failure stops initialization immediately.

@@ -17,12 +17,16 @@ Unreal Engine 5.8 project.
   while Git provides index/ref locking. Do not treat `agent-git` as a repository-global mutex or
   inspect or modify another agent's worktree.
 * `dev` is the integration branch
-* Begin a new task with `agent-task start` from anywhere in the current Git worktree. It clears
+* Begin a new task with `agent-task prepare-worktree` from anywhere in the current Git worktree. It clears
   that worktree's `out`, syncs and updates submodules, regenerates presets and code, then runs
   `cmake --workflow --preset task-start` for a broad native/tool/test build and generated
   consistency checks. This builds binaries; it does not run the test suites. The maintainer
-  handles installation and PATH setup with `install-dev-tools.ps1`; agents assume `agent-task`
-  is available. See `tools/rust/README.md` for installation.
+  installs/updates `agent-task` with `. .\dev.ps1` then `install-agent-task` and manages PATH;
+  agents invoke it by name from PATH. If it cannot be found or launched, halt and report the
+  problem so the maintainer can fix it; do not use an absolute-path fallback or install it automatically.
+  Install central per-user prerequisites separately with
+  `agent-task install-central-tools`. AgentGit remains on its maintainer-controlled trusted
+  installation path. See `tools/rust/README.md` for installation.
 * After the clean initial build, rebuild only affected targets and execute relevant CTest labels.
   Use `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"` for the
   fast loop. Include the applicable expensive categories once for final validation.

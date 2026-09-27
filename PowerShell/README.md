@@ -8,6 +8,11 @@ functions remain available in the current session:
 dev-help
 ```
 
+The maintainer runs `install-agent-task` to test and install only the Rust `agent-task` CLI,
+then manages its PATH entry. On a fresh setup, `agent-task install-central-tools` installs the
+canonical per-user build tools; AgentGit keeps its separate trusted `install-agent-git` path.
+Agents assume the CLI is installed and begin tasks with `agent-task prepare-worktree`.
+
 `Navigation.ps1` provides `croot`, `cwt`, `cwb`, `cplugin`, and `ctests`. `UnrealBuild.ps1` provides
 `cbuild`, `csetup`, `cplay`, `cprojectfiles`, `integrate-feature`, and jobserver/UBT state helpers.
 After the user authorizes a ready feature, `integrate-feature` queues the exclusive

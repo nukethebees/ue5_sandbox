@@ -17,6 +17,7 @@ if ([string]::IsNullOrWhiteSpace($env:UE_ROOT)) {
 
 $navigation_path = Join-Path $PSScriptRoot 'PowerShell\Navigation.ps1'
 $unreal_build_path = Join-Path $PSScriptRoot 'PowerShell\UnrealBuild.ps1'
+$agent_task_install_path = Join-Path $PSScriptRoot 'PowerShell\InstallAgentTask.ps1'
 
 if (-not (Test-Path -LiteralPath $navigation_path -PathType Leaf)) {
     throw "Development command module was not found: $navigation_path"
@@ -26,8 +27,13 @@ if (-not (Test-Path -LiteralPath $unreal_build_path -PathType Leaf)) {
     throw "Unreal build command module was not found: $unreal_build_path"
 }
 
+if (-not (Test-Path -LiteralPath $agent_task_install_path -PathType Leaf)) {
+    throw "Development command module was not found: $agent_task_install_path"
+}
+
 . $navigation_path
 . $unreal_build_path
+. $agent_task_install_path
 
 $show_help = $Help -or ($RemainingArguments.Count -eq 1 -and $RemainingArguments[0] -eq '--help')
 
