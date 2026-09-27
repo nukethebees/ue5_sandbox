@@ -47,6 +47,7 @@ target_link_libraries(sandbox-imgui PUBLIC SDL3::SDL3-static)
 set_property(TARGET sandbox-imgui PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 
 foreach(google_test_target IN ITEMS gtest gtest_main)
+  target_link_libraries(${google_test_target} PRIVATE ioj::asan)
   set_property(TARGET ${google_test_target} PROPERTY
     MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
   target_compile_definitions(${google_test_target} PRIVATE _ITERATOR_DEBUG_LEVEL=0)
