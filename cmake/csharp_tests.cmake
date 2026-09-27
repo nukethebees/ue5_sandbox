@@ -1,3 +1,4 @@
+include("${CMAKE_CURRENT_LIST_DIR}/dotnet_host_tools.cmake")
 sandbox_find_dotnet()
 sandbox_dotnet_configuration(sandbox_csharp_configuration)
 sandbox_jobserver_command(csharp_build_command STANDARD build "Build C# test assemblies")

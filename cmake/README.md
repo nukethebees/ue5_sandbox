@@ -49,3 +49,41 @@ before running the mixed unit taxonomy. `debug-game-tests` retains `dev-core` as
 game/native integration gate when the changed dependency surface requires broad Unreal validation;
 it is not a universal gate for standalone tooling or native-only changes. `debug-game-full-tests`
 is the explicit broad suite and also includes standalone developer-tool tests.
+
+Standalone native policy follows `CMAKE_BUILD_TYPE`: presets own configuration, unity, ASAN,
+analysis, and profiling intent. `IOJ_ENABLE_PROFILING` defaults to `ON`, including native Release
+and benchmark configurations; `tracy-tools` explicitly disables instrumentation. Unreal presets
+map their configuration to the native build type, retain Unreal-specific Tracy selection, and
+stage native artifacts for UBT. Toolchains continue to own pinned compiler/SDK discovery and CRT
+selection. Public C++23 and ABI requirements are separate from private first-party warnings.
+Warnings-as-errors use `COMPILE_WARNING_AS_ERROR`; `CMAKE_COMPILE_WARNING_AS_ERROR=OFF` or
+CMake's `--compile-no-warning-as-error` can disable that enforcement.
+
+Use `cmake --workflow --preset native-lean` for focused core, memory, and simulation library work.
+It sets `IOJ_BUILD_DEVELOPER_TOOLS=OFF`, omitting developer applications, their C# test suite,
+Rust tooling (except when required by Unreal), and SDL/ImGui/file-dialog configuration. Normal
+developer presets retain these capabilities. Native tests, benchmarks, and generators remain
+available: Python, .NET, GoogleTest, Google Benchmark, and LLVM tools are still required by
+those consumers. The jobserver bootstrap targets remain available in lean mode.
+
+Built executables passed as arguments to wrappers must use `"$<TARGET_FILE:target>"` and retain
+appropriate dependencies. A bare target name is resolved by CMake only in command position.
+.NET host tools expose imported executable targets through the host-tool helper; MSBuild remains
+responsible for transitive incremental input tracking and is invoked on each requested build.
+CTest's C# freshness check still rejects stale assemblies without rebuilding them.
+
+The scheduling contract is shared `machine` access for C/C++ compiler and executable-linker
+launchers, ordinary native executable tests (`TEST_LAUNCHER`), .NET and Cargo builds/tests,
+generators, formatting, shader tests, and static analysis. Benchmark measurements retain exclusive
+`machine` and `benchmark` access; report plotting uses shared access. Unreal commands additionally
+claim their canonical engine resource. BenchmarkTools owns its own measurement claims.
+
+Intentional scheduling exceptions are short configure-time discovery/probes, file copies and
+fingerprints, and orchestration scripts whose child work already acquires claims (including
+nested CMake builds and the CMake regression suite). Jobserver integration/system tests use their
+own daemon fixtures; repair/install targets and their native prerequisites clear launchers so an
+existing working jobserver is never needed to repair it. When no installed jobserver exists,
+compiler/test launchers are omitted; explicit non-bootstrap work still requires installation.
+
+ASAN runtime staging is a build dependency of instrumented targets. Deleting the staged DLL is
+repaired by the next incremental build, including when the executable is otherwise up to date.
