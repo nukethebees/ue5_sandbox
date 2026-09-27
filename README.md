@@ -15,8 +15,9 @@ csetup
 ```
 
 The leading dot keeps the commands available in the current session. Run `dev-help` for the
-available navigation and build commands. Native C++ work normally starts with
-`cmake --workflow --preset native-tests`; use `cplay debug-game` for an Editor-ready
+available navigation and build commands. The maintainer runs `.\install-dev-tools.ps1` to install
+developer tools and ensures they are on PATH; agents begin new tasks with `agent-task start`.
+Use `cplay debug-game` for an Editor-ready
 configuration and `debug-game-unit-tests` only for explicit Unreal-enabled integration validation.
 Native presets set `IOJ_WITH_UNREAL=OFF`.
 

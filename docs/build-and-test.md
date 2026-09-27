@@ -75,12 +75,13 @@ Load `dev.ps1`, then begin each new task from anywhere in its Git worktree:
 agent-task start
 ```
 
-Install `agent-task` once using the [Rust tooling instructions](../tools/rust/README.md).
+The maintainer installs developer tools with `.\install-dev-tools.ps1` and ensures `agent-task`
+is on PATH; agents assume it is available. See the [Rust tooling instructions](../tools/rust/README.md).
 It removes only the worktree-root `out` directory, synchronizes and initializes recursive
 submodules, runs `python cmake/presets/generate.py`, then runs the `generate-code` and `task-start`
 CMake workflows. Each phase streams its output and a failure stops initialization immediately.
 
-`task-start` builds native tests (including the soak), native developer-tool tests, `agent-task`, all nine C#
+`task-start` builds native tests (including the soak), native developer-tool tests, all nine C#
 test assemblies, and generated-output consistency checks. It executes no tests and uses no
 Unreal resources. Binaries and C# intermediates are isolated under `out/build/native`.
 The `check-generated-code` build target owns the committed codegen fixture consistency check.

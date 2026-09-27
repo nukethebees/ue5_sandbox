@@ -17,25 +17,30 @@ regenerates CMake presets and code, then builds the `task-start` baseline. It st
 failure and streams subprocess output. Git, Python, CMake, and the repository build prerequisites
 must be available in the environment.
 
-Install or update it with the pinned Rust toolchain and an existing native configuration:
+From the repository root, install or update the developer tools:
 
 ```powershell
-cmake --build --preset native --target install-agent-task
+.\install-dev-tools.ps1
 ```
 
-For a fresh checkout without generated presets, bootstrap with:
+The script builds and installs only `agent-task` with Cargo, then uses the existing trusted
+AgentGit and canonical jobserver installers. It does not run the task-start baseline.
+The maintainer is responsible for installation and PATH setup; agents assume the tools are ready.
+Add `%LOCALAPPDATA%\NukeTheBees\agent-task\bin` to PATH.
+
+To install only `agent-task`:
 
 ```powershell
 Set-Location tools/rust
-cargo install --path crates/agent-task --root "$env:LOCALAPPDATA/NukeTheBees" --locked --force
+cargo install --path crates/agent-task --root "$env:LOCALAPPDATA\NukeTheBees\agent-task" --locked --force
 ```
 
-Add `%LOCALAPPDATA%\NukeTheBees\bin` to PATH. The installed executable lives outside `out`,
-so it can clear build output while running. For focused build and test validation:
+The installed executable lives outside `out`, so it can clear build output while running.
+Build and test it directly from `tools/rust`:
 
 ```powershell
-cmake --build --preset native --target agent-task
-ctest --test-dir out/build/native -L '^agent-task$' --output-on-failure
+cargo build --release --package agent-task --locked
+cargo test --package agent-task --locked
 ```
 
 The CLI tests use temporary Git repositories and small Python/CMake fixtures; they do not build

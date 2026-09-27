@@ -36,7 +36,7 @@ add_subdirectory(layout_planner)
 add_subdirectory(image_lab)
 
 add_custom_target(developer-tools-build
-  DEPENDS csharp-tests-build layout-planner-ui-tests image-lab-tests tracy-benchmark-compare-tests agent-task
+  DEPENDS csharp-tests-build layout-planner-ui-tests image-lab-tests tracy-benchmark-compare-tests
 )
 add_custom_target(task-start-build
   DEPENDS native-tests developer-tools-build
