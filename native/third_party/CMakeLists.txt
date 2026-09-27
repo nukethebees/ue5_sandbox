@@ -43,7 +43,7 @@ target_include_directories(sandbox-imgui SYSTEM PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/imgui"
   "${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends"
 )
-target_link_libraries(sandbox-imgui PUBLIC SDL3::SDL3-static)
+target_link_libraries(sandbox-imgui PUBLIC SDL3::SDL3-static ioj::asan)
 set_property(TARGET sandbox-imgui PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 
 foreach(google_test_target IN ITEMS gtest gtest_main)
@@ -74,6 +74,7 @@ set(BENCHMARK_INSTALL_TOOLS OFF CACHE BOOL "" FORCE)
 add_subdirectory(benchmark)
 
 foreach(google_benchmark_target IN ITEMS benchmark benchmark_main)
+  target_link_libraries(${google_benchmark_target} PRIVATE "$<BUILD_LOCAL_INTERFACE:ioj::asan>")
   set_property(TARGET ${google_benchmark_target} PROPERTY
     MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
   target_compile_definitions(${google_benchmark_target} PRIVATE _ITERATOR_DEBUG_LEVEL=0)

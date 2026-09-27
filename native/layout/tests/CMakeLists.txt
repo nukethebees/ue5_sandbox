@@ -39,6 +39,7 @@ add_custom_command(OUTPUT "${probe_source}"
   DEPENDS layout-probe-fixture-generator VERBATIM)
 add_executable(layout-exported-probe "${probe_source}")
 target_compile_features(layout-exported-probe PRIVATE cxx_std_17)
+target_link_libraries(layout-exported-probe PRIVATE ioj::asan)
 add_dependencies(native-layout-tests layout-exported-probe)
 add_test(NAME layout-exported-probe
   COMMAND "${CMAKE_COMMAND}" "-DPROBE=$<TARGET_FILE:layout-exported-probe>"

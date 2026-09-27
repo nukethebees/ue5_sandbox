@@ -14,7 +14,7 @@ target_sources(jobserver-client PRIVATE
 )
 target_include_directories(jobserver-client PUBLIC lib/include)
 target_link_libraries(jobserver-client
-  PUBLIC ioj::warnings_as_errors
+  PUBLIC ioj::warnings_as_errors ioj::asan
   PRIVATE nlohmann_json::nlohmann_json advapi32
 )
 target_compile_definitions(jobserver-client PRIVATE
@@ -32,6 +32,7 @@ target_include_directories(jobserver-scheduler PUBLIC
 )
 target_link_libraries(jobserver-scheduler PUBLIC
   ioj::warnings_as_errors
+  ioj::asan
   nlohmann_json::nlohmann_json
 )
 
@@ -90,7 +91,7 @@ target_compile_definitions(jobserverd PRIVATE
 
 add_executable(jobserver-test-helper)
 target_sources(jobserver-test-helper PRIVATE test_helpers/main.cpp)
-target_link_libraries(jobserver-test-helper PRIVATE ioj::warnings_as_errors)
+target_link_libraries(jobserver-test-helper PRIVATE ioj::warnings_as_errors ioj::asan)
 
 add_executable(jobserver-test-client)
 target_sources(jobserver-test-client PRIVATE test_helpers/client_main.cpp)

@@ -15,6 +15,7 @@ target_sources(sandbox-s7-third-party PRIVATE
   src/s7_sandbox.cpp
 )
 target_compile_features(sandbox-s7-third-party PRIVATE cxx_std_23)
+target_link_libraries(sandbox-s7-third-party PRIVATE ioj::asan)
 target_compile_definitions(sandbox-s7-third-party PRIVATE ${IOJ_S7_DEFINITIONS})
 target_include_directories(sandbox-s7-third-party PRIVATE ../ThirdParty/s7)
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")

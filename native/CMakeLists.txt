@@ -1,7 +1,3 @@
-if(IOJ_ENABLE_ASAN)
-  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-endif()
-
 add_library(sandbox_native_no_rtti INTERFACE)
 add_library(sandbox::native_no_rtti ALIAS sandbox_native_no_rtti)
 target_compile_options(sandbox_native_no_rtti INTERFACE
@@ -45,6 +41,7 @@ if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
   find_package(Threads REQUIRED)
   add_subdirectory(third_party/tracy EXCLUDE_FROM_ALL)
   set_property(TARGET TracyClient PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
+  target_link_libraries(TracyClient PRIVATE "$<BUILD_LOCAL_INTERFACE:ioj::asan>")
   target_compile_definitions(TracyClient PRIVATE _ITERATOR_DEBUG_LEVEL=0)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(TracyClient PRIVATE -Wno-format -Wno-unused-value)

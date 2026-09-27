@@ -28,6 +28,10 @@ option(IOJ_ENABLE_CLANG_TIDY "Run clang-tidy for first-party native targets" OFF
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_subdirectory(cmake)
 
+if(IOJ_ENABLE_ASAN)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+endif()
+
 set(IOJ_HAS_PYTHON ${Python3_Interpreter_FOUND})
 
 sandbox_add_dotnet_host_tool(
