@@ -1,3 +1,5 @@
+#include "sandbox_ismc_packing_avx512.h"
+
 #include "sandbox/core/sandbox_ismc_packing.h"
 
 #include <benchmark/benchmark.h>
@@ -14,6 +16,12 @@ enum class Operation {
     Quaternion,
     Transform,
     TransformBounds,
+};
+
+enum class Implementation {
+    Scalar,
+    Avx2,
+    Avx512,
 };
 
 struct Buffers {
@@ -37,11 +45,17 @@ struct Buffers {
     std::vector<PackedTransform> output;
 };
 
-template <Operation operation, bool Avx2, bool Coherent = false>
+template <Operation operation, Implementation implementation, bool Coherent = false>
 auto run(benchmark::State& state) -> void {
-    if constexpr (Avx2) {
+    if constexpr (implementation == Implementation::Avx2) {
         if (cpu_features::GetX86Info().features.avx2 == 0) {
             state.SkipWithMessage("AVX2 unavailable");
+            return;
+        }
+    }
+    if constexpr (implementation == Implementation::Avx512) {
+        if (!experiment::supports_avx512()) {
+            state.SkipWithMessage("AVX512 unavailable");
             return;
         }
     }
@@ -64,13 +78,22 @@ auto run(benchmark::State& state) -> void {
     for (auto _ : state) {
         static_cast<void>(_);
         if constexpr (operation == Operation::Position) {
-            constexpr auto kernel{Avx2 ? pack_positions_avx2 : pack_positions_scalar};
+            constexpr auto kernel{implementation == Implementation::Avx512
+                                      ? experiment::pack_positions_avx512
+                                  : implementation == Implementation::Avx2 ? pack_positions_avx2
+                                                                           : pack_positions_scalar};
             kernel(input.positions, parameters.position_root, buffers.output);
         } else if constexpr (operation == Operation::Quaternion) {
-            constexpr auto kernel{Avx2 ? pack_rotations_avx2 : pack_rotations_scalar};
+            constexpr auto kernel{implementation == Implementation::Avx512
+                                      ? experiment::pack_rotations_avx512
+                                  : implementation == Implementation::Avx2 ? pack_rotations_avx2
+                                                                           : pack_rotations_scalar};
             kernel(input.rotations, buffers.output);
         } else {
-            constexpr auto kernel{Avx2 ? pack_transforms_avx2 : pack_transforms_scalar};
+            constexpr auto kernel{
+                implementation == Implementation::Avx512 ? experiment::pack_transforms_avx512
+                : implementation == Implementation::Avx2 ? pack_transforms_avx2
+                                                         : pack_transforms_scalar};
             kernel(input,
                    parameters,
                    buffers.output,
@@ -84,11 +107,18 @@ auto run(benchmark::State& state) -> void {
 }
 
 template <Operation operation, bool Coherent = false>
-auto register_pair(char const* name) -> void {
-    for (auto const avx2 : {false, true}) {
-        auto const label{std::string{"ismc/"} + name + (avx2 ? "/avx2" : "/scalar")};
-        auto const function{avx2 ? run<operation, true, Coherent>
-                                 : run<operation, false, Coherent>};
+auto register_comparison(char const* name) -> void {
+    for (auto const implementation :
+         {Implementation::Scalar, Implementation::Avx2, Implementation::Avx512}) {
+        auto const suffix{implementation == Implementation::Avx512 ? "/avx512"
+                          : implementation == Implementation::Avx2 ? "/avx2"
+                                                                   : "/scalar"};
+        auto const label{std::string{"ismc/"} + name + suffix};
+        auto const function{implementation == Implementation::Avx512
+                                ? run<operation, Implementation::Avx512, Coherent>
+                            : implementation == Implementation::Avx2
+                                ? run<operation, Implementation::Avx2, Coherent>
+                                : run<operation, Implementation::Scalar, Coherent>};
         benchmark::RegisterBenchmark(label, function)
             ->Arg(64)
             ->Arg(256)
@@ -99,12 +129,12 @@ auto register_pair(char const* name) -> void {
     }
 }
 auto register_benchmarks() -> bool {
-    register_pair<Operation::Position>("position");
-    register_pair<Operation::Quaternion>("quaternion");
-    register_pair<Operation::Transform>("transform");
-    register_pair<Operation::TransformBounds>("transform_bounds");
-    register_pair<Operation::Transform, true>("transform_coherent");
-    register_pair<Operation::TransformBounds, true>("transform_bounds_coherent");
+    register_comparison<Operation::Position>("position");
+    register_comparison<Operation::Quaternion>("quaternion");
+    register_comparison<Operation::Transform>("transform");
+    register_comparison<Operation::TransformBounds>("transform_bounds");
+    register_comparison<Operation::Transform, true>("transform_coherent");
+    register_comparison<Operation::TransformBounds, true>("transform_bounds_coherent");
     return true;
 }
 auto const benchmarks_registered{register_benchmarks()};

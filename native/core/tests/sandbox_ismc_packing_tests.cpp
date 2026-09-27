@@ -1,3 +1,5 @@
+#include "sandbox_ismc_packing_avx512.h"
+
 #include "sandbox/core/sandbox_ismc_packing.h"
 
 #include <cpuinfo_x86.h>
@@ -37,7 +39,10 @@ struct Inputs {
     }
 };
 
-auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void {
+auto compare(Inputs const& inputs, PackingParameters const& parameters, bool avx512) -> void {
+    auto const pack_transforms{avx512 ? experiment::pack_transforms_avx512 : pack_transforms_avx2};
+    auto const pack_positions{avx512 ? experiment::pack_positions_avx512 : pack_positions_avx2};
+    auto const pack_rotations{avx512 ? experiment::pack_rotations_avx512 : pack_rotations_avx2};
     auto const count{inputs.positions.size()};
     std::vector<PackedTransform> scalar(count + 2);
     for (auto& packed : scalar) {
@@ -51,7 +56,7 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void 
     TransformBounds scalar_bounds{};
     TransformBounds simd_bounds{};
     pack_transforms_scalar(inputs.view(), parameters, scalar_output, &scalar_bounds);
-    pack_transforms_avx2(inputs.view(), parameters, simd_output, &simd_bounds);
+    pack_transforms(inputs.view(), parameters, simd_output, &simd_bounds);
     ASSERT_EQ(std::memcmp(scalar.data(), simd.data(), scalar.size() * sizeof(PackedTransform)), 0);
     EXPECT_EQ(scalar_bounds.valid, count != 0);
     EXPECT_EQ(simd_bounds.valid, scalar_bounds.valid);
@@ -59,15 +64,15 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void 
         EXPECT_EQ(scalar_bounds.minimum.Elements[axis], simd_bounds.minimum.Elements[axis]);
         EXPECT_EQ(scalar_bounds.maximum.Elements[axis], simd_bounds.maximum.Elements[axis]);
     }
-    pack_positions_avx2(inputs.view().positions, parameters.position_root, separate_output);
-    pack_rotations_avx2(inputs.view().rotations, separate_output);
+    pack_positions(inputs.view().positions, parameters.position_root, separate_output);
+    pack_rotations(inputs.view().rotations, separate_output);
     EXPECT_EQ(std::memcmp(scalar.data(), separate.data(), scalar.size() * sizeof(PackedTransform)),
               0);
     pack_positions_scalar(inputs.view().positions, parameters.position_root, separate_output);
     pack_rotations_scalar(inputs.view().rotations, separate_output);
     EXPECT_EQ(std::memcmp(scalar.data(), separate.data(), scalar.size() * sizeof(PackedTransform)),
               0);
-    pack_transforms_avx2(inputs.view(), parameters, simd_output);
+    pack_transforms(inputs.view(), parameters, simd_output, nullptr);
     EXPECT_EQ(std::memcmp(scalar.data(), simd.data(), scalar.size() * sizeof(PackedTransform)), 0);
     pack_transforms_scalar(inputs.view(), parameters, separate_output);
     EXPECT_EQ(std::memcmp(scalar.data(), separate.data(), scalar.size() * sizeof(PackedTransform)),
@@ -92,34 +97,38 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void 
         std::memcpy(
             bytes.data() + 2 + view.positions.size(), view.rotations.data(), view.rotations.size());
     }
-    pack_transforms_avx2(
-        {std::span{bytes}.subspan(1, view.positions.size()),
-         std::span{bytes}.subspan(2 + view.positions.size(), view.rotations.size())},
-        parameters,
-        simd_output);
+    pack_transforms({std::span{bytes}.subspan(1, view.positions.size()),
+                     std::span{bytes}.subspan(2 + view.positions.size(), view.rotations.size())},
+                    parameters,
+                    simd_output,
+                    nullptr);
     EXPECT_EQ(std::memcmp(scalar.data(), simd.data(), scalar.size() * sizeof(PackedTransform)), 0);
 }
 
-TEST(SandboxISMCBatchPacking, RandomBatchesAndEveryTailMatchExactly) {
-    if (cpu_features::GetX86Info().features.avx2 == 0) {
-        GTEST_SKIP() << "AVX2 unavailable";
+class SandboxISMCBatchPackingVariants : public ::testing::TestWithParam<bool> {};
+
+TEST_P(SandboxISMCBatchPackingVariants, RandomBatchesAndEveryTailMatchExactly) {
+    if (GetParam() ? !experiment::supports_avx512()
+                   : cpu_features::GetX86Info().features.avx2 == 0) {
+        GTEST_SKIP() << "Requested ISA unavailable";
     }
     PackingParameters const parameters{make_vector3f(262144, -262144, 1000000),
                                        make_vector3f(31, -57, 123),
                                        make_vector3f(100, 17, 300)};
-    for (std::size_t count{}; count <= 24; ++count) {
+    for (std::size_t count{}; count <= 48; ++count) {
         SCOPED_TRACE(count);
-        compare(Inputs{count}, parameters);
+        compare(Inputs{count}, parameters, GetParam());
     }
     for (auto const count : {64U, 256U, 2000U, 4000U, 40003U, 100001U}) {
         SCOPED_TRACE(count);
-        compare(Inputs{count}, parameters);
+        compare(Inputs{count}, parameters, GetParam());
     }
 }
 
-TEST(SandboxISMCBatchPacking, BoundaryPositionsAndQuaternionTiesAndSigns) {
-    if (cpu_features::GetX86Info().features.avx2 == 0) {
-        GTEST_SKIP() << "AVX2 unavailable";
+TEST_P(SandboxISMCBatchPackingVariants, BoundaryPositionsAndQuaternionTiesAndSigns) {
+    if (GetParam() ? !experiment::supports_avx512()
+                   : cpu_features::GetX86Info().features.avx2 == 0) {
+        GTEST_SKIP() << "Requested ISA unavailable";
     }
     Inputs inputs{0};
     for (auto const root : {0.0f, -262144.0f, 262144.0f}) {
@@ -150,11 +159,16 @@ TEST(SandboxISMCBatchPacking, BoundaryPositionsAndQuaternionTiesAndSigns) {
                 }
             }
         }
-        compare(inputs, {make_vector3f(root, root, root), {}, make_vector3f(7, 3, 19)});
+        compare(inputs, {make_vector3f(root, root, root), {}, make_vector3f(7, 3, 19)}, GetParam());
         inputs.positions.clear();
         inputs.rotations.clear();
     }
 }
+
+INSTANTIATE_TEST_SUITE_P(Isa,
+                         SandboxISMCBatchPackingVariants,
+                         ::testing::Bool(),
+                         [](auto const& info) { return info.param ? "Avx512" : "Avx2"; });
 
 TEST(SandboxISMCBatchPacking, DirectBasisMatchesIndependentlyRotatedCorners) {
     Inputs inputs{1000};
