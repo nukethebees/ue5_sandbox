@@ -24,6 +24,7 @@
 #include <SpaceGameRendering/SparkRendererComponent.h>
 
 #include <Dom/JsonObject.h>
+#include <Engine/StaticMesh.h>
 #include <Engine/World.h>
 #include <HAL/FileManager.h>
 #include <Misc/AutomationTest.h>
@@ -622,7 +623,13 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
         float spawn_time{};
     };
 
+    auto* const mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
+    if (!TestNotNull(TEXT("The engine cube mesh loads"), mesh)) {
+        return false;
+    }
+
     auto* const component{NewObject<USandboxISMCComponent>()};
+    component->set_static_mesh(*mesh);
     component->set_num_custom_data_floats(FLaserPresentation::n_custom_ismc_floats);
 
     auto data{make_battle()};
