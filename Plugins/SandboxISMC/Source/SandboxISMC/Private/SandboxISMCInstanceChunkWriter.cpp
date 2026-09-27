@@ -1,5 +1,15 @@
 #include "SandboxISMCInstanceChunkWriter.h"
 
+#include "sandbox/core/sandbox_ismc_packing.h"
+
+static_assert(sizeof(FVector3f) == 3 * sizeof(float));
+static_assert(offsetof(FVector3f, X) == 0 && offsetof(FVector3f, Y) == sizeof(float) &&
+              offsetof(FVector3f, Z) == 2 * sizeof(float));
+static_assert(sizeof(FQuat4f) == 4 * sizeof(float));
+static_assert(offsetof(FQuat4f, X) == 0 && offsetof(FQuat4f, Y) == sizeof(float) &&
+              offsetof(FQuat4f, Z) == 2 * sizeof(float) &&
+              offsetof(FQuat4f, W) == 3 * sizeof(float));
+
 auto FSandboxISMCInstanceChunkWriter::validate_transforms(TConstArrayView<FVector3f> positions,
                                                           TConstArrayView<FQuat4f> rotations) const
     -> bool {
@@ -79,44 +89,25 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
                                                      TConstArrayView<FQuat4f> rotations) -> void {
     check(validate_transforms(positions, rotations));
 
-    auto const count{instances_.Num()};
-    auto* const RESTRICT instances{instances_.GetData()};
-    auto const* RESTRICT position_data{positions.GetData()};
-    auto const* RESTRICT rotation_data{rotations.GetData()};
-    [[maybe_unused]] FVector3f batch_min{};
-    [[maybe_unused]] FVector3f batch_max{};
+    auto const count{static_cast<std::size_t>(instances_.Num())};
+    auto const native_vector{
+        [](FVector3f value) { return ml::make_vector3f(value.X, value.Y, value.Z); }};
+    ml::sandbox_ismc::TransformInput const input{
+        std::as_bytes(std::span{positions.GetData(), count}),
+        std::as_bytes(std::span{rotations.GetData(), count})};
+    ml::sandbox_ismc::PackingParameters const parameters{native_vector(position_root_),
+                                                         native_vector(mesh_bounds_origin_),
+                                                         native_vector(mesh_bounds_extent_)};
+    auto const output{std::span{instances_.GetData(), count}};
     if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
-        batch_min = FVector3f{FLT_MAX};
-        batch_max = FVector3f{-FLT_MAX};
-    }
-
-    for (int32 local_index{0}; local_index < count; ++local_index) {
-        auto const position{position_data[local_index]};
-        auto const rotation{rotation_data[local_index]};
-        auto& instance{instances[local_index]};
-        for (int32 axis{0}; axis < 3; ++axis) {
-            instance.position[axis] =
-                ml::sandbox_ismc::quantize_position_unchecked(position[axis], position_root_[axis]);
-        }
-        instance.rotation = ml::sandbox_ismc::pack_normalized_quat32(
-            rotation.X, rotation.Y, rotation.Z, rotation.W);
-
-        if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
-            auto const row_0{rotation.RotateVector(FVector3f::ForwardVector)};
-            auto const row_1{rotation.RotateVector(FVector3f::RightVector)};
-            auto const row_2{rotation.RotateVector(FVector3f::UpVector)};
-            auto const center{position + row_0 * mesh_bounds_origin_.X +
-                              row_1 * mesh_bounds_origin_.Y + row_2 * mesh_bounds_origin_.Z};
-            auto const extent{row_0.GetAbs() * mesh_bounds_extent_.X +
-                              row_1.GetAbs() * mesh_bounds_extent_.Y +
-                              row_2.GetAbs() * mesh_bounds_extent_.Z};
-            batch_min = batch_min.ComponentMin(center - extent);
-            batch_max = batch_max.ComponentMax(center + extent);
-        }
-    }
-
-    if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
-        bounds_ = count > 0 ? FBox3f{batch_min, batch_max} : FBox3f{ForceInit};
+        ml::sandbox_ismc::TransformBounds bounds{};
+        ml::sandbox_ismc::pack_transforms_avx2(input, parameters, output, &bounds);
+        bounds_ = bounds.valid
+                    ? FBox3f{FVector3f{bounds.minimum.X, bounds.minimum.Y, bounds.minimum.Z},
+                             FVector3f{bounds.maximum.X, bounds.maximum.Y, bounds.maximum.Z}}
+                    : FBox3f{ForceInit};
+    } else {
+        ml::sandbox_ismc::pack_transforms_avx2(input, parameters, output);
     }
 }
 

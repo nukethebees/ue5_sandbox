@@ -168,4 +168,69 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
             TEXT("The second row follows the first row contiguously"), custom_data[3], 0.4f);
         TestRunner->TestEqual(TEXT("The final channel is retained"), custom_data[5], 0.6f);
     }
+
+    TEST_METHOD(VectorBatchesAndTailPreservePackingAndUnrealBounds)
+    {
+        constexpr int32 count{17};
+        TArray<FSandboxISMCRenderInstance> packed;
+        packed.SetNum(count);
+        TArray<FVector3f> positions;
+        TArray<FQuat4f> rotations;
+        FVector3f const origin{13, -27, 9};
+        FVector3f const extent{70, 30, 12};
+        FBox3f expected{ForceInit};
+        for (int32 index{}; index < count; ++index) {
+            auto const value{static_cast<float>(index)};
+            positions.Add(FVector3f{value * 17 - 100, value * -23 + 200, value * 11 - 300});
+            rotations.Add(FRotator3f{value * 13, value * -29, value * 37}.Quaternion());
+            packed[index].reserved = 0xbeef;
+            auto const rotation{rotations[index]};
+            auto const x{rotation.RotateVector(FVector3f::ForwardVector)};
+            auto const y{rotation.RotateVector(FVector3f::RightVector)};
+            auto const z{rotation.RotateVector(FVector3f::UpVector)};
+            auto const center{positions[index] + x * origin.X + y * origin.Y + z * origin.Z};
+            auto const half_extent{x.GetAbs() * extent.X + y.GetAbs() * extent.Y +
+                                   z.GetAbs() * extent.Z};
+            expected += FBox3f{center - half_extent, center + half_extent};
+        }
+        FSandboxISMCInstanceChunkWriter writer{packed,
+                                               {},
+                                               0,
+                                               0,
+                                               FBox3f{FVector3f{-1000}, FVector3f{1000}},
+                                               FVector3f::ZeroVector,
+                                               origin,
+                                               extent};
+        writer.set_transforms<ESandboxISMCBoundsMode::Calculate>(positions, rotations);
+        test_vector(*TestRunner,
+                    TEXT("SIMD minimum matches rotated Unreal basis"),
+                    writer.bounds().Min,
+                    expected.Min);
+        test_vector(*TestRunner,
+                    TEXT("SIMD maximum matches rotated Unreal basis"),
+                    writer.bounds().Max,
+                    expected.Max);
+        writer.set_transforms<ESandboxISMCBoundsMode::Supplied>(positions, rotations);
+        test_vector(*TestRunner,
+                    TEXT("Supplied mode leaves bounds unchanged"),
+                    writer.bounds().Min,
+                    expected.Min);
+        for (int32 index{}; index < count; ++index) {
+            auto const rotation{rotations[index]};
+            TestRunner->TestEqual(TEXT("Native input view preserves quaternion components"),
+                                  packed[index].rotation.bits,
+                                  ml::sandbox_ismc::pack_normalized_quat32(
+                                      rotation.X, rotation.Y, rotation.Z, rotation.W)
+                                      .bits);
+            TestRunner->TestEqual(TEXT("Reserved halfword is untouched"),
+                                  packed[index].reserved,
+                                  static_cast<uint16>(0xbeef));
+            for (int32 axis{}; axis < 3; ++axis) {
+                TestRunner->TestEqual(
+                    TEXT("Native input view preserves position components"),
+                    packed[index].position[axis],
+                    ml::sandbox_ismc::quantize_position_unchecked(positions[index][axis], 0));
+            }
+        }
+    }
 };
