@@ -158,6 +158,8 @@ If a new issue invalidates previous validation or requires additional builds/tes
 
 # Testing
 
+* Do not run AddressSanitizer (ASAN) builds or tests unless the user explicitly requests them.
+  ASAN is not a default validation, readiness, or integration requirement.
 * Only create tests when explicitly asked.
 * Use CQTest/Unreal automation tests for code with engine/editor dependencies.
 * Register Unreal Automation benchmarks under the top-level `SandboxBenchmarks` category.
