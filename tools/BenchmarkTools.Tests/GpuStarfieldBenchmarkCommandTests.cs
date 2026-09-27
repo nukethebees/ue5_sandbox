@@ -52,8 +52,8 @@ public sealed class GpuStarfieldBenchmarkCommandTests
     [TestMethod]
     public void ParseCsv_handles_quoted_fields_and_rejects_unterminated_fields()
     {
-        CollectionAssert.AreEqual(new[] { "plain", "quoted,value", "escaped\"quote" }, GpuStarfieldBenchmarkCommand.ParseCsv("plain,\"quoted,value\",\"escaped\"\"quote\"").ToArray());
-        Assert.ThrowsException<BenchmarkToolException>(() => GpuStarfieldBenchmarkCommand.ParseCsv("plain,\"unterminated"));
+        CollectionAssert.AreEqual(new[] { "plain", "quoted,value", "escaped\"quote" }, BenchmarkCommandSupport.ParseCsv("plain,\"quoted,value\",\"escaped\"\"quote\"").ToArray());
+        Assert.ThrowsException<BenchmarkToolException>(() => BenchmarkCommandSupport.ParseCsv("plain,\"unterminated"));
     }
 
     [TestMethod]

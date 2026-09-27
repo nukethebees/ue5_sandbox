@@ -140,6 +140,32 @@ internal static class BenchmarkCommandSupport
         }
     }
 
+    internal static List<string> ParseCsv(string line)
+    {
+        var result = new List<string>();
+        var builder = new StringBuilder();
+        var quoted = false;
+        for (var index = 0; index < line.Length; ++index)
+        {
+            var character = line[index];
+            if (character == '"' && quoted && index + 1 < line.Length && line[index + 1] == '"')
+            {
+                builder.Append(character);
+                ++index;
+            }
+            else if (character == '"') quoted = !quoted;
+            else if (character == ',' && !quoted)
+            {
+                result.Add(builder.ToString());
+                builder.Clear();
+            }
+            else builder.Append(character);
+        }
+        if (quoted) throw new BenchmarkToolException("Benchmark CSV contains an unterminated quoted field.");
+        result.Add(builder.ToString());
+        return result;
+    }
+
     private static string EscapeCsv(string value)
     {
         return value.IndexOfAny([',', '"', '\r', '\n']) < 0 ? value : $"\"{value.Replace("\"", "\"\"")}\"";

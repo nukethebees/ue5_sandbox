@@ -113,6 +113,48 @@ public sealed class BenchmarkInfrastructureTests
         Assert.ThrowsException<BenchmarkToolException>(() => RevisionComparisonSession.ValidateOwnedPath(Path.Combine(directory.Root, ".local", "worktrees", "branch"), parent));
     }
 
+    [TestMethod]
+    public async Task Packaged_harness_overlay_applies_only_to_owned_baseline_and_preserves_candidate()
+    {
+        using var directory = new BenchmarkTestDirectory();
+        var repository = RepositoryPaths.Find(AppContext.BaseDirectory);
+        var paths = new[]
+        {
+            "Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkActor.cpp",
+            "Plugins/SandboxISMC/Source/SandboxISMCLab/Public/SandboxISMCBenchmarkActor.h",
+            "Plugins/SandboxISMC/Source/SandboxISMCLab/SandboxISMCLab.Build.cs",
+        };
+        foreach (var path in paths)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(directory.Root, path))!);
+            File.Copy(Path.Combine(repository.Root, path), Path.Combine(directory.Root, path));
+        }
+        var app = new BenchmarkToolsApplication(new ProcessRunner(), new TestJobserver(), new TestEnvironment(), TextWriter.Null, TextWriter.Null, "unused");
+        await Git("init", "--initial-branch=candidate");
+        await Git("config", "user.name", "Benchmark test");
+        await Git("config", "user.email", "benchmark@example.invalid");
+        File.WriteAllText(Path.Combine(directory.Root, ".gitignore"), ".local/\n");
+        var patch = Path.Combine(repository.Root, "tools", "BenchmarkTools", "SandboxIsmcHarnessV1.patch");
+        await Git("apply", "--reverse", "--", patch);
+        await Git("add", ".");
+        await Git("commit", "-m", "Historical harness fixture");
+        await Git("apply", "--", patch);
+        var before = await Git("diff", "HEAD", "--binary");
+        var run = BenchmarkRunContext.Create(new RepositoryPaths(directory.Root), "overlay-test");
+        await using (var session = await RevisionComparisonSession.CreateAsync(app, new RepositoryPaths(directory.Root), "HEAD", run.Manifest.RunId, null, false, default))
+        {
+            await SandboxIsmcCompatibility.ApplyAsync(app, session, "sandbox-ismc-v1", run, default);
+            SandboxIsmcBenchmarkCommand.RequireProtocol(session.BaselineRoot);
+            foreach (var path in paths)
+                Assert.AreEqual(File.ReadAllText(Path.Combine(directory.Root, path)), File.ReadAllText(Path.Combine(session.BaselineRoot, path)));
+            var changed = await BenchmarkGit.TextAsync(app, session.BaselineRoot, ["diff", "--name-only"], default);
+            CollectionAssert.AreEquivalent(paths, changed.Split('\n').Select(line => line.Trim()).ToArray());
+        }
+        Assert.AreEqual(before, await Git("diff", "HEAD", "--binary"));
+        Assert.IsTrue(File.Exists(run.Artifact("compatibility.json")));
+        async Task<string> Git(params string[] args) => await BenchmarkGit.TextAsync(app, directory.Root, args, default);
+    }
+
     internal static BenchmarkMetric Metric(double value, string unit = "ms", string renderer = "custom", string metric = "frame") =>
         new(new MetricIdentity(metric, unit, new Dictionary<string, string> { ["renderer"] = renderer }), new MetricSummary(5, value, value, value, value));
     private static Dictionary<string, string> Conditions() => new() { ["viewport"] = "1280x720" };
