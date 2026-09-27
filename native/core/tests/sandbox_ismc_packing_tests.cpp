@@ -25,6 +25,11 @@ struct Inputs {
             auto const q{
                 HMM_NormQ(HMM_Q(normal(random), normal(random), normal(random), normal(random)))};
             rotations[index] = {q.X, q.Y, q.Z, q.W};
+            if (index % 11 == 0) {
+                for (auto& component : rotations[index]) {
+                    component *= index % 2 == 0 ? 1.00002f : 0.99998f;
+                }
+            }
         }
     }
     auto view() const -> TransformInput {
@@ -64,7 +69,11 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void 
               0);
     pack_transforms_avx2(inputs.view(), parameters, simd_output);
     EXPECT_EQ(std::memcmp(scalar.data(), simd.data(), scalar.size() * sizeof(PackedTransform)), 0);
+    pack_transforms_scalar(inputs.view(), parameters, separate_output);
+    EXPECT_EQ(std::memcmp(scalar.data(), separate.data(), scalar.size() * sizeof(PackedTransform)),
+              0);
     for (std::size_t index{}; index < count; ++index) {
+        EXPECT_EQ(scalar_output[index].reserved, 0xbeef);
         auto const& q{inputs.rotations[index]};
         EXPECT_EQ(scalar_output[index].rotation.bits,
                   pack_normalized_quat32(q[0], q[1], q[2], q[3]).bits);

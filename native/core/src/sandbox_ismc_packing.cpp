@@ -10,7 +10,7 @@ namespace scalar_detail {
 template <std::size_t Components>
 auto load(std::span<std::byte const> bytes, std::size_t index) noexcept
     -> std::array<float, Components> {
-    std::array<float, Components> result;
+    std::array<float, Components> result{};
     std::memcpy(result.data(), bytes.data() + index * sizeof(result), sizeof(result));
     return result;
 }
