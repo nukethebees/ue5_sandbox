@@ -96,10 +96,14 @@ Upload and staging metrics derive byte counts from the actual instance size.
 
 Every non-empty submission supplies a finite, ordered **position domain**, separately from optional
 **render bounds**. The domain must contain every submitted position. Its centre is rounded to the
-fixed 16-UU grid to choose the snapshot root. Each offset is `floor((position-root)/16 + 0.5)`;
-ties go toward positive infinity. Supported offsets are -32767 through +32767, giving +/-524272 UU
-(5.24272 km) per axis and at most 8 UU (8 cm) rounding error per axis. The vector error is at most
-`8*sqrt(3)` UU. Invalid domains terminate with diagnostics; a batch validation pass inside `check()`
+fixed 16-UU grid to choose the snapshot root. Each offset uses float subtraction and multiplication
+by `1.0f/16.0f`, truncates toward zero, then increments for a fraction `>= 0.5f` or decrements for
+one `< -0.5f`. Ties go toward positive infinity. Float evaluation may move a position essentially
+on a half-way boundary into the adjacent bucket; preserving the former double-specific result is
+not part of the rendering contract. Supported offsets are -32767 through +32767, giving +/-524272 UU
+(5.24272 km) per axis. Quantization error is at most 8 UU (8 cm) per axis plus float evaluation
+error; snapshot bounds already include a magnitude-dependent float margin.
+Invalid domains terminate with diagnostics; a batch validation pass inside `check()`
 checks positions and rotations before packing. Builds without checks assume valid input;
 there is no clamping, adaptive precision or first-instance fallback. Empty submissions ignore the domain.
 
@@ -337,3 +341,52 @@ the matched benchmark comparison. Formatting and the final scope/history diff we
 No sanitizer run was requested. Pixel tests found no CPU/GPU decode mismatch; no subjective
 production visual-quality claim is made. Existing render-only restrictions and unsupported negative
 scale remain unchanged; normalized quaternion input is now an explicit producer contract.
+
+## Native AVX2 packing (2026-09-27)
+
+The chunk writer now adapts its Unreal arrays to `native/core`'s ISMC packing API using byte spans.
+Compile-time size/member-offset checks pin the production input layout: separate AoS arrays of
+12-byte XYZ positions and 16-byte XYZW rotations, writing the existing 12-byte packed transforms.
+There is no batch conversion or allocation. The reserved output halfword remains untouched.
+
+The native scalar reference and AVX2 kernels provide position-only, quaternion-only and fused
+transform packing, with optional source bounds. Bounds derive the quaternion basis directly and
+compute `position + R * origin` and `abs(R) * extent`. AVX2 processes eight instances, accumulates
+eight lanes of bounds across the batch, reduces once, and handles the tail with the scalar kernel.
+Contraction is disabled for both translation units so packed results and numerical bounds agree.
+The plugin already requires AVX2; no additional runtime dispatch framework was introduced.
+The scalar entry points remain available as an independent reference/fallback.
+
+Google Benchmark measurements on a Ryzen 9 9950X3D, Windows, clang-cl 24 Release, used five
+randomly interleaved repetitions with a 0.05-second minimum under the exclusive jobserver benchmark
+claim. Setup/allocation was outside timing. All cases retained production AoS reads and writes;
+these are complete packing kernels, not an ideal SoA arithmetic experiment. Median microseconds:
+
+| Instances | Full scalar | Full AVX2 | With bounds scalar | With bounds AVX2 |
+| ---: | ---: | ---: | ---: | ---: |
+| 64 | 0.377 | 0.120 | 0.836 | 0.184 |
+| 256 | 1.397 | 0.408 | 3.678 | 0.638 |
+| 2,000 | 11.567 | 3.062 | 25.817 | 5.150 |
+| 4,000 | 24.381 | 5.832 | 54.662 | 8.718 |
+| 40,000 | 500.053 | 63.039 | 704.573 | 105.430 |
+
+Position-only speedups were 2.52–3.22x; quaternion-only speedups were 5.42–12.75x.
+The primary cases use broadly distributed normalized rotations. Additional coherent-rotation
+cases keep the largest quaternion component predictable: full packing still improved 3.22–4.51x,
+and packing with bounds 4.94–5.78x. This supports adopting AVX2 for the writer's packing operation.
+Individual timings show scheduling/clock variation; use the broad repeated gains rather than
+treating the last decimal as stable. Validation, staging/publication, uploads and GPU work are
+outside this benchmark. No whole-frame improvement is inferred from these kernel measurements.
+
+Reproduce with `cmake --preset native-benchmark`, then
+`cmake --build out/build/native-benchmark --target native-core-ismc-benchmark-report`.
+Raw samples are retained locally in `.local/benchmarks/ismc/packing-results.json`.
+AoS deinterleaving and the partial stores into 12-byte output records remain costs; changing that
+layout is a future experiment, not a measured bottleneck conclusion or part of this change.
+
+Validation passed native core tests and its compile contract, the DebugGame Editor build, and
+focused ISMC/laser-presentation Unreal tests. Random batches through 100,001 instances, all tails,
+boundary positions, quaternion ties/signs, normalization tolerance, unaligned input and padding
+preservation matched the scalar reference. Bounds matched exactly between scalar and AVX2 and
+were separately checked against rotated corners and Unreal's original rotated-basis formulation.
+Static analysis was skipped at the maintainer's request; ASAN was not requested.
