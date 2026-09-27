@@ -49,20 +49,26 @@ agent-task git reset --hard dev
 ```
 
 Supported commands are `status`, `add`, `commit`, `restore`, `reset`, `clean`, `rm`, `mv`,
-`stash`, `switch`, `branch`, `merge`, `rebase`, `cherry-pick`, `revert`, and `worktree`.
+`switch`, `branch`, `merge`, `rebase`, `cherry-pick`, `revert`, and `worktree`.
 Run `agent-task git <command> --help` for the exact options. Unknown commands, options and
 abbreviated long options are rejected. There is no `checkout`, remote transfer, config, plumbing,
-force-create, explicit-branch rebase, or general worktree administration interface. Stash operations
-address the latest stash; cherry-pick/revert accept individual commits, not revision ranges.
+force-create, explicit-branch rebase, or general worktree administration interface.
+Cherry-pick/revert accept individual commits, not revision ranges. Git stash is intentionally
+unsupported because it is repository-global. To park work, create a temporary local feature branch
+and commit the WIP there; creating a branch alone does not preserve dirty files. Do not use Git stash.
 Use separately permitted raw read-only Git for inspection such as `git diff` and `git log`.
 
 Typed commands construct fresh Git arguments without a shell; pathspecs and messages retain their
 literal values and Git inherits the terminal streams. Local `dev`, `main`, `master`, and branches
 checked out by other registered worktrees may be revision inputs but cannot be mutation or switch
-targets. Ownership comes from `git worktree list --porcelain -z`, with no separate registry.
-A protected current worktree permits only status, branch listing, stash listing and worktree listing.
-Worktree add/remove destinations must be children of the current worktree root, including when
-run from nested directories. Creation requires `-b <feature-branch>`; removal never forces cleanup.
+targets. Protected names ignore ASCII case; ownership comparisons also ignore ASCII case on Windows.
+Ownership comes from `git worktree list --porcelain -z`, with no separate registry.
+A protected current worktree permits only status, branch listing and worktree listing.
+Use `worktree add -b <branch> [start-point]` and `worktree remove <branch>`. AgentTask owns the path:
+`.local/worktrees/branch-<escaped-branch>` beneath the current worktree root. Lowercase ASCII letters,
+digits, hyphens and underscores stay literal; other UTF-8 bytes use `%xx` escapes. Removal checks the
+registered path matches that location. Symlink/junction redirection is rejected, and creation requires
+the existing `.local/` ignore policy so a parent `add -A` cannot stage the child. No force removal.
 Rebases affect the current branch and explicitly disable updates to other refs. Git owns locks and
 recovery state. This is a cooperative guardrail: report unsupported operations rather than bypassing
 it, and add support only when a real workflow requires it. Raw mutations require an explicit
@@ -71,8 +77,8 @@ maintainer exception. See [AGENTS.md](../../AGENTS.md).
 After validation and explicit user authorization, use `integrate-feature` from `dev.ps1`.
 It queues the exclusive `integration/dev` jobserver lease and invokes `agent-task integrate`.
 The privileged transaction requires clean feature/dev worktrees, rebases onto pinned dev with
-autostash, update-refs and rebase-merges explicitly disabled, rechecks the integration lease,
-runs cheap Git sanity checks, constructs a merge commit and advances dev with compare-and-swap.
+autostash, update-refs and rebase-merges explicitly disabled, runs cheap Git sanity checks,
+constructs a merge commit, rechecks the integration lease and advances dev with compare-and-swap.
 It refreshes dev, returns persistent devN worktrees home and safely deletes the feature branch.
 Use `integrate-feature -KeepBranch` to retain it. Worktrees without a devN home detach at the
 integrated feature tip before deletion. A failed final rebase is aborted; resolve normally outside

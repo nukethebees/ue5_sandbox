@@ -8,7 +8,7 @@ mod git_cli;
 mod integrate;
 mod workspace;
 
-const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  git <command>          Run supported feature Git operations (git --help)\n  integrate [--keep-branch]  Privileged dev transaction; use authorized integrate-feature";
+const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  git <command>          Run supported feature Git operations (agent-task git --help)\n  integrate [--keep-branch]  Privileged dev transaction; use authorized integrate-feature";
 
 fn worktree_root() -> Result<PathBuf, String> {
     let output = Command::new("git")

@@ -49,11 +49,6 @@ pub enum Operation {
         source: OsString,
         destination: OsString,
     },
-    /// Save or restore the latest stash.
-    Stash {
-        #[command(subcommand)]
-        action: Stash,
-    },
     /// Switch to a local feature branch, create one, or detach. '-' means previous branch.
     Switch(Switch),
     /// List/create branches, delete an unowned feature branch, or rename the current branch.
@@ -66,7 +61,7 @@ pub enum Operation {
     CherryPick(CherryPick),
     /// Revert individual commits on the current feature branch, or recover.
     Revert(Revert),
-    /// List worktrees, or create/remove child worktrees inside this workspace.
+    /// List worktrees, or create/remove branch-named worktrees under .local/worktrees/.
     Worktree {
         #[command(subcommand)]
         action: Worktree,
@@ -131,18 +126,6 @@ pub struct Clean {
     pub force: bool,
     #[arg(short = 'd', requires = "force", conflicts_with = "dry_run")]
     pub directories: bool,
-}
-
-#[derive(Subcommand)]
-pub enum Stash {
-    Push {
-        #[arg(short = 'm', allow_hyphen_values = true)]
-        message: Option<OsString>,
-    },
-    Pop,
-    Apply,
-    List,
-    Drop,
 }
 
 #[derive(Args)]
@@ -243,13 +226,14 @@ pub struct Revert {
 #[derive(Subcommand)]
 pub enum Worktree {
     List,
+    /// Create a feature branch in .local/worktrees/ using an escaped branch name.
     Add {
         #[arg(short = 'b')]
         branch: String,
-        path: OsString,
         start: Option<String>,
     },
+    /// Remove the registered branch's worktree only at its AgentTask-managed location.
     Remove {
-        path: OsString,
+        branch: String,
     },
 }

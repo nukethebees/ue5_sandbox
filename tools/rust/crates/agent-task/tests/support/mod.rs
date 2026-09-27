@@ -27,6 +27,7 @@ impl Repo {
         repo.raw(&repo.dev, &["config", "core.autocrlf", "false"]);
         repo.raw(&repo.dev, &["config", "commit.gpgsign", "false"]);
         fs::write(repo.dev.join("file.txt"), "base\n").unwrap();
+        fs::write(repo.dev.join(".gitignore"), "/.local/\n").unwrap();
         repo.raw(&repo.dev, &["add", "."]);
         repo.raw(&repo.dev, &["commit", "-qm", "base"]);
         for name in ["main", "master", "dev1"] {

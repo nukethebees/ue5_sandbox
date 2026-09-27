@@ -25,10 +25,18 @@ pub fn root(cwd: &Path) -> Result<PathBuf, String> {
 }
 
 pub fn protected(name: &str) -> bool {
-    matches!(
-        name.strip_prefix("refs/heads/").unwrap_or(name),
-        "dev" | "main" | "master"
-    )
+    let name = name.strip_prefix("refs/heads/").unwrap_or(name);
+    ["dev", "main", "master"]
+        .iter()
+        .any(|p| name.eq_ignore_ascii_case(p))
+}
+
+pub fn same_branch(left: &str, right: &str) -> bool {
+    if cfg!(windows) {
+        left.eq_ignore_ascii_case(right)
+    } else {
+        left == right
+    }
 }
 
 pub fn branch(root: &Path) -> Result<String, String> {
@@ -67,7 +75,7 @@ pub fn check_branch_target(name: &str, root: &Path, worktrees: &[Worktree]) -> R
     let root = resolved(root)?;
     if let Some(owner) = worktrees
         .iter()
-        .find(|w| w.branch.as_deref() == Some(name) && w.path != root)
+        .find(|w| w.branch.as_deref().is_some_and(|b| same_branch(b, name)) && w.path != root)
     {
         return Err(format!(
             "Branch '{name}' belongs to another worktree ({}). Use your own feature branch; ask the maintainer to coordinate changes there.",
@@ -75,6 +83,41 @@ pub fn check_branch_target(name: &str, root: &Path, worktrees: &[Worktree]) -> R
         ));
     }
     Ok(())
+}
+
+pub fn managed_worktree_path(root: &Path, branch: &str) -> Result<PathBuf, String> {
+    // Escape bytes, including uppercase, so distinct names cannot collide on Windows.
+    // The prefix also avoids device names such as CON; no separators or dots survive.
+    let mut name = String::from("branch-");
+    for byte in branch.bytes() {
+        if byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'-' | b'_') {
+            name.push(char::from(byte));
+        } else {
+            name.push_str(&format!("%{byte:02x}"));
+        }
+    }
+    let relative = Path::new(".local/worktrees").join(name);
+    let destination = root.join(&relative);
+    let expected = root
+        .canonicalize()
+        .map_err(|e| e.to_string())?
+        .join(relative);
+    if resolved(&destination)? != expected {
+        return Err("AgentTask worktrees must remain beneath this workspace's .local/worktrees/ without symlink or junction redirection. Ask the maintainer to fix that location.".into());
+    }
+    Ok(destination)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn branch_comparison_follows_platform_semantics() {
+        assert!(same_branch("feature/topic", "feature/topic"));
+        assert_eq!(same_branch("Feature/Topic", "feature/topic"), cfg!(windows));
+        assert!(!same_branch("feature/a", "feature/b"));
+    }
 }
 
 pub fn check_environment() -> Result<(), String> {

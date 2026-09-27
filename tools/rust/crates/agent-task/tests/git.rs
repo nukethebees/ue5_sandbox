@@ -28,13 +28,16 @@ fn grammar_is_closed_and_help_is_available_without_a_repository() {
         vec!["branch", "-m", "old", "new"],
         vec!["worktree", "move", "a", "b"],
         vec!["worktree", "add", "child", "dev"],
+        vec!["worktree", "add", "-b", "child", "../outside", "dev"],
+        vec!["worktree", "add", "-b", "child", "--path", "outside"],
+        vec!["worktree", "prune"],
         vec!["worktree", "remove", "--force", "child"],
         vec!["clean", "-fx"],
         vec!["clean", "-nd"],
         vec!["commit", "-a", "-m", "message"],
         vec!["commit", "--author", "someone"],
         vec!["add", "--unknown"],
-        vec!["stash", "pop", "stash@{1}"],
+        vec!["stash"],
         vec!["reset", "--hard", "--soft", "dev"],
         vec!["merge", "--abort", "--continue"],
         vec!["-C", ".", "status"],
@@ -63,7 +66,6 @@ fn grammar_is_closed_and_help_is_available_without_a_repository() {
         "clean",
         "rm",
         "mv",
-        "stash",
         "switch",
         "branch",
         "merge",
@@ -135,7 +137,7 @@ fn feature_commit_amend_reset_clean_and_branch_lifecycle() {
 }
 
 #[test]
-fn paths_messages_restore_rm_mv_and_stash_preserve_values() {
+fn paths_messages_restore_rm_and_mv_preserve_values() {
     let repo = Repo::new();
     let path = "space ' quote λ.txt";
     let message = "--message with spaces, \"quotes\", λ\nand a second line";
@@ -151,18 +153,6 @@ fn paths_messages_restore_rm_mv_and_stash_preserve_values() {
     repo.ok(&["restore", "--source", "HEAD", "--", path]);
     assert!(repo.feature.join(path).exists());
     repo.ok(&["clean", "-f"]);
-    fs::write(repo.feature.join(path), "stash me\n").unwrap();
-    repo.ok(&["stash", "push", "-m", message]);
-    repo.ok(&["stash", "list"]);
-    repo.ok(&["stash", "apply"]);
-    assert_eq!(
-        fs::read_to_string(repo.feature.join(path)).unwrap(),
-        "stash me\n"
-    );
-    repo.ok(&["restore", path]);
-    repo.ok(&["stash", "pop"]);
-    repo.ok(&["stash", "push"]);
-    repo.ok(&["stash", "drop"]);
     repo.ok(&["rm", "--cached", "--", path]);
     assert!(repo.feature.join(path).exists());
     repo.ok(&["restore", "--staged", path]);
@@ -173,7 +163,7 @@ fn paths_messages_restore_rm_mv_and_stash_preserve_values() {
 #[test]
 fn protected_refs_are_inputs_only() {
     let repo = Repo::new();
-    for name in ["dev", "main", "master"] {
+    for name in ["dev", "main", "master", "Dev", "DEV", "Main", "MASTER"] {
         for args in [
             vec!["switch", name],
             vec!["switch", "-c", name],
@@ -181,7 +171,7 @@ fn protected_refs_are_inputs_only() {
             vec!["branch", "-m", name],
             vec!["branch", "-d", name],
             vec!["branch", "-D", name],
-            vec!["worktree", "add", "-b", name, "child"],
+            vec!["worktree", "add", "-b", name, "dev"],
         ] {
             repo.blocked(&args);
         }
@@ -216,6 +206,7 @@ fn foreign_branches_cannot_be_attached_deleted_or_renamed() {
         vec!["branch", "-d", "other"],
         vec!["branch", "-m", "other"],
         vec!["branch", "other"],
+        vec!["worktree", "add", "-b", "other"],
     ] {
         repo.blocked(&args);
     }
@@ -276,19 +267,100 @@ fn rebase_conflict_recovery_continues_aborts_and_skips() {
 }
 
 #[test]
-fn worktrees_are_limited_to_child_destinations() {
+fn worktrees_are_managed_by_branch_under_ignored_local_directory() {
     let repo = Repo::new();
     repo.ok(&["worktree", "list"]);
-    repo.ok(&["worktree", "add", "-b", "child-feature", "child λ", "dev"]);
+    let child = repo.feature.join(".local/worktrees/branch-child%2f%ce%bb");
+    // Invocation from a nested directory still uses the worktree root.
+    fs::create_dir(repo.feature.join("nested")).unwrap();
+    let output = repo
+        .tool()
+        .current_dir(repo.feature.join("nested"))
+        .args(["git", "worktree", "add", "-b", "child/λ", "dev"])
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+    assert_eq!(repo.raw(&child, &["branch", "--show-current"]), "child/λ");
     assert_eq!(
-        repo.raw(&repo.feature.join("child λ"), &["branch", "--show-current"]),
-        "child-feature"
+        repo.raw(&child, &["rev-parse", "HEAD"]),
+        repo.raw(&repo.dev, &["rev-parse", "HEAD"])
     );
-    repo.ok(&["worktree", "remove", "child λ"]);
-    assert!(!repo.feature.join("child λ").exists());
-    repo.blocked(&["worktree", "add", "-b", "outside", "../outside", "dev"]);
-    repo.blocked(&["worktree", "remove", "../dev"]);
-    repo.blocked(&["worktree", "remove", "."]);
+    repo.ok(&["add", "-A"]);
+    assert!(
+        repo.raw(&repo.feature, &["diff", "--cached", "--name-only"])
+            .is_empty()
+    );
+    repo.ok(&["worktree", "remove", "child/λ"]);
+    assert!(!child.exists());
+    // Escaping '/' must not collide with a branch containing the literal escape text.
+    repo.ok(&["worktree", "add", "-b", "child%2fλ"]);
+    assert!(
+        repo.feature
+            .join(".local/worktrees/branch-child%252f%ce%bb")
+            .exists()
+    );
+    repo.ok(&["worktree", "remove", "child%2fλ"]);
+}
+
+#[test]
+fn removal_rejects_external_and_unmanaged_worktrees() {
+    let repo = Repo::new();
+    for (name, path) in [
+        ("external", repo.root.join("external")),
+        ("source-child", repo.feature.join("source-child")),
+        (
+            "wrong-name",
+            repo.feature.join(".local/worktrees/wrong-location"),
+        ),
+    ] {
+        repo.raw(
+            &repo.feature,
+            &["worktree", "add", "-b", name, path.to_str().unwrap()],
+        );
+        repo.blocked(&["worktree", "remove", name]);
+        repo.blocked(&["worktree", "remove", path.to_str().unwrap()]);
+        assert!(path.join(".git").exists());
+    }
+    repo.blocked(&["worktree", "remove", "dev"]);
+    repo.blocked(&["worktree", "remove", "feature"]);
+}
+
+#[test]
+fn creation_requires_the_existing_ignore_policy() {
+    let repo = Repo::new();
+    fs::write(repo.feature.join(".gitignore"), "").unwrap();
+    repo.blocked(&["worktree", "add", "-b", "child"]);
+    assert!(!repo.feature.join(".local").exists());
+}
+
+#[test]
+fn worktree_destination_cannot_escape_through_directory_links() {
+    let repo = Repo::new();
+    let outside = repo.root.join("outside");
+    fs::create_dir(&outside).unwrap();
+    let local = repo.feature.join(".local");
+    #[cfg(windows)]
+    {
+        let output = std::process::Command::new("powershell.exe")
+            .args(["-NoProfile", "-Command", "New-Item -ItemType Junction -Path $env:TEST_LINK -Target $env:TEST_TARGET | Out-Null"])
+            .env("TEST_LINK", &local).env("TEST_TARGET", &outside).output().unwrap();
+        assert!(output.status.success(), "{output:?}");
+    }
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(&outside, &local).unwrap();
+    repo.blocked(&["worktree", "add", "-b", "child"]);
+    assert!(fs::read_dir(&outside).unwrap().next().is_none());
+    let external = outside.join("worktrees/branch-child");
+    repo.raw(
+        &repo.feature,
+        &["worktree", "add", "-b", "child", external.to_str().unwrap()],
+    );
+    repo.blocked(&["worktree", "remove", "child"]);
+    assert!(external.join(".git").exists());
+    #[cfg(windows)]
+    fs::remove_dir(&local).unwrap();
+    #[cfg(unix)]
+    fs::remove_file(&local).unwrap();
 }
 
 #[test]
@@ -297,7 +369,6 @@ fn protected_worktree_allows_inspection_only_and_environment_redirects_fail() {
     for args in [
         vec!["status", "--short"],
         vec!["branch"],
-        vec!["stash", "list"],
         vec!["worktree", "list"],
     ] {
         let output = repo

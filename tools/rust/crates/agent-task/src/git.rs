@@ -1,4 +1,4 @@
-use crate::git_cli::{Cli, Operation, Stash, Worktree};
+use crate::git_cli::{Cli, Operation, Worktree};
 use crate::workspace::{self, query};
 use clap::Parser;
 use std::ffi::OsString;
@@ -34,9 +34,6 @@ impl Operation {
         matches!(
             self,
             Self::Status { .. }
-                | Self::Stash {
-                    action: Stash::List
-                }
                 | Self::Worktree {
                     action: Worktree::List
                 }
@@ -169,22 +166,6 @@ impl Operation {
                 push("--");
                 args.extend([source, destination]);
             }
-            Self::Stash { action } => {
-                push("stash");
-                match action {
-                    Stash::Push { message } => {
-                        push("push");
-                        if let Some(message) = message {
-                            push("-m");
-                            args.push(message);
-                        }
-                    }
-                    Stash::Pop => push("pop"),
-                    Stash::Apply => push("apply"),
-                    Stash::List => push("list"),
-                    Stash::Drop => push("drop"),
-                }
-            }
             Self::Switch(s) => {
                 push("switch");
                 if let Some(name) = s.create {
@@ -306,37 +287,43 @@ impl Operation {
                 push("worktree");
                 match action {
                     Worktree::List => push("list"),
-                    Worktree::Add {
-                        branch,
-                        path,
-                        start,
-                    } => {
+                    Worktree::Add { branch, start } => {
                         branch_name(root, &branch, &worktrees)?;
-                        workspace::contained(root, cwd, &path)?;
+                        let path = workspace::managed_worktree_path(root, &branch)?;
+                        let ignored = Command::new("git")
+                            .args(["check-ignore", "--quiet", "--"])
+                            .arg(&path)
+                            .current_dir(root)
+                            .status()
+                            .map_err(|e| e.to_string())?;
+                        if !ignored.success() {
+                            return Err("The managed worktree destination must be ignored by the repository's .local/ policy before creating a worktree. Ask the maintainer to restore that policy.".into());
+                        }
                         push("add");
                         push("--no-track");
                         push("-b");
                         push(&branch);
                         push("--");
-                        args.push(cwd.join(path).into_os_string());
+                        args.push(path.into_os_string());
                         args.push(revision(
                             root,
                             start.as_deref().unwrap_or("HEAD"),
                             "commit",
                         )?);
                     }
-                    Worktree::Remove { path } => {
-                        workspace::contained(root, cwd, &path)?;
-                        let destination = cwd.join(path);
-                        let target = workspace::resolved(&destination)?;
-                        if target == workspace::resolved(root)? {
-                            return Err("Cannot remove the current workspace. Ask the maintainer to retire it.".into());
-                        }
-                        if worktrees.iter().any(|w| {
-                            w.path == target
-                                && w.branch.as_deref().is_some_and(workspace::protected)
-                        }) {
+                    Worktree::Remove { branch } => {
+                        if workspace::protected(&branch) {
                             return Err("Cannot remove a protected worktree. Ask the maintainer to manage it.".into());
+                        }
+                        let registered = worktrees.iter().find(|w| w.branch.as_deref()
+                            .is_some_and(|b| workspace::same_branch(b, &branch)))
+                            .ok_or("No registered worktree for that branch. Use agent-task git worktree list.")?;
+                        let destination = workspace::managed_worktree_path(
+                            root,
+                            registered.branch.as_deref().unwrap(),
+                        )?;
+                        if registered.path != workspace::resolved(&destination)? {
+                            return Err("Removal is limited to AgentTask-owned worktrees beneath this workspace's .local/worktrees/. Ask the maintainer to manage other worktrees.".into());
                         }
                         push("remove");
                         push("--");
