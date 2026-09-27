@@ -11,7 +11,7 @@ else()
 endif()
 
 function(ioj_find_llvm_tool output)
-  if(LLVM_ROOT)
+  if(NOT LLVM_ROOT STREQUAL "")
     find_program(llvm_tool NAMES ${ARGN}
       PATHS "${LLVM_ROOT}/bin" NO_DEFAULT_PATH NO_CACHE REQUIRED)
   else()

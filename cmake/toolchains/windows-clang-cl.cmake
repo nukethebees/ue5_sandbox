@@ -7,7 +7,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/windows_environment.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/../llvm_tools.cmake")
 ioj_find_llvm_tool(IOJ_CLANG_CL_EXECUTABLE clang-cl)
 
-if(LLVM_ROOT)
+if(NOT LLVM_ROOT STREQUAL "")
   ioj_find_llvm_tool(IOJ_LLVM_LIB_EXECUTABLE llvm-lib)
   ioj_find_llvm_tool(CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS clang-scan-deps)
   set(CMAKE_AR "${IOJ_LLVM_LIB_EXECUTABLE}" CACHE FILEPATH "" FORCE)

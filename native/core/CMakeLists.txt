@@ -40,6 +40,7 @@ target_sources(native-core PRIVATE
   src/ui/stacked_bar_chart.cpp
 )
 target_compile_features(native-core PUBLIC cxx_std_23)
+target_link_libraries(native-core PUBLIC ioj::cxx_conformance)
 target_include_directories(native-core PUBLIC include)
 target_link_libraries(native-core
   PUBLIC 

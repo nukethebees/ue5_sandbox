@@ -19,6 +19,42 @@ if(IOJ_MSVC_FRONTEND)
   target_compile_options(ioj_cxx_conformance INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:/permissive->")
 endif()
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  set(ioj_msvc_conformance_options
+    /Zc:__cplusplus
+    /Zc:alignedNew
+    /Zc:auto
+    /Zc:char8_t
+    /Zc:checkGwOdr
+    /Zc:enumTypes
+    /Zc:externC
+    /Zc:externConstexpr
+    /Zc:forScope
+    /Zc:gotoScope
+    /Zc:hiddenFriend
+    /Zc:implicitNoexcept
+    /Zc:inline
+    /Zc:lambda
+    /Zc:noexceptTypes
+    /Zc:preprocessor
+    /Zc:referenceBinding
+    /Zc:rvalueCast
+    /Zc:sizedDealloc
+    /Zc:static_assert
+    /Zc:strictStrings
+    /Zc:templateScope
+    /Zc:ternary
+    /Zc:threadSafeInit
+    /Zc:tlsGuards
+    /Zc:u8EscapeEncoding
+    /Zc:wchar_t
+    /Zc:zeroSizeArrayNew
+  )
+  # Required policy for the pinned MSVC toolchain; never silently drop conformance.
+  target_compile_options(ioj_cxx_conformance INTERFACE
+    "$<$<COMPILE_LANGUAGE:CXX>:${ioj_msvc_conformance_options}>")
+endif()
+
 add_library(ioj_arch_avx2 INTERFACE)
 add_library(ioj::arch_avx2 ALIAS ioj_arch_avx2)
 

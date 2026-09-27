@@ -21,6 +21,7 @@ endif()
 foreach(native_simulation_target IN LISTS native_simulation_targets)
   ioj_apply_native_abi(${native_simulation_target})
   target_compile_features(${native_simulation_target} PUBLIC cxx_std_23)
+  target_link_libraries(${native_simulation_target} PUBLIC ioj::cxx_conformance)
   target_include_directories(${native_simulation_target} PUBLIC
     include
   )

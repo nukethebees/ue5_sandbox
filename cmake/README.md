@@ -60,7 +60,9 @@ analysis, and profiling intent. `IOJ_ENABLE_PROFILING` defaults to `ON`, includi
 and benchmark configurations; `tracy-tools` explicitly disables instrumentation. Unreal presets
 map their configuration to the native build type, retain Unreal-specific Tracy selection, and
 stage native artifacts for UBT. Toolchains continue to own pinned compiler/SDK discovery and CRT
-selection. Public C++23 and ABI requirements are separate from private first-party warnings.
+selection. Public C++23, C++ conformance (`ioj::cxx_conformance`), and ABI requirements are
+separate from private first-party warnings. Required MSVC `/Zc:*` switches belong to conformance
+policy and remain enabled when warning enforcement is disabled.
 Warnings-as-errors use `COMPILE_WARNING_AS_ERROR`; `CMAKE_COMPILE_WARNING_AS_ERROR=OFF` or
 CMake's `--compile-no-warning-as-error` can disable that enforcement.
 

@@ -132,40 +132,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
       "${ioj_msvc_warning}"
     )
   endforeach()
-
-  set(ioj_msvc_conformance_options
-    /permissive-
-    /Zc:__cplusplus
-    /Zc:alignedNew
-    /Zc:auto
-    /Zc:char8_t
-    /Zc:checkGwOdr
-    /Zc:enumTypes
-    /Zc:externC
-    /Zc:externConstexpr
-    /Zc:forScope
-    /Zc:gotoScope
-    /Zc:hiddenFriend
-    /Zc:implicitNoexcept
-    /Zc:inline
-    /Zc:lambda
-    /Zc:noexceptTypes
-    /Zc:preprocessor
-    /Zc:referenceBinding
-    /Zc:rvalueCast
-    /Zc:sizedDealloc
-    /Zc:static_assert
-    /Zc:strictStrings
-    /Zc:templateScope
-    /Zc:ternary
-    /Zc:threadSafeInit
-    /Zc:tlsGuards
-    /Zc:u8EscapeEncoding
-    /Zc:wchar_t
-    /Zc:zeroSizeArrayNew
-  )
-  # Required policy for the pinned MSVC toolchain; never silently drop conformance.
-  target_compile_options(ioj_msvc_strict INTERFACE ${ioj_msvc_conformance_options})
 endif()
 
 add_library(ioj_warnings INTERFACE)

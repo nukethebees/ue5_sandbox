@@ -11,6 +11,7 @@ add_library(kernel-codegen-lib
 )
 set_target_properties(kernel-codegen-lib PROPERTIES UNITY_BUILD OFF)
 target_compile_features(kernel-codegen-lib PUBLIC cxx_std_23)
+target_link_libraries(kernel-codegen-lib PUBLIC ioj::cxx_conformance)
 target_include_directories(kernel-codegen-lib PUBLIC include)
 target_link_libraries(kernel-codegen-lib
   PUBLIC lispb-output

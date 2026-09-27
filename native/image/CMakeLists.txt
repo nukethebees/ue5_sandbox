@@ -7,6 +7,7 @@ set(IOJ_IMAGE_SOURCES
 
 add_library(sandbox-image STATIC ${IOJ_IMAGE_SOURCES})
 target_compile_features(sandbox-image PUBLIC cxx_std_23)
+target_link_libraries(sandbox-image PUBLIC ioj::cxx_conformance)
 target_include_directories(sandbox-image
   PUBLIC include
   PRIVATE src

@@ -5,6 +5,7 @@ set(MESH_GEN_SOURCES
 
 add_library(mesh-gen STATIC ${MESH_GEN_SOURCES})
 target_compile_features(mesh-gen PUBLIC cxx_std_23)
+target_link_libraries(mesh-gen PUBLIC ioj::cxx_conformance)
 target_include_directories(mesh-gen
   PUBLIC include
   PRIVATE src
@@ -21,6 +22,7 @@ if(IOJ_WITH_UNREAL)
 
   add_library(sandbox-mesh-gen STATIC ${MESH_GEN_SOURCES})
   target_compile_features(sandbox-mesh-gen PUBLIC cxx_std_23)
+  target_link_libraries(sandbox-mesh-gen PUBLIC ioj::cxx_conformance)
   target_include_directories(sandbox-mesh-gen
     PUBLIC include
     PRIVATE src

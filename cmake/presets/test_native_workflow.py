@@ -238,23 +238,20 @@ class NativeWorkflowTests(unittest.TestCase):
                     )
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-            # Each missing tool must fail even when another installation has it on PATH.
+            # Incomplete and invalid roots must not fall back to a complete PATH install.
+            (llvm_root / "bin" / ("llvm-lib" + suffix)).unlink()
             environment = os.environ.copy()
-            environment["LLVM_ROOT"] = str(llvm_root)
             environment["PATH"] = str(other_root / "bin") + os.pathsep + environment["PATH"]
-            for name in names:
-                with self.subTest(missing_tool=name):
-                    tool = llvm_root / "bin" / (name + suffix)
-                    tool.unlink()
+            for invalid_root in (llvm_root, fixture / "missing LLVM", Path("OFF")):
+                with self.subTest(invalid_root=invalid_root):
+                    environment["LLVM_ROOT"] = str(invalid_root)
                     result = subprocess.run(
-                        [self.cmake, f"-Dexpected_root={llvm_root.as_posix()}", f"-Dprobe_name={name}",
+                        [self.cmake, f"-Dexpected_root={invalid_root.as_posix()}", "-Dprobe_name=llvm-lib",
                          "-P", str(script)],
                         env=environment, capture_output=True, text=True,
                     )
                     self.assertNotEqual(result.returncode, 0)
                     self.assertIn("Could not find llvm_tool", result.stdout + result.stderr)
-                    tool.touch()
-                    tool.chmod(0o755)
 
     def test_tidy_runner_tool_names_and_root_isolation(self) -> None:
         cases = (
@@ -683,7 +680,8 @@ function(check_simulation_policy)
   foreach(target IN ITEMS native-simulation native-simulation-tests native-simulation-soak-tests)
     get_target_property(runtime ${target} MSVC_RUNTIME_LIBRARY)
     get_target_property(warnings ${target} COMPILE_WARNING_AS_ERROR)
-    if(NOT runtime STREQUAL "MultiThreadedDLL" OR NOT warnings)
+    if(NOT runtime STREQUAL "MultiThreadedDLL" OR
+       (NOT warnings AND NOT DEFINED CMAKE_COMPILE_WARNING_AS_ERROR))
       message(FATAL_ERROR "${target} omitted first-party target policy")
     endif()
   endforeach()
@@ -691,7 +689,8 @@ function(check_simulation_policy)
   add_library(policy-consumer OBJECT EXCLUDE_FROM_ALL "${CMAKE_BINARY_DIR}/policy_fixture.cpp")
   target_link_libraries(policy-consumer PRIVATE native-simulation)
   file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/consumer-policy.txt" CONTENT
-    "$<TARGET_PROPERTY:policy-consumer,COMPILE_OPTIONS>\n$<TARGET_PROPERTY:policy-consumer,COMPILE_DEFINITIONS>\n$<TARGET_PROPERTY:policy-consumer,COMPILE_FEATURES>")
+    "$<TARGET_PROPERTY:policy-consumer,COMPILE_OPTIONS>\n$<TARGET_PROPERTY:policy-consumer,COMPILE_DEFINITIONS>\n$<TARGET_PROPERTY:policy-consumer,COMPILE_FEATURES>"
+    CONDITION "$<COMPILE_LANGUAGE:CXX>")
 endfunction()
 cmake_language(DEFER CALL check_simulation_policy)
 ''', encoding="utf-8")
@@ -734,7 +733,32 @@ cmake_language(DEFER CALL check_simulation_policy)
             consumer_policy = (build_directory / "consumer-policy.txt").read_text()
             self.assertIn("cxx_std_23", consumer_policy)
             self.assertIn("_ITERATOR_DEBUG_LEVEL=0", consumer_policy)
+            self.assertIn("/permissive-", consumer_policy)
             self.assertNotRegex(consumer_policy, r"/W4|/WX|-Werror|-Wpedantic")
+
+            msvc_build = Path(temporary_root) / "msvc build with spaces"
+            self.run_cmake(
+                "--preset", "win-x64-msvc-debug", "-S", str(self.source_dir), "-B", str(msvc_build),
+                "-DIOJ_BUILD_DEVELOPER_TOOLS=OFF", "-DCMAKE_COMPILE_WARNING_AS_ERROR=OFF",
+                f"-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES={policy_check.as_posix()}",
+            )
+            msvc_policy = (msvc_build / "consumer-policy.txt").read_text()
+            for requirement in ("cxx_std_23", "_ITERATOR_DEBUG_LEVEL=0", "/permissive-", "/Zc:preprocessor"):
+                self.assertIn(requirement, msvc_policy)
+            self.assertNotRegex(msvc_policy, r"/W[0-4X]|/w4\d+|-Werror|-Wpedantic")
+            commands = self.run_cmake("--build", str(msvc_build), "--target", "native-core", "policy-consumer",
+                                      "--", "-t", "commands")
+            consumer_command = next(line for line in commands.splitlines() if "policy_fixture.cpp" in line)
+            for option in ("/permissive-", "/Zc:preprocessor"):
+                self.assertEqual(consumer_command.count(option), 1, consumer_command)
+            self.assertNotRegex(consumer_command, r"[/-]W4|[/-]WX|/w4\d+|-Werror|-Wpedantic")
+            core_commands = [line for line in commands.splitlines()
+                             if "/native/core/src/" in line.replace("\\", "/") and re.search(r" [/-]c ", line)]
+            self.assertTrue(core_commands)
+            for command in core_commands:
+                for option in ("/permissive-", "/Zc:preprocessor", "/W4"):
+                    self.assertEqual(command.count(option), 1, command)
+                self.assertNotRegex(command, r"[/-]WX\b")
 
             dry_run = self.run_cmake(
                 "--build",

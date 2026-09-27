@@ -5,6 +5,7 @@ add_library(slate-codegen-lib
   src/renderer.cpp
 )
 target_compile_features(slate-codegen-lib PUBLIC cxx_std_23)
+target_link_libraries(slate-codegen-lib PUBLIC ioj::cxx_conformance)
 target_include_directories(slate-codegen-lib PUBLIC include)
 target_link_libraries(slate-codegen-lib
   PUBLIC lispb-output

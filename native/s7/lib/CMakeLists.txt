@@ -37,6 +37,7 @@ target_sources(sandbox-s7 PRIVATE
   src/value.cpp
 )
 target_compile_features(sandbox-s7 PUBLIC cxx_std_23)
+target_link_libraries(sandbox-s7 PUBLIC ioj::cxx_conformance)
 target_include_directories(sandbox-s7 PUBLIC include)
 
 add_library(sandbox-s7-warning-exceptions INTERFACE)

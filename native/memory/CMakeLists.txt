@@ -5,6 +5,7 @@ target_sources(native-memory PRIVATE
   src/root_arena.cpp
 )
 target_compile_features(native-memory PUBLIC cxx_std_23)
+target_link_libraries(native-memory PUBLIC ioj::cxx_conformance)
 target_include_directories(native-memory PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(native-memory PRIVATE sandbox::native_defaults)
 ioj_enable_warnings(native-memory)

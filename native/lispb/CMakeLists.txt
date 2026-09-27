@@ -9,6 +9,7 @@ add_library(lispb-output
   src/format_generated.cpp
 )
 target_compile_features(lispb-output PUBLIC cxx_std_23)
+target_link_libraries(lispb-output PUBLIC ioj::cxx_conformance)
 target_compile_definitions(lispb-output
   PRIVATE IOJ_CLANG_FORMAT_EXECUTABLE="${IOJ_CLANG_FORMAT_EXECUTABLE}"
 )
@@ -18,6 +19,7 @@ ioj_enable_warnings(lispb-output CODEGEN)
 
 add_library(lispb-project src/project.cpp)
 target_compile_features(lispb-project PUBLIC cxx_std_23)
+target_link_libraries(lispb-project PUBLIC ioj::cxx_conformance)
 target_include_directories(lispb-project PUBLIC include)
 target_link_libraries(lispb-project PRIVATE lispb-schema lispb-syntax sandbox::native_defaults)
 ioj_enable_warnings(lispb-project CODEGEN)
@@ -38,6 +40,7 @@ target_sources(lispb-schema PRIVATE
   src/validation.cpp
 )
 target_compile_features(lispb-schema PUBLIC cxx_std_23)
+target_link_libraries(lispb-schema PUBLIC ioj::cxx_conformance)
 target_include_directories(lispb-schema PUBLIC include)
 target_link_libraries(lispb-schema
   PRIVATE
@@ -80,6 +83,7 @@ target_sources(codegen-lib PRIVATE
 )
 set_target_properties(codegen-lib PROPERTIES UNITY_BUILD OFF)
 target_compile_features(codegen-lib PUBLIC cxx_std_23)
+target_link_libraries(codegen-lib PUBLIC ioj::cxx_conformance)
 target_include_directories(codegen-lib PUBLIC include)
 target_link_libraries(codegen-lib
   PUBLIC
@@ -96,6 +100,7 @@ add_library(lispb-target-compiler
   material/compiler.cpp
 )
 target_compile_features(lispb-target-compiler PUBLIC cxx_std_23)
+target_link_libraries(lispb-target-compiler PUBLIC ioj::cxx_conformance)
 target_include_directories(lispb-target-compiler PUBLIC include)
 target_link_libraries(lispb-target-compiler PUBLIC
   codegen-lib

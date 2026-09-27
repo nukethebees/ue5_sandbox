@@ -14,7 +14,7 @@ target_sources(jobserver-client PRIVATE
 )
 target_include_directories(jobserver-client PUBLIC lib/include)
 target_link_libraries(jobserver-client
-  PUBLIC ioj::cxx_standard ioj::asan
+  PUBLIC ioj::cxx_standard ioj::cxx_conformance ioj::asan
   PRIVATE nlohmann_json::nlohmann_json advapi32
 )
 ioj_enable_warnings(jobserver-client)
@@ -32,7 +32,7 @@ target_include_directories(jobserver-scheduler PUBLIC
   lib/include
 )
 target_link_libraries(jobserver-scheduler PUBLIC
-  ioj::cxx_standard
+  ioj::cxx_standard ioj::cxx_conformance
   ioj::asan
   nlohmann_json::nlohmann_json
 )
@@ -46,7 +46,7 @@ target_include_directories(jobserver-supervisor PUBLIC
 )
 target_include_directories(jobserver-supervisor PRIVATE lib/src)
 target_link_libraries(jobserver-supervisor
-  PUBLIC ioj::cxx_standard
+  PUBLIC ioj::cxx_standard ioj::cxx_conformance
   PRIVATE jobserver::client
 )
 ioj_enable_warnings(jobserver-supervisor)
@@ -96,7 +96,7 @@ target_compile_definitions(jobserverd PRIVATE
 
 add_executable(jobserver-test-helper)
 target_sources(jobserver-test-helper PRIVATE test_helpers/main.cpp)
-target_link_libraries(jobserver-test-helper PRIVATE ioj::cxx_standard ioj::asan)
+target_link_libraries(jobserver-test-helper PRIVATE ioj::cxx_standard ioj::cxx_conformance ioj::asan)
 ioj_enable_warnings(jobserver-test-helper)
 
 add_executable(jobserver-test-client)

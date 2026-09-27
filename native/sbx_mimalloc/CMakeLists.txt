@@ -93,7 +93,7 @@ target_include_directories(sbx-mimalloc
 )
 target_include_directories(sbx-mimalloc SYSTEM PRIVATE "${SBX_MIMALLOC_ROOT}/include")
 target_link_libraries(sbx-mimalloc
-  PUBLIC ioj::cxx_standard psapi shell32 user32 advapi32 bcrypt
+  PUBLIC ioj::cxx_standard ioj::cxx_conformance psapi shell32 user32 advapi32 bcrypt
   PRIVATE sandbox::native_defaults
 )
 ioj_enable_warnings(sbx-mimalloc)

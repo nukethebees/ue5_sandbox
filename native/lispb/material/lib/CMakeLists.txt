@@ -6,6 +6,7 @@ target_sources(material-gen PRIVATE
   src/SourceHash.cpp
 )
 target_compile_features(material-gen PUBLIC cxx_std_23)
+target_link_libraries(material-gen PUBLIC ioj::cxx_conformance)
 target_include_directories(material-gen PUBLIC include)
 target_link_libraries(material-gen
   PRIVATE
@@ -29,6 +30,7 @@ if(IOJ_WITH_UNREAL)
     src/SourceHash.cpp
   )
   target_compile_features(sandbox-material-gen PUBLIC cxx_std_23)
+  target_link_libraries(sandbox-material-gen PUBLIC ioj::cxx_conformance)
   target_include_directories(sandbox-material-gen PUBLIC include)
   target_link_libraries(sandbox-material-gen PRIVATE
     sandbox::native_defaults

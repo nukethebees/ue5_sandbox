@@ -6,6 +6,7 @@ target_sources(native-simulation-benchmark-lib PRIVATE
   src/command_line.cpp
 )
 target_compile_features(native-simulation-benchmark-lib PUBLIC cxx_std_23)
+target_link_libraries(native-simulation-benchmark-lib PUBLIC ioj::cxx_conformance)
 target_include_directories(native-simulation-benchmark-lib PUBLIC include)
 target_link_libraries(native-simulation-benchmark-lib
   PUBLIC native-simulation

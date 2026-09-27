@@ -9,6 +9,7 @@ if(IOJ_WITH_TRACY)
   add_library(sandbox::profiling ALIAS native-profiling)
   target_sources(native-profiling PRIVATE src/memory.cpp)
   target_compile_features(native-profiling PUBLIC cxx_std_23)
+  target_link_libraries(native-profiling PUBLIC ioj::cxx_conformance)
   target_link_libraries(native-profiling
     PUBLIC native-profiling-api
     PRIVATE Tracy::TracyClient sandbox::native_defaults
