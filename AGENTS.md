@@ -101,6 +101,15 @@ Unreal Engine 5.8 project.
 * Store local development roadmaps under `.local/plans/`; never commit them.
 * Store disposable session hand-offs under `.local/handoffs/`; never commit them.
 
+Do not say “almost done”, “virtually done”, “nearly finished”, or give percentage-style completion estimates unless all required validation steps are already known and enumerated. When reporting progress, explicitly separate:
+- implementation complete/incomplete
+- tests complete/incomplete
+- static analysis complete/incomplete
+- sanitizer validation complete/incomplete
+- integration/build validation complete/incomplete
+- unresolved issues
+If a new issue invalidates previous validation or requires additional builds/tests, explicitly retract the previous completion estimate.
+
 # Coding Style
 
 * Unreal Engine C++.
