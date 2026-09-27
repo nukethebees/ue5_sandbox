@@ -85,7 +85,6 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
     auto submit(int32 const count,
                 float const height,
                 int32 const colour_shift,
-                FVector3f scale = FVector3f::OneVector,
                 FQuat4f rotation = FQuat4f::Identity) -> void {
         if (component_ == nullptr) {
             return;
@@ -102,8 +101,6 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                 transform_positions.SetNumUninitialized(chunk.num());
                 TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
                 transform_rotations.SetNumUninitialized(chunk.num());
-                TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
-                transform_scales.SetNumUninitialized(chunk.num());
                 for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                     auto const index{offset + local_index};
                     auto position{FVector3f{0.0f, 10000.0f, 0.0f}};
@@ -117,10 +114,9 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                     }
                     transform_positions[local_index] = position;
                     transform_rotations[local_index] = rotation;
-                    transform_scales[local_index] = scale;
                 }
-                chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                    transform_positions, transform_rotations, transform_scales);
+                chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(transform_positions,
+                                                                        transform_rotations);
             });
         submitted_frame_ = GFrameCounter;
     }
@@ -231,11 +227,11 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
             .Until(next_frame, FTimespan::FromSeconds(10))
             .Do([this] {
                 check_image(TEXT("Outside the frustum"), 128, 0, true);
-                submit(3, 0.0f, 0, {0.5f, 0.8f, 1.5f}, FQuat4f{FVector3f::ForwardVector, 0.4f});
+                submit(3, 0.0f, 0, FQuat4f{FVector3f::ForwardVector, 0.4f});
             })
             .Until(next_frame, FTimespan::FromSeconds(10))
             .Do([this] {
-                check_image(TEXT("Rotated nonuniform instances enter the frustum"), 128, 0);
+                check_image(TEXT("Rotated instances enter the frustum"), 128, 0);
                 if (component_ != nullptr) {
                     TestRunner->TestTrue(TEXT("Registered bounds track the submitted location"),
                                          FMath::Abs(component_->Bounds.Origin.Z) < 1.0);
@@ -272,14 +268,12 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                 TArray<FQuat4f> const rotations{FRotator3f{27, 63, -18}.Quaternion(),
                                                 FRotator3f{-80, 172, 91}.Quaternion(),
                                                 FRotator3f{178, -34, 43}.Quaternion()};
-                TArray<FVector3f> const scales{
-                    {3.875f, 0.8f, 1.49f}, {1.19f, 0.38f, 0.94f}, {0.73f, 1.24f, 0.64f}};
                 TArray<FSandboxISMCRenderInstance> packed;
                 packed.SetNumUninitialized(3);
                 FSandboxISMCInstanceChunkWriter cpu{
                     packed, {}, 0, 0, domain, root, FVector3f::ZeroVector, FVector3f::ZeroVector};
                 reference->ClearInstances();
-                cpu.set_transforms<ESandboxISMCBoundsMode::Supplied>(positions, rotations, scales);
+                cpu.set_transforms<ESandboxISMCBoundsMode::Supplied>(positions, rotations);
                 for (int32 index{0}; index < 3; ++index) {
                     auto const& value{packed[index]};
                     auto const q{ml::sandbox_ismc::unpack_quat32(value.rotation)};
@@ -288,9 +282,7 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                                                    static_cast<double>(value.position[1]),
                                                    static_cast<double>(value.position[2])} *
                                                ml::sandbox_ismc::position_quantum};
-                    FVector const scale{
-                        value.scale.x_value(), value.scale.y_value(), value.scale.z_value()};
-                    reference->AddInstance(FTransform{FQuat{q.X, q.Y, q.Z, q.W}, location, scale});
+                    reference->AddInstance(FTransform{FQuat{q.X, q.Y, q.Z, q.W}, location});
                     for (int32 channel{0}; channel < 3; ++channel) {
                         reference->SetCustomDataValue(
                             index, channel, channel == index ? 1.0f : 0.0f, true);
@@ -305,19 +297,16 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                         transform_positions.SetNumUninitialized(chunk.num());
                         TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
                         transform_rotations.SetNumUninitialized(chunk.num());
-                        TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
-                        transform_scales.SetNumUninitialized(chunk.num());
                         for (int32 index{0}; index < 3; ++index) {
                             transform_positions[index] = positions[index];
                             transform_rotations[index] = rotations[index];
-                            transform_scales[index] = scales[index];
                             auto data{chunk.custom_data(index)};
                             for (int32 channel{0}; channel < 3; ++channel) {
                                 data[channel] = channel == index ? 1.0f : 0.0f;
                             }
                         }
                         chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                            transform_positions, transform_rotations, transform_scales);
+                            transform_positions, transform_rotations);
                     });
                 spawner->GetWorld().SendAllEndOfFrameUpdates();
                 FlushRenderingCommands();

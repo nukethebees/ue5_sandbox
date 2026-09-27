@@ -115,7 +115,6 @@ void ASandboxISMCLabActor::regenerate_instances() {
                                               x};
                     instance_data_.positions[instance_index] = position;
                     instance_data_.rotations[instance_index] = FQuat4f::Identity;
-                    instance_data_.scales[instance_index] = FVector3f::OneVector;
                 }
             }
         }
@@ -137,7 +136,6 @@ void ASandboxISMCLabActor::regenerate_instances() {
             };
             instance_data_.positions[instance_index] = position;
             instance_data_.rotations[instance_index] = rotation;
-            instance_data_.scales[instance_index] = FVector3f::OneVector;
         }
     }
 
@@ -169,7 +167,6 @@ void ASandboxISMCLabActor::submit_instances() {
                                   auto const [first_index, chunk_count]{chunk.range()};
                                   chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
                                       source.positions.Slice(first_index, chunk_count),
-                                      source.rotations.Slice(first_index, chunk_count),
-                                      source.scales.Slice(first_index, chunk_count));
+                                      source.rotations.Slice(first_index, chunk_count));
                               });
 }

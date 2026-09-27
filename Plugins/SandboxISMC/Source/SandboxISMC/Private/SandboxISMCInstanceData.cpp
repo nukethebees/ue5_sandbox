@@ -19,7 +19,6 @@ auto InstanceDataConstView::get_view(int32 const offset, int32 const count) cons
     return ConstView{
         TConstArrayView<FVector3f>{positions}.Slice(offset, count),
         TConstArrayView<FQuat4f>{rotations}.Slice(offset, count),
-        TConstArrayView<FVector3f>{scales}.Slice(offset, count),
     };
 }
 
@@ -32,7 +31,6 @@ auto InstanceDataConstView::get_const_view(int32 const offset, int32 const count
     return ConstView{
         TConstArrayView<FVector3f>{positions}.Slice(offset, count),
         TConstArrayView<FQuat4f>{rotations}.Slice(offset, count),
-        TConstArrayView<FVector3f>{scales}.Slice(offset, count),
     };
 }
 
@@ -68,7 +66,6 @@ auto InstanceDataView::get_view(int32 const offset, int32 const count) -> View {
     return View{
         TArrayView<FVector3f>{positions}.Slice(offset, count),
         TArrayView<FQuat4f>{rotations}.Slice(offset, count),
-        TArrayView<FVector3f>{scales}.Slice(offset, count),
     };
 }
 
@@ -80,7 +77,6 @@ auto InstanceDataView::get_view(int32 const offset, int32 const count) const -> 
     return ConstView{
         TConstArrayView<FVector3f>{positions}.Slice(offset, count),
         TConstArrayView<FQuat4f>{rotations}.Slice(offset, count),
-        TConstArrayView<FVector3f>{scales}.Slice(offset, count),
     };
 }
 
@@ -92,7 +88,6 @@ auto InstanceDataView::get_const_view(int32 const offset, int32 const count) con
     return ConstView{
         TConstArrayView<FVector3f>{positions}.Slice(offset, count),
         TConstArrayView<FQuat4f>{rotations}.Slice(offset, count),
-        TConstArrayView<FVector3f>{scales}.Slice(offset, count),
     };
 }
 
@@ -164,7 +159,6 @@ auto InstanceData::get_view(int32 const offset, int32 const count) -> View {
     return View{
         TArrayView<FVector3f>{positions}.Slice(offset, count),
         TArrayView<FQuat4f>{rotations}.Slice(offset, count),
-        TArrayView<FVector3f>{scales}.Slice(offset, count),
     };
 }
 
@@ -176,7 +170,6 @@ auto InstanceData::get_view(int32 const offset, int32 const count) const -> Cons
     return ConstView{
         TConstArrayView<FVector3f>{positions}.Slice(offset, count),
         TConstArrayView<FQuat4f>{rotations}.Slice(offset, count),
-        TConstArrayView<FVector3f>{scales}.Slice(offset, count),
     };
 }
 
@@ -188,7 +181,6 @@ auto InstanceData::get_const_view(int32 const offset, int32 const count) const -
     return ConstView{
         TConstArrayView<FVector3f>{positions}.Slice(offset, count),
         TConstArrayView<FQuat4f>{rotations}.Slice(offset, count),
-        TConstArrayView<FVector3f>{scales}.Slice(offset, count),
     };
 }
 

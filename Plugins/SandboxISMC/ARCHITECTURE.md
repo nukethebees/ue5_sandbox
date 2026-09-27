@@ -1,10 +1,10 @@
 # SandboxISMC architecture
 
-The component accepts dense bulk snapshots for one mesh. Producers retain position, quaternion
-rotation and scale columns; chunk writers pack a 12-byte render transform plus
+The component accepts dense bulk snapshots for one mesh. Producers retain position and quaternion
+rotation columns; chunk writers pack a 12-byte render transform plus
 optional custom floats. It owns no gameplay, collision, physics or navigation state. Ray tracing
-remains disabled. Negative scale on any instance axis is unsupported and checked before packing;
-component-level reverse culling remains supported.
+remains disabled. Instances always have unit scale; component-level transforms and reverse culling
+remain supported.
 
 ## Assets and rendering
 
@@ -16,7 +16,7 @@ LOD0 are unsupported. Live mesh rebuilds require component re-registration and a
 
 Mesh bounds synchronize on registration, assignment (including assignment of the same mesh), and
 before packing. Mesh replacement invalidates the previous snapshot. Automatic bounds union
-transformed local AABBs using source position, normalized quaternion and scale. Both automatic
+transformed local AABBs using source position and normalized quaternion. Both automatic
 and caller-supplied source bounds receive a conservative codec expansion once per snapshot;
 callers must include any material vertex displacement. Unchanged bounds still submit dynamic data
 but do not dirty the primitive transform. Unreal's normal transform update refreshes world bounds.
@@ -79,15 +79,15 @@ declarations, LOD restrictions, frustum visibility and queued update/recreation/
 
 `ml::sandbox_ismc::PackedTransform` (also `FSandboxISMCRenderInstance`) is little endian,
 standard layout, trivially copyable, 12 bytes, alignment 4. Compile-time assertions fix every offset.
-The `sandbox_ismc_render` module in `lispb/schema/sandbox_ismc.lispb` owns `PackedTransform`,
-`Quat32` storage and `Scale16`, emitted into `sandbox/core/sandbox_ismc_render.h`. In the memory
+The `sandbox_ismc_render` module in `lispb/schema/sandbox_ismc.lispb` owns `PackedTransform`
+and `Quat32` storage, emitted into `sandbox/core/sandbox_ismc_render.h`. In the memory
 planner, refresh `sandbox-code` and select `sandbox_ismc_render / PackedTransform` to inspect the
 record and its nested fields. Encoding and decoding remain in handwritten C++ and HLSL.
 
 | Byte offset | Storage | Meaning |
 | --- | --- | --- |
 | 0, 2, 4 | three signed int16 | XYZ position offsets |
-| 6 | lispb `Scale16` (uint16) | Q2.3 X/Y/Z in bits 0..4/5..9/10..14; bit 15 reserved, zero |
+| 6 | uint16 | reserved, zero; aligns the quaternion |
 | 8 | uint32 | smallest-three quaternion |
 
 At 40000 instances the transform payload is 480000 bytes per snapshot, excluding custom data:
@@ -100,7 +100,7 @@ fixed 16-UU grid to choose the snapshot root. Each offset is `floor((position-ro
 ties go toward positive infinity. Supported offsets are -32767 through +32767, giving +/-524272 UU
 (5.24272 km) per axis and at most 8 UU (8 cm) rounding error per axis. The vector error is at most
 `8*sqrt(3)` UU. Invalid domains terminate with diagnostics; a batch validation pass inside `check()`
-checks positions, rotations and scales before packing. Builds without checks assume valid input;
+checks positions and rotations before packing. Builds without checks assume valid input;
 there is no clamping, adaptive precision or first-instance fallback. Empty submissions ignore the domain.
 
 The originally proposed 1-UU quantum cannot cover authored production populations.
@@ -117,15 +117,11 @@ creation consumes the same staging metadata; recreation retains the latest compl
 Metadata is never read from mutable component state on the render thread and is not charged as
 per-instance bytes.
 
-Scale uses existing lispb fixed-point storage, unsigned 5 bits per axis with 2 integral and 3
-fractional bits and nearest-even rounding: 0..3.875, step 0.125, error at most 0.0625.
-All three axes share one uint16, with its high bit reserved and zero. Zero and one are exact. All production
-fighter/laser callers currently submit unit scale. Non-finite, negative and excessive scale fail.
-The schema lives in `lispb/schema/sandbox_ismc.lispb`; generated code must not be edited manually.
-The render encoder multiplies float input by 8, truncates a range-checked integer, and applies
-nearest-even from the fractional remainder. It combines three 5-bit codes with `Scale16::from_raw`;
-no general double fixed-point machinery runs per instance. Tests compare every rounding boundary
-and its immediate float neighbours with the generated reference encoder.
+Scale is absent from the producer API, staging format and shader decoder. All existing production
+fighter/laser callers used unit scale. Removing the former packed Q2.3 scale saves CPU/shader work
+but leaves the 12-byte aligned stride unchanged. Per-instance scale can be reconsidered when a
+production caller needs it. The schema lives in `lispb/schema/sandbox_ismc.lispb`; generated code
+must not be edited manually.
 
 Quaternion bits 0..1 are the omitted component index (X=0, Y=1, Z=2, W=3). Bits 2..11, 12..21,
 and 22..31 store the other components in XYZW order. The render path requires finite normalized
@@ -147,7 +143,7 @@ covers this 10/10/10 encoding (component rounding error <=1/(sqrt(2)*1023), incl
 These are lossy rotations: identity and exact axis rotations need not decode bit-exactly.
 
 The VF reads three `VET_UInt` attributes 8..10 at byte offsets 0/4/8, stride 12, and sign-extends
-position lanes explicitly in HLSL. `PackedTransform.ush` reconstructs position and a scaled basis
+position lanes explicitly in HLSL. `PackedTransform.ush` reconstructs position and a rotation basis
 in vertex shader registers. The GPU buffer remains compressed; there is no expanded persistent
 buffer. Decoding is repeated per processed vertex, so reduced bandwidth may trade against ALU.
 
@@ -174,30 +170,28 @@ one builder.
 Both bounds paths now describe **source geometry**. Automatic bounds use the source transform's
 ordinary mesh AABB, without decoding anything just encoded. Supplied bounds skip all per-instance
 bounds work. After the source boxes are reduced, the component expands once per snapshot by
-`8 + mesh_radius * (0.0625 + 0.006 * 3.875)` on each axis, plus a float evaluation margin.
+`8 + mesh_radius * 0.006` on each axis, plus a float evaluation margin.
 Here `mesh_radius = length(abs(mesh_bounds_origin) + mesh_bounds_extent)` bounds every mesh vertex's
-distance from the transform origin, including off-centre meshes. The scale term bounds
-`R_decoded * (S_decoded-S_source) * vertex`; the rotation term bounds
-`(R_decoded-R_source) * S_source * vertex`. A 0.006 chord allowance exceeds the 0.3-degree codec
-budget and includes the normalized-input tolerance. This deliberately uses the supported maximum
-scale, avoiding a supplied-bounds scale scan. Callers still include material displacement. A position
+distance from the transform origin, including off-centre meshes. The rotation term bounds
+`(R_decoded-R_source) * vertex`. A 0.006 chord allowance exceeds the 0.3-degree codec
+budget and includes the normalized-input tolerance. Callers still include material displacement. A position
 domain alone is never a primitive culling bound.
 
 Position encoding uses a constant reciprocal and guarded truncation with explicit remainder/tie
 handling. Double subtraction remains necessary: `root=262144`, `position=nextafter(8,0)` crosses
 the intended tie if subtraction is performed in float. There is no division or `floor` in the
-per-instance path. Range guards reject NaN/overflow before integer conversion in every build.
+per-instance path. Batch validation rejects NaN/overflow before integer conversion when checks are enabled.
 
-Fighter/laser rotations come from Unreal `FRotator3f::Quaternion()`, and both submit unit scale.
+Laser rotations come from Unreal `FRotator3f::Quaternion()`; fighters use `FQuat::FindBetweenNormals()`.
 Their domain min/max accumulation is fused into the already-required visibility filtering pass;
 there is no separate domain traversal. No suitable cached presentation-position bounds were found.
 The benchmark's generated-layout domain is prepared outside measured updates. Domain discovery cost
 is therefore excluded consistently from both Phase 1 and packed benchmark cases.
 
 Native tests cover bit patterns, signed lanes, field offsets, quaternion error, domain selection,
-position range/rounding, and generated scale rejection/rounding. Component tests cover decoded
+position range/rounding and zero reserved storage. Component tests cover decoded
 bounds and source ownership. Pixel tests compare the actual custom-VF silhouettes against engine
-ISMC instances transformed by the CPU decoder, using nonuniform scales, arbitrary rotations,
+ISMC instances transformed by the CPU decoder, using arbitrary rotations,
 positive/negative offsets, rounding boundaries, changing distant roots, and proxy recreation.
 
 Multi-mesh rendering, shared groups, native render preparation, culling, LOD, motion vectors and
@@ -206,7 +200,7 @@ upload-buffer redesign remain outside this experiment.
 ## Initial reference-encoder measurements (2026-09-27)
 
 The benchmark/profile sections below record the historical 16-byte Q5.3 format. Their timings and
-640000-byte payloads do not measure the current 12-byte Q2.3 format.
+640000-byte payloads do not measure the current 12-byte unit-scale format.
 
 These historical results describe the first correctness-oriented encoder, before the optimization
 pass below. They demonstrate why the encoder needed profiling; they are not the final recommendation.

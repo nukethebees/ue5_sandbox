@@ -29,8 +29,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
         auto const positions{TArray<FVector3f>{{64.0f, 80.0f, 96.0f}, {112.0f, 128.0f, 144.0f}}};
         auto const rotations{
             TArray<FQuat4f>{FQuat4f::Identity, FQuat4f{FVector3f::UpVector, UE_HALF_PI}}};
-        auto const scales{TArray<FVector3f>{{2.0f, 3.0f, 3.875f}, {1.0f, 2.0f, 3.0f}}};
-        writer.set_transforms<ESandboxISMCBoundsMode::Supplied>(positions, rotations, scales);
+        writer.set_transforms<ESandboxISMCBoundsMode::Supplied>(positions, rotations);
 
         auto const [offset, count]{writer.range()};
         TestRunner->TestEqual(TEXT("The writer exposes its source offset"), offset, 1024);
@@ -41,8 +40,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
 
         for (auto index = 0; index < packed.Num(); ++index) {
             auto const& value{packed[index]};
-            double const decoded_scale[]{
-                value.scale.x_value(), value.scale.y_value(), value.scale.z_value()};
+            TestRunner->TestEqual(TEXT("Reserved storage is zero"), value.reserved, uint16{0});
             auto const decoded{ml::sandbox_ismc::unpack_quat32(value.rotation)};
             FQuat4f const orientation{decoded.X, decoded.Y, decoded.Z, decoded.W};
             TestRunner->TestTrue(TEXT("Quaternion error stays below 0.3 degrees"),
@@ -53,14 +51,11 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                                       96.0f +
                                           value.position[axis] * ml::sandbox_ismc::position_quantum,
                                       positions[index][axis]);
-                TestRunner->TestEqual(TEXT("Independent scale axes decode"),
-                                      static_cast<float>(decoded_scale[axis]),
-                                      scales[index][axis]);
             }
         }
     }
 
-    TEST_METHOD(MatchesTransformedLocalBoxesWithRotatedNonUniformScale)
+    TEST_METHOD(MatchesTransformedLocalBoxesWithRotation)
     {
         TArray<FSandboxISMCRenderInstance> packed;
         packed.SetNumUninitialized(1);
@@ -80,16 +75,14 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                 center,
                 extent};
             FVector3f const position{10.0f, -20.0f, 30.0f};
-            FVector3f const scale{2.0f, 0.5f, 3.0f};
             {
                 FVector3f const transform_positions[]{position};
                 FQuat4f const transform_rotations[]{rotation};
-                FVector3f const transform_scales[]{scale};
-                writer.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                    transform_positions, transform_rotations, transform_scales);
+                writer.set_transforms<ESandboxISMCBoundsMode::Calculate>(transform_positions,
+                                                                         transform_rotations);
             }
             auto const expected{
-                local_box.TransformBy(FTransform3f{rotation, position, scale}.ToMatrixWithScale())};
+                local_box.TransformBy(FTransform3f{rotation, position}.ToMatrixWithScale())};
             test_vector(*TestRunner,
                         TEXT("Minimum matches Unreal transformed AABB"),
                         writer.bounds().Min,
@@ -101,20 +94,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
         }
     }
 
-    TEST_METHOD(RejectsEveryNegativeScaleAxisIncludingPositiveDeterminantMirrors)
-    {
-        for (auto const scale : {FVector3f{-1.0f, 1.0f, 1.0f},
-                                 FVector3f{1.0f, -1.0f, 1.0f},
-                                 FVector3f{1.0f, 1.0f, -1.0f},
-                                 FVector3f{-1.0f, -1.0f, 1.0f}}) {
-            TestRunner->TestFalse(TEXT("The checked packing contract rejects negative axes"),
-                                  FSandboxISMCInstanceChunkWriter::supports_scale(scale));
-        }
-        TestRunner->TestTrue(TEXT("Positive nonuniform scale is supported"),
-                             FSandboxISMCInstanceChunkWriter::supports_scale({2.0f, 0.5f, 3.0f}));
-    }
-
-    TEST_METHOD(BoundsContainDecodedCornersAfterPositionRotationAndScaleRounding)
+    TEST_METHOD(BoundsContainDecodedCornersAfterPositionAndRotationRounding)
     {
         TArray<FSandboxISMCRenderInstance> packed;
         packed.SetNumUninitialized(1);
@@ -132,15 +112,11 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                                            static_cast<float>(random.FRandRange(-180.0f, 180.0f)),
                                            static_cast<float>(random.FRandRange(-180.0f, 180.0f))}
                                     .Quaternion()};
-            FVector3f const scale{static_cast<float>(random.FRandRange(0.0f, 3.875f)),
-                                  static_cast<float>(random.FRandRange(0.0f, 3.875f)),
-                                  static_cast<float>(random.FRandRange(0.0f, 3.875f))};
             {
                 FVector3f const transform_positions[]{position};
                 FQuat4f const transform_rotations[]{rotation};
-                FVector3f const transform_scales[]{scale};
-                writer.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                    transform_positions, transform_rotations, transform_scales);
+                writer.set_transforms<ESandboxISMCBoundsMode::Calculate>(transform_positions,
+                                                                         transform_rotations);
             }
             auto const& value{packed[0]};
             auto const q{ml::sandbox_ismc::unpack_quat32(value.rotation)};
@@ -148,11 +124,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                                                        static_cast<float>(value.position[1]),
                                                        static_cast<float>(value.position[2])} *
                                              ml::sandbox_ismc::position_quantum};
-            FVector3f const decoded_scale{static_cast<float>(value.scale.x_value()),
-                                          static_cast<float>(value.scale.y_value()),
-                                          static_cast<float>(value.scale.z_value())};
-            FTransform3f const transform{
-                FQuat4f{q.X, q.Y, q.Z, q.W}, decoded_position, decoded_scale};
+            FTransform3f const transform{FQuat4f{q.X, q.Y, q.Z, q.W}, decoded_position};
             for (int32 corner{0}; corner < 8; ++corner) {
                 auto const point{origin + FVector3f{(corner & 1) ? extent.X : -extent.X,
                                                     (corner & 2) ? extent.Y : -extent.Y,

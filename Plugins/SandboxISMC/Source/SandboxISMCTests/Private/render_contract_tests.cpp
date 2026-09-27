@@ -86,9 +86,8 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
                     {
                         FVector3f const transform_positions[]{FVector3f::ZeroVector};
                         FQuat4f const transform_rotations[]{FQuat4f::Identity};
-                        FVector3f const transform_scales[]{FVector3f::OneVector};
                         chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                            transform_positions, transform_rotations, transform_scales);
+                            transform_positions, transform_rotations);
                     }
                 });
             component->RegisterComponent();
@@ -218,9 +217,8 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
                     {
                         FVector3f const transform_positions[]{FVector3f::ZeroVector};
                         FQuat4f const transform_rotations[]{FQuat4f::Identity};
-                        FVector3f const transform_scales[]{FVector3f::OneVector};
                         chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                            transform_positions, transform_rotations, transform_scales);
+                            transform_positions, transform_rotations);
                     }
                 });
             TestRunner->AddExpectedError(
@@ -247,9 +245,8 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
                     {
                         FVector3f const transform_positions[]{FVector3f::ZeroVector};
                         FQuat4f const transform_rotations[]{FQuat4f::Identity};
-                        FVector3f const transform_scales[]{FVector3f::OneVector};
                         chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                            transform_positions, transform_rotations, transform_scales);
+                            transform_positions, transform_rotations);
                     }
                 });
             TestRunner->AddExpectedError(

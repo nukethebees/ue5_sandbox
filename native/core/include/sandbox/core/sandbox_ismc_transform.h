@@ -15,11 +15,9 @@ namespace ml::sandbox_ismc {
 
 inline constexpr float position_quantum{16.0f};
 inline constexpr float quaternion_component_limit{0.7071067811865475244f};
-inline constexpr float maximum_scale{3.875f};
 // 10/10/10 smallest-three error is below 0.3 degrees. The 0.006 chord
 // allowance also covers the normalized-input tolerance (squared length 1 +/- 1e-4).
 inline constexpr float rotation_error_chord{0.006f};
-inline constexpr float scale_error{0.0625f};
 
 [[nodiscard]] inline auto is_normalized_quaternion(Quaternion4f quaternion) noexcept -> bool {
     auto const squared{HMM_DotQ(quaternion, quaternion)};
@@ -106,38 +104,9 @@ inline constexpr float scale_error{0.0625f};
     return quantize_position_unchecked(position, root);
 }
 
-// Specialized float encoder for one unsigned Q2.3 component.
-// Precondition: finite scale in [0, maximum_scale].
-[[nodiscard]] inline auto quantize_scale_unchecked(float scale) noexcept -> std::uint16_t {
-    auto const scaled{scale * 8.0f};
-    auto const integral{static_cast<std::uint32_t>(scaled)};
-    auto const fraction{scaled - static_cast<float>(integral)};
-    auto const round_up{fraction > 0.5f || (fraction == 0.5f && (integral & 1U) != 0)};
-    return static_cast<std::uint16_t>(integral + round_up);
-}
-
-// Precondition: all components are finite and in [0, maximum_scale].
-// Bits 0..4 = X, 5..9 = Y, 10..14 = Z; bit 15 stays zero.
-[[nodiscard]] inline auto pack_scale_unchecked(Vector3f scale) noexcept -> Scale16 {
-    return Scale16::from_raw(static_cast<std::uint16_t>(
-        quantize_scale_unchecked(scale.X) | (quantize_scale_unchecked(scale.Y) << 5U) |
-        (quantize_scale_unchecked(scale.Z) << 10U)));
-}
-
-// Checked entry point for tests/debugging, not the render hot path.
-[[nodiscard]] inline auto pack_scale(Vector3f scale) noexcept -> std::optional<Scale16> {
-    for (auto const component : scale.Elements) {
-        if (!(component >= 0.0f && component <= maximum_scale)) {
-            return std::nullopt;
-        }
-    }
-    return pack_scale_unchecked(scale);
-}
-
 // Radius is measured about the mesh origin, including an off-centre mesh AABB.
 [[nodiscard]] constexpr auto geometry_error(float mesh_radius) noexcept -> float {
-    return position_quantum * 0.5f +
-           mesh_radius * (scale_error + rotation_error_chord * maximum_scale);
+    return position_quantum * 0.5f + mesh_radius * rotation_error_chord;
 }
 
 [[nodiscard]] inline auto position_root(Vector3f minimum, Vector3f maximum) noexcept
@@ -163,12 +132,11 @@ inline constexpr float scale_error{0.0625f};
 static_assert(std::endian::native == std::endian::little);
 static_assert(std::is_standard_layout_v<PackedTransform>);
 static_assert(std::is_trivially_copyable_v<PackedTransform>);
-static_assert(sizeof(Scale16) == 2);
 static_assert(sizeof(Quat32) == 4);
 static_assert(sizeof(PackedTransform) == 12);
 static_assert(alignof(PackedTransform) == 4);
 static_assert(offsetof(PackedTransform, position) == 0);
-static_assert(offsetof(PackedTransform, scale) == 6);
+static_assert(offsetof(PackedTransform, reserved) == 6);
 static_assert(offsetof(PackedTransform, rotation) == 8);
 
 }

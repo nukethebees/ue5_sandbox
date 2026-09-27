@@ -133,65 +133,6 @@ TEST(SandboxISMCPacking, NormalizedEncoderContractAndComponentEdges) {
     EXPECT_EQ(pack_normalized_quat32(HMM_Q(0.5f, 0.5f, 0.5f, 0.5f)).bits, 0xda769da4U);
 }
 
-TEST(SandboxISMCPacking, SpecializedScaleMatchesGeneratedEncoderAtEveryRoundingBoundary) {
-    for (int raw{0}; raw < 31; ++raw) {
-        auto const midpoint{(static_cast<float>(raw) + 0.5f) * 0.125f};
-        for (auto const value :
-             {std::nextafter(midpoint, 0.0f), midpoint, std::nextafter(midpoint, maximum_scale)}) {
-            Scale16 reference;
-            ASSERT_TRUE(reference.try_set_x_value(value));
-            ASSERT_TRUE(reference.try_set_y_value(value));
-            ASSERT_TRUE(reference.try_set_z_value(value));
-            auto const fast{pack_scale(make_vector3f(value, value, value))};
-            ASSERT_TRUE(fast.has_value());
-            EXPECT_EQ(fast->raw_value(), reference.raw_value());
-            EXPECT_LE(std::abs(static_cast<float>(fast->x_value()) - value), scale_error);
-            EXPECT_LE(std::abs(static_cast<float>(fast->y_value()) - value), scale_error);
-            EXPECT_LE(std::abs(static_cast<float>(fast->z_value()) - value), scale_error);
-            EXPECT_EQ(fast->raw_value() & 0x8000U, 0U);
-        }
-    }
-    for (auto const value : {0.0f, 0.5f, 1.0f, 1.5f, 2.0f, maximum_scale}) {
-        auto const packed{pack_scale(make_vector3f(value, value, value))};
-        ASSERT_TRUE(packed.has_value());
-        EXPECT_EQ(packed->x_value(), value);
-        EXPECT_EQ(packed->y_value(), value);
-        EXPECT_EQ(packed->z_value(), value);
-    }
-    for (auto const value : {-0.001f,
-                             3.876f,
-                             std::numeric_limits<float>::infinity(),
-                             std::numeric_limits<float>::quiet_NaN()}) {
-        EXPECT_FALSE(pack_scale(make_vector3f(value, 1, 1)).has_value());
-        EXPECT_FALSE(pack_scale(make_vector3f(1, value, 1)).has_value());
-        EXPECT_FALSE(pack_scale(make_vector3f(1, 1, value)).has_value());
-    }
-}
-
-TEST(SandboxISMCPacking, GeneratedScaleRangeAndNearestEvenRounding) {
-    Scale16 scale;
-    for (auto const value : {0.0, 1.0, 0.5, 1.5, 2.0, 3.875}) {
-        ASSERT_TRUE(scale.try_set_x_value(value));
-        ASSERT_TRUE(scale.try_set_y_value(value));
-        ASSERT_TRUE(scale.try_set_z_value(value));
-        EXPECT_DOUBLE_EQ(scale.x_value(), value);
-        EXPECT_DOUBLE_EQ(scale.y_value(), value);
-        EXPECT_DOUBLE_EQ(scale.z_value(), value);
-    }
-    ASSERT_TRUE(scale.try_set_x_value(1.0625));
-    EXPECT_EQ(scale.x_raw(), 8);
-    ASSERT_TRUE(scale.try_set_x_value(1.1875));
-    EXPECT_EQ(scale.x_raw(), 10);
-    for (auto const value : {-0.001,
-                             3.876,
-                             std::numeric_limits<double>::infinity(),
-                             std::numeric_limits<double>::quiet_NaN()}) {
-        EXPECT_FALSE(scale.try_set_x_value(value));
-        EXPECT_FALSE(scale.try_set_y_value(value));
-        EXPECT_FALSE(scale.try_set_z_value(value));
-    }
-}
-
 TEST(SandboxISMCPacking, PositionDomainChoosesAnAlignedCentreAndRejectsExcessRange) {
     auto const root{position_root(make_vector3f(-480000, -1608, 1600000),
                                   make_vector3f(480000, 1624, 1600320))};
@@ -213,10 +154,9 @@ TEST(SandboxISMCPacking, LittleEndianGpuWords) {
     packed.position[1] = 32767;
     packed.position[2] = -32767;
     packed.rotation.bits = 0x80200803;
-    packed.scale = pack_scale_unchecked(make_vector3f(1, 2, maximum_scale));
-    EXPECT_EQ(packed.scale.raw_value(), 0x7e08U);
+    EXPECT_EQ(packed.reserved, 0);
     auto const words{std::bit_cast<std::array<std::uint32_t, 3>>(packed)};
-    EXPECT_EQ(words, (std::array<std::uint32_t, 3>{0x7fffffff, 0x7e088001, 0x80200803}));
+    EXPECT_EQ(words, (std::array<std::uint32_t, 3>{0x7fffffff, 0x00008001, 0x80200803}));
 }
 }
 }

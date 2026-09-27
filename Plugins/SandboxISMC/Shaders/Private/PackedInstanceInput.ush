@@ -11,5 +11,5 @@ FVertexFactoryInstanceInput SandboxISMCInstanceInput(uint3 packed) {
 
 #define LOCALVF_GET_INSTANCE_INPUT(input) \
     SandboxISMCInstanceInput(             \
-        uint3(input.PackedPositionXY, input.PackedPositionZScale, input.PackedRotation))
+        uint3(input.PackedPositionXY, input.PackedPositionZ, input.PackedRotation))
 #endif
