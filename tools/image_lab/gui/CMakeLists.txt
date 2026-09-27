@@ -10,6 +10,7 @@ target_link_libraries(image-lab PRIVATE
   sandbox-imgui
   sandbox::native_defaults
 )
+ioj_enable_warnings(image-lab)
 target_compile_definitions(image-lab PRIVATE
   SDL_MAIN_HANDLED
   IOJ_IMAGE_LAB_PROJECT_DIRECTORY="${PROJECT_SOURCE_DIR}"

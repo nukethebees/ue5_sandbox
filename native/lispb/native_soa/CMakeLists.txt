@@ -30,11 +30,13 @@ target_sources(native-soa INTERFACE "${NATIVE_SOA_GENERATED}/native_soa_types.h"
 target_link_libraries(native-soa INTERFACE sandbox::handmade_math sandbox::native_defaults)
 
 add_executable(native-soa-tests tests.cpp "${NATIVE_SOA_GENERATED}/native_soa_types.cpp")
+ioj_enable_warnings(native-soa-tests)
 target_link_libraries(native-soa-tests PRIVATE native-soa GTest::gtest_main)
 add_test(NAME native-soa-tests COMMAND native-soa-tests)
 set_tests_properties(native-soa-tests PROPERTIES LABELS "unit;all;native;native-soa")
 
 add_executable(native-soa-tests-mimalloc tests.cpp "${NATIVE_SOA_GENERATED}/native_soa_types.cpp")
+ioj_enable_warnings(native-soa-tests-mimalloc)
 target_compile_definitions(native-soa-tests-mimalloc PRIVATE NATIVE_SOA_MIMALLOC=1)
 target_link_libraries(native-soa-tests-mimalloc PRIVATE native-soa GTest::gtest_main sandbox::mimalloc)
 target_link_libraries(native-soa-tests-mimalloc PRIVATE
@@ -51,6 +53,7 @@ target_sources(native-soa-benchmarks PRIVATE
 set_target_properties(native-soa-benchmarks PROPERTIES UNITY_BUILD OFF)
 target_link_libraries(native-soa-benchmarks PRIVATE
   sandbox::native_defaults sandbox::handmade_math benchmark::benchmark_main)
+ioj_enable_warnings(native-soa-benchmarks)
 target_include_directories(native-soa-benchmarks PRIVATE
   "${PROJECT_SOURCE_DIR}/native/simulation/include"
   "${PROJECT_SOURCE_DIR}/native/core/include")

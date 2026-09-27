@@ -5,3 +5,4 @@ target_link_libraries(image-lab-cli PRIVATE
   image-lab-workflow
   sandbox::native_defaults
 )
+ioj_enable_warnings(image-lab-cli)

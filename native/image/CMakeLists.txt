@@ -12,6 +12,7 @@ target_include_directories(sandbox-image
   PRIVATE src
 )
 target_link_libraries(sandbox-image PRIVATE sandbox::native_defaults ioj::core_pch)
+ioj_enable_warnings(sandbox-image)
 set_target_properties(sandbox-image PROPERTIES
   OUTPUT_NAME sandbox_image
 )
@@ -27,6 +28,7 @@ target_link_libraries(sandbox-image-tests PRIVATE
   GTest::gtest_main
   ioj::test_pch
 )
+ioj_enable_warnings(sandbox-image-tests)
 
 add_test(NAME sandbox-image-tests COMMAND sandbox-image-tests)
 set_tests_properties(sandbox-image-tests PROPERTIES LABELS "unit;all;native;native-image")

@@ -1,3 +1,7 @@
+if(NOT IOJ_BUILD_DEVELOPER_TOOLS)
+  return()
+endif()
+
 sandbox_add_dotnet_host_tool(
   code-format-tools-host
   IOJ_CODE_FORMAT_TOOLS

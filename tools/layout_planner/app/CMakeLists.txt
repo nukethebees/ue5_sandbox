@@ -27,22 +27,24 @@ target_link_libraries(layout-planner-ui PUBLIC
   native-layout
   lispb-target-compiler
   sandbox-imgui
-  ioj::warnings_as_errors
+  ioj::cxx_standard
   ioj::asan
 )
+ioj_enable_warnings(layout-planner-ui CODEGEN)
 if(WIN32)
   target_link_libraries(layout-planner-ui PUBLIC ole32 uuid shell32)
 endif()
 add_executable(layout-planner application.cpp main.cpp)
+ioj_enable_warnings(layout-planner CODEGEN)
 target_link_libraries(layout-planner PRIVATE layout-planner-ui)
 target_compile_definitions(layout-planner PRIVATE SDL_MAIN_HANDLED)
 target_compile_definitions(layout-planner-ui PRIVATE SDL_MAIN_HANDLED)
 
 add_executable(layout-planner-ui-tests tests/table_tests.cpp tests/planner_ui_tests.cpp)
 target_compile_features(layout-planner-ui-tests PRIVATE cxx_std_23)
-target_include_directories(layout-planner-ui-tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(layout-planner-ui-tests PRIVATE
-  layout-planner-ui GTest::gtest_main ioj::warnings_as_errors)
+  layout-planner-ui GTest::gtest_main ioj::cxx_standard)
+ioj_enable_warnings(layout-planner-ui-tests)
 target_compile_definitions(layout-planner-ui-tests PRIVATE IOJ_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 add_test(NAME layout-planner-ui-tests COMMAND layout-planner-ui-tests)
 set_tests_properties(layout-planner-ui-tests PROPERTIES LABELS "unit;layout;developer-tool")

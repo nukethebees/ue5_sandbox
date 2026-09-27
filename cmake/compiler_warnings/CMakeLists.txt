@@ -2,8 +2,6 @@ include(add_supported_interface_options.cmake)
 
 add_library(ioj_warning_level INTERFACE)
 add_library(ioj::warning_level ALIAS ioj_warning_level)
-add_library(ioj_warning_errors INTERFACE)
-add_library(ioj::warning_errors ALIAS ioj_warning_errors)
 add_library(ioj_codegen_warning_exceptions INTERFACE)
 add_library(ioj::codegen_warning_exceptions ALIAS ioj_codegen_warning_exceptions)
 add_library(ioj_msvc_strict INTERFACE)
@@ -13,7 +11,6 @@ add_library(ioj::clang_strict ALIAS ioj_clang_strict)
 
 if(IOJ_MSVC_FRONTEND)
   target_add_supported_options(ioj_warning_level COMPILE /W4 /wd4324)
-  target_add_supported_options(ioj_warning_errors COMPILE /WX)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_add_supported_options(ioj_codegen_warning_exceptions COMPILE
       /clang:-Wno-missing-designated-field-initializers
@@ -26,7 +23,6 @@ else()
     -Wextra
     -Wpedantic
   )
-  target_add_supported_options(ioj_warning_errors COMPILE -Werror)
   target_add_supported_options(ioj_codegen_warning_exceptions COMPILE
     -Wno-missing-designated-field-initializers
     -Wno-missing-field-initializers
@@ -175,22 +171,30 @@ endif()
 add_library(ioj_warnings INTERFACE)
 add_library(ioj::warnings ALIAS ioj_warnings)
 target_link_libraries(ioj_warnings INTERFACE
-  ioj::cxx_standard
   ioj::warning_level
   ioj::msvc_strict
   ioj::clang_strict
 )
 
-add_library(ioj_warnings_as_errors INTERFACE)
-add_library(ioj::warnings_as_errors ALIAS ioj_warnings_as_errors)
-target_link_libraries(ioj_warnings_as_errors INTERFACE
-  ioj::warnings
-  ioj::warning_errors
-)
-
 add_library(ioj_codegen_warnings INTERFACE)
 add_library(ioj::codegen_warnings ALIAS ioj_codegen_warnings)
 target_link_libraries(ioj_codegen_warnings INTERFACE
-  ioj::warnings_as_errors
+  ioj::warnings
   ioj::codegen_warning_exceptions
 )
+
+function(ioj_enable_warnings target)
+  cmake_parse_arguments(PARSE_ARGV 1 warnings "CODEGEN" "" "")
+  if(warnings_UNPARSED_ARGUMENTS)
+    message(FATAL_ERROR "ioj_enable_warnings(${target}): ${warnings_UNPARSED_ARGUMENTS}")
+  endif()
+  if(warnings_CODEGEN)
+    target_link_libraries(${target} PRIVATE ioj::codegen_warnings)
+  else()
+    target_link_libraries(${target} PRIVATE ioj::warnings)
+  endif()
+  # Explicit CMAKE_COMPILE_WARNING_AS_ERROR and --compile-no-warning-as-error win.
+  if(NOT DEFINED CMAKE_COMPILE_WARNING_AS_ERROR)
+    set_property(TARGET ${target} PROPERTY COMPILE_WARNING_AS_ERROR ON)
+  endif()
+endfunction()

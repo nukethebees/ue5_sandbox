@@ -7,10 +7,11 @@ target_link_libraries(native-simulation-benchmark-tests PRIVATE
   sandbox::native_defaults
   ioj::test_pch
 )
+ioj_enable_warnings(native-simulation-benchmark-tests)
 target_compile_definitions(native-simulation-benchmark-tests PRIVATE
   IOJ_PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
-configure_sandbox_s7_abi(native-simulation-benchmark-tests)
+ioj_apply_native_abi(native-simulation-benchmark-tests)
 
 add_test(NAME native-simulation-benchmark-tests COMMAND native-simulation-benchmark-tests)
 set_tests_properties(native-simulation-benchmark-tests PROPERTIES

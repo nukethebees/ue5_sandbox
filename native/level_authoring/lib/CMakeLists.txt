@@ -20,7 +20,8 @@ target_link_libraries(native-level-authoring
     sandbox-s7 
     sandbox::native_defaults
 )
-configure_sandbox_s7_abi(native-level-authoring)
+ioj_enable_warnings(native-level-authoring)
+ioj_apply_native_abi(native-level-authoring)
 
 set_target_properties(native-level-authoring PROPERTIES
   OUTPUT_NAME SandboxNativeLevelAuthoring

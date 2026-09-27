@@ -13,12 +13,14 @@ target_compile_definitions(lispb-output
   PRIVATE IOJ_CLANG_FORMAT_EXECUTABLE="${IOJ_CLANG_FORMAT_EXECUTABLE}"
 )
 target_include_directories(lispb-output PUBLIC include)
-target_link_libraries(lispb-output PRIVATE sandbox::native_codegen_defaults)
+target_link_libraries(lispb-output PRIVATE sandbox::native_defaults)
+ioj_enable_warnings(lispb-output CODEGEN)
 
 add_library(lispb-project src/project.cpp)
 target_compile_features(lispb-project PUBLIC cxx_std_23)
 target_include_directories(lispb-project PUBLIC include)
-target_link_libraries(lispb-project PRIVATE lispb-schema lispb-syntax sandbox::native_codegen_defaults)
+target_link_libraries(lispb-project PRIVATE lispb-schema lispb-syntax sandbox::native_defaults)
+ioj_enable_warnings(lispb-project CODEGEN)
 
 add_library(lispb-schema)
 target_sources(lispb-schema PRIVATE
@@ -40,8 +42,9 @@ target_include_directories(lispb-schema PUBLIC include)
 target_link_libraries(lispb-schema
   PRIVATE
     lispb-syntax
-    sandbox::native_codegen_defaults
+    sandbox::native_defaults
 )
+ioj_enable_warnings(lispb-schema CODEGEN)
 
 add_library(codegen-lib)
 target_sources(codegen-lib PRIVATE
@@ -83,9 +86,10 @@ target_link_libraries(codegen-lib
     lispb-output
     lispb-schema
   PRIVATE
-    sandbox::native_codegen_defaults
+    sandbox::native_defaults
     ioj::codegen_pch
 )
+ioj_enable_warnings(codegen-lib CODEGEN)
 
 add_library(lispb-target-compiler
   src/target_compiler.cpp
@@ -99,15 +103,17 @@ target_link_libraries(lispb-target-compiler PUBLIC
   lispb-project
   material-gen
   slate-codegen-lib
-  sandbox::native_codegen_defaults
+  sandbox::native_defaults
 )
+ioj_enable_warnings(lispb-target-compiler CODEGEN)
 
 add_executable(lispb src/main.cpp)
 target_compile_features(lispb PRIVATE cxx_std_23)
 target_link_libraries(lispb PRIVATE
   lispb-target-compiler
-  sandbox::native_codegen_defaults
+  sandbox::native_defaults
 )
+ioj_enable_warnings(lispb CODEGEN)
 
 set(CODEGEN_COMPILE_FIXTURE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/compile_fixture")
 set(CODEGEN_COMPILE_FIXTURE_OUTPUT "${CODEGEN_COMPILE_FIXTURE_SOURCE}/generated")
@@ -176,32 +182,28 @@ target_sources(codegen-generated-compile-fixture PRIVATE
 )
 set_target_properties(codegen-generated-compile-fixture PROPERTIES UNITY_BUILD OFF)
 target_compile_features(codegen-generated-compile-fixture PRIVATE cxx_std_23)
-target_include_directories(codegen-generated-compile-fixture PRIVATE
+target_include_directories(codegen-generated-compile-fixture PUBLIC
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
   "${CODEGEN_COMPILE_FIXTURE_SOURCE}/stubs"
   "${PROJECT_SOURCE_DIR}/native/core/include"
   "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public"
 )
-target_link_libraries(codegen-generated-compile-fixture PRIVATE sandbox::native_codegen_defaults)
+target_link_libraries(codegen-generated-compile-fixture PRIVATE sandbox::native_defaults)
+ioj_enable_warnings(codegen-generated-compile-fixture CODEGEN)
 
 add_executable(codegen-generated-tests)
 target_sources(codegen-generated-tests PRIVATE
   tests/generated_tests.cpp
   tests/packed_support_tests.cpp
-  $<TARGET_OBJECTS:codegen-generated-compile-fixture>
 )
 set_target_properties(codegen-generated-tests PROPERTIES UNITY_BUILD OFF)
 target_compile_features(codegen-generated-tests PRIVATE cxx_std_23)
-target_include_directories(codegen-generated-tests PRIVATE
-  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
-  "${CODEGEN_COMPILE_FIXTURE_SOURCE}/stubs"
-  "${PROJECT_SOURCE_DIR}/native/core/include"
-  "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public"
-)
 target_link_libraries(codegen-generated-tests PRIVATE
+  codegen-generated-compile-fixture
   GTest::gtest_main
-  sandbox::native_codegen_defaults
+  sandbox::native_defaults
 )
+ioj_enable_warnings(codegen-generated-tests CODEGEN)
 
 add_executable(codegen-tests
   tests/ast_tests.cpp
@@ -231,9 +233,10 @@ target_link_libraries(codegen-tests PRIVATE
   codegen-lib
   lispb-project
   GTest::gtest_main
-  sandbox::native_codegen_defaults
+  sandbox::native_defaults
   ioj::test_pch
 )
+ioj_enable_warnings(codegen-tests CODEGEN)
 target_compile_definitions(codegen-tests PRIVATE
   IOJ_CODEGEN_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
 )
@@ -254,7 +257,8 @@ foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
     "${PROJECT_SOURCE_DIR}/native/core/include"
     "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public"
   )
-  target_link_libraries(${reject_target} PRIVATE sandbox::native_codegen_defaults)
+  target_link_libraries(${reject_target} PRIVATE sandbox::native_defaults)
+  ioj_enable_warnings(${reject_target} CODEGEN)
   add_test(NAME "SingleAllocationRejects${restriction}"
     COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
       "-DREJECT_TARGET=${reject_target}"
@@ -269,7 +273,8 @@ foreach(restriction IN ITEMS SIGNED_STORAGE BOOL_STORAGE ZERO_BITS NEGATIVE_BITS
   target_compile_features(${reject_target} PRIVATE cxx_std_23)
   target_compile_definitions(${reject_target} PRIVATE "CODEGEN_BAD_${restriction}")
   target_include_directories(${reject_target} PRIVATE "${PROJECT_SOURCE_DIR}/native/core/include")
-  target_link_libraries(${reject_target} PRIVATE sandbox::native_codegen_defaults)
+  target_link_libraries(${reject_target} PRIVATE sandbox::native_defaults)
+  ioj_enable_warnings(${reject_target} CODEGEN)
   add_test(NAME "PackedFieldRejects${restriction}"
     COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
       "-DREJECT_TARGET=${reject_target}"

@@ -11,6 +11,7 @@ target_link_libraries(native-simulation-benchmark-lib
   PUBLIC native-simulation
   PRIVATE native-level-authoring CLI11::CLI11 sandbox::native_defaults
 )
+ioj_enable_warnings(native-simulation-benchmark-lib)
 target_compile_definitions(native-simulation-benchmark-lib PRIVATE
   IOJ_BENCHMARK_COMPILER_ID="${CMAKE_CXX_COMPILER_ID}"
   IOJ_BENCHMARK_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
@@ -22,4 +23,4 @@ if(IOJ_WITH_TRACY)
   )
   target_link_libraries(native-simulation-benchmark-lib PRIVATE Tracy::TracyClient)
 endif()
-configure_sandbox_s7_abi(native-simulation-benchmark-lib)
+ioj_apply_native_abi(native-simulation-benchmark-lib)

@@ -2,18 +2,31 @@ add_library(ioj_cxx_standard INTERFACE)
 add_library(ioj::cxx_standard ALIAS ioj_cxx_standard)
 target_compile_features(ioj_cxx_standard INTERFACE cxx_std_23)
 
+add_library(ioj_native_abi INTERFACE)
+add_library(ioj::native_abi ALIAS ioj_native_abi)
+if(WIN32)
+  target_compile_definitions(ioj_native_abi INTERFACE _ITERATOR_DEBUG_LEVEL=0)
+endif()
+
+function(ioj_apply_native_abi target)
+  set_property(TARGET ${target} PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
+  target_link_libraries(${target} PUBLIC "$<BUILD_LOCAL_INTERFACE:ioj::native_abi>")
+endfunction()
+
+add_library(ioj_cxx_conformance INTERFACE)
+add_library(ioj::cxx_conformance ALIAS ioj_cxx_conformance)
+if(IOJ_MSVC_FRONTEND)
+  target_compile_options(ioj_cxx_conformance INTERFACE "$<$<COMPILE_LANGUAGE:CXX>:/permissive->")
+endif()
+
 add_library(ioj_arch_avx2 INTERFACE)
 add_library(ioj::arch_avx2 ALIAS ioj_arch_avx2)
 
 add_library(ioj_release_optimization INTERFACE)
 add_library(ioj::release_optimization ALIAS ioj_release_optimization)
 
-set(ioj_optimized_unreal_configuration OFF)
-if(UE_CONFIGURATION MATCHES "^(Development|Shipping|Test)$")
-  set(ioj_optimized_unreal_configuration ON)
-endif()
 set(ioj_release_configuration
-  "$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<BOOL:${ioj_optimized_unreal_configuration}>>"
+  "$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>>"
 )
 
 add_library(ioj_unreal_avx2 INTERFACE)

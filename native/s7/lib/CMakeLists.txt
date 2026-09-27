@@ -15,9 +15,9 @@ target_sources(sandbox-s7-third-party PRIVATE
   src/s7_sandbox.cpp
 )
 target_compile_features(sandbox-s7-third-party PRIVATE cxx_std_23)
-target_link_libraries(sandbox-s7-third-party PRIVATE ioj::asan)
-target_compile_definitions(sandbox-s7-third-party PRIVATE ${IOJ_S7_DEFINITIONS})
-target_include_directories(sandbox-s7-third-party PRIVATE ../ThirdParty/s7)
+target_link_libraries(sandbox-s7-third-party PRIVATE ioj::asan ioj::cxx_conformance)
+target_compile_definitions(sandbox-s7-third-party PUBLIC ${IOJ_S7_DEFINITIONS})
+target_include_directories(sandbox-s7-third-party SYSTEM PUBLIC ../ThirdParty/s7)
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   target_compile_options(sandbox-s7-third-party PRIVATE
     "-Wno-#pragma-messages"
@@ -29,18 +29,15 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     /wd4273 # s7 redeclares the CRT's __p__environ without its dllimport annotation.
   )
 endif()
-configure_sandbox_s7_abi(sandbox-s7-third-party)
+ioj_apply_native_abi(sandbox-s7-third-party)
 
 add_library(sandbox-s7 STATIC)
 target_sources(sandbox-s7 PRIVATE
   src/interpreter.cpp
   src/value.cpp
-  $<TARGET_OBJECTS:sandbox-s7-third-party>
 )
 target_compile_features(sandbox-s7 PUBLIC cxx_std_23)
-target_compile_definitions(sandbox-s7 PRIVATE ${IOJ_S7_DEFINITIONS})
 target_include_directories(sandbox-s7 PUBLIC include)
-target_include_directories(sandbox-s7 SYSTEM PRIVATE ../ThirdParty/s7)
 
 add_library(sandbox-s7-warning-exceptions INTERFACE)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
@@ -49,10 +46,12 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   )
 endif()
 target_link_libraries(sandbox-s7 PRIVATE
+  sandbox-s7-third-party
   sandbox::native_defaults
   sandbox-s7-warning-exceptions
 )
-configure_sandbox_s7_abi(sandbox-s7)
+ioj_enable_warnings(sandbox-s7)
+ioj_apply_native_abi(sandbox-s7)
 
 set_target_properties(sandbox-s7 PROPERTIES
   OUTPUT_NAME sandbox_s7

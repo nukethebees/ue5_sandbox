@@ -34,7 +34,6 @@ class Configuration:
     name: str
     display_name: str
     cmake_build_type: str
-    ue_configuration: str
 
 
 @dataclass(frozen=True)

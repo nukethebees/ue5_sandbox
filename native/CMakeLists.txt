@@ -9,15 +9,9 @@ add_library(sandbox_native_defaults INTERFACE)
 add_library(sandbox::native_defaults ALIAS sandbox_native_defaults)
 target_link_libraries(sandbox_native_defaults INTERFACE
   sandbox::native_no_rtti
-  ioj::warnings_as_errors
-  ioj::asan
-)
-
-add_library(sandbox_native_codegen_defaults INTERFACE)
-add_library(sandbox::native_codegen_defaults ALIAS sandbox_native_codegen_defaults)
-target_link_libraries(sandbox_native_codegen_defaults INTERFACE
-  sandbox::native_no_rtti
-  ioj::codegen_warnings
+  ioj::cxx_standard
+  ioj::cxx_conformance
+  ioj::native_abi
   ioj::asan
 )
 
@@ -26,10 +20,16 @@ enable_language(C)
 add_subdirectory(third_party)
 add_subdirectory(third_party/handmade_math)
 
-set(IOJ_WITH_TRACY OFF)
-if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
-  set(IOJ_WITH_TRACY ON)
-
+if(IOJ_WITH_UNREAL)
+  set(IOJ_WITH_TRACY OFF)
+  if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
+    set(IOJ_WITH_TRACY ON)
+  endif()
+else()
+  option(IOJ_ENABLE_PROFILING "Enable Tracy in standalone native targets" ON)
+  set(IOJ_WITH_TRACY ${IOJ_ENABLE_PROFILING})
+endif()
+if(IOJ_WITH_TRACY)
   set(TRACY_ENABLE ON)
   set(TRACY_ON_DEMAND ON)
   set(TRACY_ONLY_LOCALHOST ON)
@@ -40,9 +40,9 @@ if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
 
   find_package(Threads REQUIRED)
   add_subdirectory(third_party/tracy EXCLUDE_FROM_ALL)
-  set_property(TARGET TracyClient PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
+  ioj_apply_native_abi(TracyClient)
   target_link_libraries(TracyClient PRIVATE "$<BUILD_LOCAL_INTERFACE:ioj::asan>")
-  target_compile_definitions(TracyClient PRIVATE _ITERATOR_DEBUG_LEVEL=0)
+
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(TracyClient PRIVATE -Wno-format -Wno-unused-value)
   elseif(MSVC)
@@ -63,10 +63,10 @@ if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
     get_target_property(tracy_libraries TracyClient INTERFACE_LINK_LIBRARIES)
     target_compile_definitions(TracyClientUnreal
       PUBLIC ${tracy_definitions} TRACY_MANUAL_LIFETIME TRACY_IMPORTS
-      PRIVATE TRACY_EXPORTS IOJ_TRACY_MEMORY_EXPORTS _ITERATOR_DEBUG_LEVEL=0
+      PRIVATE TRACY_EXPORTS IOJ_TRACY_MEMORY_EXPORTS
     )
     target_link_libraries(TracyClientUnreal PUBLIC ${tracy_libraries})
-    set_property(TARGET TracyClientUnreal PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
+    ioj_apply_native_abi(TracyClientUnreal)
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       target_compile_options(TracyClientUnreal PRIVATE -Wno-format -Wno-unused-value)
     elseif(MSVC)

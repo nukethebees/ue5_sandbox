@@ -48,6 +48,7 @@ target_link_libraries(native-core
     sandbox::native_defaults
     ioj::core_pch
 )
+ioj_enable_warnings(native-core)
 if(IOJ_WITH_TRACY)
   target_compile_definitions(native-core PRIVATE IOJ_WITH_TRACY)
   target_link_libraries(native-core PRIVATE sandbox::profiling)
@@ -101,6 +102,7 @@ target_sources(native-core-tests PRIVATE
 )
 target_compile_features(native-core-tests PRIVATE cxx_std_23)
 target_link_libraries(native-core-tests PRIVATE native-core sandbox::native_defaults ioj::test_pch)
+ioj_enable_warnings(native-core-tests)
 
 target_link_libraries(native-core-tests PRIVATE GTest::gtest_main)
 
@@ -119,6 +121,7 @@ target_link_libraries(native-core-benchmarks PRIVATE
   benchmark::benchmark_main
   sandbox::native_defaults
 )
+ioj_enable_warnings(native-core-benchmarks)
 
 sandbox_jobserver_command(native_core_vector_lerp_benchmark_command BENCHMARK benchmark
   "Native core vector lerp benchmark")
@@ -147,6 +150,7 @@ target_link_libraries(native-core-static-string-view-reject-automatic PRIVATE
   native-core
   sandbox::native_defaults
 )
+ioj_enable_warnings(native-core-static-string-view-reject-automatic)
 add_test(NAME StaticStringViewRejectsAutomaticStorage
   COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
     -DREJECT_TARGET=native-core-static-string-view-reject-automatic
@@ -158,29 +162,5 @@ set_tests_properties(StaticStringViewRejectsAutomaticStorage PROPERTIES
   RESOURCE_LOCK codegen-negative-build
 )
 
-set_property(TARGET native-core PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
-target_compile_definitions(native-core PRIVATE _ITERATOR_DEBUG_LEVEL=0)
-
-if(WIN32)
-  set_property(TARGET native-core-tests PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
-  target_compile_definitions(native-core-tests PRIVATE _ITERATOR_DEBUG_LEVEL=0)
-endif()
-
-if(IOJ_MSVC_FRONTEND)
-  target_compile_options(native-core PRIVATE /permissive-)
-  if(UE_CONFIGURATION MATCHES "^(Development|Shipping|Test)$")
-    target_compile_options(native-core PRIVATE /O2)
-  endif()
-else()
-  if(UE_CONFIGURATION MATCHES "^(Development|Shipping|Test)$")
-    target_compile_options(native-core PRIVATE -O2)
-  endif()
-endif()
-
-if(UE_CONFIGURATION MATCHES "^(Shipping|Test)$")
-  target_compile_definitions(native-core PRIVATE NDEBUG)
-endif()
-
-if(IOJ_MSVC_FRONTEND)
-  target_compile_options(native-core-tests PRIVATE /permissive-)
-endif()
+ioj_apply_native_abi(native-core)
+ioj_apply_native_abi(native-core-tests)

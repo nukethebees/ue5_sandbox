@@ -19,11 +19,10 @@ if(IOJ_WITH_UNREAL)
 endif()
 
 foreach(native_simulation_target IN LISTS native_simulation_targets)
-  configure_native_simulation_target(${native_simulation_target})
+  ioj_apply_native_abi(${native_simulation_target})
   target_compile_features(${native_simulation_target} PUBLIC cxx_std_23)
   target_include_directories(${native_simulation_target} PUBLIC
     include
-    "${PROJECT_SOURCE_DIR}/native/core/include"
   )
   target_link_libraries(${native_simulation_target}
     PUBLIC 
@@ -34,6 +33,7 @@ foreach(native_simulation_target IN LISTS native_simulation_targets)
       sandbox::native_defaults
       ioj::core_pch
   )
+  ioj_enable_warnings(${native_simulation_target})
   if(IOJ_WITH_TRACY)
     target_compile_definitions(${native_simulation_target} PRIVATE IOJ_WITH_TRACY)
     target_link_libraries(${native_simulation_target} PUBLIC sandbox::profiling-api)

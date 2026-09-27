@@ -7,3 +7,4 @@ target_link_libraries(layout-profile-probe PRIVATE
   native-layout
   sandbox::native_defaults
 )
+ioj_enable_warnings(layout-profile-probe)

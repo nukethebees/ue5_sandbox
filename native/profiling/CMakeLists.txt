@@ -13,5 +13,6 @@ if(IOJ_WITH_TRACY)
     PUBLIC native-profiling-api
     PRIVATE Tracy::TracyClient sandbox::native_defaults
   )
-  set_property(TARGET native-profiling PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
+  ioj_enable_warnings(native-profiling)
+  ioj_apply_native_abi(native-profiling)
 endif()

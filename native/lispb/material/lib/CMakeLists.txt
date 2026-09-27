@@ -10,9 +10,10 @@ target_include_directories(material-gen PUBLIC include)
 target_link_libraries(material-gen
   PRIVATE
     lispb-syntax
-    sandbox::native_codegen_defaults
+    sandbox::native_defaults
     ioj::codegen_pch
 )
+ioj_enable_warnings(material-gen CODEGEN)
 
 if(IOJ_WITH_UNREAL)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
@@ -30,10 +31,11 @@ if(IOJ_WITH_UNREAL)
   target_compile_features(sandbox-material-gen PUBLIC cxx_std_23)
   target_include_directories(sandbox-material-gen PUBLIC include)
   target_link_libraries(sandbox-material-gen PRIVATE
-    sandbox::native_codegen_defaults
+    sandbox::native_defaults
     ioj::unreal_avx2
     ioj::codegen_pch
   )
+  ioj_enable_warnings(sandbox-material-gen CODEGEN)
   set_target_properties(sandbox-material-gen PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/MaterialGen/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"

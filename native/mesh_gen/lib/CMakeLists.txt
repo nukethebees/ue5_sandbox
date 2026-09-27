@@ -10,6 +10,7 @@ target_include_directories(mesh-gen
   PRIVATE src
 )
 target_link_libraries(mesh-gen PRIVATE sandbox::native_defaults)
+ioj_enable_warnings(mesh-gen)
 
 if(IOJ_WITH_UNREAL)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
@@ -25,6 +26,7 @@ if(IOJ_WITH_UNREAL)
     PRIVATE src
   )
   target_link_libraries(sandbox-mesh-gen PRIVATE sandbox::native_defaults)
+  ioj_enable_warnings(sandbox-mesh-gen)
   target_link_libraries(sandbox-mesh-gen PRIVATE ioj::unreal_avx2)
   set_target_properties(sandbox-mesh-gen PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY

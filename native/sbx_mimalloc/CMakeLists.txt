@@ -24,10 +24,9 @@ function(configure_sbx_mimalloc_object target)
     MI_DEBUG=0
     MI_STATIC_LIB=1
     MI_WIN_NOREDIRECT=1
-    _ITERATOR_DEBUG_LEVEL=0
   )
   set_property(TARGET ${target} PROPERTY CXX_SCAN_FOR_MODULES OFF)
-  set_property(TARGET ${target} PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
+  ioj_apply_native_abi(${target})
   set_property(TARGET ${target} PROPERTY POSITION_INDEPENDENT_CODE ON)
 endfunction()
 
@@ -97,12 +96,13 @@ target_link_libraries(sbx-mimalloc
   PUBLIC ioj::cxx_standard psapi shell32 user32 advapi32 bcrypt
   PRIVATE sandbox::native_defaults
 )
+ioj_enable_warnings(sbx-mimalloc)
 if(IOJ_WITH_TRACY)
   target_compile_definitions(sbx-mimalloc PRIVATE IOJ_WITH_TRACY)
   target_link_libraries(sbx-mimalloc PRIVATE sandbox::profiling)
 endif()
-set_property(TARGET sbx-mimalloc PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
-target_compile_definitions(sbx-mimalloc PRIVATE _ITERATOR_DEBUG_LEVEL=0)
+ioj_apply_native_abi(sbx-mimalloc)
+
 add_dependencies(sbx-mimalloc sbx-mimalloc-symbol-audit)
 
 set_target_properties(sbx-mimalloc PROPERTIES
@@ -123,7 +123,8 @@ target_link_libraries(sbx-mimalloc-tests PRIVATE
   sandbox::mimalloc
   sandbox::native_defaults
 )
-set_property(TARGET sbx-mimalloc-tests PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
-target_compile_definitions(sbx-mimalloc-tests PRIVATE _ITERATOR_DEBUG_LEVEL=0)
+ioj_enable_warnings(sbx-mimalloc-tests)
+ioj_apply_native_abi(sbx-mimalloc-tests)
+
 add_test(NAME sbx-mimalloc-tests COMMAND sbx-mimalloc-tests)
 set_tests_properties(sbx-mimalloc-tests PROPERTIES LABELS "unit;all;native;sbx-mimalloc")

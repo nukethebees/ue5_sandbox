@@ -24,6 +24,7 @@ ioj_is_clang_cl(IOJ_IS_CLANG_CL)
 option(IOJ_WITH_UNREAL "Configure Unreal Engine integration and targets" ON)
 option(IOJ_ENABLE_ASAN "Instrument native targets with AddressSanitizer" OFF)
 option(IOJ_ENABLE_CLANG_TIDY "Run clang-tidy for first-party native targets" OFF)
+option(IOJ_BUILD_DEVELOPER_TOOLS "Configure developer applications and their test/build dependencies" ON)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_subdirectory(cmake)
@@ -41,7 +42,9 @@ sandbox_add_dotnet_host_tool(
 )
 
 add_subdirectory(native)
-add_subdirectory(tools/rust)
+if(IOJ_BUILD_DEVELOPER_TOOLS OR IOJ_WITH_UNREAL)
+  add_subdirectory(tools/rust)
+endif()
 add_subdirectory(tools/jobserver)
 add_subdirectory(Scripts)
 add_subdirectory(tools)

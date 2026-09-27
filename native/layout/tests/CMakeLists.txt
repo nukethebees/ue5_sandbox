@@ -24,6 +24,7 @@ target_link_libraries(native-layout-tests PRIVATE
   sandbox::native_defaults
   ioj::test_pch
 )
+ioj_enable_warnings(native-layout-tests)
 target_compile_definitions(native-layout-tests PRIVATE
   IOJ_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
@@ -33,6 +34,7 @@ set_tests_properties(native-layout-tests PROPERTIES LABELS "unit;all;native;layo
 
 add_executable(layout-probe-fixture-generator probe_fixture.cpp)
 target_link_libraries(layout-probe-fixture-generator PRIVATE native-layout sandbox::native_defaults)
+ioj_enable_warnings(layout-probe-fixture-generator)
 set(probe_source "${CMAKE_CURRENT_BINARY_DIR}/exported_probe.cpp")
 sandbox_jobserver_command(probe_command STANDARD generate "Generate layout probe fixture")
 add_custom_command(OUTPUT "${probe_source}"

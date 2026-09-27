@@ -16,9 +16,10 @@ target_link_libraries(kernel-codegen-lib
   PUBLIC lispb-output
   PRIVATE
   lispb-syntax
-  sandbox::native_codegen_defaults
+  sandbox::native_defaults
   ioj::codegen_pch
 )
+ioj_enable_warnings(kernel-codegen-lib CODEGEN)
 
 add_executable(kernel-codegen-tests
   tests/compiler_io_tests.cpp
@@ -31,9 +32,10 @@ target_link_libraries(kernel-codegen-tests PRIVATE
   kernel-codegen-lib
   lispb-syntax
   GTest::gtest_main
-  sandbox::native_codegen_defaults
+  sandbox::native_defaults
   ioj::test_pch
 )
+ioj_enable_warnings(kernel-codegen-tests CODEGEN)
 
 add_test(NAME kernel-codegen-tests COMMAND kernel-codegen-tests)
 set_tests_properties(kernel-codegen-tests PROPERTIES LABELS "unit;all;native;codegen")
@@ -67,7 +69,8 @@ target_include_directories(kernel-generated-compile-tests PRIVATE
   "${KERNEL_COMPILE_OUTPUT}"
   "${CMAKE_SOURCE_DIR}/native/lispb/tests/compile_fixture/stubs"
 )
-target_link_libraries(kernel-generated-compile-tests PRIVATE sandbox::native_codegen_defaults)
+target_link_libraries(kernel-generated-compile-tests PRIVATE sandbox::native_defaults)
+ioj_enable_warnings(kernel-generated-compile-tests CODEGEN)
 add_dependencies(kernel-codegen-tests kernel-generated-compile-tests)
 add_test(NAME KernelGeneratedCompileSmoke COMMAND kernel-generated-compile-tests)
 set_tests_properties(KernelGeneratedCompileSmoke PROPERTIES LABELS "unit;all;native;codegen")
@@ -126,8 +129,9 @@ target_include_directories(kernel-generated-standard-tests PRIVATE
 )
 target_link_libraries(kernel-generated-standard-tests PRIVATE
   GTest::gtest_main
-  sandbox::native_codegen_defaults
+  sandbox::native_defaults
 )
+ioj_enable_warnings(kernel-generated-standard-tests CODEGEN)
 add_test(NAME kernel-generated-standard-tests COMMAND kernel-generated-standard-tests)
 set_tests_properties(kernel-generated-standard-tests PROPERTIES LABELS "unit;all;native;codegen")
 add_dependencies(kernel-codegen-tests kernel-generated-standard-tests)
@@ -294,7 +298,8 @@ foreach(TARGET IN ITEMS
   set_target_properties(${TARGET} PROPERTIES UNITY_BUILD OFF)
   target_compile_features(${TARGET} PRIVATE cxx_std_23)
   target_include_directories(${TARGET} PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
-  target_link_libraries(${TARGET} PRIVATE sandbox::native_codegen_defaults)
+  target_link_libraries(${TARGET} PRIVATE sandbox::native_defaults)
+  ioj_enable_warnings(${TARGET} CODEGEN)
 endforeach()
 target_link_libraries(kernel-native-simd-avx2 PRIVATE
   ioj::arch_avx2
@@ -330,9 +335,10 @@ target_link_libraries(kernel-native-simd-tests PRIVATE
   CpuFeatures::cpu_features
   GTest::gtest_main
   ioj::arch_avx2
-  sandbox::native_codegen_defaults
+  sandbox::native_defaults
   ioj::fp_strict
 )
+ioj_enable_warnings(kernel-native-simd-tests CODEGEN)
 add_test(NAME kernel-native-simd-tests COMMAND kernel-native-simd-tests)
 set_tests_properties(kernel-native-simd-tests
   PROPERTIES LABELS "unit;native-kernel-benchmark"
@@ -353,9 +359,10 @@ target_link_libraries(kernel-native-benchmarks PRIVATE
   benchmark::benchmark_main
   CpuFeatures::cpu_features
   ioj::arch_avx2
-  sandbox::native_codegen_defaults
+  sandbox::native_defaults
   ioj::fp_strict
 )
+ioj_enable_warnings(kernel-native-benchmarks CODEGEN)
 add_test(
   NAME KernelNativeBenchmarkDryRun
   COMMAND kernel-native-benchmarks --benchmark_dry_run

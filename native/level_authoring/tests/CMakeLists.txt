@@ -7,7 +7,8 @@ target_link_libraries(native-level-authoring-tests PRIVATE
   sandbox::native_defaults
   ioj::test_pch
 )
-configure_sandbox_s7_abi(native-level-authoring-tests)
+ioj_enable_warnings(native-level-authoring-tests)
+ioj_apply_native_abi(native-level-authoring-tests)
 
 add_test(NAME native-level-authoring-tests COMMAND native-level-authoring-tests)
 set_tests_properties(native-level-authoring-tests PROPERTIES

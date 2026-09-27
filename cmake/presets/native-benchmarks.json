@@ -17,16 +17,13 @@
       "inherits": "win-x64-clangcl-release",
       "cacheVariables": {
         "IOJ_TRACY_TOOLS": true,
-        "UE_CONFIGURATION": "Shipping"
+        "IOJ_ENABLE_PROFILING": false
       }
     },
     {
       "name": "native-benchmark",
       "displayName": "Native benchmarks (clang-cl Release + Unity)",
-      "inherits": "win-x64-clangcl-release-unity",
-      "cacheVariables": {
-        "UE_CONFIGURATION": "Development"
-      }
+      "inherits": "win-x64-clangcl-release-unity"
     }
   ],
   "buildPresets": [

@@ -11,6 +11,7 @@ target_link_libraries(tracy-benchmark-comparison-lib
   PUBLIC jobserver::client nlohmann_json::nlohmann_json
   PRIVATE CLI11::CLI11 sandbox::native_defaults ws2_32
 )
+ioj_enable_warnings(tracy-benchmark-comparison-lib)
 target_compile_definitions(tracy-benchmark-comparison-lib PRIVATE
   WIN32_LEAN_AND_MEAN
   NOMINMAX
@@ -22,6 +23,7 @@ target_link_libraries(tracy-benchmark-compare PRIVATE
   tracy-benchmark-comparison-lib
   sandbox::native_defaults
 )
+ioj_enable_warnings(tracy-benchmark-compare)
 set_target_properties(tracy-benchmark-compare PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
@@ -37,6 +39,7 @@ target_link_libraries(tracy-benchmark-compare-tests PRIVATE
   GTest::gtest_main
   sandbox::native_defaults
 )
+ioj_enable_warnings(tracy-benchmark-compare-tests)
 target_compile_definitions(tracy-benchmark-compare-tests PRIVATE
   IOJ_PERF_TEST_HELPER_PATH="$<TARGET_FILE:tracy-benchmark-compare-test-helper>"
 )
@@ -44,6 +47,7 @@ target_compile_definitions(tracy-benchmark-compare-tests PRIVATE
 add_executable(tracy-benchmark-compare-test-helper tests/process_test_helper.cpp)
 target_compile_features(tracy-benchmark-compare-test-helper PRIVATE cxx_std_23)
 target_link_libraries(tracy-benchmark-compare-test-helper PRIVATE sandbox::native_defaults)
+ioj_enable_warnings(tracy-benchmark-compare-test-helper)
 add_dependencies(tracy-benchmark-compare-tests tracy-benchmark-compare-test-helper)
 
 add_test(NAME tracy-benchmark-compare-tests COMMAND tracy-benchmark-compare-tests)

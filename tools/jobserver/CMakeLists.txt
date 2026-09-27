@@ -14,9 +14,10 @@ target_sources(jobserver-client PRIVATE
 )
 target_include_directories(jobserver-client PUBLIC lib/include)
 target_link_libraries(jobserver-client
-  PUBLIC ioj::warnings_as_errors ioj::asan
+  PUBLIC ioj::cxx_standard ioj::asan
   PRIVATE nlohmann_json::nlohmann_json advapi32
 )
+ioj_enable_warnings(jobserver-client)
 target_compile_definitions(jobserver-client PRIVATE
   WIN32_LEAN_AND_MEAN
   NOMINMAX
@@ -31,10 +32,11 @@ target_include_directories(jobserver-scheduler PUBLIC
   lib/include
 )
 target_link_libraries(jobserver-scheduler PUBLIC
-  ioj::warnings_as_errors
+  ioj::cxx_standard
   ioj::asan
   nlohmann_json::nlohmann_json
 )
+ioj_enable_warnings(jobserver-scheduler)
 
 add_library(jobserver-supervisor)
 target_sources(jobserver-supervisor PRIVATE daemon/supervisor.cpp)
@@ -44,15 +46,17 @@ target_include_directories(jobserver-supervisor PUBLIC
 )
 target_include_directories(jobserver-supervisor PRIVATE lib/src)
 target_link_libraries(jobserver-supervisor
-  PUBLIC ioj::warnings_as_errors
+  PUBLIC ioj::cxx_standard
   PRIVATE jobserver::client
 )
+ioj_enable_warnings(jobserver-supervisor)
 target_compile_definitions(jobserver-supervisor PRIVATE
   WIN32_LEAN_AND_MEAN
   NOMINMAX
 )
 
 add_executable(jobserver)
+ioj_enable_warnings(jobserver)
 target_sources(jobserver PRIVATE
   cli/doctor.cpp
   cli/main.cpp
@@ -71,6 +75,7 @@ target_compile_definitions(jobserver PRIVATE
 )
 
 add_executable(jobserverd WIN32)
+ioj_enable_warnings(jobserverd)
 target_include_directories(jobserverd PRIVATE lib/src)
 target_sources(jobserverd PRIVATE
   daemon/main.cpp
@@ -91,9 +96,11 @@ target_compile_definitions(jobserverd PRIVATE
 
 add_executable(jobserver-test-helper)
 target_sources(jobserver-test-helper PRIVATE test_helpers/main.cpp)
-target_link_libraries(jobserver-test-helper PRIVATE ioj::warnings_as_errors ioj::asan)
+target_link_libraries(jobserver-test-helper PRIVATE ioj::cxx_standard ioj::asan)
+ioj_enable_warnings(jobserver-test-helper)
 
 add_executable(jobserver-test-client)
+ioj_enable_warnings(jobserver-test-client)
 target_sources(jobserver-test-client PRIVATE test_helpers/client_main.cpp)
 target_link_libraries(jobserver-test-client PRIVATE jobserver::client)
 target_compile_definitions(jobserver-test-client PRIVATE
@@ -102,6 +109,7 @@ target_compile_definitions(jobserver-test-client PRIVATE
 add_dependencies(jobserver-test-client jobserver-test-helper)
 
 add_executable(jobserver-tests)
+ioj_enable_warnings(jobserver-tests)
 target_sources(jobserver-tests PRIVATE
   tests/protocol_tests.cpp
   tests/log_store_tests.cpp

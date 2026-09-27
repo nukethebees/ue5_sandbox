@@ -7,6 +7,7 @@ target_sources(native-memory PRIVATE
 target_compile_features(native-memory PUBLIC cxx_std_23)
 target_include_directories(native-memory PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(native-memory PRIVATE sandbox::native_defaults)
+ioj_enable_warnings(native-memory)
 if(IOJ_WITH_TRACY)
   target_compile_definitions(native-memory PRIVATE IOJ_WITH_TRACY)
   target_link_libraries(native-memory PRIVATE sandbox::profiling)
@@ -29,25 +30,9 @@ target_link_libraries(native-memory-tests PRIVATE
   native-memory
   sandbox::native_defaults
 )
+ioj_enable_warnings(native-memory-tests)
 add_test(NAME native-memory-tests COMMAND native-memory-tests)
 set_tests_properties(native-memory-tests PROPERTIES LABELS "unit;all;native;native-memory")
 
-foreach(native_memory_target IN ITEMS native-memory native-memory-tests)
-  set_property(TARGET ${native_memory_target} PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
-  target_compile_definitions(${native_memory_target} PRIVATE _ITERATOR_DEBUG_LEVEL=0)
-
-  if(IOJ_MSVC_FRONTEND)
-    target_compile_options(${native_memory_target} PRIVATE /permissive-)
-    if(UE_CONFIGURATION MATCHES "^(Development|Shipping|Test)$")
-      target_compile_options(${native_memory_target} PRIVATE /O2)
-    endif()
-  else()
-    if(UE_CONFIGURATION MATCHES "^(Development|Shipping|Test)$")
-      target_compile_options(${native_memory_target} PRIVATE -O2)
-    endif()
-  endif()
-
-  if(UE_CONFIGURATION MATCHES "^(Shipping|Test)$")
-    target_compile_definitions(${native_memory_target} PRIVATE NDEBUG)
-  endif()
-endforeach()
+ioj_apply_native_abi(native-memory)
+ioj_apply_native_abi(native-memory-tests)

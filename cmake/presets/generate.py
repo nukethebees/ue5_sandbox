@@ -23,8 +23,8 @@ GENERATED_VENDOR = {
 }
 
 CONFIGURATIONS = (
-    Configuration("debug", "Debug", "Debug", "DebugGame"),
-    Configuration("release", "Release", "Release", "DebugGame"),
+    Configuration("debug", "Debug", "Debug"),
+    Configuration("release", "Release", "Release"),
 )
 
 DEFAULT_NATIVE_CONFIGURATION = "native"
@@ -109,6 +109,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "cacheVariables": {
                 "IOJ_WITH_UNREAL": False,
                 "IOJ_ENABLE_ASAN": False,
+                "IOJ_ENABLE_PROFILING": True,
                 "CMAKE_UNITY_BUILD": False,
             },
         }
@@ -120,7 +121,6 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                 "hidden": True,
                 "cacheVariables": {
                     "CMAKE_BUILD_TYPE": configuration.cmake_build_type,
-                    "UE_CONFIGURATION": configuration.ue_configuration,
                 },
             }
         )
@@ -151,6 +151,14 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
     )
     configure_presets.append(
         {
+            "name": "native-lean",
+            "displayName": "Native libraries without developer applications",
+            "inherits": DEFAULT_NATIVE_CONFIGURATION,
+            "cacheVariables": {"IOJ_BUILD_DEVELOPER_TOOLS": False},
+        }
+    )
+    configure_presets.append(
+        {
             "name": CLANG_TIDY_CONFIGURATION,
             "displayName": "Native Windows x64 clang-cl Debug + clang-tidy",
             "inherits": "win-x64-clangcl-debug",
@@ -165,6 +173,8 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
     )
     document["configurePresets"] = configure_presets
     document["buildPresets"] = [
+        {"name": "native-lean", "configurePreset": "native-lean",
+         "targets": ["native-core", "native-memory", "native-simulation"]},
         {"name": "task-start", "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
          "targets": ["task-start-build"]},
         {"name": "tool-tests", "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
@@ -297,6 +307,9 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
         },
     ]
     document["workflowPresets"] = [
+        {"name": "native-lean", "steps": [
+            {"type": "configure", "name": "native-lean"},
+            {"type": "build", "name": "native-lean"}]},
         {"name": "task-start", "steps": [
             {"type": "configure", "name": DEFAULT_NATIVE_CONFIGURATION},
             {"type": "build", "name": "task-start"}]},
@@ -812,14 +825,13 @@ def make_native_benchmark_document() -> dict[str, Any]:
             "inherits": "win-x64-clangcl-release",
             "cacheVariables": {
                 "IOJ_TRACY_TOOLS": True,
-                "UE_CONFIGURATION": "Shipping",
+                "IOJ_ENABLE_PROFILING": False,
             },
         },
         {
             "name": BENCHMARK_CONFIGURATION,
             "displayName": "Native benchmarks (clang-cl Release + Unity)",
             "inherits": "win-x64-clangcl-release-unity",
-            "cacheVariables": {"UE_CONFIGURATION": "Development"},
         },
     ]
     document["buildPresets"] = [

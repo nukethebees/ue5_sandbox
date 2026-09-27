@@ -17,6 +17,7 @@
       "cacheVariables": {
         "IOJ_WITH_UNREAL": false,
         "IOJ_ENABLE_ASAN": false,
+        "IOJ_ENABLE_PROFILING": true,
         "CMAKE_UNITY_BUILD": false
       }
     },
@@ -24,16 +25,14 @@
       "name": "native-config-debug",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "UE_CONFIGURATION": "DebugGame"
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
       "name": "native-config-release",
       "hidden": true,
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "UE_CONFIGURATION": "DebugGame"
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
@@ -188,6 +187,14 @@
       "inherits": "win-x64-clangcl-debug-unity"
     },
     {
+      "name": "native-lean",
+      "displayName": "Native libraries without developer applications",
+      "inherits": "native",
+      "cacheVariables": {
+        "IOJ_BUILD_DEVELOPER_TOOLS": false
+      }
+    },
+    {
       "name": "win-x64-clangcl-debug-tidy",
       "displayName": "Native Windows x64 clang-cl Debug + clang-tidy",
       "inherits": "win-x64-clangcl-debug",
@@ -201,6 +208,15 @@
     }
   ],
   "buildPresets": [
+    {
+      "name": "native-lean",
+      "configurePreset": "native-lean",
+      "targets": [
+        "native-core",
+        "native-memory",
+        "native-simulation"
+      ]
+    },
     {
       "name": "task-start",
       "configurePreset": "native",
@@ -671,6 +687,19 @@
     }
   ],
   "workflowPresets": [
+    {
+      "name": "native-lean",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "native-lean"
+        },
+        {
+          "type": "build",
+          "name": "native-lean"
+        }
+      ]
+    },
     {
       "name": "task-start",
       "steps": [

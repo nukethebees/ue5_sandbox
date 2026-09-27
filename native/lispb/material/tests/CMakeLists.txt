@@ -3,8 +3,9 @@ target_sources(material-gen-tests PRIVATE material_tests.cpp)
 target_link_libraries(material-gen-tests PRIVATE
   material-gen
   GTest::gtest_main
-  sandbox::native_codegen_defaults
+  sandbox::native_defaults
 )
+ioj_enable_warnings(material-gen-tests CODEGEN)
 target_compile_definitions(material-gen-tests PRIVATE
   IOJ_PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )

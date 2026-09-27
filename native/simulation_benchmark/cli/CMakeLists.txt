@@ -5,7 +5,8 @@ target_link_libraries(native-simulation-benchmark PRIVATE
   native-simulation-benchmark-lib
   sandbox::native_defaults
 )
-configure_sandbox_s7_abi(native-simulation-benchmark)
+ioj_enable_warnings(native-simulation-benchmark)
+ioj_apply_native_abi(native-simulation-benchmark)
 set_target_properties(native-simulation-benchmark PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )

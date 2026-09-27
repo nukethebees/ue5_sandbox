@@ -33,3 +33,4 @@ target_link_libraries(native-layout
     lispb-project
     sandbox::native_defaults
 )
+ioj_enable_warnings(native-layout)
