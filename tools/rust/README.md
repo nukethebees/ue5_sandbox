@@ -25,6 +25,8 @@ From the repository root, install or update the developer tools:
 
 The script builds and installs only `agent-task` with Cargo, then uses the existing trusted
 AgentGit and canonical jobserver installers. It does not run the task-start baseline.
+Each installation is attempted independently. The final summary shows green/red pass/fail results,
+installation and PATH locations, and errors with recent output. Any failure returns exit code 1.
 The maintainer is responsible for installation and PATH setup; agents assume the tools are ready.
 Add `%LOCALAPPDATA%\NukeTheBees\agent-task\bin` to PATH.
 
