@@ -10,10 +10,14 @@ dev-help
 
 The maintainer runs `install-agent-task` to test and install only the Rust `agent-task` CLI,
 then manages its PATH entry. On a fresh setup, `agent-task install-central-tools` installs the
-canonical per-user build tools. Use `agent-task git` for its documented subset of feature Git
-operations; see `agent-task git --help`. Report unsupported operations instead of bypassing it.
+canonical per-user build tools in separate `%LOCALAPPDATA%\NukeTheBees\<ToolName>\bin`
+directories. Agents invoke tools from PATH; use `--version` for manual source/install comparison.
+Missing tools require maintainer action, and `csetup` never installs them. Use `agent-task git`
+for its documented subset of feature Git operations; see `agent-task git --help`.
+Report unsupported operations instead of bypassing it.
 Agents assume the CLI is installed and begin tasks with `agent-task prepare-worktree`.
 
+`cwt`/`cwb` discovery and completion use read-only Git directly, including linked worktrees.
 `Navigation.ps1` provides `croot`, `cwt`, `cwb`, `cplugin`, and `ctests`. `UnrealBuild.ps1` provides
 `cbuild`, `csetup`, `cplay`, `cprojectfiles`, `integrate-feature`, and jobserver/UBT state helpers.
 After the user authorizes a ready feature, `integrate-feature` queues the exclusive

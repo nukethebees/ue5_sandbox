@@ -72,11 +72,17 @@ the worktree root explicitly so an installed copy can safely measure any checkou
 
 The command builds missing prerequisites unless `--skip-build` is supplied, obtains the benchmark
 and machine jobserver claims, then records `manifest.json`, `comparison.json`, both captures, and
-their exported CSVs. Install a validated version independently of a worktree with:
+their exported CSVs. Run the focused `perf` tests and `tracy-benchmark-compare --version` on the
+candidate first. Install a validated version independently of a worktree with:
 
 ```powershell
-cmake --install .\out\build\tracy-tools --component tracy-benchmark-compare --prefix $env:LOCALAPPDATA\NukeTheBees\perf-tools
+cmake --install .\out\build\tracy-tools --component tracy-benchmark-compare --prefix $env:LOCALAPPDATA\NukeTheBees\tracy-benchmark-compare
 ```
+
+The maintainer adds `%LOCALAPPDATA%\NukeTheBees\tracy-benchmark-compare\bin` to PATH.
+Invoke `tracy-benchmark-compare` by name afterward. `--version` reports the integer in
+`tools/perf/CMakeLists.txt`. This optional component remains separately installed; it is not part
+of `agent-task install-central-tools`. For installation testing, pass a private `--prefix`.
 
 ## Related documentation
 

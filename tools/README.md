@@ -1,77 +1,63 @@
 # Developer tools
 
-`tools/` contains standalone utilities shared by repository workflows.
+Stable command-line tools are installed explicitly by the maintainer, one complete runtime per
+`%LOCALAPPDATA%\NukeTheBees\<ToolName>\bin`. The maintainer manages PATH; installers only print
+which directory to add. Agents invoke executable names from PATH, report missing commands, and
+never install/update them automatically. `--version` supports manual comparison with this checkout.
+There is no automatic version enforcement or worktree synchronization.
+Bump the source-controlled version when shipping tool changes; build timestamps are omitted.
 
-Run `ctools` when a direct developer command needs a staged executable in `tools/bin`. CMake
-workflows build their own configuration-local C# host-tool outputs on demand and never depend on
-the shared staging directory.
+| Central tool | Installation/update | Source version |
+| --- | --- | --- |
+| agent-task | `. .\dev.ps1`, then `install-agent-task` | Cargo.toml |
+| jobserver | `agent-task install-central-tools` | CLI source (`version` also remains available) |
+| set-live-coding-disabled | `agent-task install-central-tools` | Cargo.toml |
+| UnrealBuildTools | `agent-task install-central-tools` | csproj Version |
+| CodeFormatTools | `agent-task install-central-tools` | csproj Version |
+| tracy-benchmark-compare | Explicit CMake component install; [profiling guide](../docs/profiling.md) | tools/perf/CMakeLists.txt |
 
-Run `cmake --workflow --preset tool-tests` when changing a standalone tool, its tests, directly
-consumed interfaces/configuration, or shared tool/build infrastructure. Ordinary game, runtime,
-and native validation does not run this suite.
+`agent-task prepare-worktree` only checks prerequisites, clears output, updates submodules, and
+regenerates presets/code. It never installs central tools or performs a broad task-start build.
+See the [Rust guide](rust/README.md) for AgentTask bootstrap and feature Git operations.
 
-- `jobserver/` is the canonical per-user coordinator for build, Editor, test, commandlet, and
-  benchmark resource claims. See its [detailed README](jobserver/README.md).
-- `layout_planner/` is the standalone SDL3/ImGui workbench for analysing packed values and
-  standard-library SoAs from LispB schemas. Its [guide](layout_planner/README.md) documents the
-  build-output location, launch options, and supported V1 workflow.
-- `image_lab/` is the standalone GUI and CLI for deterministic native image generation. Build it
-  with `cmake --workflow --preset image-lab`; see its [guide](image_lab/README.md).
-- `perf/` contains the native `tracy-benchmark-compare` CLI for paired Tracy captures of native
-  simulation benchmarks. Build it with the `tracy-tools` workflow; install its dedicated CMake
-  component when a stable per-user executable is needed.
-- `BenchmarkTools/` owns reusable benchmark orchestration. Its staged executable runs native S7,
-  fighter, frame-memory, telemetry, GPU-starfield, revision-comparison, and native-SoA benchmark
-  commands; `native-simulation --level <path> --seconds <value>` remains the generic level entry
-  point.
-  it performs the configured CMake build, then acquires the exclusive benchmark and machine lease.
-  The native benchmark PowerShell entry points build and stage this project on demand when it is
-  absent, without building the rest of the standalone tools or requiring Unreal setup.
-- `NativeBinaryTools/` inspects native object files for build integration checks. Its staged
-  executable can be run as `tools/bin/NativeBinaryTools.exe mimalloc-symbols <generate|verify> ...`.
-  Native CMake builds use a configuration-local copy built on demand.
-- `rust/crates/agent-task/` provides worktree preparation, a deliberately limited `agent-task git`
-  interface (see subcommand `--help`), and privileged integration through `integrate-feature`. Install with
-  `. .\dev.ps1` then `install-agent-task`; see the [Rust guide](rust/README.md).
-- `CodeFormatTools/` is the C# formatter for repository C++ and shader files. CMake builds it for
-  the `format-code` and `format-all-code` workflows; it can also be run directly as
-  `tools/bin/CodeFormatTools.exe [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` after
-  `ctools`. Formatting runs concurrently by default with half the logical processor count, capped
-  at 16 jobs; use `--jobs 1` for sequential execution.
-- `ArchitectureChecks/` validates repository architecture invariants. CMake builds its SpaceGame
-  layer check on demand for `check-space-game-layers`; its staged executable can be run directly as
-  `tools/bin/ArchitectureChecks.exe --root <path>` after `ctools`. Its advisory module-migration
-  audit is `tools/bin/ArchitectureChecks.exe module-migration --root <path> [--baseline <revision>]
-  [--old-module <module>] [--plugin-module <module> ...]`. It defaults to auditing migrations from
-  `Sandbox` into `ShooterGame` and `SandboxGameShared`; each specified plugin module is added to
-  that default set, with duplicates removed. The audit reports review findings but exits successfully
-  unless its arguments, repository access, or read-only Git queries fail. Run `ArchitectureChecks.exe module-migration
-  --help` for its command summary.
-- `GamePackageTools/` verifies archived game packages through the `verify-package` CMake target.
-  Its staged executable accepts `--project-root`, `--package-root`, `--unreal-pak`,
-  `--verification-directory`, and `--configuration`.
-- `rust/` contains focused native developer-tool experiments. Its first tool disables Live Coding
-  in saved editor settings while preserving the file's encoding and line endings; see its
-  [README](rust/README.md).
-- `UnrealBuildTools/` is a thin C# executable that validates paths, scopes the native toolchain
-  environment, invokes UBT, and propagates its result. UBT remains solely responsible for target
-  receipts, module manifests, and BuildIds.
+For one C# tool, use `pwsh -NoProfile -File tools/install/Install-CentralDotnetTool.ps1 -ToolName
+UnrealBuildTools` (or `CodeFormatTools`). The matching CMake `install-<ToolName>` target is also
+available. The installer publishes privately, runs focused tests, smoke-tests version/arguments,
+and replaces the entire bin directory only after validation. Failed validation leaves the previous
+installation intact; failed activation restores it. `-InstallRoot <private-tool-root>` supports
+isolated testing. Source edits never change the installed copy. DLLs and runtime metadata stay
+with their own tool. No installer changes PATH.
 
-`Directory.Build.props` applies the shared target framework, nullable, implicit-using, warning,
-analysis, and warnings-as-errors policy to every .NET project below `tools/`.
+Jobserver retains its separate staged validation, drain/shutdown, startup verification, and rollback
+lifecycle. Do not replace its binaries manually. See [jobserver](jobserver/README.md).
 
-New standalone C# tools should use their own project and test project under this directory. C# is
-the established stack for developer-tool validation, subprocess and filesystem work, jobserver
-integration, and benchmark/report orchestration. Focused native tools may use the Rust workspace;
-PowerShell remains the interactive shell façade, and Python remains appropriate for plotting and
-scientific analysis.
-Executable command projects that are safe to invoke from shared build output opt into staging with
-`IsStandaloneTool=true`; their normal Debug and Release output remains project-local, while the
-post-build target copies the complete runtime output tree for the most recently built configuration
-into `tools/bin/` using the tool's unique executable name. Test projects and class libraries are not
-staged. Add shared infrastructure only when more than one tool needs it.
+`CodeFormatTools [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` uses `.code-format.json`
+from the current Git worktree for roots, extensions, and excluded path components. Formatting
+mechanics remain generic; clang-format styling remains in `.clang-format`. CMake formatting and
+Unreal builds require the corresponding central executable on PATH and have no local fallback.
+UnrealBuildTools remains a thin path/environment/launch wrapper; UBT owns receipts and BuildIds.
 
-Normal development uses the jobserver indirectly through CMake workflows and `dev.ps1`. Query its
-current state with `get-jobserver-state` after loading `dev.ps1`; see [Build and test](../docs/build-and-test.md)
-and [Benchmarks](../docs/benchmarks.md) for the coordination rules. For a jobserver-aware Tracy
-capture of a native level benchmark, see [Profiling](../docs/profiling.md).
+Revision-local C# tools are built privately by CMake under
+`out/build/<configuration>/host-tools/<ToolName>/<Debug|Release>/`:
+
+- ArchitectureChecks owns checked-out module/dependency policy (`check-space-game-layers`).
+  Its private executable also provides advisory reports via `module-migration --help`.
+- GamePackageTools owns exact package/asset expectations (`verify-package`).
+- NativeBinaryTools owns native object/mimalloc symbol-prefix integration.
+- BenchmarkTools owns revision-specific preset mappings, native benchmark locations, scenario/report
+  commands, and baseline-worktree preparation. Centralizing it requires extracting those policies;
+  that work is deferred. PowerShell benchmark commands build `benchmark-tools-host` through CMake,
+  including when output already exists, so source edits are picked up.
+
+There is no shared `tools/bin` staging or `ctools` command. Direct project builds keep their normal
+project-local outputs; they do not update installed tools. GitSupport remains available to its
+consumers. PowerShell worktree navigation uses read-only `git worktree list --porcelain -z`.
+
+Other tools: [layout planner](layout_planner/README.md), [image lab](image_lab/README.md), and
+[LLVM checks](../docs/clang-tidy.md). C# remains the usual stack for filesystem, subprocess, and
+report tooling; focused Rust/native tools use their existing build paths.
+
+`Directory.Build.props` supplies common .NET framework and warning policy. Run focused project
+tests when changing a tool. Use `tool-tests` for shared tool infrastructure; native/game changes
+should not run developer-tool suites without an affected dependency. Installer regression tests
+use private roots and never activate live central installations.

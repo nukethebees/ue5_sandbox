@@ -13,10 +13,11 @@ initialize the worktree:
 csetup
 ```
 
-`csetup` synchronizes submodules, regenerates presets, installs the per-user jobserver when
-needed, and prepares the DebugGame and Development worktrees. Its CMake workflows build their
-configuration-local C# host-tool dependencies on demand. Use `csetup native` when only the native
-toolchain is needed; it avoids Unreal worktree preparation. See the
+The maintainer first installs central tools and adds each per-tool bin directory to PATH (see
+[developer tools](../tools/README.md)). `csetup` synchronizes submodules, regenerates presets,
+and prepares the DebugGame and Development worktrees; it never installs tools. CMake invokes
+UnrealBuildTools and CodeFormatTools from PATH and builds revision-local C# tools on demand.
+Use `csetup native` when only the native toolchain is needed; it avoids Unreal worktree preparation. See the
 [PowerShell guide](../PowerShell/README.md) for the other session commands.
 
 Alternatively, set `UE_ROOT` in the ignored `CMakeUserPresets.json` using a local configure preset
@@ -76,7 +77,9 @@ agent-task prepare-worktree
 
 The maintainer installs/updates `agent-task` with `. .\dev.ps1` followed by `install-agent-task`
 and manages PATH; agents assume it is available. On a fresh setup, run
-`agent-task install-central-tools` for the canonical jobserver and `set-live-coding-disabled`.
+`agent-task install-central-tools` for jobserver, `set-live-coding-disabled`, UnrealBuildTools,
+and CodeFormatTools. Each has its own `%LOCALAPPDATA%\NukeTheBees\<ToolName>\bin` directory.
+Agents report missing commands instead of installing them; `--version` allows manual diagnosis.
 It initializes/updates submodules before configuring the native build and running the install targets.
 Preparation checks for the jobserver before removing output; it does not install missing tools.
 See the [Rust tooling instructions](../tools/rust/README.md).

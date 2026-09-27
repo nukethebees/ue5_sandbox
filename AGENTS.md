@@ -76,10 +76,11 @@ Unreal Engine 5.8 project.
 
 * CMake is used to drive all builds, including UBT
 * Load dev.ps1 when starting a task
-* `ctools` refreshes standalone developer C# executables under `tools/bin`. CMake
-  workflows build their configuration-local C# host-tool dependencies on demand; do not run
-  `ctools` as a workflow preflight. Native mimalloc validation likewise builds its configuration-
-  local `NativeBinaryTools` host dependency on demand.
+* Stable tools are maintainer-installed under `%LOCALAPPDATA%\NukeTheBees\<ToolName>\bin`
+  and invoked from PATH. Agents never auto-install/update them or construct local fallbacks.
+  Report a missing command; use `--version` for manual source/install comparison when needed.
+  CMake builds revision-local ArchitectureChecks, GamePackageTools, NativeBinaryTools, and
+  BenchmarkTools privately on demand. There is no `ctools` or shared `tools/bin` staging.
 * For final integration, only build and test what your work has affected
 * Native C++ changes must pass the affected `clang-tidy-<scope>` workflows with no diagnostics
   before readiness or integration. Include consumers of changed shared headers; use the full

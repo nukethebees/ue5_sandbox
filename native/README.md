@@ -28,7 +28,7 @@ cmake --workflow --preset native-tests
 ```
 
 Mimalloc validation builds its small `NativeBinaryTools` host dependency into the native build
-tree when needed. Native workflows do not require a prior `ctools` run.
+tree when needed. Revision-local tools are built privately by CMake; stable tools are invoked from PATH.
 
 Use `native-core-tests` for the core-focused workflow. The detailed matrix presets remain available
 for ASan, non-unity, release, and MSVC selection; `native` is the ordinary fast default.
@@ -70,7 +70,7 @@ covered by Unreal tests. See [Build and test](../docs/build-and-test.md) for the
 and [Code generation](../Codegen/README.md) for generated outputs.
 
 To run a deterministic S7 level as a native benchmark, use
-`tools/bin/BenchmarkTools.exe native-simulation`; the fighter and frame-memory report runners build
+`out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe native-simulation`; the fighter and frame-memory report runners build
 on the same tool. See [Benchmarks](../docs/benchmarks.md) for supported workloads and
 [Profiling](../docs/profiling.md) for Tracy capture.
 

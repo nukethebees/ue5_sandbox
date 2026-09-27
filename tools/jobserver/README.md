@@ -3,12 +3,16 @@
 The jobserver is the local Windows scheduler and process supervisor used to coordinate expensive
 development work across repository worktrees.
 
-Install its canonical binaries with:
+The maintainer installs its canonical binaries with:
 
 ```powershell
 cmake --preset native
 cmake --build --preset native --target install-jobserver
 ```
+
+Keep `%LOCALAPPDATA%\NukeTheBees\jobserver\bin` on PATH. `jobserver --version` reports
+the source version (`jobserver version` remains available). Installation retains the daemon's
+staged validation, drain/shutdown, startup verification, and rollback; never copy over live binaries.
 
 Use `jobserver status`, `jobserver history`, and `jobserver logs <job-id>` to inspect work. Submit
 ordinary work with `jobserver run`, exclusive benchmark work with `--exclusive machine` and

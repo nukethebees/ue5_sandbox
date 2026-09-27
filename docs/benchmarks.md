@@ -1,5 +1,9 @@
 # Benchmarks
 
+BenchmarkTools intentionally tracks the checkout. Build its private host output with
+`cmake --build --preset native --target benchmark-tools-host` after configuring `native`.
+The PowerShell entry points perform that focused build automatically; there is no shared staging.
+
 Benchmarks are opt-in measurements, not ordinary test runs. Complete build and setup work first,
 then use the repository runner or benchmark CMake target so the per-user jobserver can wait for
 older work and acquire exclusive benchmark and machine resources. Do not start measurements beside
@@ -12,12 +16,12 @@ Results are disposable local data unless a specific experiment says otherwise; w
 
 | Measurement | Entry point | Notes |
 | --- | --- | --- |
-| Fighter scheduling simulation | `tools/bin/BenchmarkTools.exe fighter-simulation` | Default 2,000- and 4,000-fighter cases; writes JSON and summary CSV. The PowerShell name remains a façade. |
-| Generic native simulation | `tools/bin/BenchmarkTools.exe native-simulation` | Shared jobserver-aware C# runner around `native-simulation-benchmark` for an S7 level. |
-| Frame-memory level workload | `tools/bin/BenchmarkTools.exe frame-memory-level` | Uses the batch benchmark scenario. The PowerShell name remains a façade. |
-| Revision A/B frame-memory comparison | `tools/bin/BenchmarkTools.exe frame-memory-revision-ab` | Safely creates and evaluates a detached baseline worktree. |
-| Level telemetry | `tools/bin/BenchmarkTools.exe level-telemetry` | Configures, builds, and runs the telemetry CTest preset. |
-| GPU starfield | `tools/bin/BenchmarkTools.exe gpu-starfield` | Runs, validates, and writes versioned JSON/CSV/Markdown artifacts. |
+| Fighter scheduling simulation | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe fighter-simulation` | Default 2,000- and 4,000-fighter cases; writes JSON and summary CSV. The PowerShell name remains a façade. |
+| Generic native simulation | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe native-simulation` | Shared jobserver-aware C# runner around `native-simulation-benchmark` for an S7 level. |
+| Frame-memory level workload | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe frame-memory-level` | Uses the batch benchmark scenario. The PowerShell name remains a façade. |
+| Revision A/B frame-memory comparison | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe frame-memory-revision-ab` | Safely creates and evaluates a detached baseline worktree. |
+| Level telemetry | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe level-telemetry` | Configures, builds, and runs the telemetry CTest preset. |
+| GPU starfield | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe gpu-starfield` | Runs, validates, and writes versioned JSON/CSV/Markdown artifacts. |
 | Unreal-backed measurements | Benchmark CMake presets and commandlet targets | Presets are in `cmake/presets/*benchmarks.json`. |
 
 Run the fighter benchmark with:
@@ -36,7 +40,7 @@ pwsh -NoProfile -File Scripts/run-fighter-simulation-benchmark.ps1 `
 Run a specific S7 level through the generic level benchmark runner with:
 
 ```powershell
-.\tools\bin\BenchmarkTools.exe native-simulation `
+.\out\build\native\host-tools\BenchmarkTools\Debug\BenchmarkTools.exe native-simulation `
     --level .\LevelScripts\BenchmarkFleet_10.scm `
     --seconds 20
 ```
