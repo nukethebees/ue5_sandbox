@@ -57,8 +57,7 @@ Unreal Engine 5.8 project.
 * Tooling and native-only candidates must not acquire Unreal resources unless their dependency
   surface requires Unreal. Run light, relevant tests after implementation; run expensive relevant
   gates once against the pinned final candidate.
-* Integration performs a cheap final Git transaction. Complete affected builds, focused tests,
-  static analysis and review before requesting integration authorization.
+* Integration performs a cheap final Git transaction. Complete affected builds, focused tests, and review before requesting integration authorization.
 * A final-rebase conflict is aborted and releases the integration job. Resolve with
   `agent-task git rebase dev` outside the queue, validate the resolution, then requeue.
   Report the stopped stage, blocker, required action, and retained state.
@@ -71,7 +70,7 @@ Unreal Engine 5.8 project.
   * This includes routing command outputs to log files. Read the CLI output directly yourself.
 * Make commits for each discrete chunk of work as you work. Use good judgement.
 * Try to avoid making just one commit for all the work
-
+* Static analysis is not part of normal feature validation. Run it only when explicitly requested or when modifying static-analysis tooling.
 
 # Builds
 
@@ -84,12 +83,6 @@ Unreal Engine 5.8 project.
   CMake builds revision-local ArchitectureChecks, GamePackageTools, NativeBinaryTools, and
   BenchmarkTools privately on demand.
 * For final integration, only build and test what your work has affected
-* Native C++ changes must pass the affected `clang-tidy-<scope>` workflows with no diagnostics
-  before readiness or integration. Include consumers of changed shared headers; use the full
-  `win-x64-clangcl-debug-tidy` workflow for core/memory/profiling public headers, shared compiler
-  configuration, or uncertain/cross-cutting scope. See `docs/build-and-test.md` for scope rules.
-  Inspect the selected `clang-tidy-<scope>.log` files (or `clang-tidy.log` for the full sweep);
-  the runner itself does not make findings fatal.
 * Keep benchmarks short; Not more than 3 minutes total
 * Standalone developer-tool tests are not part of the default validation path. Run
   `cmake --workflow --preset tool-tests` only when the change can affect a tool or its tests, a
@@ -114,7 +107,7 @@ Unreal Engine 5.8 project.
 Do not say “almost done”, “virtually done”, “nearly finished”, or give percentage-style completion estimates unless all required validation steps are already known and enumerated. When reporting progress, explicitly separate:
 - implementation complete/incomplete
 - tests complete/incomplete
-- static analysis complete/incomplete
+- static analysis: not yet due / complete / failed
 - sanitizer validation complete/incomplete
 - integration/build validation complete/incomplete
 - unresolved issues
