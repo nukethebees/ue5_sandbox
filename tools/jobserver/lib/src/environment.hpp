@@ -13,16 +13,30 @@ inline auto environment_text(std::string const& text) -> std::wstring {
     return path_from_utf8(text).wstring();
 }
 
-inline auto make_environment(Command const& command) -> std::expected<std::vector<wchar_t>, Error> {
-    std::vector<std::wstring> entries;
+inline auto capture_environment() -> std::expected<std::vector<std::string>, Error> {
+    std::vector<std::string> entries;
     auto const environment{GetEnvironmentStringsW()};
     if (environment == nullptr) {
         return std::unexpected(Error{"environment_failed", "Could not read process environment"});
     }
     for (auto current{environment}; *current != L'\0'; current += std::wcslen(current) + 1) {
-        entries.emplace_back(current);
+        entries.push_back(path_to_utf8(std::filesystem::path{current}));
     }
     FreeEnvironmentStringsW(environment);
+    return entries;
+}
+
+inline auto make_environment(Command const& command) -> std::expected<std::vector<wchar_t>, Error> {
+    auto const base{command.base_environment
+                        ? std::expected<std::vector<std::string>, Error>{*command.base_environment}
+                        : capture_environment()};
+    if (!base) {
+        return std::unexpected(base.error());
+    }
+    std::vector<std::wstring> entries;
+    for (auto const& entry : *base) {
+        entries.push_back(environment_text(entry));
+    }
 
     for (auto const& change : command.environment) {
         if (change.name.empty() || change.name.find('=') != std::string::npos ||

@@ -244,6 +244,18 @@ auto validate_request(Json const& json) -> std::expected<void, Error> {
             return invalid("command.arguments");
         }
     }
+    if (command.contains("base_environment")) {
+        auto const& base{command["base_environment"]};
+        if (!base.is_array() || !std::ranges::all_of(base, [](auto const& value) {
+                if (!valid_text(value, false)) {
+                    return false;
+                }
+                auto const& entry{value.template get_ref<std::string const&>()};
+                return entry.find('=', 1) != std::string::npos;
+            })) {
+            return std::unexpected(Error{"invalid_environment", "Invalid environment snapshot"});
+        }
+    }
     if (command.contains("environment")) {
         auto const& environment{command["environment"]};
         if (!environment.is_array()) {
@@ -844,6 +856,9 @@ void Server::handle_submit(void* const pipe, std::string const& message) {
         .working_directory = path_from_utf8(command_json.value("working_directory", "")),
         .environment = {},
     };
+    if (command_json.contains("base_environment")) {
+        command.base_environment = command_json["base_environment"].get<std::vector<std::string>>();
+    }
     auto const changes = command_json.value("environment", Json::array());
     if (!changes.is_array()) {
         send_error(pipe, Error{"invalid_environment", "Environment must be an array"});

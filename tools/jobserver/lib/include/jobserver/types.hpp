@@ -40,6 +40,8 @@ struct Command {
     std::vector<std::string> arguments;
     std::filesystem::path working_directory;
     std::vector<EnvironmentChange> environment;
+    // Submitted commands carry the caller's snapshot; local commands inherit directly.
+    std::optional<std::vector<std::string>> base_environment{};
 };
 
 enum class DisconnectPolicy {

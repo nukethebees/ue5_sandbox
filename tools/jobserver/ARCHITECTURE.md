@@ -9,6 +9,10 @@ ordinary machine work, benchmarks, GPU work, and engine-specific Unreal read/wri
 exclusive requests block newer shared users so they cannot starve. Nested commands retain their
 outer supervised job rather than queueing a deadlocking child claim.
 
+Submitted commands carry a snapshot of the caller's environment, then apply explicit environment
+changes. They do not inherit the daemon's startup environment. Nested commands inherit their
+invoking process's environment. Environment snapshots are not written to ownership metadata.
+
 Supervised commands live in kill-on-close Windows Job Objects. The daemon assigns the suspended
 root atomically before it resumes, records its PID and creation time, and keeps the Job Object
 handle for the group lifetime. `process-owner` and `kill-owned` authorize cleanup only through that

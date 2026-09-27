@@ -681,6 +681,7 @@ TEST_F(JobserverIntegration, ExplicitOwnershipAuthorizesOnlyTheCurrentWorktreeAn
     ASSERT_EQ(records_json["groups"].size(), 1U);
     auto const& persisted_command{records_json["groups"][0]["command"]};
     EXPECT_FALSE(persisted_command.contains("environment"));
+    EXPECT_FALSE(persisted_command.contains("base_environment"));
     auto owner_child{observe_process(*owner_child_id)};
     ASSERT_NE(owner_child.process, nullptr);
 
@@ -2035,6 +2036,34 @@ TEST_F(JobserverIntegration, NestedClaimsRejectSpoofedAndStaleParentIds) {
     EXPECT_EQ(stale.error().code, "nested_parent_not_active");
 }
 
+TEST_F(JobserverIntegration, SubmittedCommandsPreserveCallerEnvironment) {
+    stop_daemon();
+    TestEnvironmentValue const original{L"JOBSERVER_CALLER_ENV", L"daemon value"};
+    start_daemon();
+
+    TestEnvironmentValue const changed{L"JOBSERVER_CALLER_ENV", L"caller value"};
+    TestEnvironmentValue const path{L"PATH", L"C:\\caller tools;C:\\another caller path"};
+    auto const arguments{L"run --name caller-environment --kind test -- " +
+                         quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring())};
+    auto const value{
+        run_and_capture(JOBSERVER_CLI_PATH, arguments + L" environment JOBSERVER_CALLER_ENV")};
+    ASSERT_TRUE(value);
+    EXPECT_EQ(value->exit_code, 0U) << value->output;
+    EXPECT_EQ(value->output, "caller value");
+
+    auto const selected_path{run_and_capture(JOBSERVER_CLI_PATH, arguments + L" environment PATH")};
+    ASSERT_TRUE(selected_path);
+    EXPECT_EQ(selected_path->exit_code, 0U) << selected_path->output;
+    EXPECT_EQ(selected_path->output, "C:\\caller tools;C:\\another caller path");
+
+    TestEnvironmentValue const removed{L"JOBSERVER_CALLER_ENV", nullptr};
+    auto const absent{
+        run_and_capture(JOBSERVER_CLI_PATH, arguments + L" environment JOBSERVER_CALLER_ENV")};
+    ASSERT_TRUE(absent);
+    EXPECT_EQ(absent->exit_code, 4U) << absent->output;
+    EXPECT_TRUE(absent->output.empty());
+}
+
 TEST_F(JobserverIntegration, SubmittedAndNestedCommandsApplyEnvironmentChanges) {
     for (auto const nested : {false, true}) {
         auto request{submit_request("environment changes",
@@ -2169,6 +2198,7 @@ TEST_F(JobserverIntegration, MalformedFieldsFailBeforeAdmissionOrExecution) {
     base["resources"] =
         Json::array({{{"name", "malformed-resource"}, {"mode", "counted"}, {"units", 1}}});
     base["command"]["environment"] = Json::array({{{"name", "TEST_VALUE"}, {"value", "valid"}}});
+    base["command"]["base_environment"] = Json::array({"TEST_VALUE=caller"});
     std::vector<std::pair<std::string, Json>> const cases{
         {"/type", nullptr},
         {"/type", 1},
@@ -2202,6 +2232,10 @@ TEST_F(JobserverIntegration, MalformedFieldsFailBeforeAdmissionOrExecution) {
         {"/command/arguments/0", nullptr},
         {"/command/arguments/0", std::string("bad\0argument", 12)},
         {"/command/working_directory", 1},
+        {"/command/base_environment", false},
+        {"/command/base_environment/0", false},
+        {"/command/base_environment/0", "missing separator"},
+        {"/command/base_environment/0", std::string("bad\0=value", 10)},
         {"/command/environment", false},
         {"/command/environment/0", nullptr},
         {"/command/environment/0/name", false},

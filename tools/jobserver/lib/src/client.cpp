@@ -534,6 +534,10 @@ auto Client::run(SubmitRequest const& request, OutputCallback output) -> std::ex
         return run_in_inherited_job(request.command);
     }
 
+    auto const base_environment{detail::capture_environment()};
+    if (!base_environment) {
+        return std::unexpected(base_environment.error());
+    }
     auto const metadata{metadata_at_submission(request.metadata)};
     auto handle{connect_pipe()};
     if (!handle) {
@@ -547,7 +551,8 @@ auto Client::run(SubmitRequest const& request, OutputCallback output) -> std::ex
          Json{{"executable", path_to_utf8(request.command.executable)},
               {"arguments", request.command.arguments},
               {"working_directory", path_to_utf8(request.command.working_directory)},
-              {"environment", Json::array()}}},
+              {"environment", Json::array()},
+              {"base_environment", *base_environment}}},
         {"disconnect_policy",
          request.disconnect_policy == DisconnectPolicy::cancel ? "cancel" : "continue"},
     };
