@@ -3,7 +3,10 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
-const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools";
+mod git;
+mod workspace;
+
+const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  git <args...>          Run Git within feature-workspace guardrails";
 
 fn worktree_root() -> Result<PathBuf, String> {
     let output = Command::new("git")
@@ -127,6 +130,15 @@ fn install_central_tools() -> Result<(), String> {
 
 fn main() -> ExitCode {
     let arguments = std::env::args_os().skip(1).collect::<Vec<_>>();
+    if arguments.first().is_some_and(|arg| arg == "git") {
+        match git::run(&arguments[1..]) {
+            Ok(code) => std::process::exit(code),
+            Err(error) => {
+                eprintln!("agent-task: {error}");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
     if arguments.len() == 1 && (arguments[0] == "--help" || arguments[0] == "-h") {
         println!("{USAGE}");
         return ExitCode::SUCCESS;
