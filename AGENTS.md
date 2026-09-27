@@ -17,9 +17,11 @@ Unreal Engine 5.8 project.
   while Git provides index/ref locking. Do not treat `agent-git` as a repository-global mutex or
   inspect or modify another agent's worktree.
 * `dev` is the integration branch
-* When starting a new task, clear the old build directories and start fresh. Run generators,
-  then `cmake --workflow --preset task-start` for a broad native/tool/test build and generated
-  consistency checks. This builds binaries; it does not run the test suites.
+* Begin a new task with `agent-task start` from anywhere in the current Git worktree. It clears
+  that worktree's `out`, syncs and updates submodules, regenerates presets and code, then runs
+  `cmake --workflow --preset task-start` for a broad native/tool/test build and generated
+  consistency checks. This builds binaries; it does not run the test suites. See
+  `tools/rust/README.md` for installation.
 * After the clean initial build, rebuild only affected targets and execute relevant CTest labels.
   Use `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"` for the
   fast loop. Include the applicable expensive categories once for final validation.

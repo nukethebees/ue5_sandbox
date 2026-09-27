@@ -39,8 +39,9 @@ remains responsible for integration coverage of generated Ninja and CTest files.
 native compilation, `ctest --preset native-simulation-tests` or `native-core-tests` for focused
 tests, and `cmake --workflow --preset native-tests` for the full native suite. The detailed native
 preset matrix remains available for explicit compiler, configuration, unity, and ASan choices.
-After clearing the worktree's old build directories and running generators, use
-`cmake --workflow --preset task-start` once to build native and developer-tool test binaries.
+Begin a new task with `agent-task start` to clear the worktree's `out`, update submodules,
+run generators, and build native and developer-tool test binaries. See the
+[Rust tooling instructions](../tools/rust/README.md) for installation.
 For iteration, rebuild affected targets and select CTest labels; exclude `soak|compile-contract`
 when those categories are unrelated. C# registrations run without rebuilding and reject stale
 assemblies. `cmake --workflow --preset tool-tests` builds and runs the complete standalone suite;

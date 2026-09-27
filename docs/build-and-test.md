@@ -69,16 +69,18 @@ Unreal-facing or cross-cutting candidates.
 
 ### Clean task start
 
-Keep the clean-build policy: load `dev.ps1`, remove this worktree's old build directories,
-regenerate presets and code, then build once:
+Load `dev.ps1`, then begin each new task from anywhere in its Git worktree:
 
 ```powershell
-python cmake/presets/generate.py
-cmake --workflow --preset generate-code
-cmake --workflow --preset task-start
+agent-task start
 ```
 
-`task-start` builds native tests (including the soak), native developer-tool tests, all nine C#
+Install `agent-task` once using the [Rust tooling instructions](../tools/rust/README.md).
+It removes only the worktree-root `out` directory, synchronizes and initializes recursive
+submodules, runs `python cmake/presets/generate.py`, then runs the `generate-code` and `task-start`
+CMake workflows. Each phase streams its output and a failure stops initialization immediately.
+
+`task-start` builds native tests (including the soak), native developer-tool tests, `agent-task`, all nine C#
 test assemblies, and generated-output consistency checks. It executes no tests and uses no
 Unreal resources. Binaries and C# intermediates are isolated under `out/build/native`.
 The `check-generated-code` build target owns the committed codegen fixture consistency check.

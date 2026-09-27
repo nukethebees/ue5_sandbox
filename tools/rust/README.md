@@ -4,6 +4,45 @@ This Cargo workspace holds small native developer-tool experiments. It does not 
 the replacement for every C#, Python, or C++ tool.
 Rustup selects the pinned toolchain from `rust-toolchain.toml` when commands run in this directory.
 
+## agent-task
+
+Begin each new task from anywhere in its Git worktree with:
+
+```powershell
+agent-task start
+```
+
+This removes the worktree-root `out`, synchronizes and initializes recursive submodules,
+regenerates CMake presets and code, then builds the `task-start` baseline. It stops on the first
+failure and streams subprocess output. Git, Python, CMake, and the repository build prerequisites
+must be available in the environment.
+
+Install or update it with the pinned Rust toolchain and an existing native configuration:
+
+```powershell
+cmake --build --preset native --target install-agent-task
+```
+
+For a fresh checkout without generated presets, bootstrap with:
+
+```powershell
+Set-Location tools/rust
+cargo install --path crates/agent-task --root "$env:LOCALAPPDATA/NukeTheBees" --locked --force
+```
+
+Add `%LOCALAPPDATA%\NukeTheBees\bin` to PATH. The installed executable lives outside `out`,
+so it can clear build output while running. For focused build and test validation:
+
+```powershell
+cmake --build --preset native --target agent-task
+ctest --test-dir out/build/native -L '^agent-task$' --output-on-failure
+```
+
+The CLI tests use temporary Git repositories and small Python/CMake fixtures; they do not build
+the game or clear this repository's output.
+
+## set-live-coding-disabled
+
 `set-live-coding-disabled` is the first experiment. Build and test it with:
 
 ```powershell
