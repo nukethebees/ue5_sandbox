@@ -35,3 +35,6 @@
 [submodule "native/third_party/nativefiledialog-extended"]
 	path = native/third_party/nativefiledialog-extended
 	url = https://github.com/btzy/nativefiledialog-extended.git
+[submodule "native/third_party/highway"]
+	path = native/third_party/highway
+	url = https://github.com/google/highway.git
