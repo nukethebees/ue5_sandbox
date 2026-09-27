@@ -63,6 +63,8 @@ fn feature_autonomy_and_revision_inputs() {
     repo.ok(&["rebase", "dev"]);
     repo.ok(&["merge", "dev"]);
     repo.ok(&["branch", "temporary", "dev"]);
+    repo.ok(&["branch", "-c", "master", "copied"]);
+    repo.ok(&["branch", "-D", "copied"]);
     repo.ok(&["branch", "-D", "temporary"]);
     repo.ok(&["worktree", "add", "-b", "from-dev", "from dev", "dev"]);
     repo.ok(&["worktree", "move", "from dev", "moved"]);
@@ -87,6 +89,59 @@ fn feature_autonomy_and_revision_inputs() {
 }
 
 #[test]
+fn inferred_tracking_branches_cannot_create_protected_refs() {
+    for command in ["switch", "checkout"] {
+        let repo = Repo::new();
+        repo.raw(&repo.feature, &["branch", "-D", "master"]);
+        repo.raw(
+            &repo.feature,
+            &["remote", "add", "origin", "https://example.invalid/repo"],
+        );
+        repo.raw(
+            &repo.feature,
+            &["update-ref", "refs/remotes/origin/master", "HEAD"],
+        );
+        for flag in ["-t", "--track", "--track=direct"] {
+            repo.blocked(&[command, flag, "origin/master"]);
+        }
+        let create = if command == "switch" { "-c" } else { "-b" };
+        repo.ok(&[
+            command,
+            create,
+            "tracked-feature",
+            "--track",
+            "origin/master",
+        ]);
+    }
+}
+
+#[test]
+fn divergent_rebase_and_merge_read_dev_without_moving_it() {
+    for operation in ["rebase", "merge"] {
+        let repo = Repo::new();
+        fs::write(repo.feature.join("feature.txt"), "feature\n").unwrap();
+        repo.ok(&["add", "feature.txt"]);
+        repo.ok(&["commit", "-m", "feature change"]);
+        fs::write(repo.dev.join("dev.txt"), "dev\n").unwrap();
+        repo.raw(&repo.dev, &["add", "dev.txt"]);
+        repo.raw(&repo.dev, &["commit", "-qm", "advance dev"]);
+        let base = repo.raw(&repo.dev, &["rev-parse", "HEAD"]);
+        if operation == "merge" {
+            repo.ok(&[operation, "--no-edit", "dev"]);
+        } else {
+            repo.ok(&[operation, "dev"]);
+        }
+        assert_eq!(repo.raw(&repo.dev, &["rev-parse", "HEAD"]), base);
+        assert!(repo.feature.join("feature.txt").exists());
+        assert!(repo.feature.join("dev.txt").exists());
+        repo.raw(
+            &repo.feature,
+            &["merge-base", "--is-ancestor", &base, "HEAD"],
+        );
+    }
+}
+
+#[test]
 fn protected_ref_writes_and_attachments() {
     let repo = Repo::new();
     for args in [
@@ -104,12 +159,16 @@ fn protected_ref_writes_and_attachments() {
         vec!["branch", "-D", "master"],
         vec!["branch", "--delete", "main"],
         vec!["branch", "-M", "dev"],
+        vec!["branch", "-fm", "feature", "dev"],
+        vec!["branch", "-fC", "feature", "master"],
         vec!["branch", "-m", "master", "renamed"],
         vec!["update-ref", "refs/heads/dev", "HEAD"],
         vec!["update-ref", "-d", "refs/heads/master"],
         vec!["update-ref", "--stdin"],
         vec!["worktree", "add", "child", "dev"],
         vec!["worktree", "add", "-B", "master", "child"],
+        vec!["worktree", "add", "-fB", "master", "child"],
+        vec!["checkout", "-fBmaster"],
         vec!["worktree", "add", "dev"],
         vec!["rebase", "HEAD", "dev"],
         vec!["rebase", "--root", "master"],

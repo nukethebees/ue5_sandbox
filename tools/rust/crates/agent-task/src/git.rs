@@ -48,6 +48,10 @@ fn read_only(command: &str) -> bool {
     )
 }
 
+fn short_flag(arg: &str, flags: &[char]) -> bool {
+    arg.starts_with('-') && !arg.starts_with("--") && arg[1..].contains(flags)
+}
+
 pub fn check(cwd: &Path, arguments: &[OsString]) -> Result<(), String> {
     workspace::check_environment()?;
     let mut start = 0;
@@ -80,6 +84,17 @@ pub fn check(cwd: &Path, arguments: &[OsString]) -> Result<(), String> {
     let root = workspace::root(cwd)?;
     let args = &arguments[start + 1..];
     let text: Vec<_> = args.iter().map(|s| s.to_str().unwrap_or("")).collect();
+    if matches!(command, "switch" | "checkout" | "worktree")
+        && text.iter().take_while(|arg| **arg != "--").any(|arg| {
+            arg.len() > 2
+                && short_flag(arg, &['b', 'B', 'c', 'C'])
+                && !["-b", "-B", "-c", "-C"]
+                    .iter()
+                    .any(|prefix| arg.starts_with(prefix))
+        })
+    {
+        return Err("Combined branch-creation flags are not inspected. Spell flags separately (for example -f -B feature) so the protected target can be checked.".into());
+    }
     let current = workspace::branch(&root)?;
     let mut protected_current = protected(&current);
     if current.is_empty() {
@@ -191,6 +206,9 @@ pub fn check(cwd: &Path, arguments: &[OsString]) -> Result<(), String> {
         "switch" | "checkout" => {
             let mut creating = false;
             let detached = text.iter().any(|arg| matches!(*arg, "--detach" | "-d"));
+            let tracking = text
+                .iter()
+                .any(|arg| matches!(*arg, "-t" | "--track") || arg.starts_with("--track="));
             let mut target_seen = false;
             let mut i = 0;
             while i < text.len() {
@@ -198,6 +216,9 @@ pub fn check(cwd: &Path, arguments: &[OsString]) -> Result<(), String> {
                 if arg == "--" {
                     if command == "switch" && !creating && !detached {
                         if let Some(name) = text.get(i + 1) {
+                            if tracking {
+                                deny_ref(name.rsplit('/').next().unwrap_or(name))?;
+                            }
                             ref_target(&root, name)?;
                         }
                     }
@@ -231,6 +252,9 @@ pub fn check(cwd: &Path, arguments: &[OsString]) -> Result<(), String> {
                             .position(|arg| *arg == "--")
                             .is_some_and(|separator| separator + 1 < text.len());
                     if !creating && !paths && !detached {
+                        if tracking {
+                            deny_ref(arg.rsplit('/').next().unwrap_or(arg))?;
+                        }
                         ref_target(&root, arg)?;
                     }
                     target_seen = true;
@@ -247,18 +271,35 @@ pub fn check(cwd: &Path, arguments: &[OsString]) -> Result<(), String> {
             });
             if !listing {
                 let moving = text.iter().any(|a| {
-                    matches!(
-                        *a,
-                        "-m" | "-M" | "--move" | "-c" | "-C" | "--copy" | "-d" | "-D" | "--delete"
-                    )
+                    short_flag(a, &['m', 'M', 'c', 'C', 'd', 'D'])
+                        || matches!(
+                            *a,
+                            "-m" | "-M"
+                                | "--move"
+                                | "-c"
+                                | "-C"
+                                | "--copy"
+                                | "-d"
+                                | "-D"
+                                | "--delete"
+                        )
                 });
                 let mut targets = text.iter().filter(|a| !a.starts_with('-'));
-                if let Some(name) = targets.next() {
-                    deny_ref(name)?;
-                }
-                if moving {
-                    for name in targets {
+                if text
+                    .iter()
+                    .any(|arg| short_flag(arg, &['c', 'C']) || *arg == "--copy")
+                {
+                    if let Some(name) = targets.last() {
                         deny_ref(name)?;
+                    }
+                } else {
+                    if let Some(name) = targets.next() {
+                        deny_ref(name)?;
+                    }
+                    if moving {
+                        for name in targets {
+                            deny_ref(name)?;
+                        }
                     }
                 }
             }
