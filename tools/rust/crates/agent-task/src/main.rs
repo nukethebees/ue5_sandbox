@@ -82,8 +82,11 @@ fn prepare_worktree() -> Result<(), String> {
     run(&root, "python", &["cmake/presets/generate.py"])?;
 
     println!("[5/6] Disabling Live Coding if saved settings exist");
-    live_coding::disable(&root.join("Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"))
-        .map_err(|error| format!("Could not disable Live Coding: {error}"))?;
+    if let Err(error) = live_coding::disable(
+        &root.join("Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"),
+    ) {
+        eprintln!("agent-task: warning: Could not disable Live Coding in saved settings: {error}");
+    }
 
     println!("[6/6] Generating code");
     run(&root, "cmake", &["--workflow", "--preset", "generate-code"])

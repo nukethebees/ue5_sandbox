@@ -186,6 +186,30 @@ fn missing_out_and_saved_settings_are_allowed() {
 }
 
 #[test]
+fn invalid_saved_settings_warn_and_allow_code_generation() {
+    let directory = fixture();
+    let settings = directory
+        .0
+        .join("Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini");
+    fs::create_dir_all(settings.parent().unwrap()).unwrap();
+    fs::write(&settings, [0xff]).unwrap();
+
+    let output = invoke(&directory.0, &["prepare-worktree"]);
+    assert!(output.status.success(), "{output:?}");
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("warning: Could not disable Live Coding")
+    );
+    assert_eq!(
+        fs::read_to_string(directory.0.join("phases.txt"))
+            .unwrap()
+            .lines()
+            .collect::<Vec<_>>(),
+        ["presets", "generate-code"]
+    );
+    assert_eq!(fs::read(settings).unwrap(), [0xff]);
+}
+
+#[test]
 fn missing_central_tools_leave_build_output_untouched() {
     let directory = fixture();
     fs::create_dir(directory.0.join("out")).unwrap();
