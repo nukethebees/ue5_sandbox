@@ -71,9 +71,8 @@ class TidyTest(unittest.TestCase):
 
 def main(test: type[TidyTest]) -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--clang-tidy", required=True)
-    parser.add_argument("--source-dir", required=True, type=Path)
+    parser.add_argument("--clang-tidy", default="clang-tidy")
     arguments = parser.parse_args()
     test.clang_tidy = arguments.clang_tidy
-    test.source_dir = arguments.source_dir
+    test.source_dir = Path.cwd()
     unittest.main(argv=[__file__], defaultTest=test.__name__)

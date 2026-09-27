@@ -127,9 +127,8 @@ class LoopConditionCallTests(unittest.TestCase):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--clang-tidy", required=True)
-    parser.add_argument("--source-dir", required=True, type=Path)
+    parser.add_argument("--clang-tidy", default="clang-tidy")
     arguments = parser.parse_args()
     LoopConditionCallTests.clang_tidy = arguments.clang_tidy
-    LoopConditionCallTests.source_dir = arguments.source_dir
+    LoopConditionCallTests.source_dir = Path.cwd()
     unittest.main(argv=[__file__])

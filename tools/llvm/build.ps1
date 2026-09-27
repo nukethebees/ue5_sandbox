@@ -175,9 +175,14 @@ foreach ($check in @('ioj-loop-condition-call', 'ioj-loop-view-construction',
 }
 $checks
 $projectSource = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
-foreach ($test in Get-ChildItem -LiteralPath (Join-Path $checkerSource 'tests') -Filter 'test_*.py') {
-    & python $test.FullName --clang-tidy (Join-Path $BuildDir 'bin/clang-tidy.exe') --source-dir $projectSource
-    if ($LASTEXITCODE -ne 0) { throw "IOJ clang-tidy test $($test.Name) failed; installation is blocked." }
+Push-Location -LiteralPath $projectSource
+try {
+    foreach ($test in Get-ChildItem -LiteralPath (Join-Path $checkerSource 'tests') -Filter 'test_*.py') {
+        & python $test.FullName --clang-tidy (Join-Path $BuildDir 'bin/clang-tidy.exe')
+        if ($LASTEXITCODE -ne 0) { throw "IOJ clang-tidy test $($test.Name) failed; installation is blocked." }
+    }
+} finally {
+    Pop-Location
 }
 
 if ($Install) {

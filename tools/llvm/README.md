@@ -74,6 +74,9 @@ Without `IOJ_TIDY_SOURCE_DIR`, the patched upstream project builds ordinary clan
 
 ## Checker development
 
+Run the semantic tests from the repository root; they use CWD for repository files and
+`clang-tidy` from PATH by default.
+
 Rebuild the same tree after editing a checker. An implementation edit recompiles its object and
 relinks clang-tidy. The installed executable is a machine-level snapshot; game workflows do not
 rebuild it automatically when a worktree changes.
@@ -82,7 +85,7 @@ rebuild it automatically when a worktree changes.
 cmake --build D:/llvm/build --target clang-tidy --parallel 24
 D:/llvm/build/bin/clang-tidy.exe '-checks=-*,ioj-*' -list-checks
 Get-ChildItem tools/llvm/clang_tidy/tests/test_*.py | ForEach-Object {
-    python $_.FullName --clang-tidy D:/llvm/build/bin/clang-tidy.exe --source-dir .
+    python $_.FullName --clang-tidy D:/llvm/build/bin/clang-tidy.exe
     if ($LASTEXITCODE -ne 0) { throw "IOJ checker tests failed: $($_.Name)" }
 }
 ```
