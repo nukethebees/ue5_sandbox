@@ -69,11 +69,7 @@ foreach(sandbox_unreal_packaging_target IN ITEMS
 endforeach()
 
 add_custom_target(worktree-dependencies
-  COMMAND ${IOJ_SET_LIVE_CODING_DISABLED_TOOL}
-    --settings-path
-    "${PROJECT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
   DEPENDS
-    require-set-live-coding-disabled
     unreal-native-dependencies
     sandbox-material-gen
     sandbox-mesh-gen
@@ -81,7 +77,7 @@ add_custom_target(worktree-dependencies
     check-generated-slate-code
     compile-ui-glow-material
   WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
-  COMMENT "Preparing worktree dependencies and disabling Live Coding"
+  COMMENT "Preparing worktree dependencies"
   VERBATIM
 )
 set_property(TARGET worktree-dependencies PROPERTY FOLDER "Sandbox/Unreal/Dependencies")

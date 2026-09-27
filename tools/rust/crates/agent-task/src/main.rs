@@ -6,6 +6,7 @@ use std::process::{Command, ExitCode};
 mod git;
 mod git_cli;
 mod integrate;
+mod live_coding;
 mod workspace;
 
 const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  git <command>          Run supported feature Git operations (agent-task git --help)\n  integrate [--keep-branch]  Privileged dev transaction; use authorized integrate-feature";
@@ -59,7 +60,7 @@ fn prepare_worktree() -> Result<(), String> {
     let root = worktree_root()?;
     require_jobserver()?;
 
-    println!("[1/5] Clearing build output");
+    println!("[1/6] Clearing build output");
     let output = root.join("out");
     match fs::remove_dir_all(&output) {
         Ok(()) => {}
@@ -67,43 +68,47 @@ fn prepare_worktree() -> Result<(), String> {
         Err(error) => return Err(format!("Could not remove '{}': {error}", output.display())),
     }
 
-    println!("[2/5] Synchronizing submodules");
+    println!("[2/6] Synchronizing submodules");
     run(&root, "git", &["submodule", "sync", "--recursive"])?;
 
-    println!("[3/5] Updating submodules");
+    println!("[3/6] Updating submodules");
     run(
         &root,
         "git",
         &["submodule", "update", "--init", "--recursive"],
     )?;
 
-    println!("[4/5] Generating CMake presets");
+    println!("[4/6] Generating CMake presets");
     run(&root, "python", &["cmake/presets/generate.py"])?;
 
-    println!("[5/5] Generating code");
+    println!("[5/6] Disabling Live Coding if saved settings exist");
+    live_coding::disable(&root.join("Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"))
+        .map_err(|error| format!("Could not disable Live Coding: {error}"))?;
+
+    println!("[6/6] Generating code");
     run(&root, "cmake", &["--workflow", "--preset", "generate-code"])
 }
 
 fn install_central_tools() -> Result<(), String> {
     let root = worktree_root()?;
 
-    println!("[1/8] Synchronizing submodules");
+    println!("[1/7] Synchronizing submodules");
     run(&root, "git", &["submodule", "sync", "--recursive"])?;
 
-    println!("[2/8] Updating submodules");
+    println!("[2/7] Updating submodules");
     run(
         &root,
         "git",
         &["submodule", "update", "--init", "--recursive"],
     )?;
 
-    println!("[3/8] Generating CMake presets");
+    println!("[3/7] Generating CMake presets");
     run(&root, "python", &["cmake/presets/generate.py"])?;
 
-    println!("[4/8] Configuring native build");
+    println!("[4/7] Configuring native build");
     run(&root, "cmake", &["--preset", "native"])?;
 
-    println!("[5/8] Installing canonical jobserver");
+    println!("[5/7] Installing canonical jobserver");
     run(
         &root,
         "cmake",
@@ -116,21 +121,8 @@ fn install_central_tools() -> Result<(), String> {
         ],
     )?;
 
-    println!("[6/8] Installing canonical set-live-coding-disabled");
-    run(
-        &root,
-        "cmake",
-        &[
-            "--build",
-            "--preset",
-            "native",
-            "--target",
-            "install-set-live-coding-disabled",
-        ],
-    )?;
-
-    for (step, tool) in [(7, "UnrealBuildTools"), (8, "CodeFormatTools")] {
-        println!("[{step}/8] Installing canonical {tool}");
+    for (step, tool) in [(6, "UnrealBuildTools"), (7, "CodeFormatTools")] {
+        println!("[{step}/7] Installing canonical {tool}");
         run(
             &root,
             "pwsh",

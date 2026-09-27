@@ -7,7 +7,6 @@
   <Project Path="CodeFormatTools.Tests/CodeFormatTools.Tests.csproj" />
   <Project Path="GamePackageTools/GamePackageTools.csproj" />
   <Project Path="GamePackageTools.Tests/GamePackageTools.Tests.csproj" />
-  <Project Path="GitSupport/GitSupport.csproj" />
   <Project Path="NativeBinaryTools/NativeBinaryTools.csproj" />
   <Project Path="NativeBinaryTools.Tests/NativeBinaryTools.Tests.csproj" />
   <Project Path="UnrealBuildTools/UnrealBuildTools.csproj" />

@@ -13,7 +13,7 @@ agent-task prepare-worktree
 ```
 
 This removes the worktree-root `out`, synchronizes and initializes/updates recursive submodules,
-then regenerates CMake presets and code. It does not perform a broad project/test build; build
+then regenerates CMake presets, disables Live Coding in existing saved Editor settings, and generates code. It does not perform a broad project/test build; build
 only the targets relevant to the task afterward. It stops on the first failure and streams
 subprocess output. Git, Python, CMake, and the repository build prerequisites must be available.
 
@@ -25,8 +25,7 @@ agent-task install-central-tools
 ```
 
 This synchronizes and initializes/updates recursive submodules, generates presets, configures
-`native`, then runs the canonical `install-jobserver` and
-`install-set-live-coding-disabled` CMake targets, then the UnrealBuildTools and CodeFormatTools
+`native`, runs the canonical `install-jobserver` CMake target, then the UnrealBuildTools and CodeFormatTools
 installers, stopping on failure. Each tool lives in its own per-user bin directory; see
 [developer tools](../README.md). This is a maintainer command, never an agent preflight.
 
@@ -100,31 +99,3 @@ cargo test --package agent-task --locked
 
 The CLI tests use temporary Git repositories and small Python/CMake fixtures; they do not build
 the game or clear this repository's output.
-
-## set-live-coding-disabled
-
-`set-live-coding-disabled` is the first experiment. Build and test it with:
-
-```powershell
-Set-Location tools/rust
-cargo build --release --package set-live-coding-disabled
-cargo test --package set-live-coding-disabled
-```
-
-The canonical Windows installation is:
-
-```text
-%LOCALAPPDATA%\NukeTheBees\set-live-coding-disabled\bin\set-live-coding-disabled.exe
-```
-
-From a configured repository build directory, install or update it explicitly with:
-
-```powershell
-cmake --build --preset <preset> --target install-set-live-coding-disabled
-```
-
-CMake call sites resolve the executable from PATH with no local fallback. The installer stages and
-smoke-tests the candidate (including `--version`) before atomically activating it. The CMake install
-target runs focused Rust tests first. Use `-InstallRoot` on the installer for isolated validation.
-Both Rust CLIs report the package version from their Cargo.toml with `--version`; maintainers bump
-that version when shipping changes. Version comparison is manual.

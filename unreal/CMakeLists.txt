@@ -178,8 +178,7 @@ set(IOJ_GAME_CONFIGURATION_ROOT
 set(IOJ_LIVE_CODING_DISABLED_ARGUMENT
   "-ini:EditorPerProjectUserSettings:[/Script/LiveCoding.LiveCodingSettings]:bEnabled=False"
 )
-include("${PROJECT_SOURCE_DIR}/cmake/central_tools.cmake")
-sandbox_central_tool_command(IOJ_UNREAL_BUILD_TOOLS UnrealBuildTools)
+set(IOJ_UNREAL_BUILD_TOOLS UnrealBuildTools)
 sandbox_add_dotnet_host_tool(
   game-package-tools-host
   IOJ_GAME_PACKAGE_TOOLS

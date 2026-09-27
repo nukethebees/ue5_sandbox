@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "agent-task"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "clap",
  "serde_json",
@@ -195,10 +195,6 @@ dependencies = [
  "serde_core",
  "zmij",
 ]
-
-[[package]]
-name = "set-live-coding-disabled"
-version = "0.1.0"
 
 [[package]]
 name = "strsim"

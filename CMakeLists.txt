@@ -42,9 +42,6 @@ sandbox_add_dotnet_host_tool(
 )
 
 add_subdirectory(native)
-if(IOJ_BUILD_DEVELOPER_TOOLS OR IOJ_WITH_UNREAL)
-  add_subdirectory(tools/rust)
-endif()
 add_subdirectory(tools/jobserver)
 add_subdirectory(Scripts)
 add_subdirectory(tools)
