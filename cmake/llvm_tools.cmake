@@ -1,6 +1,14 @@
 include_guard(GLOBAL)
 
-set(LLVM_ROOT "$ENV{LLVM_ROOT}" CACHE PATH "LLVM toolchain installation root")
+if(DEFINED CACHE{LLVM_ROOT})
+  message(STATUS "Ignoring LLVM_ROOT cache entry; set the LLVM_ROOT environment variable instead.")
+  unset(LLVM_ROOT CACHE)
+endif()
+if(DEFINED ENV{LLVM_ROOT} AND NOT "$ENV{LLVM_ROOT}" STREQUAL "")
+  cmake_path(SET LLVM_ROOT NORMALIZE "$ENV{LLVM_ROOT}")
+else()
+  set(LLVM_ROOT "")
+endif()
 
 function(ioj_find_llvm_tool output)
   if(LLVM_ROOT)

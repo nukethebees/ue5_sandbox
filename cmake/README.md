@@ -14,6 +14,11 @@ Regenerate preset files with `python cmake/presets/generate.py`; verify them wit
 `python cmake/presets/generate.py --check`. `csetup` performs regeneration as part of worktree
 setup.
 
+`LLVM_ROOT` is an environment variable, not a project cache option. Set it before configuring
+a build tree. Leave it unset to use LLVM tools from PATH. A set root restricts discovery to
+its `bin` directory; missing tools are errors. Configured tests/tools receive the captured
+selection explicitly, independent of later shell changes.
+
 The CMake modules in this directory own compiler warnings, sanitizers, precompiled headers, Unreal
 build/packaging integration, and jobserver claims. See [Build and test](../docs/build-and-test.md)
 for the supported workflows, [Benchmarks](../docs/benchmarks.md) for exclusive measurements, and

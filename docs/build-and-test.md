@@ -29,9 +29,12 @@ Visual Studio Installer. Both CMake toolchains use the pinned headers and librar
 when run from a developer prompt for a different toolset. After changing either pin, remove the
 affected `out/build/<preset>` directories and rebuild the native libraries before building Unreal.
 
-The `LLVM_ROOT` CMake cache path selects native clang-cl and LLVM tooling. It defaults to the
-`LLVM_ROOT` environment variable; an explicit cache value takes precedence. When empty, tools
-are discovered on PATH. A nonempty root selects tools exclusively from its `bin` directory.
+`LLVM_ROOT` is an environment variable, not a project cache option. Set it before configuring
+a build tree; leave it unset to use LLVM tools from PATH. A nonempty root selects tools
+exclusively from its `bin` directory, and missing tools fail configuration. CMake captures the
+selection during configure and passes it explicitly to child tests/tools, so later shell
+environment changes do not change their selection. Set `$env:LLVM_ROOT` and configure again
+to select another installation; `-DLLVM_ROOT=...` is ignored.
 Unreal/UBT still compiles with MSVC and consumes the native `.lib`
 files. The pinned Microsoft linker/SDK, `/MD` runtime and simulation `_ITERATOR_DEBUG_LEVEL=0`
 remain shared ABI settings. Tidy uses the installed executable without LLVM development packages;

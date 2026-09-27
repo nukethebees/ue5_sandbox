@@ -6,7 +6,6 @@ include("${CMAKE_CURRENT_LIST_DIR}/windows_environment.cmake")
 
 include("${CMAKE_CURRENT_LIST_DIR}/../llvm_tools.cmake")
 ioj_find_llvm_tool(IOJ_CLANG_CL_EXECUTABLE clang-cl)
-list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES LLVM_ROOT)
 
 if(LLVM_ROOT)
   ioj_find_llvm_tool(IOJ_LLVM_LIB_EXECUTABLE llvm-lib)

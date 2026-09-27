@@ -62,8 +62,7 @@ class NativeWorkflowTests(unittest.TestCase):
                 'endif()\n', encoding="utf-8",
             )
             self.run_cmake("-S", str(fixture), "-B", str(fixture / "build"), "-G", "Ninja",
-                           f"-DCMAKE_TOOLCHAIN_FILE={self.source_dir.as_posix()}/cmake/toolchains/windows-clang-cl.cmake",
-                           f"-DLLVM_ROOT={self.llvm_root}")
+                           f"-DCMAKE_TOOLCHAIN_FILE={self.source_dir.as_posix()}/cmake/toolchains/windows-clang-cl.cmake")
 
     def test_lean_configuration_keeps_native_policy_and_required_generators(self) -> None:
         with tempfile.TemporaryDirectory(prefix="sandbox lean native ") as directory:
@@ -199,9 +198,8 @@ class NativeWorkflowTests(unittest.TestCase):
             script.write_text(
                 'cmake_minimum_required(VERSION 4.4.2)\n'
                 f'include("{self.source_dir.as_posix()}/cmake/llvm_tools.cmake")\n'
-                'get_property(cached_root CACHE LLVM_ROOT PROPERTY VALUE)\n'
-                'if(NOT cached_root STREQUAL expected_root)\n'
-                '  message(FATAL_ERROR "Wrong LLVM_ROOT cache: ${cached_root}")\n'
+                'if(DEFINED CACHE{LLVM_ROOT} OR NOT LLVM_ROOT STREQUAL expected_root)\n'
+                '  message(FATAL_ERROR "LLVM_ROOT must be captured from the environment: ${LLVM_ROOT}")\n'
                 'endif()\n'
                 'if(DEFINED probe_name)\n'
                 '  ioj_find_llvm_tool(selected "${probe_name}")\n'
@@ -221,23 +219,19 @@ class NativeWorkflowTests(unittest.TestCase):
                 f'include("{self.source_dir.as_posix()}/cmake/clang_tidy/CMakeLists.txt")\n',
                 encoding="utf-8",
             )
-            for selection in ("explicit", "environment", "path", "empty"):
+            for selection in ("environment", "path", "unsupported_cache"):
                 with self.subTest(selection=selection):
                     environment = os.environ.copy()
                     environment.pop("LLVM_ROOT", None)
                     environment["PATH"] = str(other_root / "bin") + os.pathsep + environment["PATH"]
                     arguments: list[str] = []
-                    if selection == "explicit":
-                        environment["LLVM_ROOT"] = str(fixture / "wrong installation")
-                        arguments.append(f"-DLLVM_ROOT:PATH={llvm_root.as_posix()}")
-                    elif selection == "environment":
-                        environment["LLVM_ROOT"] = llvm_root.as_posix()
+                    if selection == "environment":
+                        environment["LLVM_ROOT"] = str(fixture / "unused" / ".." / llvm_root.name)
                     else:
                         environment["PATH"] = str(llvm_root / "bin") + os.pathsep + environment["PATH"]
-                        if selection == "empty":
-                            environment["LLVM_ROOT"] = str(fixture / "wrong installation")
-                            arguments.append("-DLLVM_ROOT:PATH=")
-                    expected = "" if selection in ("path", "empty") else llvm_root.as_posix()
+                        if selection == "unsupported_cache":
+                            arguments.append(f"-DLLVM_ROOT:PATH={other_root.as_posix()}")
+                    expected = llvm_root.as_posix() if selection == "environment" else ""
                     result = subprocess.run(
                         [self.cmake, *arguments, f"-Dexpected_root={expected}", "-P", str(script)],
                         env=environment, capture_output=True, text=True,
@@ -246,14 +240,14 @@ class NativeWorkflowTests(unittest.TestCase):
 
             # Each missing tool must fail even when another installation has it on PATH.
             environment = os.environ.copy()
+            environment["LLVM_ROOT"] = str(llvm_root)
             environment["PATH"] = str(other_root / "bin") + os.pathsep + environment["PATH"]
             for name in names:
                 with self.subTest(missing_tool=name):
                     tool = llvm_root / "bin" / (name + suffix)
                     tool.unlink()
                     result = subprocess.run(
-                        [self.cmake, f"-DLLVM_ROOT:PATH={llvm_root.as_posix()}",
-                         f"-Dexpected_root={llvm_root.as_posix()}", f"-Dprobe_name={name}",
+                        [self.cmake, f"-Dexpected_root={llvm_root.as_posix()}", f"-Dprobe_name={name}",
                          "-P", str(script)],
                         env=environment, capture_output=True, text=True,
                     )
@@ -298,13 +292,12 @@ class NativeWorkflowTests(unittest.TestCase):
                             executable.touch()
                             executable.chmod(0o755)
                     environment = os.environ.copy()
-                    environment["LLVM_ROOT"] = str(fixture / "ignored environment root")
+                    environment["LLVM_ROOT"] = str(llvm_root) if use_root else ""
                     environment["PATH"] = str(path_bin)
                     expected = (root_bin / root_tool if root_tool else
                                 path_bin / path_tool if path_tool else fixture / "missing")
                     result = subprocess.run(
-                        [self.cmake, f"-DLLVM_ROOT:PATH={llvm_root.as_posix() if use_root else ''}",
-                         f"-Dexpected_tool={expected.as_posix()}", "-P", str(script)],
+                        [self.cmake, f"-Dexpected_tool={expected.as_posix()}", "-P", str(script)],
                         env=environment, capture_output=True, text=True,
                     )
                     output = result.stdout + result.stderr
@@ -713,7 +706,6 @@ cmake_language(DEFER CALL check_simulation_policy)
                 "-DCMAKE_BUILD_TYPE=Debug",
                 "-DCMAKE_UNITY_BUILD=ON",
                 "-DIOJ_WITH_UNREAL=OFF",
-                f"-DLLVM_ROOT={self.llvm_root}",
                 f"-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES={policy_check.as_posix()}",
             )
 
@@ -911,6 +903,17 @@ cmake_language(DEFER CALL check_simulation_policy)
         self.assertEqual(inventory("-L", "^native-simulation$").keys(),
                          {"native-simulation-tests", "native-simulation-soak-tests"})
         self.assertIn("CMake.CSharpTests", inventory("-L", "^cmake$"))
+        workflow = inventory("-R", "^CMake.NativeWorkflow$")["CMake.NativeWorkflow"]
+        root_argument = next(arg for arg in workflow["command"] if arg.startswith("--llvm-root="))
+        self.assertEqual(Path(root_argument.removeprefix("--llvm-root=")), Path(self.llvm_root))
+        environment = os.environ.copy()
+        environment["LLVM_ROOT"] = str(build / "different ambient LLVM")
+        result = subprocess.run(
+            [*workflow["command"],
+             "NativeWorkflowTests.test_compile_options_do_not_require_an_executable_link"],
+            env=environment, capture_output=True, text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn("CodegenCliChecksGeneratedFixture", inventory())
         contracts = inventory("-L", "compile-contract")
         self.assertTrue(contracts)
@@ -925,8 +928,11 @@ cmake_language(DEFER CALL check_simulation_policy)
             generated_source.parent.rmdir()
 
     def run_cmake(self, *arguments: str) -> str:
+        environment = os.environ.copy()
+        environment["LLVM_ROOT"] = self.llvm_root
         result = subprocess.run(
             [self.cmake, *arguments],
+            env=environment,
             check=False,
             capture_output=True,
             encoding="utf-8",
@@ -941,8 +947,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--source-dir", type=Path, required=True)
     parser.add_argument("--cmake", required=True)
+    parser.add_argument("--llvm-root", required=True)
     arguments, unittest_arguments = parser.parse_known_args()
     NativeWorkflowTests.source_dir = arguments.source_dir.resolve()
     NativeWorkflowTests.cmake = arguments.cmake
-    NativeWorkflowTests.llvm_root = os.environ["LLVM_ROOT"]
+    NativeWorkflowTests.llvm_root = arguments.llvm_root
     unittest.main(argv=[sys.argv[0], *unittest_arguments])
