@@ -25,9 +25,8 @@ inline constexpr float rotation_error_chord{0.006f};
 }
 
 [[nodiscard]] inline auto quantize_quaternion_component(float value) noexcept -> std::uint32_t {
-    auto const mapped{(value + quaternion_component_limit) *
-                          (1023.0f / (2.0f * quaternion_component_limit)) +
-                      0.5f};
+    constexpr float quantization_scale{1023.0f / (2.0f * quaternion_component_limit)};
+    auto const mapped{(value + quaternion_component_limit) * quantization_scale + 0.5f};
     // Clamp before unsigned conversion, including tiny endpoint overshoots.
     return static_cast<std::uint32_t>(std::min(1023.0f, std::max(0.0f, mapped)));
 }
