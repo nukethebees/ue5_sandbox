@@ -1,6 +1,6 @@
 #pragma once
 
-// 12-byte ABI: signed int16 XYZ at 0/2/4; packed Q2.3 XYZ at 6; quat32 at 8.
+// 12-byte ABI: signed int16 XYZ at 0/2/4; reserved zero at 6; quat32 at 8.
 float4 SandboxISMCDecodeQuat32(uint bits) {
     float const limit = 0.7071067811865475244f;
     float3 const stored = float3((bits >> 2) & 1023u, (bits >> 12) & 1023u, (bits >> 22) & 1023u) *
@@ -27,20 +27,15 @@ void SandboxISMCDecodeTransform(uint3 packed,
     int3 const offset =
         int3(int(packed.x << 16) >> 16, int(packed.x) >> 16, int(packed.y << 16) >> 16);
     position = root_quantum.xyz + float3(offset) * root_quantum.w;
-    float3 const scale =
-        float3((packed.y >> 16) & 31u, (packed.y >> 21) & 31u, (packed.y >> 26) & 31u) * 0.125f;
     float4 const q = SandboxISMCDecodeQuat32(packed.z);
     float4 const twice = 2.0f * q;
     basis[0] = float3(1.0f - twice.y * q.y - twice.z * q.z,
                       twice.x * q.y + twice.w * q.z,
-                      twice.x * q.z - twice.w * q.y) *
-               scale.x;
+                      twice.x * q.z - twice.w * q.y);
     basis[1] = float3(twice.x * q.y - twice.w * q.z,
                       1.0f - twice.x * q.x - twice.z * q.z,
-                      twice.y * q.z + twice.w * q.x) *
-               scale.y;
+                      twice.y * q.z + twice.w * q.x);
     basis[2] = float3(twice.x * q.z + twice.w * q.y,
                       twice.y * q.z - twice.w * q.x,
-                      1.0f - twice.x * q.x - twice.y * q.y) *
-               scale.z;
+                      1.0f - twice.x * q.x - twice.y * q.y);
 }

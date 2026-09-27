@@ -1,20 +1,18 @@
 #include "SandboxISMCInstanceChunkWriter.h"
 
 auto FSandboxISMCInstanceChunkWriter::validate_transforms(TConstArrayView<FVector3f> positions,
-                                                          TConstArrayView<FQuat4f> rotations,
-                                                          TConstArrayView<FVector3f> scales) const
+                                                          TConstArrayView<FQuat4f> rotations) const
     -> bool {
     auto const count{instances_.Num()};
-    if (positions.Num() != count || rotations.Num() != count || scales.Num() != count) {
+    if (positions.Num() != count || rotations.Num() != count) {
         UE_LOG(LogTemp,
                Fatal,
                TEXT("SandboxISMC chunk at %d requires %d transforms; received %d positions, "
-                    "%d rotations and %d scales"),
+                    "%d rotations"),
                first_index_,
                count,
                positions.Num(),
-               rotations.Num(),
-               scales.Num());
+               rotations.Num());
         return false;
     }
     if (count == 0) {
@@ -44,11 +42,9 @@ auto FSandboxISMCInstanceChunkWriter::validate_transforms(TConstArrayView<FVecto
 
     auto const* position_data{positions.GetData()};
     auto const* rotation_data{rotations.GetData()};
-    auto const* scale_data{scales.GetData()};
     for (int32 local_index{0}; local_index < count; ++local_index) {
         auto const position{position_data[local_index]};
         auto const rotation{rotation_data[local_index]};
-        auto const scale{scale_data[local_index]};
         // Ordered comparisons against the finite domain also reject NaN and infinity.
         if (!position_bounds_.IsInsideOrOn(position)) {
             UE_LOG(LogTemp,
@@ -74,37 +70,22 @@ auto FSandboxISMCInstanceChunkWriter::validate_transforms(TConstArrayView<FVecto
                    rotation.W);
             return false;
         }
-        // Ordered range comparisons also reject NaN and infinity.
-        if (!supports_scale(scale)) {
-            UE_LOG(LogTemp,
-                   Fatal,
-                   TEXT("SandboxISMC instance %d requires finite scale in [0, 3.875]; "
-                        "received (%g, %g, %g)"),
-                   first_index_ + local_index,
-                   scale.X,
-                   scale.Y,
-                   scale.Z);
-            return false;
-        }
     }
     return true;
 }
 
 template <ESandboxISMCBoundsMode BoundsMode>
 auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> positions,
-                                                     TConstArrayView<FQuat4f> rotations,
-                                                     TConstArrayView<FVector3f> scales) -> void {
-    check(validate_transforms(positions, rotations, scales));
+                                                     TConstArrayView<FQuat4f> rotations) -> void {
+    check(validate_transforms(positions, rotations));
 
     auto const count{instances_.Num()};
     auto* const RESTRICT instances{instances_.GetData()};
     auto const* RESTRICT position_data{positions.GetData()};
     auto const* RESTRICT rotation_data{rotations.GetData()};
-    auto const* RESTRICT scale_data{scales.GetData()};
     for (int32 local_index{0}; local_index < count; ++local_index) {
         auto const position{position_data[local_index]};
         auto const rotation{rotation_data[local_index]};
-        auto const scale{scale_data[local_index]};
         auto& instance{instances[local_index]};
         auto const quaternion{
             ml::make_quaternion4f(rotation.X, rotation.Y, rotation.Z, rotation.W)};
@@ -112,14 +93,13 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
             instance.position[axis] =
                 ml::sandbox_ismc::quantize_position_unchecked(position[axis], position_root_[axis]);
         }
-        instance.scale =
-            ml::sandbox_ismc::pack_scale_unchecked(ml::make_vector3f(scale.X, scale.Y, scale.Z));
+        instance.reserved = 0;
         instance.rotation = ml::sandbox_ismc::pack_normalized_quat32(quaternion);
 
         if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
-            auto const row_0{rotation.RotateVector(FVector3f::ForwardVector) * scale.X};
-            auto const row_1{rotation.RotateVector(FVector3f::RightVector) * scale.Y};
-            auto const row_2{rotation.RotateVector(FVector3f::UpVector) * scale.Z};
+            auto const row_0{rotation.RotateVector(FVector3f::ForwardVector)};
+            auto const row_1{rotation.RotateVector(FVector3f::RightVector)};
+            auto const row_2{rotation.RotateVector(FVector3f::UpVector)};
             auto const center{position + row_0 * mesh_bounds_origin_.X +
                               row_1 * mesh_bounds_origin_.Y + row_2 * mesh_bounds_origin_.Z};
             auto const extent{row_0.GetAbs() * mesh_bounds_extent_.X +
@@ -132,7 +112,7 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
 
 template SANDBOXISMC_API auto
     FSandboxISMCInstanceChunkWriter::set_transforms<ESandboxISMCBoundsMode::Calculate>(
-        TConstArrayView<FVector3f>, TConstArrayView<FQuat4f>, TConstArrayView<FVector3f>) -> void;
+        TConstArrayView<FVector3f>, TConstArrayView<FQuat4f>) -> void;
 template SANDBOXISMC_API auto
     FSandboxISMCInstanceChunkWriter::set_transforms<ESandboxISMCBoundsMode::Supplied>(
-        TConstArrayView<FVector3f>, TConstArrayView<FQuat4f>, TConstArrayView<FVector3f>) -> void;
+        TConstArrayView<FVector3f>, TConstArrayView<FQuat4f>) -> void;

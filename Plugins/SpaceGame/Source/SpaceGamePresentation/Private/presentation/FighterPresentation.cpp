@@ -106,8 +106,6 @@ void FFighterPresentation::update_ismc() {
             transform_positions.SetNumUninitialized(chunk.num());
             TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
             transform_rotations.SetNumUninitialized(chunk.num());
-            TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
-            transform_scales.SetNumUninitialized(chunk.num());
             for (int32 local_index{0}; local_index < chunk_count; ++local_index) {
                 auto const index{visible_indices_[first_index + local_index]};
                 auto const position{ml::to_unreal(::ioj::sim::vector_at(locations, index))};
@@ -117,7 +115,6 @@ void FFighterPresentation::update_ismc() {
                     FQuat4f{FQuat::FindBetweenNormals(FVector::ForwardVector, direction)}};
                 transform_positions[local_index] = position;
                 transform_rotations[local_index] = rotation;
-                transform_scales[local_index] = FVector3f::OneVector;
 
                 auto custom_data{chunk.custom_data(local_index)};
                 auto const& colour{team_colours_[ml::to_unreal(teams[index])]};
@@ -125,8 +122,8 @@ void FFighterPresentation::update_ismc() {
                 custom_data[1] = colour.G;
                 custom_data[2] = colour.B;
             }
-            chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                transform_positions, transform_rotations, transform_scales);
+            chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(transform_positions,
+                                                                    transform_rotations);
         });
 }
 

@@ -8,30 +8,17 @@
     :operations (all)
     :export-specifier SANDBOXISMC_API
     (member positions array @vector_3f_value)
-    (member rotations array @quat_4f)
-    (member scales array @vector_3f_value)))
+    (member rotations array @quat_4f)))
 
 (module sandbox_ismc_render
   :header "native/core/include/sandbox/core/sandbox_ismc_render.h"
   :header-include "sandbox/core/sandbox_ismc_render.h"
   :backend standard-library
   :namespace ml::sandbox_ismc
-  (fixed-point ScaleQ2_3
-    :signed false
-    :total-bits 5
-    :fractional-bits 3
-    :rounding nearest-even)
-  (packed-value Scale16
-    :storage std::uint16_t
-    :mutable true
-    (field x ml::sandbox_ismc::ScaleQ2_3 :bits auto :kind fixed-point)
-    (field y ml::sandbox_ismc::ScaleQ2_3 :bits auto :kind fixed-point)
-    (field z ml::sandbox_ismc::ScaleQ2_3 :bits auto :kind fixed-point)
-    (reserved unused :bits 1))
   (record Quat32
     (member bits std::uint32_t :initializer ""))
-  ; 12-byte GPU ABI: position XYZ, scale XYZ in 15 bits, then aligned quat32.
+  ; 12-byte GPU ABI: position XYZ, explicit zero padding, then aligned quat32.
   (record PackedTransform
     (member position std::int16_t :count 3 :initializer "")
-    (member scale ml::sandbox_ismc::Scale16 :initializer "")
+    (member reserved std::uint16_t :initializer "")
     (member rotation ml::sandbox_ismc::Quat32 :initializer "")))

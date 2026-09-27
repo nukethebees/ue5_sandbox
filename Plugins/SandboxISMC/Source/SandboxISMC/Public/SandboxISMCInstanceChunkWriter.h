@@ -41,12 +41,6 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
     auto range() const -> FSandboxISMCInstanceRange { return {first_index_, instances_.Num()}; }
     auto num_custom_data_floats() const -> int32 { return num_custom_data_floats_; }
 
-    static auto supports_scale(FVector3f scale) -> bool {
-        auto constexpr maximum{ml::sandbox_ismc::maximum_scale};
-        return scale.X >= 0.0f && scale.Y >= 0.0f && scale.Z >= 0.0f && scale.X <= maximum &&
-               scale.Y <= maximum && scale.Z <= maximum;
-    }
-
     auto custom_data(int32 local_index) -> TArrayView<float> {
         check(instances_.IsValidIndex(local_index));
         return custom_data_.Slice(local_index * num_custom_data_floats_, num_custom_data_floats_);
@@ -54,12 +48,11 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
 
     // Views cover this entire chunk and must not overlap the packed output storage.
     // With checks enabled, the full batch is validated before any instances or bounds are written.
-    // Positions must be finite and in the snapshot domain, rotations finite and normalized,
-    // and scales finite and in [0, 3.875]. Builds without checks assume valid input.
+    // Positions must be finite and in the snapshot domain, rotations finite and normalized.
+    // Instances have unit scale. Builds without checks assume valid input.
     template <ESandboxISMCBoundsMode BoundsMode>
-    auto set_transforms(TConstArrayView<FVector3f> positions,
-                        TConstArrayView<FQuat4f> rotations,
-                        TConstArrayView<FVector3f> scales) -> void;
+    auto set_transforms(TConstArrayView<FVector3f> positions, TConstArrayView<FQuat4f> rotations)
+        -> void;
 
     // Source geometry bounds. The component adds codec error once per snapshot.
     auto bounds() const -> FBox3f const& { return bounds_; }
@@ -78,8 +71,7 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
     }
   private:
     auto validate_transforms(TConstArrayView<FVector3f> positions,
-                             TConstArrayView<FQuat4f> rotations,
-                             TConstArrayView<FVector3f> scales) const -> bool;
+                             TConstArrayView<FQuat4f> rotations) const -> bool;
 
     TArrayView<FSandboxISMCRenderInstance> instances_;
     TArrayView<float> custom_data_;
@@ -94,7 +86,7 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
 
 extern template SANDBOXISMC_API auto
     FSandboxISMCInstanceChunkWriter::set_transforms<ESandboxISMCBoundsMode::Calculate>(
-        TConstArrayView<FVector3f>, TConstArrayView<FQuat4f>, TConstArrayView<FVector3f>) -> void;
+        TConstArrayView<FVector3f>, TConstArrayView<FQuat4f>) -> void;
 extern template SANDBOXISMC_API auto
     FSandboxISMCInstanceChunkWriter::set_transforms<ESandboxISMCBoundsMode::Supplied>(
-        TConstArrayView<FVector3f>, TConstArrayView<FQuat4f>, TConstArrayView<FVector3f>) -> void;
+        TConstArrayView<FVector3f>, TConstArrayView<FQuat4f>) -> void;

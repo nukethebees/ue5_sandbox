@@ -23,7 +23,7 @@ struct SANDBOXISMC_API InstanceDataConstView {
     using ConstView = InstanceDataConstView;
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.positions, self.rotations, self.scales);
+        return std::forward<TFunc>(func)(self.positions, self.rotations);
     }
 
     auto get_view() const -> ConstView;
@@ -39,24 +39,19 @@ struct SANDBOXISMC_API InstanceDataConstView {
 
     TConstArrayView<FVector3f> positions;
     TConstArrayView<FQuat4f> rotations;
-    TConstArrayView<FVector3f> scales;
 };
 
 struct SANDBOXISMC_API InstanceDataView {
     using View = InstanceDataView;
     using ConstView = InstanceDataConstView;
 
-    void set(int32 const index,
-             FVector3f const new_positions,
-             FQuat4f const new_rotations,
-             FVector3f const new_scales) const {
+    void set(int32 const index, FVector3f const new_positions, FQuat4f const new_rotations) const {
         positions[index] = new_positions;
         rotations[index] = new_rotations;
-        scales[index] = new_scales;
     }
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.positions, self.rotations, self.scales);
+        return std::forward<TFunc>(func)(self.positions, self.rotations);
     }
 
     auto get_view() -> View;
@@ -77,27 +72,20 @@ struct SANDBOXISMC_API InstanceDataView {
 
     TArrayView<FVector3f> positions;
     TArrayView<FQuat4f> rotations;
-    TArrayView<FVector3f> scales;
 };
 
 struct SANDBOXISMC_API InstanceData {
     using View = InstanceDataView;
     using ConstView = InstanceDataConstView;
-    void set(int32 const index,
-             FVector3f const new_positions,
-             FQuat4f const new_rotations,
-             FVector3f const new_scales) {
+    void set(int32 const index, FVector3f const new_positions, FQuat4f const new_rotations) {
         positions[index] = new_positions;
         rotations[index] = new_rotations;
-        scales[index] = new_scales;
     }
 
-    auto add(FVector3f const new_positions, FQuat4f const new_rotations, FVector3f const new_scales)
-        -> int32 {
+    auto add(FVector3f const new_positions, FQuat4f const new_rotations) -> int32 {
         auto const index{num()};
         positions.Add(new_positions);
         rotations.Add(new_rotations);
-        scales.Add(new_scales);
         return index;
     }
 
@@ -121,7 +109,6 @@ struct SANDBOXISMC_API InstanceData {
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
         ml::copy_element(positions, dst_i, other.positions, src_i);
         ml::copy_element(rotations, dst_i, other.rotations, src_i);
-        ml::copy_element(scales, dst_i, other.scales, src_i);
     }
 
     template <typename Other>
@@ -129,7 +116,6 @@ struct SANDBOXISMC_API InstanceData {
         copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(positions, dst_i, other.positions, src_i, count);
         ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
-        ml::copy_elements(scales, dst_i, other.scales, src_i, count);
     }
 
     template <typename Other>
@@ -145,7 +131,6 @@ struct SANDBOXISMC_API InstanceData {
     {
         ml::append_from(positions, other.positions);
         ml::append_from(rotations, other.rotations);
-        ml::append_from(scales, other.scales);
     }
 
     void apply_permutation(TArrayView<int32> indices);
@@ -162,17 +147,13 @@ struct SANDBOXISMC_API InstanceData {
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.positions, self.rotations, self.scales);
+        return std::forward<TFunc>(func)(self.positions, self.rotations);
     }
 
     template <typename Self, typename Other, typename TFunc>
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
-        return std::forward<TFunc>(func)(self.positions,
-                                         other.positions,
-                                         self.rotations,
-                                         other.rotations,
-                                         self.scales,
-                                         other.scales);
+        return std::forward<TFunc>(func)(
+            self.positions, other.positions, self.rotations, other.rotations);
     }
 
     auto get_view() -> View;
@@ -193,6 +174,5 @@ struct SANDBOXISMC_API InstanceData {
 
     TArray<FVector3f> positions;
     TArray<FQuat4f> rotations;
-    TArray<FVector3f> scales;
 };
 } // namespace ml::sandbox_ismc

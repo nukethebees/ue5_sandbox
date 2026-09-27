@@ -57,21 +57,18 @@ TEST_CLASS(SandboxISMCRenderLifecycle, "SandboxISMC.RenderTests")
                         transform_positions.SetNumUninitialized(chunk.num());
                         TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
                         transform_rotations.SetNumUninitialized(chunk.num());
-                        TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
-                        transform_scales.SetNumUninitialized(chunk.num());
                         for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                             auto const instance_index{first_index + local_index};
                             transform_positions[local_index] = {
                                 static_cast<float>(instance_index), value, 0.0f};
                             transform_rotations[local_index] = FQuat4f::Identity;
-                            transform_scales[local_index] = FVector3f::OneVector;
                             auto custom_data{chunk.custom_data(local_index)};
                             custom_data[0] = value;
                             custom_data[1] = static_cast<float>(instance_index);
                             custom_data[2] = 1.0f;
                         }
                         chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                            transform_positions, transform_rotations, transform_scales);
+                            transform_positions, transform_rotations);
                     });
             }};
 

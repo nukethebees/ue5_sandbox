@@ -553,13 +553,10 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
                 transform_positions.SetNumUninitialized(chunk.num());
                 TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
                 transform_rotations.SetNumUninitialized(chunk.num());
-                TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
-                transform_scales.SetNumUninitialized(chunk.num());
                 for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                     auto const instance_index{first_index + local_index};
                     transform_positions[local_index] = base_positions_[instance_index];
                     transform_rotations[local_index] = FQuat4f::Identity;
-                    transform_scales[local_index] = FVector3f::OneVector;
                     if (uses_custom_data()) {
                         auto custom_data{chunk.custom_data(local_index)};
                         custom_data[0] = base_colours_[instance_index].X;
@@ -568,11 +565,11 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
                     }
                 }
                 if (use_supplied_bounds_) {
-                    chunk.set_transforms<ESandboxISMCBoundsMode::Supplied>(
-                        transform_positions, transform_rotations, transform_scales);
+                    chunk.set_transforms<ESandboxISMCBoundsMode::Supplied>(transform_positions,
+                                                                           transform_rotations);
                 } else {
-                    chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                        transform_positions, transform_rotations, transform_scales);
+                    chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(transform_positions,
+                                                                            transform_rotations);
                 }
             }};
             if (use_supplied_bounds_) {
@@ -663,8 +660,6 @@ auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
                 transform_positions.SetNumUninitialized(chunk.num());
                 TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
                 transform_rotations.SetNumUninitialized(chunk.num());
-                TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
-                transform_scales.SetNumUninitialized(chunk.num());
                 for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                     auto const instance_index{first_index + local_index};
                     auto const animated{instance_index < updated_count};
@@ -672,14 +667,13 @@ auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
                                         FVector3f{0.0f, 0.0f, animated ? vertical_offset : 0.0f}};
                     transform_positions[local_index] = position;
                     transform_rotations[local_index] = animated ? rotation : FQuat4f::Identity;
-                    transform_scales[local_index] = FVector3f::OneVector;
                 }
                 if (use_supplied_bounds_) {
-                    chunk.set_transforms<ESandboxISMCBoundsMode::Supplied>(
-                        transform_positions, transform_rotations, transform_scales);
+                    chunk.set_transforms<ESandboxISMCBoundsMode::Supplied>(transform_positions,
+                                                                           transform_rotations);
                 } else {
-                    chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
-                        transform_positions, transform_rotations, transform_scales);
+                    chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(transform_positions,
+                                                                            transform_rotations);
                 }
             }
             if (uses_custom_data()) {

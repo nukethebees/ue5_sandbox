@@ -3,9 +3,9 @@
 // generated include emits the adapter after the engine's instance-input types.
 #include "/SandboxISMC/Private/PackedInstanceInput.ush"
 
-#define LOCALVF_INSTANCE_ATTRIBUTES         \
-    uint PackedPositionXY : ATTRIBUTE8;     \
-    uint PackedPositionZScale : ATTRIBUTE9; \
+#define LOCALVF_INSTANCE_ATTRIBUTES     \
+    uint PackedPositionXY : ATTRIBUTE8; \
+    uint PackedPositionZ : ATTRIBUTE9;  \
     uint PackedRotation : ATTRIBUTE10;
 
 #include "/Engine/Private/LocalVertexFactory.ush"
