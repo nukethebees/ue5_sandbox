@@ -70,11 +70,10 @@ TEST(SandboxISMCPacking, RandomQuaternionRoundTrips) {
     constexpr auto count{100000};
     for (auto index{0}; index < count; ++index) {
         auto const quaternion{
-            HMM_Q(normal(random), normal(random), normal(random), normal(random))};
-        auto const packed{pack_quat32(quaternion)};
-        ASSERT_TRUE(packed.has_value());
-        EXPECT_EQ(pack_quat32(HMM_MulQF(quaternion, -1.0f))->bits, packed->bits);
-        auto const error{angular_error(quaternion, unpack_quat32(*packed))};
+            HMM_NormQ(HMM_Q(normal(random), normal(random), normal(random), normal(random)))};
+        auto const packed{pack_normalized_quat32(quaternion)};
+        EXPECT_EQ(pack_normalized_quat32(HMM_MulQF(quaternion, -1.0f)).bits, packed.bits);
+        auto const error{angular_error(quaternion, unpack_quat32(packed))};
         maximum = std::max(maximum, error);
         squared_error += error * error;
     }
@@ -83,6 +82,7 @@ TEST(SandboxISMCPacking, RandomQuaternionRoundTrips) {
                  maximum,
                  std::sqrt(squared_error / count));
     EXPECT_LT(maximum, 0.3);
+    EXPECT_LT(2.0 * std::sin(maximum * std::numbers::pi / 360.0), rotation_error_chord);
 }
 
 TEST(SandboxISMCPacking, PositionRangeAndRounding) {
@@ -98,6 +98,13 @@ TEST(SandboxISMCPacking, PositionRangeAndRounding) {
     EXPECT_FALSE(quantize_units(32767.5f, 0).has_value());
     EXPECT_FALSE(quantize_units(-32767.501f, 0).has_value());
     EXPECT_FALSE(quantize_units(std::numeric_limits<float>::quiet_NaN(), 0).has_value());
+    for (auto const root : {-262144.0f, 262144.0f}) {
+        for (auto const position :
+             {std::nextafter(8.0f, 0.0f), 8.0f, std::nextafter(-8.0f, -9.0f), -8.0f}) {
+            auto const expected{std::floor((static_cast<double>(position) - root) / 16.0 + 0.5)};
+            EXPECT_EQ(quantize_position(position, root), static_cast<std::int16_t>(expected));
+        }
+    }
     std::mt19937 random{17};
     std::uniform_real_distribution<float> values{-32767, 32767};
     for (auto index{0}; index < 10000; ++index) {
@@ -105,6 +112,48 @@ TEST(SandboxISMCPacking, PositionRangeAndRounding) {
         auto const packed{quantize_units(value, 0)};
         ASSERT_TRUE(packed.has_value());
         EXPECT_LE(std::abs(value - static_cast<float>(*packed)), 0.5f);
+    }
+}
+
+TEST(SandboxISMCPacking, NormalizedEncoderContractAndComponentEdges) {
+    EXPECT_TRUE(is_normalized_quaternion(HMM_Q(0, 0, 0, 1)));
+    EXPECT_FALSE(is_normalized_quaternion(HMM_Q(0, 0, 0, 0)));
+    EXPECT_FALSE(is_normalized_quaternion(HMM_Q(0, 0, 0, 1.001f)));
+    EXPECT_FALSE(is_normalized_quaternion(HMM_Q(0, 0, 0, std::numeric_limits<float>::quiet_NaN())));
+    EXPECT_FALSE(is_normalized_quaternion(HMM_Q(0, 0, 0, std::numeric_limits<float>::infinity())));
+    for (auto const direction : {-1.0f, 0.0f, 1.0f}) {
+        EXPECT_EQ(
+            quantize_quaternion_component(std::nextafter(-quaternion_component_limit, direction)),
+            0U);
+        EXPECT_EQ(
+            quantize_quaternion_component(std::nextafter(quaternion_component_limit, direction)),
+            1023U);
+    }
+    EXPECT_EQ(pack_normalized_quat32(HMM_Q(0, 0, 0, 1)).bits, 0x80200803U);
+    EXPECT_EQ(pack_normalized_quat32(HMM_Q(0.5f, 0.5f, 0.5f, 0.5f)).bits, 0xda769da4U);
+}
+
+TEST(SandboxISMCPacking, SpecializedScaleMatchesGeneratedEncoderAtEveryRoundingBoundary) {
+    for (int raw{0}; raw < 255; ++raw) {
+        auto const midpoint{(static_cast<float>(raw) + 0.5f) * 0.125f};
+        for (auto const value :
+             {std::nextafter(midpoint, 0.0f), midpoint, std::nextafter(midpoint, maximum_scale)}) {
+            Scale8 reference;
+            ASSERT_TRUE(reference.try_set_scale_value(value));
+            auto const fast{pack_scale(value)};
+            ASSERT_TRUE(fast.has_value());
+            EXPECT_EQ(fast->raw_value(), reference.raw_value());
+            EXPECT_LE(std::abs(static_cast<float>(fast->scale_value()) - value), scale_error);
+        }
+    }
+    for (auto const value : {0.0f, 0.5f, 1.0f, 1.5f, 2.0f, maximum_scale}) {
+        EXPECT_EQ(pack_scale(value)->scale_value(), value);
+    }
+    for (auto const value : {-0.001f,
+                             31.876f,
+                             std::numeric_limits<float>::infinity(),
+                             std::numeric_limits<float>::quiet_NaN()}) {
+        EXPECT_FALSE(pack_scale(value).has_value());
     }
 }
 
