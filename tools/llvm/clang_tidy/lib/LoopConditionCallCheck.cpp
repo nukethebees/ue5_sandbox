@@ -10,6 +10,10 @@ static bool contains_call(Stmt const* statement) {
         return false;
     }
 
+    if (auto const* expression{dyn_cast<Expr>(statement)}) {
+        statement = expression->IgnoreUnlessSpelledInSource();
+    }
+
     auto const* operator_call{dyn_cast<CXXOperatorCallExpr>(statement)};
     if (isa<CallExpr>(statement) && (!operator_call || operator_call->getOperator() == OO_Call)) {
         return true;

@@ -27,6 +27,13 @@ struct Index {
 };
 Index get_end();
 struct Predicate { bool operator()() const; };
+struct Condition { explicit operator bool() const; };
+struct Bound { operator int() const; };
+Condition get_condition();
+struct ProxyIndex {
+    Condition operator!=(ProxyIndex) const;
+    ProxyIndex& operator++();
+};
 """
 
 
@@ -70,6 +77,21 @@ class LoopConditionCallTests(unittest.TestCase):
             ("operator_operand_call", "for (Index i; i < get_end(); ++i) {}", 1),
             ("explicit_operator_call", "Index end; for (Index i; i.operator<(end); ++i) {}", 1),
             ("function_object", "Predicate predicate; for (; predicate();) {}", 1),
+            ("contextual_conversion", "Condition condition; for (; condition;) {}", 0),
+            ("parenthesized_conversion", "Condition condition; for (; (condition);) {}", 0),
+            ("comparison_conversion", "Bound bound; for (int i = 0; i < bound; ++i) {}", 0),
+            ("comparison_proxy", "ProxyIndex end; for (ProxyIndex i; i != end; ++i) {}", 0),
+            ("cast_conversion", "Condition condition; for (; static_cast<bool>(condition);) {}", 0),
+            ("conversion_of_call", "for (; get_condition();) {}", 1),
+            ("conversion_declaration", "for (; Condition condition = get_condition();) {}", 1),
+            ("explicit_conversion", "Condition condition; for (; condition.operator bool();) {}", 1),
+            ("explicit_bound_conversion", "Bound bound; for (int i = 0; i < bound.operator int(); ++i) {}", 1),
+            ("suppressed_conversion", "Condition condition;\n"
+             f"// NOLINTNEXTLINE({CHECK}) -- condition intentionally changes.\n"
+             "for (; condition.operator bool();) {}", 0),
+            ("nolint", f"for (; get_count();) {{}} // NOLINT({CHECK})", 0),
+            ("nolint_block", f"// NOLINTBEGIN({CHECK})\nfor (; get_count();) {{}}\n"
+             f"// NOLINTEND({CHECK})", 0),
             ("suppressed", f"// NOLINTNEXTLINE({CHECK}) -- bound intentionally changes.\n"
              "for (int i = 0;\n i < items.size(); ++i) {}", 0),
         )
