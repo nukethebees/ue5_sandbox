@@ -60,6 +60,8 @@ internal sealed class RevisionComparisonSession : IAsyncDisposable
         var commit = await BenchmarkGit.TextAsync(application, repository.Root, ["rev-parse", "--verify", "--end-of-options", baseline + "^{commit}"], token);
         var parent = Path.Combine(repository.Root, ".local", "benchmarks", "worktrees");
         var path = supplied is null ? Path.Combine(parent, run_id, "baseline") : Path.GetFullPath(supplied, repository.Root);
+        if (string.Equals(path.TrimEnd(Path.DirectorySeparatorChar), Path.GetFullPath(repository.Root).TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase))
+            throw new BenchmarkToolException("The baseline must be a separate worktree from the candidate.");
         var session = new RevisionComparisonSession(application, candidate, path, parent, keep);
         try
         {

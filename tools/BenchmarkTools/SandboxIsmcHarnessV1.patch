@@ -1,0 +1,240 @@
+diff --git a/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkActor.cpp b/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkActor.cpp
+index 1c5fed68c..983077e7d 100644
+--- a/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkActor.cpp
++++ b/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkActor.cpp
+@@ -1,12 +1,17 @@
+ #include "SandboxISMCBenchmarkActor.h"
+
+ #include "SandboxISMCComponent.h"
++#include "Slate/SceneViewport.h"
+
+ #include "Camera/CameraComponent.h"
+ #include "Components/InstancedStaticMeshComponent.h"
+ #include "Components/SceneComponent.h"
++#include "Dom/JsonObject.h"
++#include "DynamicRHI.h"
+ #include "Editor/UnrealEdEngine.h"
++#include "Engine/GameViewportClient.h"
+ #include "Engine/StaticMesh.h"
++#include "Engine/World.h"
+ #include "HAL/FileManager.h"
+ #include "HAL/IConsoleManager.h"
+ #include "HAL/PlatformTime.h"
+@@ -26,6 +31,7 @@
+ #include "RenderingThread.h"
+ #include "RenderTimer.h"
+ #include "RHI.h"
++#include "Serialization/JsonSerializer.h"
+ #include "UnrealEdGlobals.h"
+ #include "UObject/ConstructorHelpers.h"
+
+@@ -256,6 +262,10 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
+         return;
+     }
+
++    if (!viewport_ready_ && !establish_viewport()) {
++        return;
++    }
++
+     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::Tick);
+     advance_churn();
+     auto const now_seconds{FPlatformTime::Seconds()};
+@@ -350,6 +360,17 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
+ }
+
+ void ASandboxISMCBenchmarkActor::parse_command_line() {
++    FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkOutput="), output_directory_);
++    FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkRunId="), run_id_);
++    FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkWidth="), requested_width_);
++    FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkHeight="), requested_height_);
++    int32 trace{capture_insights_trace_ ? 1 : 0};
++    FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkTrace="), trace);
++    capture_insights_trace_ = trace != 0;
++    FString bounds;
++    if (FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkBounds="), bounds)) {
++        use_supplied_bounds_ = bounds == TEXT("supplied");
++    }
+     FParse::Value(
+         FCommandLine::Get(), TEXT("SandboxISMCBenchmarkSeconds="), automatic_stop_seconds_);
+     automatic_stop_seconds_ = FMath::Max(automatic_stop_seconds_, 0.0f);
+@@ -894,6 +915,8 @@ void ASandboxISMCBenchmarkActor::finish_benchmark() {
+         save_report();
+     }
+     stop_insights_trace();
++    save_conditions(viewport_ready_ && !frame_ms_.IsEmpty() &&
++                    measured_seconds >= automatic_stop_seconds_);
+     restore_frame_rate_limits();
+
+     UE_LOG(LogSandboxISMCBenchmark,
+@@ -919,8 +942,14 @@ void ASandboxISMCBenchmarkActor::start_insights_trace() {
+     options.bExcludeTail = true;
+     constexpr auto* channels{
+         TEXT("cpu,gpu,frame,bookmark,counters,stats,rendercommands,rhicommands")};
++    auto const trace_path{output_directory_.IsEmpty()
++                              ? output_base_name_
++                              : FPaths::Combine(output_directory_, TEXT("capture.utrace"))};
++    if (!output_directory_.IsEmpty()) {
++        IFileManager::Get().MakeDirectory(*output_directory_, true);
++    }
+     owns_insights_trace_ = FTraceAuxiliary::Start(
+-        FTraceAuxiliary::EConnectionType::File, *output_base_name_, channels, &options);
++        FTraceAuxiliary::EConnectionType::File, *trace_path, channels, &options);
+     if (owns_insights_trace_) {
+         UE_LOG(LogSandboxISMCBenchmark,
+                Display,
+@@ -1084,12 +1113,116 @@ void ASandboxISMCBenchmarkActor::save_report() const {
+         append(TEXT("engine_ismc"), TEXT("api"), TEXT("ms"), engine_samples_.api_ms);
+     }
+
+-    auto const directory{FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Benchmarks"))};
++    auto const directory{output_directory_.IsEmpty()
++                             ? FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Benchmarks"))
++                             : output_directory_};
+     IFileManager::Get().MakeDirectory(*directory, true);
+-    auto const path{FPaths::Combine(directory, output_base_name_ + TEXT(".csv"))};
++    auto const path{FPaths::Combine(directory,
++                                    output_directory_.IsEmpty() ? output_base_name_ + TEXT(".csv")
++                                                                : TEXT("metrics.csv"))};
+     if (FFileHelper::SaveStringToFile(csv, *path)) {
+         UE_LOG(LogSandboxISMCBenchmark, Display, TEXT("Benchmark CSV saved to %s"), *path);
+     } else {
+         UE_LOG(LogSandboxISMCBenchmark, Error, TEXT("Could not save benchmark CSV to %s"), *path);
+     }
+ }
++
++bool ASandboxISMCBenchmarkActor::establish_viewport() {
++    if (requested_width_ == 0 && requested_height_ == 0 && output_directory_.IsEmpty()) {
++        viewport_ready_ = true;
++        return true;
++    }
++
++    auto* const client{GetWorld()->GetGameViewport()};
++    auto* const viewport{client != nullptr ? client->GetGameViewport() : nullptr};
++    if (viewport != nullptr && requested_width_ > 0 && requested_height_ > 0) {
++        if (!viewport_requested_) {
++            viewport->SetFixedViewportSize(requested_width_, requested_height_);
++            viewport_requested_ = true;
++            return false;
++        }
++        observed_viewport_ = viewport->GetSizeXY();
++        if (observed_viewport_ == FIntPoint{requested_width_, requested_height_}) {
++            viewport_ready_ = true;
++            warmup_started_seconds_ = FPlatformTime::Seconds();
++            return false;
++        }
++    } else if (FPlatformTime::Seconds() - warmup_started_seconds_ < 10.0) {
++        return false;
++    }
++
++    UE_LOG(LogSandboxISMCBenchmark,
++           Error,
++           TEXT("Viewport verification failed before warmup: requested %dx%d, observed %dx%d"),
++           requested_width_,
++           requested_height_,
++           observed_viewport_.X,
++           observed_viewport_.Y);
++    running_ = false;
++    save_conditions(false);
++    stop_insights_trace();
++    restore_frame_rate_limits();
++    if (request_end_pie_on_completion_ && GUnrealEd != nullptr) {
++        GUnrealEd->RequestEndPlayMap();
++    }
++    return false;
++}
++
++void ASandboxISMCBenchmarkActor::save_conditions(bool const complete) const {
++    if (output_directory_.IsEmpty()) {
++        return;
++    }
++
++    auto const result{MakeShared<FJsonObject>()};
++    result->SetNumberField(TEXT("schemaVersion"), 1);
++    result->SetStringField(TEXT("runId"), run_id_);
++    result->SetBoolField(TEXT("complete"), complete);
++    auto const conditions{MakeShared<FJsonObject>()};
++    auto const number{[&](TCHAR const* key, double value) {
++        conditions->SetStringField(key, FString::Printf(TEXT("%.9g"), value));
++    }};
++    conditions->SetStringField(TEXT("result_schema"), TEXT("1"));
++    conditions->SetStringField(TEXT("mode"), get_mode_name());
++    conditions->SetStringField(TEXT("visibility"), get_visibility_name());
++    conditions->SetStringField(TEXT("bounds"), get_bounds_name());
++    conditions->SetStringField(TEXT("custom_data"), get_custom_data_name());
++    conditions->SetStringField(TEXT("rhi"),
++                               GDynamicRHI != nullptr ? GDynamicRHI->GetName() : TEXT("unknown"));
++    number(TEXT("instances"), instance_count_);
++    number(TEXT("update_percent"), update_percentage_);
++    number(TEXT("churn"), churn_enabled_ ? 1 : 0);
++    number(TEXT("min_instances"), minimum_live_count_);
++    number(TEXT("half_cycle_updates"), churn_half_cycle_updates_);
++    number(TEXT("replacement_percent"), replacement_percentage_);
++    number(TEXT("warmup_updates"), warmup_updates_);
++    number(TEXT("warmup_seconds"), warmup_seconds_);
++    number(TEXT("measurement_seconds"), automatic_stop_seconds_);
++    number(TEXT("shadows"), cast_shadows_ ? 1 : 0);
++    number(TEXT("trace"), capture_insights_trace_ ? 1 : 0);
++    number(TEXT("requested_width"), requested_width_);
++    number(TEXT("requested_height"), requested_height_);
++    number(TEXT("observed_width"), observed_viewport_.X);
++    number(TEXT("observed_height"), observed_viewport_.Y);
++    number(TEXT("grid_spacing"), grid_spacing_);
++    number(TEXT("grid_gap"), grid_gap_);
++    number(TEXT("movement_amplitude"), vertical_movement_amplitude_);
++    number(TEXT("movement_frequency"), movement_frequency_hz_);
++    number(TEXT("rotation_speed"), rotation_speed_degrees_);
++    number(TEXT("frame_limits_disabled"), disable_frame_rate_limits_ ? 1 : 0);
++    for (auto const* name :
++         {TEXT("r.ScreenPercentage"), TEXT("r.DynamicRes.OperationMode"), TEXT("r.VSync")}) {
++        if (auto const* variable{IConsoleManager::Get().FindConsoleVariable(name)}) {
++            number(name, variable->GetFloat());
++        }
++    }
++    result->SetObjectField(TEXT("conditions"), conditions);
++    FString json;
++    auto const writer{TJsonWriterFactory<>::Create(&json)};
++    FJsonSerializer::Serialize(result, writer);
++    auto const path{FPaths::Combine(output_directory_, TEXT("result.json"))};
++    auto const temporary{path + TEXT(".tmp")};
++    if (!FFileHelper::SaveStringToFile(json, *temporary) ||
++        !IFileManager::Get().Move(*path, *temporary, true, true)) {
++        UE_LOG(LogSandboxISMCBenchmark, Error, TEXT("Could not publish conditions to %s"), *path);
++    }
++}
+diff --git a/Plugins/SandboxISMC/Source/SandboxISMCLab/Public/SandboxISMCBenchmarkActor.h b/Plugins/SandboxISMC/Source/SandboxISMCLab/Public/SandboxISMCBenchmarkActor.h
+index b89c1cf8c..be536dc2b 100644
+--- a/Plugins/SandboxISMC/Source/SandboxISMCLab/Public/SandboxISMCBenchmarkActor.h
++++ b/Plugins/SandboxISMC/Source/SandboxISMCLab/Public/SandboxISMCBenchmarkActor.h
+@@ -82,6 +82,8 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
+     void disable_frame_rate_limits();
+     void restore_frame_rate_limits();
+     void save_report() const;
++    bool establish_viewport();
++    void save_conditions(bool complete) const;
+     bool runs_custom() const;
+     bool runs_engine_ismc() const;
+     int32 get_update_count() const;
+@@ -228,4 +230,11 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
+     double custom_creation_ms_{0.0};
+     double engine_creation_ms_{0.0};
+     FString output_base_name_;
++    FString output_directory_;
++    FString run_id_;
++    int32 requested_width_{0};
++    int32 requested_height_{0};
++    FIntPoint observed_viewport_{0, 0};
++    bool viewport_requested_{false};
++    bool viewport_ready_{false};
+ };
+diff --git a/Plugins/SandboxISMC/Source/SandboxISMCLab/SandboxISMCLab.Build.cs b/Plugins/SandboxISMC/Source/SandboxISMCLab/SandboxISMCLab.Build.cs
+index ba26c7c0a..efd086e83 100644
+--- a/Plugins/SandboxISMC/Source/SandboxISMCLab/SandboxISMCLab.Build.cs
++++ b/Plugins/SandboxISMC/Source/SandboxISMCLab/SandboxISMCLab.Build.cs
+@@ -15,6 +15,7 @@ public class SandboxISMCLab : ModuleRules
+             "Engine",
+             "RenderCore",
+             "RHI",
++            "Json",
+             "SandboxISMC",
+             "UnrealEd",
+         });

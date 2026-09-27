@@ -4,6 +4,13 @@ public static class Program
 {
     public static async Task<int> Main(string[] arguments)
     {
+        using var cancellation = new CancellationTokenSource();
+        ConsoleCancelEventHandler cancel = (_, args) =>
+        {
+            args.Cancel = true;
+            cancellation.Cancel();
+        };
+        Console.CancelKeyPress += cancel;
         var application = new BenchmarkToolsApplication(
             new ProcessRunner(),
             new JobserverLocator(),
@@ -11,6 +18,18 @@ public static class Program
             Console.Out,
             Console.Error,
             Environment.ProcessPath ?? throw new InvalidOperationException("Could not determine the BenchmarkTools executable path."));
-        return await application.RunAsync(arguments, Environment.CurrentDirectory);
+        try
+        {
+            return await application.RunAsync(arguments, Environment.CurrentDirectory, cancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            Console.Error.WriteLine("BenchmarkTools: cancelled.");
+            return 130;
+        }
+        finally
+        {
+            Console.CancelKeyPress -= cancel;
+        }
     }
 }

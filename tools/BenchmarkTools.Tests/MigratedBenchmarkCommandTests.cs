@@ -27,6 +27,8 @@ public sealed class MigratedBenchmarkCommandTests
 
         StringAssert.StartsWith(resource, "unreal-build/");
         Assert.AreEqual("unreal-build/".Length + 64, resource.Length);
+        var expected_hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("c:/unreal engine"))).ToLowerInvariant();
+        Assert.AreEqual("unreal-build/" + expected_hash, resource);
     }
 
     [TestMethod]

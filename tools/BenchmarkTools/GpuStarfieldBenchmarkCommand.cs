@@ -104,7 +104,7 @@ internal static class GpuStarfieldBenchmarkCommand
     {
         using var reader = new StreamReader(path, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
         var header = reader.ReadLine() ?? throw new BenchmarkToolException($"Capture is empty: '{path}'.");
-        var columns = ParseCsv(header);
+        var columns = BenchmarkCommandSupport.ParseCsv(header);
         var indices = metrics.Where(metric => columns.Contains(metric.Value)).ToDictionary(metric => metric.Key, metric => columns.IndexOf(metric.Value), StringComparer.Ordinal);
         if (!indices.ContainsKey("game_thread_ms"))
         {
@@ -115,7 +115,7 @@ internal static class GpuStarfieldBenchmarkCommand
         var height = 0;
         while (reader.ReadLine() is { } line)
         {
-            var row = ParseCsv(line);
+            var row = BenchmarkCommandSupport.ParseCsv(line);
             ReadResolution(row, ref width, ref height);
             if (!TryRead(row, indices["game_thread_ms"], out _))
             {
@@ -256,13 +256,6 @@ internal static class GpuStarfieldBenchmarkCommand
         return string.Join(Environment.NewLine, lines) + Environment.NewLine;
     }
 
-    internal static List<string> ParseCsv(string line)
-    {
-        var result = new List<string>(); var builder = new StringBuilder(); var quoted = false;
-        for (var index = 0; index < line.Length; ++index) { var character = line[index]; if (character == '"' && quoted && index + 1 < line.Length && line[index + 1] == '"') { builder.Append(character); ++index; } else if (character == '"') quoted = !quoted; else if (character == ',' && !quoted) { result.Add(builder.ToString()); builder.Clear(); } else builder.Append(character); }
-        if (quoted) throw new BenchmarkToolException("GPU starfield CSV contains an unterminated quoted field.");
-        result.Add(builder.ToString()); return result;
-    }
     private static bool TryRead(IReadOnlyList<string> row, int index, out double value)
     {
         value = 0;

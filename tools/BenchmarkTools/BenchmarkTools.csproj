@@ -2,4 +2,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
   </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="SandboxIsmcHarnessV1.patch" />
+  </ItemGroup>
 </Project>

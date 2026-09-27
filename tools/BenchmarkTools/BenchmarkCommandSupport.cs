@@ -169,7 +169,7 @@ internal static class BenchmarkCommandSupport
             throw new BenchmarkToolException($"Could not derive an Unreal Engine root from '{editor_path}'.");
         }
         var resolved_root = root.Exists ? root.ResolveLinkTarget(returnFinalTarget: true)?.FullName ?? root.FullName : root.FullName;
-        var canonical = resolved_root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).ToLowerInvariant();
+        var canonical = resolved_root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Replace('\\', '/').ToLowerInvariant();
         var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
         return $"unreal-build/{hash}";
     }
@@ -182,6 +182,32 @@ internal static class BenchmarkCommandSupport
         {
             writer.WriteLine(string.Join(',', row.Select(EscapeCsv)));
         }
+    }
+
+    internal static List<string> ParseCsv(string line)
+    {
+        var result = new List<string>();
+        var builder = new StringBuilder();
+        var quoted = false;
+        for (var index = 0; index < line.Length; ++index)
+        {
+            var character = line[index];
+            if (character == '"' && quoted && index + 1 < line.Length && line[index + 1] == '"')
+            {
+                builder.Append(character);
+                ++index;
+            }
+            else if (character == '"') quoted = !quoted;
+            else if (character == ',' && !quoted)
+            {
+                result.Add(builder.ToString());
+                builder.Clear();
+            }
+            else builder.Append(character);
+        }
+        if (quoted) throw new BenchmarkToolException("Benchmark CSV contains an unterminated quoted field.");
+        result.Add(builder.ToString());
+        return result;
     }
 
     private static string EscapeCsv(string value)
