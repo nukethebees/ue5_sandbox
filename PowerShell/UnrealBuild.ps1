@@ -1,9 +1,7 @@
 $env:MSBUILDDISABLENODEREUSE = '1'
 
 function Get-JobserverPath {
-    $command = Get-Command jobserver -CommandType Application -ErrorAction SilentlyContinue
-    if (-not $command) { throw 'jobserver is missing from PATH. Ask the maintainer to install central tools and manage PATH.' }
-    $command.Source
+    Join-Path $env:LOCALAPPDATA 'NukeTheBees/jobserver/bin/jobserver.exe'
 }
 
 function Invoke-JobserverWorkflow {
@@ -13,11 +11,6 @@ function Invoke-JobserverWorkflow {
         [Parameter(Mandatory)]
         [string]$Preset
     )
-
-    $jobserver = Get-JobserverPath
-    if (-not (Test-Path -LiteralPath $jobserver -PathType Leaf)) {
-        throw "The per-user jobserver is not installed. Ask the maintainer to run 'agent-task install-central-tools' and manage PATH."
-    }
 
     $log_directory = Join-Path $script:dev_project_root '.local\logs'
     New-Item -ItemType Directory -Path $log_directory -Force | Out-Null
@@ -242,10 +235,6 @@ function get-ubt-build-state {
 
 function reset-ubt-build-state {
     $jobserver = Get-JobserverPath
-    if (-not (Test-Path -LiteralPath $jobserver -PathType Leaf)) {
-        throw "The per-user jobserver is not installed. Ask the maintainer to run 'agent-task install-central-tools' and manage PATH."
-    }
-
     & $jobserver kill-owned --kind unreal-build
     if ($LASTEXITCODE -ne 0) {
         throw "Jobserver owned Unreal-build cleanup exited with code $LASTEXITCODE."
@@ -284,10 +273,6 @@ function integrate-feature {
 
     $agent_task = (Get-Command agent-task -CommandType Application -ErrorAction Stop).Source
     $jobserver = Get-JobserverPath
-    if (-not (Test-Path -LiteralPath $jobserver -PathType Leaf)) {
-        throw "The per-user jobserver is not installed. Run 'agent-task install-central-tools' first."
-    }
-
     $worktree = & git rev-parse --show-toplevel
     if ($LASTEXITCODE -ne 0) {
         throw 'Run integrate-feature from the feature worktree after user authorization.'
@@ -355,8 +340,6 @@ function csetup {
         foreach ($current_configuration in $requires_unreal_setup) {
             Remove-RetiredVcpkgBuildDirectory -configuration $current_configuration
         }
-
-        $null = Get-JobserverPath
 
         foreach ($current_configuration in $configurations) {
             if ($current_configuration -eq 'native') {

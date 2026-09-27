@@ -9,7 +9,8 @@ internal sealed class JobserverLocator : IJobserverLocator
 {
     public string Locate()
     {
-        return "jobserver";
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "NukeTheBees", "jobserver", "bin", "jobserver.exe");
     }
 }
 

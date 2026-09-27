@@ -26,7 +26,8 @@ Unreal Engine 5.8 project.
   If blocked, report the reason; operations requiring an exception need maintainer intervention.
 * `dev` is the integration branch
 * Begin a new task with `agent-task prepare-worktree` from anywhere in the current Git worktree. It clears
-  that worktree's `out`, initializes/updates submodules, and regenerates presets and code.
+  that worktree's `out`, initializes/updates submodules, regenerates presets and code, and disables
+  Live Coding once if saved Editor settings exist.
   It does not perform a broad project/test build; build only the targets needed for the task afterward.
   The canonical jobserver must be installed before preparation can clear `out`. The maintainer
   installs/updates `agent-task` and manages PATH; agents invoke it by name from PATH. If it cannot be found or launched, halt and report the problem so the maintainer can fix it; do not use an absolute-path fallback or install it automatically.
@@ -77,10 +78,11 @@ Unreal Engine 5.8 project.
 * CMake is used to drive all builds, including UBT
 * Load dev.ps1 when starting a task
 * Stable tools are maintainer-installed under `%LOCALAPPDATA%\NukeTheBees\<ToolName>\bin`
-  and invoked from PATH. Agents never auto-install/update them or construct local fallbacks.
+  and invoked from PATH. Internal jobserver calls use its canonical per-user executable.
+  Agents never auto-install/update tools or construct local fallbacks.
   Report a missing command; use `--version` for manual source/install comparison when needed.
   CMake builds revision-local ArchitectureChecks, GamePackageTools, NativeBinaryTools, and
-  BenchmarkTools privately on demand. There is no `ctools` or shared `tools/bin` staging.
+  BenchmarkTools privately on demand.
 * For final integration, only build and test what your work has affected
 * Native C++ changes must pass the affected `clang-tidy-<scope>` workflows with no diagnostics
   before readiness or integration. Include consumers of changed shared headers; use the full

@@ -77,15 +77,16 @@ agent-task prepare-worktree
 
 The maintainer installs/updates `agent-task` with `. .\dev.ps1` followed by `install-agent-task`
 and manages PATH; agents assume it is available. On a fresh setup, run
-`agent-task install-central-tools` for jobserver, `set-live-coding-disabled`, UnrealBuildTools,
-and CodeFormatTools. Each has its own `%LOCALAPPDATA%\NukeTheBees\<ToolName>\bin` directory.
+`agent-task install-central-tools` for jobserver, UnrealBuildTools, and CodeFormatTools.
+Each has its own `%LOCALAPPDATA%\NukeTheBees\<ToolName>\bin` directory.
 Agents report missing commands instead of installing them; `--version` allows manual diagnosis.
 It initializes/updates submodules before configuring the native build and running the install targets.
 Preparation checks for the jobserver before removing output; it does not install missing tools.
 See the [Rust tooling instructions](../tools/rust/README.md).
 Preparation removes only the worktree-root `out` directory, synchronizes and initializes/updates
-recursive submodules, runs `python cmake/presets/generate.py`, then runs the `generate-code`
-CMake workflow. Each phase streams its output and a failure stops preparation immediately.
+recursive submodules, runs `python cmake/presets/generate.py`, disables Live Coding in existing
+saved Editor settings, then runs the `generate-code` CMake workflow. Each phase streams its output
+and a failure stops preparation immediately.
 It does not perform a broad project/test build. Build only the targets relevant to the task afterward.
 
 For an explicit broad baseline, `cmake --workflow --preset task-start` remains available separately
@@ -218,8 +219,9 @@ Use `cmake --build --preset debug-game --target run-editor` to build and launch 
 `run-editor-debug` to break at startup for an attached debugger. Regenerate Visual Studio project
 files with `cprojectfiles` after module, plugin, target, or build-rule changes.
 
-Live Coding is disabled by tracked project configuration and setup normalizes the local Editor
-setting. Use the generated `Sandbox` solution with `DebugGame Editor | Win64` or
+Live Coding is disabled by tracked project configuration. `agent-task prepare-worktree` disables it
+once in saved Editor settings if the file exists; Editor launches also pass an explicit INI override.
+Use the generated `Sandbox` solution with `DebugGame Editor | Win64` or
 `Development Editor | Win64` for Visual Studio debugging.
 
 `csetup` creates the worktree dependencies required by game and editor targets, including native

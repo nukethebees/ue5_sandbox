@@ -11,11 +11,13 @@ dev-help
 The maintainer runs `install-agent-task` to test and install only the Rust `agent-task` CLI,
 then manages its PATH entry. On a fresh setup, `agent-task install-central-tools` installs the
 canonical per-user build tools in separate `%LOCALAPPDATA%\NukeTheBees\<ToolName>\bin`
-directories. Agents invoke tools from PATH; use `--version` for manual source/install comparison.
+directories. Ordinary tools use PATH; internal jobserver calls use its canonical per-user path.
+Use `--version` for manual source/install comparison.
 Missing tools require maintainer action, and `csetup` never installs them. Use `agent-task git`
 for its documented subset of feature Git operations; see `agent-task git --help`.
 Report unsupported operations instead of bypassing it.
-Agents assume the CLI is installed and begin tasks with `agent-task prepare-worktree`.
+Agents assume the CLI is installed and begin tasks with `agent-task prepare-worktree`, which also
+disables Live Coding once if saved Editor settings exist.
 
 `cwt`/`cwb` discovery and completion use read-only Git directly, including linked worktrees.
 `Navigation.ps1` provides `croot`, `cwt`, `cwb`, `cplugin`, and `ctests`. `UnrealBuild.ps1` provides
@@ -32,9 +34,9 @@ other worktrees detach at the integrated feature tip before branch deletion.
 while `cplay` prepares and builds playable Editor configurations. Use `cbuild tool-tests` for
 standalone developer-tool validation when that scope is affected.
 
-The remaining scripts implement build safety, packaging, project-file generation, and Live Coding
-configuration. Treat them as implementation details unless a documented workflow calls for one
-directly. In particular, use CMake workflows rather than calling UBT or its batch wrappers yourself.
+The remaining scripts implement build safety, packaging, and project-file generation. Treat them
+as implementation details unless a documented workflow calls for one directly. In particular, use
+CMake workflows rather than calling UBT or its batch wrappers yourself.
 `TestUnrealEditorConfigurationTransition.ps1` is the focused DebugGame-to-Development-to-DebugGame
 module-loading regression. It holds the canonical engine resource exclusively across the sequence
 and invokes only nested coordinated CMake and CTest entry points.
