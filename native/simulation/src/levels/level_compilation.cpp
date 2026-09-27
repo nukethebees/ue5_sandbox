@@ -186,8 +186,9 @@ auto compile_level(LevelDefinition const& definition,
                 {clock.duration_to_tick_period(event.time_seconds), entity_count + index});
         }
     }
-    std::ranges::sort(sources, {}, [](EventSource const& source) {
-        return std::pair{source.execution_tick, source.source_index};
+    std::ranges::sort(sources, [](EventSource const& left, EventSource const& right) {
+        return left.execution_tick < right.execution_tick ||
+               (left.execution_tick == right.execution_tick && left.source_index < right.source_index);
     });
 
     std::int32_t capital_offset{};

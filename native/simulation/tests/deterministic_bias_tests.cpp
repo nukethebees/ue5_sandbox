@@ -4,7 +4,6 @@
 
 #include <array>
 #include <limits>
-#include <utility>
 
 namespace ioj::sim::tests {
 
@@ -29,14 +28,18 @@ TEST(DeterministicBias, StableGeneration) {
 }
 
 TEST(DeterministicBias, ValidFloatRange) {
+    struct BiasInputs {
+        std::int32_t first_input;
+        std::int32_t second_input;
+    };
     constexpr std::array cases{
-        std::pair{0, 0},
-        std::pair{1, 0},
-        std::pair{0, 1},
-        std::pair{-1, -1},
-        std::pair{std::numeric_limits<std::int32_t>::min(),
+        BiasInputs{0, 0},
+        BiasInputs{1, 0},
+        BiasInputs{0, 1},
+        BiasInputs{-1, -1},
+        BiasInputs{std::numeric_limits<std::int32_t>::min(),
                   std::numeric_limits<std::int32_t>::max()},
-        std::pair{std::numeric_limits<std::int32_t>::max(),
+        BiasInputs{std::numeric_limits<std::int32_t>::max(),
                   std::numeric_limits<std::int32_t>::min()},
     };
 

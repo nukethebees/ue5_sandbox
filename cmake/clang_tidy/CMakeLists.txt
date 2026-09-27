@@ -24,7 +24,7 @@ if(ioj_tidy_checks MATCHES "(^|[\r\n])[ \t]+ioj-loop-condition-call([\r\n]|$)")
       --clang-tidy "${IOJ_CLANG_TIDY_EXECUTABLE}"
       --source-dir "${PROJECT_SOURCE_DIR}")
   set_tests_properties(ClangTidy.LoopConditionCall PROPERTIES LABELS "clang-tidy")
-  foreach(check IN ITEMS loop-view-construction loop-view-accessor-call)
+  foreach(check IN ITEMS loop-view-construction loop-view-accessor-call no-pair)
     if(ioj_tidy_checks MATCHES "(^|[\r\n])[ \t]+ioj-${check}([\r\n]|$)")
       string(REPLACE "-" "_" test_name "${check}")
       add_test(NAME "ClangTidy.${check}"

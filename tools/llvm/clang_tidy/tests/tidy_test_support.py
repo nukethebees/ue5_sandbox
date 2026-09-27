@@ -33,6 +33,7 @@ class TidyTest(unittest.TestCase):
     clang_tidy: str
     source_dir: Path
     check: str
+    dependency_source = VIEWS + "\ninline void dependency() { for (;;) { View v; resolve(); } }\n"
 
     def run_tidy(self, *arguments: str) -> str:
         result = subprocess.run([self.clang_tidy, *arguments], capture_output=True,
@@ -58,7 +59,7 @@ class TidyTest(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="ioj tidy headers ") as directory:
             root = Path(directory)
             (root / "dependency.h").write_text(
-                VIEWS + "\ninline void dependency() { for (;;) { View v; } }\n", encoding="utf-8")
+                self.dependency_source, encoding="utf-8")
             source = root / "input.cpp"
             source.write_text('#include "dependency.h"\n', encoding="utf-8")
             output = self.run_tidy(f"-checks=-*,{self.check}", "-header-filter=.*", str(source), "--", "-std=c++23")
