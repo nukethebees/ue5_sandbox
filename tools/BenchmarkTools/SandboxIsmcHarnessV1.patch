@@ -1,10 +1,11 @@
 diff --git a/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkActor.cpp b/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkActor.cpp
-index cb841f6f9..4f3bb9e8c 100644
+index cb841f6f9..c45dbae63 100644
 --- a/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkActor.cpp
 +++ b/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkActor.cpp
-@@ -1,12 +1,17 @@
+@@ -1,12 +1,18 @@
  #include "SandboxISMCBenchmarkActor.h"
 
++#include "SandboxISMCBenchmarkResult.h"
  #include "SandboxISMCComponent.h"
 +#include "Slate/SceneViewport.h"
 
@@ -20,7 +21,7 @@ index cb841f6f9..4f3bb9e8c 100644
  #include "HAL/FileManager.h"
  #include "HAL/IConsoleManager.h"
  #include "HAL/PlatformTime.h"
-@@ -26,6 +31,7 @@
+@@ -26,6 +32,7 @@
  #include "RenderingThread.h"
  #include "RenderTimer.h"
  #include "RHI.h"
@@ -28,7 +29,7 @@ index cb841f6f9..4f3bb9e8c 100644
  #include "UnrealEdGlobals.h"
  #include "UObject/ConstructorHelpers.h"
 
-@@ -170,18 +176,24 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
+@@ -170,18 +177,24 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
      TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::BeginPlay);
      Super::BeginPlay();
 
@@ -59,7 +60,7 @@ index cb841f6f9..4f3bb9e8c 100644
      output_base_name_ = FString::Printf(TEXT("SandboxISMC_%s_%s_bounds_%s_%dpct_%s_%s"),
                                          *get_mode_name(),
                                          *get_bounds_name(),
-@@ -190,13 +202,20 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
+@@ -190,13 +203,20 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
                                          *get_visibility_name(),
                                          *FDateTime::Now().ToString(TEXT("%Y-%m-%d_%H-%M-%S")));
      start_insights_trace();
@@ -82,18 +83,22 @@ index cb841f6f9..4f3bb9e8c 100644
      previous_metrics_ = custom_ismc_->get_update_metrics();
      UE_LOG(LogSandboxISMCBenchmark,
             Display,
-@@ -240,8 +259,8 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
+@@ -240,8 +260,12 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
  }
 
  void ASandboxISMCBenchmarkActor::EndPlay(EEndPlayReason::Type const end_play_reason) {
 -    if (running_) {
 -        finish_benchmark();
 +    if (!terminal_result_) {
-+        terminate_benchmark(TEXT("Benchmark ended before completing measurement"));
++        if (running_ && output_directory_.IsEmpty()) {
++            finish_benchmark();
++        } else {
++            terminate_benchmark(TEXT("Benchmark ended before completing measurement"));
++        }
      }
 
      stop_insights_trace();
-@@ -256,6 +275,10 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
+@@ -256,6 +280,10 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
          return;
      }
 
@@ -104,7 +109,7 @@ index cb841f6f9..4f3bb9e8c 100644
      TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::Tick);
      advance_churn();
      auto const now_seconds{FPlatformTime::Seconds()};
-@@ -343,13 +366,21 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
+@@ -343,13 +371,21 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
      if (measuring_ && automatic_stop_seconds_ > 0.0f &&
          FPlatformTime::Seconds() - measurement_started_seconds_ >= automatic_stop_seconds_) {
          finish_benchmark();
@@ -129,32 +134,35 @@ index cb841f6f9..4f3bb9e8c 100644
      FParse::Value(
          FCommandLine::Get(), TEXT("SandboxISMCBenchmarkSeconds="), automatic_stop_seconds_);
      automatic_stop_seconds_ = FMath::Max(automatic_stop_seconds_, 0.0f);
-@@ -462,11 +493,11 @@ void ASandboxISMCBenchmarkActor::configure_components() {
+@@ -461,12 +497,12 @@ void ASandboxISMCBenchmarkActor::configure_components() {
+ }
 
  bool ASandboxISMCBenchmarkActor::create_instances() {
-     if (static_mesh_ == nullptr) {
+-    if (static_mesh_ == nullptr) {
 -        UE_LOG(LogSandboxISMCBenchmark, Error, TEXT("Benchmark static mesh is null"));
-+        terminate_benchmark(TEXT("Benchmark static mesh is null"));
++    if (!IsValid(static_mesh_.Get())) {
++        terminate_benchmark(TEXT("Benchmark static mesh is null or invalid"));
          return false;
      }
-     if (uses_custom_data() && custom_data_material_ == nullptr) {
+-    if (uses_custom_data() && custom_data_material_ == nullptr) {
 -        UE_LOG(LogSandboxISMCBenchmark, Error, TEXT("Custom-data benchmark material is null"));
-+        terminate_benchmark(TEXT("Custom-data benchmark material is null"));
++    if (uses_custom_data() && !IsValid(custom_data_material_.Get())) {
++        terminate_benchmark(TEXT("Custom-data benchmark material is null or invalid"));
          return false;
      }
 
-@@ -539,6 +570,10 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
+@@ -539,6 +575,10 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
 
      auto* const material{uses_custom_data() ? custom_data_material_.Get()
                                              : UMaterial::GetDefaultMaterial(MD_Surface)};
-+    if (material == nullptr) {
-+        terminate_benchmark(TEXT("Benchmark material is null"));
++    if (!IsValid(material)) {
++        terminate_benchmark(TEXT("Benchmark material is null or invalid"));
 +        return false;
 +    }
      custom_ismc_->SetMaterial(0, material);
      engine_ismc_->SetMaterial(0, material);
 
-@@ -602,6 +637,12 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
+@@ -602,6 +642,12 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
              FPlatformTime::ToMilliseconds64(FPlatformTime::Cycles64() - engine_start);
      }
 
@@ -167,7 +175,7 @@ index cb841f6f9..4f3bb9e8c 100644
      custom_ismc_->SetVisibility(runs_custom());
      engine_ismc_->SetVisibility(runs_engine_ismc());
      TRACE_COUNTER_SET(BenchmarkCustomCreationMs, custom_creation_ms_);
-@@ -917,17 +958,18 @@ void ASandboxISMCBenchmarkActor::finish_benchmark() {
+@@ -917,17 +963,19 @@ void ASandboxISMCBenchmarkActor::finish_benchmark() {
          return;
      }
 
@@ -179,7 +187,8 @@ index cb841f6f9..4f3bb9e8c 100644
 -    FlushRenderingCommands();
 -    if (save_csv_) {
 -        save_report();
-+    if (!viewport_ready_ || frame_ms_.IsEmpty() || measured_seconds < automatic_stop_seconds_) {
++    if (!output_directory_.IsEmpty() &&
++        (!viewport_ready_ || frame_ms_.IsEmpty() || measured_seconds < automatic_stop_seconds_)) {
 +        terminate_benchmark(TEXT("Benchmark stopped before completing measurement"));
 +        return;
      }
@@ -194,7 +203,7 @@ index cb841f6f9..4f3bb9e8c 100644
 
      UE_LOG(LogSandboxISMCBenchmark,
             Display,
-@@ -936,6 +978,27 @@ void ASandboxISMCBenchmarkActor::finish_benchmark() {
+@@ -936,6 +984,27 @@ void ASandboxISMCBenchmarkActor::finish_benchmark() {
             frame_ms_.Num());
  }
 
@@ -222,7 +231,7 @@ index cb841f6f9..4f3bb9e8c 100644
  void ASandboxISMCBenchmarkActor::start_insights_trace() {
  #if UE_TRACE_ENABLED
      if (!capture_insights_trace_) {
-@@ -952,8 +1015,14 @@ void ASandboxISMCBenchmarkActor::start_insights_trace() {
+@@ -952,8 +1021,14 @@ void ASandboxISMCBenchmarkActor::start_insights_trace() {
      options.bExcludeTail = true;
      constexpr auto* channels{
          TEXT("cpu,gpu,frame,bookmark,counters,stats,rendercommands,rhicommands")};
@@ -238,7 +247,7 @@ index cb841f6f9..4f3bb9e8c 100644
      if (owns_insights_trace_) {
          UE_LOG(LogSandboxISMCBenchmark,
                 Display,
-@@ -1000,11 +1069,13 @@ void ASandboxISMCBenchmarkActor::disable_frame_rate_limits() {
+@@ -1000,11 +1075,13 @@ void ASandboxISMCBenchmarkActor::disable_frame_rate_limits() {
      vsync->Set(0, ECVF_SetByCode);
      editor_vsync->Set(0, ECVF_SetByCode);
      max_fps->Set(0.0f, ECVF_SetByCode);
@@ -254,7 +263,7 @@ index cb841f6f9..4f3bb9e8c 100644
          return;
      }
 
-@@ -1021,9 +1092,10 @@ void ASandboxISMCBenchmarkActor::restore_frame_rate_limits() {
+@@ -1021,9 +1098,10 @@ void ASandboxISMCBenchmarkActor::restore_frame_rate_limits() {
          max_fps->Set(previous_max_fps_, ECVF_SetByCode);
      }
      frame_rate_limits_disabled_ = false;
@@ -266,7 +275,7 @@ index cb841f6f9..4f3bb9e8c 100644
      TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::save_report);
      if (frame_ms_.IsEmpty()) {
          UE_LOG(LogSandboxISMCBenchmark,
-@@ -1117,12 +1189,115 @@ void ASandboxISMCBenchmarkActor::save_report() const {
+@@ -1117,12 +1195,105 @@ void ASandboxISMCBenchmarkActor::save_report() const {
          append(TEXT("engine_ismc"), TEXT("api"), TEXT("ms"), engine_samples_.api_ms);
      }
 
@@ -326,11 +335,6 @@ index cb841f6f9..4f3bb9e8c 100644
 +        return;
 +    }
 +
-+    auto const result{MakeShared<FJsonObject>()};
-+    result->SetNumberField(TEXT("schemaVersion"), 1);
-+    result->SetStringField(TEXT("runId"), run_id_);
-+    result->SetBoolField(TEXT("complete"), error.IsEmpty());
-+    result->SetStringField(TEXT("error"), error);
 +    auto const conditions{MakeShared<FJsonObject>()};
 +    auto const number{[&](TCHAR const* key, double value) {
 +        conditions->SetStringField(key, FString::Printf(TEXT("%.9g"), value));
@@ -372,18 +376,129 @@ index cb841f6f9..4f3bb9e8c 100644
 +            number(name, variable->GetFloat());
 +        }
 +    }
++    if (!SandboxISMCBenchmark::publish_result(output_directory_, run_id_, error, conditions)) {
++        UE_LOG(LogSandboxISMCBenchmark,
++               Error,
++               TEXT("Could not publish terminal result in %s"),
++               *output_directory_);
+     }
+ }
+diff --git a/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkResult.h b/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkResult.h
+new file mode 100644
+index 000000000..4fe5ee708
+--- /dev/null
++++ b/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkResult.h
+@@ -0,0 +1,52 @@
++#pragma once
++
++#include "Dom/JsonObject.h"
++#include "HAL/FileManager.h"
++#include "Misc/CommandLine.h"
++#include "Misc/FileHelper.h"
++#include "Misc/Parse.h"
++#include "Misc/Paths.h"
++#include "Serialization/JsonSerializer.h"
++#include "Serialization/JsonWriter.h"
++
++namespace SandboxISMCBenchmark {
++inline bool publish_result(FString const& directory,
++                           FString const& run_id,
++                           FString const& error,
++                           TSharedPtr<FJsonObject> const& conditions) {
++    if (directory.IsEmpty()) {
++        return true;
++    }
++    auto const result{MakeShared<FJsonObject>()};
++    result->SetNumberField(TEXT("schemaVersion"), 1);
++    result->SetStringField(TEXT("runId"), run_id);
++    result->SetBoolField(TEXT("complete"), error.IsEmpty());
++    result->SetStringField(TEXT("error"), error);
 +    result->SetObjectField(TEXT("conditions"), conditions);
 +    FString json;
 +    auto const writer{TJsonWriterFactory<>::Create(&json)};
-+    FJsonSerializer::Serialize(result, writer);
-+    auto const path{FPaths::Combine(output_directory_, TEXT("result.json"))};
-+    IFileManager::Get().MakeDirectory(*output_directory_, true);
++    if (!FJsonSerializer::Serialize(result, writer)) {
++        return false;
++    }
++    auto const path{FPaths::Combine(directory, TEXT("result.json"))};
 +    auto const temporary{path + TEXT(".tmp")};
-+    if (!FFileHelper::SaveStringToFile(json, *temporary) ||
-+        !IFileManager::Get().Move(*path, *temporary, true, true)) {
-+        UE_LOG(LogSandboxISMCBenchmark, Error, TEXT("Could not publish conditions to %s"), *path);
++    IFileManager::Get().MakeDirectory(*directory, true);
++    return FFileHelper::SaveStringToFile(json, *temporary) &&
++           IFileManager::Get().Move(*path, *temporary, true, true);
++}
++
++inline bool publish_setup_failure(FString const& error) {
++    FString directory;
++    FString run_id;
++    FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkOutput="), directory);
++    FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkRunId="), run_id);
++    return publish_result(directory, run_id, error, MakeShared<FJsonObject>());
++}
++
++inline bool terminal_result_exists() {
++    FString directory;
++    FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkOutput="), directory);
++    return !directory.IsEmpty() &&
++           IFileManager::Get().FileExists(*FPaths::Combine(directory, TEXT("result.json")));
++}
++} // namespace SandboxISMCBenchmark
+diff --git a/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCRemoteBenchmarkTest.cpp b/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCRemoteBenchmarkTest.cpp
+index ca4faa81b..0a9e6db4d 100644
+--- a/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCRemoteBenchmarkTest.cpp
++++ b/Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCRemoteBenchmarkTest.cpp
+@@ -1,3 +1,5 @@
++#include "SandboxISMCBenchmarkResult.h"
++
+ #include "Editor/UnrealEdEngine.h"
+ #include "HAL/PlatformTime.h"
+ #include "Misc/AutomationTest.h"
+@@ -18,13 +20,17 @@ class FWaitForSandboxISMCBenchmark final : public IAutomationLatentCommand {
+             return false;
+         }
+
+-        if (saw_play_world_) {
++        if (saw_play_world_ || SandboxISMCBenchmark::terminal_result_exists()) {
+             return true;
+         }
+
+         constexpr double start_timeout_seconds{120.0};
+         if (FPlatformTime::Seconds() - start_seconds_ > start_timeout_seconds) {
+-            test_.AddError(TEXT("SandboxISMC benchmark PIE session did not start"));
++            auto const error{FString{TEXT("SandboxISMC benchmark PIE session did not start")}};
++            test_.AddError(error);
++            if (!SandboxISMCBenchmark::publish_setup_failure(error)) {
++                test_.AddError(TEXT("Could not publish terminal benchmark result"));
++            }
+             return true;
+         }
+         return false;
+@@ -42,18 +48,23 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSandboxISMCRemoteBenchmarkTest,
+                                      EAutomationTestFlags::EngineFilter)
+
+ bool FSandboxISMCRemoteBenchmarkTest::RunTest(FString const& parameters) {
+-    if (GUnrealEd == nullptr) {
+-        AddError(TEXT("GUnrealEd is not available"));
++    auto const fail{[this](FString const& error) {
++        AddError(error);
++        if (!SandboxISMCBenchmark::publish_setup_failure(error)) {
++            AddError(TEXT("Could not publish terminal benchmark result"));
++        }
+         return false;
++    }};
++    if (GUnrealEd == nullptr) {
++        return fail(TEXT("GUnrealEd is not available"));
      }
- }
+
+     FString load_error;
+     GUnrealEd->AutomationLoadMap(
+         TEXT("/SandboxISMC/Lab/FT_SandboxISMCBenchmark"), true, &load_error);
+     if (!load_error.IsEmpty()) {
+-        AddError(
++        return fail(
+             FString::Printf(TEXT("Could not load SandboxISMC benchmark map: %s"), *load_error));
+-        return false;
+     }
+
+     ADD_LATENT_AUTOMATION_COMMAND(FWaitForSandboxISMCBenchmark(*this));
 diff --git a/Plugins/SandboxISMC/Source/SandboxISMCLab/Public/SandboxISMCBenchmarkActor.h b/Plugins/SandboxISMC/Source/SandboxISMCLab/Public/SandboxISMCBenchmarkActor.h
 index 881555532..1f127c29d 100644
 --- a/Plugins/SandboxISMC/Source/SandboxISMCLab/Public/SandboxISMCBenchmarkActor.h

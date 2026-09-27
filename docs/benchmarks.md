@@ -163,6 +163,7 @@ capture.utrace     # required when --trace 1
 Manifests and JSON outputs are replaced atomically. Failed runs retain their directory and error.
 The runner reads the terminal result before requiring successful measurement artifacts. Known
 viewport/setup failures terminate PIE promptly and need no CSV or trace to explain the failure.
+Map-load and PIE-start failures publish the same terminal envelope even before the actor exists.
 The parent captures source HEAD, dirty status, a tracked diff hash, and a hash of untracked paths
 and contents (link targets for untracked symbolic links). Ignored files and the exact owned run
 directory are excluded. Executable paths and effective arguments accompany the source identity.
@@ -181,7 +182,8 @@ commit and is never removed or patched. Candidate source files are never swapped
 
 For a historical SandboxISMC harness lacking the output/viewport protocol, explicitly add
 `--compatibility sandbox-ismc-v1`. This applies an embedded, reviewed patch limited to the lab
-actor's output/viewport/metadata plumbing and its JSON dependency, in an owned detached baseline.
+actor/automation harness's output, viewport, termination and metadata plumbing plus its JSON
+dependency, in an owned detached baseline.
 The exact patch, SHA-256 and original revision are retained. Git checks every hunk before applying;
 unsupported historical harnesses fail during preparation. This option cannot run arbitrary
 preparation scripts or substitute renderer implementation files. Omit it when both revisions

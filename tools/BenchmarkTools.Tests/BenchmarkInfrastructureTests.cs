@@ -184,6 +184,8 @@ public sealed class BenchmarkInfrastructureTests
         var paths = new[]
         {
             "Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkActor.cpp",
+            "Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkResult.h",
+            "Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCRemoteBenchmarkTest.cpp",
             "Plugins/SandboxISMC/Source/SandboxISMCLab/Public/SandboxISMCBenchmarkActor.h",
             "Plugins/SandboxISMC/Source/SandboxISMCLab/SandboxISMCLab.Build.cs",
         };
@@ -214,7 +216,8 @@ public sealed class BenchmarkInfrastructureTests
             foreach (var path in paths)
                 Assert.AreEqual(File.ReadAllText(Path.Combine(directory.Root, path)), File.ReadAllText(Path.Combine(session.BaselineRoot, path)));
             var changed = await BenchmarkGit.TextAsync(app, session.BaselineRoot, ["diff", "--name-only"], default);
-            CollectionAssert.AreEquivalent(paths, changed.Split('\n').Select(line => line.Trim()).ToArray());
+            var added = await BenchmarkGit.TextAsync(app, session.BaselineRoot, ["ls-files", "--others", "--exclude-standard"], default);
+            CollectionAssert.AreEquivalent(paths, (changed + "\n" + added).Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(line => line.Trim()).ToArray());
         }
         Assert.AreEqual(before, await Git("diff", "HEAD", "--binary"));
         Assert.IsTrue(File.Exists(run.Artifact("compatibility.json")));

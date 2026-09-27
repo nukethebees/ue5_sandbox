@@ -1,3 +1,5 @@
+#include "SandboxISMCBenchmarkResult.h"
+
 #include "Editor/UnrealEdEngine.h"
 #include "HAL/PlatformTime.h"
 #include "Misc/AutomationTest.h"
@@ -18,13 +20,17 @@ class FWaitForSandboxISMCBenchmark final : public IAutomationLatentCommand {
             return false;
         }
 
-        if (saw_play_world_) {
+        if (saw_play_world_ || SandboxISMCBenchmark::terminal_result_exists()) {
             return true;
         }
 
         constexpr double start_timeout_seconds{120.0};
         if (FPlatformTime::Seconds() - start_seconds_ > start_timeout_seconds) {
-            test_.AddError(TEXT("SandboxISMC benchmark PIE session did not start"));
+            auto const error{FString{TEXT("SandboxISMC benchmark PIE session did not start")}};
+            test_.AddError(error);
+            if (!SandboxISMCBenchmark::publish_setup_failure(error)) {
+                test_.AddError(TEXT("Could not publish terminal benchmark result"));
+            }
             return true;
         }
         return false;
@@ -42,18 +48,23 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FSandboxISMCRemoteBenchmarkTest,
                                      EAutomationTestFlags::EngineFilter)
 
 bool FSandboxISMCRemoteBenchmarkTest::RunTest(FString const& parameters) {
-    if (GUnrealEd == nullptr) {
-        AddError(TEXT("GUnrealEd is not available"));
+    auto const fail{[this](FString const& error) {
+        AddError(error);
+        if (!SandboxISMCBenchmark::publish_setup_failure(error)) {
+            AddError(TEXT("Could not publish terminal benchmark result"));
+        }
         return false;
+    }};
+    if (GUnrealEd == nullptr) {
+        return fail(TEXT("GUnrealEd is not available"));
     }
 
     FString load_error;
     GUnrealEd->AutomationLoadMap(
         TEXT("/SandboxISMC/Lab/FT_SandboxISMCBenchmark"), true, &load_error);
     if (!load_error.IsEmpty()) {
-        AddError(
+        return fail(
             FString::Printf(TEXT("Could not load SandboxISMC benchmark map: %s"), *load_error));
-        return false;
     }
 
     ADD_LATENT_AUTOMATION_COMMAND(FWaitForSandboxISMCBenchmark(*this));

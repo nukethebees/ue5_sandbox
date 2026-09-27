@@ -6,7 +6,7 @@ internal static class BenchmarkGit
     {
         var safe = new List<string>
         {
-            "--no-pager", "--literal-pathspecs", "-c", "core.protectNTFS=true", "-c", "core.protectHFS=true",
+            "--no-pager", "--literal-pathspecs", "-c", "core.protectNTFS=true", "-c", "core.protectHFS=true", "-c", "core.longpaths=true",
             "-c", "core.hooksPath=NUL", "-c", "gc.auto=0", "-c", "maintenance.auto=false", "-c", "submodule.recurse=false",
         };
         safe.AddRange(arguments);

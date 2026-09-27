@@ -65,6 +65,16 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     }
 
     [TestMethod]
+    public async Task Validation_preserves_comparability_failures_without_deltas()
+    {
+        using var fixture = new Fixture { RhiMismatch = true };
+        Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--validate-only"));
+        Assert.AreEqual(2, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor));
+        Assert.IsFalse(fixture.Document("comparison.json").GetProperty("comparable").GetBoolean());
+        Assert.AreEqual(0, fixture.Document("comparison.json").GetProperty("metrics").GetArrayLength());
+    }
+
+    [TestMethod]
     public async Task Offline_report_matches_live_report_without_processes_or_raw_mutation()
     {
         using var fixture = new Fixture();
@@ -163,6 +173,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     [DataRow("Viewport verification failed before warmup", 0)]
     [DataRow("Benchmark static mesh is null", 1)]
     [DataRow("Benchmark instance creation failed", 0)]
+    [DataRow("Could not load SandboxISMC benchmark map", 1)]
     public async Task Terminal_failure_without_success_artifacts_preserves_reason(string error, int exit_code)
     {
         using var fixture = new Fixture { TerminalError = error, TerminalExitCode = exit_code };
@@ -401,6 +412,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
             if (WrongCondition is not null) conditions[WrongCondition] = conditions[WrongCondition] == "0" ? "1" : "0";
             if (TerminalError is not null)
             {
+                if (TerminalError.StartsWith("Could not load", StringComparison.Ordinal)) conditions.Clear();
                 BenchmarkCommandSupport.WriteJson(Path.Combine(directory, "result.json"), new { SchemaVersion = 1, RunId = id, Complete = false, Error = TerminalError, Conditions = conditions });
                 return new ProcessResult(TerminalExitCode);
             }

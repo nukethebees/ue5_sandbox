@@ -1,5 +1,6 @@
 #include "SandboxISMCBenchmarkActor.h"
 
+#include "SandboxISMCBenchmarkResult.h"
 #include "SandboxISMCComponent.h"
 #include "Slate/SceneViewport.h"
 
@@ -260,7 +261,11 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
 
 void ASandboxISMCBenchmarkActor::EndPlay(EEndPlayReason::Type const end_play_reason) {
     if (!terminal_result_) {
-        terminate_benchmark(TEXT("Benchmark ended before completing measurement"));
+        if (running_ && output_directory_.IsEmpty()) {
+            finish_benchmark();
+        } else {
+            terminate_benchmark(TEXT("Benchmark ended before completing measurement"));
+        }
     }
 
     stop_insights_trace();
@@ -492,12 +497,12 @@ void ASandboxISMCBenchmarkActor::configure_components() {
 }
 
 bool ASandboxISMCBenchmarkActor::create_instances() {
-    if (static_mesh_ == nullptr) {
-        terminate_benchmark(TEXT("Benchmark static mesh is null"));
+    if (!IsValid(static_mesh_.Get())) {
+        terminate_benchmark(TEXT("Benchmark static mesh is null or invalid"));
         return false;
     }
-    if (uses_custom_data() && custom_data_material_ == nullptr) {
-        terminate_benchmark(TEXT("Custom-data benchmark material is null"));
+    if (uses_custom_data() && !IsValid(custom_data_material_.Get())) {
+        terminate_benchmark(TEXT("Custom-data benchmark material is null or invalid"));
         return false;
     }
 
@@ -570,8 +575,8 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
 
     auto* const material{uses_custom_data() ? custom_data_material_.Get()
                                             : UMaterial::GetDefaultMaterial(MD_Surface)};
-    if (material == nullptr) {
-        terminate_benchmark(TEXT("Benchmark material is null"));
+    if (!IsValid(material)) {
+        terminate_benchmark(TEXT("Benchmark material is null or invalid"));
         return false;
     }
     custom_ismc_->SetMaterial(0, material);
@@ -960,7 +965,8 @@ void ASandboxISMCBenchmarkActor::finish_benchmark() {
 
     auto const measured_seconds{measuring_ ? FPlatformTime::Seconds() - measurement_started_seconds_
                                            : 0.0};
-    if (!viewport_ready_ || frame_ms_.IsEmpty() || measured_seconds < automatic_stop_seconds_) {
+    if (!output_directory_.IsEmpty() &&
+        (!viewport_ready_ || frame_ms_.IsEmpty() || measured_seconds < automatic_stop_seconds_)) {
         terminate_benchmark(TEXT("Benchmark stopped before completing measurement"));
         return;
     }
@@ -1243,11 +1249,6 @@ void ASandboxISMCBenchmarkActor::save_conditions(FString const& error) const {
         return;
     }
 
-    auto const result{MakeShared<FJsonObject>()};
-    result->SetNumberField(TEXT("schemaVersion"), 1);
-    result->SetStringField(TEXT("runId"), run_id_);
-    result->SetBoolField(TEXT("complete"), error.IsEmpty());
-    result->SetStringField(TEXT("error"), error);
     auto const conditions{MakeShared<FJsonObject>()};
     auto const number{[&](TCHAR const* key, double value) {
         conditions->SetStringField(key, FString::Printf(TEXT("%.9g"), value));
@@ -1289,15 +1290,10 @@ void ASandboxISMCBenchmarkActor::save_conditions(FString const& error) const {
             number(name, variable->GetFloat());
         }
     }
-    result->SetObjectField(TEXT("conditions"), conditions);
-    FString json;
-    auto const writer{TJsonWriterFactory<>::Create(&json)};
-    FJsonSerializer::Serialize(result, writer);
-    auto const path{FPaths::Combine(output_directory_, TEXT("result.json"))};
-    IFileManager::Get().MakeDirectory(*output_directory_, true);
-    auto const temporary{path + TEXT(".tmp")};
-    if (!FFileHelper::SaveStringToFile(json, *temporary) ||
-        !IFileManager::Get().Move(*path, *temporary, true, true)) {
-        UE_LOG(LogSandboxISMCBenchmark, Error, TEXT("Could not publish conditions to %s"), *path);
+    if (!SandboxISMCBenchmark::publish_result(output_directory_, run_id_, error, conditions)) {
+        UE_LOG(LogSandboxISMCBenchmark,
+               Error,
+               TEXT("Could not publish terminal result in %s"),
+               *output_directory_);
     }
 }
