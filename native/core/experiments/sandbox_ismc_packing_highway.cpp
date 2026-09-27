@@ -37,9 +37,6 @@ auto load_axis(std::span<std::byte const> bytes, std::size_t index) noexcept -> 
     return hn::LoadU(DF{}, axis.data());
 }
 
-auto absolute(VFloat value) noexcept -> VFloat {
-    return hn::Abs(value);
-}
 auto quantize_position(VFloat value, float root) noexcept -> VInt {
     auto const offset{
         hn::Mul(hn::Sub(value, hn::Set(DF{}, root)), hn::Set(DF{}, inverse_position_quantum))};
@@ -103,10 +100,9 @@ auto accumulate_axis(VFloat position,
         hn::Add(hn::Add(hn::Add(position, hn::Mul(a, hn::Set(DF{}, parameters.mesh_origin.X))),
                         hn::Mul(b, hn::Set(DF{}, parameters.mesh_origin.Y))),
                 hn::Mul(c, hn::Set(DF{}, parameters.mesh_origin.Z)))};
-    auto const extent{
-        hn::Add(hn::Add(hn::Mul(absolute(a), hn::Set(DF{}, parameters.mesh_extent.X)),
-                        hn::Mul(absolute(b), hn::Set(DF{}, parameters.mesh_extent.Y))),
-                hn::Mul(absolute(c), hn::Set(DF{}, parameters.mesh_extent.Z)))};
+    auto const extent{hn::Add(hn::Add(hn::Mul(hn::Abs(a), hn::Set(DF{}, parameters.mesh_extent.X)),
+                                      hn::Mul(hn::Abs(b), hn::Set(DF{}, parameters.mesh_extent.Y))),
+                              hn::Mul(hn::Abs(c), hn::Set(DF{}, parameters.mesh_extent.Z)))};
     minimum = hn::Min(minimum, hn::Sub(center, extent));
     maximum = hn::Max(maximum, hn::Add(center, extent));
 }
