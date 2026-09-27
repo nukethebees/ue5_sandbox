@@ -54,7 +54,7 @@ fn prepare_worktree() -> Result<(), String> {
     let root = worktree_root()?;
     require_jobserver()?;
 
-    println!("[1/6] Clearing build output");
+    println!("[1/5] Clearing build output");
     let output = root.join("out");
     match fs::remove_dir_all(&output) {
         Ok(()) => {}
@@ -62,36 +62,43 @@ fn prepare_worktree() -> Result<(), String> {
         Err(error) => return Err(format!("Could not remove '{}': {error}", output.display())),
     }
 
-    println!("[2/6] Synchronizing submodules");
+    println!("[2/5] Synchronizing submodules");
     run(&root, "git", &["submodule", "sync", "--recursive"])?;
 
-    println!("[3/6] Updating submodules");
+    println!("[3/5] Updating submodules");
     run(
         &root,
         "git",
         &["submodule", "update", "--init", "--recursive"],
     )?;
 
-    println!("[4/6] Generating CMake presets");
+    println!("[4/5] Generating CMake presets");
     run(&root, "python", &["cmake/presets/generate.py"])?;
 
-    println!("[5/6] Generating code");
-    run(&root, "cmake", &["--workflow", "--preset", "generate-code"])?;
-
-    println!("[6/6] Building task-start baseline");
-    run(&root, "cmake", &["--workflow", "--preset", "task-start"])
+    println!("[5/5] Generating code");
+    run(&root, "cmake", &["--workflow", "--preset", "generate-code"])
 }
 
 fn install_central_tools() -> Result<(), String> {
     let root = worktree_root()?;
 
-    println!("[1/4] Generating CMake presets");
+    println!("[1/6] Synchronizing submodules");
+    run(&root, "git", &["submodule", "sync", "--recursive"])?;
+
+    println!("[2/6] Updating submodules");
+    run(
+        &root,
+        "git",
+        &["submodule", "update", "--init", "--recursive"],
+    )?;
+
+    println!("[3/6] Generating CMake presets");
     run(&root, "python", &["cmake/presets/generate.py"])?;
 
-    println!("[2/4] Configuring native build");
+    println!("[4/6] Configuring native build");
     run(&root, "cmake", &["--preset", "native"])?;
 
-    println!("[3/4] Installing canonical jobserver");
+    println!("[5/6] Installing canonical jobserver");
     run(
         &root,
         "cmake",
@@ -104,7 +111,7 @@ fn install_central_tools() -> Result<(), String> {
         ],
     )?;
 
-    println!("[4/4] Installing canonical set-live-coding-disabled");
+    println!("[6/6] Installing canonical set-live-coding-disabled");
     run(
         &root,
         "cmake",

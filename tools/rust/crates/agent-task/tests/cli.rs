@@ -151,12 +151,13 @@ fn nested_linked_worktree_cleans_only_its_root_out_and_runs_phases_in_order() {
             .unwrap()
             .lines()
             .collect::<Vec<_>>(),
-        ["presets", "generate-code", "task-start"]
+        ["presets", "generate-code"]
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
-    for phase in 1..=6 {
-        assert!(stdout.contains(&format!("[{phase}/6]")), "{stdout}");
+    for phase in 1..=5 {
+        assert!(stdout.contains(&format!("[{phase}/5]")), "{stdout}");
     }
+    assert!(!stdout.contains("task-start"), "{stdout}");
 }
 
 #[test]
@@ -195,13 +196,47 @@ fn missing_central_tools_leave_build_output_untouched() {
 }
 
 #[test]
-fn central_tool_installation_does_not_require_jobserver_or_clear_out() {
+fn central_tool_installation_initializes_submodules_without_jobserver_or_clearing_out() {
     let directory = fixture();
+    let dependency = TemporaryDirectory::new();
+    git(&dependency.0, &["init", "--quiet"]);
+    fs::write(dependency.0.join("marker.txt"), "dependency").unwrap();
+    git(&dependency.0, &["add", "."]);
+    git(
+        &dependency.0,
+        &[
+            "-c",
+            "user.name=Test",
+            "-c",
+            "user.email=test@example.invalid",
+            "-c",
+            "commit.gpgsign=false",
+            "commit",
+            "--quiet",
+            "-m",
+            "dependency",
+        ],
+    );
+    git(
+        &directory.0,
+        &[
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "--",
+            dependency.0.to_str().unwrap(),
+            "dependency",
+        ],
+    );
+    git(&directory.0, &["submodule", "deinit", "--force", "--all"]);
+    assert!(!directory.0.join("dependency/marker.txt").exists());
+
     fs::create_dir(directory.0.join("out")).unwrap();
     fs::write(directory.0.join("out/keep.txt"), "build output").unwrap();
     fs::write(
         directory.0.join("cmake/presets/generate.py"),
-        "raise SystemExit(23)\n",
+        "from pathlib import Path\nassert Path('dependency/marker.txt').is_file()\nraise SystemExit(23)\n",
     )
     .unwrap();
     let output = tool(&directory.0, &["install-central-tools"])
@@ -211,8 +246,13 @@ fn central_tool_installation_does_not_require_jobserver_or_clear_out() {
 
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("python failed"));
-    assert!(String::from_utf8_lossy(&output.stdout).contains("[1/4]"));
-    assert!(!String::from_utf8_lossy(&output.stdout).contains("[2/4]"));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("23"));
+    assert!(directory.0.join("dependency/marker.txt").is_file());
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("[1/6] Synchronizing submodules"));
+    assert!(stdout.contains("[2/6] Updating submodules"));
+    assert!(stdout.contains("[3/6] Generating CMake presets"));
+    assert!(!stdout.contains("[4/6]"));
     assert_eq!(
         fs::read_to_string(directory.0.join("out/keep.txt")).unwrap(),
         "build output"
@@ -226,7 +266,7 @@ fn failed_cleanup_stops_before_submodules() {
     let output = invoke(&directory.0, &["prepare-worktree"]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("Could not remove"));
-    assert!(!String::from_utf8_lossy(&output.stdout).contains("[2/6]"));
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("[2/5]"));
     assert!(directory.0.join("out").is_file());
 }
 
@@ -241,12 +281,12 @@ fn failed_preset_generation_stops_before_cmake() {
     let output = invoke(&directory.0, &["prepare-worktree"]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("python failed"));
-    assert!(!String::from_utf8_lossy(&output.stdout).contains("[5/6]"));
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("[5/5]"));
     assert!(!directory.0.join("phases.txt").exists());
 }
 
 #[test]
-fn failed_code_generation_stops_before_baseline_build() {
+fn failed_code_generation_returns_failure() {
     let directory = fixture();
     fs::write(
         directory.0.join("CMakeLists.txt"),
@@ -256,7 +296,7 @@ fn failed_code_generation_stops_before_baseline_build() {
     let output = invoke(&directory.0, &["prepare-worktree"]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("cmake failed"));
-    assert!(!String::from_utf8_lossy(&output.stdout).contains("[6/6]"));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("[5/5]"));
     assert_eq!(
         fs::read_to_string(directory.0.join("phases.txt")).unwrap(),
         "presets\n"

@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-phases = ["generate-code", "task-start"]
+phases = ["generate-code"]
 Path("phases.txt").write_text("presets\n", encoding="utf-8", newline="\n")
 Path("CMakePresets.json").write_text(json.dumps({
     "version": 6,
