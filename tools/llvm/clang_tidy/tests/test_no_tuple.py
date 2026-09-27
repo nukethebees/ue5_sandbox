@@ -57,7 +57,8 @@ inline void implementation() { auto value = std::make_tuple(1, 2.f); }
             ("braced_factory", "auto const value{std::make_tuple(1, 2.f)};", 1),
             ("reference_factory", "auto const& value = std::make_tuple(1, 2.f);", 1),
             ("standalone", "consume(std::make_tuple(1, 2.f));", 1),
-            ("discarded", "std::make_tuple(1, 2.f);", 1),
+            ("discarded_factory", "std::make_tuple(1, 2.f);", 0),
+            ("discarded_construction", "std::tuple{1, 2.f};", 1),
             ("explicit_expression", "consume(std::tuple<int, float>{1, 2.f});", 1),
             ("scalar_initializer", "auto value = std::get<0>(std::make_tuple(1, 2.f));", 1),
             ("structured_binding", "auto [first, second] = std::make_tuple(1, 2.f);", 1),
@@ -102,9 +103,11 @@ inline void implementation() { auto value = std::make_tuple(1, 2.f); }
         with tempfile.TemporaryDirectory(prefix="ioj semantic dependency ") as directory:
             root = Path(directory)
             (root / "dependency.h").write_text(self.dependency_source, encoding="utf-8")
-            for body in ("Borrowed value;", "auto value = dependency();",
-                         "consume(dependency());", "auto [x,y] = dependency();",
-                         "consume(shared_value);"):
+            for body, warnings in (("Borrowed value;", 1), ("auto value = dependency();", 1),
+                                   ("consume(dependency());", 1), ("auto [x,y] = dependency();", 1),
+                                   ("consume(shared_value);", 1), ("dependency();", 0),
+                                   ("(dependency());", 0), ("(void)dependency();", 0),
+                                   ("shared_value;", 0)):
                 with self.subTest(body=body):
                     source = root / "input.cpp"
                     source.write_text('#include "dependency.h"\n' +
@@ -112,7 +115,7 @@ inline void implementation() { auto value = std::make_tuple(1, 2.f); }
                                       body + " }\n", encoding="utf-8")
                     output = self.run_tidy(f"-checks=-*,{self.check}", "-header-filter=.*",
                                            str(source), "--", "-std=c++23")
-                    self.assertEqual(output.count(f"[{self.check}]"), 1, output)
+                    self.assertEqual(output.count(f"[{self.check}]"), warnings, output)
 
     def test_inline_namespace_identity(self) -> None:
         self.assert_cases("namespace std { inline namespace abi { "
@@ -131,6 +134,12 @@ inline void implementation() { auto value = std::make_tuple(1, 2.f); }
             ("forward", "auto value = std::forward_as_tuple(1, 2.f);", 1),
             ("cat", "auto value = std::tuple_cat(std::make_tuple(1), std::make_tuple(2.f));", 1),
             ("cat_expression", "consume(std::tuple_cat(std::make_tuple(1), std::make_tuple(2.f)));", 1),
+            ("discarded_tie", "int x{}; float y{}; std::tie(x, y);", 0),
+            ("discarded_forward", "std::forward_as_tuple(1, 2.f);", 0),
+            ("discarded_cat", "std::tuple_cat();", 0),
+            ("cat_consumes_arguments", "std::tuple_cat(std::make_tuple(1), std::make_tuple(2.f));", 2),
+            ("tie_argument", "int x{}; consume(std::tie(x));", 1),
+            ("forward_argument", "consume(std::forward_as_tuple(1, 2.f));", 1),
             ("pair_binding", "auto [x,y] = std::make_pair(1, 2.f);", 0),
         ))
 

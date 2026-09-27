@@ -10,6 +10,7 @@ DECLARATIONS = """
 #include <vector>
 #include <optional>
 #include <map>
+#include <set>
 #include <unordered_map>
 template<class... Ts> struct Holder {};
 template<class T> void consume(T const&);
@@ -65,7 +66,8 @@ inline void implementation() { auto value = std::make_pair(1, 2.f); }
             ("braced_factory", "auto const value{std::make_pair(1, 2.f)};", 1),
             ("reference_factory", "auto const& value = std::make_pair(1, 2.f);", 1),
             ("standalone", "consume(std::make_pair(1, 2.f));", 1),
-            ("discarded", "std::make_pair(1, 2.f);", 1),
+            ("discarded_factory", "std::make_pair(1, 2.f);", 0),
+            ("discarded_construction", "std::pair{1, 2.f};", 1),
             ("explicit_expression", "consume(std::pair<int, float>{1, 2.f});", 1),
             ("scalar_initializer", "auto value = std::get<0>(std::make_pair(1, 2.f));", 1),
             ("structured_binding", "auto [first, second] = std::make_pair(1, 2.f);", 1),
@@ -80,6 +82,25 @@ inline void implementation() { auto value = std::make_pair(1, 2.f); }
             ("nolint", "auto value = std::make_pair(1, 2.f); // NOLINT(ioj-no-pair)", 0),
             ("suppressed_expression", "// NOLINTNEXTLINE(ioj-no-pair)\nconsume(std::make_pair(1, 2.f));", 0),
             ("suppressed_multiline", "// NOLINTNEXTLINE(ioj-no-pair)\nauto value =\n std::make_pair(1, 2.f);", 0),
+        ))
+
+    def test_call_consumption(self) -> None:
+        self.assert_cases(DECLARATIONS, (
+            ("discarded_map", "std::map<int, float> values; values.emplace(1, 2.f);", 0),
+            ("discarded_set", "std::set<int> values; values.insert(1);", 0),
+            ("discarded_unordered_map", "std::unordered_map<int, float> values; values.emplace(1, 2.f);", 0),
+            ("stored", "std::map<int, float> values; auto result = values.emplace(1, 2.f);", 1),
+            ("binding", "std::map<int, float> values; auto [it, inserted] = values.emplace(1, 2.f);", 1),
+            ("member", "std::set<int> values; if (!values.insert(1).second) {}", 1),
+            ("argument", "std::set<int> values; consume(values.insert(1));", 1),
+            ("parentheses", "std::set<int> values; (values.insert(1));", 0),
+            ("void_cast", "std::set<int> values; static_cast<void>(values.insert(1));", 0),
+            ("loop_body", "std::set<int> values; for (int i{}; i < 2; ++i) values.insert(i);", 0),
+            ("loop_increment", "std::set<int> values; for (int i{}; i < 2; values.insert(i++)) {}", 0),
+            ("comma_discarded", "std::set<int> values; (values.insert(1), values.insert(2));", 0),
+            ("comma_consumed", "std::set<int> values; consume((values.insert(1), values.insert(2)));", 1),
+            ("conditional_discarded", "std::set<int> values; true ? values.insert(1) : values.insert(2);", 0),
+            ("conditional_consumed", "std::set<int> values; auto result = true ? values.insert(1) : values.insert(2);", 1),
         ))
 
     def test_declaration_ownership(self) -> None:
@@ -110,9 +131,11 @@ inline void implementation() { auto value = std::make_pair(1, 2.f); }
         with tempfile.TemporaryDirectory(prefix="ioj semantic dependency ") as directory:
             root = Path(directory)
             (root / "dependency.h").write_text(self.dependency_source, encoding="utf-8")
-            for body in ("Borrowed value;", "auto value = dependency();",
-                         "consume(dependency());", "auto [x,y] = dependency();",
-                         "consume(shared_value);"):
+            for body, warnings in (("Borrowed value;", 1), ("auto value = dependency();", 1),
+                                   ("consume(dependency());", 1), ("auto [x,y] = dependency();", 1),
+                                   ("consume(shared_value);", 1), ("dependency();", 0),
+                                   ("(dependency());", 0), ("(void)dependency();", 0),
+                                   ("shared_value;", 0)):
                 with self.subTest(body=body):
                     source = root / "input.cpp"
                     source.write_text('#include "dependency.h"\n' +
@@ -120,7 +143,7 @@ inline void implementation() { auto value = std::make_pair(1, 2.f); }
                                       body + " }\n", encoding="utf-8")
                     output = self.run_tidy(f"-checks=-*,{self.check}", "-header-filter=.*",
                                            str(source), "--", "-std=c++23")
-                    self.assertEqual(output.count(f"[{self.check}]"), 1, output)
+                    self.assertEqual(output.count(f"[{self.check}]"), warnings, output)
 
     def test_inline_namespace_identity(self) -> None:
         self.assert_cases("namespace std { inline namespace abi { "

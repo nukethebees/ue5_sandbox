@@ -195,11 +195,48 @@ static bool is_value_expression(Expr const& expression) {
                InitListExpr>(&expression);
 }
 
+static bool is_consumed(Expr const& expression, ASTContext& context) {
+    for (auto const& parent : context.getParents(expression)) {
+        auto const* outer{parent.get<Expr>()};
+        if (!outer) {
+            if (parent.get<VarDecl>() || parent.get<FieldDecl>() || parent.get<ReturnStmt>()) {
+                return true;
+            }
+            continue;
+        }
+        if (auto const* cast{dyn_cast<ExplicitCastExpr>(outer)};
+            cast && cast->getType()->isVoidType()) {
+            continue;
+        }
+        if (auto const* binary{dyn_cast<BinaryOperator>(outer)};
+            binary && binary->getOpcode() == BO_Comma) {
+            if (binary->getRHS() == &expression && is_consumed(*outer, context)) {
+                return true;
+            }
+            continue;
+        }
+        bool const transparent{isa<ParenExpr,
+                                   ImplicitCastExpr,
+                                   ExprWithCleanups,
+                                   MaterializeTemporaryExpr,
+                                   CXXBindTemporaryExpr>(outer) ||
+                               (isa<ConditionalOperator>(outer) &&
+                                cast<ConditionalOperator>(outer)->getCond() != &expression)};
+        if (!transparent || is_consumed(*outer, context)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 static bool
     owns_expression(Expr const& expression, ForbiddenStdType forbidden, ASTContext& context) {
     if (!is_value_expression(expression) ||
         !is_policy_source(expression.getBeginLoc(), context.getSourceManager()) ||
         !is_forbidden_value(expression.getType(), forbidden)) {
+        return false;
+    }
+    if (isa<CallExpr, DeclRefExpr, MemberExpr>(expression) && !is_consumed(expression, context)) {
         return false;
     }
     // Clang can locate an omitted aggregate field's implicit constructor at '}'.

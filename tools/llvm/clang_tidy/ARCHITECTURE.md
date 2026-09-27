@@ -58,9 +58,14 @@ each warn once. Neither nested type arguments nor desugaring layers multiply war
 Function-pointer declarations also own parameters nested in their prototype; a function's
 actual parameters remain independent of its return type.
 
-Source calls, construction, explicit casts and references whose result is directly pair
-or tuple (rather than a containing wrapper) are checked
-outside diagnosed declarations. An enclosing forbidden-valued expression owns its nested
+Source calls and references whose result is directly pair or tuple (rather than a
+containing wrapper) are checked only when that value is consumed, for example by an
+argument, member access, initializer or return. Discarded calls are clean, including
+discarded factories: no function-name exceptions distinguish `make_pair` from insertion
+APIs. Parentheses, void casts, comma expressions, conditional branches and loop statement
+positions preserve this discard boundary. Explicit pair/tuple construction and casts to
+those types still warn even when discarded.
+An enclosing diagnosed forbidden-valued expression owns its nested
 expressions. Initializers belong to their declaration; return expressions belong to a
 diagnosed function return type. Ownership does not cross a nested callable body. Suppressed
 owners still own their expressions, so normal `NOLINT` does not uncover duplicate warnings.
