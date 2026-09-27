@@ -126,6 +126,17 @@ target_link_libraries(native-core-tests PRIVATE GTest::gtest_main CpuFeatures::c
 add_test(NAME native-core-tests COMMAND native-core-tests)
 set_tests_properties(native-core-tests PROPERTIES LABELS "unit;all;native;native-core")
 
+add_library(native-core-ismc-avx512-experiment OBJECT EXCLUDE_FROM_ALL
+  experiments/sandbox_ismc_packing_avx512.cpp)
+set_target_properties(native-core-ismc-avx512-experiment PROPERTIES UNITY_BUILD OFF)
+target_include_directories(native-core-ismc-avx512-experiment PUBLIC experiments)
+target_link_libraries(native-core-ismc-avx512-experiment
+  PUBLIC native-core CpuFeatures::cpu_features
+  PRIVATE sandbox::native_defaults ioj::arch_avx512 ioj::fp_precise)
+ioj_apply_native_abi(native-core-ismc-avx512-experiment)
+ioj_enable_warnings(native-core-ismc-avx512-experiment)
+target_link_libraries(native-core-tests PRIVATE native-core-ismc-avx512-experiment)
+
 add_executable(native-core-benchmarks)
 target_sources(native-core-benchmarks PRIVATE
   benchmarks/projectile_intercept_benchmarks.cpp
@@ -135,6 +146,7 @@ target_sources(native-core-benchmarks PRIVATE
 target_compile_features(native-core-benchmarks PRIVATE cxx_std_23)
 target_link_libraries(native-core-benchmarks PRIVATE
   native-core
+  native-core-ismc-avx512-experiment
   benchmark::benchmark
   benchmark::benchmark_main
   CpuFeatures::cpu_features
@@ -147,7 +159,7 @@ sandbox_jobserver_command(native_core_ismc_benchmark_command BENCHMARK benchmark
 add_custom_target(native-core-ismc-benchmark-report
   COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc"
   COMMAND ${native_core_ismc_benchmark_command} "$<TARGET_FILE:native-core-benchmarks>"
-    --benchmark_filter=^ismc/
+    "--benchmark_filter=^ismc/[^/]+/(scalar|avx2)/"
     --benchmark_repetitions=5
     --benchmark_min_time=0.05s
     --benchmark_enable_random_interleaving=true
@@ -156,6 +168,24 @@ add_custom_target(native-core-ismc-benchmark-report
     --benchmark_out_format=json
   DEPENDS native-core-benchmarks
   COMMENT "Comparing scalar and AVX2 transform packing with production AoS storage"
+  USES_TERMINAL
+  VERBATIM
+)
+
+sandbox_jobserver_command(native_core_ismc_avx512_benchmark_command BENCHMARK benchmark
+  "Sandbox ISMC experimental AVX512 comparison")
+add_custom_target(native-core-ismc-avx512-benchmark-report
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc"
+  COMMAND ${native_core_ismc_avx512_benchmark_command} "$<TARGET_FILE:native-core-benchmarks>"
+    --benchmark_filter=^ismc/
+    --benchmark_repetitions=5
+    --benchmark_min_time=0.05s
+    --benchmark_enable_random_interleaving=true
+    --benchmark_display_aggregates_only=true
+    "--benchmark_out=${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc/packing-avx512-results.json"
+    --benchmark_out_format=json
+  DEPENDS native-core-benchmarks
+  COMMENT "Comparing scalar, AVX2 and experimental AVX512 with production AoS storage"
   USES_TERMINAL
   VERBATIM
 )
