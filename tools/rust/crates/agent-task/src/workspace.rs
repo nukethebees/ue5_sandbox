@@ -82,7 +82,7 @@ pub fn resolved(path: &Path) -> Result<PathBuf, String> {
 pub fn contained(root: &Path, cwd: &Path, destination: &OsStr) -> Result<(), String> {
     let target = resolved(&cwd.join(destination))?;
     let root = root.canonicalize().map_err(|e| e.to_string())?;
-    if !target.starts_with(&root) || target == root {
+    if !target.starts_with(&root) {
         return Err(format!(
             "Destination '{}' must be inside workspace '{}'. Use a child path; work outside this boundary requires maintainer intervention.",
             target.display(),

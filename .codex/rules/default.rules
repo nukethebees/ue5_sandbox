@@ -2,6 +2,10 @@
 # ---------------------------------------------
 # Integration remains privileged; never allow the entire agent-task prefix.
 prefix_rule(
+    pattern=["agent-task", "integrate"],
+    decision="prompt"
+)
+prefix_rule(
     pattern=["agent-task", "git"],
     decision="allow"
 )

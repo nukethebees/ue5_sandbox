@@ -22,6 +22,36 @@ fn integration_cli_requires_real_jobserver_context() {
 }
 
 #[test]
+fn normal_git_rebase_recovery_needs_no_tool_provenance() {
+    for recovery in ["--abort", "--skip", "--continue"] {
+        let repo = Repo::new();
+        fs::write(repo.feature.join("file.txt"), "feature\n").unwrap();
+        repo.ok(&["add", "file.txt"]);
+        repo.ok(&["commit", "-m", "feature change"]);
+        fs::write(repo.dev.join("file.txt"), "dev\n").unwrap();
+        repo.raw(&repo.dev, &["add", "file.txt"]);
+        repo.raw(&repo.dev, &["commit", "-qm", "advance dev"]);
+        let base = repo.raw(&repo.dev, &["rev-parse", "HEAD"]);
+        let output = repo.tool().args(["git", "rebase", "dev"]).output().unwrap();
+        assert!(!output.status.success());
+        if recovery == "--continue" {
+            fs::write(repo.feature.join("file.txt"), "resolved\n").unwrap();
+            repo.ok(&["add", "file.txt"]);
+        }
+        repo.ok(&["rebase", recovery]);
+        assert_eq!(
+            repo.raw(&repo.feature, &["branch", "--show-current"]),
+            "feature"
+        );
+        assert_eq!(repo.raw(&repo.dev, &["rev-parse", "HEAD"]), base);
+        assert!(
+            repo.raw(&repo.feature, &["status", "--porcelain"])
+                .is_empty()
+        );
+    }
+}
+
+#[test]
 fn feature_autonomy_and_revision_inputs() {
     let repo = Repo::new();
     repo.ok(&["commit", "--allow-empty", "-m", "ordinary"]);
@@ -34,6 +64,17 @@ fn feature_autonomy_and_revision_inputs() {
     repo.ok(&["merge", "dev"]);
     repo.ok(&["branch", "temporary", "dev"]);
     repo.ok(&["branch", "-D", "temporary"]);
+    repo.ok(&["worktree", "add", "-b", "from-dev", "from dev", "dev"]);
+    repo.ok(&["worktree", "move", "from dev", "moved"]);
+    repo.ok(&["worktree", "remove", "moved"]);
+    repo.ok(&["switch", "--detach", "dev"]);
+    repo.ok(&["switch", "feature"]);
+    repo.ok(&[
+        "commit",
+        "--allow-empty",
+        "-m",
+        "--output=../message-is-not-a-path",
+    ]);
     repo.ok(&["switch", "-c", "another", "dev"]);
     repo.ok(&["checkout", "-b", "third", "master"]);
     repo.ok(&["diff", "dev"]);
@@ -54,6 +95,7 @@ fn protected_ref_writes_and_attachments() {
         vec!["switch", "--", "main"],
         vec!["checkout", "dev"],
         vec!["checkout", "master"],
+        vec!["checkout", "master", "--"],
         vec!["switch", "-Cdev"],
         vec!["checkout", "-B", "main"],
         vec!["switch", "--create=master"],
@@ -92,6 +134,7 @@ fn containment_and_redirects() {
         vec!["--work-tree", "..", "status"],
         vec!["diff", "--output=../outside"],
         vec!["archive", "HEAD", "-o", "../outside"],
+        vec!["checkout-index", "--prefix=../outside/", "--all"],
     ] {
         repo.blocked(&args);
     }
@@ -176,6 +219,7 @@ fn protected_current_worktree_is_read_only() {
         vec!["reset", "--hard"],
         vec!["switch", "feature"],
         vec!["clean", "-fd"],
+        vec!["log", "--output=file.txt"],
     ] {
         let output = repo
             .tool()

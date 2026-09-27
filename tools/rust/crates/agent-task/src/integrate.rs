@@ -108,10 +108,14 @@ fn run_git(root: &Path, args: &[&str]) -> Result<(), String> {
 }
 
 fn home_name(root: &Path) -> Option<&str> {
-    root.file_name().and_then(|n| n.to_str()).filter(|n| {
-        n.strip_prefix("dev")
-            .is_some_and(|digits| !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
-    })
+    root.file_name()
+        .and_then(|n| n.to_str())
+        .filter(|n| is_home_branch(n))
+}
+
+fn is_home_branch(name: &str) -> bool {
+    name.strip_prefix("dev")
+        .is_some_and(|digits| !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
 }
 
 fn compare_and_swap(root: &Path, expected: &str, commit: &str) -> Result<(), String> {
@@ -122,7 +126,7 @@ fn compare_and_swap(root: &Path, expected: &str, commit: &str) -> Result<(), Str
 fn transaction(root: &Path, keep: bool) -> Result<(), String> {
     println!("Integration stage: preflight");
     let feature = branch(root)?;
-    if feature.is_empty() || protected(&feature) || home_name(Path::new(&feature)).is_some() {
+    if feature.is_empty() || protected(&feature) || is_home_branch(&feature) {
         return Err("Integration requires a feature branch, not detached HEAD, a protected branch, or a devN home branch.".into());
     }
     clean(root)?;
@@ -168,7 +172,7 @@ fn transaction(root: &Path, keep: bool) -> Result<(), String> {
         ));
     }
     clean(&dev)?;
-    let tree = query(root, &["rev-parse", "HEAD^{tree}"])?;
+    let tree = query(root, &["rev-parse", &format!("{tip}^{{tree}}")])?;
     let message = format!("Merge branch '{feature}' into dev");
     let commit = query(
         root,

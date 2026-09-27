@@ -101,6 +101,7 @@ pub fn check(cwd: &Path, arguments: &[OsString]) -> Result<(), String> {
             | "remote"
             | "symbolic-ref"
             | "fetch"
+            | "pull"
             | "push"
             | "receive-pack"
             | "upload-pack"
@@ -133,6 +134,25 @@ pub fn check(cwd: &Path, arguments: &[OsString]) -> Result<(), String> {
         if *arg == "--" {
             break;
         }
+        if command == "checkout-index" && arg.starts_with("--prefix=") {
+            workspace::contained(&root, cwd, arg[9..].as_ref())?;
+        }
+        if !matches!(
+            command,
+            "diff"
+                | "log"
+                | "show"
+                | "diff-tree"
+                | "diff-files"
+                | "diff-index"
+                | "format-patch"
+                | "archive"
+        ) {
+            continue;
+        }
+        if protected_current && (*arg == "--output" || arg.starts_with("--output=")) {
+            return Err("Output files would mutate the protected worktree. Read the result on stdout, or use your feature worktree.".into());
+        }
         if let Some(path) = arg.strip_prefix("--output=") {
             workspace::contained(&root, cwd, path.as_ref())?;
         } else if *arg == "--output"
@@ -158,12 +178,13 @@ pub fn check(cwd: &Path, arguments: &[OsString]) -> Result<(), String> {
     match command {
         "switch" | "checkout" => {
             let mut creating = false;
+            let detached = text.iter().any(|arg| matches!(*arg, "--detach" | "-d"));
             let mut target_seen = false;
             let mut i = 0;
             while i < text.len() {
                 let arg = text[i];
                 if arg == "--" {
-                    if command == "switch" && !creating {
+                    if command == "switch" && !creating && !detached {
                         if let Some(name) = text.get(i + 1) {
                             ref_target(&root, name)?;
                         }
@@ -192,8 +213,12 @@ pub fn check(cwd: &Path, arguments: &[OsString]) -> Result<(), String> {
                     creating = true;
                 } else if (!arg.starts_with('-') || arg == "-") && !target_seen {
                     // A start point for a new feature is only an input. Path checkout also is.
-                    let paths = command == "checkout" && text[i + 1..].contains(&"--");
-                    if !creating && !paths {
+                    let paths = command == "checkout"
+                        && text
+                            .iter()
+                            .position(|arg| *arg == "--")
+                            .is_some_and(|separator| separator + 1 < text.len());
+                    if !creating && !paths && !detached {
                         ref_target(&root, arg)?;
                     }
                     target_seen = true;
@@ -300,6 +325,8 @@ fn check_worktree(root: &Path, cwd: &Path, args: &[OsString]) -> Result<(), Stri
     }
     let mut operands = Vec::new();
     let mut branch = false;
+    let mut explicit_branch = false;
+    let detached = args.iter().any(|arg| arg == "--detach" || arg == "-d");
     let mut skip = false;
     let mut options = true;
     for arg in &args[1..] {
@@ -319,6 +346,7 @@ fn check_worktree(root: &Path, cwd: &Path, args: &[OsString]) -> Result<(), Stri
         }
         if options && matches!(text, "-b" | "-B" | "--orphan") {
             branch = true;
+            explicit_branch = true;
             continue;
         }
         if options && text == "--reason" {
@@ -327,10 +355,12 @@ fn check_worktree(root: &Path, cwd: &Path, args: &[OsString]) -> Result<(), Stri
         }
         if options && (text.starts_with("-b") || text.starts_with("-B")) {
             deny_ref(&text[2..])?;
+            explicit_branch = true;
             continue;
         }
         if options && text.starts_with("--orphan=") {
             deny_ref(&text[9..])?;
+            explicit_branch = true;
             continue;
         }
         if options && text.starts_with('-') {
@@ -342,12 +372,35 @@ fn check_worktree(root: &Path, cwd: &Path, args: &[OsString]) -> Result<(), Stri
     for path in operands.iter().take(count) {
         workspace::contained(root, cwd, path)?;
     }
-    if sub == "add" {
+    if sub != "add" {
+        if let Some(path) = operands.first() {
+            let source = workspace::resolved(&cwd.join(path))?;
+            if !source.is_dir()
+                || workspace::root(&source)?
+                    .canonicalize()
+                    .map_err(|e| e.to_string())?
+                    != source
+                || query(
+                    &source,
+                    &["rev-parse", "--path-format=absolute", "--git-common-dir"],
+                )? != query(
+                    root,
+                    &["rev-parse", "--path-format=absolute", "--git-common-dir"],
+                )?
+            {
+                return Err("Worktree source must name an existing worktree of this repository inside the workspace. Git's shorthand lookup could select another workspace; use its full path.".into());
+            }
+            deny_ref(&workspace::branch(&source)?)?;
+        }
+    }
+    if sub == "add" && !explicit_branch && !detached {
         if let Some(name) = operands.get(1) {
             ref_target(root, &name.to_string_lossy())?;
         }
         // Git can infer/create the branch from the destination's basename.
-        if let Some(path) = operands.first() {
+        if operands.len() == 1
+            && let Some(path) = operands.first()
+        {
             if let Some(name) = Path::new(path).file_name() {
                 deny_ref(&name.to_string_lossy())?;
             }
