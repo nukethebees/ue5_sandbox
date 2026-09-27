@@ -1,7 +1,9 @@
 $env:MSBUILDDISABLENODEREUSE = '1'
 
 function Get-JobserverPath {
-    Join-Path $env:LOCALAPPDATA 'NukeTheBees\jobserver\bin\jobserver.exe'
+    $command = Get-Command jobserver -CommandType Application -ErrorAction SilentlyContinue
+    if (-not $command) { throw 'jobserver is missing from PATH. Ask the maintainer to install central tools and manage PATH.' }
+    $command.Source
 }
 
 function Invoke-JobserverWorkflow {
@@ -14,7 +16,7 @@ function Invoke-JobserverWorkflow {
 
     $jobserver = Get-JobserverPath
     if (-not (Test-Path -LiteralPath $jobserver -PathType Leaf)) {
-        throw "The per-user jobserver is not installed. Run 'csetup' first."
+        throw "The per-user jobserver is not installed. Ask the maintainer to run 'agent-task install-central-tools' and manage PATH."
     }
 
     $log_directory = Join-Path $script:dev_project_root '.local\logs'
@@ -241,7 +243,7 @@ function get-ubt-build-state {
 function reset-ubt-build-state {
     $jobserver = Get-JobserverPath
     if (-not (Test-Path -LiteralPath $jobserver -PathType Leaf)) {
-        throw "The per-user jobserver is not installed. Run 'csetup' first."
+        throw "The per-user jobserver is not installed. Ask the maintainer to run 'agent-task install-central-tools' and manage PATH."
     }
 
     & $jobserver kill-owned --kind unreal-build
@@ -271,25 +273,6 @@ function cbuild {
                     -exit_code $workflow_result.ExitCode `
                     -log_path $workflow_result.LogPath)
             }
-        }
-    } finally {
-        Pop-Location
-    }
-}
-
-function ctools {
-    $tools_solution = Join-Path $script:dev_project_root 'tools\Tools.slnx'
-    if (-not (Test-Path -LiteralPath $tools_solution -PathType Leaf)) {
-        throw "C# tools solution was not found: $tools_solution"
-    }
-
-    Push-Location -LiteralPath $script:dev_project_root
-    try {
-        Write-Host 'Building standalone C# developer tools.'
-        & dotnet build $tools_solution -m:1
-
-        if ($LASTEXITCODE -ne 0) {
-            throw "C# tools build exited with code $LASTEXITCODE."
         }
     } finally {
         Pop-Location
@@ -373,18 +356,7 @@ function csetup {
             Remove-RetiredVcpkgBuildDirectory -configuration $current_configuration
         }
 
-        $jobserver = Get-JobserverPath
-        if (-not (Test-Path -LiteralPath $jobserver -PathType Leaf)) {
-            Write-Host 'Bootstrapping the canonical per-user jobserver.'
-            & cmake --preset native
-            if ($LASTEXITCODE -ne 0) {
-                throw "Jobserver bootstrap configuration exited with code $LASTEXITCODE."
-            }
-            & cmake --build --preset native --target install-jobserver
-            if ($LASTEXITCODE -ne 0) {
-                throw "Jobserver installation exited with code $LASTEXITCODE."
-            }
-        }
+        $null = Get-JobserverPath
 
         foreach ($current_configuration in $configurations) {
             if ($current_configuration -eq 'native') {

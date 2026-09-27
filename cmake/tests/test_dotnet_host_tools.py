@@ -24,7 +24,7 @@ class DotnetHostToolTests(unittest.TestCase):
                 tool_directory,
                 ignore=shutil.ignore_patterns("bin", "obj"),
             )
-            for file_name in ("Directory.Build.props", "Directory.Build.targets"):
+            for file_name in ("Directory.Build.props",):
                 shutil.copy2(self.source_dir / "tools" / file_name, fixture_root / "tools" / file_name)
 
             source_obj_directory = tool_directory / "obj"

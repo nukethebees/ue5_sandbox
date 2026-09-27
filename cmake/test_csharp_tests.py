@@ -65,7 +65,7 @@ class CSharpTests(unittest.TestCase):
     def test_fingerprint_detects_edits_additions_deletions_and_shared_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            files = ["tools/Directory.Build.props", "tools/Directory.Build.targets", "tools/Tools.slnx",
+            files = ["tools/Directory.Build.props", "tools/Tools.slnx",
                      "cmake/csharp_tests.cmake", "cmake/csharp_tests.py", "tools/Example/Source.cs"]
             for name in files:
                 path = root / name

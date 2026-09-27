@@ -835,10 +835,6 @@ cmake_language(DEFER CALL check_simulation_policy)
                 normalized_build_ninja,
             )
             self.assertNotIn(
-                (self.source_dir / "tools" / "Directory.Build.targets").as_posix(),
-                normalized_build_ninja,
-            )
-            self.assertNotIn(
                 (native_binary_tools_directory / "obj").as_posix(),
                 normalized_build_ninja,
             )
@@ -917,7 +913,7 @@ cmake_language(DEFER CALL check_simulation_policy)
         self.assertTrue({"native-simulation-tests", "native-simulation-soak-tests"} <= native.keys())
         self.assertFalse(native.keys() & tools.keys())
         self.assertFalse(inventory("-L", "^all$").keys() & tools.keys())
-        expected_tools = {"layout-planner-ui-tests", "image-lab-tests", "tracy-benchmark-compare-tests", "Sandbox.RustSetLiveCodingDisabled"}
+        expected_tools = {"layout-planner-ui-tests", "image-lab-tests", "tracy-benchmark-compare-tests", "tracy-benchmark-compare-version", "Sandbox.RustSetLiveCodingDisabled", "Tools.CentralInstall", "PowerShell.Navigation"}
         expected_tools.update("Sandbox." + name for name in (
             "ArchitectureChecks", "BenchmarkTools", "CodeFormatTools",
             "GamePackageTools", "NativeBinaryTools", "UnrealBuildTools"))

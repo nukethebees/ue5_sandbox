@@ -39,7 +39,6 @@ def fingerprint(metadata: dict[str, Any], project: dict[str, Any]) -> str:
     root = Path(metadata["root"])
     files = {
         root / "tools/Directory.Build.props",
-        root / "tools/Directory.Build.targets",
         root / "tools/Tools.slnx",
         root / "cmake/csharp_tests.cmake",
         Path(__file__),

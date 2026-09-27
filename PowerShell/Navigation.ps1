@@ -76,7 +76,6 @@ Commands:
 d=  reset-devs        Hard reset locally checkoutable devN branches to dev.
 
 Validation and build commands:
-  ctools             Build the standalone C# developer tools.
   install-agent-task Test and install the per-user agent-task executable with Cargo.
   integrate-feature [-KeepBranch]  Queue the authorized final Git transaction into dev.
 

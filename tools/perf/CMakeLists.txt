@@ -52,7 +52,7 @@ add_executable(tracy-benchmark-compare-test-helper tests/process_test_helper.cpp
 target_compile_features(tracy-benchmark-compare-test-helper PRIVATE cxx_std_23)
 target_link_libraries(tracy-benchmark-compare-test-helper PRIVATE sandbox::native_defaults)
 ioj_enable_warnings(tracy-benchmark-compare-test-helper)
-add_dependencies(tracy-benchmark-compare-tests tracy-benchmark-compare-test-helper)
+add_dependencies(tracy-benchmark-compare-tests tracy-benchmark-compare-test-helper tracy-benchmark-compare)
 
 add_test(NAME tracy-benchmark-compare-tests COMMAND tracy-benchmark-compare-tests)
 set_tests_properties(tracy-benchmark-compare-tests PROPERTIES LABELS "perf;developer-tool;integration;subprocess")

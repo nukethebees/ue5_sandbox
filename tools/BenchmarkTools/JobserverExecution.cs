@@ -9,24 +9,7 @@ internal sealed class JobserverLocator : IJobserverLocator
 {
     public string Locate()
     {
-        var local_application_data = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        if (string.IsNullOrWhiteSpace(local_application_data))
-        {
-            throw new BenchmarkToolException("LOCALAPPDATA is required to locate the per-user jobserver.");
-        }
-
-        var jobserver_path = Path.Combine(
-            local_application_data,
-            "NukeTheBees",
-            "jobserver",
-            "bin",
-            "jobserver.exe");
-        if (!File.Exists(jobserver_path))
-        {
-            throw new BenchmarkToolException($"The jobserver executable was not found: '{jobserver_path}'. Run csetup to install it.");
-        }
-
-        return jobserver_path;
+        return "jobserver";
     }
 }
 

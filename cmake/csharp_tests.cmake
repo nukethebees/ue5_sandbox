@@ -14,7 +14,7 @@ add_custom_target(csharp-tests-build
   COMMAND ${csharp_build_command} "${IOJ_DOTNET_EXECUTABLE}" build "${PROJECT_SOURCE_DIR}/tools/Tools.slnx"
     --configuration "${sandbox_csharp_configuration}"
     --artifacts-path "${sandbox_csharp_artifacts}" --nologo -m:1
-    -p:IsStandaloneTool=false -p:SandboxCMakeHostToolBuild=true
+    -p:SandboxCMakeHostToolBuild=true
   COMMAND "${Python3_EXECUTABLE}" "${sandbox_csharp_runner}"
     record "${sandbox_csharp_metadata}"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -40,7 +40,7 @@ function(sandbox_add_csharp_test name project labels)
     COMMAND ${build_command} "${IOJ_DOTNET_EXECUTABLE}" build "${PROJECT_SOURCE_DIR}/${project}"
       --configuration "${sandbox_csharp_configuration}"
       --artifacts-path "${sandbox_csharp_artifacts}" --nologo
-      -p:IsStandaloneTool=false -p:SandboxCMakeHostToolBuild=true
+      -p:SandboxCMakeHostToolBuild=true
     COMMAND "${Python3_EXECUTABLE}" "${sandbox_csharp_runner}"
       record "${sandbox_csharp_metadata}" "${name}"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"

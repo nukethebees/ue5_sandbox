@@ -7,8 +7,12 @@ endif()
 
 cmake_path(SET IOJ_JOBSERVER_INSTALL_ROOT NORMALIZE
   "$ENV{LOCALAPPDATA}/NukeTheBees/jobserver")
-cmake_path(APPEND IOJ_JOBSERVER_INSTALL_ROOT bin jobserver.exe
-  OUTPUT_VARIABLE IOJ_JOBSERVER_CLI)
+find_program(IOJ_JOBSERVER_PATH NAMES jobserver PATHS ENV PATH NO_DEFAULT_PATH NO_CACHE)
+if(IOJ_JOBSERVER_PATH)
+  set(IOJ_JOBSERVER_CLI "${IOJ_JOBSERVER_PATH}")
+else()
+  set(IOJ_JOBSERVER_CLI jobserver.exe)
+endif()
 
 function(sandbox_jobserver_command output_variable mode kind operation)
   sandbox_make_jobserver_command(command "${IOJ_JOBSERVER_CLI}"
@@ -17,7 +21,7 @@ function(sandbox_jobserver_command output_variable mode kind operation)
 endfunction()
 
 function(sandbox_configure_jobserver)
-  if(EXISTS "${IOJ_JOBSERVER_CLI}")
+  if(IOJ_JOBSERVER_PATH)
     foreach(language IN ITEMS C CXX)
       sandbox_jobserver_command(compile_launcher STANDARD build "Compile ${language}")
       sandbox_jobserver_command(link_launcher STANDARD build "Link ${language}")
