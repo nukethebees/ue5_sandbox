@@ -28,14 +28,33 @@ function(target_add_supported_options interface_target)
   endif()
 
   string(CONCAT options_identity
+    "${CMAKE_CXX_COMPILER};${CMAKE_CXX_COMPILER_ARG1};${CMAKE_CXX_COMPILER_TARGET};"
     "${CMAKE_CXX_COMPILER_ID};${CMAKE_CXX_COMPILER_VERSION};"
+    "${CMAKE_CXX_COMPILER_EXTERNAL_TOOLCHAIN};${CMAKE_SYSROOT};"
+    "${CMAKE_CXX_FLAGS};${CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES};"
+    "${CMAKE_TRY_COMPILE_CONFIGURATION};${CMAKE_MSVC_RUNTIME_LIBRARY};"
     "${CMAKE_CXX_COMPILER_FRONTEND_VARIANT};${supported_options_SOURCE};"
     "${supported_options_COMPILE};${supported_options_LINK}"
   )
+  string(TOUPPER "${CMAKE_TRY_COMPILE_CONFIGURATION}" probe_configuration)
+  if(NOT probe_configuration)
+    set(probe_configuration DEBUG)
+  endif()
+  string(APPEND options_identity ";${CMAKE_CXX_FLAGS_${probe_configuration}};${CMAKE_AR}")
+  if(supported_options_LINK)
+    string(APPEND options_identity
+      ";${CMAKE_LINKER};${CMAKE_EXE_LINKER_FLAGS};${CMAKE_EXE_LINKER_FLAGS_${probe_configuration}}")
+  endif()
   string(SHA256 options_hash "${options_identity}")
   set(support_variable "IOJ_SUPPORTED_OPTIONS_${options_hash}")
 
   if(NOT DEFINED ${support_variable})
+    # Scope this to the probe: warning support must not depend on executable linking.
+    if(supported_options_LINK)
+      set(CMAKE_TRY_COMPILE_TARGET_TYPE EXECUTABLE)
+    else()
+      set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+    endif()
     set(try_compile_arguments)
     if(supported_options_COMPILE)
       list(APPEND try_compile_arguments
@@ -68,6 +87,9 @@ function(target_add_supported_options interface_target)
       set(options_supported TRUE)
     else()
       set(options_supported FALSE)
+      message(STATUS "Rejected optional options for ${interface_target}: ${supported_options_COMPILE} ${supported_options_LINK}")
+      message(CONFIGURE_LOG
+        "Rejected options for ${interface_target}:\n${options_compile_output}")
     endif()
 
     set(${support_variable} "${options_supported}" CACHE INTERNAL

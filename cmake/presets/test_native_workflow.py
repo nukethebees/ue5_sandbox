@@ -33,6 +33,61 @@ class NativeWorkflowTests(unittest.TestCase):
     cmake: str
     llvm_root: str
 
+    def test_compile_options_do_not_require_an_executable_link(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="sandbox option probes ") as directory:
+            fixture = Path(directory)
+            (fixture / "CMakeLists.txt").write_text(
+                'cmake_minimum_required(VERSION 4.4.2)\n'
+                'project(OptionProbes LANGUAGES CXX)\n'
+                f'include("{self.source_dir.as_posix()}/cmake/compiler_warnings/add_supported_interface_options.cmake")\n'
+                'set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ENTRY:ioj_missing_entry")\n'
+                'add_library(valid INTERFACE)\n'
+                'target_add_supported_options(valid COMPILE /W4)\n'
+                'get_target_property(options valid INTERFACE_COMPILE_OPTIONS)\n'
+                'if(NOT options STREQUAL "/W4")\n'
+                '  message(FATAL_ERROR "Compile-only probe required a link")\n'
+                'endif()\n'
+                'add_library(invalid INTERFACE)\n'
+                'target_add_supported_options(invalid COMPILE /clang:-fioj-invalid-option)\n'
+                'get_target_property(options invalid INTERFACE_COMPILE_OPTIONS)\n'
+                'if(options)\n'
+                '  message(FATAL_ERROR "Unsupported compile option accepted")\n'
+                'endif()\n'
+                'set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)\n'
+                'add_library(linked INTERFACE)\n'
+                'target_add_supported_options(linked LINK /DEBUG)\n'
+                'get_target_property(options linked INTERFACE_LINK_OPTIONS)\n'
+                'if(options)\n'
+                '  message(FATAL_ERROR "Link probe did not exercise the linker")\n'
+                'endif()\n', encoding="utf-8",
+            )
+            self.run_cmake("-S", str(fixture), "-B", str(fixture / "build"), "-G", "Ninja",
+                           f"-DCMAKE_TOOLCHAIN_FILE={self.source_dir.as_posix()}/cmake/toolchains/windows-clang-cl.cmake",
+                           f"-DLLVM_ROOT={self.llvm_root}")
+
+    def test_negative_compile_requires_the_expected_diagnostic(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="sandbox compile rejection ") as directory:
+            fixture = Path(directory)
+            (fixture / "CMakeLists.txt").write_text(
+                'cmake_minimum_required(VERSION 4.4.2)\n'
+                'project(CompileRejection NONE)\n'
+                'add_custom_target(rejected COMMAND "${CMAKE_COMMAND}" -E echo "specific rejection"\n'
+                '  COMMAND "${CMAKE_COMMAND}" -E false VERBATIM)\n'
+                'add_custom_target(unrelated COMMAND "${CMAKE_COMMAND}" -E false VERBATIM)\n'
+                'add_custom_target(accepted COMMAND "${CMAKE_COMMAND}" -E echo "specific rejection" VERBATIM)\n',
+                encoding="utf-8",
+            )
+            build = fixture / "build with spaces"
+            self.run_cmake("-S", str(fixture), "-B", str(build), "-G", "Ninja")
+            for target in ("rejected", "unrelated", "accepted", "missing-target"):
+                result = subprocess.run(
+                    [self.cmake, f"-DBUILD_DIR={build}", f"-DREJECT_TARGET={target}",
+                     "-DEXPECTED_DIAGNOSTIC=specific rejection", "-P",
+                     str(self.source_dir / "cmake/expect_compile_failure.cmake")],
+                    capture_output=True, text=True,
+                )
+                self.assertEqual(result.returncode == 0, target == "rejected", result.stdout + result.stderr)
+
     presets = json.loads((PRESET_DIRECTORY / "native.json").read_text(encoding="utf-8"))
     unreal_presets = json.loads(
         (PRESET_DIRECTORY / "unreal.json").read_text(encoding="utf-8")
@@ -87,6 +142,14 @@ class NativeWorkflowTests(unittest.TestCase):
                     self.assertEqual("/fsanitize=address" in options, asan_enabled)
                     self.assertEqual("/clang:-fsanitize-address-use-after-return=never" in options, active)
                     self.assertEqual("LLVM #215376 workaround active" in output, active)
+                    if asan_enabled:
+                        runtime = build / "bin/clang_rt.asan_dynamic-x86_64.dll"
+                        self.assertFalse(runtime.exists(), "Configure must not stage build artifacts")
+                        self.run_cmake("--build", str(build), "--target", "stage-asan-runtime")
+                        self.assertEqual(runtime.read_text(), "fixture")
+                        runtime.unlink()
+                        self.run_cmake("--build", str(build), "--target", "stage-asan-runtime")
+                        self.assertEqual(runtime.read_text(), "fixture")
 
             # An explicit OFF must also remove the flag when reconfiguring an existing build.
             output = self.run_cmake("-S", str(fixture), "-B", str(fixture / "default"),
@@ -702,6 +765,17 @@ cmake_language(DEFER CALL check_simulation_policy)
             self.assertIn("native-simulation-soak-tests", dry_run)
             self.check_test_inventory(build_directory)
 
+            for report, executable in (
+                ("native-core-vector-lerp-benchmark-report", "native/core/native-core-benchmarks.exe"),
+                ("native-soa-production-report", "native/lispb/native_soa/native-soa-benchmarks.exe"),
+                ("native-soa-candidate-report", "native/lispb/native_soa/native-soa-benchmarks.exe"),
+                ("native-soa-laser-hit-append-report", "native/lispb/native_soa/native-soa-benchmarks.exe"),
+                ("kernel-benchmark-report", "native/lispb/kernel/kernel-native-benchmarks.exe"),
+            ):
+                commands = self.run_cmake("--build", str(build_directory), "--target", report,
+                                          "--", "-t", "commands").replace("\\", "/")
+                self.assertIn(f'-- "{(build_directory / executable).as_posix()}"', commands)
+
             host_tool = (
                 build_directory
                 / "host-tools"
@@ -856,9 +930,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--source-dir", type=Path, required=True)
     parser.add_argument("--cmake", required=True)
-    parser.add_argument("--llvm-root", required=True)
     arguments, unittest_arguments = parser.parse_known_args()
     NativeWorkflowTests.source_dir = arguments.source_dir.resolve()
     NativeWorkflowTests.cmake = arguments.cmake
-    NativeWorkflowTests.llvm_root = arguments.llvm_root
+    NativeWorkflowTests.llvm_root = os.environ["LLVM_ROOT"]
     unittest.main(argv=[sys.argv[0], *unittest_arguments])

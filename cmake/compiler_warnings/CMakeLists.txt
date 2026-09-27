@@ -168,11 +168,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     /Zc:wchar_t
     /Zc:zeroSizeArrayNew
   )
-  foreach(ioj_msvc_conformance_option IN LISTS ioj_msvc_conformance_options)
-    target_add_supported_options(ioj_msvc_strict COMPILE
-      "${ioj_msvc_conformance_option}"
-    )
-  endforeach()
+  # Required policy for the pinned MSVC toolchain; never silently drop conformance.
+  target_compile_options(ioj_msvc_strict INTERFACE ${ioj_msvc_conformance_options})
 endif()
 
 add_library(ioj_warnings INTERFACE)

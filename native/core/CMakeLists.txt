@@ -124,7 +124,7 @@ sandbox_jobserver_command(native_core_vector_lerp_benchmark_command BENCHMARK be
   "Native core vector lerp benchmark")
 add_custom_target(native-core-vector-lerp-benchmark-report
   COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/out/benchmarks/native-core"
-  COMMAND ${native_core_vector_lerp_benchmark_command} native-core-benchmarks
+  COMMAND ${native_core_vector_lerp_benchmark_command} "$<TARGET_FILE:native-core-benchmarks>"
     --benchmark_filter=^vector_lerp/
     --benchmark_repetitions=7
     --benchmark_min_time=0.05s
@@ -148,13 +148,14 @@ target_link_libraries(native-core-static-string-view-reject-automatic PRIVATE
   sandbox::native_defaults
 )
 add_test(NAME StaticStringViewRejectsAutomaticStorage
-  COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"
-    --target native-core-static-string-view-reject-automatic
+  COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
+    -DREJECT_TARGET=native-core-static-string-view-reject-automatic
+    "-DEXPECTED_DIAGNOSTIC=(call to consteval function 'ml::StaticStringView::StaticStringView[^\n]*not a constant expression|error C7595:[^\n]*StaticStringView[^\n]*not a constant expression)"
+    -P "${PROJECT_SOURCE_DIR}/cmake/expect_compile_failure.cmake"
 )
 set_tests_properties(StaticStringViewRejectsAutomaticStorage PROPERTIES
   LABELS "all;native;native-core;compile-contract;subprocess"
   RESOURCE_LOCK codegen-negative-build
-  WILL_FAIL TRUE
 )
 
 set_property(TARGET native-core PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)

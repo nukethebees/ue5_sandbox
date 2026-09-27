@@ -18,7 +18,6 @@ add_test(NAME CMake.NativeWorkflow
   COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/cmake/presets/test_native_workflow.py"
     --source-dir "${PROJECT_SOURCE_DIR}"
     --cmake "${CMAKE_COMMAND}"
-    --llvm-root "${LLVM_ROOT}"
 )
 set_tests_properties(CMake.NativeWorkflow PROPERTIES
   LABELS "integration;subprocess;all;cmake"

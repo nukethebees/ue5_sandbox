@@ -88,9 +88,14 @@ target_link_options(ioj_asan INTERFACE
 )
 
 set(runtime_output_directory "${CMAKE_BINARY_DIR}/bin")
-file(MAKE_DIRECTORY "${runtime_output_directory}")
-configure_file(
-  "${asan_runtime}"
-  "${runtime_output_directory}/clang_rt.asan_dynamic-x86_64.dll"
-  COPYONLY
+set(staged_runtime "${runtime_output_directory}/clang_rt.asan_dynamic-x86_64.dll")
+add_custom_command(
+  OUTPUT "${staged_runtime}"
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${runtime_output_directory}"
+  COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${asan_runtime}" "${staged_runtime}"
+  DEPENDS "${asan_runtime}"
+  COMMENT "Staging the clang-cl AddressSanitizer runtime"
+  VERBATIM
 )
+add_custom_target(stage-asan-runtime DEPENDS "${staged_runtime}")
+add_dependencies(ioj_asan stage-asan-runtime)

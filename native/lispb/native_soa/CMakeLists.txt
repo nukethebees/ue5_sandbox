@@ -67,7 +67,7 @@ set_tests_properties(native-soa-dry-run PROPERTIES LABELS "native-soa")
 sandbox_jobserver_command(native_soa_production_report_command BENCHMARK benchmark
   "Native SoA production benchmark")
 add_custom_target(native-soa-production-report
-  COMMAND ${native_soa_production_report_command} native-soa-benchmarks
+  COMMAND ${native_soa_production_report_command} "$<TARGET_FILE:native-soa-benchmarks>"
     "--benchmark_filter=Production/" --benchmark_repetitions=7
     --benchmark_enable_random_interleaving=true --benchmark_min_time=0.1s
     "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-production-results.json"
@@ -77,7 +77,7 @@ add_custom_target(native-soa-production-report
 sandbox_jobserver_command(native_soa_candidate_report_command BENCHMARK benchmark
   "Native SoA candidate benchmark")
 add_custom_target(native-soa-candidate-report
-  COMMAND ${native_soa_candidate_report_command} native-soa-benchmarks
+  COMMAND ${native_soa_candidate_report_command} "$<TARGET_FILE:native-soa-benchmarks>"
     "--benchmark_filter=Production/(Spinner|LaserHit)/" --benchmark_repetitions=7
     --benchmark_enable_random_interleaving=true --benchmark_min_time=0.1s
     "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-candidate-results.json"
@@ -87,7 +87,7 @@ add_custom_target(native-soa-candidate-report
 sandbox_jobserver_command(native_soa_laser_hit_report_command BENCHMARK benchmark
   "Native SoA laser-hit append benchmark")
 add_custom_target(native-soa-laser-hit-append-report
-  COMMAND ${native_soa_laser_hit_report_command} native-soa-benchmarks
+  COMMAND ${native_soa_laser_hit_report_command} "$<TARGET_FILE:native-soa-benchmarks>"
     "--benchmark_filter=Production/LaserHit/" --benchmark_repetitions=9
     --benchmark_enable_random_interleaving=true --benchmark_min_time=0.3s
     "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-laser-hit-append-results.json"

@@ -413,7 +413,7 @@ function(add_kernel_benchmark_report target_name)
     COMMAND "${CMAKE_COMMAND}" -E make_directory
       "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}"
       "${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
-    COMMAND ${kernel_benchmark_command} kernel-native-benchmarks
+    COMMAND ${kernel_benchmark_command} "$<TARGET_FILE:kernel-native-benchmarks>"
       --benchmark_repetitions=7
       --benchmark_min_time=0.05s
       --benchmark_enable_random_interleaving=true
