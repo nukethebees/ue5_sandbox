@@ -4,6 +4,35 @@ from tidy_test_support import TidyTest, VIEWS, main
 class LoopViewConstructionTests(TidyTest):
     check = "ioj-loop-view-construction"
 
+    def test_range_loop_variable(self) -> None:
+        self.assert_cases("""
+namespace ioj::sim {
+struct HealthView {
+    HealthView(int);
+    HealthView(HealthView const&) = default;
+    HealthView(HealthView&&) = default;
+    ~HealthView();
+};
+}
+using View = ioj::sim::HealthView;
+struct MovingViews {
+    struct Iterator {
+        View&& operator*() const;
+        Iterator& operator++();
+        bool operator!=(Iterator const&) const;
+    };
+    Iterator begin();
+    Iterator end();
+};
+""", (
+            ("conversion", "int values[2]{}; for (View view : values) {}", 1),
+            ("reference_conversion", "int values[2]{}; for (View const& view : values) {}", 1),
+            ("copy", "View views[]{1, 2}; for (View view : views) {}", 0),
+            ("move", "MovingViews views; for (View view : views) {}", 0),
+            ("reference", "View views[]{1, 2}; for (View const& view : views) {}", 0),
+            ("initializer", "View views[]{1, 2}; for (View setup{1}; View view : views) {}", 0),
+        ))
+
     def test_constructions(self) -> None:
         self.assert_cases(VIEWS, (
             ("for", "for (;;) { View v; }", 1),

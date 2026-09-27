@@ -105,7 +105,8 @@ static bool node_in_loop(DynTypedNode const& node, ASTContext& context) {
                 return true;
             }
         }
-        if (auto const* loop{parent.get<CXXForRangeStmt>()}; loop && child == loop->getBody()) {
+        if (auto const* loop{parent.get<CXXForRangeStmt>()};
+            loop && (child == loop->getBody() || child == loop->getLoopVarStmt())) {
             return true;
         }
         if (parent.get<WhileStmt>() || parent.get<DoStmt>()) {
