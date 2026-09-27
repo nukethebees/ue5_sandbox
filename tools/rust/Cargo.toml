@@ -1,5 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/agent-task",
     "crates/set-live-coding-disabled",
 ]
