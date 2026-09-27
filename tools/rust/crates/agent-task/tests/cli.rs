@@ -35,6 +35,11 @@ fn git(root: &Path, arguments: &[&str]) {
 fn fixture() -> TemporaryDirectory {
     let directory = TemporaryDirectory::new();
     git(&directory.0, &["init", "--quiet"]);
+    let jobserver = directory
+        .0
+        .join("local-app-data/NukeTheBees/jobserver/bin/jobserver.exe");
+    fs::create_dir_all(jobserver.parent().unwrap()).unwrap();
+    fs::write(jobserver, "installed tool marker").unwrap();
     fs::create_dir_all(directory.0.join("cmake/presets")).unwrap();
     fs::write(
         directory.0.join("cmake/presets/generate.py"),
@@ -49,19 +54,34 @@ fn fixture() -> TemporaryDirectory {
     directory
 }
 
-fn invoke(root: &Path, arguments: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_agent-task"))
+fn tool(root: &Path, arguments: &[&str]) -> Command {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_agent-task"));
+    command
         .args(arguments)
         .current_dir(root)
-        .output()
-        .unwrap()
+        .env("LOCALAPPDATA", root.join("local-app-data"));
+    command
+}
+
+fn invoke(root: &Path, arguments: &[&str]) -> Output {
+    tool(root, arguments).output().unwrap()
 }
 
 #[test]
 fn help_and_invalid_arguments_do_not_start_initialization() {
     let directory = TemporaryDirectory::new();
-    assert!(invoke(&directory.0, &["--help"]).status.success());
-    for arguments in [vec![], vec!["unknown"], vec!["start", "--skip-build"]] {
+    let help = invoke(&directory.0, &["--help"]);
+    assert!(help.status.success());
+    let help = String::from_utf8_lossy(&help.stdout);
+    assert!(help.contains("prepare-worktree"));
+    assert!(help.contains("install-central-tools"));
+    for arguments in [
+        vec![],
+        vec!["unknown"],
+        vec!["start"],
+        vec!["prepare-worktree", "--skip-build"],
+        vec!["install-central-tools", "--all"],
+    ] {
         let output = invoke(&directory.0, &arguments);
         assert_eq!(output.status.code(), Some(2));
         assert!(output.stdout.is_empty());
@@ -72,10 +92,12 @@ fn help_and_invalid_arguments_do_not_start_initialization() {
 fn outside_worktree_fails_without_removing_out() {
     let directory = TemporaryDirectory::new();
     fs::create_dir(directory.0.join("out")).unwrap();
-    let output = invoke(&directory.0, &["start"]);
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("run inside a Git worktree"));
-    assert!(directory.0.join("out").is_dir());
+    for command in ["prepare-worktree", "install-central-tools"] {
+        let output = invoke(&directory.0, &[command]);
+        assert!(!output.status.success());
+        assert!(String::from_utf8_lossy(&output.stderr).contains("run inside a Git worktree"));
+        assert!(directory.0.join("out").is_dir());
+    }
 }
 
 #[test]
@@ -112,7 +134,10 @@ fn nested_linked_worktree_cleans_only_its_root_out_and_runs_phases_in_order() {
     }
     fs::write(root.join("untracked.txt"), "source").unwrap();
 
-    let output = invoke(&root.join("nested"), &["start"]);
+    let output = tool(&root.join("nested"), &["prepare-worktree"])
+        .env("LOCALAPPDATA", directory.0.join("local-app-data"))
+        .output()
+        .unwrap();
     assert!(output.status.success(), "{output:?}");
     assert!(!root.join("out/keep.txt").exists());
     assert!(directory.0.join("out/keep.txt").is_file());
@@ -137,15 +162,68 @@ fn nested_linked_worktree_cleans_only_its_root_out_and_runs_phases_in_order() {
 #[test]
 fn missing_out_is_allowed() {
     let directory = fixture();
-    let output = invoke(&directory.0, &["start"]);
+    let output = invoke(&directory.0, &["prepare-worktree"]);
     assert!(output.status.success(), "{output:?}");
+}
+
+#[test]
+fn missing_central_tools_leave_build_output_untouched() {
+    let directory = fixture();
+    fs::create_dir(directory.0.join("out")).unwrap();
+    fs::write(directory.0.join("out/keep.txt"), "build output").unwrap();
+    let missing_installation = directory.0.join("empty-local-app-data");
+
+    let mut missing_jobserver = tool(&directory.0, &["prepare-worktree"]);
+    missing_jobserver.env("LOCALAPPDATA", &missing_installation);
+    let mut missing_environment = tool(&directory.0, &["prepare-worktree"]);
+    missing_environment.env_remove("LOCALAPPDATA");
+
+    for mut command in [missing_jobserver, missing_environment] {
+        let output = command.output().unwrap();
+        assert!(!output.status.success());
+        assert!(
+            String::from_utf8_lossy(&output.stderr).contains("agent-task install-central-tools")
+        );
+        assert!(output.stdout.is_empty());
+        assert_eq!(
+            fs::read_to_string(directory.0.join("out/keep.txt")).unwrap(),
+            "build output"
+        );
+        assert!(!directory.0.join("phases.txt").exists());
+        assert!(!missing_installation.exists());
+    }
+}
+
+#[test]
+fn central_tool_installation_does_not_require_jobserver_or_clear_out() {
+    let directory = fixture();
+    fs::create_dir(directory.0.join("out")).unwrap();
+    fs::write(directory.0.join("out/keep.txt"), "build output").unwrap();
+    fs::write(
+        directory.0.join("cmake/presets/generate.py"),
+        "raise SystemExit(23)\n",
+    )
+    .unwrap();
+    let output = tool(&directory.0, &["install-central-tools"])
+        .env("LOCALAPPDATA", directory.0.join("empty-local-app-data"))
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("python failed"));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("[1/4]"));
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("[2/4]"));
+    assert_eq!(
+        fs::read_to_string(directory.0.join("out/keep.txt")).unwrap(),
+        "build output"
+    );
 }
 
 #[test]
 fn failed_cleanup_stops_before_submodules() {
     let directory = fixture();
     fs::write(directory.0.join("out"), "not a directory").unwrap();
-    let output = invoke(&directory.0, &["start"]);
+    let output = invoke(&directory.0, &["prepare-worktree"]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("Could not remove"));
     assert!(!String::from_utf8_lossy(&output.stdout).contains("[2/6]"));
@@ -160,7 +238,7 @@ fn failed_preset_generation_stops_before_cmake() {
         "raise SystemExit(23)\n",
     )
     .unwrap();
-    let output = invoke(&directory.0, &["start"]);
+    let output = invoke(&directory.0, &["prepare-worktree"]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("python failed"));
     assert!(!String::from_utf8_lossy(&output.stdout).contains("[5/6]"));
@@ -175,7 +253,7 @@ fn failed_code_generation_stops_before_baseline_build() {
         "message(FATAL_ERROR \"fixture failure\")\n",
     )
     .unwrap();
-    let output = invoke(&directory.0, &["start"]);
+    let output = invoke(&directory.0, &["prepare-worktree"]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("cmake failed"));
     assert!(!String::from_utf8_lossy(&output.stdout).contains("[6/6]"));

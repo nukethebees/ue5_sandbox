@@ -3,6 +3,8 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
+const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools";
+
 fn worktree_root() -> Result<PathBuf, String> {
     let output = Command::new("git")
         .args(["rev-parse", "--show-toplevel"])
@@ -34,8 +36,23 @@ fn run(root: &Path, program: &str, arguments: &[&str]) -> Result<(), String> {
     Ok(())
 }
 
-fn start() -> Result<(), String> {
+fn require_jobserver() -> Result<(), String> {
+    let local_app_data = std::env::var_os("LOCALAPPDATA")
+        .filter(|value| !value.is_empty())
+        .ok_or("LOCALAPPDATA is not set. Set it and run 'agent-task install-central-tools'.")?;
+    let jobserver = PathBuf::from(local_app_data).join("NukeTheBees/jobserver/bin/jobserver.exe");
+    if !jobserver.is_file() {
+        return Err(format!(
+            "Canonical jobserver is missing at '{}'. Run 'agent-task install-central-tools' first.",
+            jobserver.display()
+        ));
+    }
+    Ok(())
+}
+
+fn prepare_worktree() -> Result<(), String> {
     let root = worktree_root()?;
+    require_jobserver()?;
 
     println!("[1/6] Clearing build output");
     let output = root.join("out");
@@ -65,18 +82,63 @@ fn start() -> Result<(), String> {
     run(&root, "cmake", &["--workflow", "--preset", "task-start"])
 }
 
+fn install_central_tools() -> Result<(), String> {
+    let root = worktree_root()?;
+
+    println!("[1/4] Generating CMake presets");
+    run(&root, "python", &["cmake/presets/generate.py"])?;
+
+    println!("[2/4] Configuring native build");
+    run(&root, "cmake", &["--preset", "native"])?;
+
+    println!("[3/4] Installing canonical jobserver");
+    run(
+        &root,
+        "cmake",
+        &[
+            "--build",
+            "--preset",
+            "native",
+            "--target",
+            "install-jobserver",
+        ],
+    )?;
+
+    println!("[4/4] Installing canonical set-live-coding-disabled");
+    run(
+        &root,
+        "cmake",
+        &[
+            "--build",
+            "--preset",
+            "native",
+            "--target",
+            "install-set-live-coding-disabled",
+        ],
+    )
+}
+
 fn main() -> ExitCode {
     let arguments = std::env::args_os().skip(1).collect::<Vec<_>>();
     if arguments.len() == 1 && (arguments[0] == "--help" || arguments[0] == "-h") {
-        println!("Usage: agent-task start\n\nClean and initialize the current Git worktree.");
+        println!("{USAGE}");
         return ExitCode::SUCCESS;
     }
-    if arguments.len() != 1 || arguments[0] != "start" {
-        eprintln!("Usage: agent-task start");
+    if arguments.len() != 1 {
+        eprintln!("{USAGE}");
         return ExitCode::from(2);
     }
 
-    match start() {
+    let result = if arguments[0] == "prepare-worktree" {
+        prepare_worktree()
+    } else if arguments[0] == "install-central-tools" {
+        install_central_tools()
+    } else {
+        eprintln!("{USAGE}");
+        return ExitCode::from(2);
+    };
+
+    match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("agent-task: {error}");
