@@ -54,9 +54,7 @@ d=  reset-devs        Hard reset locally checkoutable devN branches to dev.
 Validation and build commands:
   ctools             Build the standalone C# developer tools.
   install-agent-task Test and install the per-user agent-task executable with Cargo.
-  install-agent-git  Build and install the trusted per-user agent-git executable.
-  integrate-feature [-ToolTests]  Queue the relevance-based final dev integration transaction.
-                     Explicit maintainer override: -MaintainerOverride -OverrideReason <reason>.
+  integrate-feature [-KeepBranch]  Queue the authorized final Git transaction into dev.
 
   cbuild [workflow ...]    Run one or more validation/build workflows in order.
                            Workflows include native-tests, native-core-tests, native-simulation-tests, tool-tests,

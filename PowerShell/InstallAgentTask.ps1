@@ -28,5 +28,7 @@ function install-agent-task {
     Write-Host "`nInstalled agent-task:`n  $installed_tool"
     Write-Host "`nThe maintainer manages PATH. Ensure '$(Split-Path -Parent $installed_tool)' is on PATH."
     Write-Host "`nOn a fresh setup, install the shared project tools with:`n  agent-task install-central-tools"
+    Write-Host "`nPrepare tasks with 'agent-task prepare-worktree'; use 'agent-task git <args...>' for feature work."
+    Write-Host "After validation and explicit user authorization, run 'integrate-feature' for dev integration."
     Write-Host "`nRun 'agent-task --help' to see the available commands."
 }

@@ -1,5 +1,18 @@
 # Git
 # ---------------------------------------------
+# Integration remains privileged; never allow the entire agent-task prefix.
+prefix_rule(
+    pattern=["agent-task", "git"],
+    decision="allow"
+)
+prefix_rule(
+    pattern=["agent-task", "prepare-worktree"],
+    decision="allow"
+)
+prefix_rule(
+    pattern=["agent-task", "install-central-tools"],
+    decision="allow"
+)
 prefix_rule(
     pattern=["git", "status"], 
     decision="allow"

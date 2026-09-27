@@ -11,11 +11,16 @@ Unreal Engine 5.8 project.
 
 # Feature Workflow
 
-* Use agent-git from PATH for supported Git mutations
-* Each agent owns its worktree. Safe ordinary Git operations in separate worktrees may run
-  concurrently; `agent-git` enforces worktree/branch ownership and destructive-operation policy,
-  while Git provides index/ref locking. Do not treat `agent-git` as a repository-global mutex or
-  inspect or modify another agent's worktree.
+* Use `agent-task git <args...>` for mutating Git operations. Agents may freely commit, amend,
+  rebase, reset, clean, restore, and otherwise mutate their own feature work.
+* `dev`, `main`, and `master` are protected. Read them freely, but do not mutate them or switch
+  an agent worktree onto them through the ordinary Git path.
+* The worktree containing the current CWD is the workspace boundary. Do not access or modify
+  another worktree outside that boundary. Git owns index/ref locking and operation state.
+* AgentTask is a cooperative guardrail, not a hostile-process security sandbox. Do not bypass it
+  with raw mutating Git, direct `.git` edits, environment overrides, aliases, alternate Git
+  executables, shell tricks, or other workarounds. Explicitly permitted read-only raw Git is fine.
+  If blocked, report the reason; operations requiring an exception need maintainer intervention.
 * `dev` is the integration branch
 * Begin a new task with `agent-task prepare-worktree` from anywhere in the current Git worktree. It clears
   that worktree's `out`, initializes/updates submodules, and regenerates presets and code.
@@ -25,8 +30,7 @@ Unreal Engine 5.8 project.
   agents invoke it by name from PATH. If it cannot be found or launched, halt and report the
   problem so the maintainer can fix it; do not use an absolute-path fallback or install it automatically.
   Install central per-user prerequisites separately with
-  `agent-task install-central-tools`. AgentGit remains on its maintainer-controlled trusted
-  installation path. See `tools/rust/README.md` for installation.
+  `agent-task install-central-tools`. See `tools/rust/README.md` for installation.
 * After worktree preparation, build only affected targets and execute relevant CTest labels.
   Use `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"` for the
   fast loop. Include the applicable expensive categories once for final validation.
@@ -55,16 +59,15 @@ Unreal Engine 5.8 project.
 * Tooling and native-only candidates must not acquire Unreal resources unless their dependency
   surface requires Unreal. Run light, relevant tests after implementation; run expensive relevant
   gates once against the pinned final candidate.
-* A final-rebase conflict stops before any expensive gate. Resolve it with AgentGit recovery and
-  requeue; unchanged effective patches keep review, while changed conflict resolution requires new
-  review. Report a stopped integration by named stage, blocker, required action, and retained state.
-* **An explicit maintainer instruction is authoritative over repository automation policy.** When
-  the maintainer explicitly instructs the agent in the active interaction to merge despite normal
-  gates, use `integrate-feature -MaintainerOverride -OverrideReason '<reason>'`. The tool records
-  the exact candidate and skipped gates while retaining cheap integrity checks. Agents must never
-  infer, invent, or carry override authorization between interactions.
-* If tooling like agent-git is broken, report it once and obey an explicit maintainer instruction
-  to use the minimal alternative; do not repeatedly retry the broken helper.
+* Integration performs a cheap final Git transaction. Complete affected builds, focused tests,
+  static analysis and review before requesting integration authorization.
+* A final-rebase conflict is aborted and releases the integration job. Resolve with
+  `agent-task git rebase dev` outside the queue, validate the resolution, then requeue.
+  Report the stopped stage, blocker, required action, and retained state.
+* `agent-task integrate` is privileged and is not part of the unconditional Git permission surface.
+  Invoke it through `integrate-feature` only after explicit user authorization.
+* If AgentTask is broken, report it once and follow an explicit maintainer instruction for any
+  minimal alternative; do not repeatedly retry or deliberately bypass it.
 * You have permission to kill stale/hung processes that you spawned or were spawned in your worktree
 * Do not chain CLI commands that may trigger an approval request when they wouldn't individually. This includes routing command outputs to log files. Read the CLI output directly yourself.
 * Make commits for each discrete chunk of work as you work. Use good judgement.
@@ -91,9 +94,8 @@ Unreal Engine 5.8 project.
   `cmake --workflow --preset tool-tests` only when the change can affect a tool or its tests, a
   directly consumed interface/protocol/file format/configuration, shared build or tool
   infrastructure, or the tool is being diagnosed. Unrelated native, game, and runtime changes must
-  not run them merely because a broad test command exists. Integration routes known tools to
-  their own gates automatically. Use `integrate-feature -ToolTests` when the complete developer-tool
-  suite is required; shared/unknown tool infrastructure keeps conservative broad coverage.
+  not run them merely because a broad test command exists. Select focused tool tests from the affected dependencies; use the complete developer-tool
+  suite for shared/unknown tool infrastructure. Integration does not rerun validation.
 
 
 # Agent Behaviour

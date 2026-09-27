@@ -10,20 +10,22 @@ dev-help
 
 The maintainer runs `install-agent-task` to test and install only the Rust `agent-task` CLI,
 then manages its PATH entry. On a fresh setup, `agent-task install-central-tools` installs the
-canonical per-user build tools; AgentGit keeps its separate trusted `install-agent-git` path.
+canonical per-user build tools. Use `agent-task git <args...>` for everyday feature Git operations.
 Agents assume the CLI is installed and begin tasks with `agent-task prepare-worktree`.
 
 `Navigation.ps1` provides `croot`, `cwt`, `cwb`, `cplugin`, and `ctests`. `UnrealBuild.ps1` provides
 `cbuild`, `csetup`, `cplay`, `cprojectfiles`, `integrate-feature`, and jobserver/UBT state helpers.
 After the user authorizes a ready feature, `integrate-feature` queues the exclusive
-`integration/dev` lease and runs the trusted rebase, review, validation, merge, and cleanup
-transaction. Gate selection is relevance-based, so tooling/native changes do not automatically use
-Unreal. An explicitly authorized maintainer override is available through
-`integrate-feature -MaintainerOverride -OverrideReason '<reason>'` and is audited. `cbuild` defaults to
-the native test workflow; `csetup native` prepares native-only prerequisites, while `cplay` prepares
-and builds playable Editor configurations. Use `cbuild tool-tests` for standalone developer-tool
-validation when that scope is affected, and `integrate-feature -ToolTests` to include it in final
-integration validation.
+`integration/dev` lease and invokes privileged `agent-task integrate`: pinned rebase, cheap Git
+sanity checks, atomic dev promotion, worktree refresh, and feature cleanup. Complete relevant
+validation before integration. A conflicting final rebase is aborted; resolve with
+`agent-task git rebase dev` outside the queue and requeue after validation. Use `-KeepBranch`
+to retain the integrated feature branch. Persistent devN worktrees return to their home branches;
+other worktrees detach at the integrated feature tip before branch deletion.
+
+`cbuild` defaults to the native test workflow; `csetup native` prepares native-only prerequisites,
+while `cplay` prepares and builds playable Editor configurations. Use `cbuild tool-tests` for
+standalone developer-tool validation when that scope is affected.
 
 The remaining scripts implement build safety, packaging, project-file generation, and Live Coding
 configuration. Treat them as implementation details unless a documented workflow calls for one
