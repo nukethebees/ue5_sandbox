@@ -12,7 +12,9 @@
     (member scales array @vector_3f_value)))
 
 (module sandbox_ismc_render
-  :header "native/core/include/sandbox/core/sandbox_ismc_scale.h"
+  :header "native/core/include/sandbox/core/sandbox_ismc_render.h"
+  :header-include "sandbox/core/sandbox_ismc_render.h"
+  :backend standard-library
   :namespace ml::sandbox_ismc
   (fixed-point ScaleQ5_3
     :signed false
@@ -22,4 +24,13 @@
   (packed-value Scale8
     :storage std::uint8_t
     :mutable true
-    (field scale ml::sandbox_ismc::ScaleQ5_3 :bits auto :kind fixed-point)))
+    (field scale ml::sandbox_ismc::ScaleQ5_3 :bits auto :kind fixed-point))
+  (record Quat32
+    (member bits std::uint32_t :initializer ""))
+  ; GPU ABI: keep field order and the explicit reserved bytes. Codec lives in C++/HLSL.
+  (record PackedTransform
+    (member position std::int16_t :count 3 :initializer "")
+    (member reserved_0 std::uint16_t :initializer "")
+    (member rotation ml::sandbox_ismc::Quat32 :initializer "")
+    (member scale ml::sandbox_ismc::Scale8 :count 3 :initializer "")
+    (member reserved_1 std::uint8_t :initializer "")))

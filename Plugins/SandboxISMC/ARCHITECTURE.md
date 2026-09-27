@@ -79,6 +79,10 @@ declarations, LOD restrictions, frustum visibility and queued update/recreation/
 
 `ml::sandbox_ismc::PackedTransform` (also `FSandboxISMCRenderInstance`) is little endian,
 standard layout, trivially copyable, 16 bytes, alignment 4. Compile-time assertions fix every offset.
+The `sandbox_ismc_render` module in `lispb/schema/sandbox_ismc.lispb` owns `PackedTransform`,
+`Quat32` storage and `Scale8`, emitted into `sandbox/core/sandbox_ismc_render.h`. In the memory
+planner, refresh `sandbox-code` and select `sandbox_ismc_render / PackedTransform` to inspect the
+record and its nested fields. Encoding and decoding remain in handwritten C++ and HLSL.
 
 | Byte offset | Storage | Meaning |
 | --- | --- | --- |

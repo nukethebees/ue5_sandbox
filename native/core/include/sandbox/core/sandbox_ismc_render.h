@@ -5,6 +5,7 @@
 
 #include "sandbox/core/packed_value.h"
 
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <compare>
@@ -120,4 +121,20 @@ struct Scale8 {
 static_assert(sizeof(Scale8) == sizeof(Scale8::storage_type));
 static_assert(std::is_trivially_copyable_v<Scale8>);
 static_assert(std::is_standard_layout_v<Scale8>);
+
+struct Quat32 {
+    std::uint32_t bits{};
+};
+
+struct PackedTransform {
+    std::array<std::int16_t, 3> position{};
+
+    std::uint16_t reserved_0{};
+
+    ml::sandbox_ismc::Quat32 rotation{};
+
+    std::array<ml::sandbox_ismc::Scale8, 3> scale{};
+
+    std::uint8_t reserved_1{};
+};
 } // namespace ml::sandbox_ismc
