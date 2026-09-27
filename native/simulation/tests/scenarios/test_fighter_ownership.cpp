@@ -139,7 +139,7 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
             << "Survivor owns both original waves on its team";
         for (auto const fighter : after.owned_fighters[i]) {
             EXPECT_TRUE(!std::ranges::contains(seen, fighter)) << "Fighter ownership is unique";
-            seen.insert(fighter);
+            seen.emplace_hint(seen.cend(), fighter);
             EXPECT_TRUE(std::ranges::contains(before.fighters, fighter))
                 << "Original fighter is preserved";
             EXPECT_TRUE(std::ranges::contains(after.fighters, fighter))

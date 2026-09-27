@@ -13,6 +13,12 @@ namespace ioj::sim::levels {
 namespace {
 using IdSet = std::unordered_set<std::string>;
 
+auto insert_unique(IdSet& ids, std::string const& id) -> bool {
+    auto const previous_size{ids.size()};
+    ids.emplace_hint(ids.cend(), id);
+    return ids.size() != previous_size;
+}
+
 void add_error(LevelValidationResult& result,
                LevelValidationErrorCode const code,
                std::string message) {
@@ -67,13 +73,14 @@ auto validate_entities(LevelDefinition const& definition,
                              entity.id == definition.player_entity_id};
 
         if (!entity.id.empty()) {
-            if (!state.ids.insert(entity.id).second) {
+            if (!insert_unique(state.ids, entity.id)) {
                 add_error(result,
                           LevelValidationErrorCode::DuplicateEntityId,
                           entity_owner + " duplicates authored entity id '" + entity.id + "'");
             } else {
-                state.teams_by_id.emplace(entity.id, entity.team);
-                state.spawn_times_by_id.emplace(entity.id, entity.spawn_time_seconds);
+                state.teams_by_id.emplace_hint(state.teams_by_id.cend(), entity.id, entity.team);
+                state.spawn_times_by_id.emplace_hint(
+                    state.spawn_times_by_id.cend(), entity.id, entity.spawn_time_seconds);
             }
         }
 
@@ -142,7 +149,7 @@ auto validate_references(std::vector<std::string> const& references,
             add_error(result,
                       LevelValidationErrorCode::MissionEntityNotFound,
                       "Mission " + std::string{role} + " entity '" + id + "' is not declared");
-        } else if (!validated.insert(id).second) {
+        } else if (!insert_unique(validated, id)) {
             add_error(result,
                       LevelValidationErrorCode::DuplicateMissionEntityReference,
                       "Mission " + std::string{role} + " entity '" + id + "' is duplicated");
@@ -329,7 +336,7 @@ void validate_mission_events(LevelDefinition const& definition,
                               LevelValidationErrorCode::ConflictingMissionEntityRoles,
                               "Mission entity '" + id + "' has conflicting roles");
                 } else {
-                    same_role.insert(id);
+                    same_role.emplace_hint(same_role.cend(), id);
                 }
             }
         };
@@ -422,7 +429,7 @@ auto validate_level(LevelDefinition const& definition) -> LevelValidationResult 
                       LevelValidationErrorCode::SelfUnlockDependency,
                       "Level '" + id + "' requires itself to be completed");
         }
-        if (!unlock_ids.insert(id).second) {
+        if (!insert_unique(unlock_ids, id)) {
             add_error(result,
                       LevelValidationErrorCode::DuplicateUnlockCriterion,
                       "Level-completed criterion for '" + id + "' is duplicated");
@@ -440,7 +447,7 @@ auto validate_level(LevelDefinition const& definition) -> LevelValidationResult 
                       "Team " + std::to_string(index) + " has an empty id");
             continue;
         }
-        if (!teams.insert(team).second) {
+        if (!insert_unique(teams, team)) {
             add_error(result,
                       LevelValidationErrorCode::DuplicateTeamId,
                       "Team " + std::to_string(index) + " duplicates team id '" + team + "'");
@@ -477,7 +484,7 @@ auto validate_level(LevelDefinition const& definition) -> LevelValidationResult 
         auto const target_count{camera.target_entity_ids.size()};
         for (std::size_t index{}; index < target_count; ++index) {
             auto const& id{camera.target_entity_ids[index]};
-            if (!targets.insert(id).second) {
+            if (!insert_unique(targets, id)) {
                 add_error(result,
                           LevelValidationErrorCode::DuplicateCameraTarget,
                           "Initial camera target " + std::to_string(index) +
