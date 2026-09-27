@@ -27,8 +27,16 @@ internal static class SandboxIsmcBenchmarkCommand
                     var process = await application.ProcessRunner.RunAsync(new ProcessRequest(request.Editor,
                         request.EditorArguments(source.Root, run), source.Root, Timeout: TimeSpan.FromSeconds(plan.ValidationOnly ? 60 : request.Seconds + request.WarmupSeconds + 180),
                         OutputLogPath: run.Artifact("process.log")), token);
+                    var logs = $"see '{run.Artifact("unreal.log")}' and '{run.Artifact("process.log")}'";
+                    if (!File.Exists(run.Artifact("result.json")))
+                    {
+                        var reason = process.ExitCode != 0
+                            ? $"Unreal exited with code {process.ExitCode} without publishing result.json"
+                            : "Unreal exited with code 0 without publishing the required terminal benchmark result (result.json)";
+                        throw new BenchmarkToolException($"{reason}; {logs}.");
+                    }
                     var conditions = SandboxIsmcResults.ReadTerminal(run, request);
-                    if (process.ExitCode != 0) throw new BenchmarkToolException($"Unreal exited with code {process.ExitCode}; see '{run.Artifact("unreal.log")}'.");
+                    if (process.ExitCode != 0) throw new BenchmarkToolException($"Unreal exited with code {process.ExitCode}; {logs}.");
                     run.ValidateArtifacts();
                     captures.Add(new SandboxIsmcCapture(run.Manifest.RunId, run.DirectoryPath, repetition, conditions,
                         SandboxIsmcResults.ReadCsv(run.Artifact("metrics.csv"), conditions)));

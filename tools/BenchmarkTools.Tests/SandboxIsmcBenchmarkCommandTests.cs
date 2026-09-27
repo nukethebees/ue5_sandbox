@@ -170,6 +170,38 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     }
 
     [TestMethod]
+    [DataRow(7)]
+    [DataRow(0)]
+    public async Task Exit_without_terminal_result_reports_process_diagnostic_and_owned_logs(int exit_code)
+    {
+        using var fixture = new Fixture { ProcessFailure = exit_code == 0 ? null : "exit", MissingArtifact = "result.json" };
+        Assert.AreEqual(1, await fixture.Run("sandbox-ismc", "--skip-build"));
+        var run_directory = Directory.GetDirectories(Path.Combine(fixture.RunDirectory, "runs")).Single();
+        var error = fixture.Errors.ToString();
+        StringAssert.Contains(error, $"Unreal exited with code {exit_code}");
+        if (exit_code == 0) StringAssert.Contains(error, "without publishing the required terminal benchmark result");
+        StringAssert.Contains(error, Path.Combine(run_directory, "unreal.log"));
+        StringAssert.Contains(error, Path.Combine(run_directory, "process.log"));
+        Assert.IsFalse(error.Contains("Could not find file", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(error.Contains("FileNotFound", StringComparison.OrdinalIgnoreCase));
+        Assert.IsTrue(File.Exists(Path.Combine(run_directory, "process.log")));
+        Assert.IsFalse(File.Exists(Path.Combine(run_directory, "result.json")));
+        Assert.AreEqual("failed", fixture.Document("manifest.json").GetProperty("status").GetString());
+        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(run_directory, "manifest.json")));
+        Assert.AreEqual("failed", manifest.RootElement.GetProperty("status").GetString());
+        StringAssert.Contains(manifest.RootElement.GetProperty("failure").GetString()!, $"Unreal exited with code {exit_code}");
+    }
+
+    [TestMethod]
+    public async Task Successful_terminal_result_does_not_hide_nonzero_process_exit()
+    {
+        using var fixture = new Fixture { ProcessFailure = "exit-after-result" };
+        Assert.AreEqual(1, await fixture.Run("sandbox-ismc", "--skip-build"));
+        StringAssert.Contains(fixture.Errors.ToString(), "Unreal exited with code 7");
+        Assert.AreEqual("failed", fixture.Document("manifest.json").GetProperty("status").GetString());
+    }
+
+    [TestMethod]
     [DataRow("Viewport verification failed before warmup", 0)]
     [DataRow("Benchmark static mesh is null", 1)]
     [DataRow("Benchmark instance creation failed", 0)]
@@ -431,7 +463,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
             foreach (var artifact in new[] { "unreal.log", "capture.utrace" })
                 if (MissingArtifact != artifact) File.WriteAllText(Path.Combine(directory, artifact), "fixture artifact");
             Assert.AreEqual(Path.Combine(directory, "unreal.log"), Argument("-abslog"));
-            return new ProcessResult(0, "Unreal process output");
+            return new ProcessResult(ProcessFailure == "exit-after-result" ? 7 : 0, "Unreal process output");
         }
 
         public static void WriteProtocol(string root)
