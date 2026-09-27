@@ -15,7 +15,7 @@ using IdSet = std::unordered_set<std::string>;
 
 auto insert_unique(IdSet& ids, std::string const& id) -> bool {
     auto const previous_size{ids.size()};
-    ids.emplace_hint(ids.cend(), id);
+    ids.insert(id);
     return ids.size() != previous_size;
 }
 
@@ -78,9 +78,8 @@ auto validate_entities(LevelDefinition const& definition,
                           LevelValidationErrorCode::DuplicateEntityId,
                           entity_owner + " duplicates authored entity id '" + entity.id + "'");
             } else {
-                state.teams_by_id.emplace_hint(state.teams_by_id.cend(), entity.id, entity.team);
-                state.spawn_times_by_id.emplace_hint(
-                    state.spawn_times_by_id.cend(), entity.id, entity.spawn_time_seconds);
+                state.teams_by_id.emplace(entity.id, entity.team);
+                state.spawn_times_by_id.emplace(entity.id, entity.spawn_time_seconds);
             }
         }
 
@@ -336,7 +335,7 @@ void validate_mission_events(LevelDefinition const& definition,
                               LevelValidationErrorCode::ConflictingMissionEntityRoles,
                               "Mission entity '" + id + "' has conflicting roles");
                 } else {
-                    same_role.emplace_hint(same_role.cend(), id);
+                    same_role.insert(id);
                 }
             }
         };

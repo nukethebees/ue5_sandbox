@@ -71,8 +71,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
         auto const locations{entities.view_locations()};
         auto const aim_directions{entities.view_aim_directions()};
         for (std::int32_t index{}; index < entity_count; ++index) {
-            previous_transforms.emplace_hint(
-                previous_transforms.cend(),
+            previous_transforms.emplace(
                 entity_ids[index],
                 FighterTransformSnapshot{
                     .location = vector_at(locations, index),
@@ -98,7 +97,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
                 .rotation = direction_to_rotation(vector_at(aim_directions, index))}};
             auto const previous{previous_transforms.find(id)};
             if (previous != previous_transforms.end() && previous->second != current) {
-                expected_moved.emplace_hint(expected_moved.cend(), id);
+                expected_moved.insert(id);
             }
         }
 
@@ -106,7 +105,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
         std::set<EntityUniqueId> const unique_moved{moved.begin(), moved.end()};
         for (auto const id : unique_moved) {
             if (!previous_transforms.contains(id)) {
-                expected_moved.emplace_hint(expected_moved.cend(), id);
+                expected_moved.insert(id);
             }
         }
         EXPECT_EQ(static_cast<std::int32_t>(moved.size()),
