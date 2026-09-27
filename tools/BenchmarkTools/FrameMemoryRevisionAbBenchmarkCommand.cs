@@ -12,7 +12,7 @@ internal static class FrameMemoryRevisionAbBenchmarkCommand
     {
         if (arguments.Count == 2 && arguments[0] == "--measurement-plan")
         {
-            var plan = BenchmarkMeasurement.Read(application, arguments[1]);
+            var plan = await BenchmarkMeasurement.ReadAsync(application, arguments[1], cancellation_token);
             if (plan.Ismc is not null) throw new BenchmarkToolException("Frame-memory plan contains an unrelated workload.");
             var records = new List<Record>();
             foreach (var item in plan.Sequence)
@@ -35,7 +35,7 @@ internal static class FrameMemoryRevisionAbBenchmarkCommand
         try
         {
             await using var revisions = await RevisionComparisonSession.CreateAsync(application, repository_paths, parsed.Value("--baseline", "HEAD"),
-                run.Manifest.RunId, provided.Length == 0 ? null : provided, parsed.HasFlag("--keep-baseline-worktree"), cancellation_token);
+                run.Manifest.RunId, provided.Length == 0 ? null : provided, parsed.HasFlag("--keep-baseline-worktree"), cancellation_token, run.DirectoryPath);
             run.Manifest.Provenance = new { revisions.Candidate, revisions.Baseline, revisions.OwnsBaseline, Orchestrator = application.ExecutablePath, EffectiveArguments = arguments };
             run.Publish();
             if (!parsed.HasFlag("--skip-build"))
@@ -45,6 +45,8 @@ internal static class FrameMemoryRevisionAbBenchmarkCommand
             }
             if (parsed.HasFlag("--prepare-only"))
             {
+                await BenchmarkRunContext.VerifySourceAsync(application, revisions.Candidate, cancellation_token);
+                await BenchmarkRunContext.VerifySourceAsync(application, revisions.Baseline, cancellation_token);
                 run.Complete();
                 return 0;
             }

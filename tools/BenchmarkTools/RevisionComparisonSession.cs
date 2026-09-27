@@ -18,10 +18,13 @@ internal static class BenchmarkGit
     }
 
     public static async Task<string> TextAsync(BenchmarkToolsApplication application, string root, IReadOnlyList<string> arguments, CancellationToken token)
+        => (await OutputAsync(application, root, arguments, token)).Trim();
+
+    public static async Task<string> OutputAsync(BenchmarkToolsApplication application, string root, IReadOnlyList<string> arguments, CancellationToken token)
     {
         var result = await application.ProcessRunner.RunAsync(Request(root, arguments), token);
         if (result.ExitCode != 0) throw new BenchmarkToolException($"Git {arguments[0]} failed: {result.StandardError.Trim()}");
-        return result.StandardOutput.Trim();
+        return result.StandardOutput;
     }
 
     public static async Task SuccessAsync(BenchmarkToolsApplication application, ProcessRequest request, CancellationToken token)
@@ -54,9 +57,9 @@ internal sealed class RevisionComparisonSession : IAsyncDisposable
     public bool OwnsBaseline => owned_;
 
     public static async Task<RevisionComparisonSession> CreateAsync(BenchmarkToolsApplication application, RepositoryPaths repository,
-        string baseline, string run_id, string? supplied, bool keep, CancellationToken token)
+        string baseline, string run_id, string? supplied, bool keep, CancellationToken token, string? artifact_root = null)
     {
-        var candidate = await BenchmarkRunContext.SourceAsync(application, repository.Root, token);
+        var candidate = await BenchmarkRunContext.SourceAsync(application, repository.Root, token, artifact_root);
         var commit = await BenchmarkGit.TextAsync(application, repository.Root, ["rev-parse", "--verify", "--end-of-options", baseline + "^{commit}"], token);
         var parent = Path.Combine(repository.Root, ".local", "benchmarks", "worktrees");
         var path = supplied is null ? Path.Combine(parent, run_id, "baseline") : Path.GetFullPath(supplied, repository.Root);

@@ -103,6 +103,44 @@ public sealed class BenchmarkInfrastructureTests
     }
 
     [TestMethod]
+    public async Task Source_fingerprint_detects_tracked_and_untracked_edits_but_ignores_owned_artifacts()
+    {
+        using var directory = new BenchmarkTestDirectory();
+        var app = new BenchmarkToolsApplication(new ProcessRunner(), new TestJobserver(), new TestEnvironment(), TextWriter.Null, TextWriter.Null, "unused");
+        await Git("init", "--initial-branch=candidate");
+        await Git("config", "user.name", "Benchmark test");
+        await Git("config", "user.email", "benchmark@example.invalid");
+        var tracked = Path.Combine(directory.Root, "tracked.txt");
+        File.WriteAllText(tracked, "original\n");
+        await Git("add", ".");
+        await Git("commit", "-m", "fixture");
+        var output = BenchmarkRunContext.Create(new RepositoryPaths(directory.Root), "test", "artifacts");
+        var original = await BenchmarkRunContext.SourceAsync(app, directory.Root, default, output.DirectoryPath);
+        Assert.IsFalse(original.Dirty);
+        File.WriteAllText(output.Artifact("process.log"), "growing log");
+        await BenchmarkRunContext.VerifySourceAsync(app, original, default);
+
+        File.WriteAllText(tracked, "changed\n");
+        await Assert.ThrowsExceptionAsync<BenchmarkToolException>(() => BenchmarkRunContext.VerifySourceAsync(app, original, default));
+        File.WriteAllText(tracked, "original\n");
+        var untracked = Path.Combine(directory.Root, "new-source.txt");
+        File.WriteAllText(untracked, "new source\n");
+        await Assert.ThrowsExceptionAsync<BenchmarkToolException>(() => BenchmarkRunContext.VerifySourceAsync(app, original, default));
+        var dirty = await BenchmarkRunContext.SourceAsync(app, directory.Root, default, output.DirectoryPath);
+        Assert.IsTrue(dirty.Dirty);
+        StringAssert.Contains(dirty.Status, "new-source.txt");
+        File.WriteAllText(untracked, "new source changed\n");
+        await Assert.ThrowsExceptionAsync<BenchmarkToolException>(() => BenchmarkRunContext.VerifySourceAsync(app, dirty, default));
+        File.WriteAllText(untracked, "new source\n");
+        await BenchmarkRunContext.VerifySourceAsync(app, dirty, default);
+
+        // Only the owned run is excluded, not its siblings or its output parent.
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(output.DirectoryPath)!, "source.txt"), "unowned file");
+        await Assert.ThrowsExceptionAsync<BenchmarkToolException>(() => BenchmarkRunContext.VerifySourceAsync(app, dirty, default));
+        async Task<string> Git(params string[] args) => await BenchmarkGit.TextAsync(app, directory.Root, args, default);
+    }
+
+    [TestMethod]
     public void Worktree_paths_reject_escape_and_parent_itself()
     {
         using var directory = new BenchmarkTestDirectory();
