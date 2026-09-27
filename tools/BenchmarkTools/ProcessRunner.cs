@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text;
 
 namespace BenchmarkTools;
 
@@ -8,7 +9,8 @@ internal sealed record ProcessRequest(
     IReadOnlyList<string> Arguments,
     string WorkingDirectory,
     IReadOnlyDictionary<string, string?>? EnvironmentVariables = null,
-    TimeSpan? Timeout = null);
+    TimeSpan? Timeout = null,
+    string? OutputLogPath = null);
 
 internal sealed record ProcessResult(int ExitCode, string StandardOutput = "", string StandardError = "");
 
@@ -48,6 +50,8 @@ internal sealed class ProcessRunner : IProcessRunner
             }
         }
 
+        using var output_log = request.OutputLogPath is null ? null : new StreamWriter(request.OutputLogPath, false, new UTF8Encoding(false)) { AutoFlush = true };
+        var output_lock = new object();
         using var process = new Process { StartInfo = start_info };
         try
         {
@@ -67,8 +71,8 @@ internal sealed class ProcessRunner : IProcessRunner
             timeout_source!.CancelAfter(timeout.Value);
         }
         var process_token = timeout_source?.Token ?? cancellation_token;
-        var standard_output_task = process.StandardOutput.ReadToEndAsync(process_token);
-        var standard_error_task = process.StandardError.ReadToEndAsync(process_token);
+        var standard_output_task = CaptureAsync(process.StandardOutput, output_log, output_lock);
+        var standard_error_task = CaptureAsync(process.StandardError, output_log, output_lock);
 
         try
         {
@@ -82,6 +86,7 @@ internal sealed class ProcessRunner : IProcessRunner
                 process.Kill(entireProcessTree: true);
                 await process.WaitForExitAsync(CancellationToken.None);
             }
+            await Task.WhenAll(standard_output_task, standard_error_task);
 
             if (!cancellation_token.IsCancellationRequested && timeout is not null)
             {
@@ -93,5 +98,22 @@ internal sealed class ProcessRunner : IProcessRunner
         }
 
         return new ProcessResult(process.ExitCode, await standard_output_task, await standard_error_task);
+    }
+
+    private static async Task<string> CaptureAsync(StreamReader reader, StreamWriter? log, object output_lock)
+    {
+        if (log is null) return await reader.ReadToEndAsync();
+        var output = new StringBuilder();
+        var buffer = new char[4096];
+        int count;
+        while ((count = await reader.ReadAsync(buffer)) != 0)
+        {
+            output.Append(buffer, 0, count);
+            lock (output_lock)
+            {
+                log.Write(buffer, 0, count);
+            }
+        }
+        return output.ToString();
     }
 }

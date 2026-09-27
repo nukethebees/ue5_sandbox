@@ -24,8 +24,8 @@ internal static class SandboxIsmcBenchmarkCommand
                     run.Manifest.Status = "measuring";
                     run.Publish();
                     var process = await application.ProcessRunner.RunAsync(new ProcessRequest(request.Editor,
-                        request.EditorArguments(source.Root, run), source.Root, Timeout: TimeSpan.FromSeconds(request.Seconds + request.WarmupSeconds + 180)), token);
-                    File.WriteAllText(run.Artifact("process.log"), process.StandardOutput + process.StandardError);
+                        request.EditorArguments(source.Root, run), source.Root, Timeout: TimeSpan.FromSeconds(request.Seconds + request.WarmupSeconds + 180),
+                        OutputLogPath: run.Artifact("process.log")), token);
                     if (process.ExitCode != 0) throw new BenchmarkToolException($"Unreal exited with code {process.ExitCode}; see '{run.Artifact("unreal.log")}'.");
                     run.ValidateArtifacts();
                     captures.Add(SandboxIsmcResults.Read(run, request, repetition));

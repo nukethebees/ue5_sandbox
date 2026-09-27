@@ -194,6 +194,8 @@ public sealed class SandboxIsmcBenchmarkCommandTests
             if (process.Arguments.Contains("native-simulation")) return new ProcessResult(0,
                 "{\"timing\":{\"mean_tick_microseconds\":10},\"memory\":{\"frame_peak_claimed_bytes\":1,\"frame_peak_payload_bytes\":1,\"frame_total_padding_bytes\":0,\"frame_total_root_claims\":1}}");
             if (process.FileName != Editor) throw new AssertFailedException("Unexpected executable: " + process.FileName);
+            Assert.IsNotNull(process.OutputLogPath);
+            File.WriteAllText(process.OutputLogPath, "Unreal process output");
             if (ProcessFailure == "timeout") throw new ProcessTimeoutException("fixture timeout");
             if (ProcessFailure == "launch") throw new ProcessLaunchException("fixture launch", new IOException("missing editor"));
             if (ProcessFailure == "exit") return new ProcessResult(7, StandardError: "fixture process failure");
