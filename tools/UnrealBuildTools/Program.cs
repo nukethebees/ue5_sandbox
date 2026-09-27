@@ -4,6 +4,12 @@ public static class Program
 {
     public static int Main(string[] arguments)
     {
+        if (arguments is ["--version"])
+        {
+            Console.WriteLine($"UnrealBuildTools {typeof(Program).Assembly.GetName().Version!.ToString(3)}");
+            return 0;
+        }
+
         if (!TryParse(arguments, out var request))
         {
             Console.Error.WriteLine("Usage: UnrealBuildTools --build-script <path> --target <target> --platform <platform> --configuration <configuration> --project <path> --native-toolchain <name>");

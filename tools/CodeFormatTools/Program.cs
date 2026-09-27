@@ -4,6 +4,12 @@ public static class Program
 {
     public static async Task<int> Main(string[] arguments)
     {
+        if (arguments is ["--version"])
+        {
+            Console.WriteLine($"CodeFormatTools {typeof(Program).Assembly.GetName().Version!.ToString(3)}");
+            return 0;
+        }
+
         var process_runner = new ProcessRunner();
         var llvm_root = Environment.GetEnvironmentVariable("LLVM_ROOT");
         var clang_format = string.IsNullOrWhiteSpace(llvm_root)

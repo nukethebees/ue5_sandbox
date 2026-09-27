@@ -1,0 +1,33 @@
+{
+  "Roots": [
+    "Codegen",
+    "native",
+    "tools",
+    "Source",
+    "Plugins/USFLoader",
+    "Plugins/SandboxCore",
+    "Plugins/SandboxEditorTools",
+    "Plugins/SandboxISMC",
+    "Plugins/SandboxMaterialExprs",
+    "Plugins/SandboxMesh",
+    "Plugins/SandboxShaders",
+    "Plugins/SandboxUI",
+    "Plugins/SGLegacy",
+    "Plugins/SpaceGame"
+  ],
+  "Extensions": [
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".cc",
+    ".cxx",
+    ".hlsl",
+    ".usf",
+    ".ush"
+  ],
+  "ExcludedComponents": [
+    "generated",
+    "thirdparty",
+    "third_party"
+  ]
+}

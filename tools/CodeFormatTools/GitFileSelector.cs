@@ -170,7 +170,7 @@ internal sealed record FileSelection(string RepositoryRoot, IReadOnlyList<string
 
 internal sealed class FormatFileSelector(
     GitFileSelector git,
-    IReadOnlyList<string>? relative_roots = null)
+    FormattingPolicy? policy = null)
 {
     public async Task<FileSelection> SelectAsync(
         FormatMode mode,
@@ -179,7 +179,7 @@ internal sealed class FormatFileSelector(
         CancellationToken cancellation_token)
     {
         var repository_root = await git.GetRepositoryRootAsync(start_directory, cancellation_token);
-        var scope = new FormattingScope(repository_root, relative_roots ?? FormattingScope.DefaultRoots);
+        var scope = new FormattingScope(repository_root, policy ?? FormattingPolicy.Load(repository_root));
         var files = mode switch
         {
             FormatMode.All => scope.SelectAll(warning),

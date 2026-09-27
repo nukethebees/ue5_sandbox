@@ -78,7 +78,7 @@ public sealed class FormatApplicationTests
         var error = new StringWriter();
         var runner = new DelegatingProcessRunner(_ => new ProcessResult(7, [], "Git unavailable"));
         var application = new FormatApplication(
-            new FormatFileSelector(new GitFileSelector(runner), ["Source"]),
+            new FormatFileSelector(new GitFileSelector(runner), TemporaryGitRepository.Policy),
             formatter,
             output,
             error);
@@ -106,7 +106,7 @@ public sealed class FormatApplicationTests
     private static FormatApplication CreateApplication(IFileFormatter formatter, TextWriter output, TextWriter error)
     {
         return new FormatApplication(
-            new FormatFileSelector(new GitFileSelector(new ProcessRunner()), ["Source"]),
+            new FormatFileSelector(new GitFileSelector(new ProcessRunner()), TemporaryGitRepository.Policy),
             formatter,
             output,
             error);

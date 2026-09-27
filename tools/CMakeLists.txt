@@ -2,17 +2,20 @@ if(NOT IOJ_BUILD_DEVELOPER_TOOLS)
   return()
 endif()
 
-sandbox_add_dotnet_host_tool(
-  code-format-tools-host
-  IOJ_CODE_FORMAT_TOOLS
-  "${PROJECT_SOURCE_DIR}/tools/CodeFormatTools/CodeFormatTools.csproj"
-)
+include("${PROJECT_SOURCE_DIR}/cmake/central_tools.cmake")
+sandbox_central_tool_command(IOJ_CODE_FORMAT_TOOLS CodeFormatTools)
+
+foreach(tool IN ITEMS UnrealBuildTools CodeFormatTools)
+  add_custom_target(install-${tool}
+    COMMAND pwsh -NoProfile -File "${PROJECT_SOURCE_DIR}/tools/install/Install-CentralDotnetTool.ps1"
+      -ToolName "${tool}"
+    USES_TERMINAL VERBATIM)
+endforeach()
 
 sandbox_jobserver_command(format_command STANDARD format "Format project sources")
 add_custom_target(format-code
   COMMAND ${format_command} "${CMAKE_COMMAND}" -E env "LLVM_ROOT=${LLVM_ROOT}"
-    "${IOJ_CODE_FORMAT_TOOLS}" --changed
-  DEPENDS code-format-tools-host
+    ${IOJ_CODE_FORMAT_TOOLS} --changed
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Formatting Git-changed project source files"
   USES_TERMINAL
@@ -21,8 +24,7 @@ add_custom_target(format-code
 
 add_custom_target(format-all-code
   COMMAND ${format_command} "${CMAKE_COMMAND}" -E env "LLVM_ROOT=${LLVM_ROOT}"
-    "${IOJ_CODE_FORMAT_TOOLS}"
-  DEPENDS code-format-tools-host
+    ${IOJ_CODE_FORMAT_TOOLS}
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Formatting all project source files"
   USES_TERMINAL

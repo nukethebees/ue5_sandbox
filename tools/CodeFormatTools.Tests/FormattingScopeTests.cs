@@ -8,6 +8,47 @@ namespace CodeFormatTools.Tests;
 public sealed class FormattingScopeTests
 {
     [TestMethod]
+    public async Task Worktree_policy_controls_roots_extensions_and_exclusions()
+    {
+        using var fixture = new TemporaryGitRepository();
+        fixture.WriteFile(".code-format.json", """
+            {"Roots":["Custom"],"Extensions":[".custom"],"ExcludedComponents":["skip"]}
+            """);
+        var selected = fixture.WriteFile("Custom/file.custom");
+        fixture.WriteFile("Custom/skip/file.custom");
+        fixture.WriteFile("Source/file.custom");
+        fixture.WriteFile("Custom/file.cpp");
+        var selector = new FormatFileSelector(new GitFileSelector(new ProcessRunner()));
+
+        foreach (var mode in new[] { FormatMode.All, FormatMode.Changed, FormatMode.Staged })
+        {
+            if (mode == FormatMode.Staged) { fixture.RunGit("add", "--all"); }
+            var selection = await selector.SelectAsync(mode, fixture.Root, _ => { }, CancellationToken.None);
+            CollectionAssert.AreEqual(new[] { selected }, selection.Files.ToArray());
+        }
+    }
+
+    [DataTestMethod]
+    [DataRow("{}")]
+    [DataRow("null")]
+    [DataRow("{invalid")]
+    [DataRow("{\"Roots\":[\"../outside\"],\"Extensions\":[\".cpp\"],\"ExcludedComponents\":[]}")]
+    public void Invalid_policy_fails_clearly(string contents)
+    {
+        using var fixture = new TemporaryGitRepository();
+        fixture.WriteFile(".code-format.json", contents);
+        Assert.ThrowsException<FormatToolException>(() => FormattingPolicy.Load(fixture.Root));
+    }
+
+    [TestMethod]
+    public void Missing_policy_fails_clearly()
+    {
+        using var fixture = new TemporaryGitRepository();
+        var error = Assert.ThrowsException<FormatToolException>(() => FormattingPolicy.Load(fixture.Root));
+        StringAssert.Contains(error.Message, ".code-format.json");
+    }
+
+    [TestMethod]
     public void SelectAll_recursively_finds_supported_files_and_shaders()
     {
         using var fixture = new TemporaryGitRepository();
@@ -30,7 +71,7 @@ public sealed class FormattingScopeTests
         using var fixture = new TemporaryGitRepository();
         var source = fixture.WriteFile("tools/llvm/clang_tidy/lib/LoopConditionCallCheck.cpp");
         var header = fixture.WriteFile("tools/llvm/clang_tidy/lib/LoopConditionCallCheck.hpp");
-        var scope = new FormattingScope(fixture.Root, FormattingScope.DefaultRoots);
+        var scope = new FormattingScope(fixture.Root, TemporaryGitRepository.Policy with { Roots = ["tools"] });
 
         CollectionAssert.Contains(scope.SelectAll(_ => { }).ToArray(), source);
         Assert.IsTrue(scope.IsFormatCandidate(header));
@@ -59,7 +100,7 @@ public sealed class FormattingScopeTests
         using var fixture = new TemporaryGitRepository();
         var outside = fixture.WriteFile("PluginsElse/outside.cpp");
         var inside = fixture.WriteFile("Plugins/inside.cpp");
-        var scope = new FormattingScope(fixture.Root, ["Plugins"]);
+        var scope = new FormattingScope(fixture.Root, TemporaryGitRepository.Policy with { Roots = ["Plugins"] });
 
         Assert.IsFalse(scope.IsFormatCandidate(outside));
         Assert.IsTrue(scope.IsFormatCandidate(inside));

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <IsStandaloneTool>true</IsStandaloneTool>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 </Project>

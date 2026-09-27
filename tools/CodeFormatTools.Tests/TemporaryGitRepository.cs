@@ -14,6 +14,13 @@ internal sealed class TemporaryGitRepository : IDisposable
         RunGit("config", "user.name", "Code Format Test");
     }
 
+    internal static FormattingPolicy Policy => new()
+    {
+        Roots = ["Source"],
+        Extensions = [".cpp", ".h", ".hpp", ".cc", ".cxx", ".hlsl", ".usf", ".ush"],
+        ExcludedComponents = ["generated", "thirdparty", "third_party"],
+    };
+
     public string Root { get; }
 
     public string PathFor(string relative_path)
@@ -31,7 +38,7 @@ internal sealed class TemporaryGitRepository : IDisposable
 
     public FormattingScope CreateScope()
     {
-        return new FormattingScope(Root, ["Source"]);
+        return new FormattingScope(Root, Policy);
     }
 
     public void CommitAll()

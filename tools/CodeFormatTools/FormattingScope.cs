@@ -2,42 +2,8 @@ namespace CodeFormatTools;
 
 internal sealed class FormattingScope
 {
-    internal static readonly IReadOnlyList<string> DefaultRoots =
-    [
-        "Codegen",
-        "native",
-        "tools",
-        "Source",
-        "Plugins/USFLoader",
-        "Plugins/SandboxCore",
-        "Plugins/SandboxEditorTools",
-        "Plugins/SandboxISMC",
-        "Plugins/SandboxMaterialExprs",
-        "Plugins/SandboxMesh",
-        "Plugins/SandboxShaders",
-        "Plugins/SandboxUI",
-        "Plugins/SGLegacy",
-        "Plugins/SpaceGame",
-    ];
-
-    private static readonly HashSet<string> supported_extensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".cpp",
-        ".h",
-        ".hpp",
-        ".cc",
-        ".cxx",
-        ".hlsl",
-        ".usf",
-        ".ush",
-    };
-
-    private static readonly HashSet<string> excluded_components = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "generated",
-        "thirdparty",
-        "third_party",
-    };
+    private readonly HashSet<string> supported_extensions;
+    private readonly HashSet<string> excluded_components;
 
     private readonly StringComparer path_comparer = OperatingSystem.IsWindows()
         ? StringComparer.OrdinalIgnoreCase
@@ -47,13 +13,15 @@ internal sealed class FormattingScope
         ? StringComparison.OrdinalIgnoreCase
         : StringComparison.Ordinal;
 
-    public FormattingScope(string repository_root, IReadOnlyList<string> relative_roots)
+    public FormattingScope(string repository_root, FormattingPolicy policy)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(repository_root);
-        ArgumentNullException.ThrowIfNull(relative_roots);
+        ArgumentNullException.ThrowIfNull(policy);
+        supported_extensions = new(policy.Extensions, StringComparer.OrdinalIgnoreCase);
+        excluded_components = new(policy.ExcludedComponents, StringComparer.OrdinalIgnoreCase);
 
         RepositoryRoot = Path.GetFullPath(repository_root);
-        Roots = relative_roots
+        Roots = policy.Roots
             .Select(relative_root => Path.GetFullPath(Path.Combine(RepositoryRoot, relative_root)))
             .ToArray();
     }
@@ -105,11 +73,11 @@ internal sealed class FormattingScope
         return files.OrderBy(file_path => file_path, path_comparer).ToArray();
     }
 
-    public static bool IsExcludedPath(string file_path)
+    private bool IsExcludedPath(string file_path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(file_path);
 
-        return Path.GetFullPath(file_path)
+        return Path.GetRelativePath(RepositoryRoot, file_path)
             .Split([Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar], StringSplitOptions.RemoveEmptyEntries)
             .Any(component => excluded_components.Contains(component));
     }

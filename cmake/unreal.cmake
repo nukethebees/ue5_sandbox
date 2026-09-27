@@ -22,7 +22,6 @@ function(add_unreal_target target_name unreal_target)
       --native-toolchain "${IOJ_NATIVE_TOOLCHAIN}"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Building ${unreal_target} ${UE_PLATFORM} ${UE_CONFIGURATION} through UnrealBuildTool"
-    DEPENDS unreal-build-tools-host
     USES_TERMINAL
     VERBATIM
   )

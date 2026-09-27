@@ -175,7 +175,7 @@ public sealed class ParallelFormattingTests
     private static FormatApplication CreateApplication(IFileFormatter formatter, TextWriter output, TextWriter error)
     {
         return new FormatApplication(
-            new FormatFileSelector(new GitFileSelector(new ProcessRunner()), ["Source"]),
+            new FormatFileSelector(new GitFileSelector(new ProcessRunner()), TemporaryGitRepository.Policy),
             formatter,
             output,
             error);

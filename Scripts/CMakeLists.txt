@@ -50,3 +50,12 @@ add_test(NAME CMake.CSharpTests
 set_tests_properties(CMake.CSharpTests PROPERTIES
   LABELS "cmake;integration;subprocess"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}")
+
+add_test(NAME Tools.CentralInstall
+  COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/install/test_central_tools.py"
+    --source-dir "${PROJECT_SOURCE_DIR}")
+set_tests_properties(Tools.CentralInstall PROPERTIES LABELS "developer-tool;central-tools;integration;subprocess")
+
+add_test(NAME PowerShell.Navigation
+  COMMAND pwsh -NoProfile -File "${PROJECT_SOURCE_DIR}/PowerShell/tests/Test-Navigation.ps1")
+set_tests_properties(PowerShell.Navigation PROPERTIES LABELS "developer-tool;scripts;integration;subprocess")
