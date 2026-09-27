@@ -65,6 +65,13 @@ internal sealed class CommandArguments
         }
         return number;
     }
+
+    public int NonnegativeInt32(string name, int fallback, int maximum)
+    {
+        if (!int.TryParse(Value(name, fallback.ToString(CultureInfo.InvariantCulture)), NumberStyles.None, CultureInfo.InvariantCulture, out var result) || result < 0 || result > maximum)
+            throw new BenchmarkToolException($"{name} must be an integer from 0 to {maximum}.");
+        return result;
+    }
 }
 
 internal static class BenchmarkCommandSupport
