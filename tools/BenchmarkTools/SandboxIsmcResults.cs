@@ -12,24 +12,38 @@ internal static class SandboxIsmcResults
     internal static readonly string[] RequiredConditions = ["result_schema", "mode", "visibility", "bounds", "custom_data", "rhi", "instances", "update_percent",
         "churn", "min_instances", "half_cycle_updates", "replacement_percent", "warmup_updates", "warmup_seconds", "measurement_seconds", "shadows", "trace",
         "requested_width", "requested_height", "observed_width", "observed_height", "grid_spacing", "grid_gap", "movement_amplitude", "movement_frequency", "rotation_speed",
-        "frame_limits_disabled", "r.ScreenPercentage", "r.DynamicRes.OperationMode", "r.VSync"];
+        "frame_limits_disabled", "r.ScreenPercentage", "r.DynamicRes.OperationMode", "r.VSync", "r.VSyncEditor", "t.MaxFPS"];
 
-    public static SandboxIsmcCapture Read(BenchmarkRunContext run, SandboxIsmcRequest request, BenchmarkRepetition repetition)
+    public static IReadOnlyDictionary<string, string> ReadTerminal(BenchmarkRunContext run, SandboxIsmcRequest request)
     {
-        try { return ReadCapture(run, request, repetition); }
-        catch (Exception error) when (error is KeyNotFoundException or InvalidOperationException or FormatException)
+        try { return ReadTerminalResult(run, request); }
+        catch (Exception error) when (error is KeyNotFoundException or InvalidOperationException or FormatException or ArgumentException)
         {
             throw new BenchmarkToolException($"Malformed SandboxISMC result: {error.Message}");
         }
     }
 
-    private static SandboxIsmcCapture ReadCapture(BenchmarkRunContext run, SandboxIsmcRequest request, BenchmarkRepetition repetition)
+    private static IReadOnlyDictionary<string, string> ReadTerminalResult(BenchmarkRunContext run, SandboxIsmcRequest request)
     {
         using var json = JsonDocument.Parse(File.ReadAllText(run.Artifact("result.json")));
         var result = json.RootElement;
         if (result.GetProperty("schemaVersion").GetInt32() != 1 || result.GetProperty("runId").GetString() != run.Manifest.RunId)
             throw new BenchmarkToolException("SandboxISMC result schema/run identity mismatch.");
         var conditions = result.GetProperty("conditions").EnumerateObject().ToDictionary(item => item.Name, item => item.Value.GetString()!, StringComparer.Ordinal);
+        run.Manifest.Comparability = conditions;
+        run.Publish();
+        if (!result.GetProperty("complete").GetBoolean())
+        {
+            var error = result.TryGetProperty("error", out var detail) ? detail.GetString() : null;
+            throw new BenchmarkToolException($"SandboxISMC did not complete: {error ?? "viewport failure or early termination; see unreal.log"}");
+        }
+        ValidateConditions(conditions);
+        ValidateRequest(conditions, request);
+        return conditions;
+    }
+
+    internal static void ValidateConditions(IReadOnlyDictionary<string, string> conditions)
+    {
         foreach (var key in RequiredConditions)
             if (!conditions.TryGetValue(key, out var value) || string.IsNullOrWhiteSpace(value)) throw new BenchmarkToolException($"Missing comparability condition: {key}");
         if (conditions["result_schema"] != "1") throw new BenchmarkToolException("Unsupported SandboxISMC conditions schema.");
@@ -37,6 +51,10 @@ internal static class SandboxIsmcResults
         foreach (var key in RequiredConditions.Where(key => !text_conditions.Contains(key)))
             if (!double.TryParse(conditions[key], NumberStyles.Float, CultureInfo.InvariantCulture, out var value) || !double.IsFinite(value))
                 throw new BenchmarkToolException($"Invalid numeric comparability condition: {key}");
+    }
+
+    internal static void ValidateRequest(IReadOnlyDictionary<string, string> conditions, SandboxIsmcRequest request)
+    {
         foreach (var (key, expected) in request.Conditions())
         {
             var actual = conditions[key];
@@ -45,11 +63,6 @@ internal static class SandboxIsmcResults
                 : actual == expected;
             if (!equal) throw new BenchmarkToolException($"SandboxISMC condition mismatch: {key} requested {expected}, observed {actual}.");
         }
-        if (!result.GetProperty("complete").GetBoolean()) throw new BenchmarkToolException("SandboxISMC did not complete measurement (viewport failure or early termination); see unreal.log.");
-        var metrics = ReadCsv(run.Artifact("metrics.csv"), conditions);
-        run.Manifest.Comparability = conditions;
-        run.Publish();
-        return new SandboxIsmcCapture(run.Manifest.RunId, run.DirectoryPath, repetition, conditions, metrics);
     }
 
     internal static IReadOnlyList<BenchmarkMetric> ReadCsv(string path, IReadOnlyDictionary<string, string> conditions)

@@ -77,13 +77,14 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
         update_engine_ismc(float vertical_offset, float angle_radians, float colour_alpha);
     void record_samples(FRendererSamples& samples, FUpdateTiming const& timing);
     void finish_benchmark();
+    void terminate_benchmark(FString const& error);
     void start_insights_trace();
     void stop_insights_trace();
     void disable_frame_rate_limits();
     void restore_frame_rate_limits();
-    void save_report() const;
+    bool save_report() const;
     bool establish_viewport();
-    void save_conditions(bool complete) const;
+    void save_conditions(FString const& error) const;
     bool runs_custom() const;
     bool runs_engine_ismc() const;
     int32 get_update_count() const;
@@ -225,6 +226,8 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     bool request_end_pie_on_completion_{false};
     bool owns_insights_trace_{false};
     bool frame_rate_limits_disabled_{false};
+    bool frame_rate_limits_modified_{false};
+    bool terminal_result_{false};
     int32 previous_vsync_{0};
     int32 previous_editor_vsync_{0};
     float previous_max_fps_{0.0f};

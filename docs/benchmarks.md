@@ -113,7 +113,8 @@ It is the caller's responsibility to ensure those binaries match their recorded 
 
 PIE requests a fixed scene viewport, observes its actual size on a later tick, and fails before
 warmup if it differs. It never writes Editor viewport preferences. Requested and observed sizes,
-RHI, shadows, screen percentage, dynamic resolution and workload controls are recorded separately
+RHI, shadows, actual frame-limit disablement, `r.VSync`, `r.VSyncEditor`, `t.MaxFPS`, screen
+percentage, dynamic resolution and workload controls are recorded separately
 from revision provenance. Additional engine/GPU/driver metadata can extend the manifest without
 changing the workload schema; no hardware inventory is collected today.
 
@@ -124,13 +125,15 @@ SandboxISMC process artifacts live beneath `runs/<process-run-id>/`:
 ```text
 manifest.json      # status, source, effective arguments, expected artifacts, failure
 metrics.csv        # original Unreal within-run summaries
-result.json        # result schema, run ID, completion, observed comparability conditions
+result.json        # authoritative terminal state: schema, run ID, completion/error, conditions
 unreal.log         # Unreal's explicit absolute log destination
 process.log        # streamed stdout/stderr, retained on timeout or cancellation
 capture.utrace     # required when --trace 1
 ```
 
 Manifests and JSON outputs are replaced atomically. Failed runs retain their directory and error.
+The runner reads the terminal result before requiring successful measurement artifacts. Known
+viewport/setup failures terminate PIE promptly and need no CSV or trace to explain the failure.
 The parent captures source HEAD, dirty status, a tracked diff hash, and a hash of untracked paths
 and contents (link targets for untracked symbolic links). Ignored files and the exact owned run
 directory are excluded. Executable paths and effective arguments accompany the source identity.

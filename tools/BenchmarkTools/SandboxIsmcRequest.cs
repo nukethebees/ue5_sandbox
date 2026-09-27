@@ -43,6 +43,8 @@ internal sealed record SandboxIsmcRequest(string Editor, int Width, int Height, 
         ["replacement_percent"] = Number(ReplacementPercent), ["warmup_updates"] = Number(WarmupUpdates),
         ["warmup_seconds"] = Number(WarmupSeconds), ["measurement_seconds"] = Number(Seconds), ["trace"] = Trace ? "1" : "0",
         ["requested_width"] = Number(Width), ["requested_height"] = Number(Height), ["observed_width"] = Number(Width), ["observed_height"] = Number(Height),
+        ["frame_limits_disabled"] = "1", ["r.VSync"] = "0", ["r.VSyncEditor"] = "0", ["t.MaxFPS"] = "0",
+        ["r.ScreenPercentage"] = "100", ["r.DynamicRes.OperationMode"] = "0",
     };
 
     public IReadOnlyList<string> EditorArguments(string root, BenchmarkRunContext run)

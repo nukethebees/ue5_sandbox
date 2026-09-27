@@ -50,6 +50,40 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     }
 
     [TestMethod]
+    [DataRow("Viewport verification failed before warmup", 0)]
+    [DataRow("Benchmark static mesh is null", 1)]
+    [DataRow("Benchmark instance creation failed", 0)]
+    public async Task Terminal_failure_without_success_artifacts_preserves_reason(string error, int exit_code)
+    {
+        using var fixture = new Fixture { TerminalError = error, TerminalExitCode = exit_code };
+        Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old"));
+        StringAssert.Contains(fixture.Errors.ToString(), error);
+        Assert.IsFalse(fixture.Errors.ToString().Contains("Expected artifact", StringComparison.Ordinal));
+        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor));
+        Assert.AreEqual(0, Directory.GetFiles(fixture.RunDirectory, "metrics.csv", SearchOption.AllDirectories).Length);
+        Assert.IsFalse(File.Exists(Path.Combine(fixture.RunDirectory, "comparison.json")));
+    }
+
+    [TestMethod]
+    public async Task Disabled_trace_is_not_required()
+    {
+        using var fixture = new Fixture { MissingArtifact = "capture.utrace" };
+        Assert.AreEqual(0, await fixture.Run("sandbox-ismc", "--skip-build", "--trace", "0"), fixture.Errors.ToString());
+    }
+
+    [TestMethod]
+    [DataRow("frame_limits_disabled")]
+    [DataRow("r.VSync")]
+    [DataRow("r.VSyncEditor")]
+    [DataRow("t.MaxFPS")]
+    public async Task Observed_frame_controls_are_validated(string condition)
+    {
+        using var fixture = new Fixture { WrongCondition = condition };
+        Assert.AreEqual(1, await fixture.Run("sandbox-ismc", "--skip-build"));
+        StringAssert.Contains(fixture.Errors.ToString(), condition);
+    }
+
+    [TestMethod]
     public async Task Observed_viewport_mismatch_fails_and_never_produces_comparison_deltas()
     {
         using var fixture = new Fixture { ViewportMismatch = true };
@@ -170,6 +204,9 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         public bool BuildFailure { get; init; }
         public bool MissingProtocol { get; init; }
         public string? ProcessFailure { get; init; }
+        public string? TerminalError { get; init; }
+        public int TerminalExitCode { get; init; }
+        public string? WrongCondition { get; init; }
         public string? SourceChangeStage { get; init; }
         public bool ChangeBaseline { get; init; }
         private bool source_changed_;
@@ -249,6 +286,12 @@ public sealed class SandboxIsmcBenchmarkCommandTests
             conditions["result_schema"] = "1";
             conditions["rhi"] = RhiMismatch && is_candidate ? "Vulkan" : "D3D12";
             if (ViewportMismatch) conditions["observed_width"] = "640";
+            if (WrongCondition is not null) conditions[WrongCondition] = conditions[WrongCondition] == "0" ? "1" : "0";
+            if (TerminalError is not null)
+            {
+                BenchmarkCommandSupport.WriteJson(Path.Combine(directory, "result.json"), new { SchemaVersion = 1, RunId = id, Complete = false, Error = TerminalError, Conditions = conditions });
+                return new ProcessResult(TerminalExitCode);
+            }
             if (MissingArtifact != "result.json") BenchmarkCommandSupport.WriteJson(Path.Combine(directory, "result.json"), new { SchemaVersion = 1, RunId = id, Complete = true, Conditions = conditions });
             if (ProcessFailure == "malformed") File.WriteAllText(Path.Combine(directory, "result.json"), "{}");
             if (MissingArtifact != "metrics.csv")

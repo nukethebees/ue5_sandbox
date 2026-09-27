@@ -176,18 +176,24 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::BeginPlay);
     Super::BeginPlay();
 
+    parse_command_line();
+    request_end_pie_on_completion_ =
+        FParse::Param(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkEndPIE"));
+    if (root_ == nullptr || camera_ == nullptr || custom_ismc_ == nullptr ||
+        engine_ismc_ == nullptr) {
+        terminate_benchmark(TEXT("Required benchmark component is null"));
+        return;
+    }
+
     if (auto* const player_controller{UGameplayStatics::GetPlayerController(this, 0)}) {
         player_controller->SetViewTarget(this);
     } else {
-        UE_LOG(LogSandboxISMCBenchmark,
-               Warning,
-               TEXT("No player controller is available for the fixed benchmark camera"));
+        terminate_benchmark(
+            TEXT("No player controller is available for the fixed benchmark camera"));
+        return;
     }
 
-    parse_command_line();
     configure_components();
-    request_end_pie_on_completion_ =
-        FParse::Param(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkEndPIE"));
     output_base_name_ = FString::Printf(TEXT("SandboxISMC_%s_%s_bounds_%s_%dpct_%s_%s"),
                                         *get_mode_name(),
                                         *get_bounds_name(),
@@ -196,13 +202,20 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
                                         *get_visibility_name(),
                                         *FDateTime::Now().ToString(TEXT("%Y-%m-%d_%H-%M-%S")));
     start_insights_trace();
+    if (capture_insights_trace_ && !output_directory_.IsEmpty() && !owns_insights_trace_) {
+        terminate_benchmark(TEXT("Could not establish the owned Insights trace"));
+        return;
+    }
     if (!create_instances()) {
-        stop_insights_trace();
-        SetActorTickEnabled(false);
         return;
     }
 
     disable_frame_rate_limits();
+    if (disable_frame_rate_limits_ && !frame_rate_limits_disabled_ &&
+        !output_directory_.IsEmpty()) {
+        terminate_benchmark(TEXT("Could not disable benchmark frame-rate limits"));
+        return;
+    }
     previous_metrics_ = custom_ismc_->get_update_metrics();
     UE_LOG(LogSandboxISMCBenchmark,
            Display,
@@ -246,8 +259,8 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
 }
 
 void ASandboxISMCBenchmarkActor::EndPlay(EEndPlayReason::Type const end_play_reason) {
-    if (running_) {
-        finish_benchmark();
+    if (!terminal_result_) {
+        terminate_benchmark(TEXT("Benchmark ended before completing measurement"));
     }
 
     stop_insights_trace();
@@ -353,9 +366,6 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
     if (measuring_ && automatic_stop_seconds_ > 0.0f &&
         FPlatformTime::Seconds() - measurement_started_seconds_ >= automatic_stop_seconds_) {
         finish_benchmark();
-        if (request_end_pie_on_completion_ && GUnrealEd != nullptr) {
-            GUnrealEd->RequestEndPlayMap();
-        }
     }
 }
 
@@ -483,11 +493,11 @@ void ASandboxISMCBenchmarkActor::configure_components() {
 
 bool ASandboxISMCBenchmarkActor::create_instances() {
     if (static_mesh_ == nullptr) {
-        UE_LOG(LogSandboxISMCBenchmark, Error, TEXT("Benchmark static mesh is null"));
+        terminate_benchmark(TEXT("Benchmark static mesh is null"));
         return false;
     }
     if (uses_custom_data() && custom_data_material_ == nullptr) {
-        UE_LOG(LogSandboxISMCBenchmark, Error, TEXT("Custom-data benchmark material is null"));
+        terminate_benchmark(TEXT("Custom-data benchmark material is null"));
         return false;
     }
 
@@ -560,6 +570,10 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
 
     auto* const material{uses_custom_data() ? custom_data_material_.Get()
                                             : UMaterial::GetDefaultMaterial(MD_Surface)};
+    if (material == nullptr) {
+        terminate_benchmark(TEXT("Benchmark material is null"));
+        return false;
+    }
     custom_ismc_->SetMaterial(0, material);
     engine_ismc_->SetMaterial(0, material);
 
@@ -623,6 +637,12 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
             FPlatformTime::ToMilliseconds64(FPlatformTime::Cycles64() - engine_start);
     }
 
+    if ((runs_custom() && custom_ismc_->get_instance_count() != count) ||
+        (runs_engine_ismc() && engine_ismc_->GetInstanceCount() != count)) {
+        terminate_benchmark(
+            TEXT("Benchmark instance creation did not produce the requested population"));
+        return false;
+    }
     custom_ismc_->SetVisibility(runs_custom());
     engine_ismc_->SetVisibility(runs_engine_ismc());
     TRACE_COUNTER_SET(BenchmarkCustomCreationMs, custom_creation_ms_);
@@ -938,25 +958,45 @@ void ASandboxISMCBenchmarkActor::finish_benchmark() {
         return;
     }
 
-    running_ = false;
     auto const measured_seconds{measuring_ ? FPlatformTime::Seconds() - measurement_started_seconds_
                                            : 0.0};
-    TRACE_COUNTER_SET(BenchmarkRunning, 0);
-    TRACE_BOOKMARK(TEXT("SandboxISMC continuous benchmark stop: %d frames"), frame_ms_.Num());
-    FlushRenderingCommands();
-    if (save_csv_) {
-        save_report();
+    if (!viewport_ready_ || frame_ms_.IsEmpty() || measured_seconds < automatic_stop_seconds_) {
+        terminate_benchmark(TEXT("Benchmark stopped before completing measurement"));
+        return;
     }
-    stop_insights_trace();
-    save_conditions(viewport_ready_ && !frame_ms_.IsEmpty() &&
-                    measured_seconds >= automatic_stop_seconds_);
-    restore_frame_rate_limits();
+    FlushRenderingCommands();
+    if (save_csv_ && !save_report()) {
+        terminate_benchmark(TEXT("Could not save benchmark metrics.csv"));
+        return;
+    }
+    terminate_benchmark({});
 
     UE_LOG(LogSandboxISMCBenchmark,
            Display,
            TEXT("Continuous benchmark complete after %.2f measured seconds and %d measured frames"),
            measured_seconds,
            frame_ms_.Num());
+}
+
+void ASandboxISMCBenchmarkActor::terminate_benchmark(FString const& error) {
+    if (terminal_result_) {
+        return;
+    }
+    terminal_result_ = true;
+    running_ = false;
+    SetActorTickEnabled(false);
+    if (!error.IsEmpty()) {
+        UE_LOG(LogSandboxISMCBenchmark, Error, TEXT("%s"), *error);
+    }
+    TRACE_COUNTER_SET(BenchmarkRunning, 0);
+    TRACE_BOOKMARK(TEXT("SandboxISMC continuous benchmark stop: %d frames"), frame_ms_.Num());
+    FlushRenderingCommands();
+    stop_insights_trace();
+    save_conditions(error);
+    restore_frame_rate_limits();
+    if (request_end_pie_on_completion_ && GUnrealEd != nullptr) {
+        GUnrealEd->RequestEndPlayMap();
+    }
 }
 
 void ASandboxISMCBenchmarkActor::start_insights_trace() {
@@ -1029,11 +1069,13 @@ void ASandboxISMCBenchmarkActor::disable_frame_rate_limits() {
     vsync->Set(0, ECVF_SetByCode);
     editor_vsync->Set(0, ECVF_SetByCode);
     max_fps->Set(0.0f, ECVF_SetByCode);
-    frame_rate_limits_disabled_ = true;
+    frame_rate_limits_modified_ = true;
+    frame_rate_limits_disabled_ =
+        vsync->GetInt() == 0 && editor_vsync->GetInt() == 0 && max_fps->GetFloat() == 0.0f;
 }
 
 void ASandboxISMCBenchmarkActor::restore_frame_rate_limits() {
-    if (!frame_rate_limits_disabled_) {
+    if (!frame_rate_limits_modified_) {
         return;
     }
 
@@ -1050,9 +1092,10 @@ void ASandboxISMCBenchmarkActor::restore_frame_rate_limits() {
         max_fps->Set(previous_max_fps_, ECVF_SetByCode);
     }
     frame_rate_limits_disabled_ = false;
+    frame_rate_limits_modified_ = false;
 }
 
-void ASandboxISMCBenchmarkActor::save_report() const {
+bool ASandboxISMCBenchmarkActor::save_report() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::save_report);
     if (frame_ms_.IsEmpty()) {
         UE_LOG(LogSandboxISMCBenchmark,
@@ -1155,8 +1198,10 @@ void ASandboxISMCBenchmarkActor::save_report() const {
                                                                 : TEXT("metrics.csv"))};
     if (FFileHelper::SaveStringToFile(csv, *path)) {
         UE_LOG(LogSandboxISMCBenchmark, Display, TEXT("Benchmark CSV saved to %s"), *path);
+        return true;
     } else {
         UE_LOG(LogSandboxISMCBenchmark, Error, TEXT("Could not save benchmark CSV to %s"), *path);
+        return false;
     }
 }
 
@@ -1184,24 +1229,16 @@ bool ASandboxISMCBenchmarkActor::establish_viewport() {
         return false;
     }
 
-    UE_LOG(LogSandboxISMCBenchmark,
-           Error,
-           TEXT("Viewport verification failed before warmup: requested %dx%d, observed %dx%d"),
-           requested_width_,
-           requested_height_,
-           observed_viewport_.X,
-           observed_viewport_.Y);
-    running_ = false;
-    save_conditions(false);
-    stop_insights_trace();
-    restore_frame_rate_limits();
-    if (request_end_pie_on_completion_ && GUnrealEd != nullptr) {
-        GUnrealEd->RequestEndPlayMap();
-    }
+    terminate_benchmark(FString::Printf(
+        TEXT("Viewport verification failed before warmup: requested %dx%d, observed %dx%d"),
+        requested_width_,
+        requested_height_,
+        observed_viewport_.X,
+        observed_viewport_.Y));
     return false;
 }
 
-void ASandboxISMCBenchmarkActor::save_conditions(bool const complete) const {
+void ASandboxISMCBenchmarkActor::save_conditions(FString const& error) const {
     if (output_directory_.IsEmpty()) {
         return;
     }
@@ -1209,7 +1246,8 @@ void ASandboxISMCBenchmarkActor::save_conditions(bool const complete) const {
     auto const result{MakeShared<FJsonObject>()};
     result->SetNumberField(TEXT("schemaVersion"), 1);
     result->SetStringField(TEXT("runId"), run_id_);
-    result->SetBoolField(TEXT("complete"), complete);
+    result->SetBoolField(TEXT("complete"), error.IsEmpty());
+    result->SetStringField(TEXT("error"), error);
     auto const conditions{MakeShared<FJsonObject>()};
     auto const number{[&](TCHAR const* key, double value) {
         conditions->SetStringField(key, FString::Printf(TEXT("%.9g"), value));
@@ -1241,9 +1279,12 @@ void ASandboxISMCBenchmarkActor::save_conditions(bool const complete) const {
     number(TEXT("movement_amplitude"), vertical_movement_amplitude_);
     number(TEXT("movement_frequency"), movement_frequency_hz_);
     number(TEXT("rotation_speed"), rotation_speed_degrees_);
-    number(TEXT("frame_limits_disabled"), disable_frame_rate_limits_ ? 1 : 0);
-    for (auto const* name :
-         {TEXT("r.ScreenPercentage"), TEXT("r.DynamicRes.OperationMode"), TEXT("r.VSync")}) {
+    number(TEXT("frame_limits_disabled"), frame_rate_limits_disabled_ ? 1 : 0);
+    for (auto const* name : {TEXT("r.ScreenPercentage"),
+                             TEXT("r.DynamicRes.OperationMode"),
+                             TEXT("r.VSync"),
+                             TEXT("r.VSyncEditor"),
+                             TEXT("t.MaxFPS")}) {
         if (auto const* variable{IConsoleManager::Get().FindConsoleVariable(name)}) {
             number(name, variable->GetFloat());
         }
@@ -1253,6 +1294,7 @@ void ASandboxISMCBenchmarkActor::save_conditions(bool const complete) const {
     auto const writer{TJsonWriterFactory<>::Create(&json)};
     FJsonSerializer::Serialize(result, writer);
     auto const path{FPaths::Combine(output_directory_, TEXT("result.json"))};
+    IFileManager::Get().MakeDirectory(*output_directory_, true);
     auto const temporary{path + TEXT(".tmp")};
     if (!FFileHelper::SaveStringToFile(json, *temporary) ||
         !IFileManager::Get().Move(*path, *temporary, true, true)) {
