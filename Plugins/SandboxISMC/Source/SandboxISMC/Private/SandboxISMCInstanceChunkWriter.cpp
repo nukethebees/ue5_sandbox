@@ -94,9 +94,7 @@ template <ESandboxISMCBoundsMode BoundsMode>
 auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> positions,
                                                      TConstArrayView<FQuat4f> rotations,
                                                      TConstArrayView<FVector3f> scales) -> void {
-    if (!validate_transforms(positions, rotations, scales)) {
-        return;
-    }
+    check(validate_transforms(positions, rotations, scales));
 
     auto const count{instances_.Num()};
     auto* const RESTRICT instances{instances_.GetData()};
