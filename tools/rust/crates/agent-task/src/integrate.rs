@@ -76,19 +76,11 @@ fn clean(root: &Path) -> Result<(), String> {
 }
 
 fn dev_worktree(root: &Path) -> Result<PathBuf, String> {
-    let listing = query(root, &["worktree", "list", "--porcelain", "-z"])?;
-    let mut path = None;
-    let mut matches = Vec::new();
-    for item in listing.split('\0') {
-        if let Some(value) = item.strip_prefix("worktree ") {
-            path = Some(PathBuf::from(value));
-        }
-        if item == "branch refs/heads/dev" {
-            if let Some(path) = path.take() {
-                matches.push(path);
-            }
-        }
-    }
+    let mut matches: Vec<_> = workspace::worktrees(root)?
+        .into_iter()
+        .filter(|w| w.branch.as_deref() == Some("dev"))
+        .map(|w| w.path)
+        .collect();
     if matches.len() != 1 {
         return Err("Integration requires exactly one registered worktree on dev. Ask the maintainer to prepare it.".into());
     }
@@ -123,7 +115,12 @@ fn compare_and_swap(root: &Path, expected: &str, commit: &str) -> Result<(), Str
         .map(|_| ()).map_err(|e| format!("Atomic promotion rejected (expected dev {expected}); no retry was attempted. Feature retained. Reinspect dev before requeueing. {e}"))
 }
 
-fn transaction(root: &Path, keep: bool) -> Result<(), String> {
+fn transaction(
+    root: &Path,
+    keep: bool,
+    mut verify: impl FnMut(&Path) -> Result<(), String>,
+) -> Result<(), String> {
+    verify(root)?;
     println!("Integration stage: preflight");
     let feature = branch(root)?;
     if feature.is_empty() || protected(&feature) || is_home_branch(&feature) {
@@ -140,7 +137,13 @@ fn transaction(root: &Path, keep: bool) -> Result<(), String> {
     println!("Integration stage: final-rebase");
     if let Err(error) = run_git(
         root,
-        &["rebase", "--no-autostash", "--no-update-refs", &base],
+        &[
+            "rebase",
+            "--no-autostash",
+            "--no-update-refs",
+            "--no-rebase-merges",
+            &base,
+        ],
     ) {
         let admin = query(root, &["rev-parse", "--absolute-git-dir"])?;
         if ["rebase-merge", "rebase-apply"]
@@ -173,6 +176,7 @@ fn transaction(root: &Path, keep: bool) -> Result<(), String> {
     }
     clean(&dev)?;
     let tree = query(root, &["rev-parse", &format!("{tip}^{{tree}}")])?;
+    verify(root)?;
     let message = format!("Merge branch '{feature}' into dev");
     let commit = query(
         root,
@@ -234,8 +238,7 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     workspace::check_environment()?;
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     let root = workspace::root(&cwd)?;
-    verify_lease(&root)?;
-    transaction(&root, !args.is_empty())
+    transaction(&root, !args.is_empty(), verify_lease)
 }
 
 #[cfg(test)]

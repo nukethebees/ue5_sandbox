@@ -4,6 +4,60 @@ mod support;
 use std::fs;
 use support::Repo;
 
+fn transaction(root: &Path, keep: bool) -> Result<(), String> {
+    super::transaction(root, keep, |_| Ok(()))
+}
+
+#[test]
+fn lease_is_reverified_before_promotion() {
+    let repo = Repo::new();
+    commit(&repo, &repo.feature, "feature.txt", "feature\n");
+    let base = repo.raw(&repo.dev, &["rev-parse", "HEAD"]);
+    let mut calls = 0;
+    let error = super::transaction(&repo.feature, false, |_| {
+        calls += 1;
+        if calls == 2 {
+            Err("integration lease expired".into())
+        } else {
+            Ok(())
+        }
+    })
+    .unwrap_err();
+    assert_eq!(calls, 2);
+    assert!(error.contains("lease expired"));
+    assert_eq!(repo.raw(&repo.dev, &["rev-parse", "HEAD"]), base);
+    assert_eq!(branch(&repo.feature).unwrap(), "feature");
+}
+
+#[test]
+fn final_rebase_flattens_merges_despite_ambient_configuration() {
+    let repo = Repo::new();
+    repo.raw(&repo.feature, &["switch", "-c", "side"]);
+    commit(&repo, &repo.feature, "side.txt", "side\n");
+    repo.raw(&repo.feature, &["switch", "feature"]);
+    commit(&repo, &repo.feature, "feature.txt", "feature\n");
+    repo.raw(&repo.feature, &["merge", "--no-edit", "side"]);
+    repo.raw(&repo.feature, &["config", "rebase.rebaseMerges", "true"]);
+    repo.raw(&repo.feature, &["config", "rebase.updateRefs", "true"]);
+    let side = repo.raw(&repo.feature, &["rev-parse", "side"]);
+    commit(&repo, &repo.dev, "advance.txt", "advance\n");
+    let base = repo.raw(&repo.dev, &["rev-parse", "HEAD"]);
+    transaction(&repo.feature, true).unwrap();
+    assert_eq!(
+        repo.raw(
+            &repo.dev,
+            &[
+                "rev-list",
+                "--count",
+                "--merges",
+                &format!("{base}..feature")
+            ]
+        ),
+        "0"
+    );
+    assert_eq!(repo.raw(&repo.dev, &["rev-parse", "side"]), side);
+}
+
 fn commit(repo: &Repo, root: &Path, file: &str, content: &str) {
     fs::write(root.join(file), content).unwrap();
     repo.raw(root, &["add", file]);
