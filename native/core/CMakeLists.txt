@@ -89,6 +89,7 @@ target_sources(native-core-tests PRIVATE
   tests/projectile_intercept_tests.cpp
   tests/quantized_decimal_tests.cpp
   tests/rotation_tests.cpp
+  tests/sandbox_ismc_transform_tests.cpp
   tests/space_dust_math_tests.cpp
   tests/static_string_view_tests.cpp
   tests/time_series_data_tests.cpp
