@@ -172,13 +172,16 @@ auto reduce_axis(__m512 minimum, __m512 maximum, float& low, float& high) noexce
     }
 }
 
-template <bool Positions, bool Rotations, bool CalculateBounds>
+template <PackingFields fields, BoundsMode bounds_mode>
 auto pack(TransformInput input,
           PackingParameters const& parameters,
           std::span<PackedTransform> output,
           TransformBounds* bounds) noexcept -> void {
-    assert(!Positions || input.positions.size() == output.size() * 3 * sizeof(float));
-    assert(!Rotations || input.rotations.size() == output.size() * 4 * sizeof(float));
+    static_assert(bounds_mode == BoundsMode::Skip || fields == PackingFields::Transforms);
+    assert(fields == PackingFields::Rotations ||
+           input.positions.size() == output.size() * 3 * sizeof(float));
+    assert(fields == PackingFields::Positions ||
+           input.rotations.size() == output.size() * 4 * sizeof(float));
     auto const limit{_mm512_set1_ps(std::numeric_limits<float>::max())};
     auto const negative_limit{_mm512_set1_ps(-std::numeric_limits<float>::max())};
     Bounds16 batch{limit, limit, limit, negative_limit, negative_limit, negative_limit};
@@ -191,7 +194,7 @@ auto pack(TransformInput input,
         std::array<std::int32_t, 16> packed_y{};
         std::array<std::int32_t, 16> packed_z{};
         std::array<std::uint32_t, 16> packed_rotation{};
-        if constexpr (Positions) {
+        if constexpr (fields != PackingFields::Rotations) {
             px = load_axis<3, 0>(input.positions, index);
             py = load_axis<3, 1>(input.positions, index);
             pz = load_axis<3, 2>(input.positions, index);
@@ -202,44 +205,44 @@ auto pack(TransformInput input,
             std::memcpy(packed_y.data(), &y, sizeof(y));
             std::memcpy(packed_z.data(), &z, sizeof(z));
         }
-        if constexpr (Rotations) {
+        if constexpr (fields != PackingFields::Positions) {
             auto const x{load_axis<4, 0>(input.rotations, index)};
             auto const y{load_axis<4, 1>(input.rotations, index)};
             auto const z{load_axis<4, 2>(input.rotations, index)};
             auto const w{load_axis<4, 3>(input.rotations, index)};
             auto const rotation{pack_rotation16(x, y, z, w)};
             std::memcpy(packed_rotation.data(), &rotation, sizeof(rotation));
-            if constexpr (CalculateBounds) {
+            if constexpr (bounds_mode == BoundsMode::Calculate) {
                 accumulate_bounds(px, py, pz, x, y, z, w, parameters, batch);
             }
         }
         // The 12-byte AoS output has a reserved halfword that must stay untouched.
         for (auto lane{0U}; lane < 16; ++lane) {
             auto& packed{output[index + lane]};
-            if constexpr (Positions) {
+            if constexpr (fields != PackingFields::Rotations) {
                 packed.position = {static_cast<std::int16_t>(packed_x[lane]),
                                    static_cast<std::int16_t>(packed_y[lane]),
                                    static_cast<std::int16_t>(packed_z[lane])};
             }
-            if constexpr (Rotations) {
+            if constexpr (fields != PackingFields::Positions) {
                 packed.rotation.bits = packed_rotation[lane];
             }
         }
     }
 
     auto const tail{output.subspan(vector_count)};
-    if constexpr (Positions && Rotations) {
+    if constexpr (fields == PackingFields::Transforms) {
         TransformInput const remaining{input.positions.subspan(vector_count * 3 * sizeof(float)),
                                        input.rotations.subspan(vector_count * 4 * sizeof(float))};
         pack_transforms_scalar(remaining, parameters, tail, bounds);
-    } else if constexpr (Positions) {
+    } else if constexpr (fields == PackingFields::Positions) {
         pack_positions_scalar(input.positions.subspan(vector_count * 3 * sizeof(float)),
                               parameters.position_root,
                               tail);
     } else {
         pack_rotations_scalar(input.rotations.subspan(vector_count * 4 * sizeof(float)), tail);
     }
-    if constexpr (CalculateBounds) {
+    if constexpr (bounds_mode == BoundsMode::Calculate) {
         reduce_axis(batch.min_x, batch.max_x, bounds->minimum.X, bounds->maximum.X);
         reduce_axis(batch.min_y, batch.max_y, bounds->minimum.Y, bounds->maximum.Y);
         reduce_axis(batch.min_z, batch.max_z, bounds->minimum.Z, bounds->maximum.Z);
@@ -251,20 +254,24 @@ auto pack(TransformInput input,
 auto pack_positions_avx512(std::span<std::byte const> positions,
                            Vector3f root,
                            std::span<PackedTransform> output) noexcept -> void {
-    avx512_detail::pack<true, false, false>({positions, {}}, {root, {}, {}}, output, nullptr);
+    avx512_detail::pack<PackingFields::Positions, BoundsMode::Skip>(
+        {positions, {}}, {root, {}, {}}, output, nullptr);
 }
 auto pack_rotations_avx512(std::span<std::byte const> rotations,
                            std::span<PackedTransform> output) noexcept -> void {
-    avx512_detail::pack<false, true, false>({{}, rotations}, {}, output, nullptr);
+    avx512_detail::pack<PackingFields::Rotations, BoundsMode::Skip>(
+        {{}, rotations}, {}, output, nullptr);
 }
 auto pack_transforms_avx512(TransformInput input,
                             PackingParameters const& parameters,
                             std::span<PackedTransform> output,
                             TransformBounds* bounds) noexcept -> void {
     if (bounds != nullptr) {
-        avx512_detail::pack<true, true, true>(input, parameters, output, bounds);
+        avx512_detail::pack<PackingFields::Transforms, BoundsMode::Calculate>(
+            input, parameters, output, bounds);
     } else {
-        avx512_detail::pack<true, true, false>(input, parameters, output, nullptr);
+        avx512_detail::pack<PackingFields::Transforms, BoundsMode::Skip>(
+            input, parameters, output, nullptr);
     }
 }
 }
