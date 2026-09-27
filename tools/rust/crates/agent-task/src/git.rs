@@ -136,6 +136,18 @@ pub fn check(cwd: &Path, arguments: &[OsString]) -> Result<(), String> {
         }
         if command == "checkout-index" && arg.starts_with("--prefix=") {
             workspace::contained(&root, cwd, arg[9..].as_ref())?;
+        } else if command == "checkout-index" && *arg == "--prefix" {
+            workspace::contained(
+                &root,
+                cwd,
+                args.get(i + 1)
+                    .ok_or("--prefix needs a workspace destination.")?,
+            )?;
+        }
+        if (command == "apply" && *arg == "--unsafe-paths")
+            || (command == "archive" && (*arg == "--remote" || arg.starts_with("--remote=")))
+        {
+            return Err("This option permits access outside the workspace. Use local Git paths without redirection; external operations require the maintainer.".into());
         }
         if !matches!(
             command,

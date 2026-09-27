@@ -135,6 +135,9 @@ fn containment_and_redirects() {
         vec!["diff", "--output=../outside"],
         vec!["archive", "HEAD", "-o", "../outside"],
         vec!["checkout-index", "--prefix=../outside/", "--all"],
+        vec!["checkout-index", "--prefix", "../outside/", "--all"],
+        vec!["apply", "--unsafe-paths", "patch.diff"],
+        vec!["archive", "--remote=../outside", "HEAD"],
     ] {
         repo.blocked(&args);
     }
