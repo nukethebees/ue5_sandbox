@@ -130,12 +130,20 @@ void FLaserPresentation::fill_chunk(FSandboxISMCInstanceChunkWriter& chunk) cons
     auto const sources{entities.sources()};
     auto const initial_lifetimes{entities.initial_lifetimes()};
     auto const spawn_times{entities.spawn_times()};
+    TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
+    transform_positions.SetNumUninitialized(chunk.num());
+    TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
+    transform_rotations.SetNumUninitialized(chunk.num());
+    TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
+    transform_scales.SetNumUninitialized(chunk.num());
     for (int32 local_index{}; local_index < chunk_count; ++local_index) {
         auto const index{visible_indices_[first_index + local_index]};
         auto const location{
             FVector3f{locations.xs()[index], locations.ys()[index], locations.zs()[index]}};
         auto const rotation{FRotator3f{pitches[index], yaws[index], rolls[index]}.Quaternion()};
-        chunk.set_transform(local_index, location, rotation, FVector3f::OneVector);
+        transform_positions[local_index] = location;
+        transform_rotations[local_index] = rotation;
+        transform_scales[local_index] = FVector3f::OneVector;
 
         auto const colour{source_colour(sources[index])};
         auto custom_data{chunk.custom_data(local_index)};
@@ -145,6 +153,7 @@ void FLaserPresentation::fill_chunk(FSandboxISMCInstanceChunkWriter& chunk) cons
         custom_data[3] = initial_lifetimes[index];
         custom_data[4] = spawn_times[index];
     }
+    chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
 }
 
 void FLaserPresentation::queue_hit_sparks() {

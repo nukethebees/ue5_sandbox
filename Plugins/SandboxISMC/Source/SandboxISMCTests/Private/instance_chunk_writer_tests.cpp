@@ -31,9 +31,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
         auto const rotations{
             TArray<FQuat4f>{FQuat4f::Identity, FQuat4f{FVector3f::UpVector, UE_HALF_PI}}};
         auto const scales{TArray<FVector3f>{{2.0f, 3.0f, 4.0f}, {1.0f, 2.0f, 3.0f}}};
-        for (auto index = 0; index < packed.Num(); ++index) {
-            writer.set_transform(index, positions[index], rotations[index], scales[index]);
-        }
+        writer.set_transforms(positions, rotations, scales);
 
         auto const [offset, count]{writer.range()};
         TestRunner->TestEqual(TEXT("The writer exposes its source offset"), offset, 1024);
@@ -83,7 +81,12 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                 true};
             FVector3f const position{10.0f, -20.0f, 30.0f};
             FVector3f const scale{2.0f, 0.5f, 3.0f};
-            writer.set_transform(0, position, rotation, scale);
+            {
+                FVector3f const transform_positions[]{position};
+                FQuat4f const transform_rotations[]{rotation};
+                FVector3f const transform_scales[]{scale};
+                writer.set_transforms(transform_positions, transform_rotations, transform_scales);
+            }
             auto const expected{
                 local_box.TransformBy(FTransform3f{rotation, position, scale}.ToMatrixWithScale())};
             test_vector(*TestRunner,
@@ -131,7 +134,12 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
             FVector3f const scale{static_cast<float>(random.FRandRange(0.0f, 31.875f)),
                                   static_cast<float>(random.FRandRange(0.0f, 31.875f)),
                                   static_cast<float>(random.FRandRange(0.0f, 31.875f))};
-            writer.set_transform(0, position, rotation, scale);
+            {
+                FVector3f const transform_positions[]{position};
+                FQuat4f const transform_rotations[]{rotation};
+                FVector3f const transform_scales[]{scale};
+                writer.set_transforms(transform_positions, transform_rotations, transform_scales);
+            }
             auto const& value{packed[0]};
             auto const q{ml::sandbox_ismc::unpack_quat32(value.rotation)};
             FVector3f const decoded_position{FVector3f{static_cast<float>(value.position[0]),
