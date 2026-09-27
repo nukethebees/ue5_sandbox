@@ -84,6 +84,15 @@ Invoke `tracy-benchmark-compare` by name afterward. `--version` reports the inte
 `tools/perf/CMakeLists.txt`. This optional component remains separately installed; it is not part
 of `agent-task install-central-tools`. For installation testing, pass a private `--prefix`.
 
+## SandboxISMC Insights captures
+
+Use `BenchmarkTools sandbox-ismc` or `sandbox-ismc-revision-ab` for owned Insights captures.
+Each process writes `capture.utrace` alongside `metrics.csv`, `result.json`, and `unreal.log` in
+its allocated run directory. Trace capture defaults on; `--trace 0` disables it consistently for
+both revisions. A requested but absent trace fails the run. The manifest records its exact path,
+source identity, workload controls, and requested/observed viewport. See the
+[SandboxISMC experiment options](benchmarks.md#sandboxismc-experiments).
+
 ## Related documentation
 
 - [Benchmarks](benchmarks.md): supported benchmark workloads and runners.
