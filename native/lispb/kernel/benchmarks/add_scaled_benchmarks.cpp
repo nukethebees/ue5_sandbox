@@ -2,6 +2,7 @@
 
 #include <benchmark/benchmark.h>
 #include <cpuinfo_x86.h>
+#include <hwy/targets.h>
 
 #include <array>
 #include <cstdint>
@@ -108,7 +109,12 @@ void run_benchmark(benchmark::State& state,
                    std::int32_t const count,
                    std::int32_t const offset,
                    bool const extreme,
-                   bool const requires_avx512) {
+                   bool const requires_avx512,
+                   std::int64_t const highway_target) {
+    if (highway_target != 0 && (hwy::SupportedTargets() & highway_target) == 0) {
+        state.SkipWithMessage("Highway target unavailable");
+        return;
+    }
     if (requires_avx512 && !has_avx512()) {
         state.SkipWithError(
             "AVX-512 is unavailable or its register state is not enabled by the OS");
@@ -140,7 +146,12 @@ void run_chunk_benchmark(benchmark::State& state,
                          ChunkKernel const kernel,
                          std::int32_t const count,
                          bool const extreme,
-                         bool const requires_avx512) {
+                         bool const requires_avx512,
+                         std::int64_t const highway_target) {
+    if (highway_target != 0 && (hwy::SupportedTargets() & highway_target) == 0) {
+        state.SkipWithMessage("Highway target unavailable");
+        return;
+    }
     if (requires_avx512 && !has_avx512()) {
         state.SkipWithError(
             "AVX-512 is unavailable or its register state is not enabled by the OS");
@@ -176,12 +187,14 @@ struct Backend {
     std::string_view name;
     Kernel kernel;
     bool requires_avx512;
+    std::int64_t highway_target{};
 };
 
 struct ChunkBackend {
     std::string_view name;
     ChunkKernel kernel;
     bool requires_avx512;
+    std::int64_t highway_target{};
 };
 
 void register_case(Backend const& backend,
@@ -191,8 +204,14 @@ void register_case(Backend const& backend,
     auto const name{std::string{"add_scaled/elementwise/flat/"} + std::string{backend.name} + "/" +
                     (extreme ? "extreme/" : "ordinary/") +
                     (offset == 0 ? "aligned/" : "unaligned/") + std::to_string(count)};
-    benchmark::RegisterBenchmark(
-        name, run_benchmark, backend.kernel, count, offset, extreme, backend.requires_avx512)
+    benchmark::RegisterBenchmark(name,
+                                 run_benchmark,
+                                 backend.kernel,
+                                 count,
+                                 offset,
+                                 extreme,
+                                 backend.requires_avx512,
+                                 backend.highway_target)
         ->UseRealTime();
 }
 
@@ -201,8 +220,13 @@ void
     auto const name{std::string{"add_scaled/elementwise/chunked16/"} + std::string{backend.name} +
                     "/" + (extreme ? "extreme/" : "ordinary/") + "aligned/" +
                     std::to_string(count)};
-    benchmark::RegisterBenchmark(
-        name, run_chunk_benchmark, backend.kernel, count, extreme, backend.requires_avx512)
+    benchmark::RegisterBenchmark(name,
+                                 run_chunk_benchmark,
+                                 backend.kernel,
+                                 count,
+                                 extreme,
+                                 backend.requires_avx512,
+                                 backend.highway_target)
         ->UseRealTime();
 }
 
@@ -211,17 +235,29 @@ auto register_benchmarks() -> bool {
         Backend{"scalar", add::backend::scalar::add_scaled, false},
         Backend{"autovec-avx2", add::backend::autovec_avx2::add_scaled, false},
         Backend{"avx2", add::backend::avx2::add_scaled, false},
+        Backend{"highway-avx2", add::backend::highway_avx2::add_scaled, false, HWY_AVX2},
         Backend{"avx2-unrolled", add::backend::avx2_unrolled::add_scaled, false},
+        Backend{"highway-avx2-unrolled",
+                add::backend::highway_avx2_unrolled::add_scaled,
+                false,
+                HWY_AVX2},
         Backend{"autovec-avx512", add::backend::autovec_avx512::add_scaled, true},
         Backend{"avx512", add::backend::avx512::add_scaled, true},
+        Backend{"highway-avx512", add::backend::highway_avx512::add_scaled, true, HWY_AVX3},
     };
     std::array const chunk_backends{
         ChunkBackend{"scalar", add::backend::scalar::add_scaled, false},
         ChunkBackend{"autovec-avx2", add::backend::autovec_avx2::add_scaled, false},
         ChunkBackend{"avx2", add::backend::avx2::add_scaled, false},
+        ChunkBackend{"highway-avx2", add::backend::highway_avx2::add_scaled, false, HWY_AVX2},
         ChunkBackend{"avx2-unrolled", add::backend::avx2_unrolled::add_scaled, false},
+        ChunkBackend{"highway-avx2-unrolled",
+                     add::backend::highway_avx2_unrolled::add_scaled,
+                     false,
+                     HWY_AVX2},
         ChunkBackend{"autovec-avx512", add::backend::autovec_avx512::add_scaled, true},
         ChunkBackend{"avx512", add::backend::avx512::add_scaled, true},
+        ChunkBackend{"highway-avx512", add::backend::highway_avx512::add_scaled, true, HWY_AVX3},
     };
     constexpr std::array counts{1,  7,  8,   9,    11,   15,    16,    17,     31,     32,
                                 33, 64, 256, 1024, 4096, 16384, 65536, 100000, 262144, 1048576};

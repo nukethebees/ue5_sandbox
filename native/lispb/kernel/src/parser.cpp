@@ -831,6 +831,9 @@ class Parser {
             } else if (field_name == "avx512-source") {
                 result.avx512_source =
                     string_value(field.children[1], "expected AVX-512 source path string");
+            } else if (field_name == "highway-source") {
+                result.highway_source =
+                    string_value(field.children[1], "expected Highway source path string");
             } else if (field_name == "dispatch-source") {
                 result.dispatch_source =
                     string_value(field.children[1], "expected dispatch source path string");
@@ -890,8 +893,8 @@ class Parser {
             fail(form.token.span, "native-x86-simd-lab emission requires avx512-source");
         }
         if (profile != Profile::native_x86_simd_lab &&
-            (result.avx512_source || result.dispatch_source || result.relaxed_avx2_source ||
-             result.relaxed_avx512_source || result.soaos_lanes ||
+            (result.highway_source || result.avx512_source || result.dispatch_source ||
+             result.relaxed_avx2_source || result.relaxed_avx512_source || result.soaos_lanes ||
              !result.vector3_groups.empty())) {
             fail(form.token.span, "native SIMD fields are supported only by native-x86-simd-lab");
         }
@@ -904,6 +907,9 @@ class Parser {
         }
         validate_output_path(result.header, result.span);
         validate_output_path(result.source, result.span);
+        if (result.highway_source) {
+            validate_output_path(*result.highway_source, result.span);
+        }
         if (result.avx512_source) {
             validate_output_path(*result.avx512_source, result.span);
         }
@@ -1102,6 +1108,10 @@ class Parser {
                 std::ranges::find(operation->floating_point_modes, FloatingPointMode::relaxed) !=
                 operation->floating_point_modes.end()};
             auto const has_relaxed_sources{emission.relaxed_avx2_source.has_value()};
+            if (emission.highway_source && operation->kind == OperationKind::sum &&
+                !generates_relaxed) {
+                fail(emission.span, "Highway reductions require the relaxed floating-point mode");
+            }
             if (generates_relaxed != has_relaxed_sources) {
                 fail(emission.span,
                      generates_relaxed

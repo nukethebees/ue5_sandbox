@@ -235,7 +235,13 @@ set(KERNEL_NATIVE_DOT3_AVX2_SOURCE
 set(KERNEL_NATIVE_DOT3_AVX512_SOURCE
   "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab_avx512.cpp"
 )
+set(KERNEL_NATIVE_HIGHWAY_FILES
+  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab_highway.cpp"
+  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_highway.cpp"
+  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab_highway.cpp"
+)
 set(KERNEL_NATIVE_SIMD_FILES
+  ${KERNEL_NATIVE_HIGHWAY_FILES}
   "${KERNEL_NATIVE_SIMD_HEADER}"
   "${KERNEL_NATIVE_SIMD_AVX2_SOURCE}"
   "${KERNEL_NATIVE_SIMD_AVX512_SOURCE}"
@@ -319,7 +325,16 @@ target_link_libraries(kernel-native-dot-relaxed-avx512 PRIVATE
   ioj::fp_fast
 )
 
+foreach(isa IN ITEMS avx2 avx512)
+  add_library(kernel-native-highway-${isa} OBJECT ${KERNEL_NATIVE_HIGHWAY_FILES})
+  ioj_configure_highway_comparison(kernel-native-highway-${isa} ${isa})
+  target_link_libraries(kernel-native-highway-${isa} PRIVATE ioj::fp_strict)
+  target_include_directories(kernel-native-highway-${isa} PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
+endforeach()
+
 set(KERNEL_NATIVE_SIMD_OBJECTS
+  $<TARGET_OBJECTS:kernel-native-highway-avx2>
+  $<TARGET_OBJECTS:kernel-native-highway-avx512>
   $<TARGET_OBJECTS:kernel-native-simd-avx2>
   $<TARGET_OBJECTS:kernel-native-simd-avx512>
   $<TARGET_OBJECTS:kernel-native-dot-relaxed-avx2>
@@ -333,6 +348,7 @@ add_dependencies(kernel-native-simd-tests kernel-native-generated-sources)
 target_compile_features(kernel-native-simd-tests PRIVATE cxx_std_23)
 target_include_directories(kernel-native-simd-tests PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
 target_link_libraries(kernel-native-simd-tests PRIVATE
+  hwy
   CpuFeatures::cpu_features
   GTest::gtest_main
   ioj::arch_avx2
@@ -356,6 +372,7 @@ add_dependencies(kernel-native-benchmarks kernel-native-generated-sources)
 target_compile_features(kernel-native-benchmarks PRIVATE cxx_std_23)
 target_include_directories(kernel-native-benchmarks PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
 target_link_libraries(kernel-native-benchmarks PRIVATE
+  hwy
   benchmark::benchmark
   benchmark::benchmark_main
   CpuFeatures::cpu_features
@@ -459,6 +476,20 @@ add_kernel_benchmark_report(kernel-vector-layout-benchmark-report
 )
 add_kernel_benchmark_report(kernel-benchmark-report-full
   COMMENT "Benchmarking the comprehensive generated kernel matrix and plotting the results"
+)
+
+sandbox_jobserver_command(kernel_highway_benchmark_command BENCHMARK benchmark
+  "Compare Highway and intrinsic generated kernels")
+add_custom_target(kernel-highway-benchmark-report
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/highway"
+  COMMAND ${kernel_highway_benchmark_command} "$<TARGET_FILE:kernel-native-benchmarks>"
+    "--benchmark_filter=^(add_scaled/elementwise|dot_product/relaxed|dot_product_3d/elementwise)/[^/]+/[^/]+/ordinary/(aligned|unaligned)/(17|32|4096|65536)/real_time$"
+    --benchmark_repetitions=3 --benchmark_min_time=0.02s
+    --benchmark_enable_random_interleaving=true --benchmark_display_aggregates_only=true
+    "--benchmark_out=${PROJECT_SOURCE_DIR}/.local/benchmarks/highway/kernels.json"
+    --benchmark_out_format=json
+  DEPENDS kernel-native-benchmarks
+  USES_TERMINAL VERBATIM
 )
 
 add_test(

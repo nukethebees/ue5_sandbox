@@ -1,8 +1,10 @@
 #include "native/generated/add_scaled_x86_simd_lab.h"
+#include "native/generated/dot_product_3d_x86_simd_lab.h"
 #include "native/generated/dot_product_x86_simd_lab.h"
 
 #include <cpuinfo_x86.h>
 #include <gtest/gtest.h>
+#include <hwy/targets.h>
 
 #include <algorithm>
 #include <array>
@@ -41,14 +43,20 @@ void fill_values(float* const lhs, float* const rhs, std::int32_t const count) {
 }
 
 void expect_add(AddKernel const kernel, std::int32_t const count) {
-    std::vector<float> base(static_cast<std::size_t>(count));
-    std::vector<float> value(static_cast<std::size_t>(count));
-    std::vector<float> out(static_cast<std::size_t>(count),
-                           std::numeric_limits<float>::quiet_NaN());
-    fill_values(base.data(), value.data(), count);
-    kernel(base.data(), value.data(), -0.75f, out.data(), count);
-    for (std::int32_t index{}; index < count; ++index) {
-        EXPECT_EQ(out[index], base[index] + value[index] * -0.75f);
+    for (auto const offset : {0, 1}) {
+        alignas(64) std::array<float, 272> base{};
+        alignas(64) std::array<float, 272> value{};
+        alignas(64) std::array<float, 272> out{};
+        out.fill(12345.0f);
+        fill_values(base.data() + offset, value.data() + offset, count);
+        kernel(base.data() + offset, value.data() + offset, -0.75f, out.data() + offset, count);
+        for (std::int32_t index{}; index < count; ++index) {
+            EXPECT_EQ(out[index + offset], base[index + offset] + value[index + offset] * -0.75f);
+        }
+        if (offset != 0) {
+            EXPECT_EQ(out[0], 12345.0f);
+        }
+        EXPECT_EQ(out[count + offset], 12345.0f);
     }
 }
 
@@ -83,13 +91,15 @@ auto reference_dot(float const* const lhs, float const* const rhs, std::int32_t 
 }
 
 void expect_dot(DotKernel const kernel, std::int32_t const count) {
-    std::vector<float> lhs(static_cast<std::size_t>(count));
-    std::vector<float> rhs(static_cast<std::size_t>(count));
-    fill_values(lhs.data(), rhs.data(), count);
-    auto const expected{reference_dot(lhs.data(), rhs.data(), count)};
-    auto const actual{kernel(lhs.data(), rhs.data(), count)};
-    auto const tolerance{std::max(1.0e-5, std::abs(expected) * 2.0e-5)};
-    EXPECT_NEAR(static_cast<double>(actual), expected, tolerance);
+    for (auto const offset : {0, 1}) {
+        alignas(64) std::array<float, 272> lhs{};
+        alignas(64) std::array<float, 272> rhs{};
+        fill_values(lhs.data() + offset, rhs.data() + offset, count);
+        auto const expected{reference_dot(lhs.data() + offset, rhs.data() + offset, count)};
+        auto const actual{kernel(lhs.data() + offset, rhs.data() + offset, count)};
+        auto const tolerance{std::max(1.0e-5, std::abs(expected) * 2.0e-5)};
+        EXPECT_NEAR(static_cast<double>(actual), expected, tolerance);
+    }
 }
 
 void expect_chunk_dot(DotChunkKernel const kernel, std::int32_t const count) {
@@ -210,5 +220,162 @@ TEST(NativeSimdLab, ChunkDotUsesZeroPaddingForPartialChunks) {
             static_cast<DotChunkKernel>(dot::relaxed::backend::avx512_unrolled::dot_product), 257);
     }
 }
+
+TEST(NativeSimdLab, HighwayAvx2MatchesScalarAndHandlesTailsAndPadding) {
+    if ((hwy::SupportedTargets() & HWY_AVX2) == 0) {
+        GTEST_SKIP() << "Highway target unavailable";
+    }
+    for (auto const count : {0, 1, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 257}) {
+        SCOPED_TRACE(count);
+        expect_add(add::backend::highway_avx2::add_scaled, count);
+        expect_chunk_add(static_cast<AddChunkKernel>(add::backend::highway_avx2::add_scaled),
+                         count);
+        expect_add(add::backend::highway_avx2_unrolled::add_scaled, count);
+        expect_chunk_add(
+            static_cast<AddChunkKernel>(add::backend::highway_avx2_unrolled::add_scaled), count);
+        expect_dot(dot::relaxed::backend::highway_avx2::dot_product, count);
+        expect_chunk_dot(
+            static_cast<DotChunkKernel>(dot::relaxed::backend::highway_avx2::dot_product), count);
+        expect_dot(dot::relaxed::backend::highway_avx2_unrolled::dot_product, count);
+        expect_chunk_dot(
+            static_cast<DotChunkKernel>(dot::relaxed::backend::highway_avx2_unrolled::dot_product),
+            count);
+    }
+}
+
+TEST(NativeSimdLab, HighwayAvx512MatchesScalarAndHandlesTailsAndPadding) {
+    if ((hwy::SupportedTargets() & HWY_AVX3) == 0) {
+        GTEST_SKIP() << "Highway target unavailable";
+    }
+    for (auto const count : {0, 1, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 257}) {
+        SCOPED_TRACE(count);
+        expect_add(add::backend::highway_avx512::add_scaled, count);
+        expect_chunk_add(static_cast<AddChunkKernel>(add::backend::highway_avx512::add_scaled),
+                         count);
+        expect_dot(dot::relaxed::backend::highway_avx512::dot_product, count);
+        expect_chunk_dot(
+            static_cast<DotChunkKernel>(dot::relaxed::backend::highway_avx512::dot_product), count);
+        expect_dot(dot::relaxed::backend::highway_avx512_unrolled::dot_product, count);
+        expect_chunk_dot(static_cast<DotChunkKernel>(
+                             dot::relaxed::backend::highway_avx512_unrolled::dot_product),
+                         count);
+    }
+}
+
+namespace dot3 = ml::kernel_benchmark::dot_product_3d_lab;
+using Dot3SoaKernel = void (*)(float const*,
+                               float const*,
+                               float const*,
+                               float const*,
+                               float const*,
+                               float const*,
+                               float*,
+                               std::int32_t) noexcept;
+using Dot3AosKernel = void (*)(dot3::Float3 const*,
+                               dot3::Float3 const*,
+                               float*,
+                               std::int32_t) noexcept;
+using Dot3ChunkKernel = void (*)(dot3::Float3Chunk16 const*,
+                                 dot3::Float3Chunk16 const*,
+                                 dot3::FloatChunk16*,
+                                 std::int32_t) noexcept;
+class HighwayDot3 : public ::testing::TestWithParam<bool> {};
+
+TEST_P(HighwayDot3, LayoutsMatchScalarAcrossTailsAlignmentAndPadding) {
+    auto const avx512{GetParam()};
+    if ((hwy::SupportedTargets() & (avx512 ? HWY_AVX3 : HWY_AVX2)) == 0) {
+        GTEST_SKIP() << "Highway target unavailable";
+    }
+    auto const soa{avx512
+                       ? static_cast<Dot3SoaKernel>(dot3::backend::highway_avx512::dot_product_3d)
+                       : static_cast<Dot3SoaKernel>(dot3::backend::highway_avx2::dot_product_3d)};
+    auto const aos{avx512
+                       ? static_cast<Dot3AosKernel>(dot3::backend::highway_avx512::dot_product_3d)
+                       : static_cast<Dot3AosKernel>(dot3::backend::highway_avx2::dot_product_3d)};
+    auto const chunk{
+        avx512 ? static_cast<Dot3ChunkKernel>(dot3::backend::highway_avx512::dot_product_3d)
+               : static_cast<Dot3ChunkKernel>(dot3::backend::highway_avx2::dot_product_3d)};
+    for (auto const count : {0, 1, 7, 8, 9, 15, 16, 17, 31, 32, 33, 63, 64, 65, 257}) {
+        SCOPED_TRACE(count);
+        for (auto const offset : {0, 1}) {
+            SCOPED_TRACE(offset);
+            alignas(64) std::array<std::array<float, 272>, 6> components{};
+            alignas(64) std::array<dot3::Float3, 272> lhs{};
+            alignas(64) std::array<dot3::Float3, 272> rhs{};
+            alignas(64) std::array<float, 272> output{};
+            alignas(64) std::array<float, 272> reference{};
+            for (int index{}; index < count; ++index) {
+                auto const i{index + offset};
+                auto const v{static_cast<float>(index) * 0.031f - 4.0f};
+                components[0][i] = v;
+                components[1][i] = v * -0.27f;
+                components[2][i] = 1.17f - v;
+                components[3][i] = v * 0.19f;
+                components[4][i] = v + 2.31f;
+                components[5][i] = -v;
+                lhs[i] = {components[0][i], components[1][i], components[2][i]};
+                rhs[i] = {components[3][i], components[4][i], components[5][i]};
+            }
+            dot3::backend::scalar::dot_product_3d(
+                lhs.data() + offset, rhs.data() + offset, reference.data() + offset, count);
+            output.fill(12345.0f);
+            soa(components[0].data() + offset,
+                components[1].data() + offset,
+                components[2].data() + offset,
+                components[3].data() + offset,
+                components[4].data() + offset,
+                components[5].data() + offset,
+                output.data() + offset,
+                count);
+            for (int i{}; i < count; ++i) {
+                EXPECT_EQ(output[i + offset], reference[i + offset]);
+            }
+            EXPECT_EQ(output[count + offset], 12345.0f);
+            if (offset != 0) {
+                EXPECT_EQ(output[0], 12345.0f);
+            }
+            output.fill(12345.0f);
+            aos(lhs.data() + offset, rhs.data() + offset, output.data() + offset, count);
+            for (int i{}; i < count; ++i) {
+                EXPECT_EQ(output[i + offset], reference[i + offset]);
+            }
+            EXPECT_EQ(output[count + offset], 12345.0f);
+            if (offset != 0) {
+                EXPECT_EQ(output[0], 12345.0f);
+            }
+        }
+        std::array<dot3::Float3Chunk16, 17> lhs{};
+        std::array<dot3::Float3Chunk16, 17> rhs{};
+        std::array<dot3::FloatChunk16, 18> output{};
+        auto const chunks{(count + 15) / 16};
+        for (int index{}; index < count; ++index) {
+            auto const c{index / 16};
+            auto const lane{index % 16};
+            auto const v{static_cast<float>(index) * 0.13f};
+            lhs[c].xs[lane] = v;
+            lhs[c].ys[lane] = v - 2.5f;
+            lhs[c].zs[lane] = -v;
+            rhs[c].xs[lane] = 0.7f;
+            rhs[c].ys[lane] = v * 0.31f;
+            rhs[c].zs[lane] = v + 1.5f;
+        }
+        for (auto& block : output) {
+            block.values.fill(12345.0f);
+        }
+        chunk(lhs.data(), rhs.data(), output.data(), chunks);
+        for (int index{}; index < chunks * 16; ++index) {
+            auto const c{index / 16};
+            auto const lane{index % 16};
+            auto const expected{
+                (lhs[c].xs[lane] * rhs[c].xs[lane] + lhs[c].ys[lane] * rhs[c].ys[lane]) +
+                lhs[c].zs[lane] * rhs[c].zs[lane]};
+            EXPECT_EQ(output[c].values[lane], expected);
+        }
+        for (auto const value : output[chunks].values) {
+            EXPECT_EQ(value, 12345.0f);
+        }
+    }
+}
+INSTANTIATE_TEST_SUITE_P(Target, HighwayDot3, ::testing::Bool());
 
 }

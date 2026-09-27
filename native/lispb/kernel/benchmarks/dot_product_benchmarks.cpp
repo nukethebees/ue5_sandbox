@@ -2,6 +2,7 @@
 
 #include <benchmark/benchmark.h>
 #include <cpuinfo_x86.h>
+#include <hwy/targets.h>
 
 #include <algorithm>
 #include <array>
@@ -117,7 +118,12 @@ void run_benchmark(benchmark::State& state,
                    Kernel const kernel,
                    std::int32_t const count,
                    std::int32_t const offset,
-                   bool const requires_avx512) {
+                   bool const requires_avx512,
+                   std::int64_t const highway_target) {
+    if (highway_target != 0 && (hwy::SupportedTargets() & highway_target) == 0) {
+        state.SkipWithMessage("Highway target unavailable");
+        return;
+    }
     if (requires_avx512 && !has_avx512()) {
         state.SkipWithError(
             "AVX-512 is unavailable or its register state is not enabled by the OS");
@@ -142,7 +148,12 @@ void run_benchmark(benchmark::State& state,
 void run_chunk_benchmark(benchmark::State& state,
                          ChunkKernel const kernel,
                          std::int32_t const count,
-                         bool const requires_avx512) {
+                         bool const requires_avx512,
+                         std::int64_t const highway_target) {
+    if (highway_target != 0 && (hwy::SupportedTargets() & highway_target) == 0) {
+        state.SkipWithMessage("Highway target unavailable");
+        return;
+    }
     if (requires_avx512 && !has_avx512()) {
         state.SkipWithError(
             "AVX-512 is unavailable or its register state is not enabled by the OS");
@@ -168,12 +179,14 @@ struct Backend {
     std::string_view name;
     Kernel kernel;
     bool requires_avx512;
+    std::int64_t highway_target{};
 };
 
 struct ChunkBackend {
     std::string_view name;
     ChunkKernel kernel;
     bool requires_avx512;
+    std::int64_t highway_target{};
 };
 
 void register_case(std::string_view const policy,
@@ -183,8 +196,13 @@ void register_case(std::string_view const policy,
     auto const name{std::string{"dot_product/"} + std::string{policy} + "/flat/" +
                     std::string{backend.name} + "/ordinary/" +
                     (offset == 0 ? "aligned/" : "unaligned/") + std::to_string(count)};
-    benchmark::RegisterBenchmark(
-        name, run_benchmark, backend.kernel, count, offset, backend.requires_avx512)
+    benchmark::RegisterBenchmark(name,
+                                 run_benchmark,
+                                 backend.kernel,
+                                 count,
+                                 offset,
+                                 backend.requires_avx512,
+                                 backend.highway_target)
         ->UseRealTime();
 }
 
@@ -193,8 +211,12 @@ void register_chunk_case(std::string_view const policy,
                          std::int32_t const count) {
     auto const name{std::string{"dot_product/"} + std::string{policy} + "/chunked16/" +
                     std::string{backend.name} + "/ordinary/aligned/" + std::to_string(count)};
-    benchmark::RegisterBenchmark(
-        name, run_chunk_benchmark, backend.kernel, count, backend.requires_avx512)
+    benchmark::RegisterBenchmark(name,
+                                 run_chunk_benchmark,
+                                 backend.kernel,
+                                 count,
+                                 backend.requires_avx512,
+                                 backend.highway_target)
         ->UseRealTime();
 }
 
@@ -237,18 +259,41 @@ auto register_benchmarks() -> bool {
     std::array const relaxed_backends{
         Backend{"autovec-avx2", dot::relaxed::backend::autovec_avx2::dot_product, false},
         Backend{"avx2", dot::relaxed::backend::avx2::dot_product, false},
+        Backend{"highway-avx2", dot::relaxed::backend::highway_avx2::dot_product, false, HWY_AVX2},
         Backend{"avx2-unrolled", dot::relaxed::backend::avx2_unrolled::dot_product, false},
+        Backend{"highway-avx2-unrolled",
+                dot::relaxed::backend::highway_avx2_unrolled::dot_product,
+                false,
+                HWY_AVX2},
         Backend{"autovec-avx512", dot::relaxed::backend::autovec_avx512::dot_product, true},
         Backend{"avx512", dot::relaxed::backend::avx512::dot_product, true},
+        Backend{
+            "highway-avx512", dot::relaxed::backend::highway_avx512::dot_product, true, HWY_AVX3},
         Backend{"avx512-unrolled", dot::relaxed::backend::avx512_unrolled::dot_product, true},
+        Backend{"highway-avx512-unrolled",
+                dot::relaxed::backend::highway_avx512_unrolled::dot_product,
+                true,
+                HWY_AVX3},
     };
     std::array const relaxed_chunk_backends{
         ChunkBackend{"autovec-avx2", dot::relaxed::backend::autovec_avx2::dot_product, false},
         ChunkBackend{"avx2", dot::relaxed::backend::avx2::dot_product, false},
+        ChunkBackend{
+            "highway-avx2", dot::relaxed::backend::highway_avx2::dot_product, false, HWY_AVX2},
         ChunkBackend{"avx2-unrolled", dot::relaxed::backend::avx2_unrolled::dot_product, false},
+        ChunkBackend{"highway-avx2-unrolled",
+                     dot::relaxed::backend::highway_avx2_unrolled::dot_product,
+                     false,
+                     HWY_AVX2},
         ChunkBackend{"autovec-avx512", dot::relaxed::backend::autovec_avx512::dot_product, true},
         ChunkBackend{"avx512", dot::relaxed::backend::avx512::dot_product, true},
+        ChunkBackend{
+            "highway-avx512", dot::relaxed::backend::highway_avx512::dot_product, true, HWY_AVX3},
         ChunkBackend{"avx512-unrolled", dot::relaxed::backend::avx512_unrolled::dot_product, true},
+        ChunkBackend{"highway-avx512-unrolled",
+                     dot::relaxed::backend::highway_avx512_unrolled::dot_product,
+                     true,
+                     HWY_AVX3},
     };
     constexpr std::array<std::int32_t, 6> strict_counts{32, 256, 4096, 65536, 262144, 1048576};
     constexpr std::array<std::int32_t, 20> relaxed_counts{
