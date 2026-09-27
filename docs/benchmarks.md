@@ -125,15 +125,19 @@ manifest.json      # status, source, effective arguments, expected artifacts, fa
 metrics.csv        # original Unreal within-run summaries
 result.json        # result schema, run ID, completion, observed comparability conditions
 unreal.log         # Unreal's explicit absolute log destination
-process.log        # captured process stdout/stderr
+process.log        # streamed stdout/stderr, retained on timeout or cancellation
 capture.utrace     # required when --trace 1
 ```
 
 Manifests and JSON outputs are replaced atomically. Failed runs retain their directory and error.
-The parent captures source HEAD, dirty status (including untracked paths), and a tracked diff hash;
-the hash does not identify untracked contents. Executable paths and effective arguments accompany
-the source identity. A dirty candidate is explicitly marked as such. No artifact is selected by
-timestamp, and no files are collected from `Saved/Benchmarks` or a shared Editor log.
+The parent captures source HEAD, dirty status, a tracked diff hash, and a hash of untracked paths
+and contents (link targets for untracked symbolic links). Ignored files and the exact owned run
+directory are excluded. Executable paths and effective arguments accompany the source identity.
+A dirty candidate is explicitly marked as such. Both revision commands check those fingerprints
+after preparation, after queueing for the reservation, and after measurement. A changed source
+fails the run before comparison deltas are published; measurements remain available for diagnosis.
+These snapshots do not lock the checkout or prove that prebuilt binaries match it. No artifact
+is selected by timestamp, and no files are collected from `Saved/Benchmarks` or a shared Editor log.
 
 Comparisons use the current executable as the outer orchestrator even when the baseline predates
 BenchmarkTools. Baseline refs resolve once to exact commits. Owned inputs are detached worktrees

@@ -83,6 +83,34 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     }
 
     [TestMethod]
+    [DataRow("build", false)]
+    [DataRow("build", true)]
+    [DataRow("queued", false)]
+    [DataRow("queued", true)]
+    [DataRow("measured", false)]
+    [DataRow("measured", true)]
+    public async Task Source_changes_reject_results_and_clean_owned_baseline(string stage, bool baseline)
+    {
+        using var fixture = new Fixture { SourceChangeStage = stage, ChangeBaseline = baseline };
+        Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old"));
+        StringAssert.Contains(fixture.Errors.ToString(), "Source changed");
+        Assert.AreEqual("failed", fixture.Document("manifest.json").GetProperty("status").GetString());
+        Assert.IsFalse(File.Exists(Path.Combine(fixture.RunDirectory, "comparison.json")));
+        Assert.IsTrue(fixture.Runner.Requests.Any(item => item.Arguments.Contains("remove")));
+        Assert.AreEqual(stage == "build" ? 0 : 1, fixture.Runner.Requests.Count(item => item.FileName == "test-jobserver"));
+        Assert.AreEqual(stage == "measured" ? 4 : 0, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor));
+    }
+
+    [TestMethod]
+    public async Task Frame_memory_reuses_the_source_validation_before_lease()
+    {
+        using var fixture = new Fixture { SourceChangeStage = "build" };
+        Assert.AreEqual(1, await fixture.Run("frame-memory-revision-ab", "--baseline", "old"));
+        StringAssert.Contains(fixture.Errors.ToString(), "Source changed");
+        Assert.IsFalse(fixture.Runner.Requests.Any(item => item.FileName == "test-jobserver"));
+    }
+
+    [TestMethod]
     public async Task Build_failure_cleans_owned_baseline_and_records_failure_without_a_lease()
     {
         using var fixture = new Fixture { BuildFailure = true };
@@ -142,6 +170,9 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         public bool BuildFailure { get; init; }
         public bool MissingProtocol { get; init; }
         public string? ProcessFailure { get; init; }
+        public string? SourceChangeStage { get; init; }
+        public bool ChangeBaseline { get; init; }
+        private bool source_changed_;
 
         public Fixture()
         {
@@ -177,6 +208,8 @@ public sealed class SandboxIsmcBenchmarkCommandTests
                 var args = process.Arguments.ToList();
                 if (args.Contains("--show-toplevel")) return new ProcessResult(0, process.WorkingDirectory);
                 if (args.Contains("rev-parse")) return new ProcessResult(0, "commit");
+                if (args.Contains("diff") && source_changed_ && (process.WorkingDirectory != Root) == ChangeBaseline)
+                    return new ProcessResult(0, "source changed");
                 if (args.Contains("add") && args.Contains("worktree"))
                 {
                     var path = args[args.IndexOf("--detach") + 1];
@@ -185,15 +218,21 @@ public sealed class SandboxIsmcBenchmarkCommandTests
                 }
                 return new ProcessResult(0);
             }
-            if (process.FileName == "cmake") return new ProcessResult(BuildFailure ? 1 : 0, StandardError: BuildFailure ? "fixture build failure" : "");
+            if (process.FileName == "cmake")
+            {
+                if (SourceChangeStage == "build") source_changed_ = true;
+                return new ProcessResult(BuildFailure ? 1 : 0, StandardError: BuildFailure ? "fixture build failure" : "");
+            }
             if (process.FileName == "test-jobserver")
             {
+                if (SourceChangeStage == "queued") source_changed_ = true;
                 var index = process.Arguments.ToList().IndexOf("--");
                 return new ProcessResult(await Application(true).RunAsync(process.Arguments.Skip(index + 2).ToArray(), Root));
             }
             if (process.Arguments.Contains("native-simulation")) return new ProcessResult(0,
                 "{\"timing\":{\"mean_tick_microseconds\":10},\"memory\":{\"frame_peak_claimed_bytes\":1,\"frame_peak_payload_bytes\":1,\"frame_total_padding_bytes\":0,\"frame_total_root_claims\":1}}");
             if (process.FileName != Editor) throw new AssertFailedException("Unexpected executable: " + process.FileName);
+            if (SourceChangeStage == "measured") source_changed_ = true;
             Assert.IsNotNull(process.OutputLogPath);
             File.WriteAllText(process.OutputLogPath, "Unreal process output");
             if (ProcessFailure == "timeout") throw new ProcessTimeoutException("fixture timeout");

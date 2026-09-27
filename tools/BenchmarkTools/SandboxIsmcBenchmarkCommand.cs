@@ -9,7 +9,7 @@ internal static class SandboxIsmcBenchmarkCommand
     {
         if (arguments.Count == 2 && arguments[0] == "--measurement-plan")
         {
-            var plan = BenchmarkMeasurement.Read(application, arguments[1]);
+            var plan = await BenchmarkMeasurement.ReadAsync(application, arguments[1], token);
             var request = plan.Ismc ?? throw new BenchmarkToolException("SandboxISMC measurement plan has no workload.");
             var captures = new List<SandboxIsmcCapture>();
             foreach (var repetition in plan.Sequence)
@@ -58,8 +58,8 @@ internal static class SandboxIsmcBenchmarkCommand
         {
             await using var revisions = comparison ? await RevisionComparisonSession.CreateAsync(application, repository,
                 parsed.Required("--baseline"), context.Manifest.RunId, supplied.Length == 0 ? null : supplied,
-                parsed.HasFlag("--keep-baseline-worktree"), token) : null;
-            var candidate = revisions?.Candidate ?? await BenchmarkRunContext.SourceAsync(application, repository.Root, token);
+                parsed.HasFlag("--keep-baseline-worktree"), token, context.DirectoryPath) : null;
+            var candidate = revisions?.Candidate ?? await BenchmarkRunContext.SourceAsync(application, repository.Root, token, context.DirectoryPath);
             var baseline = revisions?.Baseline ?? candidate;
             context.Manifest.Provenance = new { Candidate = candidate, Baseline = comparison ? baseline : null,
                 BaselineOwned = revisions?.OwnsBaseline, Compatibility = parsed.Value("--compatibility", "none"),
