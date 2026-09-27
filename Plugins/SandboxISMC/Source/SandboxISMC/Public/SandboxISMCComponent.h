@@ -42,18 +42,19 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     // Reserve CPU staging capacity as each slot next becomes writable; never waits or shrinks.
     auto reserve_instances(int32 instance_count) -> void;
 
-    // Non-empty snapshots require a domain containing every instance position in component space.
+    // Non-empty snapshots require a static mesh and a domain containing every instance position
+    // in component space.
     // Its rounded centre selects the shared quantization root; it is not a geometry/culling bound.
     template <typename FillChunk>
     auto set_instances(int32 instance_count,
                        FBox3f position_bounds,
                        ESandboxISMCParallelism parallelism,
                        FillChunk&& fill_chunk) -> void {
-        set_instances_impl<true>(instance_count,
-                                 position_bounds,
-                                 parallelism,
-                                 FBox3f{ForceInit},
-                                 Forward<FillChunk>(fill_chunk));
+        set_instances_impl<ESandboxISMCBoundsMode::Calculate>(instance_count,
+                                                              position_bounds,
+                                                              parallelism,
+                                                              FBox3f{ForceInit},
+                                                              Forward<FillChunk>(fill_chunk));
     }
 
     // Supplied render bounds contain source geometry; SandboxISMC adds codec error.
@@ -65,11 +66,11 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
                        FillChunk&& fill_chunk) -> void {
         checkf(instance_count <= 0 || local_bounds.IsValid != 0,
                TEXT("SandboxISMC bounds must be valid when instances are submitted"));
-        set_instances_impl<false>(instance_count,
-                                  position_bounds,
-                                  parallelism,
-                                  local_bounds,
-                                  Forward<FillChunk>(fill_chunk));
+        set_instances_impl<ESandboxISMCBoundsMode::Supplied>(instance_count,
+                                                             position_bounds,
+                                                             parallelism,
+                                                             local_bounds,
+                                                             Forward<FillChunk>(fill_chunk));
     }
 
     auto clear_instances() -> void;
@@ -92,7 +93,7 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     static constexpr int32 instance_chunk_size{1024};
     static constexpr int32 parallel_instance_threshold{4096};
 
-    template <bool CalculateBounds, typename FillChunk>
+    template <ESandboxISMCBoundsMode BoundsMode, typename FillChunk>
     auto set_instances_impl(int32 instance_count,
                             FBox3f position_bounds,
                             ESandboxISMCParallelism parallelism,
@@ -125,7 +126,7 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
         auto instances{MakeArrayView(buffer.instances)};
         auto custom_data{MakeArrayView(buffer.custom_data)};
         auto const chunk_count{FMath::DivideAndRoundUp(instance_count, instance_chunk_size)};
-        if constexpr (CalculateBounds) {
+        if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
             chunk_bounds_.SetNumUninitialized(chunk_count, EAllowShrinking::No);
         } else {
             chunk_bounds_.Reset();
@@ -143,10 +144,9 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
                 position_bounds,
                 root,
                 mesh_bounds_origin_,
-                mesh_bounds_extent_,
-                CalculateBounds && has_mesh_bounds_};
+                mesh_bounds_extent_};
             fill_chunk(writer);
-            if constexpr (CalculateBounds) {
+            if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
                 chunk_bounds_[chunk_index] = writer.bounds();
             }
         }};
@@ -162,7 +162,7 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
             }
         }
 
-        if constexpr (CalculateBounds) {
+        if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
             for (auto const& bounds : chunk_bounds_) {
                 local_bounds += bounds;
             }
@@ -196,5 +196,4 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     int32 instance_count_{0};
     int32 num_custom_data_floats_{0};
     int32 reserved_instance_count_{0};
-    bool has_mesh_bounds_{false};
 };

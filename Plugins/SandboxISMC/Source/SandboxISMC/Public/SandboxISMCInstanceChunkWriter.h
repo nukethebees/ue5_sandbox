@@ -9,6 +9,11 @@
 #include "Math/Transform.h"
 #include "Math/Vector.h"
 
+enum class ESandboxISMCBoundsMode : uint8 {
+    Calculate,
+    Supplied,
+};
+
 class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
   public:
     FSandboxISMCInstanceChunkWriter(TArrayView<FSandboxISMCRenderInstance> instances,
@@ -18,8 +23,7 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
                                     FBox3f position_bounds,
                                     FVector3f position_root,
                                     FVector3f mesh_bounds_origin,
-                                    FVector3f mesh_bounds_extent,
-                                    bool has_mesh_bounds)
+                                    FVector3f mesh_bounds_extent)
         : instances_{instances}
         , custom_data_{custom_data}
         , num_custom_data_floats_{num_custom_data_floats}
@@ -27,8 +31,7 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
         , position_bounds_{position_bounds}
         , position_root_{position_root}
         , mesh_bounds_origin_{mesh_bounds_origin}
-        , mesh_bounds_extent_{mesh_bounds_extent}
-        , has_mesh_bounds_{has_mesh_bounds} {
+        , mesh_bounds_extent_{mesh_bounds_extent} {
         check(num_custom_data_floats >= 0);
         check(custom_data.Num() == instances.Num() * num_custom_data_floats);
     }
@@ -50,6 +53,7 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
 
     // Views cover this entire chunk and must not overlap the packed output storage.
     // Rotations must be finite and normalized.
+    template <ESandboxISMCBoundsMode BoundsMode>
     auto set_transforms(TConstArrayView<FVector3f> positions,
                         TConstArrayView<FQuat4f> rotations,
                         TConstArrayView<FVector3f> scales) -> void;
@@ -79,5 +83,11 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
     FVector3f position_root_{FVector3f::ZeroVector};
     FVector3f mesh_bounds_origin_{FVector3f::ZeroVector};
     FVector3f mesh_bounds_extent_{FVector3f::ZeroVector};
-    bool has_mesh_bounds_{false};
 };
+
+extern template SANDBOXISMC_API auto
+    FSandboxISMCInstanceChunkWriter::set_transforms<ESandboxISMCBoundsMode::Calculate>(
+        TConstArrayView<FVector3f>, TConstArrayView<FQuat4f>, TConstArrayView<FVector3f>) -> void;
+extern template SANDBOXISMC_API auto
+    FSandboxISMCInstanceChunkWriter::set_transforms<ESandboxISMCBoundsMode::Supplied>(
+        TConstArrayView<FVector3f>, TConstArrayView<FQuat4f>, TConstArrayView<FVector3f>) -> void;

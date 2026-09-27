@@ -115,7 +115,7 @@ void FLaserPresentation::update_ismc() {
     instances->set_instances(visible_indices_.Num(),
                              position_bounds,
                              ESandboxISMCParallelism::Auto,
-                             [this](auto& chunk) { fill_chunk(chunk); });
+                             [this](FSandboxISMCInstanceChunkWriter& chunk) { fill_chunk(chunk); });
 }
 
 void FLaserPresentation::fill_chunk(FSandboxISMCInstanceChunkWriter& chunk) const {
@@ -153,7 +153,8 @@ void FLaserPresentation::fill_chunk(FSandboxISMCInstanceChunkWriter& chunk) cons
         custom_data[3] = initial_lifetimes[index];
         custom_data[4] = spawn_times[index];
     }
-    chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
+    chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
+        transform_positions, transform_rotations, transform_scales);
 }
 
 void FLaserPresentation::queue_hit_sparks() {

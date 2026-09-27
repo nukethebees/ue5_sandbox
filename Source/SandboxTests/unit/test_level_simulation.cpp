@@ -703,8 +703,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
                                                FBox3f{FVector3f{-524272}, FVector3f{524272}},
                                                FVector3f::ZeroVector,
                                                FVector3f::ZeroVector,
-                                               FVector3f::ZeroVector,
-                                               false};
+                                               FVector3f::ZeroVector};
         presentation.fill_chunk(writer);
         for (int32 index{}; index < active_count; ++index) {
             auto const source_index{presentation.visible_indices_[index]};

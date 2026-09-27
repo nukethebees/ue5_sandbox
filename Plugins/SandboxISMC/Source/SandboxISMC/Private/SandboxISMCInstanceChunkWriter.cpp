@@ -1,5 +1,6 @@
 #include "SandboxISMCInstanceChunkWriter.h"
 
+template <ESandboxISMCBoundsMode BoundsMode>
 auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> positions,
                                                      TConstArrayView<FQuat4f> rotations,
                                                      TConstArrayView<FVector3f> scales) -> void {
@@ -45,7 +46,7 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
         instance.reserved_0 = 0;
         instance.reserved_1 = 0;
 
-        if (has_mesh_bounds_) {
+        if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
             auto const row_0{rotation.RotateVector(FVector3f::ForwardVector) * scale.X};
             auto const row_1{rotation.RotateVector(FVector3f::RightVector) * scale.Y};
             auto const row_2{rotation.RotateVector(FVector3f::UpVector) * scale.Z};
@@ -58,3 +59,10 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
         }
     }
 }
+
+template SANDBOXISMC_API auto
+    FSandboxISMCInstanceChunkWriter::set_transforms<ESandboxISMCBoundsMode::Calculate>(
+        TConstArrayView<FVector3f>, TConstArrayView<FQuat4f>, TConstArrayView<FVector3f>) -> void;
+template SANDBOXISMC_API auto
+    FSandboxISMCInstanceChunkWriter::set_transforms<ESandboxISMCBoundsMode::Supplied>(
+        TConstArrayView<FVector3f>, TConstArrayView<FQuat4f>, TConstArrayView<FVector3f>) -> void;

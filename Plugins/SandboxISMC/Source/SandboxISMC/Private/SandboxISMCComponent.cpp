@@ -669,12 +669,10 @@ auto USandboxISMCComponent::synchronize_mesh_cache() -> bool {
     auto const origin{FVector3f{mesh_bounds.Origin}};
     auto const extent{FVector3f{mesh_bounds.BoxExtent}};
     auto const changed{cached_mesh_.Get() != static_mesh_ || mesh_bounds_origin_ != origin ||
-                       mesh_bounds_extent_ != extent ||
-                       has_mesh_bounds_ != (static_mesh_ != nullptr)};
+                       mesh_bounds_extent_ != extent};
     cached_mesh_ = static_mesh_;
     mesh_bounds_origin_ = origin;
     mesh_bounds_extent_ = extent;
-    has_mesh_bounds_ = static_mesh_ != nullptr;
     return changed;
 }
 
@@ -749,6 +747,8 @@ auto USandboxISMCComponent::reserve_instances(int32 instance_count) -> void {
 auto USandboxISMCComponent::begin_instance_update(int32 instance_count)
     -> FSandboxISMCStagingBuffer& {
     check(IsInGameThread());
+    checkf(instance_count == 0 || static_mesh_ != nullptr,
+           TEXT("SandboxISMC requires a static mesh before submitting non-empty instances"));
     if (synchronize_mesh_cache()) {
         MarkRenderStateDirty();
         PrecachePSOs();
