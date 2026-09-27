@@ -29,18 +29,20 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
         auto const positions{TArray<FVector3f>{{64.0f, 80.0f, 96.0f}, {112.0f, 128.0f, 144.0f}}};
         auto const rotations{
             TArray<FQuat4f>{FQuat4f::Identity, FQuat4f{FVector3f::UpVector, UE_HALF_PI}}};
-        auto const scales{TArray<FVector3f>{{2.0f, 3.0f, 4.0f}, {1.0f, 2.0f, 3.0f}}};
+        auto const scales{TArray<FVector3f>{{2.0f, 3.0f, 3.875f}, {1.0f, 2.0f, 3.0f}}};
         writer.set_transforms<ESandboxISMCBoundsMode::Supplied>(positions, rotations, scales);
 
         auto const [offset, count]{writer.range()};
         TestRunner->TestEqual(TEXT("The writer exposes its source offset"), offset, 1024);
         TestRunner->TestEqual(TEXT("The writer exposes its range length"), count, 2);
-        TestRunner->TestEqual(TEXT("Packed transforms occupy 16 bytes"),
+        TestRunner->TestEqual(TEXT("Packed transforms occupy 12 bytes"),
                               static_cast<int32>(sizeof(FSandboxISMCRenderInstance)),
-                              16);
+                              12);
 
         for (auto index = 0; index < packed.Num(); ++index) {
             auto const& value{packed[index]};
+            double const decoded_scale[]{
+                value.scale.x_value(), value.scale.y_value(), value.scale.z_value()};
             auto const decoded{ml::sandbox_ismc::unpack_quat32(value.rotation)};
             FQuat4f const orientation{decoded.X, decoded.Y, decoded.Z, decoded.W};
             TestRunner->TestTrue(TEXT("Quaternion error stays below 0.3 degrees"),
@@ -52,7 +54,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                                           value.position[axis] * ml::sandbox_ismc::position_quantum,
                                       positions[index][axis]);
                 TestRunner->TestEqual(TEXT("Independent scale axes decode"),
-                                      static_cast<float>(value.scale[axis].scale_value()),
+                                      static_cast<float>(decoded_scale[axis]),
                                       scales[index][axis]);
             }
         }
@@ -130,9 +132,9 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                                            static_cast<float>(random.FRandRange(-180.0f, 180.0f)),
                                            static_cast<float>(random.FRandRange(-180.0f, 180.0f))}
                                     .Quaternion()};
-            FVector3f const scale{static_cast<float>(random.FRandRange(0.0f, 31.875f)),
-                                  static_cast<float>(random.FRandRange(0.0f, 31.875f)),
-                                  static_cast<float>(random.FRandRange(0.0f, 31.875f))};
+            FVector3f const scale{static_cast<float>(random.FRandRange(0.0f, 3.875f)),
+                                  static_cast<float>(random.FRandRange(0.0f, 3.875f)),
+                                  static_cast<float>(random.FRandRange(0.0f, 3.875f))};
             {
                 FVector3f const transform_positions[]{position};
                 FQuat4f const transform_rotations[]{rotation};
@@ -146,9 +148,9 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                                                        static_cast<float>(value.position[1]),
                                                        static_cast<float>(value.position[2])} *
                                              ml::sandbox_ismc::position_quantum};
-            FVector3f const decoded_scale{static_cast<float>(value.scale[0].scale_value()),
-                                          static_cast<float>(value.scale[1].scale_value()),
-                                          static_cast<float>(value.scale[2].scale_value())};
+            FVector3f const decoded_scale{static_cast<float>(value.scale.x_value()),
+                                          static_cast<float>(value.scale.y_value()),
+                                          static_cast<float>(value.scale.z_value())};
             FTransform3f const transform{
                 FQuat4f{q.X, q.Y, q.Z, q.W}, decoded_position, decoded_scale};
             for (int32 corner{0}; corner < 8; ++corner) {

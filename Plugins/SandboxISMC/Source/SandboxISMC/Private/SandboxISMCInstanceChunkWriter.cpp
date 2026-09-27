@@ -78,7 +78,7 @@ auto FSandboxISMCInstanceChunkWriter::validate_transforms(TConstArrayView<FVecto
         if (!supports_scale(scale)) {
             UE_LOG(LogTemp,
                    Fatal,
-                   TEXT("SandboxISMC instance %d requires finite scale in [0, 31.875]; "
+                   TEXT("SandboxISMC instance %d requires finite scale in [0, 3.875]; "
                         "received (%g, %g, %g)"),
                    first_index_ + local_index,
                    scale.X,
@@ -111,11 +111,10 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
         for (int32 axis{0}; axis < 3; ++axis) {
             instance.position[axis] =
                 ml::sandbox_ismc::quantize_position_unchecked(position[axis], position_root_[axis]);
-            instance.scale[axis] = ml::sandbox_ismc::pack_scale_unchecked(scale[axis]);
         }
+        instance.scale =
+            ml::sandbox_ismc::pack_scale_unchecked(ml::make_vector3f(scale.X, scale.Y, scale.Z));
         instance.rotation = ml::sandbox_ismc::pack_normalized_quat32(quaternion);
-        instance.reserved_0 = 0;
-        instance.reserved_1 = 0;
 
         if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
             auto const row_0{rotation.RotateVector(FVector3f::ForwardVector) * scale.X};

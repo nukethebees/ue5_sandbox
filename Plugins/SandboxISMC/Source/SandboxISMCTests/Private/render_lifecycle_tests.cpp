@@ -126,7 +126,7 @@ TEST_CLASS(SandboxISMCRenderLifecycle, "SandboxISMC.RenderTests")
             TestRunner->TestEqual(TEXT("The render thread consumes the recreated snapshot"),
                                   metrics.uploaded_bytes,
                                   static_cast<uint64>(final_instance_count) *
-                                      (16 + 3 * sizeof(float)));
+                                      (sizeof(FSandboxISMCRenderInstance) + 3 * sizeof(float)));
 
             component->clear_instances();
             world.SendAllEndOfFrameUpdates();

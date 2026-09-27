@@ -560,7 +560,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
         auto const mesh_box{FBox3f{cube->GetBounds().GetBox()}};
         for (auto const position : {FVector3f{-8, 8, -24}, FVector3f{8, -8, 24}}) {
             auto const rotation{FRotator3f{31, -123, 179.99f}.Quaternion()};
-            FVector3f const scale{31.8125f, 0.0625f, 1.1875f};
+            FVector3f const scale{3.8125f, 0.0625f, 1.1875f};
             FTransform3f const source{rotation, position, scale};
             auto const source_bounds{mesh_box.TransformBy(source.ToMatrixWithScale())};
             FBox3f const domain{FVector3f{-32}, FVector3f{32}};
@@ -595,14 +595,13 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                     }
                 });
             auto const q{ml::sandbox_ismc::unpack_quat32(packed.rotation)};
-            FTransform3f const decoded{
-                FQuat4f{q.X, q.Y, q.Z, q.W},
-                FVector3f{packed.position[0] * 16.0f,
-                          packed.position[1] * 16.0f,
-                          packed.position[2] * 16.0f},
-                FVector3f{static_cast<float>(packed.scale[0].scale_value()),
-                          static_cast<float>(packed.scale[1].scale_value()),
-                          static_cast<float>(packed.scale[2].scale_value())}};
+            FTransform3f const decoded{FQuat4f{q.X, q.Y, q.Z, q.W},
+                                       FVector3f{packed.position[0] * 16.0f,
+                                                 packed.position[1] * 16.0f,
+                                                 packed.position[2] * 16.0f},
+                                       FVector3f{static_cast<float>(packed.scale.x_value()),
+                                                 static_cast<float>(packed.scale.y_value()),
+                                                 static_cast<float>(packed.scale.z_value())}};
             auto const actual{component->CalcBounds(FTransform::Identity).GetBox()};
             for (int32 corner{0}; corner < 8; ++corner) {
                 FVector3f const point{(corner & 1) ? mesh_box.Max.X : mesh_box.Min.X,

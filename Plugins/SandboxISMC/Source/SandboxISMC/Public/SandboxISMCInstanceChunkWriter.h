@@ -42,8 +42,9 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
     auto num_custom_data_floats() const -> int32 { return num_custom_data_floats_; }
 
     static auto supports_scale(FVector3f scale) -> bool {
-        return scale.X >= 0.0f && scale.Y >= 0.0f && scale.Z >= 0.0f && scale.X <= 31.875f &&
-               scale.Y <= 31.875f && scale.Z <= 31.875f;
+        auto constexpr maximum{ml::sandbox_ismc::maximum_scale};
+        return scale.X >= 0.0f && scale.Y >= 0.0f && scale.Z >= 0.0f && scale.X <= maximum &&
+               scale.Y <= maximum && scale.Z <= maximum;
     }
 
     auto custom_data(int32 local_index) -> TArrayView<float> {
@@ -54,7 +55,7 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
     // Views cover this entire chunk and must not overlap the packed output storage.
     // With checks enabled, the full batch is validated before any instances or bounds are written.
     // Positions must be finite and in the snapshot domain, rotations finite and normalized,
-    // and scales finite and in [0, 31.875]. Builds without checks assume valid input.
+    // and scales finite and in [0, 3.875]. Builds without checks assume valid input.
     template <ESandboxISMCBoundsMode BoundsMode>
     auto set_transforms(TConstArrayView<FVector3f> positions,
                         TConstArrayView<FQuat4f> rotations,

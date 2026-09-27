@@ -236,11 +236,13 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
                 .AddUsage(EBufferUsageFlags::ShaderResource)
                 .DetermineInitialState();
         VertexBufferRHI = rhi_command_list.CreateBuffer(create_description);
-        instance_srv_ =
-            rhi_command_list.CreateShaderResourceView(VertexBufferRHI,
-                                                      FRHIViewDesc::CreateBufferSRV()
-                                                          .SetType(FRHIViewDesc::EBufferType::Typed)
-                                                          .SetFormat(PF_A32B32G32R32F));
+        instance_srv_ = rhi_command_list.CreateShaderResourceView(
+            VertexBufferRHI,
+            FRHIViewDesc::CreateBufferSRV()
+                .SetType(FRHIViewDesc::EBufferType::Typed)
+                // Compatibility binding only: packed input uses vertex attributes.
+                // A scalar view also supports a single 12-byte instance.
+                .SetFormat(PF_R32_FLOAT));
     }
 
     void allocate_custom_data(FRHICommandListBase& rhi_command_list, int32 required_capacity) {
@@ -382,7 +384,6 @@ class FSandboxISMCVertexFactory final : public FLocalVertexFactory {
         add_instance_element(0, 8);
         add_instance_element(4, 9);
         add_instance_element(8, 10);
-        add_instance_element(12, 11);
 
         FVertexStreamComponent const null_lightmap{
             &GNullVertexBuffer, 0, 0, VET_Float4, EVertexStreamUsage::Instancing};

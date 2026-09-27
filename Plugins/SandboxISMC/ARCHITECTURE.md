@@ -1,7 +1,7 @@
 # SandboxISMC architecture
 
 The component accepts dense bulk snapshots for one mesh. Producers retain position, quaternion
-rotation and scale columns; chunk writers pack a 16-byte render transform plus
+rotation and scale columns; chunk writers pack a 12-byte render transform plus
 optional custom floats. It owns no gameplay, collision, physics or navigation state. Ray tracing
 remains disabled. Negative scale on any instance axis is unsupported and checked before packing;
 component-level reverse culling remains supported.
@@ -34,7 +34,7 @@ Unavailable LOD0 RHI resources log a diagnostic and suppress drawing.
 
 PSO precaching supplies an explicit LOD0 declaration through `CollectPSOPrecacheData`. Mesh stream
 binding and declaration construction are shared with the runtime vertex factory, including its
-four instanced uint attributes and null lightmap stream. Requests use resolved section materials, section
+three instanced uint attributes and null lightmap stream. Requests use resolved section materials, section
 shadow state and component reverse culling. The normal proxy-delay policy is honoured. This is
 component precaching; the generic local-VF declaration is not used for these requests.
 
@@ -78,26 +78,29 @@ declarations, LOD restrictions, frustum visibility and queued update/recreation/
 ## Packed transform ABI
 
 `ml::sandbox_ismc::PackedTransform` (also `FSandboxISMCRenderInstance`) is little endian,
-standard layout, trivially copyable, 16 bytes, alignment 4. Compile-time assertions fix every offset.
+standard layout, trivially copyable, 12 bytes, alignment 4. Compile-time assertions fix every offset.
 The `sandbox_ismc_render` module in `lispb/schema/sandbox_ismc.lispb` owns `PackedTransform`,
-`Quat32` storage and `Scale8`, emitted into `sandbox/core/sandbox_ismc_render.h`. In the memory
+`Quat32` storage and `Scale16`, emitted into `sandbox/core/sandbox_ismc_render.h`. In the memory
 planner, refresh `sandbox-code` and select `sandbox_ismc_render / PackedTransform` to inspect the
 record and its nested fields. Encoding and decoding remain in handwritten C++ and HLSL.
 
 | Byte offset | Storage | Meaning |
 | --- | --- | --- |
 | 0, 2, 4 | three signed int16 | XYZ position offsets |
-| 6 | uint16 | reserved, zero |
+| 6 | lispb `Scale16` (uint16) | Q2.3 X/Y/Z in bits 0..4/5..9/10..14; bit 15 reserved, zero |
 | 8 | uint32 | smallest-three quaternion |
-| 12, 13, 14 | three lispb `Scale8` | independent unsigned Q5.3 scales |
-| 15 | uint8 | reserved, zero |
+
+At 40000 instances the transform payload is 480000 bytes per snapshot, excluding custom data:
+25% smaller than the previous 16-byte format and 81.25% smaller than Phase 1's 64-byte format.
+Upload and staging metrics derive byte counts from the actual instance size.
 
 Every non-empty submission supplies a finite, ordered **position domain**, separately from optional
 **render bounds**. The domain must contain every submitted position. Its centre is rounded to the
 fixed 16-UU grid to choose the snapshot root. Each offset is `floor((position-root)/16 + 0.5)`;
 ties go toward positive infinity. Supported offsets are -32767 through +32767, giving +/-524272 UU
 (5.24272 km) per axis and at most 8 UU (8 cm) rounding error per axis. The vector error is at most
-`8*sqrt(3)` UU. Invalid domains and numeric overflow terminate with diagnostics; domain membership is a slow-check caller contract;
+`8*sqrt(3)` UU. Invalid domains terminate with diagnostics; a batch validation pass inside `check()`
+checks positions, rotations and scales before packing. Builds without checks assume valid input;
 there is no clamping, adaptive precision or first-instance fallback. Empty submissions ignore the domain.
 
 The originally proposed 1-UU quantum cannot cover authored production populations.
@@ -114,18 +117,19 @@ creation consumes the same staging metadata; recreation retains the latest compl
 Metadata is never read from mutable component state on the render thread and is not charged as
 per-instance bytes.
 
-Scale uses existing lispb fixed-point storage, unsigned 8 bits with 3 fractional bits and nearest-even
-rounding: 0..31.875, step 0.125, error at most 0.0625. Zero and one are exact. All production
+Scale uses existing lispb fixed-point storage, unsigned 5 bits per axis with 2 integral and 3
+fractional bits and nearest-even rounding: 0..3.875, step 0.125, error at most 0.0625.
+All three axes share one uint16, with its high bit reserved and zero. Zero and one are exact. All production
 fighter/laser callers currently submit unit scale. Non-finite, negative and excessive scale fail.
 The schema lives in `lispb/schema/sandbox_ismc.lispb`; generated code must not be edited manually.
 The render encoder multiplies float input by 8, truncates a range-checked integer, and applies
-nearest-even from the fractional remainder. It constructs the generated `Scale8::from_raw`;
+nearest-even from the fractional remainder. It combines three 5-bit codes with `Scale16::from_raw`;
 no general double fixed-point machinery runs per instance. Tests compare every rounding boundary
 and its immediate float neighbours with the generated reference encoder.
 
 Quaternion bits 0..1 are the omitted component index (X=0, Y=1, Z=2, W=3). Bits 2..11, 12..21,
 and 22..31 store the other components in XYZW order. The render path requires finite normalized
-input (squared length within 1e-4 of one), checked with `checkfSlow`/native debug assertions. Select the
+input (squared length within 1e-4 of one), checked by the batch validation pass. Select the
 largest absolute component (first index wins ties), negate if that component is negative, and map
 the remaining components from [-1/sqrt(2), +1/sqrt(2)] to unsigned codes 0..1023, rounding to nearest.
 Decode with the inverse affine mapping and reconstruct the omitted positive component as
@@ -142,7 +146,7 @@ lispb quaternion semantics is introduced. The deterministic 100000-sample native
 covers this 10/10/10 encoding (component rounding error <=1/(sqrt(2)*1023), including reconstruction).
 These are lossy rotations: identity and exact axis rotations need not decode bit-exactly.
 
-The VF reads four `VET_UInt` attributes 8..11 at byte offsets 0/4/8/12, stride 16, and sign-extends
+The VF reads three `VET_UInt` attributes 8..10 at byte offsets 0/4/8, stride 12, and sign-extends
 position lanes explicitly in HLSL. `PackedTransform.ush` reconstructs position and a scaled basis
 in vertex shader registers. The GPU buffer remains compressed; there is no expanded persistent
 buffer. Decoding is repeated per processed vertex, so reduced bandwidth may trade against ALU.
@@ -170,7 +174,7 @@ one builder.
 Both bounds paths now describe **source geometry**. Automatic bounds use the source transform's
 ordinary mesh AABB, without decoding anything just encoded. Supplied bounds skip all per-instance
 bounds work. After the source boxes are reduced, the component expands once per snapshot by
-`8 + mesh_radius * (0.0625 + 0.006 * 31.875)` on each axis, plus a float evaluation margin.
+`8 + mesh_radius * (0.0625 + 0.006 * 3.875)` on each axis, plus a float evaluation margin.
 Here `mesh_radius = length(abs(mesh_bounds_origin) + mesh_bounds_extent)` bounds every mesh vertex's
 distance from the transform origin, including off-centre meshes. The scale term bounds
 `R_decoded * (S_decoded-S_source) * vertex`; the rotation term bounds
@@ -200,6 +204,9 @@ Multi-mesh rendering, shared groups, native render preparation, culling, LOD, mo
 upload-buffer redesign remain outside this experiment.
 
 ## Initial reference-encoder measurements (2026-09-27)
+
+The benchmark/profile sections below record the historical 16-byte Q5.3 format. Their timings and
+640000-byte payloads do not measure the current 12-byte Q2.3 format.
 
 These historical results describe the first correctness-oriented encoder, before the optimization
 pass below. They demonstrate why the encoder needed profiling; they are not the final recommendation.
