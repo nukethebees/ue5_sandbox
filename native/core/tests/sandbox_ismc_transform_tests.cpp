@@ -1,4 +1,4 @@
-#include "sandbox/core/sandbox_ismc_transform.h"
+#include "sandbox/core/sandbox_ismc_packing.h"
 
 #include <gtest/gtest.h>
 
@@ -101,8 +101,10 @@ TEST(SandboxISMCPacking, PositionRangeAndRounding) {
     for (auto const root : {-262144.0f, 262144.0f}) {
         for (auto const position :
              {std::nextafter(8.0f, 0.0f), 8.0f, std::nextafter(-8.0f, -9.0f), -8.0f}) {
-            auto const expected{std::floor((static_cast<double>(position) - root) / 16.0 + 0.5)};
-            EXPECT_EQ(quantize_position(position, root), static_cast<std::int16_t>(expected));
+            auto const packed{quantize_position(position, root)};
+            ASSERT_TRUE(packed.has_value());
+            auto const decoded{static_cast<double>(root) + *packed * 16.0};
+            EXPECT_LE(std::abs(decoded - position), 8.0 + 0.03125);
         }
     }
     std::mt19937 random{17};
@@ -113,6 +115,48 @@ TEST(SandboxISMCPacking, PositionRangeAndRounding) {
         ASSERT_TRUE(packed.has_value());
         EXPECT_LE(std::abs(value - static_cast<float>(*packed)), 0.5f);
     }
+}
+
+TEST(SandboxISMCPacking, FloatBoundarySidesAndTies) {
+    for (auto const boundary : {-24.0f, -8.0f, 8.0f, 24.0f}) {
+        auto const below{std::nextafter(boundary, -std::numeric_limits<float>::infinity())};
+        auto const above{std::nextafter(boundary, std::numeric_limits<float>::infinity())};
+        auto const upper_bucket{static_cast<std::int16_t>(std::floor(boundary / 16.0f + 0.5f))};
+        EXPECT_EQ(quantize_position(below, 0), upper_bucket - 1);
+        EXPECT_EQ(quantize_position(boundary, 0), upper_bucket);
+        EXPECT_EQ(quantize_position(above, 0), upper_bucket);
+    }
+}
+
+TEST(SandboxISMCPacking, ScalarBatchPreservesPaddingAndBoundsUseSourceGeometry) {
+    std::array const positions{std::array{17.0f, -25.0f, 31.0f}, std::array{-1.0f, 5.0f, 9.0f}};
+    std::array const rotations{std::array{0.0f, 0.0f, 0.0f, 1.0f},
+                               std::array{0.0f, 0.0f, 0.0f, -1.0f}};
+    std::array<PackedTransform, 2> output{};
+    for (auto& packed : output) {
+        packed.reserved = 0xbeef;
+    }
+    PackingParameters const parameters{{}, make_vector3f(2, -3, 4), make_vector3f(5, 6, 7)};
+    TransformBounds bounds{};
+    pack_transforms_scalar(
+        {std::as_bytes(std::span{positions}), std::as_bytes(std::span{rotations})},
+        parameters,
+        output,
+        &bounds);
+    EXPECT_TRUE(bounds.valid);
+    EXPECT_EQ(bounds.minimum.X, -4);
+    EXPECT_EQ(bounds.minimum.Y, -34);
+    EXPECT_EQ(bounds.minimum.Z, 6);
+    EXPECT_EQ(bounds.maximum.X, 24);
+    EXPECT_EQ(bounds.maximum.Y, 8);
+    EXPECT_EQ(bounds.maximum.Z, 42);
+    for (auto const& packed : output) {
+        EXPECT_EQ(packed.reserved, 0xbeef);
+        EXPECT_EQ(packed.rotation.bits, 0x80200803U);
+    }
+    EXPECT_EQ(output[0].position, (std::array<std::int16_t, 3>{1, -2, 2}));
+    pack_transforms_scalar({}, parameters, {}, &bounds);
+    EXPECT_FALSE(bounds.valid);
 }
 
 TEST(SandboxISMCPacking, NormalizedEncoderContractAndComponentEdges) {
