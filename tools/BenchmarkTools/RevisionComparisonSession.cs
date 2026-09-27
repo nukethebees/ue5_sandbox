@@ -58,6 +58,13 @@ internal sealed class RevisionComparisonSession : IAsyncDisposable
     public bool OwnsBaseline => owned_;
     public void RetainBaseline() => keep_ = true;
 
+    public async Task InitializeSubmodulesAsync(CancellationToken token, IReadOnlyList<string>? paths = null)
+    {
+        if (!owned_) return;
+        ValidateOwnedPath(BaselineRoot, parent_);
+        await BenchmarkSubmodules.InitializeAsync(application_, BaselineRoot, Candidate.Root, paths, token);
+    }
+
     public static async Task<RevisionComparisonSession> CreateAsync(BenchmarkToolsApplication application, RepositoryPaths repository,
         string baseline, string? supplied, bool keep, CancellationToken token, string? artifact_root = null)
     {

@@ -182,6 +182,10 @@ No feature branches are created. Only owned worktrees are removed, including aft
 for inspection. An explicitly supplied baseline must be a clean worktree root at the resolved
 commit and is never removed or patched. Candidate source files are never swapped or overwritten.
 
+Owned baseline submodules are seeded from the invoking checkout's local Git objects and LFS
+cache, then checked out at the baseline's exact pinned commits. Candidate edits are not copied.
+Original remote URLs are preserved; missing commits or LFS assets are fetched when necessary.
+
 For a historical SandboxISMC harness lacking the output/viewport protocol, explicitly add
 `--compatibility sandbox-ismc-v1`. This applies an embedded, reviewed patch limited to the lab
 actor/automation harness's output, viewport, termination and metadata plumbing plus its JSON

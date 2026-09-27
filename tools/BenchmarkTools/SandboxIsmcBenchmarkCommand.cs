@@ -101,8 +101,12 @@ internal static class SandboxIsmcBenchmarkCommand
             }
             if (!parsed.HasFlag("--skip-build"))
             {
-                await BuildAsync(application, candidate.Root, settings.Editor, false, token);
-                if (comparison) await BuildAsync(application, baseline.Root, settings.Editor, revisions!.OwnsBaseline, token);
+                await BuildAsync(application, candidate.Root, settings.Editor, token);
+                if (comparison)
+                {
+                    await revisions!.InitializeSubmodulesAsync(token);
+                    await BuildAsync(application, baseline.Root, settings.Editor, token);
+                }
             }
             if (prepare)
             {
@@ -165,9 +169,8 @@ internal static class SandboxIsmcBenchmarkCommand
             throw new BenchmarkToolException($"SandboxISMC in '{root}' lacks the owned-output/viewport protocol. Use an explicitly supported --compatibility overlay for a historical baseline.");
     }
 
-    internal static async Task BuildAsync(BenchmarkToolsApplication application, string root, string editor, bool owned, CancellationToken token)
+    internal static async Task BuildAsync(BenchmarkToolsApplication application, string root, string editor, CancellationToken token)
     {
-        if (owned) await BenchmarkGit.TextAsync(application, root, ["submodule", "update", "--init", "--recursive"], token);
         var engine_root = Directory.GetParent(editor)!.Parent!.Parent!.Parent!.FullName;
         await BenchmarkGit.SuccessAsync(application, new ProcessRequest("cmake", ["--preset", "sandbox-ismc-benchmark", $"-DUE_ROOT={engine_root}"], root), token);
         await BenchmarkGit.SuccessAsync(application, new ProcessRequest("cmake", ["--build", "--preset", "sandbox-ismc-benchmark", "--target", "editor"], root), token);

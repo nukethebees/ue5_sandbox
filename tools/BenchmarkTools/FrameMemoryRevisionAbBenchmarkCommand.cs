@@ -40,8 +40,10 @@ internal static class FrameMemoryRevisionAbBenchmarkCommand
             run.Publish();
             if (!parsed.HasFlag("--skip-build"))
             {
-                await BuildAsync(application, revisions.Candidate.Root, false, cancellation_token);
-                await BuildAsync(application, revisions.BaselineRoot, revisions.OwnsBaseline, cancellation_token);
+                await BuildAsync(application, revisions.Candidate.Root, cancellation_token);
+                await revisions.InitializeSubmodulesAsync(cancellation_token,
+                    ["native/third_party/googletest", "native/third_party/cpu_features", "native/third_party/tracy", "native/third_party/cli11"]);
+                await BuildAsync(application, revisions.BaselineRoot, cancellation_token);
             }
             if (parsed.HasFlag("--prepare-only"))
             {
@@ -78,9 +80,8 @@ internal static class FrameMemoryRevisionAbBenchmarkCommand
         }
     }
 
-    private static async Task BuildAsync(BenchmarkToolsApplication application, string root, bool owned, CancellationToken token)
+    private static async Task BuildAsync(BenchmarkToolsApplication application, string root, CancellationToken token)
     {
-        if (owned) await BenchmarkGit.TextAsync(application, root, ["submodule", "update", "--init", "--depth", "1", "native/third_party/googletest", "native/third_party/cpu_features", "native/third_party/tracy", "native/third_party/cli11"], token);
         await BenchmarkGit.SuccessAsync(application, new ProcessRequest("cmake", ["--preset", RepositoryPaths.NativeSimulationConfigurePreset("frame-memory-level-benchmark")], root), token);
         await BenchmarkGit.SuccessAsync(application, new ProcessRequest("cmake", ["--build", "--preset", "frame-memory-level-benchmark", "--target", "native-simulation-benchmark"], root), token);
     }
