@@ -1,8 +1,8 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)]
+    [Parameter(Position = 0)]
+    [string]$VSCommonTools,
     [string]$LLVMSource,
-    [Parameter(Mandatory)]
     [string]$BuildDir,
     [string]$LLVMRoot = $env:LLVM_ROOT,
     [ValidateRange(1, 256)]
@@ -14,22 +14,78 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $revision = 'e0b3e4c82911376fcb2dfcbc4a3dd3f4f5891aba'
 $invocationDirectory = (Get-Location -PSProvider FileSystem).ProviderPath
-$LLVMSource = (Resolve-Path -LiteralPath ([System.IO.Path]::GetFullPath($LLVMSource, $invocationDirectory))).Path
-$BuildDir = [System.IO.Path]::GetFullPath($BuildDir, $invocationDirectory)
+if ([string]::IsNullOrWhiteSpace($LLVMRoot)) {
+    $installedClang = Get-Command clang-cl.exe -CommandType Application -ErrorAction SilentlyContinue
+    if ($installedClang) {
+        $LLVMRoot = Split-Path (Split-Path $installedClang.Source -Parent) -Parent
+    }
+}
 if (-not [string]::IsNullOrWhiteSpace($LLVMRoot)) {
     $LLVMRoot = [System.IO.Path]::GetFullPath($LLVMRoot, $invocationDirectory)
 }
-if ($Install -and [string]::IsNullOrWhiteSpace($LLVMRoot)) {
-    throw '-Install requires -LLVMRoot or the LLVM_ROOT environment variable.'
+if ([string]::IsNullOrWhiteSpace($LLVMSource)) {
+    if ([string]::IsNullOrWhiteSpace($LLVMRoot)) {
+        throw 'Pass -LLVMSource and -BuildDir, or provide LLVM_ROOT/an installed clang-cl on PATH to discover them.'
+    }
+    $LLVMSource = Join-Path (Split-Path $LLVMRoot -Parent) 'llvm-project'
 }
+$LLVMSource = (Resolve-Path -LiteralPath ([System.IO.Path]::GetFullPath($LLVMSource, $invocationDirectory))).Path
+if ([string]::IsNullOrWhiteSpace($BuildDir)) {
+    $workspace = if ($LLVMRoot) { Split-Path $LLVMRoot -Parent } else { Split-Path $LLVMSource -Parent }
+    $matchingBuilds = @(foreach ($directory in Get-ChildItem -LiteralPath $workspace -Directory) {
+        $cache = Join-Path $directory.FullName 'CMakeCache.txt'
+        if (-not (Test-Path -LiteralPath $cache -PathType Leaf)) { continue }
+        $cacheSource = $null
+        $cacheInstall = $null
+        foreach ($line in Get-Content -LiteralPath $cache) {
+            if ($line -match '^CMAKE_HOME_DIRECTORY:[^=]+=(.+)$') { $cacheSource = $Matches[1] }
+            if ($line -match '^CMAKE_INSTALL_PREFIX:[^=]+=(.+)$') { $cacheInstall = $Matches[1] }
+        }
+        if ($cacheSource -and $cacheInstall -and
+            [System.IO.Path]::GetFullPath($cacheSource) -eq (Join-Path $LLVMSource 'llvm') -and
+            (!$LLVMRoot -or [System.IO.Path]::GetFullPath($cacheInstall) -eq $LLVMRoot)) {
+            $directory.FullName
+        }
+    })
+    if ($matchingBuilds.Count -gt 1) {
+        throw "Multiple matching LLVM build directories; select one with -BuildDir: $($matchingBuilds -join ', ')"
+    }
+    $BuildDir = if ($matchingBuilds.Count -eq 1) { $matchingBuilds[0] } else { Join-Path $workspace 'build' }
+}
+$BuildDir = [System.IO.Path]::GetFullPath($BuildDir, $invocationDirectory)
+if ($Install -and [string]::IsNullOrWhiteSpace($LLVMRoot)) {
+    throw '-Install requires -LLVMRoot, LLVM_ROOT, or an installed clang-cl on PATH.'
+}
+Write-Host "LLVM source: $LLVMSource"
+Write-Host "LLVM build: $BuildDir"
+Write-Host "LLVM installation: $LLVMRoot"
 $actualRevision = & git -C $LLVMSource rev-parse HEAD
 if ($LASTEXITCODE -ne 0 -or $actualRevision -ne $revision) {
     throw "Expected LLVM revision $revision. Updating LLVM is an explicit infrastructure task."
 }
+if (-not [string]::IsNullOrWhiteSpace($VSCommonTools)) {
+    $vsDevCmd = Join-Path ([System.IO.Path]::GetFullPath($VSCommonTools, $invocationDirectory)) 'VsDevCmd.bat'
+    if (-not (Test-Path -LiteralPath $vsDevCmd -PathType Leaf)) {
+        throw "VSCommonTools must contain VsDevCmd.bat: $VSCommonTools"
+    }
+    $previousSetup = $env:IOJ_LLVM_VSDEVCMD
+    try {
+        $env:IOJ_LLVM_VSDEVCMD = $vsDevCmd
+        $developerEnvironment = & $env:ComSpec /d /v:off /s /c '""%IOJ_LLVM_VSDEVCMD%" -no_logo -arch=x64 -host_arch=x64 -vcvars_ver=14.50.35717 -winsdk=10.0.22621.0 >nul && set"'
+        if ($LASTEXITCODE -ne 0) { throw "VsDevCmd.bat failed with exit code $LASTEXITCODE." }
+        foreach ($line in $developerEnvironment) {
+            if ($line -match '^([^=]+)=(.*)$') {
+                [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
+            }
+        }
+    } finally {
+        $env:IOJ_LLVM_VSDEVCMD = $previousSetup
+    }
+}
 if ($env:VSCMD_ARG_HOST_ARCH -ne 'x64' -or $env:VSCMD_ARG_TGT_ARCH -ne 'x64' -or
     $env:VCToolsVersion -notmatch '^14\.50\.35717[\\/]?$' -or
     $env:WindowsSDKVersion -notmatch '^10\.0\.22621\.0[\\/]?$') {
-    throw 'Load VsDevCmd.bat -arch=x64 -host_arch=x64 -vcvars_ver=14.50.35717 -winsdk=10.0.22621.0 first.'
+    throw 'Pass -VSCommonTools pointing to Common7/Tools with MSVC 14.50.35717 and Windows SDK 10.0.22621.0 installed, or load that x64 developer environment first.'
 }
 # Each patch is independently either pristine or fully applied.
 $patches = @(

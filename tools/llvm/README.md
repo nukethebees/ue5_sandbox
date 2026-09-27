@@ -7,20 +7,25 @@ standard clang-tidy checks when IOJ checks are absent. They never build or repai
 
 - LLVM 24.0.0git checkout at `e0b3e4c82911376fcb2dfcbc4a3dd3f4f5891aba`.
 - Windows x64, MSVC 14.50.35717, Windows SDK 10.0.22621.0, CMake, Ninja, Git, Python and PowerShell.
-- An x64 developer shell initialized with
-  `VsDevCmd.bat -arch=x64 -host_arch=x64 -vcvars_ver=14.50.35717 -winsdk=10.0.22621.0`.
 
 ## Build and install
 
-Prepare the pinned checkout explicitly, then run from this repository in the developer shell:
+With an existing installation on PATH (or `LLVM_ROOT`) and the pinned `llvm-project`
+checkout beside that installation, pass Visual Studio's `Common7/Tools` directory:
 
 ```powershell
-./tools/llvm/build.ps1 -LLVMSource D:/llvm/llvm-project -BuildDir D:/llvm/build -LLVMRoot D:/llvm/install -Install
+./tools/llvm/build.ps1 'C:/Program Files/Microsoft Visual Studio/18/Community/Common7/Tools' -Install
 ```
 
-These paths are examples. `-LLVMSource` and `-BuildDir` are required; `-LLVMRoot` defaults to the
-`LLVM_ROOT` environment variable. `-Jobs` defaults to 24. Use a fresh build directory when changing
-compiler or configuration. Omit `-Install` to build and verify without changing installed tools.
+The script loads `VsDevCmd.bat` with the pinned x64 compiler and SDK. `-LLVMRoot` defaults to
+`LLVM_ROOT`, then the installation containing `clang-cl.exe` on PATH. `-LLVMSource` defaults to
+the sibling `llvm-project` checkout. `-BuildDir` reuses a sibling CMake build with matching source
+and installation paths, or defaults to sibling `build` if none exists; ambiguous matches require
+an explicit `-BuildDir`. The selected paths are printed before building.
+
+All three LLVM paths remain overridable. `-VSCommonTools` may be omitted in an already initialized
+developer shell. `-Jobs` defaults to 24. Use a fresh build directory when changing compiler or
+configuration. Omit `-Install` to build and verify without changing installed tools.
 Coordinate costly builds through jobserver, and installation with users of that installation.
 
 The script verifies the revision before changing source, applies each owned patch independently,
