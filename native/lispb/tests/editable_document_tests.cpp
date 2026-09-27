@@ -19,9 +19,13 @@ class TemporarySchema {
   public:
     TemporarySchema() {
         static int sequence{};
-        directory_ = std::filesystem::temp_directory_path() /
-                     ("editable-lispb-schema-" + std::to_string(++sequence));
-        std::filesystem::create_directories(directory_);
+        auto const temporary_root{std::filesystem::temp_directory_path()};
+        for (;;) {
+            directory_ = temporary_root / ("editable-lispb-schema-" + std::to_string(++sequence));
+            if (std::filesystem::create_directory(directory_)) {
+                break;
+            }
+        }
         write("types.lispb", R"((type existing
   :spelling "authored::Existing"
   :header "AuthoredEnums.h")
