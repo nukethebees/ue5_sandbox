@@ -176,7 +176,6 @@ fn transaction(
     }
     clean(&dev)?;
     let tree = query(root, &["rev-parse", &format!("{tip}^{{tree}}")])?;
-    verify(root)?;
     let message = format!("Merge branch '{feature}' into dev");
     let commit = query(
         root,
@@ -192,6 +191,7 @@ fn transaction(
         ],
     )?;
     println!("Integration stage: atomic-promotion");
+    verify(root)?;
     compare_and_swap(&dev, &base, &commit)?;
     println!("dev promoted to {commit}");
     println!("Integration stage: refresh and cleanup");

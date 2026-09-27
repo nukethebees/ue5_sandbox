@@ -13,10 +13,22 @@ fn lease_is_reverified_before_promotion() {
     let repo = Repo::new();
     commit(&repo, &repo.feature, "feature.txt", "feature\n");
     let base = repo.raw(&repo.dev, &["rev-parse", "HEAD"]);
+    let feature = repo.raw(&repo.feature, &["rev-parse", "HEAD"]);
     let mut calls = 0;
     let error = super::transaction(&repo.feature, false, |_| {
         calls += 1;
         if calls == 2 {
+            // The merge object exists at this boundary, but dev has not advanced.
+            let unreachable = repo.raw(&repo.feature, &["fsck", "--unreachable", "--no-reflogs"]);
+            let merge = unreachable
+                .lines()
+                .find_map(|line| line.strip_prefix("unreachable commit "))
+                .unwrap();
+            assert_eq!(
+                repo.raw(&repo.feature, &["show", "-s", "--format=%P", merge]),
+                format!("{base} {feature}")
+            );
+            assert_eq!(repo.raw(&repo.dev, &["rev-parse", "HEAD"]), base);
             Err("integration lease expired".into())
         } else {
             Ok(())
