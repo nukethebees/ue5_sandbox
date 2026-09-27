@@ -381,6 +381,11 @@ void ASandboxISMCBenchmarkActor::parse_command_line() {
     FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkShadows="), shadows);
     cast_shadows_ = shadows != 0;
 
+    int32 supplied_bounds{use_supplied_bounds_ ? 1 : 0};
+    FParse::Value(
+        FCommandLine::Get(), TEXT("SandboxISMCBenchmarkSuppliedBounds="), supplied_bounds);
+    use_supplied_bounds_ = supplied_bounds != 0;
+
     FString mode;
     if (FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkMode="), mode)) {
         if (mode.Equals(TEXT("paired"), ESearchCase::IgnoreCase)) {
@@ -517,6 +522,8 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
     for (auto const& position : base_positions_) {
         supplied_local_bounds_ += position;
     }
+    position_bounds_ = supplied_local_bounds_.ExpandBy(
+        FVector3f{0.0f, 0.0f, FMath::Abs(vertical_movement_amplitude_)});
     auto const mesh_bounds{static_mesh_->GetBounds()};
     auto const mesh_radius{
         static_cast<float>(mesh_bounds.SphereRadius + mesh_bounds.Origin.Size())};
@@ -557,10 +564,14 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
                 }
             }};
             if (use_supplied_bounds_) {
-                custom_ismc_->set_instances(
-                    count, supplied_local_bounds_, ESandboxISMCParallelism::Auto, fill);
+                custom_ismc_->set_instances(count,
+                                            position_bounds_,
+                                            supplied_local_bounds_,
+                                            ESandboxISMCParallelism::Auto,
+                                            fill);
             } else {
-                custom_ismc_->set_instances(count, ESandboxISMCParallelism::Auto, fill);
+                custom_ismc_->set_instances(
+                    count, position_bounds_, ESandboxISMCParallelism::Auto, fill);
             }
         }
         custom_creation_ms_ =
@@ -665,10 +676,14 @@ auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
             }
         }};
         if (use_supplied_bounds_) {
-            custom_ismc_->set_instances(
-                count, supplied_local_bounds_, ESandboxISMCParallelism::Auto, fill);
+            custom_ismc_->set_instances(count,
+                                        position_bounds_,
+                                        supplied_local_bounds_,
+                                        ESandboxISMCParallelism::Auto,
+                                        fill);
         } else {
-            custom_ismc_->set_instances(count, ESandboxISMCParallelism::Auto, fill);
+            custom_ismc_->set_instances(
+                count, position_bounds_, ESandboxISMCParallelism::Auto, fill);
         }
     }
     auto const api_cycles{FPlatformTime::Cycles64() - api_start};

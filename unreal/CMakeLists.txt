@@ -23,6 +23,7 @@ set(IOJ_ISMC_BENCHMARK_HALF_CYCLE_UPDATES 120 CACHE STRING "Updates per grow/shr
 set(IOJ_ISMC_BENCHMARK_REPLACEMENT_PERCENT 5 CACHE STRING "Percentage of survivors replaced per update")
 set(IOJ_ISMC_BENCHMARK_WARMUP_UPDATES 0 CACHE STRING "Initial updates excluded from benchmark samples")
 set(IOJ_ISMC_BENCHMARK_WARMUP_SECONDS 0 CACHE STRING "Initial seconds excluded from benchmark samples")
+set(IOJ_ISMC_BENCHMARK_SUPPLIED_BOUNDS 0 CACHE STRING "Use supplied SandboxISMC benchmark bounds (0 or 1)")
 set(CACHE{IOJ_ISMC_BENCHMARK_MODE}
   TYPE STRING
   HELP "SandboxISMC benchmark renderer mode: paired, custom, or engine_ismc"
@@ -408,6 +409,7 @@ add_unreal_editor_test(SandboxISMC.RemoteBenchmark
     "-SandboxISMCBenchmarkVisibility=${IOJ_ISMC_BENCHMARK_VISIBILITY}"
     "-SandboxISMCBenchmarkCustomData=${IOJ_ISMC_BENCHMARK_CUSTOM_DATA}"
     "-SandboxISMCBenchmarkShadows=${IOJ_ISMC_BENCHMARK_SHADOWS}"
+    "-SandboxISMCBenchmarkSuppliedBounds=${IOJ_ISMC_BENCHMARK_SUPPLIED_BOUNDS}"
     -SandboxISMCBenchmarkEndPIE
     -RenderOffscreen
     -FullStdOutLogOutput

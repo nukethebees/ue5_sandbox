@@ -1,0 +1,16 @@
+// The engine owns all vertex-factory logic; only instance inputs are customized.
+// Expose decoder and uniform dependencies to UE's source scanner before the
+// generated include emits the adapter after the engine's instance-input types.
+#include "/SandboxISMC/Private/PackedInstanceInput.ush"
+
+#define LOCALVF_INSTANCE_ATTRIBUTES     \
+    uint PackedPositionXY : ATTRIBUTE8; \
+    uint PackedPositionZ : ATTRIBUTE9;  \
+    uint PackedRotation : ATTRIBUTE10;  \
+    uint PackedScale : ATTRIBUTE11;
+
+#include "/Engine/Private/LocalVertexFactory.ush"
+
+#if LOCALVF_INSTANCE_INPUT_HOOK_VERSION != 1
+#error SandboxISMC requires the LocalVF hook; see Plugins/SandboxISMC/ARCHITECTURE.md
+#endif

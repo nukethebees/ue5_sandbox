@@ -102,13 +102,18 @@ void FLaserPresentation::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_ismc);
     auto const active{view().entities.active()};
     auto const count{view().entities.num()};
+    auto const locations{view().entities.view_locations()};
+    FBox3f position_bounds{ForceInit};
     visible_indices_.Reset();
     for (int32 index{}; index < count; ++index) {
         if (active[index] != 0) {
             visible_indices_.Add(index);
+            position_bounds +=
+                FVector3f{locations.xs()[index], locations.ys()[index], locations.zs()[index]};
         }
     }
     instances->set_instances(visible_indices_.Num(),
+                             position_bounds,
                              ESandboxISMCParallelism::Auto,
                              [this](auto& chunk) { fill_chunk(chunk); });
 }

@@ -207,6 +207,7 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     TArray<double> render_upload_cpu_ms_;
     TArray<double> render_uploaded_bytes_;
     FBox3f supplied_local_bounds_{ForceInit};
+    FBox3f position_bounds_{ForceInit};
     TArray<double> frame_ms_;
     TArray<double> game_thread_ms_;
     TArray<double> render_thread_ms_;

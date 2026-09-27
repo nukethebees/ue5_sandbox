@@ -1,6 +1,7 @@
 #include "SandboxISMCComponent.h"
 
 #include "AssetCompilingManager.h"
+#include "Components/InstancedStaticMeshComponent.h"
 #include "Components/MapTestSpawner.h"
 #include "Components/SceneCaptureComponent2D.h"
 #include "Engine/StaticMesh.h"
@@ -91,7 +92,11 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
         }
         int32 const visible_indices[]{0, count == 3 ? 1 : 1024, count == 3 ? 2 : 4096};
         component_->set_instances(
-            count, ESandboxISMCParallelism::Auto, [&](FSandboxISMCInstanceChunkWriter& chunk) {
+            count,
+            FBox3f{FVector3f{0, -128, FMath::Min(0.0f, height)},
+                   FVector3f{0, 10000, FMath::Max(0.0f, height)}},
+            ESandboxISMCParallelism::Auto,
+            [&](FSandboxISMCInstanceChunkWriter& chunk) {
                 auto const [offset, chunk_count]{chunk.range()};
                 for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                     auto const index{offset + local_index};
@@ -229,5 +234,121 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
             })
             .Until(next_frame, FTimespan::FromSeconds(10))
             .Do([this] { check_image(TEXT("Instances leave the frustum again"), 128, 0, true); });
+    }
+
+    TEST_METHOD(PackedGpuSilhouettesMatchCpuDecodedTransformsAcrossRootChanges)
+    {
+        TestCommandBuilder.Do([this] {
+            setup();
+            if (component_ == nullptr || capture_ == nullptr) {
+                return;
+            }
+            auto* reference{NewObject<UInstancedStaticMeshComponent>(component_->GetOwner())};
+            component_->GetOwner()->AddInstanceComponent(reference);
+            reference->SetMobility(EComponentMobility::Movable);
+            reference->SetStaticMesh(component_->get_static_mesh());
+            reference->SetMaterial(0, component_->GetMaterial(0));
+            reference->SetNumCustomDataFloats(3);
+            reference->RegisterComponent();
+
+            // Includes a nonzero far-away root, returning to an earlier root, and proxy recreation.
+            for (auto const root : {FVector3f{100000, -80000, 50000},
+                                    FVector3f{-70000, 90000, -60000},
+                                    FVector3f{100000, -80000, 50000}}) {
+                auto const domain{FBox3f{root - FVector3f{512}, root + FVector3f{512}}};
+                TArray<FVector3f> const positions{root + FVector3f{-8.0f, -136.1f, -40.0f},
+                                                  root + FVector3f{8.0f, 7.9f, 40.1f},
+                                                  root + FVector3f{7.9f, 136.0f, -39.9f}};
+                TArray<FQuat4f> const rotations{FRotator3f{27, 63, -18}.Quaternion(),
+                                                FRotator3f{-80, 172, 91}.Quaternion(),
+                                                FRotator3f{178, -34, 43}.Quaternion()};
+                TArray<FVector3f> const scales{
+                    {0.51f, 0.8f, 1.49f}, {1.19f, 0.38f, 0.94f}, {0.73f, 1.24f, 0.64f}};
+                TArray<FSandboxISMCRenderInstance> packed;
+                packed.SetNumUninitialized(3);
+                FSandboxISMCInstanceChunkWriter cpu{packed,
+                                                    {},
+                                                    0,
+                                                    0,
+                                                    domain,
+                                                    root,
+                                                    FVector3f::ZeroVector,
+                                                    FVector3f::ZeroVector,
+                                                    false};
+                reference->ClearInstances();
+                for (int32 index{0}; index < 3; ++index) {
+                    cpu.set_transform(index, positions[index], rotations[index], scales[index]);
+                    auto const& value{packed[index]};
+                    auto const q{ml::sandbox_ismc::unpack_quat32(value.rotation)};
+                    FVector const location{FVector{root} +
+                                           FVector{static_cast<double>(value.position[0]),
+                                                   static_cast<double>(value.position[1]),
+                                                   static_cast<double>(value.position[2])} *
+                                               ml::sandbox_ismc::position_quantum};
+                    FVector const scale{value.scale[0].scale_value(),
+                                        value.scale[1].scale_value(),
+                                        value.scale[2].scale_value()};
+                    reference->AddInstance(FTransform{FQuat{q.X, q.Y, q.Z, q.W}, location, scale});
+                    for (int32 channel{0}; channel < 3; ++channel) {
+                        reference->SetCustomDataValue(
+                            index, channel, channel == index ? 1.0f : 0.0f, true);
+                    }
+                }
+                component_->set_instances(
+                    3, domain, ESandboxISMCParallelism::Sequential, [&](auto& chunk) {
+                        for (int32 index{0}; index < 3; ++index) {
+                            chunk.set_transform(
+                                index, positions[index], rotations[index], scales[index]);
+                            auto data{chunk.custom_data(index)};
+                            for (int32 channel{0}; channel < 3; ++channel) {
+                                data[channel] = channel == index ? 1.0f : 0.0f;
+                            }
+                        }
+                    });
+                spawner->GetWorld().SendAllEndOfFrameUpdates();
+                FlushRenderingCommands();
+                capture_->SetWorldLocation(FVector{root} + FVector{-500, 0, 0});
+                auto const capture_pixels{[&](UPrimitiveComponent* primitive) {
+                    capture_->ClearShowOnlyComponents();
+                    capture_->ShowOnlyComponent(primitive);
+                    capture_->CaptureScene();
+                    FlushRenderingCommands();
+                    TArray<FLinearColor> pixels;
+                    TestRunner->TestTrue(
+                        TEXT("Silhouette readback succeeds"),
+                        target_->GameThread_GetRenderTargetResource()->ReadLinearColorPixels(
+                            pixels));
+                    return pixels;
+                }};
+                auto const expected{capture_pixels(reference)};
+                auto const verify_pixels{[&] {
+                    auto const actual{capture_pixels(component_)};
+                    if (!TestRunner->TestEqual(
+                            TEXT("Readbacks have matching sizes"), actual.Num(), expected.Num())) {
+                        return;
+                    }
+                    int32 differences{0};
+                    int32 coloured{0};
+                    auto const pixel_count{expected.Num()};
+                    for (int32 index{0}; index < pixel_count; ++index) {
+                        auto const a{actual[index]};
+                        auto const e{expected[index]};
+                        differences += (a.R > 0.5f) != (e.R > 0.5f) ||
+                                       (a.G > 0.5f) != (e.G > 0.5f) || (a.B > 0.5f) != (e.B > 0.5f);
+                        coloured += e.R > 0.5f || e.G > 0.5f || e.B > 0.5f;
+                    }
+                    TestRunner->TestTrue(TEXT("Reference geometry is visible"), coloured > 500);
+                    TestRunner->TestTrue(
+                        FString::Printf(TEXT("CPU/GPU silhouettes agree (edge differences %d)"),
+                                        differences),
+                        differences <= 12);
+                }};
+                verify_pixels();
+                component_->MarkRenderStateDirty();
+                spawner->GetWorld().SendAllEndOfFrameUpdates();
+                FlushRenderingCommands();
+                verify_pixels();
+            }
+        });
     }
 };
