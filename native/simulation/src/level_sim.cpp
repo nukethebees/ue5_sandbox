@@ -344,9 +344,12 @@ void LevelSim::advance(time_type const dt) {
                 }
             };
 
+            // Commits in this tick can invalidate the previous tick's entity views.
+            // NOLINTBEGIN(ioj-loop-view-accessor-call)
             collect_new(capital_ships_simulation_.get_read_view().entities);
             collect_new(fighters_simulation_.get_read_view().entities);
             collect_new(turrets_simulation_.get_read_view().entities);
+            // NOLINTEND(ioj-loop-view-accessor-call)
 
             // Prepare phases and indexes
             if (player_active) {
@@ -434,6 +437,8 @@ void LevelSim::advance(time_type const dt) {
             {
                 SANDBOX_PROFILE_SCOPE("Refresh spatial index and detect overlaps");
 
+                // Movement rebuilds this tick's candidate set.
+                // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 auto const fighter_candidates{fighters_simulation_.get_overlap_candidates()};
                 overlap_candidates_.insert(overlap_candidates_.end(),
                                            fighter_candidates.begin(),
@@ -445,6 +450,8 @@ void LevelSim::advance(time_type const dt) {
                 query_manager_.refresh_spatial_index();
                 ml::FrameScratchScope scratch_scope{frame_memory_};
                 auto const overlaps{
+                    // Detection creates a new scratch-backed result for this tick.
+                    // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                     query_manager_.detect_overlaps(overlap_candidates_, scratch_scope.scratch())};
                 overlap_handler_.handle(overlaps);
             }

@@ -56,19 +56,21 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
         auto const& capitals{simulation.get_capital_ships()};
         Sample sample;
         auto const count{capitals.get_num_instances()};
+        auto const parent_ids{simulation.get_fighters().get_parent_ids()};
         for (std::int32_t i{}; i < count; ++i) {
             auto const id{capitals.get_id(i)};
             sample.capitals.push_back(id);
             sample.capital_teams.push_back(capitals.get_team(id));
             sample.span_starts.push_back(capitals.get_fighter_id_span(i).start());
+            // Each capital selects a different ownership range.
+            // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
             auto const owned{capitals.get_fighter_ids(i)};
             sample.owned_fighters.emplace_back(owned.begin(), owned.end());
-            for (auto const fighter : capitals.get_fighter_ids(i)) {
+            for (auto const fighter : owned) {
                 auto const fighter_index{simulation.get_agent_indexes().find(fighter)};
                 sample.fighter_teams.push_back(
                     simulation.get_agent_accessor().read_alive(fighter)->team);
-                sample.fighter_parents.push_back(
-                    simulation.get_fighters().get_parent_ids()[fighter_index]);
+                sample.fighter_parents.push_back(parent_ids[fighter_index]);
             }
         }
         auto const owned{capitals.get_fighter_ids()};
@@ -216,10 +218,11 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
         harness.timeline.at(next_time, [&] {
             auto const ids{capitals.get_fighter_ids()};
             auto const count{static_cast<std::int32_t>(ids.size())};
+            auto const entity_ids{fighters.get_entity_ids()};
             for (std::int32_t i{}; i < count; ++i) {
                 auto const row{
                     harness.get_simulation().get_agent_accessor().indexes().find(ids[i])};
-                (i % 2 == 0 ? destroyed : kept).push_back(fighters.get_entity_ids()[row]);
+                (i % 2 == 0 ? destroyed : kept).push_back(entity_ids[row]);
             }
             harness.queue_kills(std::span<EntityUniqueId const>{
                 destroyed.data(),

@@ -35,6 +35,7 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
     assert(healths.num() == static_cast<std::int32_t>(entity_ids.size()));
     auto current_removal_count{static_cast<std::int32_t>(removal_count)};
     auto current_death_count{death_count};
+    auto const removal_storage{std::span{local_indices_to_remove}};
     for (std::int32_t event_index{}; event_index < n_direct_events; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
         auto const id{damage_events.damaged_entities[element]};
@@ -53,8 +54,9 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
         auto const applied_damage{std::min(health, requested_damage)};
         health -= requested_damage;
         ledger.record_damage(id, damage_events.instigators[element], applied_damage);
-        auto const removals{std::span{local_indices_to_remove}.first(
-            static_cast<std::size_t>(current_removal_count))};
+        // The populated prefix grows as this loop discovers deaths.
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
+        auto const removals{removal_storage.first(static_cast<std::size_t>(current_removal_count))};
         if (is_alive(health) || std::ranges::find(removals, local_index) != removals.end()) {
             continue;
         }

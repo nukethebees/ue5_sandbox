@@ -5,6 +5,8 @@
 namespace ioj::sim::tests {
 
 TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
+    // Appending one row at a time exercises block growth and reuse; row views must be refreshed.
+    // NOLINTBEGIN(ioj-loop-view-accessor-call)
     using Layout = telemetry::HistoryRowsSingleLayout;
     using Field = telemetry::HistoryField;
     using FieldMask = telemetry::HistoryFieldMask;
@@ -67,6 +69,7 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
     }
     EXPECT_EQ(history.retained_block_count(), std::int32_t{2})
         << "A smaller second run acquires no blocks";
+    // NOLINTEND(ioj-loop-view-accessor-call)
 }
 
 } // namespace tests

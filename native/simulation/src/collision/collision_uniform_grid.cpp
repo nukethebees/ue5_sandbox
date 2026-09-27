@@ -408,6 +408,7 @@ void append_grid_overlaps(GridGeometry const geometry,
     auto const row_stride{geometry.dimensions.x};
     auto const plane_stride{row_stride * geometry.dimensions.y};
 
+    auto const entity_storage_view{std::span{entity_storage.entities}};
     auto plane_index{min_coord.x + min_coord.y * row_stride + min_coord.z * plane_stride};
     for (auto z{min_coord.z}; z <= max_coord.z; ++z) {
         auto row_index{plane_index};
@@ -420,7 +421,9 @@ void append_grid_overlaps(GridGeometry const geometry,
                 auto const count{entity_storage.cell_counts[element]};
                 auto const entity_count{static_cast<std::int32_t>(count)};
                 if (entity_count > 0) {
-                    auto const entities{std::span{entity_storage.entities}.subspan(
+                    // Each cell selects a distinct entity range.
+                    // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
+                    auto const entities{entity_storage_view.subspan(
                         static_cast<std::size_t>(entity_storage.cell_offsets[element]), count)};
                     auto const aabb_offset{entity_storage.cell_offsets[element]};
 
@@ -443,6 +446,7 @@ void append_grid_overlaps(GridGeometry const geometry,
                     }
                 }
 
+                // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-cell geometry.
                 auto const static_indices{static_storage.aabb_indices_for_cell(cell_index)};
                 for (auto const static_index : static_indices) {
                     auto const static_aabb_index{static_cast<StaticGeometryIndex>(static_index)};

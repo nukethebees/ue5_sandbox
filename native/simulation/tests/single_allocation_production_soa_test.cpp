@@ -90,11 +90,13 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
     spinners.add_defaulted(65);
     auto spinner_columns{spinners.get_view()};
     auto const spinner_count{spinners.num()};
+    auto const spinner_locations{spinner_columns.view_locations()};
+    auto const yaws{spinner_columns.yaws()};
+    auto const fire_point_indices{spinner_columns.next_fire_point_indices()};
     for (std::int32_t index{}; index < spinner_count; ++index) {
-        set_vector(
-            spinner_columns.view_locations(), index, HMM_V3(static_cast<float>(index), 2.f, 3.f));
-        spinner_columns.yaws()[index] = static_cast<float>(index * 2);
-        spinner_columns.next_fire_point_indices()[index] = index;
+        set_vector(spinner_locations, index, HMM_V3(static_cast<float>(index), 2.f, 3.f));
+        yaws[index] = static_cast<float>(index * 2);
+        fire_point_indices[index] = index;
     }
 
     SingleAllocationSpinnerEntityData appended_spinners;
@@ -112,11 +114,13 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
     hits.add_defaulted(65);
     auto hit_columns{hits.get_view()};
     auto const hit_count{hits.num()};
+    auto const hit_locations{hit_columns.view_locations()};
+    auto const emission_directions{hit_columns.view_emission_directions()};
+    auto const sources{hit_columns.sources()};
     for (std::int32_t index{}; index < hit_count; ++index) {
-        set_vector(
-            hit_columns.view_locations(), index, HMM_V3(static_cast<float>(index), 4.f, 5.f));
-        set_vector(hit_columns.view_emission_directions(), index, HMM_V3(0.f, 1.f, 0.f));
-        hit_columns.sources()[index] = {Team::Blue, EntityType::Turret};
+        set_vector(hit_locations, index, HMM_V3(static_cast<float>(index), 4.f, 5.f));
+        set_vector(emission_directions, index, HMM_V3(0.f, 1.f, 0.f));
+        sources[index] = {Team::Blue, EntityType::Turret};
     }
 
     SingleAllocationLaserHitDetails appended_hits;
@@ -176,6 +180,8 @@ TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
 TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMoves) {
     CompiledLevelEvents events;
     constexpr std::int32_t row_count{65};
+    // Deliberately grow by one row to exercise allocation-boundary preservation.
+    // NOLINTBEGIN(ioj-loop-view-accessor-call)
     for (std::int32_t index{}; index < row_count; ++index) {
         events.initial_spawns.capital_spawns.add_defaulted(1);
         auto const capitals{events.initial_spawns.capital_spawns.get_view()};
@@ -199,6 +205,7 @@ TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMove
     }
     events.schedule.capital_spawns.append_from(
         events.initial_spawns.capital_spawns.get_const_view());
+    // NOLINTEND(ioj-loop-view-accessor-call)
     events.schedule.turret_spawns.append_from(events.initial_spawns.turret_spawns.get_const_view());
 
     CompiledLevelEvents moved{std::move(events)};

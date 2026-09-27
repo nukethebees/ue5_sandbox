@@ -215,10 +215,12 @@ void are_spheres_in_bounds(GridGeometry const geometry,
     auto const max_z{half_size.Z - radius};
 
     auto const count{static_cast<std::size_t>(centres.num())};
+    auto const xs{centres.xs()};
+    auto const ys{centres.ys()};
+    auto const zs{centres.zs()};
     for (std::size_t index{}; index < count; ++index) {
-        auto const is_in_bounds{centres.xs()[index] >= min_x && centres.xs()[index] <= max_x &&
-                                centres.ys()[index] >= min_y && centres.ys()[index] <= max_y &&
-                                centres.zs()[index] >= min_z && centres.zs()[index] <= max_z};
+        auto const is_in_bounds{xs[index] >= min_x && xs[index] <= max_x && ys[index] >= min_y &&
+                                ys[index] <= max_y && zs[index] >= min_z && zs[index] <= max_z};
         results[index] = static_cast<SphereInBoundsResult>(is_in_bounds);
     }
 }

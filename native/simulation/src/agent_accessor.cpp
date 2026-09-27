@@ -63,6 +63,14 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
             }
         }};
 
+    auto const capital_locations{capitals_.view_locations()};
+    auto const capital_teams{capitals_.teams()};
+    auto const fighter_locations{fighters_.view_locations()};
+    auto const fighter_velocities{fighters_.view_velocities()};
+    auto const fighter_teams{fighters_.teams()};
+    auto const turret_locations{turrets_.view_locations()};
+    auto const turret_teams{turrets_.teams()};
+    auto const spinner_locations{spinners_.view_locations()};
     std::size_t begin{};
     while (begin < count) {
         auto const type{ids[order[begin]].entity_type()};
@@ -70,6 +78,8 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
         while (end < count && ids[order[end]].entity_type() == type) {
             ++end;
         }
+        // The sorted run determines this group's bounds.
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
         auto const group{order.subspan(begin, end - begin)};
         if (type >= EntityType::COUNT) {
             for (auto const row : group) {
@@ -93,8 +103,8 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
                 break;
             case EntityType::CapitalShip: {
                 auto const healths{capitals_healths_};
-                auto const locations{capitals_.view_locations()};
-                auto const teams{capitals_.teams()};
+                auto const locations{capital_locations};
+                auto const teams{capital_teams};
                 gather_group(group, type, [&](std::int32_t const index) {
                     return agent_accessor_detail::TargetState{vector_at(locations, index),
                                                               {},
@@ -104,9 +114,9 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
             } break;
             case EntityType::Fighter: {
                 auto const healths{fighters_healths_};
-                auto const locations{fighters_.view_locations()};
-                auto const velocities{fighters_.view_velocities()};
-                auto const teams{fighters_.teams()};
+                auto const locations{fighter_locations};
+                auto const velocities{fighter_velocities};
+                auto const teams{fighter_teams};
                 gather_group(group, type, [&](std::int32_t const index) {
                     return agent_accessor_detail::TargetState{vector_at(locations, index),
                                                               vector_at(velocities, index),
@@ -116,8 +126,8 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
             } break;
             case EntityType::Turret: {
                 auto const healths{turrets_healths_};
-                auto const locations{turrets_.view_locations()};
-                auto const teams{turrets_.teams()};
+                auto const locations{turret_locations};
+                auto const teams{turret_teams};
                 gather_group(group, type, [&](std::int32_t const index) {
                     return agent_accessor_detail::TargetState{vector_at(locations, index),
                                                               {},
@@ -126,7 +136,7 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
                 });
             } break;
             case EntityType::TubeSpinner: {
-                auto const locations{spinners_.view_locations()};
+                auto const locations{spinner_locations};
                 gather_group(group, type, [&](std::int32_t const index) {
                     return agent_accessor_detail::TargetState{
                         vector_at(locations, index), {}, Team::White, true};

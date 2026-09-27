@@ -548,10 +548,10 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     EXPECT_TRUE(static_overlaps.num() >= entity_count)
         << "Every moved entity overlaps the large static AABB";
     auto const static_overlap_count{static_overlaps.num()};
+    auto const static_geometry_count{fixture.query_manager.get_static_collision_bounds().num()};
     for (std::int32_t index{}; index < static_overlap_count; ++index) {
         EXPECT_TRUE(fixture.owners.agents.is_alive(static_overlaps.entities[index]))
             << "Static overlap entity remains valid";
-        auto const static_geometry_count{fixture.query_manager.get_static_collision_bounds().num()};
         EXPECT_TRUE(static_overlaps.static_geometry_indices[index] >= 0 &&
                     static_overlaps.static_geometry_indices[index] < static_geometry_count)
             << "Static overlap index remains valid";

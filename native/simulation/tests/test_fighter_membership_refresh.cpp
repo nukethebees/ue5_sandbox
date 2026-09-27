@@ -44,11 +44,15 @@ class FighterMembershipRefresh : public ::testing::Test {
         SingleAllocationFighterSpawnQueue spawns;
         spawns.add_defaulted(count);
         auto const data{spawns.get_view()};
+        auto const locations{data.view_locations()};
+        auto const teams{data.teams()};
+        auto const parents{data.parents()};
+        auto const targets{data.targets()};
         for (std::int32_t index{}; index < count; ++index) {
-            set_vector(data.view_locations(), index, {{100.f + 100.f * index, 100.f, 0.f}});
-            data.teams()[index] = Team::Green;
-            data.parents()[index] = first_parent;
-            data.targets()[index] = enemy;
+            set_vector(locations, index, {{100.f + 100.f * index, 100.f, 0.f}});
+            teams[index] = Team::Green;
+            parents[index] = first_parent;
+            targets[index] = enemy;
         }
         LevelSimTestAccess::commit_fighter_spawns(simulation, spawns.get_const_view());
     }
@@ -68,15 +72,19 @@ class FighterMembershipRefresh : public ::testing::Test {
         std::int32_t offset{};
         auto const capital_count{capitals.entities.num()};
         auto const fighter_count{entities.num()};
+        auto const parent_ids{entities.parent_ids()};
+        auto const capital_ids{capitals.entities.entity_ids()};
+        auto const fighter_ids{entities.entity_ids()};
         for (std::int32_t capital_index{}; capital_index < capital_count; ++capital_index) {
             std::vector<EntityUniqueId> expected;
             for (std::int32_t fighter_index{}; fighter_index < fighter_count; ++fighter_index) {
                 if (is_alive(fighter_view.healths.health(fighter_index)) &&
-                    entities.parent_ids()[fighter_index] ==
-                        capitals.entities.entity_ids()[capital_index]) {
-                    expected.push_back(entities.entity_ids()[fighter_index]);
+                    parent_ids[fighter_index] == capital_ids[capital_index]) {
+                    expected.push_back(fighter_ids[fighter_index]);
                 }
             }
+            // Each capital owns a different membership subrange.
+            // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
             auto const actual{simulation.get_capital_ships().get_fighter_ids(capital_index)};
             EXPECT_TRUE(std::ranges::equal(actual, expected));
             EXPECT_TRUE(std::ranges::equal(capitals.get_fighter_ids(capital_index), expected));

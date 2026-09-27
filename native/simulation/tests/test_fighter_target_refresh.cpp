@@ -38,11 +38,15 @@ class FighterTargetRefresh : public ::testing::Test {
         SingleAllocationFighterSpawnQueue spawns;
         spawns.add_defaulted(1);
         auto const spawn{spawns.get_view()};
+        auto const locations{spawn.view_locations()};
+        auto const teams{spawn.teams()};
+        auto const parents{spawn.parents()};
+        auto const spawn_source{spawns.get_const_view()};
         for (std::int32_t i{}; i < 2; ++i) {
-            set_vector(spawn.view_locations(), 0, {{100.f + 1000.f * i, 100.f + 300.f * i, 0.f}});
-            spawn.teams()[0] = i == 0 ? Team::Green : Team::Red;
-            spawn.parents()[0] = simulation.get_capital_ships().get_id(i);
-            LevelSimTestAccess::commit_fighter_spawns(simulation, spawns.get_const_view());
+            set_vector(locations, 0, {{100.f + 1000.f * i, 100.f + 300.f * i, 0.f}});
+            teams[0] = i == 0 ? Team::Green : Team::Red;
+            parents[0] = simulation.get_capital_ships().get_id(i);
+            LevelSimTestAccess::commit_fighter_spawns(simulation, spawn_source);
         }
         fighter = simulation.get_fighters().get_entity_ids()[0];
         target = simulation.get_fighters().get_entity_ids()[1];

@@ -67,12 +67,15 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
         previous_transforms.clear();
         auto const entities{fighters.get_read_view().entities};
         auto const entity_count{entities.num()};
+        auto const entity_ids{entities.entity_ids()};
+        auto const locations{entities.view_locations()};
+        auto const aim_directions{entities.view_aim_directions()};
         for (std::int32_t index{}; index < entity_count; ++index) {
             previous_transforms.emplace(
-                entities.entity_ids()[index],
-                FighterTransformSnapshot{.location = vector_at(entities.view_locations(), index),
-                                         .rotation = direction_to_rotation(
-                                             vector_at(entities.view_aim_directions(), index))});
+                entity_ids[index],
+                FighterTransformSnapshot{
+                    .location = vector_at(locations, index),
+                    .rotation = direction_to_rotation(vector_at(aim_directions, index))});
         }
     };
     capture_current_transforms(simulation.get_fighters());
@@ -84,12 +87,14 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
         auto const entities{level.get_fighters().get_read_view().entities};
         std::set<EntityUniqueId> expected_moved;
         auto const entity_count{entities.num()};
+        auto const entity_ids{entities.entity_ids()};
+        auto const locations{entities.view_locations()};
+        auto const aim_directions{entities.view_aim_directions()};
         for (std::int32_t index{}; index < entity_count; ++index) {
-            auto const id{entities.entity_ids()[index]};
+            auto const id{entity_ids[index]};
             auto const current{FighterTransformSnapshot{
-                .location = vector_at(entities.view_locations(), index),
-                .rotation =
-                    direction_to_rotation(vector_at(entities.view_aim_directions(), index))}};
+                .location = vector_at(locations, index),
+                .rotation = direction_to_rotation(vector_at(aim_directions, index))}};
             auto const previous{previous_transforms.find(id)};
             if (previous != previous_transforms.end() && previous->second != current) {
                 expected_moved.insert(id);

@@ -60,8 +60,11 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
                                                   0.f,
                                                   spawn_cooldown,
                                                   100)};
+        // add_capital_spawn may grow and relocate the storage.
+        // NOLINTBEGIN(ioj-loop-view-accessor-call)
         data.level_events.initial_spawns.capital_spawns.get_view()
             .target_entity_indices()[capital_index] = entity_index;
+        // NOLINTEND(ioj-loop-view-accessor-call)
     }
 
     for (auto const type : ml::EnumTraits<EntityType>::values) {
@@ -102,8 +105,11 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
 
     std::vector<Team> all_teams{
         Team::White, Team::Red, Team::Green, Team::Blue, Team::Orange, Team::Yellow};
+    auto const team_view{std::span<Team const>{all_teams}};
     for (auto const team_count : {1, 2, 4, 6}) {
-        auto const participants{std::span<Team const>{all_teams}.first(team_count)};
+        // Each test case selects a different participant count.
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
+        auto const participants{team_view.first(team_count)};
         auto const remainder{team_count > 1 ? team_count - 1 : 0};
         auto data{make_cap_battle(participants, participants, team_count * 3 + remainder, 4)};
         LevelSim simulation{std::move(data)};
@@ -199,9 +205,10 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
     auto const white_capital{capital_simulation.get_id(0)};
     auto const red_capital{capital_simulation.get_id(1)};
     std::vector<EntityUniqueId> white_fighters;
+    auto const fighter_teams{fighter_simulation.get_teams()};
     for (auto const fighter : fighter_simulation.get_entity_ids()) {
         auto const index{simulation.get_agent_indexes().find(fighter)};
-        if (fighter_simulation.get_teams()[index] == Team::White) {
+        if (fighter_teams[index] == Team::White) {
             white_fighters.push_back(fighter);
         }
     }
@@ -277,9 +284,10 @@ TEST(FighterLiveCap, PendingLaunchSurvivesFinalCapitalDeathUnowned) {
         << "Spawn parent capital is removed";
     EXPECT_EQ(count_team(simulation, Team::White), 1)
         << "Pending fighter is admitted after its final parent dies";
+    auto const fighter_teams{fighter_simulation.get_teams()};
     for (auto const fighter : fighter_simulation.get_entity_ids()) {
         auto const index{simulation.get_agent_indexes().find(fighter)};
-        if (fighter_simulation.get_teams()[index] != Team::White) {
+        if (fighter_teams[index] != Team::White) {
             continue;
         }
         EXPECT_TRUE(!fighter_simulation.get_parent_ids()[index].is_valid())

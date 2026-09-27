@@ -308,6 +308,8 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
             for (std::int32_t y{min_coord.y}; y <= max_coord.y; ++y) {
                 for (std::int32_t z{min_coord.z}; z <= max_coord.z; ++z) {
                     ++expected_cell_count;
+                    // Each coordinate selects a distinct grid cell.
+                    // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                     found_cell_count += count_id(grid.get_cell_entities({x, y, z}), id);
                 }
             }
@@ -1668,6 +1670,7 @@ void CollisionUniformGridTraceRunner::test_dense_and_wide_aabbs() {
     for (std::int32_t x{min_coord.x}; x <= max_coord.x; ++x) {
         for (std::int32_t y{min_coord.y}; y <= max_coord.y; ++y) {
             for (std::int32_t z{min_coord.z}; z <= max_coord.z; ++z) {
+                // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-cell membership.
                 membership_count += count_id(wide_fixture.grid.get_cell_entities({x, y, z}),
                                              wide_fixture.handles[0]);
             }

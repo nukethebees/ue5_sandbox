@@ -93,10 +93,12 @@ void expect_health_mappings(LevelSim const& simulation) {
         ASSERT_EQ(healths.num(), entities.num());
         expected_count += entities.num();
         auto const entity_count{entities.num()};
+        auto const entity_ids{entities.entity_ids()};
+        auto const health_indices{healths.indices()};
         for (std::int32_t row{}; row < entity_count; ++row) {
             auto const element{static_cast<std::size_t>(row)};
-            auto const id{entities.entity_ids()[element]};
-            auto const index{healths.indices()[element]};
+            auto const id{entity_ids[element]};
+            auto const index{health_indices[element]};
             EXPECT_TRUE(table.contains(index, id));
             EXPECT_EQ(table.get_health(index, id), healths.health(row));
         }
@@ -294,8 +296,9 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     auto const turret_view{simulation.get_turrets().get_read_view()};
     auto const turrets{turret_view.entities};
     auto const turret_count{turrets.num()};
+    auto const turret_teams{turrets.teams()};
     for (std::int32_t i{}; i < turret_count; ++i) {
-        auto const rotated{turrets.teams()[i] == Team::Green};
+        auto const rotated{turret_teams[i] == Team::Green};
         EXPECT_TRUE(
             health_table.contains(turret_view.healths.indices()[i], turrets.entity_ids()[i]))
             << "Turret health is allocated in the world health table";
@@ -492,6 +495,8 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
 
     for (std::int32_t overlap_detection{}; overlap_detection < 3; ++overlap_detection) {
         simulation.advance(dt);
+        // advance publishes a fresh overlap batch each tick.
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
         auto const events{simulation.get_spatial_query_manager().get_aabb_overlap_events()};
         EXPECT_EQ(events.entity_entity_overlaps.num(), 1)
             << "The tick captures one unique dynamic overlap";

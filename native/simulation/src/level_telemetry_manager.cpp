@@ -215,17 +215,18 @@ void LevelTelemetryManager::sample_live_series() {
         columns.active_entities()[row] = current_state_.active_entities;
         active_entity_count_data_.add(tick, current_state_.active_entities);
     }
+    auto const counts_by_type{columns.active_entities_by_type()};
+    auto const counts_by_team_and_type{columns.active_entities_by_team_and_type()};
     for (std::int32_t entity_type_index{}; entity_type_index < entity_type_count;
          ++entity_type_index) {
         if (mask.has(FieldMask::active_entities_by_type_field(entity_type_index))) {
-            columns.active_entities_by_type()[row][entity_type_index] =
-                active_entities_by_type[entity_type_index];
+            counts_by_type[row][entity_type_index] = active_entities_by_type[entity_type_index];
         }
         for (std::int32_t team_index{}; team_index < team_count; ++team_index) {
             auto const field{
                 FieldMask::active_entities_by_team_and_type_field(team_index, entity_type_index)};
             if (mask.has(field)) {
-                columns.active_entities_by_team_and_type()[row][team_index][entity_type_index] =
+                counts_by_team_and_type[row][team_index][entity_type_index] =
                     current_state_.active_entities_by_team_and_type[team_index][entity_type_index];
             }
         }

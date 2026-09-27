@@ -360,6 +360,8 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
 }
 
 TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
+    // Independent scenario worlds mutate storage and publish new views during each run.
+    // NOLINTBEGIN(ioj-loop-view-accessor-call)
     for (auto const kill_tick : {1, 2}) {
         auto data{make_world()};
 
@@ -439,6 +441,7 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         }
     }
 
+    // NOLINTEND(ioj-loop-view-accessor-call)
     auto data{make_world()};
     for (auto const x : {-2000.f, 0.f, 2000.f}) {
         add_capital_spawn(data, {{x, 0.f, 0.f}}, Team::White, -1, 60.f, 60.f, 100);

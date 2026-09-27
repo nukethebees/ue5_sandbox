@@ -53,11 +53,12 @@ void run_worldless_fighters_intercept_capital(tests::SimulationFixture const& co
     harness.on_end_tick = [&](LevelSim&) {
         Sample sample;
         sample.parent_target = capitals.get_target_id(0);
+        auto const target_ids{fighters.get_target_ids()};
         for (auto const fighter_id : capitals.get_fighter_ids(0)) {
             auto const index{
                 harness.get_simulation().get_agent_accessor().indexes().find(fighter_id)};
             if (index >= 0) {
-                sample.fighter_targets.push_back(fighters.get_target_ids()[index]);
+                sample.fighter_targets.push_back(target_ids[index]);
             }
         }
         samples.add(harness.get_time(), std::move(sample));

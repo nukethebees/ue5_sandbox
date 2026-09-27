@@ -521,11 +521,14 @@ void Sim::fire_lasers_from(std::span<Transform3d const> const fire_points) {
     auto const laser_count{static_cast<std::int32_t>(fire_points.size())};
     new_lasers.add_uninitialised(laser_count);
     auto const laser_columns{new_lasers.get_view()};
+    auto const locations{laser_columns.view_locations()};
+    auto const rotations{laser_columns.view_rotations()};
+    auto const base_velocities{laser_columns.view_base_velocities()};
 
     for (std::int32_t i{0}; i < laser_count; ++i) {
-        set_vector(laser_columns.view_locations(), i, to_float(fire_points[i].location));
-        set_rotation(laser_columns.view_rotations(), i, to_float(fire_points[i].rotator()));
-        set_vector(laser_columns.view_base_velocities(), i, to_float(state_.physical.velocity));
+        set_vector(locations, i, to_float(fire_points[i].location));
+        set_rotation(rotations, i, to_float(fire_points[i].rotator()));
+        set_vector(base_velocities, i, to_float(state_.physical.velocity));
     }
 
     std::ranges::fill(laser_columns.damages(), config.laser.damage);

@@ -213,6 +213,8 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
     for (auto x{min_coord.x}; x <= max_coord.x; ++x) {
         for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
             for (auto z{min_coord.z}; z <= max_coord.z; ++z) {
+                // Each grid coordinate selects a different cell.
+                // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 for (auto const id : grid.get_cell_entities({x, y, z})) {
                     auto const local_index{agents.indexes().find(id)};
                     if (local_index < 0) {

@@ -145,6 +145,8 @@ void MissionManager::bind_level_event_data(std::span<std::int32_t const> const v
 void MissionManager::consume_level_events(LevelMissionEventGroupsConstView const groups) {
     auto const group_count{groups.num()};
     for (std::int32_t index{}; index < group_count; ++index) {
+        // Each event group selects a different payload range.
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
         auto const values{level_event_values_.subspan(groups.offsets[index], groups.counts[index])};
         switch (groups.types[index]) {
             case LevelMissionEventType::MustSurvive: {

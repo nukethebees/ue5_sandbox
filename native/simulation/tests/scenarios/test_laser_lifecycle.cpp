@@ -88,18 +88,24 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
         auto const count{scenario == LaserLifecycleScenario::SimultaneousLethalHits ? 2 : 1};
         lasers::SingleAllocationLaserSpawnRequests requests;
         requests.add_uninitialised(count);
+        auto const locations{requests.get_view().view_locations()};
+        auto const rotations{requests.get_view().view_rotations()};
+        auto const velocities{requests.get_view().view_base_velocities()};
+        auto const damages{requests.get_view().damages()};
+        auto const speeds{requests.get_view().speeds()};
+        auto const max_distances{requests.get_view().max_distances()};
+        auto const instigator_ids{requests.get_view().instigator_ids()};
+        auto const sources{requests.get_view().sources()};
         for (std::int32_t i{}; i < count; ++i) {
-            set_vector(requests.get_view().view_locations(), i, start);
-            set_rotation(
-                requests.get_view().view_rotations(), i, direction_to_rotation(fire_direction));
-            set_vector(requests.get_view().view_base_velocities(), i, Vector3f{});
-            requests.get_view().damages()[i] = projectile_damage;
-            requests.get_view().speeds()[i] = projectile_speed;
-            requests.get_view().max_distances()[i] = scenario == LaserLifecycleScenario::Miss
-                                                       ? miss_max_distance
-                                                       : collision_max_distance;
-            requests.get_view().instigator_ids()[i] = shooter;
-            requests.get_view().sources()[i] = LaserSource{Team::White, EntityType::TubeSpinner};
+            set_vector(locations, i, start);
+            set_rotation(rotations, i, direction_to_rotation(fire_direction));
+            set_vector(velocities, i, Vector3f{});
+            damages[i] = projectile_damage;
+            speeds[i] = projectile_speed;
+            max_distances[i] = scenario == LaserLifecycleScenario::Miss ? miss_max_distance
+                                                                        : collision_max_distance;
+            instigator_ids[i] = shooter;
+            sources[i] = LaserSource{Team::White, EntityType::TubeSpinner};
         }
         LevelSimTestAccess::queue_laser_spawns(harness.get_simulation(), requests.get_const_view());
     });

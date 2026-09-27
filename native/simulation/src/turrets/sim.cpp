@@ -338,6 +338,8 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
     auto const turret_teams{entities.teams()};
     auto const fire_point_locations{entities.view_fire_point_locations()};
     auto const integral_biases{entities.integral_biases()};
+    ml::FixedArray<EntityUniqueId, 128> target_ids;
+    auto const target_capacity{target_ids.capacity_view()};
 
     for (std::int32_t i{begin}; i < end; ++i) {
         if (!refresh_countdowns.try_consume(i)) {
@@ -348,18 +350,17 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
             auto const turret_location{vector_at(locations, i)};
             auto const this_team{turret_teams[i]};
 
-            ml::FixedArray<EntityUniqueId, 128> target_ids;
             target_ids.set_num_uninitialised(
                 spatial_query_manager.collect_non_team_entities_in_range(
-                    turret_location, this_team, radius, target_ids.capacity_view()));
+                    turret_location, this_team, radius, target_capacity));
 
             current_targets[i] = EntityUniqueId{};
 
             auto const target_count{target_ids.num()};
             auto const count{static_cast<std::size_t>(target_count)};
             has_line_of_sight.set_num_uninitialised(target_count);
-            // NOLINTBEGIN(ioj-loop-view-construction) -- each turret produces a differently sized
-            // candidate batch.
+            // Each turret produces a differently sized candidate batch.
+            // NOLINTBEGIN(ioj-loop-view-construction,ioj-loop-view-accessor-call)
             Vectors3fView const candidate_locations_view{std::span{candidate_xs}.first(count),
                                                          std::span{candidate_ys}.first(count),
                                                          std::span{candidate_zs}.first(count)};
@@ -372,13 +373,13 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
                                     {},
                                     std::span{teams}.first(count),
                                     std::span{alive}.first(count)});
-            // NOLINTEND(ioj-loop-view-construction)
 
             spatial_query_manager.has_line_of_sight_to_targets(
                 vector_at(fire_point_locations, i),
                 candidate_locations_view.get_const_view(),
                 target_ids,
                 has_line_of_sight);
+            // NOLINTEND(ioj-loop-view-construction,ioj-loop-view-accessor-call)
 
             if (target_count > 0) {
                 auto const target_offset{static_cast<std::int32_t>(

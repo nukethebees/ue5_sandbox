@@ -439,15 +439,16 @@ void Sim::plan_movement(float const dt, ml::FrameScratch& scratch) {
         }
     }
 
-    for (auto const task : {Task::MoveToDestination, Task::Attack}) {
-        auto const view{get_task_view(task)};
+    auto const clamp_move_distances{[dt](auto const view) {
         auto const count{view.num()};
         auto const move_distances{view.move_distances()};
         auto const speeds{view.speeds()};
         for (std::int32_t index{}; index < count; ++index) {
             move_distances[index] = std::min(move_distances[index], speeds[index] * dt);
         }
-    }
+    }};
+    clamp_move_distances(move_view);
+    clamp_move_distances(attack_view);
 
     auto const attack_locations{attack_view.view_locations()};
     auto const attack_directions{attack_view.view_movement_directions()};
@@ -765,6 +766,8 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
             entity_ids[fighter_index],
             goal_direction,
             previous_memory,
+            // Each scan produces its own neighbour set.
+            // NOLINTNEXTLINE(ioj-loop-view-construction)
             {neighbours.data(), static_cast<std::size_t>(neighbour_count)},
             {
                 .separation_radius = separation_radius,
@@ -947,6 +950,14 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
     auto const locations{data.view_locations()};
     auto const speeds{data.speeds()};
     auto const choices{data.avoidance_choice_indices()};
+    auto const hits{scratch.trace_hits.hits.view()};
+    auto const hit_locations{scratch.trace_hits.locations.get_const_view()};
+    auto const trace_ends{scratch.line_of_sight_ends.get_const_view()};
+    auto const entity_ids{data.entity_ids()};
+    auto const destinations{data.view_desired_move_locations()};
+    auto const movement_directions{data.view_movement_directions()};
+    auto const separation_steering{data.view_separation_steering()};
+    auto const risk_tiers{data.navigation_risk_tiers()};
 
     for (std::int32_t blocked_index{}; blocked_index < n_blocked_fighters; ++blocked_index) {
         auto const fighter_index{scratch.blocked_fighter_indices[blocked_index]};
@@ -957,53 +968,46 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
         auto const candidate_begin{blocked_index * n_avoidance_choices};
         auto const candidate_end{candidate_begin + n_avoidance_choices};
         auto const candidate_count{static_cast<std::size_t>(n_avoidance_choices)};
+        // Each fighter owns a distinct candidate subrange.
+        // NOLINTBEGIN(ioj-loop-view-construction,ioj-loop-view-accessor-call)
         auto const chosen_choice{fighters::choose_navigation_alternative(
             fighter_location,
             safe_progress_distance,
-            // NOLINTNEXTLINE(ioj-loop-view-construction) -- each fighter owns a distinct candidate
-            // subrange.
             {scratch.trace_choice_indices.data() + candidate_begin, candidate_count},
-            // NOLINTNEXTLINE(ioj-loop-view-construction) -- results use the same per-fighter
-            // subrange.
             {scratch.line_of_sight_results.data() + candidate_begin, candidate_count},
-            scratch.trace_hits.hits.view().subspan(candidate_begin, candidate_count),
-            scratch.trace_hits.locations.get_const_view().slice(candidate_begin,
-                                                                n_avoidance_choices),
+            hits.subspan(candidate_begin, candidate_count),
+            hit_locations.slice(candidate_begin, n_avoidance_choices),
             stop_movement_choice)};
+        // NOLINTEND(ioj-loop-view-construction,ioj-loop-view-accessor-call)
 
         choices[fighter_index] = chosen_choice;
         if (chosen_choice == stop_movement_choice &&
             diagnostics::take_report(diagnostics_enabled_, diagnostic_stop_reports, 8)) {
-            ml::log_error(
-                std::format("[FighterStop] fighterId={} position={} destination={} "
-                            "preferred={} separation={} clearance={:.2f} safeTravel={:.2f} risk={}",
-                            data.entity_ids()[fighter_index].raw_value(),
-                            diagnostic_detail::vector_string(fighter_location),
-                            diagnostic_detail::vector_string(
-                                vector_at(data.view_desired_move_locations(), fighter_index)),
-                            diagnostic_detail::vector_string(
-                                vector_at(data.view_movement_directions(), fighter_index)),
-                            diagnostic_detail::vector_string(
-                                vector_at(data.view_separation_steering(), fighter_index)),
-                            collision_radius_ + config.avoidance_clearance_buffer,
-                            safe_progress_distance,
-                            data.navigation_risk_tiers()[fighter_index]));
+            ml::log_error(std::format(
+                "[FighterStop] fighterId={} position={} destination={} "
+                "preferred={} separation={} clearance={:.2f} safeTravel={:.2f} risk={}",
+                entity_ids[fighter_index].raw_value(),
+                diagnostic_detail::vector_string(fighter_location),
+                diagnostic_detail::vector_string(vector_at(destinations, fighter_index)),
+                diagnostic_detail::vector_string(vector_at(movement_directions, fighter_index)),
+                diagnostic_detail::vector_string(vector_at(separation_steering, fighter_index)),
+                collision_radius_ + config.avoidance_clearance_buffer,
+                safe_progress_distance,
+                risk_tiers[fighter_index]));
             for (std::int32_t trace_index{candidate_begin}; trace_index < candidate_end;
                  ++trace_index) {
-                ml::log_error(std::format(
-                    "[FighterStop] choice={} end={} inWorld={} hit={} "
-                    "blockerId={} staticIndex={} hitDistance={:.2f}",
-                    scratch.trace_choice_indices[trace_index],
-                    diagnostic_detail::vector_string(
-                        scratch.line_of_sight_ends.get_const_view()[trace_index]),
-                    scratch.line_of_sight_results[trace_index],
-                    scratch.trace_hits.hits[trace_index],
-                    scratch.trace_hits.entities[trace_index].raw_value(),
-                    scratch.trace_hits.static_geometry_indices[trace_index],
-                    scratch.trace_hits.hits[trace_index]
-                        ? HMM_LenV3(fighter_location -
-                                    scratch.trace_hits.locations.get_const_view()[trace_index])
-                        : -1.f));
+                ml::log_error(
+                    std::format("[FighterStop] choice={} end={} inWorld={} hit={} "
+                                "blockerId={} staticIndex={} hitDistance={:.2f}",
+                                scratch.trace_choice_indices[trace_index],
+                                diagnostic_detail::vector_string(trace_ends[trace_index]),
+                                scratch.line_of_sight_results[trace_index],
+                                scratch.trace_hits.hits[trace_index],
+                                scratch.trace_hits.entities[trace_index].raw_value(),
+                                scratch.trace_hits.static_geometry_indices[trace_index],
+                                scratch.trace_hits.hits[trace_index]
+                                    ? HMM_LenV3(fighter_location - hit_locations[trace_index])
+                                    : -1.f));
             }
         }
     }
@@ -1291,6 +1295,8 @@ void Sim::refresh_layout() {
         for (std::int32_t index{}; index < n_fighters; ++index) {
             if (static_cast<std::size_t>(old_tasks[index]) == group) {
                 reordered |= new_data.num() != index;
+                // Each retained entity is copied from its original row.
+                // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 new_data.append_from(old_data.slice(index, 1));
                 ++write_indices[group];
             }
@@ -1417,18 +1423,20 @@ void Sim::commit_spawns() {
         ++membership_revision_;
     }
     if (diagnostics_enabled_) {
+        auto const parent_ids{new_data.parent_ids()};
+        auto const target_ids{new_data.target_ids()};
+        auto const spawn_locations{new_data.view_locations()};
         for (std::int32_t i{}; i < n_new; ++i) {
             if (!diagnostics::take_report(diagnostics_enabled_, diagnostic_spawn_reports, 64)) {
                 break;
             }
-            auto const index{n_cur + i};
-            ml::log_error(std::format(
-                "[FighterSpawn] Committed fighterId={} parentId={} "
-                "targetId={} world={}",
-                data.entity_ids()[index].raw_value(),
-                data.parent_ids()[index].raw_value(),
-                data.target_ids()[index].raw_value(),
-                diagnostic_detail::vector_string(vector_at(data.view_locations(), index))));
+            ml::log_error(
+                std::format("[FighterSpawn] Committed fighterId={} parentId={} "
+                            "targetId={} world={}",
+                            entity_ids[i].raw_value(),
+                            parent_ids[i].raw_value(),
+                            target_ids[i].raw_value(),
+                            diagnostic_detail::vector_string(vector_at(spawn_locations, i))));
         }
     }
     make_deterministic_biases(
@@ -1606,16 +1614,16 @@ void Sim::handle_firing(TaskView data, ml::FrameScratch& scratch) {
             firing_position_candidates.set(i, candidate.location);
         }
 
+        // Candidate buffers resize as the remaining fighter set shrinks.
+        // NOLINTBEGIN(ioj-loop-view-construction,ioj-loop-view-accessor-call)
         spatial_query_manager.have_clear_lines(
             line_of_sight_starts.get_const_view(),
             line_of_sight_ends.get_const_view(),
-            // NOLINTNEXTLINE(ioj-loop-view-construction) -- candidates resize these buffers each
-            // iteration.
             {line_of_sight_results.data(), static_cast<std::size_t>(line_of_sight_results.num())},
-            // NOLINTNEXTLINE(ioj-loop-view-construction) -- the remaining fighter set shrinks each
-            // iteration.
             {firing_ignored_entities.data(),
              static_cast<std::size_t>(firing_ignored_entities.num())});
+        auto const candidate_locations{firing_position_candidates.get_const_view()};
+        // NOLINTEND(ioj-loop-view-construction,ioj-loop-view-accessor-call)
 
         for (auto index{n_fighters - 1}; index >= 0; --index) {
             if (line_of_sight_results[index] == 0) {
@@ -1623,9 +1631,7 @@ void Sim::handle_firing(TaskView data, ml::FrameScratch& scratch) {
             }
 
             auto const fighter_index{firing_position_fighter_indices[index]};
-            set_vector(desired_move_locations,
-                       fighter_index,
-                       firing_position_candidates.get_const_view()[index]);
+            set_vector(desired_move_locations, fighter_index, candidate_locations[index]);
             firing_position_fighter_indices.remove_at_swap(index);
         }
     }

@@ -51,9 +51,11 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
                 std::vector<EntityUniqueId> enemies;
                 auto const entities{capitals.get_read_view().entities};
                 auto const entity_count{entities.num()};
+                auto const teams{entities.teams()};
+                auto const entity_ids{entities.entity_ids()};
                 for (std::int32_t index{}; index < entity_count; ++index) {
-                    if (entities.teams()[index] != Team::Green) {
-                        enemies.push_back(entities.entity_ids()[index]);
+                    if (teams[index] != Team::Green) {
+                        enemies.push_back(entity_ids[index]);
                     }
                 }
                 harness.queue_kills(enemies);
