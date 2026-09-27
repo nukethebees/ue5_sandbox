@@ -11,7 +11,7 @@ namespace ml::sandbox_ismc {
 namespace avx2_detail {
 template <std::size_t Components, std::size_t Axis>
 auto load_axis(std::span<std::byte const> bytes, std::size_t index) noexcept -> __m256 {
-    std::array<std::array<float, Components>, 8> values;
+    std::array<std::array<float, Components>, 8> values{};
     std::memcpy(values.data(), bytes.data() + index * Components * sizeof(float), sizeof(values));
     return _mm256_setr_ps(values[0][Axis],
                           values[1][Axis],
@@ -148,8 +148,8 @@ auto accumulate_bounds(__m256 px,
                     bounds.max_z);
 }
 auto reduce_axis(__m256 minimum, __m256 maximum, float& low, float& high) noexcept -> void {
-    std::array<float, 8> minima;
-    std::array<float, 8> maxima;
+    std::array<float, 8> minima{};
+    std::array<float, 8> maxima{};
     _mm256_storeu_ps(minima.data(), minimum);
     _mm256_storeu_ps(maxima.data(), maximum);
     for (auto lane{0U}; lane < 8; ++lane) {
@@ -173,10 +173,10 @@ auto pack(TransformInput input,
         __m256 px{};
         __m256 py{};
         __m256 pz{};
-        std::array<std::int32_t, 8> packed_x;
-        std::array<std::int32_t, 8> packed_y;
-        std::array<std::int32_t, 8> packed_z;
-        std::array<std::uint32_t, 8> packed_rotation;
+        std::array<std::int32_t, 8> packed_x{};
+        std::array<std::int32_t, 8> packed_y{};
+        std::array<std::int32_t, 8> packed_z{};
+        std::array<std::uint32_t, 8> packed_rotation{};
         if constexpr (Positions) {
             px = load_axis<3, 0>(input.positions, index);
             py = load_axis<3, 1>(input.positions, index);

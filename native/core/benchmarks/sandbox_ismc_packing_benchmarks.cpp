@@ -37,7 +37,7 @@ struct Buffers {
     std::vector<PackedTransform> output;
 };
 
-template <Operation operation, bool Avx2>
+template <Operation operation, bool Avx2, bool Coherent = false>
 auto run(benchmark::State& state) -> void {
     if constexpr (Avx2) {
         if (cpu_features::GetX86Info().features.avx2 == 0) {
@@ -47,6 +47,14 @@ auto run(benchmark::State& state) -> void {
     }
     auto const count{static_cast<std::size_t>(state.range(0))};
     Buffers buffers{count};
+    if constexpr (Coherent) {
+        // A coherent fleet keeps the same largest component, so scalar branches
+        // are predictable. Keep this alongside the broad orientation distribution.
+        for (std::size_t index{}; index < count; ++index) {
+            auto const angle{static_cast<float>(index % 100) * 0.001f};
+            buffers.rotations[index] = {0, 0, std::sin(angle), std::cos(angle)};
+        }
+    }
     TransformInput const input{std::as_bytes(std::span{buffers.positions}),
                                std::as_bytes(std::span{buffers.rotations})};
     PackingParameters const parameters{make_vector3f(262144, -262144, 1000000),
@@ -75,11 +83,12 @@ auto run(benchmark::State& state) -> void {
     state.SetItemsProcessed(state.iterations() * static_cast<std::int64_t>(count));
 }
 
-template <Operation operation>
+template <Operation operation, bool Coherent = false>
 auto register_pair(char const* name) -> void {
     for (auto const avx2 : {false, true}) {
         auto const label{std::string{"ismc/"} + name + (avx2 ? "/avx2" : "/scalar")};
-        auto const function{avx2 ? run<operation, true> : run<operation, false>};
+        auto const function{avx2 ? run<operation, true, Coherent>
+                                 : run<operation, false, Coherent>};
         benchmark::RegisterBenchmark(label, function)
             ->Arg(64)
             ->Arg(256)
@@ -94,6 +103,8 @@ auto register_benchmarks() -> bool {
     register_pair<Operation::Quaternion>("quaternion");
     register_pair<Operation::Transform>("transform");
     register_pair<Operation::TransformBounds>("transform_bounds");
+    register_pair<Operation::Transform, true>("transform_coherent");
+    register_pair<Operation::TransformBounds, true>("transform_bounds_coherent");
     return true;
 }
 auto const benchmarks_registered{register_benchmarks()};
