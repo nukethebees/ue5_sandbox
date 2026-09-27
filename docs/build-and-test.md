@@ -161,7 +161,7 @@ repeated inner loop.
 
 `tool-tests` builds its prerequisites before running the per-project tests, with no duplicate
 umbrella C# test. Use it for shared/unknown tool infrastructure or broad tool validation. Known
-C# tools use focused project builds and labels; GitSupport changes require GitTools validation.
+C# tools use focused project builds and labels. PowerShell navigation queries read-only Git directly.
 Layout planner and image lab use their native workflows, jobserver its focused tests, and perf its
 benchmark validation. AgentTask uses `cargo test --package agent-task --locked` from `tools/rust`.
 

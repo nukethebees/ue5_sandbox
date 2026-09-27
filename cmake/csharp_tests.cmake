@@ -64,8 +64,6 @@ sandbox_add_csharp_test(CodeFormatTools "tools/CodeFormatTools.Tests/CodeFormatT
   "formatting;integration;subprocess" tools/CodeFormatTools.Tests tools/CodeFormatTools)
 sandbox_add_csharp_test(GamePackageTools "tools/GamePackageTools.Tests/GamePackageTools.Tests.csproj"
   "game-package;unit" tools/GamePackageTools.Tests tools/GamePackageTools)
-sandbox_add_csharp_test(GitTools "tools/GitTools.Tests/GitTools.Tests.csproj"
-  "git;integration;subprocess" tools/GitTools.Tests tools/GitTools tools/GitSupport)
 sandbox_add_csharp_test(NativeBinaryTools "tools/NativeBinaryTools.Tests/NativeBinaryTools.Tests.csproj"
   "native-binary;integration;subprocess" tools/NativeBinaryTools.Tests tools/NativeBinaryTools)
 sandbox_add_csharp_test(UnrealBuildTools "tools/UnrealBuildTools.Tests/UnrealBuildTools.Tests.csproj"

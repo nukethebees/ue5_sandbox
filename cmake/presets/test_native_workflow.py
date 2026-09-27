@@ -920,7 +920,7 @@ cmake_language(DEFER CALL check_simulation_policy)
         expected_tools = {"layout-planner-ui-tests", "image-lab-tests", "tracy-benchmark-compare-tests", "Sandbox.RustSetLiveCodingDisabled"}
         expected_tools.update("Sandbox." + name for name in (
             "ArchitectureChecks", "BenchmarkTools", "CodeFormatTools",
-            "GamePackageTools", "GitTools", "NativeBinaryTools", "UnrealBuildTools"))
+            "GamePackageTools", "NativeBinaryTools", "UnrealBuildTools"))
         self.assertEqual(tools.keys(), expected_tools)
         self.assertEqual(inventory("-L", "^native-simulation$", "-LE", "soak|compile-contract").keys(),
                          {"native-simulation-tests"})

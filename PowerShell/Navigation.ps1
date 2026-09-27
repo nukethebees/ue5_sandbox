@@ -1,24 +1,48 @@
 $script:dev_project_root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 
-function Get-DevGitToolsPath {
-    $git_tools_path = Join-Path $script:dev_project_root 'tools\bin\GitTools.exe'
+function ConvertFrom-DevWorktreePorcelain {
+    param([string]$Output)
 
-    if (-not (Test-Path -LiteralPath $git_tools_path -PathType Leaf)) {
-        throw "GitTools is not available. Run 'ctools' to build the C# developer tools."
+    $worktree = $null
+    foreach ($record in $Output.Split([char]0)) {
+        if ($record.StartsWith('worktree ')) {
+            if ($null -ne $worktree) { $worktree }
+            $path = $record.Substring(9)
+            $worktree = [PSCustomObject]@{
+                Name = [IO.Path]::GetFileName($path.TrimEnd('/', '\'))
+                Path = $path
+                Branch = $null
+            }
+        } elseif ($record.StartsWith('branch ') -and $null -ne $worktree) {
+            $worktree.Branch = $record.Substring(7) -replace '^refs/heads/', ''
+        }
     }
-
-    $git_tools_path
+    if ($null -ne $worktree) { $worktree }
 }
 
 function Get-DevWorktree {
-    $git_tools_path = Get-DevGitToolsPath
-    $worktree_json = & $git_tools_path worktree list --root $script:dev_project_root
-
-    if ($LASTEXITCODE -ne 0) {
-        throw "Unable to discover Git worktrees from '$script:dev_project_root': GitTools exited with code $LASTEXITCODE."
+    # Read raw output so newlines in paths are not treated as record separators.
+    $start = [Diagnostics.ProcessStartInfo]::new('git')
+    $start.UseShellExecute = $false
+    $start.CreateNoWindow = $true
+    $start.RedirectStandardOutput = $true
+    $start.RedirectStandardError = $true
+    $start.StandardOutputEncoding = [Text.Encoding]::UTF8
+    foreach ($argument in @('-C', $script:dev_project_root, 'worktree', 'list', '--porcelain', '-z')) {
+        $start.ArgumentList.Add($argument)
     }
-
-    $worktree_json | ConvertFrom-Json
+    $process = [Diagnostics.Process]::Start($start)
+    try {
+        $errors = $process.StandardError.ReadToEndAsync()
+        $output = $process.StandardOutput.ReadToEnd()
+        $process.WaitForExit()
+        if ($process.ExitCode -ne 0) {
+            throw "Unable to discover Git worktrees: $($errors.GetAwaiter().GetResult())"
+        }
+        ConvertFrom-DevWorktreePorcelain $output
+    } finally {
+        $process.Dispose()
+    }
 }
 
 function Get-DevPlugin {
@@ -92,7 +116,7 @@ function cwt {
                     Where-Object { $_.Name -like "$word_to_complete*" } |
                     ForEach-Object {
                         [System.Management.Automation.CompletionResult]::new(
-                            $_.Name,
+                            ("'" + $_.Name.Replace("'", "''") + "'"),
                             $_.Name,
                             'ParameterValue',
                             $_.Path)
@@ -126,7 +150,7 @@ function cwb {
                     } |
                     ForEach-Object {
                         [System.Management.Automation.CompletionResult]::new(
-                            $_.Branch,
+                            ("'" + $_.Branch.Replace("'", "''") + "'"),
                             $_.Branch,
                             'ParameterValue',
                             $_.Path)

@@ -20,8 +20,6 @@ and native validation does not run this suite.
 - `perf/` contains the native `tracy-benchmark-compare` CLI for paired Tracy captures of native
   simulation benchmarks. Build it with the `tracy-tools` workflow; install its dedicated CMake
   component when a stable per-user executable is needed.
-- `GitTools/` is a small C# executable for Git worktree discovery. Build the complete C# tooling
-  workspace with `dotnet build tools/Tools.slnx` or `ctools` after loading `dev.ps1`.
 - `BenchmarkTools/` owns reusable benchmark orchestration. Its staged executable runs native S7,
   fighter, frame-memory, telemetry, GPU-starfield, revision-comparison, and native-SoA benchmark
   commands; `native-simulation --level <path> --seconds <value>` remains the generic level entry
