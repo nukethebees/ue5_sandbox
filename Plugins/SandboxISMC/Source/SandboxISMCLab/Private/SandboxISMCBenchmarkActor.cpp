@@ -567,7 +567,13 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
                         custom_data[2] = base_colours_[instance_index].Z;
                     }
                 }
-                chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
+                if (use_supplied_bounds_) {
+                    chunk.set_transforms<ESandboxISMCBoundsMode::Supplied>(
+                        transform_positions, transform_rotations, transform_scales);
+                } else {
+                    chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
+                        transform_positions, transform_rotations, transform_scales);
+                }
             }};
             if (use_supplied_bounds_) {
                 custom_ismc_->set_instances(count,
@@ -668,7 +674,13 @@ auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
                     transform_rotations[local_index] = animated ? rotation : FQuat4f::Identity;
                     transform_scales[local_index] = FVector3f::OneVector;
                 }
-                chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
+                if (use_supplied_bounds_) {
+                    chunk.set_transforms<ESandboxISMCBoundsMode::Supplied>(
+                        transform_positions, transform_rotations, transform_scales);
+                } else {
+                    chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
+                        transform_positions, transform_rotations, transform_scales);
+                }
             }
             if (uses_custom_data()) {
                 TRACE_CPUPROFILER_EVENT_SCOPE(

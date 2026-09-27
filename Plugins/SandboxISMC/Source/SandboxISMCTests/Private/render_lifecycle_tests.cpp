@@ -70,7 +70,7 @@ TEST_CLASS(SandboxISMCRenderLifecycle, "SandboxISMC.RenderTests")
                             custom_data[1] = static_cast<float>(instance_index);
                             custom_data[2] = 1.0f;
                         }
-                        chunk.set_transforms(
+                        chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
                             transform_positions, transform_rotations, transform_scales);
                     });
             }};

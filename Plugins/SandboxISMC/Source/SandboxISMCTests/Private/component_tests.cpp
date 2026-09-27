@@ -24,12 +24,12 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                 1,
                 FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
                 ESandboxISMCParallelism::Sequential,
-                [](auto& chunk) {
+                [](FSandboxISMCInstanceChunkWriter& chunk) {
                     {
                         FVector3f const transform_positions[]{FVector3f::ZeroVector};
                         FQuat4f const transform_rotations[]{FQuat4f::Identity};
                         FVector3f const transform_scales[]{FVector3f::OneVector};
-                        chunk.set_transforms(
+                        chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
                             transform_positions, transform_rotations, transform_scales);
                     }
                 });
@@ -64,6 +64,12 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
     TEST_METHOD(ReservesWithoutSubmittingInstances)
     {
         auto* component{NewObject<USandboxISMCComponent>()};
+        auto* mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
+        if (!TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), mesh)) {
+            return;
+        }
+        component->set_static_mesh(*mesh);
+
         component->set_num_custom_data_floats(3);
         component->reserve_instances(4097);
         TestRunner->TestEqual(
@@ -73,7 +79,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                 count,
                 FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
                 ESandboxISMCParallelism::Sequential,
-                [](auto& chunk) {
+                [](FSandboxISMCInstanceChunkWriter& chunk) {
                     auto const count{chunk.num()};
                     TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
                     transform_positions.SetNumUninitialized(chunk.num());
@@ -89,7 +95,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                             value = 1.0f;
                         }
                     }
-                    chunk.set_transforms(
+                    chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
                         transform_positions, transform_rotations, transform_scales);
                 });
         }};
@@ -147,7 +153,8 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                     transform_rotations[local_index] = FQuat4f::Identity;
                     transform_scales[local_index] = FVector3f::OneVector;
                 }
-                chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
+                chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
+                    transform_positions, transform_rotations, transform_scales);
             });
 
         TestRunner->TestEqual(TEXT("The component reports the submitted instance count"),
@@ -171,6 +178,12 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
     TEST_METHOD(BuildsCustomDataAlongsideTransforms)
     {
         auto* component{NewObject<USandboxISMCComponent>()};
+        auto* mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
+        if (!TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), mesh)) {
+            return;
+        }
+        component->set_static_mesh(*mesh);
+
         component->set_num_custom_data_floats(3);
 
         constexpr int32 instance_count{2050};
@@ -197,7 +210,8 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                     custom_data[1] = 0.5f;
                     custom_data[2] = 1.0f;
                 }
-                chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
+                chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
+                    transform_positions, transform_rotations, transform_scales);
             });
 
         auto const metrics{component->get_update_metrics()};
@@ -221,6 +235,12 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
     TEST_METHOD(RetainsAllStagingBuffersThroughShrinkClearAndRegrow)
     {
         auto* component{NewObject<USandboxISMCComponent>()};
+        auto* mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
+        if (!TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), mesh)) {
+            return;
+        }
+        component->set_static_mesh(*mesh);
+
         component->set_num_custom_data_floats(3);
         constexpr int32 peak_count{4097};
         constexpr int32 buffer_count{3};
@@ -251,7 +271,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                         custom_data[1] = 0.5f;
                         custom_data[2] = 1.0f;
                     }
-                    chunk.set_transforms(
+                    chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
                         transform_positions, transform_rotations, transform_scales);
                 });
             TestRunner->TestEqual(TEXT("Only live instances are written"), written_count, count);
@@ -289,6 +309,12 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
     TEST_METHOD(BuildsParallelCustomDataAcrossChunkBoundaries)
     {
         auto* component{NewObject<USandboxISMCComponent>()};
+        auto* mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
+        if (!TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), mesh)) {
+            return;
+        }
+        component->set_static_mesh(*mesh);
+
         component->set_num_custom_data_floats(3);
 
         constexpr int32 instance_count{4097};
@@ -318,7 +344,8 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                     custom_data[1] = static_cast<float>(first_index);
                     custom_data[2] = static_cast<float>(local_index);
                 }
-                chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
+                chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
+                    transform_positions, transform_rotations, transform_scales);
             });
 
         auto every_instance_visited_once{true};
@@ -360,7 +387,8 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                     transform_rotations[index] = FQuat4f::Identity;
                     transform_scales[index] = FVector3f::OneVector;
                 }
-                chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
+                chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
+                    transform_positions, transform_rotations, transform_scales);
             });
         component->set_instances(
             1,
@@ -371,7 +399,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                     FVector3f const transform_positions[]{{100.0f, 0.0f, 0.0f}};
                     FQuat4f const transform_rotations[]{FQuat4f::Identity};
                     FVector3f const transform_scales[]{FVector3f::OneVector};
-                    chunk.set_transforms(
+                    chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
                         transform_positions, transform_rotations, transform_scales);
                 }
             });
@@ -403,7 +431,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                     FVector3f const transform_positions[]{FVector3f::ZeroVector};
                     FQuat4f const transform_rotations[]{FQuat4f::Identity};
                     FVector3f const transform_scales[]{FVector3f::OneVector};
-                    chunk.set_transforms(
+                    chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
                         transform_positions, transform_rotations, transform_scales);
                 }
             });
@@ -453,7 +481,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                         transform_rotations[local_index] = rotations[source_index].Quaternion();
                         transform_scales[local_index] = FVector3f::OneVector;
                     }
-                    chunk.set_transforms(
+                    chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
                         transform_positions, transform_rotations, transform_scales);
                 });
         }};
@@ -474,8 +502,14 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
     TEST_METHOD(UsesCallerSuppliedBounds)
     {
         auto* component{NewObject<USandboxISMCComponent>()};
-        FBox3f const local_bounds{FVector3f{-10.0f, -20.0f, -30.0f},
-                                  FVector3f{40.0f, 50.0f, 60.0f}};
+        auto* mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
+        if (!TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), mesh)) {
+            return;
+        }
+        component->set_static_mesh(*mesh);
+
+        FBox3f const local_bounds{FVector3f{-100.0f, -120.0f, -130.0f},
+                                  FVector3f{140.0f, 150.0f, 160.0f}};
 
         component->set_instances(
             2,
@@ -486,13 +520,16 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                 FVector3f const positions[]{{-8.0f, 0.0f, 0.0f}, {8.0f, 0.0f, 0.0f}};
                 FQuat4f const rotations[]{FQuat4f::Identity, FQuat4f::Identity};
                 FVector3f const scales[]{FVector3f::OneVector, FVector3f::OneVector};
-                chunk.set_transforms(positions, rotations, scales);
+                chunk.set_transforms<ESandboxISMCBoundsMode::Supplied>(
+                    positions, rotations, scales);
             });
 
         auto const actual{component->CalcBounds(FTransform::Identity)};
         auto const expected{FBoxSphereBounds{
             FBoxSphereBounds3f{FSandboxISMCInstanceChunkWriter::expand_render_bounds(
-                local_bounds, FVector3f::ZeroVector, FVector3f::ZeroVector)}}};
+                local_bounds,
+                FVector3f{mesh->GetBounds().Origin},
+                FVector3f{mesh->GetBounds().BoxExtent})}}};
         TestRunner->TestTrue(TEXT("The component uses the supplied bounds origin"),
                              actual.Origin.Equals(expected.Origin));
         TestRunner->TestTrue(TEXT("The component uses the supplied bounds extent"),
@@ -529,12 +566,16 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
             FBox3f const domain{FVector3f{-32}, FVector3f{32}};
             FSandboxISMCRenderInstance packed{};
             component->set_instances(
-                1, domain, source_bounds, ESandboxISMCParallelism::Sequential, [&](auto& writer) {
+                1,
+                domain,
+                source_bounds,
+                ESandboxISMCParallelism::Sequential,
+                [&](FSandboxISMCInstanceChunkWriter& writer) {
                     {
                         FVector3f const transform_positions[]{position};
                         FQuat4f const transform_rotations[]{rotation};
                         FVector3f const transform_scales[]{scale};
-                        writer.set_transforms(
+                        writer.set_transforms<ESandboxISMCBoundsMode::Supplied>(
                             transform_positions, transform_rotations, transform_scales);
                     }
                     FSandboxISMCInstanceChunkWriter reference{MakeArrayView(&packed, 1),
@@ -544,13 +585,12 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                                                               domain,
                                                               FVector3f::ZeroVector,
                                                               FVector3f::ZeroVector,
-                                                              FVector3f::ZeroVector,
-                                                              false};
+                                                              FVector3f::ZeroVector};
                     {
                         FVector3f const transform_positions[]{position};
                         FQuat4f const transform_rotations[]{rotation};
                         FVector3f const transform_scales[]{scale};
-                        reference.set_transforms(
+                        reference.set_transforms<ESandboxISMCBoundsMode::Supplied>(
                             transform_positions, transform_rotations, transform_scales);
                     }
                 });
@@ -578,6 +618,12 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
     TEST_METHOD(SupportsChunkAndParallelismBoundaries)
     {
         auto* component{NewObject<USandboxISMCComponent>()};
+        auto* mesh{LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"))};
+        if (!TestRunner->TestNotNull(TEXT("The engine cube mesh loads"), mesh)) {
+            return;
+        }
+        component->set_static_mesh(*mesh);
+
         TArray<int32> const counts{0, 1, 1023, 1024, 1025, 4095, 4096, 4097};
         TArray<ESandboxISMCParallelism> const policies{
             ESandboxISMCParallelism::Sequential,
@@ -609,7 +655,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                             transform_rotations[local_index] = FQuat4f::Identity;
                             transform_scales[local_index] = FVector3f::OneVector;
                         }
-                        chunk.set_transforms(
+                        chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
                             transform_positions, transform_rotations, transform_scales);
                     });
 

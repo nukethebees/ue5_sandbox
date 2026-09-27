@@ -95,7 +95,7 @@ void FFighterPresentation::update_ismc() {
         visible_indices_.Num(),
         position_bounds,
         ESandboxISMCParallelism::Auto,
-        [this, &data](auto& chunk) {
+        [this, &data](FSandboxISMCInstanceChunkWriter& chunk) {
             auto const first_index{chunk.first_index()};
             auto const chunk_count{chunk.num()};
             auto const locations{data.view_locations()};
@@ -125,7 +125,8 @@ void FFighterPresentation::update_ismc() {
                 custom_data[1] = colour.G;
                 custom_data[2] = colour.B;
             }
-            chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
+            chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
+                transform_positions, transform_rotations, transform_scales);
         });
 }
 

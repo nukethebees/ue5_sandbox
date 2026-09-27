@@ -82,12 +82,12 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
                 1,
                 FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
                 ESandboxISMCParallelism::Sequential,
-                [](auto& chunk) {
+                [](FSandboxISMCInstanceChunkWriter& chunk) {
                     {
                         FVector3f const transform_positions[]{FVector3f::ZeroVector};
                         FQuat4f const transform_rotations[]{FQuat4f::Identity};
                         FVector3f const transform_scales[]{FVector3f::OneVector};
-                        chunk.set_transforms(
+                        chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
                             transform_positions, transform_rotations, transform_scales);
                     }
                 });
@@ -210,12 +210,12 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
                 1,
                 FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
                 ESandboxISMCParallelism::Sequential,
-                [](auto& chunk) {
+                [](FSandboxISMCInstanceChunkWriter& chunk) {
                     {
                         FVector3f const transform_positions[]{FVector3f::ZeroVector};
                         FQuat4f const transform_rotations[]{FQuat4f::Identity};
                         FVector3f const transform_scales[]{FVector3f::OneVector};
-                        chunk.set_transforms(
+                        chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
                             transform_positions, transform_rotations, transform_scales);
                     }
                 });
@@ -239,12 +239,12 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
                 1,
                 FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
                 ESandboxISMCParallelism::Sequential,
-                [](auto& chunk) {
+                [](FSandboxISMCInstanceChunkWriter& chunk) {
                     {
                         FVector3f const transform_positions[]{FVector3f::ZeroVector};
                         FQuat4f const transform_rotations[]{FQuat4f::Identity};
                         FVector3f const transform_scales[]{FVector3f::OneVector};
-                        chunk.set_transforms(
+                        chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
                             transform_positions, transform_rotations, transform_scales);
                     }
                 });

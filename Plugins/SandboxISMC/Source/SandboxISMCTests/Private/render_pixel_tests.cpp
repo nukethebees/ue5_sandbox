@@ -119,7 +119,8 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                     transform_rotations[local_index] = rotation;
                     transform_scales[local_index] = scale;
                 }
-                chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
+                chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
+                    transform_positions, transform_rotations, transform_scales);
             });
         submitted_frame_ = GFrameCounter;
     }
@@ -275,17 +276,10 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                     {0.51f, 0.8f, 1.49f}, {1.19f, 0.38f, 0.94f}, {0.73f, 1.24f, 0.64f}};
                 TArray<FSandboxISMCRenderInstance> packed;
                 packed.SetNumUninitialized(3);
-                FSandboxISMCInstanceChunkWriter cpu{packed,
-                                                    {},
-                                                    0,
-                                                    0,
-                                                    domain,
-                                                    root,
-                                                    FVector3f::ZeroVector,
-                                                    FVector3f::ZeroVector,
-                                                    false};
+                FSandboxISMCInstanceChunkWriter cpu{
+                    packed, {}, 0, 0, domain, root, FVector3f::ZeroVector, FVector3f::ZeroVector};
                 reference->ClearInstances();
-                cpu.set_transforms(positions, rotations, scales);
+                cpu.set_transforms<ESandboxISMCBoundsMode::Supplied>(positions, rotations, scales);
                 for (int32 index{0}; index < 3; ++index) {
                     auto const& value{packed[index]};
                     auto const q{ml::sandbox_ismc::unpack_quat32(value.rotation)};
@@ -304,7 +298,10 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                     }
                 }
                 component_->set_instances(
-                    3, domain, ESandboxISMCParallelism::Sequential, [&](auto& chunk) {
+                    3,
+                    domain,
+                    ESandboxISMCParallelism::Sequential,
+                    [&](FSandboxISMCInstanceChunkWriter& chunk) {
                         TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
                         transform_positions.SetNumUninitialized(chunk.num());
                         TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
@@ -320,7 +317,7 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                                 data[channel] = channel == index ? 1.0f : 0.0f;
                             }
                         }
-                        chunk.set_transforms(
+                        chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
                             transform_positions, transform_rotations, transform_scales);
                     });
                 spawner->GetWorld().SendAllEndOfFrameUpdates();

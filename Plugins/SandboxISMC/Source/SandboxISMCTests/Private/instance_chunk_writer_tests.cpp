@@ -24,14 +24,13 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                                                FBox3f{FVector3f{0, 0, 0}, FVector3f{192, 192, 192}},
                                                FVector3f{96, 96, 96},
                                                FVector3f::ZeroVector,
-                                               FVector3f::ZeroVector,
-                                               false};
+                                               FVector3f::ZeroVector};
 
         auto const positions{TArray<FVector3f>{{64.0f, 80.0f, 96.0f}, {112.0f, 128.0f, 144.0f}}};
         auto const rotations{
             TArray<FQuat4f>{FQuat4f::Identity, FQuat4f{FVector3f::UpVector, UE_HALF_PI}}};
         auto const scales{TArray<FVector3f>{{2.0f, 3.0f, 4.0f}, {1.0f, 2.0f, 3.0f}}};
-        writer.set_transforms(positions, rotations, scales);
+        writer.set_transforms<ESandboxISMCBoundsMode::Supplied>(positions, rotations, scales);
 
         auto const [offset, count]{writer.range()};
         TestRunner->TestEqual(TEXT("The writer exposes its source offset"), offset, 1024);
@@ -77,15 +76,15 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                 FBox3f{FVector3f{-100, -100, -100}, FVector3f{100, 100, 100}},
                 FVector3f::ZeroVector,
                 center,
-                extent,
-                true};
+                extent};
             FVector3f const position{10.0f, -20.0f, 30.0f};
             FVector3f const scale{2.0f, 0.5f, 3.0f};
             {
                 FVector3f const transform_positions[]{position};
                 FQuat4f const transform_rotations[]{rotation};
                 FVector3f const transform_scales[]{scale};
-                writer.set_transforms(transform_positions, transform_rotations, transform_scales);
+                writer.set_transforms<ESandboxISMCBoundsMode::Calculate>(
+                    transform_positions, transform_rotations, transform_scales);
             }
             auto const expected{
                 local_box.TransformBy(FTransform3f{rotation, position, scale}.ToMatrixWithScale())};
@@ -123,7 +122,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
         FRandomStream random{613};
         for (int32 sample{0}; sample < 100; ++sample) {
             FSandboxISMCInstanceChunkWriter writer{
-                packed, {}, 0, 0, domain, FVector3f::ZeroVector, origin, extent, true};
+                packed, {}, 0, 0, domain, FVector3f::ZeroVector, origin, extent};
             FVector3f const position{static_cast<float>(random.FRandRange(-300000.0f, 300000.0f)),
                                      static_cast<float>(random.FRandRange(-300000.0f, 300000.0f)),
                                      static_cast<float>(random.FRandRange(-300000.0f, 300000.0f))};
@@ -138,7 +137,8 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                 FVector3f const transform_positions[]{position};
                 FQuat4f const transform_rotations[]{rotation};
                 FVector3f const transform_scales[]{scale};
-                writer.set_transforms(transform_positions, transform_rotations, transform_scales);
+                writer.set_transforms<ESandboxISMCBoundsMode::Calculate>(
+                    transform_positions, transform_rotations, transform_scales);
             }
             auto const& value{packed[0]};
             auto const q{ml::sandbox_ismc::unpack_quat32(value.rotation)};
@@ -176,8 +176,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                                                FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
                                                FVector3f::ZeroVector,
                                                FVector3f::ZeroVector,
-                                               FVector3f::ZeroVector,
-                                               false};
+                                               FVector3f::ZeroVector};
 
         auto first{writer.custom_data(0)};
         first[0] = 0.1f;

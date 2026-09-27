@@ -167,7 +167,7 @@ void ASandboxISMCLabActor::submit_instances() {
                               ESandboxISMCParallelism::Auto,
                               [&](FSandboxISMCInstanceChunkWriter& chunk) {
                                   auto const [first_index, chunk_count]{chunk.range()};
-                                  chunk.set_transforms(
+                                  chunk.set_transforms<ESandboxISMCBoundsMode::Calculate>(
                                       source.positions.Slice(first_index, chunk_count),
                                       source.rotations.Slice(first_index, chunk_count),
                                       source.scales.Slice(first_index, chunk_count));
