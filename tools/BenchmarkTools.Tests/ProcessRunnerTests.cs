@@ -35,7 +35,7 @@ public sealed class ProcessRunnerTests
         var running = new ProcessRunner().RunAsync(request, cancellation.Token);
         try
         {
-            while (!File.ReadAllText(request.OutputLogPath!).Contains("stderr-marker", StringComparison.Ordinal))
+            while (!ReadLog(request).Contains("stderr-marker", StringComparison.Ordinal))
                 await Task.Delay(20, cancellation.Token);
             Assert.IsFalse(running.IsCompleted);
         }
@@ -63,8 +63,15 @@ public sealed class ProcessRunnerTests
 
     private static void AssertLog(ProcessRequest request)
     {
-        var log = File.ReadAllText(request.OutputLogPath!);
+        var log = ReadLog(request);
         StringAssert.Contains(log, "stdout-marker");
         StringAssert.Contains(log, "stderr-marker");
+    }
+
+    private static string ReadLog(ProcessRequest request)
+    {
+        using var stream = new FileStream(request.OutputLogPath!, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 }
