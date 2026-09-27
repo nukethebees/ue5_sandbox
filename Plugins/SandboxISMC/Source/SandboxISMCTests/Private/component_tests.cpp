@@ -25,8 +25,13 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                 FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
                 ESandboxISMCParallelism::Sequential,
                 [](auto& chunk) {
-                    chunk.set_transform(
-                        0, FVector3f::ZeroVector, FQuat4f::Identity, FVector3f::OneVector);
+                    {
+                        FVector3f const transform_positions[]{FVector3f::ZeroVector};
+                        FQuat4f const transform_rotations[]{FQuat4f::Identity};
+                        FVector3f const transform_scales[]{FVector3f::OneVector};
+                        chunk.set_transforms(
+                            transform_positions, transform_rotations, transform_scales);
+                    }
                 });
             auto const bounds{component->CalcBounds(FTransform::Identity)};
             TestRunner->TestTrue(TEXT("Bounds use the configured mesh origin"),
@@ -70,13 +75,22 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                 ESandboxISMCParallelism::Sequential,
                 [](auto& chunk) {
                     auto const count{chunk.num()};
+                    TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
+                    transform_positions.SetNumUninitialized(chunk.num());
+                    TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
+                    transform_rotations.SetNumUninitialized(chunk.num());
+                    TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
+                    transform_scales.SetNumUninitialized(chunk.num());
                     for (int32 index{}; index < count; ++index) {
-                        chunk.set_transform(
-                            index, FVector3f::ZeroVector, FQuat4f::Identity, FVector3f::OneVector);
+                        transform_positions[index] = FVector3f::ZeroVector;
+                        transform_rotations[index] = FQuat4f::Identity;
+                        transform_scales[index] = FVector3f::OneVector;
                         for (auto& value : chunk.custom_data(index)) {
                             value = 1.0f;
                         }
                     }
+                    chunk.set_transforms(
+                        transform_positions, transform_rotations, transform_scales);
                 });
         }};
         for (int32 slot{}; slot < 3; ++slot) {
@@ -122,12 +136,18 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                 auto const [first_index, chunk_count]{chunk.range()};
                 chunk_offsets.Add(first_index);
                 chunk_counts.Add(chunk_count);
+                TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
+                transform_positions.SetNumUninitialized(chunk.num());
+                TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
+                transform_rotations.SetNumUninitialized(chunk.num());
+                TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
+                transform_scales.SetNumUninitialized(chunk.num());
                 for (auto local_index = 0; local_index < chunk_count; ++local_index) {
-                    chunk.set_transform(local_index,
-                                        positions[first_index + local_index],
-                                        FQuat4f::Identity,
-                                        FVector3f::OneVector);
+                    transform_positions[local_index] = positions[first_index + local_index];
+                    transform_rotations[local_index] = FQuat4f::Identity;
+                    transform_scales[local_index] = FVector3f::OneVector;
                 }
+                chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
             });
 
         TestRunner->TestEqual(TEXT("The component reports the submitted instance count"),
@@ -160,17 +180,24 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
             ESandboxISMCParallelism::Sequential,
             [&](FSandboxISMCInstanceChunkWriter& chunk) {
                 auto const [first_index, chunk_count]{chunk.range()};
+                TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
+                transform_positions.SetNumUninitialized(chunk.num());
+                TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
+                transform_rotations.SetNumUninitialized(chunk.num());
+                TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
+                transform_scales.SetNumUninitialized(chunk.num());
                 for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                     auto const instance_index{first_index + local_index};
-                    chunk.set_transform(local_index,
-                                        {static_cast<float>(instance_index), 0.0f, 0.0f},
-                                        FQuat4f::Identity,
-                                        FVector3f::OneVector);
+                    transform_positions[local_index] = {
+                        static_cast<float>(instance_index), 0.0f, 0.0f};
+                    transform_rotations[local_index] = FQuat4f::Identity;
+                    transform_scales[local_index] = FVector3f::OneVector;
                     auto custom_data{chunk.custom_data(local_index)};
                     custom_data[0] = static_cast<float>(instance_index);
                     custom_data[1] = 0.5f;
                     custom_data[2] = 1.0f;
                 }
+                chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
             });
 
         auto const metrics{component->get_update_metrics()};
@@ -207,17 +234,25 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                 [&](FSandboxISMCInstanceChunkWriter& chunk) {
                     auto const [first_index, chunk_count]{chunk.range()};
                     written_count += chunk_count;
+                    TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
+                    transform_positions.SetNumUninitialized(chunk.num());
+                    TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
+                    transform_rotations.SetNumUninitialized(chunk.num());
+                    TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
+                    transform_scales.SetNumUninitialized(chunk.num());
                     for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                         auto const instance_index{first_index + local_index};
-                        chunk.set_transform(local_index,
-                                            {static_cast<float>(instance_index), 0.0f, 0.0f},
-                                            FQuat4f::Identity,
-                                            FVector3f::OneVector);
+                        transform_positions[local_index] = {
+                            static_cast<float>(instance_index), 0.0f, 0.0f};
+                        transform_rotations[local_index] = FQuat4f::Identity;
+                        transform_scales[local_index] = FVector3f::OneVector;
                         auto custom_data{chunk.custom_data(local_index)};
                         custom_data[0] = static_cast<float>(instance_index);
                         custom_data[1] = 0.5f;
                         custom_data[2] = 1.0f;
                     }
+                    chunk.set_transforms(
+                        transform_positions, transform_rotations, transform_scales);
                 });
             TestRunner->TestEqual(TEXT("Only live instances are written"), written_count, count);
             TestRunner->TestEqual(TEXT("Retained capacity does not affect the live count"),
@@ -265,18 +300,25 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
             ESandboxISMCParallelism::Parallel,
             [&](FSandboxISMCInstanceChunkWriter& chunk) {
                 auto const [first_index, chunk_count]{chunk.range()};
+                TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
+                transform_positions.SetNumUninitialized(chunk.num());
+                TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
+                transform_rotations.SetNumUninitialized(chunk.num());
+                TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
+                transform_scales.SetNumUninitialized(chunk.num());
                 for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                     auto const instance_index{first_index + local_index};
                     ++visited[instance_index];
-                    chunk.set_transform(local_index,
-                                        {static_cast<float>(instance_index), 0.0f, 0.0f},
-                                        FQuat4f::Identity,
-                                        FVector3f::OneVector);
+                    transform_positions[local_index] = {
+                        static_cast<float>(instance_index), 0.0f, 0.0f};
+                    transform_rotations[local_index] = FQuat4f::Identity;
+                    transform_scales[local_index] = FVector3f::OneVector;
                     auto custom_data{chunk.custom_data(local_index)};
                     custom_data[0] = static_cast<float>(instance_index);
                     custom_data[1] = static_cast<float>(first_index);
                     custom_data[2] = static_cast<float>(local_index);
                 }
+                chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
             });
 
         auto every_instance_visited_once{true};
@@ -307,20 +349,31 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
             FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
             ESandboxISMCParallelism::Sequential,
             [&](FSandboxISMCInstanceChunkWriter& chunk) {
+                TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
+                transform_positions.SetNumUninitialized(chunk.num());
+                TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
+                transform_rotations.SetNumUninitialized(chunk.num());
+                TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
+                transform_scales.SetNumUninitialized(chunk.num());
                 for (auto index = 0; index < chunk.num(); ++index) {
-                    chunk.set_transform(index,
-                                        {static_cast<float>(index), 0.0f, 0.0f},
-                                        FQuat4f::Identity,
-                                        FVector3f::OneVector);
+                    transform_positions[index] = {static_cast<float>(index), 0.0f, 0.0f};
+                    transform_rotations[index] = FQuat4f::Identity;
+                    transform_scales[index] = FVector3f::OneVector;
                 }
+                chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
             });
         component->set_instances(
             1,
             FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
             ESandboxISMCParallelism::Sequential,
             [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                chunk.set_transform(
-                    0, {100.0f, 0.0f, 0.0f}, FQuat4f::Identity, FVector3f::OneVector);
+                {
+                    FVector3f const transform_positions[]{{100.0f, 0.0f, 0.0f}};
+                    FQuat4f const transform_rotations[]{FQuat4f::Identity};
+                    FVector3f const transform_scales[]{FVector3f::OneVector};
+                    chunk.set_transforms(
+                        transform_positions, transform_rotations, transform_scales);
+                }
             });
         TestRunner->TestEqual(TEXT("The newest snapshot replaces the previous pending snapshot"),
                               component->get_instance_count(),
@@ -346,8 +399,13 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
             FBox3f{FVector3f{-1000, -1000, -1000}, FVector3f{5000, 1000, 1000}},
             ESandboxISMCParallelism::Sequential,
             [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                chunk.set_transform(
-                    0, FVector3f::ZeroVector, FQuat4f::Identity, FVector3f::OneVector);
+                {
+                    FVector3f const transform_positions[]{FVector3f::ZeroVector};
+                    FQuat4f const transform_rotations[]{FQuat4f::Identity};
+                    FVector3f const transform_scales[]{FVector3f::OneVector};
+                    chunk.set_transforms(
+                        transform_positions, transform_rotations, transform_scales);
+                }
             });
         component->set_static_mesh(*sphere);
         TestRunner->TestEqual(
@@ -383,13 +441,20 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                 parallelism,
                 [&](FSandboxISMCInstanceChunkWriter& chunk) {
                     auto const [first_index, chunk_count]{chunk.range()};
+                    TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
+                    transform_positions.SetNumUninitialized(chunk.num());
+                    TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
+                    transform_rotations.SetNumUninitialized(chunk.num());
+                    TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
+                    transform_scales.SetNumUninitialized(chunk.num());
                     for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                         auto const source_index{first_index + local_index};
-                        chunk.set_transform(local_index,
-                                            positions[source_index],
-                                            rotations[source_index].Quaternion(),
-                                            FVector3f::OneVector);
+                        transform_positions[local_index] = positions[source_index];
+                        transform_rotations[local_index] = rotations[source_index].Quaternion();
+                        transform_scales[local_index] = FVector3f::OneVector;
                     }
+                    chunk.set_transforms(
+                        transform_positions, transform_rotations, transform_scales);
                 });
         }};
         submit(*sequential, ESandboxISMCParallelism::Sequential);
@@ -418,9 +483,10 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
             local_bounds,
             ESandboxISMCParallelism::Sequential,
             [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                chunk.set_transform(
-                    0, {-8.0f, 0.0f, 0.0f}, FQuat4f::Identity, FVector3f::OneVector);
-                chunk.set_transform(1, {8.0f, 0.0f, 0.0f}, FQuat4f::Identity, FVector3f::OneVector);
+                FVector3f const positions[]{{-8.0f, 0.0f, 0.0f}, {8.0f, 0.0f, 0.0f}};
+                FQuat4f const rotations[]{FQuat4f::Identity, FQuat4f::Identity};
+                FVector3f const scales[]{FVector3f::OneVector, FVector3f::OneVector};
+                chunk.set_transforms(positions, rotations, scales);
             });
 
         auto const actual{component->CalcBounds(FTransform::Identity)};
@@ -464,7 +530,13 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
             FSandboxISMCRenderInstance packed{};
             component->set_instances(
                 1, domain, source_bounds, ESandboxISMCParallelism::Sequential, [&](auto& writer) {
-                    writer.set_transform(0, position, rotation, scale);
+                    {
+                        FVector3f const transform_positions[]{position};
+                        FQuat4f const transform_rotations[]{rotation};
+                        FVector3f const transform_scales[]{scale};
+                        writer.set_transforms(
+                            transform_positions, transform_rotations, transform_scales);
+                    }
                     FSandboxISMCInstanceChunkWriter reference{MakeArrayView(&packed, 1),
                                                               {},
                                                               0,
@@ -474,7 +546,13 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                                                               FVector3f::ZeroVector,
                                                               FVector3f::ZeroVector,
                                                               false};
-                    reference.set_transform(0, position, rotation, scale);
+                    {
+                        FVector3f const transform_positions[]{position};
+                        FQuat4f const transform_rotations[]{rotation};
+                        FVector3f const transform_scales[]{scale};
+                        reference.set_transforms(
+                            transform_positions, transform_rotations, transform_scales);
+                    }
                 });
             auto const q{ml::sandbox_ismc::unpack_quat32(packed.rotation)};
             FTransform3f const decoded{
@@ -517,14 +595,22 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                     policy,
                     [&](FSandboxISMCInstanceChunkWriter& chunk) {
                         auto const [first_index, chunk_count]{chunk.range()};
+                        TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
+                        transform_positions.SetNumUninitialized(chunk.num());
+                        TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
+                        transform_rotations.SetNumUninitialized(chunk.num());
+                        TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
+                        transform_scales.SetNumUninitialized(chunk.num());
                         for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                             auto const source_index{first_index + local_index};
                             ++visited[source_index];
-                            chunk.set_transform(local_index,
-                                                {static_cast<float>(source_index), 0.0f, 0.0f},
-                                                FQuat4f::Identity,
-                                                FVector3f::OneVector);
+                            transform_positions[local_index] = {
+                                static_cast<float>(source_index), 0.0f, 0.0f};
+                            transform_rotations[local_index] = FQuat4f::Identity;
+                            transform_scales[local_index] = FVector3f::OneVector;
                         }
+                        chunk.set_transforms(
+                            transform_positions, transform_rotations, transform_scales);
                     });
 
                 auto all_visited{true};

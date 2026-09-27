@@ -78,15 +78,19 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
             unsupported->bAutomaticallySetUsageInEditor = false;
             component->SetMaterial(0, unsupported);
             component->SetCastShadow(true);
-            component->set_instances(1,
-                                     FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
-                                     ESandboxISMCParallelism::Sequential,
-                                     [](auto& chunk) {
-                                         chunk.set_transform(0,
-                                                             FVector3f::ZeroVector,
-                                                             FQuat4f::Identity,
-                                                             FVector3f::OneVector);
-                                     });
+            component->set_instances(
+                1,
+                FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
+                ESandboxISMCParallelism::Sequential,
+                [](auto& chunk) {
+                    {
+                        FVector3f const transform_positions[]{FVector3f::ZeroVector};
+                        FQuat4f const transform_rotations[]{FQuat4f::Identity};
+                        FVector3f const transform_scales[]{FVector3f::OneVector};
+                        chunk.set_transforms(
+                            transform_positions, transform_rotations, transform_scales);
+                    }
+                });
             component->RegisterComponent();
             world.SendAllEndOfFrameUpdates();
 
@@ -202,15 +206,19 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
             actor->SetRootComponent(component);
             actor->AddInstanceComponent(component);
             component->set_static_mesh(*NewObject<UStaticMesh>(component));
-            component->set_instances(1,
-                                     FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
-                                     ESandboxISMCParallelism::Sequential,
-                                     [](auto& chunk) {
-                                         chunk.set_transform(0,
-                                                             FVector3f::ZeroVector,
-                                                             FQuat4f::Identity,
-                                                             FVector3f::OneVector);
-                                     });
+            component->set_instances(
+                1,
+                FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
+                ESandboxISMCParallelism::Sequential,
+                [](auto& chunk) {
+                    {
+                        FVector3f const transform_positions[]{FVector3f::ZeroVector};
+                        FQuat4f const transform_rotations[]{FQuat4f::Identity};
+                        FVector3f const transform_scales[]{FVector3f::OneVector};
+                        chunk.set_transforms(
+                            transform_positions, transform_rotations, transform_scales);
+                    }
+                });
             TestRunner->AddExpectedError(
                 TEXT("requires initialized, non-empty, inlined, non-optional LOD0"),
                 EAutomationExpectedErrorFlags::Contains,
@@ -227,15 +235,19 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
             FAssetCompilingManager::Get().FinishAllCompilation();
             mesh->GetRenderData()->LODResources[0].bBuffersInlined = false;
             component->set_static_mesh(*mesh);
-            component->set_instances(1,
-                                     FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
-                                     ESandboxISMCParallelism::Sequential,
-                                     [](auto& chunk) {
-                                         chunk.set_transform(0,
-                                                             FVector3f::ZeroVector,
-                                                             FQuat4f::Identity,
-                                                             FVector3f::OneVector);
-                                     });
+            component->set_instances(
+                1,
+                FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
+                ESandboxISMCParallelism::Sequential,
+                [](auto& chunk) {
+                    {
+                        FVector3f const transform_positions[]{FVector3f::ZeroVector};
+                        FQuat4f const transform_rotations[]{FQuat4f::Identity};
+                        FVector3f const transform_scales[]{FVector3f::OneVector};
+                        chunk.set_transforms(
+                            transform_positions, transform_rotations, transform_scales);
+                    }
+                });
             TestRunner->AddExpectedError(
                 TEXT("requires initialized, non-empty, inlined, non-optional LOD0"),
                 EAutomationExpectedErrorFlags::Contains,

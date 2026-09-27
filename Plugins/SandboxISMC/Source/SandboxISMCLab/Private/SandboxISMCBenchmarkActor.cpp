@@ -549,12 +549,17 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
             custom_ismc_->set_static_mesh(*static_mesh_);
             auto const fill{[&](FSandboxISMCInstanceChunkWriter& chunk) {
                 auto const [first_index, chunk_count]{chunk.range()};
+                TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
+                transform_positions.SetNumUninitialized(chunk.num());
+                TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
+                transform_rotations.SetNumUninitialized(chunk.num());
+                TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
+                transform_scales.SetNumUninitialized(chunk.num());
                 for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                     auto const instance_index{first_index + local_index};
-                    chunk.set_transform(local_index,
-                                        base_positions_[instance_index],
-                                        FQuat4f::Identity,
-                                        FVector3f::OneVector);
+                    transform_positions[local_index] = base_positions_[instance_index];
+                    transform_rotations[local_index] = FQuat4f::Identity;
+                    transform_scales[local_index] = FVector3f::OneVector;
                     if (uses_custom_data()) {
                         auto custom_data{chunk.custom_data(local_index)};
                         custom_data[0] = base_colours_[instance_index].X;
@@ -562,6 +567,7 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
                         custom_data[2] = base_colours_[instance_index].Z;
                     }
                 }
+                chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
             }};
             if (use_supplied_bounds_) {
                 custom_ismc_->set_instances(count,
@@ -647,16 +653,22 @@ auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
             {
                 TRACE_CPUPROFILER_EVENT_SCOPE(
                     ASandboxISMCBenchmarkActor::update_custom::FillTransforms);
+                TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
+                transform_positions.SetNumUninitialized(chunk.num());
+                TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
+                transform_rotations.SetNumUninitialized(chunk.num());
+                TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
+                transform_scales.SetNumUninitialized(chunk.num());
                 for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                     auto const instance_index{first_index + local_index};
                     auto const animated{instance_index < updated_count};
                     auto const position{base_positions_[instance_index] +
                                         FVector3f{0.0f, 0.0f, animated ? vertical_offset : 0.0f}};
-                    chunk.set_transform(local_index,
-                                        position,
-                                        animated ? rotation : FQuat4f::Identity,
-                                        FVector3f::OneVector);
+                    transform_positions[local_index] = position;
+                    transform_rotations[local_index] = animated ? rotation : FQuat4f::Identity;
+                    transform_scales[local_index] = FVector3f::OneVector;
                 }
+                chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
             }
             if (uses_custom_data()) {
                 TRACE_CPUPROFILER_EVENT_SCOPE(

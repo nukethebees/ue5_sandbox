@@ -98,6 +98,12 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
             ESandboxISMCParallelism::Auto,
             [&](FSandboxISMCInstanceChunkWriter& chunk) {
                 auto const [offset, chunk_count]{chunk.range()};
+                TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
+                transform_positions.SetNumUninitialized(chunk.num());
+                TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
+                transform_rotations.SetNumUninitialized(chunk.num());
+                TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
+                transform_scales.SetNumUninitialized(chunk.num());
                 for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                     auto const index{offset + local_index};
                     auto position{FVector3f{0.0f, 10000.0f, 0.0f}};
@@ -109,8 +115,11 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                             data[(slot + colour_shift) % 3] = 1.0f;
                         }
                     }
-                    chunk.set_transform(local_index, position, rotation, scale);
+                    transform_positions[local_index] = position;
+                    transform_rotations[local_index] = rotation;
+                    transform_scales[local_index] = scale;
                 }
+                chunk.set_transforms(transform_positions, transform_rotations, transform_scales);
             });
         submitted_frame_ = GFrameCounter;
     }
@@ -276,8 +285,8 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                                                     FVector3f::ZeroVector,
                                                     false};
                 reference->ClearInstances();
+                cpu.set_transforms(positions, rotations, scales);
                 for (int32 index{0}; index < 3; ++index) {
-                    cpu.set_transform(index, positions[index], rotations[index], scales[index]);
                     auto const& value{packed[index]};
                     auto const q{ml::sandbox_ismc::unpack_quat32(value.rotation)};
                     FVector const location{FVector{root} +
@@ -296,14 +305,23 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                 }
                 component_->set_instances(
                     3, domain, ESandboxISMCParallelism::Sequential, [&](auto& chunk) {
+                        TArray<FVector3f, TInlineAllocator<1024>> transform_positions;
+                        transform_positions.SetNumUninitialized(chunk.num());
+                        TArray<FQuat4f, TInlineAllocator<1024>> transform_rotations;
+                        transform_rotations.SetNumUninitialized(chunk.num());
+                        TArray<FVector3f, TInlineAllocator<1024>> transform_scales;
+                        transform_scales.SetNumUninitialized(chunk.num());
                         for (int32 index{0}; index < 3; ++index) {
-                            chunk.set_transform(
-                                index, positions[index], rotations[index], scales[index]);
+                            transform_positions[index] = positions[index];
+                            transform_rotations[index] = rotations[index];
+                            transform_scales[index] = scales[index];
                             auto data{chunk.custom_data(index)};
                             for (int32 channel{0}; channel < 3; ++channel) {
                                 data[channel] = channel == index ? 1.0f : 0.0f;
                             }
                         }
+                        chunk.set_transforms(
+                            transform_positions, transform_rotations, transform_scales);
                     });
                 spawner->GetWorld().SendAllEndOfFrameUpdates();
                 FlushRenderingCommands();
