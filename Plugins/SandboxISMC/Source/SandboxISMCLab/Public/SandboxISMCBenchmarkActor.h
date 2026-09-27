@@ -82,6 +82,8 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     void disable_frame_rate_limits();
     void restore_frame_rate_limits();
     void save_report() const;
+    bool establish_viewport();
+    void save_conditions(bool complete) const;
     bool runs_custom() const;
     bool runs_engine_ismc() const;
     int32 get_update_count() const;
@@ -228,4 +230,11 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     double custom_creation_ms_{0.0};
     double engine_creation_ms_{0.0};
     FString output_base_name_;
+    FString output_directory_;
+    FString run_id_;
+    int32 requested_width_{0};
+    int32 requested_height_{0};
+    FIntPoint observed_viewport_{0, 0};
+    bool viewport_requested_{false};
+    bool viewport_ready_{false};
 };
