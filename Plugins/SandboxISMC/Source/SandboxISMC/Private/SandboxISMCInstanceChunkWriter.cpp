@@ -87,14 +87,13 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
         auto const position{position_data[local_index]};
         auto const rotation{rotation_data[local_index]};
         auto& instance{instances[local_index]};
-        auto const quaternion{
-            ml::make_quaternion4f(rotation.X, rotation.Y, rotation.Z, rotation.W)};
         for (int32 axis{0}; axis < 3; ++axis) {
             instance.position[axis] =
                 ml::sandbox_ismc::quantize_position_unchecked(position[axis], position_root_[axis]);
         }
         instance.reserved = 0;
-        instance.rotation = ml::sandbox_ismc::pack_normalized_quat32(quaternion);
+        instance.rotation = ml::sandbox_ismc::pack_normalized_quat32(
+            rotation.X, rotation.Y, rotation.Z, rotation.W);
 
         if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
             auto const row_0{rotation.RotateVector(FVector3f::ForwardVector)};
