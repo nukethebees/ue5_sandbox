@@ -29,17 +29,30 @@ When updating the pin, first reverse the owned patches, update the clean checkou
 review whether each patch is still needed.
 
 The configuration is Ninja, X86, Release, assertions/PDBs on, EH/RTTI off, with `clang` and
-`clang-tools-extra`. `LLVM_ENABLE_PLUGINS`, `LLVM_EXPORT_SYMBOLS_FOR_PLUGINS` and
+`clang-tools-extra`. The newly built Clang builds `compiler-rt` builtins and Windows x64 ASAN
+through `LLVM_ENABLE_RUNTIMES`, including upstream's supporting sanitizer libraries.
+Profiling, XRay, libFuzzer and ORC runtimes are disabled.
+Runtime builds explicitly use the pinned MSVC linker and SDK manifest tool.
+`LLVM_ENABLE_PLUGINS`, `LLVM_EXPORT_SYMBOLS_FOR_PLUGINS` and
 `CLANG_PLUGIN_SUPPORT` are off. Examples, benchmarks and extra-tools tests are disabled.
 
-Only `clang`, `clang-format`, `clang-tidy` and `llvm-ar` are built, including their dependencies,
-the `clang-cl`/`llvm-lib` aliases and resource headers. Native CMake uses `llvm-lib` for archives.
-`-Install` establishes a project `LLVM_ROOT` from
-scratch: those executables, Clang resource headers, `run-clang-tidy`, supporting tidy scripts and
-enabled PDBs. It installs the
-`clang` (including its `clang-cl` alias), `clang-resource-headers`, `clang-format`, `clang-tidy`,
-`llvm-ar` and `llvm-lib`
-components. LLVM development packages and unrelated tools are unnecessary.
+The build targets are `clang`, `clang-format`, `clang-tidy`, `clang-scan-deps`, `llvm-ar`, `llvm-nm`, `llvm-readobj`
+and `runtimes`, including their dependencies. Before installation, the script checks IOJ
+registration and runs the semantic and nested-policy tests against the newly built executable.
+A failed check blocks installation.
+
+`-Install` establishes a project `LLVM_ROOT` from scratch: those tools, the `clang-cl`/`llvm-lib`
+aliases, Clang resource headers, `run-clang-tidy`, supporting tidy scripts, enabled PDBs and
+compiler-rt runtimes. Native CMake uses this root's `llvm-lib` for archives and `llvm-nm`/`llvm-readobj`
+for mimalloc symbol generation and audits. An explicit root never borrows missing tools from PATH;
+an empty root retains normal tool discovery. Non-unity C++ builds use the same root's
+`clang-scan-deps` for CMake dependency scanning. LLVM development packages are unnecessary.
+
+The install verifies its tools and resource headers, plus these native ASAN dependencies under
+`lib/clang/24/lib/windows`: `clang_rt.asan_dynamic-x86_64.dll`,
+`clang_rt.asan_dynamic-x86_64.lib` and `clang_rt.asan_dynamic_runtime_thunk-x86_64.lib`.
+Run `cmake --workflow --preset win-x64-clangcl-debug-asan` with `LLVM_ROOT` set to the installation
+to build and test the existing native ASAN configuration. It still requires the pinned MSVC/SDK.
 
 ## Project patches and static checks
 

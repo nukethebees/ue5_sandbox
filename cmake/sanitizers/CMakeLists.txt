@@ -70,7 +70,7 @@ endforeach()
 
 target_link_libraries(ioj_asan INTERFACE "${asan_import_library}")
 target_link_options(ioj_asan INTERFACE
-  # CMake invokes lld-link directly, so clang-cl cannot add its runtime thunk.
+  # CMake invokes the linker directly, so clang-cl cannot add its runtime thunk.
   "/wholearchive:${asan_runtime_thunk}"
   /INFERASANLIBS:NO
 )

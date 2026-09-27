@@ -10,7 +10,8 @@ excluded translation units remain outside the audit.
 ## Run clang-tidy
 
 `LLVM_ROOT` selects `bin/clang-cl.exe`, `bin/clang-tidy.exe` and `bin/run-clang-tidy` exclusively
-from one installation; native archiving also selects that root's `llvm-lib`. An explicit CMake
+from one installation; native archiving and symbol audits also select that root's `llvm-lib`,
+`llvm-nm` and `llvm-readobj`. An explicit CMake
 cache value takes precedence; otherwise the cache is
 initialized from the `LLVM_ROOT` environment variable. With neither set, normal PATH discovery
 applies. CMake forwards this selection to CodeFormatTools; standalone formatting uses the
@@ -24,6 +25,7 @@ Game workflows never build or repair LLVM. Building custom tooling is an intenti
 infrastructure task: see [the LLVM build instructions](../tools/llvm/README.md). The installed
 checker is a machine-level snapshot, not necessarily the current worktree's checker source.
 When changing a checker, explicitly rebuild it and run its semantic tests before installing it.
+The LLVM build script enforces registration and semantic tests before installation.
 Agents doing unrelated work must use the available tool rather than locate, clone, or rebuild LLVM.
 
 Run the scope affected by your change:
@@ -99,7 +101,10 @@ The enabled checks and audit compiler arguments are defined in `native/.clang-ti
 `ioj-loop-condition-call`. It rejects source-level function and member calls in C-style `for`
 conditions, including function-object `operator()`. Operator syntax such as overloaded `<`, `!=`
 and `==` is allowed; a function call inside an operator's operands still warns. Explicit calls
-such as `index.operator<(end)` also warn.
+such as `index.operator<(end)` also warn. Implicit conversions in conditions and comparisons
+are allowed, including contextual `operator bool()` and casts; explicit operator-function calls
+such as `condition.operator bool()` warn. Converting a function call's result still warns for
+the source-level call.
 Hoist stable bounds into const locals. It does not inspect initializers, increments, loop bodies,
 range-for, `while`, or `do` conditions, and supplies no automatic fix.
 

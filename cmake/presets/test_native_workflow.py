@@ -45,12 +45,15 @@ class NativeWorkflowTests(unittest.TestCase):
             fixture = Path(directory)
             llvm_root = fixture / "LLVM with spaces"
             (llvm_root / "bin").mkdir(parents=True)
-            names = ("clang-cl", "clang", "clang-tidy", "clang-format", "run-clang-tidy", "llvm-lib")
+            names = ("clang-cl", "clang", "clang-tidy", "clang-format", "clang-scan-deps", "run-clang-tidy",
+                     "llvm-lib", "llvm-nm", "llvm-readobj")
             suffix = ".exe" if sys.platform == "win32" else ""
             for name in names:
                 tool = llvm_root / "bin" / (name + suffix)
                 tool.touch()
                 tool.chmod(0o755)
+            other_root = fixture / "Other LLVM"
+            shutil.copytree(llvm_root, other_root)
             script = fixture / "verify.cmake"
             script.write_text(
                 'cmake_minimum_required(VERSION 4.4.2)\n'
@@ -58,6 +61,10 @@ class NativeWorkflowTests(unittest.TestCase):
                 'get_property(cached_root CACHE LLVM_ROOT PROPERTY VALUE)\n'
                 'if(NOT cached_root STREQUAL expected_root)\n'
                 '  message(FATAL_ERROR "Wrong LLVM_ROOT cache: ${cached_root}")\n'
+                'endif()\n'
+                'if(DEFINED probe_name)\n'
+                '  ioj_find_llvm_tool(selected "${probe_name}")\n'
+                '  return()\n'
                 'endif()\n'
                 f'foreach(name IN ITEMS {" ".join(names)})\n'
                 '  set(selected "old installation" CACHE FILEPATH "" FORCE)\n'
@@ -77,6 +84,7 @@ class NativeWorkflowTests(unittest.TestCase):
                 with self.subTest(selection=selection):
                     environment = os.environ.copy()
                     environment.pop("LLVM_ROOT", None)
+                    environment["PATH"] = str(other_root / "bin") + os.pathsep + environment["PATH"]
                     arguments: list[str] = []
                     if selection == "explicit":
                         environment["LLVM_ROOT"] = str(fixture / "wrong installation")
@@ -95,14 +103,23 @@ class NativeWorkflowTests(unittest.TestCase):
                     )
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-            # An explicitly selected incomplete installation must not borrow PATH tools.
-            result = subprocess.run(
-                [self.cmake, f"-DLLVM_ROOT:PATH={fixture.as_posix()}",
-                 f"-Dexpected_root={fixture.as_posix()}", "-P", str(script)],
-                capture_output=True, text=True,
-            )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertIn("Could not find llvm_tool", result.stdout + result.stderr)
+            # Each missing tool must fail even when another installation has it on PATH.
+            environment = os.environ.copy()
+            environment["PATH"] = str(other_root / "bin") + os.pathsep + environment["PATH"]
+            for name in names:
+                with self.subTest(missing_tool=name):
+                    tool = llvm_root / "bin" / (name + suffix)
+                    tool.unlink()
+                    result = subprocess.run(
+                        [self.cmake, f"-DLLVM_ROOT:PATH={llvm_root.as_posix()}",
+                         f"-Dexpected_root={llvm_root.as_posix()}", f"-Dprobe_name={name}",
+                         "-P", str(script)],
+                        env=environment, capture_output=True, text=True,
+                    )
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("Could not find llvm_tool", result.stdout + result.stderr)
+                    tool.touch()
+                    tool.chmod(0o755)
 
     @unittest.skipUnless(shutil.which("pwsh"), "requires PowerShell")
     def test_tidy_runner_forwards_arguments_and_exit_status(self) -> None:
@@ -518,6 +535,15 @@ cmake_language(DEFER CALL check_simulation_policy)
                 archiver = re.search(r"^CMAKE_AR:[^=]+=(.+)$", cache, re.MULTILINE)
                 assert archiver is not None
                 self.assertEqual(Path(archiver[1]), Path(self.llvm_root) / "bin/llvm-lib.exe")
+                scanner = re.search(r"^CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS:[^=]+=(.+)$", cache, re.MULTILINE)
+                assert scanner is not None
+                self.assertEqual(Path(scanner[1]), Path(self.llvm_root) / "bin/clang-scan-deps.exe")
+            for variable, name in (("SBX_LLVM_NM", "llvm-nm"), ("SBX_LLVM_READOBJ", "llvm-readobj")):
+                selected = re.search(rf"^{variable}:[^=]+=(.+)$", cache, re.MULTILINE)
+                assert selected is not None
+                expected = (Path(self.llvm_root) / "bin" / f"{name}.exe" if self.llvm_root
+                            else Path(shutil.which(name) or name))
+                self.assertEqual(Path(selected[1]), expected)
             self.assertNotIn("LLVM_DIR:", cache)
             self.assertNotIn("Clang_DIR:", cache)
 

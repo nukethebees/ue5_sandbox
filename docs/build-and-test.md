@@ -36,6 +36,11 @@ Unreal/UBT still compiles with MSVC and consumes the native `.lib`
 files. The pinned Microsoft linker/SDK, `/MD` runtime and simulation `_ITERATOR_DEBUG_LEVEL=0`
 remain shared ABI settings. Tidy uses the installed executable without LLVM development packages;
 IOJ checks are optional built-in machine tooling. See [clang-tidy](clang-tidy.md).
+The same root supplies `llvm-lib`, `llvm-nm` and `llvm-readobj` for native archives and mimalloc
+symbol audits, plus `clang-scan-deps` for non-unity C++ dependency scanning.
+Native ASAN requires compiler-rt's Windows runtime DLL, import library and runtime
+thunk in the selected Clang resource directory. The explicit [LLVM toolchain build](../tools/llvm/README.md)
+installs and verifies these dependencies; game workflows do not repair missing toolchain contents.
 
 Project-owned build options and compile definitions use the `IOJ_` prefix. CMake passes
 `IOJ_NATIVE_TOOLCHAIN` to UnrealBuildTools, project-file generation, and UAT; Unreal module rules

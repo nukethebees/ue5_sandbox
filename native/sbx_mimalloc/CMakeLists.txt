@@ -1,5 +1,5 @@
-find_program(SBX_LLVM_NM NAMES llvm-nm REQUIRED)
-find_program(SBX_LLVM_READOBJ NAMES llvm-readobj REQUIRED)
+ioj_find_llvm_tool(SBX_LLVM_NM llvm-nm)
+ioj_find_llvm_tool(SBX_LLVM_READOBJ llvm-readobj)
 
 set(SBX_MIMALLOC_ROOT "${PROJECT_SOURCE_DIR}/native/third_party/mimalloc")
 set(SBX_MIMALLOC_SOURCE "${SBX_MIMALLOC_ROOT}/src/static.c")
