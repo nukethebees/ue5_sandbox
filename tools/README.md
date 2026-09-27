@@ -32,8 +32,8 @@ and native validation does not run this suite.
 - `NativeBinaryTools/` inspects native object files for build integration checks. Its staged
   executable can be run as `tools/bin/NativeBinaryTools.exe mimalloc-symbols <generate|verify> ...`.
   Native CMake builds use a configuration-local copy built on demand.
-- `rust/crates/agent-task/` provides worktree preparation, the cooperative `agent-task git`
-  guardrail, and privileged integration through `integrate-feature`. Install with
+- `rust/crates/agent-task/` provides worktree preparation, a deliberately limited `agent-task git`
+  interface (see subcommand `--help`), and privileged integration through `integrate-feature`. Install with
   `. .\dev.ps1` then `install-agent-task`; see the [Rust guide](rust/README.md).
 - `CodeFormatTools/` is the C# formatter for repository C++ and shader files. CMake builds it for
   the `format-code` and `format-all-code` workflows; it can also be run directly as

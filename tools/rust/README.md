@@ -39,28 +39,39 @@ This runs the package tests, installs only `agent-task` with the pinned Rust too
 smoke-tests the installed executable with `--help`. The maintainer manages PATH; add
 `%LOCALAPPDATA%\NukeTheBees\agent-task\bin`. Agents assume `agent-task` is already available.
 
-Use normal Git arguments for feature work:
+Use the intentionally limited Git interface for routine feature work:
 
 ```powershell
-agent-task git add --all
+agent-task git add -A
 agent-task git commit -m "Implement feature"
 agent-task git rebase dev
 agent-task git reset --hard dev
 ```
 
-Arguments and streams pass directly to Git, with no shell or quoting reconstruction. Commits,
-amends, resets, cleaning, merges, stashes and ordinary recovery are allowed on feature work.
-Local `dev`, `main` and `master` may be revision inputs but cannot be mutated or attached to.
-A worktree currently on a protected branch permits only simple read-only inspection.
-Worktree destinations must be children of the current worktree root, including when run from
-nested directories. Repository/environment redirection and aliases are rejected. Repository
-administration, remote ref transfers and unmodeled arbitrary-ref interfaces require the maintainer.
-Use `--no-update-refs` if rebase.updateRefs is enabled. Git owns locks and recovery state.
-The cooperative no-bypass policy is in [AGENTS.md](../../AGENTS.md).
+Supported commands are `status`, `add`, `commit`, `restore`, `reset`, `clean`, `rm`, `mv`,
+`stash`, `switch`, `branch`, `merge`, `rebase`, `cherry-pick`, `revert`, and `worktree`.
+Run `agent-task git <command> --help` for the exact options. Unknown commands, options and
+abbreviated long options are rejected. There is no `checkout`, remote transfer, config, plumbing,
+force-create, explicit-branch rebase, or general worktree administration interface. Stash operations
+address the latest stash; cherry-pick/revert accept individual commits, not revision ranges.
+Use separately permitted raw read-only Git for inspection such as `git diff` and `git log`.
+
+Typed commands construct fresh Git arguments without a shell; pathspecs and messages retain their
+literal values and Git inherits the terminal streams. Local `dev`, `main`, `master`, and branches
+checked out by other registered worktrees may be revision inputs but cannot be mutation or switch
+targets. Ownership comes from `git worktree list --porcelain -z`, with no separate registry.
+A protected current worktree permits only status, branch listing, stash listing and worktree listing.
+Worktree add/remove destinations must be children of the current worktree root, including when
+run from nested directories. Creation requires `-b <feature-branch>`; removal never forces cleanup.
+Rebases affect the current branch and explicitly disable updates to other refs. Git owns locks and
+recovery state. This is a cooperative guardrail: report unsupported operations rather than bypassing
+it, and add support only when a real workflow requires it. Raw mutations require an explicit
+maintainer exception. See [AGENTS.md](../../AGENTS.md).
 
 After validation and explicit user authorization, use `integrate-feature` from `dev.ps1`.
 It queues the exclusive `integration/dev` jobserver lease and invokes `agent-task integrate`.
-The privileged transaction requires clean feature/dev worktrees, rebases onto pinned dev,
+The privileged transaction requires clean feature/dev worktrees, rebases onto pinned dev with
+autostash, update-refs and rebase-merges explicitly disabled, rechecks the integration lease,
 runs cheap Git sanity checks, constructs a merge commit and advances dev with compare-and-swap.
 It refreshes dev, returns persistent devN worktrees home and safely deletes the feature branch.
 Use `integrate-feature -KeepBranch` to retain it. Worktrees without a devN home detach at the

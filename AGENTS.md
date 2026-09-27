@@ -11,12 +11,16 @@ Unreal Engine 5.8 project.
 
 # Feature Workflow
 
-* Use `agent-task git <args...>` for mutating Git operations. Agents may freely commit, amend,
-  rebase, reset, clean, restore, and otherwise mutate their own feature work.
+* Use `agent-task git` for mutating Git operations. It intentionally supports only the commands
+  and options documented by `agent-task git --help` and each subcommand's `--help`. Within that
+  subset, agents may freely commit, amend, rebase, reset, clean, and restore their own feature work.
+  Report unsupported operations rather than bypassing the tool. Add capabilities only when a real
+  workflow needs them; raw mutating Git requires an explicit maintainer-authorized exception.
 * `dev`, `main`, and `master` are protected. Read them freely, but do not mutate them or switch
   an agent worktree onto them through the ordinary Git path.
 * The worktree containing the current CWD is the workspace boundary. Do not access or modify
   another worktree outside that boundary. Git owns index/ref locking and operation state.
+  Never mutate or attach to a branch checked out by another worktree; it may be a revision input.
 * AgentTask is a cooperative guardrail, not a hostile-process security sandbox. Do not bypass it
   with raw mutating Git, direct `.git` edits, environment overrides, aliases, alternate Git
   executables, shell tricks, or other workarounds. Explicitly permitted read-only raw Git is fine.

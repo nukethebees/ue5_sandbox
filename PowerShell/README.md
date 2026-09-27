@@ -10,7 +10,8 @@ dev-help
 
 The maintainer runs `install-agent-task` to test and install only the Rust `agent-task` CLI,
 then manages its PATH entry. On a fresh setup, `agent-task install-central-tools` installs the
-canonical per-user build tools. Use `agent-task git <args...>` for everyday feature Git operations.
+canonical per-user build tools. Use `agent-task git` for its documented subset of feature Git
+operations; see `agent-task git --help`. Report unsupported operations instead of bypassing it.
 Agents assume the CLI is installed and begin tasks with `agent-task prepare-worktree`.
 
 `Navigation.ps1` provides `croot`, `cwt`, `cwb`, `cplugin`, and `ctests`. `UnrealBuild.ps1` provides

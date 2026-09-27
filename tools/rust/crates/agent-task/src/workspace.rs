@@ -35,6 +35,48 @@ pub fn branch(root: &Path) -> Result<String, String> {
     query(root, &["branch", "--show-current"])
 }
 
+pub struct Worktree {
+    pub path: PathBuf,
+    pub branch: Option<String>,
+}
+
+pub fn worktrees(root: &Path) -> Result<Vec<Worktree>, String> {
+    let listing = query(root, &["worktree", "list", "--porcelain", "-z"])?;
+    let mut result: Vec<Worktree> = Vec::new();
+    for field in listing.split('\0') {
+        if let Some(path) = field.strip_prefix("worktree ") {
+            result.push(Worktree {
+                path: resolved(Path::new(path))?,
+                branch: None,
+            });
+        } else if let Some(branch) = field.strip_prefix("branch refs/heads/") {
+            if let Some(worktree) = result.last_mut() {
+                worktree.branch = Some(branch.to_owned());
+            }
+        }
+    }
+    Ok(result)
+}
+
+pub fn check_branch_target(name: &str, root: &Path, worktrees: &[Worktree]) -> Result<(), String> {
+    if protected(name) {
+        return Err(format!(
+            "Branch '{name}' is protected. Use a feature branch; advancing dev requires authorized integrate-feature."
+        ));
+    }
+    let root = resolved(root)?;
+    if let Some(owner) = worktrees
+        .iter()
+        .find(|w| w.branch.as_deref() == Some(name) && w.path != root)
+    {
+        return Err(format!(
+            "Branch '{name}' belongs to another worktree ({}). Use your own feature branch; ask the maintainer to coordinate changes there.",
+            owner.path.display()
+        ));
+    }
+    Ok(())
+}
+
 pub fn check_environment() -> Result<(), String> {
     for name in [
         "GIT_DIR",
