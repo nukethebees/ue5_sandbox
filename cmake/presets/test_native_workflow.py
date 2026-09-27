@@ -121,6 +121,78 @@ class NativeWorkflowTests(unittest.TestCase):
                     tool.touch()
                     tool.chmod(0o755)
 
+    def test_tidy_runner_tool_names_and_root_isolation(self) -> None:
+        cases = (
+            ("root_runner", "run-clang-tidy", None, True, True),
+            ("root_python", "run-clang-tidy.py", None, True, True),
+            ("missing", None, None, True, False),
+            ("isolated", None, "run-clang-tidy.py", True, False),
+            ("path_python", None, "run-clang-tidy.py", False, True),
+            ("path_missing", None, None, False, False),
+        )
+        with tempfile.TemporaryDirectory(prefix="sandbox tidy discovery ") as directory:
+            fixture = Path(directory)
+            script = fixture / "verify.cmake"
+            script.write_text(
+                'cmake_minimum_required(VERSION 4.4.2)\n'
+                # Keep the PATH-only cases independent of the machine's other LLVM installs.
+                'set(CMAKE_FIND_USE_CMAKE_SYSTEM_PATH FALSE)\n'
+                'set(CMAKE_FIND_USE_CMAKE_ENVIRONMENT_PATH FALSE)\n'
+                f'include("{self.source_dir.as_posix()}/cmake/llvm_tools.cmake")\n'
+                'ioj_find_llvm_tool(selected run-clang-tidy run-clang-tidy.py)\n'
+                'if(NOT selected STREQUAL expected_tool)\n'
+                '  message(FATAL_ERROR "Wrong tidy runner: ${selected}")\n'
+                'endif()\n', encoding="utf-8",
+            )
+            for name, root_tool, path_tool, use_root, succeeds in cases:
+                with self.subTest(case=name):
+                    llvm_root = fixture / name / "LLVM with spaces"
+                    root_bin = llvm_root / "bin"
+                    path_bin = fixture / name / "PATH with spaces"
+                    root_bin.mkdir(parents=True)
+                    path_bin.mkdir()
+                    for directory, tool in ((root_bin, root_tool), (path_bin, path_tool)):
+                        if tool:
+                            executable = directory / tool
+                            executable.touch()
+                            executable.chmod(0o755)
+                    environment = os.environ.copy()
+                    environment["LLVM_ROOT"] = str(fixture / "ignored environment root")
+                    environment["PATH"] = str(path_bin)
+                    expected = (root_bin / root_tool if root_tool else
+                                path_bin / path_tool if path_tool else fixture / "missing")
+                    result = subprocess.run(
+                        [self.cmake, f"-DLLVM_ROOT:PATH={llvm_root.as_posix() if use_root else ''}",
+                         f"-Dexpected_tool={expected.as_posix()}", "-P", str(script)],
+                        env=environment, capture_output=True, text=True,
+                    )
+                    output = result.stdout + result.stderr
+                    if succeeds:
+                        self.assertEqual(result.returncode, 0, output)
+                    else:
+                        self.assertNotEqual(result.returncode, 0, output)
+                        self.assertIn("Could not find llvm_tool", output)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "requires PowerShell")
+    def test_llvm_build_paths_follow_powershell_location(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="sandbox llvm paths ") as directory:
+            result = subprocess.run([
+                "pwsh", "-NoProfile", "-File",
+                str(self.source_dir / "tools/llvm/tests/Test-BuildPaths.ps1"),
+                "-FixtureRoot", directory,
+            ], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    @unittest.skipUnless(shutil.which("pwsh"), "requires PowerShell")
+    def test_jobserver_installer_rejects_asan_before_mutation(self) -> None:
+        cmake_source = (self.source_dir / "tools/jobserver/CMakeLists.txt").read_text()
+        self.assertIn('-AsanEnabled "$<BOOL:${IOJ_ENABLE_ASAN}>"', cmake_source)
+        result = subprocess.run([
+            "pwsh", "-NoProfile", "-File",
+            str(self.source_dir / "tools/jobserver/tests/Test-InstallerAsanGuard.ps1"),
+        ], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     @unittest.skipUnless(shutil.which("pwsh"), "requires PowerShell")
     def test_tidy_runner_forwards_arguments_and_exit_status(self) -> None:
         with tempfile.TemporaryDirectory(prefix="sandbox tidy runner ") as directory:
@@ -232,6 +304,10 @@ class NativeWorkflowTests(unittest.TestCase):
                 'set(IOJ_RUN_CLANG_TIDY_EXECUTABLE "${CMAKE_COMMAND}")\n'
                 'set(IOJ_POWERSHELL_EXECUTABLE "${CMAKE_COMMAND}")\n'
                 "function(ioj_find_llvm_tool output name)\n"
+                '  if(output STREQUAL "IOJ_RUN_CLANG_TIDY_EXECUTABLE" AND\n'
+                '     NOT "${name};${ARGN}" STREQUAL "run-clang-tidy;run-clang-tidy.py")\n'
+                '    message(FATAL_ERROR "Tidy configuration lost a runner candidate")\n'
+                '  endif()\n'
                 '  set(${output} "${CMAKE_COMMAND}" PARENT_SCOPE)\n'
                 "endfunction()\n"
                 "function(find_package)\n"

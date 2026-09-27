@@ -7,7 +7,7 @@ if(NOT IOJ_IS_CLANG_CL)
 endif()
 
 ioj_find_llvm_tool(IOJ_CLANG_TIDY_EXECUTABLE clang-tidy)
-ioj_find_llvm_tool(IOJ_RUN_CLANG_TIDY_EXECUTABLE run-clang-tidy)
+ioj_find_llvm_tool(IOJ_RUN_CLANG_TIDY_EXECUTABLE run-clang-tidy run-clang-tidy.py)
 find_program(IOJ_POWERSHELL_EXECUTABLE NAMES pwsh powershell REQUIRED)
 execute_process(
   COMMAND "${IOJ_CLANG_TIDY_EXECUTABLE}" "-checks=*" -list-checks

@@ -10,10 +10,18 @@ param(
     [string]$InstallRoot,
 
     [Parameter(Mandatory)]
-    [string]$RegisterScript
+    [string]$RegisterScript,
+
+    [Parameter(Mandatory)]
+    [ValidateSet(0, 1)]
+    [int]$AsanEnabled
 )
 
 $ErrorActionPreference = 'Stop'
+if ($AsanEnabled) {
+    throw 'An ASAN jobserver build is for local validation and must not replace the installed machine jobserver. Use a build configured with IOJ_ENABLE_ASAN=OFF for canonical installation.'
+}
+
 $builtClient = (Resolve-Path -LiteralPath $BuiltClientPath).Path
 $builtDaemon = (Resolve-Path -LiteralPath $BuiltDaemonPath).Path
 $registerScript = (Resolve-Path -LiteralPath $RegisterScript).Path

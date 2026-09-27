@@ -13,8 +13,12 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $revision = 'e0b3e4c82911376fcb2dfcbc4a3dd3f4f5891aba'
-$LLVMSource = (Resolve-Path -LiteralPath $LLVMSource).Path
-$BuildDir = [System.IO.Path]::GetFullPath($BuildDir)
+$invocationDirectory = (Get-Location -PSProvider FileSystem).ProviderPath
+$LLVMSource = (Resolve-Path -LiteralPath ([System.IO.Path]::GetFullPath($LLVMSource, $invocationDirectory))).Path
+$BuildDir = [System.IO.Path]::GetFullPath($BuildDir, $invocationDirectory)
+if (-not [string]::IsNullOrWhiteSpace($LLVMRoot)) {
+    $LLVMRoot = [System.IO.Path]::GetFullPath($LLVMRoot, $invocationDirectory)
+}
 if ($Install -and [string]::IsNullOrWhiteSpace($LLVMRoot)) {
     throw '-Install requires -LLVMRoot or the LLVM_ROOT environment variable.'
 }
@@ -97,7 +101,6 @@ $configureArgs = @(
     "-DIOJ_TIDY_SOURCE_DIR:PATH=$checkerSource"
 )
 if (-not [string]::IsNullOrWhiteSpace($LLVMRoot)) {
-    $LLVMRoot = [System.IO.Path]::GetFullPath($LLVMRoot)
     $configureArgs += "-DCMAKE_INSTALL_PREFIX=$LLVMRoot"
 }
 & cmake @configureArgs

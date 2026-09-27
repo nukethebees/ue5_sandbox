@@ -198,6 +198,7 @@ add_custom_target(install-jobserver
     -BuiltDaemonPath "$<TARGET_FILE:jobserverd>"
     -InstallRoot "${IOJ_JOBSERVER_INSTALL_ROOT}"
     -RegisterScript "${CMAKE_CURRENT_SOURCE_DIR}/install/Register-Jobserver.ps1"
+    -AsanEnabled "$<BOOL:${IOJ_ENABLE_ASAN}>"
   DEPENDS jobserver jobserverd
   COMMENT "Installing and registering the canonical per-user jobserver"
   USES_TERMINAL
