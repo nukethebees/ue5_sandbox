@@ -1,9 +1,11 @@
 #include "sandbox_ismc_packing_avx512.h"
+#include "sandbox_ismc_packing_highway.h"
 
 #include "sandbox/core/sandbox_ismc_packing.h"
 
 #include <benchmark/benchmark.h>
 #include <cpuinfo_x86.h>
+#include <hwy/targets.h>
 
 #include <array>
 #include <random>
@@ -22,6 +24,8 @@ enum class Implementation {
     Scalar,
     Avx2,
     Avx512,
+    HighwayAvx2,
+    HighwayAvx512,
 };
 
 struct Buffers {
@@ -59,6 +63,14 @@ auto run(benchmark::State& state) -> void {
             return;
         }
     }
+    if constexpr (implementation == Implementation::HighwayAvx2 ||
+                  implementation == Implementation::HighwayAvx512) {
+        constexpr auto target{implementation == Implementation::HighwayAvx2 ? HWY_AVX2 : HWY_AVX3};
+        if ((hwy::SupportedTargets() & target) == 0) {
+            state.SkipWithMessage("Highway target unavailable");
+            return;
+        }
+    }
     auto const count{static_cast<std::size_t>(state.range(0))};
     Buffers buffers{count};
     if constexpr (Coherent) {
@@ -78,22 +90,34 @@ auto run(benchmark::State& state) -> void {
     for (auto _ : state) {
         static_cast<void>(_);
         if constexpr (operation == Operation::Position) {
-            constexpr auto kernel{implementation == Implementation::Avx512
+            constexpr auto kernel{implementation == Implementation::HighwayAvx2
+                                      ? experiment::highway_avx2::pack_positions
+                                  : implementation == Implementation::HighwayAvx512
+                                      ? experiment::highway_avx512::pack_positions
+                                  : implementation == Implementation::Avx512
                                       ? experiment::pack_positions_avx512
                                   : implementation == Implementation::Avx2 ? pack_positions_avx2
                                                                            : pack_positions_scalar};
             kernel(input.positions, parameters.position_root, buffers.output);
         } else if constexpr (operation == Operation::Quaternion) {
-            constexpr auto kernel{implementation == Implementation::Avx512
+            constexpr auto kernel{implementation == Implementation::HighwayAvx2
+                                      ? experiment::highway_avx2::pack_rotations
+                                  : implementation == Implementation::HighwayAvx512
+                                      ? experiment::highway_avx512::pack_rotations
+                                  : implementation == Implementation::Avx512
                                       ? experiment::pack_rotations_avx512
                                   : implementation == Implementation::Avx2 ? pack_rotations_avx2
                                                                            : pack_rotations_scalar};
             kernel(input.rotations, buffers.output);
         } else {
             constexpr auto kernel{
-                implementation == Implementation::Avx512 ? experiment::pack_transforms_avx512
-                : implementation == Implementation::Avx2 ? pack_transforms_avx2
-                                                         : pack_transforms_scalar};
+                implementation == Implementation::HighwayAvx2
+                    ? experiment::highway_avx2::pack_transforms
+                : implementation == Implementation::HighwayAvx512
+                    ? experiment::highway_avx512::pack_transforms
+                : implementation == Implementation::Avx512 ? experiment::pack_transforms_avx512
+                : implementation == Implementation::Avx2   ? pack_transforms_avx2
+                                                           : pack_transforms_scalar};
             kernel(input,
                    parameters,
                    buffers.output,
@@ -108,18 +132,28 @@ auto run(benchmark::State& state) -> void {
 
 template <Operation operation, bool Coherent = false>
 auto register_comparison(char const* name) -> void {
-    for (auto const implementation :
-         {Implementation::Scalar, Implementation::Avx2, Implementation::Avx512}) {
-        auto const suffix{implementation == Implementation::Avx512 ? "/avx512"
-                          : implementation == Implementation::Avx2 ? "/avx2"
-                                                                   : "/scalar"};
+    for (auto const implementation : {Implementation::Scalar,
+                                      Implementation::Avx2,
+                                      Implementation::Avx512,
+                                      Implementation::HighwayAvx2,
+                                      Implementation::HighwayAvx512}) {
+        auto const suffix{implementation == Implementation::HighwayAvx2     ? "/highway-avx2"
+                          : implementation == Implementation::HighwayAvx512 ? "/highway-avx512"
+                          : implementation == Implementation::Avx512        ? "/avx512"
+                          : implementation == Implementation::Avx2          ? "/avx2"
+                                                                            : "/scalar"};
         auto const label{std::string{"ismc/"} + name + suffix};
-        auto const function{implementation == Implementation::Avx512
+        auto const function{implementation == Implementation::HighwayAvx2
+                                ? run<operation, Implementation::HighwayAvx2, Coherent>
+                            : implementation == Implementation::HighwayAvx512
+                                ? run<operation, Implementation::HighwayAvx512, Coherent>
+                            : implementation == Implementation::Avx512
                                 ? run<operation, Implementation::Avx512, Coherent>
                             : implementation == Implementation::Avx2
                                 ? run<operation, Implementation::Avx2, Coherent>
                                 : run<operation, Implementation::Scalar, Coherent>};
         benchmark::RegisterBenchmark(label, function)
+            ->Arg(17)
             ->Arg(64)
             ->Arg(256)
             ->Arg(2000)

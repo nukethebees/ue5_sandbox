@@ -137,6 +137,16 @@ ioj_apply_native_abi(native-core-ismc-avx512-experiment)
 ioj_enable_warnings(native-core-ismc-avx512-experiment)
 target_link_libraries(native-core-tests PRIVATE native-core-ismc-avx512-experiment)
 
+foreach(isa IN ITEMS avx2 avx512)
+  add_library(native-core-ismc-highway-${isa} OBJECT EXCLUDE_FROM_ALL
+    experiments/sandbox_ismc_packing_highway.cpp)
+  ioj_configure_highway_comparison(native-core-ismc-highway-${isa} ${isa})
+  target_include_directories(native-core-ismc-highway-${isa} PUBLIC experiments)
+  target_link_libraries(native-core-ismc-highway-${isa} PUBLIC native-core)
+  target_link_libraries(native-core-tests PRIVATE native-core-ismc-highway-${isa})
+endforeach()
+target_link_libraries(native-core-tests PRIVATE hwy)
+
 add_executable(native-core-benchmarks)
 target_sources(native-core-benchmarks PRIVATE
   benchmarks/projectile_intercept_benchmarks.cpp
@@ -147,6 +157,9 @@ target_compile_features(native-core-benchmarks PRIVATE cxx_std_23)
 target_link_libraries(native-core-benchmarks PRIVATE
   native-core
   native-core-ismc-avx512-experiment
+  native-core-ismc-highway-avx2
+  native-core-ismc-highway-avx512
+  hwy
   benchmark::benchmark
   benchmark::benchmark_main
   CpuFeatures::cpu_features
@@ -206,6 +219,20 @@ add_custom_target(native-core-vector-lerp-benchmark-report
   COMMENT "Benchmarking fused native 3D lerp against three 1D lerps"
   USES_TERMINAL
   VERBATIM
+)
+
+sandbox_jobserver_command(native_core_highway_benchmark_command BENCHMARK benchmark
+  "Compare Highway and intrinsic ISMC packing")
+add_custom_target(native-core-highway-benchmark-report
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/highway"
+  COMMAND ${native_core_highway_benchmark_command} "$<TARGET_FILE:native-core-benchmarks>"
+    "--benchmark_filter=^ismc/[^/]+/(scalar|avx2|avx512|highway-avx2|highway-avx512)/(17|2000|40000)/real_time$"
+    --benchmark_repetitions=3 --benchmark_min_time=0.02s
+    --benchmark_enable_random_interleaving=true --benchmark_display_aggregates_only=true
+    "--benchmark_out=${PROJECT_SOURCE_DIR}/.local/benchmarks/highway/ismc.json"
+    --benchmark_out_format=json
+  DEPENDS native-core-benchmarks
+  USES_TERMINAL VERBATIM
 )
 
 add_library(native-core-static-string-view-reject-automatic OBJECT EXCLUDE_FROM_ALL)
