@@ -83,7 +83,12 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
     auto* const RESTRICT instances{instances_.GetData()};
     auto const* RESTRICT position_data{positions.GetData()};
     auto const* RESTRICT rotation_data{rotations.GetData()};
-    [[maybe_unused]] FBox3f batch_bounds{ForceInit};
+    [[maybe_unused]] FVector3f batch_min{};
+    [[maybe_unused]] FVector3f batch_max{};
+    if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
+        batch_min = FVector3f{FLT_MAX};
+        batch_max = FVector3f{-FLT_MAX};
+    }
 
     for (int32 local_index{0}; local_index < count; ++local_index) {
         auto const position{position_data[local_index]};
@@ -105,12 +110,13 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
             auto const extent{row_0.GetAbs() * mesh_bounds_extent_.X +
                               row_1.GetAbs() * mesh_bounds_extent_.Y +
                               row_2.GetAbs() * mesh_bounds_extent_.Z};
-            batch_bounds += FBox3f{center - extent, center + extent};
+            batch_min = batch_min.ComponentMin(center - extent);
+            batch_max = batch_max.ComponentMax(center + extent);
         }
     }
 
     if constexpr (BoundsMode == ESandboxISMCBoundsMode::Calculate) {
-        bounds_ = batch_bounds;
+        bounds_ = count > 0 ? FBox3f{batch_min, batch_max} : FBox3f{ForceInit};
     }
 }
 
