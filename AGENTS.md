@@ -11,14 +11,8 @@ Unreal Engine 5.8 project.
 
 # Feature Workflow
 
-* Use `agent-task git` for mutating Git operations. It intentionally supports only the commands
-  and options documented by `agent-task git --help` and each subcommand's `--help`. Within that
-  subset, agents may freely commit, amend, rebase, reset, clean, and restore their own feature work.
-  Report unsupported operations rather than bypassing the tool. Add capabilities only when a real
-  workflow needs them; raw mutating Git requires an explicit maintainer-authorized exception.
-* Git stash is intentionally unsupported because it is repository-global. To park work, create a
-  temporary local feature branch and commit the WIP there; creating a branch alone does not save it.
-  Do not use Git stash.
+* Use `agent-task git` for mutating Git operations. It intentionally supports a limited whitelist of git commands (documented by `agent-task git --help` and each subcommand's `--help`) that agents are free to use within their worktree. For unsupported commands, fall back on requesting permission to use git directly from the maintainer.
+* Git stash is intentionally unsupported because it is repository-global. Use branches instead of stashing.
 * `dev`, `main`, and `master` are protected regardless of ASCII case. Read them freely, but do not
   mutate them or switch an agent worktree onto them through the ordinary Git path.
 * The worktree containing the current CWD is the workspace boundary. Do not access or modify
@@ -35,22 +29,16 @@ Unreal Engine 5.8 project.
   that worktree's `out`, initializes/updates submodules, and regenerates presets and code.
   It does not perform a broad project/test build; build only the targets needed for the task afterward.
   The canonical jobserver must be installed before preparation can clear `out`. The maintainer
-  installs/updates `agent-task` with `. .\dev.ps1` then `install-agent-task` and manages PATH;
-  agents invoke it by name from PATH. If it cannot be found or launched, halt and report the
-  problem so the maintainer can fix it; do not use an absolute-path fallback or install it automatically.
-  Install central per-user prerequisites separately with
-  `agent-task install-central-tools`. See `tools/rust/README.md` for installation.
+  installs/updates `agent-task` and manages PATH; agents invoke it by name from PATH. If it cannot be found or launched, halt and report the problem so the maintainer can fix it; do not use an absolute-path fallback or install it automatically.
 * After worktree preparation, build only affected targets and execute relevant CTest labels.
   Use `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"` for the
   fast loop. Include the applicable expensive categories once for final validation.
   `native-simulation-tests` is the ordinary-only workflow; `native-simulation-full-tests`
   adds the soak for final simulation validation. `native-tests` includes native soak/compile
   contracts but excludes standalone developer-tool tests.
-* Run code/asset generators before starting the task and re-run as needed
 * Perform feature work on dedicated feature branches
 * Do not bypass instructions here unless explicitly told to
 * Use the CMake workflows and jobserver described in [Builds](#builds). 
-* Do not interfere with agents in other worktrees
 * **Fast default:** 
   * Understand the task
   * Finish the coherent implementation and required cleanup
@@ -78,7 +66,7 @@ Unreal Engine 5.8 project.
 * If AgentTask is broken, report it once and follow an explicit maintainer instruction for any
   minimal alternative; do not repeatedly retry or deliberately bypass it.
 * You have permission to kill stale/hung processes that you spawned or were spawned in your worktree
-* Do not chain CLI commands that may trigger an approval request when they wouldn't individually e.g. `git status --short; git branch --show-current`. 
+* Do not chain or batch CLI commands that may trigger an approval request when they wouldn't individually e.g. `git status --short; git branch --show-current`. 
   * This includes routing command outputs to log files. Read the CLI output directly yourself.
 * Make commits for each discrete chunk of work as you work. Use good judgement.
 * Try to avoid making just one commit for all the work
@@ -117,8 +105,8 @@ Unreal Engine 5.8 project.
 * Treat obvious temporary contention for shared resources as a wait condition: do not repeatedly retry across consecutive turns; sleep within the shell/tool invocation before retrying with 10s, then 30s, then 60s backoff (capped at 60s). Investigate and report the failure if persists unreasonably.
 * Do not preserve architecture the user asked to replace through compatibility wrappers or indirection merely to reduce the diff. Avoid unrelated refactors.
 * When explicitly granted autonomy, use judgement to resolve reasonable ambiguities while keeping scope controlled.
-* Store local development roadmaps under `.local/plans/`; never commit them.
-* Store disposable session hand-offs under `.local/handoffs/`; never commit them.
+* Store local development roadmaps under `.local/plans/` and disposable session hand-offs under `.local/handoffs/`; never commit them.
+* Use common tools like `clang-tidy` from PATH, not from explicit file paths.
 
 Do not say “almost done”, “virtually done”, “nearly finished”, or give percentage-style completion estimates unless all required validation steps are already known and enumerated. When reporting progress, explicitly separate:
 - implementation complete/incomplete
