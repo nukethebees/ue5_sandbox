@@ -17,6 +17,8 @@ csetup
 The leading dot keeps the commands available in the current session. Run `dev-help` for the
 available navigation and build commands. The maintainer runs `install-agent-task` after loading
 `dev.ps1` and manages PATH; agents begin new tasks with `agent-task prepare-worktree`.
+This clears the worktree's build output, initializes/updates submodules, and regenerates presets
+and code. It does not run a broad project/test build; build only the task's relevant targets afterward.
 Install shared per-user build tools with `agent-task install-central-tools` when needed.
 Use `cplay debug-game` for an Editor-ready
 configuration and `debug-game-unit-tests` only for explicit Unreal-enabled integration validation.

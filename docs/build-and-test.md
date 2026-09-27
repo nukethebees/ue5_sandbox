@@ -78,15 +78,18 @@ agent-task prepare-worktree
 The maintainer installs/updates `agent-task` with `. .\dev.ps1` followed by `install-agent-task`
 and manages PATH; agents assume it is available. On a fresh setup, run
 `agent-task install-central-tools` for the canonical jobserver and `set-live-coding-disabled`.
+It initializes/updates submodules before configuring the native build and running the install targets.
 Preparation checks for the jobserver before removing output; it does not install missing tools.
 AgentGit remains separately maintainer-controlled through `install-agent-git`.
 See the [Rust tooling instructions](../tools/rust/README.md).
-It removes only the worktree-root `out` directory, synchronizes and initializes recursive
-submodules, runs `python cmake/presets/generate.py`, then runs the `generate-code` and `task-start`
-CMake workflows. Each phase streams its output and a failure stops initialization immediately.
+Preparation removes only the worktree-root `out` directory, synchronizes and initializes/updates
+recursive submodules, runs `python cmake/presets/generate.py`, then runs the `generate-code`
+CMake workflow. Each phase streams its output and a failure stops preparation immediately.
+It does not perform a broad project/test build. Build only the targets relevant to the task afterward.
 
-`task-start` builds native tests (including the soak), native developer-tool tests, all nine C#
-test assemblies, and generated-output consistency checks. It executes no tests and uses no
+For an explicit broad baseline, `cmake --workflow --preset task-start` remains available separately
+from normal task preparation. It builds native tests (including the soak), native developer-tool
+tests, all nine C# test assemblies, and generated-output consistency checks. It executes no tests and uses no
 Unreal resources. Binaries and C# intermediates are isolated under `out/build/native`.
 The `check-generated-code` build target owns the committed codegen fixture consistency check.
 

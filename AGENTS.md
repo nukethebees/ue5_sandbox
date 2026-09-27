@@ -18,16 +18,16 @@ Unreal Engine 5.8 project.
   inspect or modify another agent's worktree.
 * `dev` is the integration branch
 * Begin a new task with `agent-task prepare-worktree` from anywhere in the current Git worktree. It clears
-  that worktree's `out`, syncs and updates submodules, regenerates presets and code, then runs
-  `cmake --workflow --preset task-start` for a broad native/tool/test build and generated
-  consistency checks. This builds binaries; it does not run the test suites. The maintainer
+  that worktree's `out`, initializes/updates submodules, and regenerates presets and code.
+  It does not perform a broad project/test build; build only the targets needed for the task afterward.
+  The canonical jobserver must be installed before preparation can clear `out`. The maintainer
   installs/updates `agent-task` with `. .\dev.ps1` then `install-agent-task` and manages PATH;
   agents invoke it by name from PATH. If it cannot be found or launched, halt and report the
   problem so the maintainer can fix it; do not use an absolute-path fallback or install it automatically.
   Install central per-user prerequisites separately with
   `agent-task install-central-tools`. AgentGit remains on its maintainer-controlled trusted
   installation path. See `tools/rust/README.md` for installation.
-* After the clean initial build, rebuild only affected targets and execute relevant CTest labels.
+* After worktree preparation, build only affected targets and execute relevant CTest labels.
   Use `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"` for the
   fast loop. Include the applicable expensive categories once for final validation.
   `native-simulation-tests` is the ordinary-only workflow; `native-simulation-full-tests`

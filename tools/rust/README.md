@@ -12,10 +12,10 @@ Begin each new task from anywhere in its Git worktree with:
 agent-task prepare-worktree
 ```
 
-This removes the worktree-root `out`, synchronizes and initializes recursive submodules,
-regenerates CMake presets and code, then builds the `task-start` baseline. It stops on the first
-failure and streams subprocess output. Git, Python, CMake, and the repository build prerequisites
-must be available in the environment.
+This removes the worktree-root `out`, synchronizes and initializes/updates recursive submodules,
+then regenerates CMake presets and code. It does not perform a broad project/test build; build
+only the targets relevant to the task afterward. It stops on the first failure and streams
+subprocess output. Git, Python, CMake, and the repository build prerequisites must be available.
 
 Preparation checks for the canonical jobserver before clearing output. Install/update central
 per-user build tools explicitly when needed:
@@ -24,7 +24,8 @@ per-user build tools explicitly when needed:
 agent-task install-central-tools
 ```
 
-This generates presets, configures `native`, then runs the canonical `install-jobserver` and
+This synchronizes and initializes/updates recursive submodules, generates presets, configures
+`native`, then runs the canonical `install-jobserver` and
 `install-set-live-coding-disabled` CMake targets, stopping on failure. It does not install AgentGit;
 that remains separately maintainer-controlled through `install-agent-git`.
 
