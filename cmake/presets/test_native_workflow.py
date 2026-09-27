@@ -765,6 +765,20 @@ cmake_language(DEFER CALL check_simulation_policy)
             self.assertIn("native-simulation-soak-tests", dry_run)
             self.check_test_inventory(build_directory)
 
+            rules = (build_directory / "CMakeFiles/rules.ninja").read_text(encoding="utf-8")
+            graph = (build_directory / "build.ninja").read_text(encoding="utf-8")
+            self.assertIn('--name "Compile C"', graph)
+            self.assertIn('--name "Compile CXX"', graph)
+            self.assertIn('--name "Link CXX"', rules)
+            test_file = (build_directory / "native/core/CTestTestfile.cmake").read_text(encoding="utf-8")
+            self.assertIn('"--kind" "test"', test_file)
+            self.assertIn('"--shared" "machine" "--"', test_file)
+            self.assertIn('native-core-tests.exe"', test_file)
+            bootstrap = self.run_cmake("--build", str(build_directory), "--target", "install-jobserver",
+                                      "--", "-t", "commands")
+            self.assertNotIn("jobserver.exe run", bootstrap)
+            self.assertNotIn('jobserver.exe" run', bootstrap)
+
             for report, executable in (
                 ("native-core-vector-lerp-benchmark-report", "native/core/native-core-benchmarks.exe"),
                 ("native-soa-production-report", "native/lispb/native_soa/native-soa-benchmarks.exe"),

@@ -1,4 +1,5 @@
 ioj_find_llvm_tool(IOJ_CLANG_FORMAT_EXECUTABLE clang-format)
+sandbox_jobserver_command(lispb_command STANDARD generate "Generate or check Lispb outputs")
 
 add_subdirectory(sexpr)
 add_subdirectory(material)
@@ -147,7 +148,7 @@ set(CODEGEN_COMPILE_FIXTURE_SOURCES
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Settings.cpp"
 )
 add_custom_target(generate-codegen-compile-fixture
-  COMMAND lispb generate
+  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target cpp-compile-fixture
@@ -158,7 +159,7 @@ add_custom_target(generate-codegen-compile-fixture
   VERBATIM
 )
 add_custom_target(check-generated-codegen-compile-fixture
-  COMMAND lispb check
+  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target cpp-compile-fixture
@@ -309,11 +310,11 @@ set_tests_properties(CodegenCliReportsMissingProject PROPERTIES
 )
 
 add_custom_target(generate-code
-  COMMAND lispb generate
+  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target sandbox-code
-  COMMAND lispb generate
+  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target sandbox-core-test-fixture
@@ -325,11 +326,11 @@ add_custom_target(generate-code
 )
 
 add_custom_target(check-generated-code
-  COMMAND lispb check
+  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target sandbox-code
-  COMMAND lispb check
+  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target sandbox-core-test-fixture

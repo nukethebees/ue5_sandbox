@@ -1,3 +1,4 @@
+sandbox_jobserver_command(material_command STANDARD generate "Generate or validate material IR")
 function(add_material_ir name target source artifact_name artifacts_variable)
   set(source_path "${PROJECT_SOURCE_DIR}/${source}")
   set(artifact_path
@@ -8,7 +9,7 @@ function(add_material_ir name target source artifact_name artifacts_variable)
     OUTPUT "${artifact_path}"
     COMMAND "${CMAKE_COMMAND}" -E make_directory
       "${PROJECT_SOURCE_DIR}/Intermediate/MaterialGen"
-    COMMAND $<TARGET_FILE:lispb> generate
+    COMMAND ${material_command} "$<TARGET_FILE:lispb>" generate
       --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
       --build-root "${CMAKE_BINARY_DIR}"
       --target "${target}"
@@ -68,7 +69,7 @@ add_material_ir("celestial analytic" celestial-analytic-material
 add_custom_target(compile-migrated-materials DEPENDS ${MIGRATED_MATERIAL_ARTIFACTS})
 
 add_custom_target(validate-ui-glow-material
-  COMMAND $<TARGET_FILE:lispb> validate
+  COMMAND ${material_command} "$<TARGET_FILE:lispb>" validate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target ui-glow-material
@@ -78,7 +79,7 @@ add_custom_target(validate-ui-glow-material
   VERBATIM
 )
 add_custom_target(validate-world-soft-target-material
-  COMMAND $<TARGET_FILE:lispb> validate
+  COMMAND ${material_command} "$<TARGET_FILE:lispb>" validate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target world-soft-target-material

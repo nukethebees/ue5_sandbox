@@ -1,5 +1,6 @@
-find_program(DOTNET_EXECUTABLE NAMES dotnet REQUIRED)
-set(sandbox_csharp_configuration "${CMAKE_BUILD_TYPE}")
+sandbox_find_dotnet()
+sandbox_dotnet_configuration(sandbox_csharp_configuration)
+sandbox_jobserver_command(csharp_build_command STANDARD build "Build C# test assemblies")
 set(sandbox_csharp_artifacts "${CMAKE_BINARY_DIR}/csharp-tests")
 set(sandbox_csharp_metadata "${CMAKE_BINARY_DIR}/csharp-tests.json")
 set(sandbox_csharp_runner "${PROJECT_SOURCE_DIR}/cmake/csharp_tests.py")
@@ -10,7 +11,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
   "${sandbox_csharp_runner}")
 
 add_custom_target(csharp-tests-build
-  COMMAND "${DOTNET_EXECUTABLE}" build "${PROJECT_SOURCE_DIR}/tools/Tools.slnx"
+  COMMAND ${csharp_build_command} "${IOJ_DOTNET_EXECUTABLE}" build "${PROJECT_SOURCE_DIR}/tools/Tools.slnx"
     --configuration "${sandbox_csharp_configuration}"
     --artifacts-path "${sandbox_csharp_artifacts}" --nologo -m:1
     -p:IsStandaloneTool=false -p:SandboxCMakeHostToolBuild=true
@@ -32,8 +33,11 @@ function(sandbox_add_csharp_test name project labels)
   set(entry "{\"name\": \"${name}\", \"project\": \"${project}\", \"inputs\": [${inputs_json}]}")
   set(sandbox_csharp_entries ${sandbox_csharp_entries} "${entry}" PARENT_SCOPE)
 
+  sandbox_jobserver_command(build_command STANDARD build "Build C# tests: ${name}")
+  sandbox_jobserver_command(test_command STANDARD test "Run C# tests: ${name}")
+
   add_custom_target(csharp-${name}-build
-    COMMAND "${DOTNET_EXECUTABLE}" build "${PROJECT_SOURCE_DIR}/${project}"
+    COMMAND ${build_command} "${IOJ_DOTNET_EXECUTABLE}" build "${PROJECT_SOURCE_DIR}/${project}"
       --configuration "${sandbox_csharp_configuration}"
       --artifacts-path "${sandbox_csharp_artifacts}" --nologo
       -p:IsStandaloneTool=false -p:SandboxCMakeHostToolBuild=true
@@ -43,7 +47,7 @@ function(sandbox_add_csharp_test name project labels)
     VERBATIM
   )
   add_test(NAME Sandbox.${name}
-    COMMAND "${Python3_EXECUTABLE}" "${sandbox_csharp_runner}"
+    COMMAND ${test_command} "${Python3_EXECUTABLE}" "${sandbox_csharp_runner}"
       test "${sandbox_csharp_metadata}" "${name}")
   set_tests_properties(Sandbox.${name} PROPERTIES
     LABELS "developer-tool;csharp;${labels}"
@@ -75,7 +79,7 @@ list(JOIN sandbox_csharp_entries ",\n    " sandbox_csharp_entries_json)
 file(CONFIGURE OUTPUT "${sandbox_csharp_metadata}" CONTENT
 "{
   \"root\": \"${PROJECT_SOURCE_DIR}\",
-  \"dotnet\": \"${DOTNET_EXECUTABLE}\",
+  \"dotnet\": \"${IOJ_DOTNET_EXECUTABLE}\",
   \"configuration\": \"${sandbox_csharp_configuration}\",
   \"artifacts\": \"${sandbox_csharp_artifacts}\",
   \"projects\": [

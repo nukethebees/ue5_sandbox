@@ -182,8 +182,11 @@ set_target_properties(
   jobserver-test-client
   jobserver-tests
   PROPERTIES
+    C_COMPILER_LAUNCHER ""
+    C_LINKER_LAUNCHER ""
     CXX_COMPILER_LAUNCHER ""
     CXX_LINKER_LAUNCHER ""
+    TEST_LAUNCHER ""
 )
 
 install(TARGETS jobserver jobserverd

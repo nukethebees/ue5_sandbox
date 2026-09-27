@@ -51,6 +51,8 @@ class DotnetHostToolTests(unittest.TestCase):
                         "sandbox_add_dotnet_host_tool(architecture-checks-host "
                         "IOJ_ARCHITECTURE_CHECKS "
                         '"${CMAKE_CURRENT_SOURCE_DIR}/tools/ArchitectureChecks/ArchitectureChecks.csproj")',
+                        'add_custom_target(consume-host COMMAND "${CMAKE_COMMAND}" -E copy',
+                        '  "${IOJ_ARCHITECTURE_CHECKS}" "${CMAKE_BINARY_DIR}/consumed.exe" VERBATIM)',
                         "",
                     ]
                 ),
@@ -62,8 +64,9 @@ class DotnetHostToolTests(unittest.TestCase):
 
             executable = build_directory / "host-tools" / "ArchitectureChecks" / "Debug" / "ArchitectureChecks.exe"
             self.assertFalse((fixture_root / "tools" / "bin" / "ArchitectureChecks.exe").exists())
-            self.run_cmake("--build", str(build_directory), "--target", "architecture-checks-host")
+            self.run_cmake("--build", str(build_directory), "--target", "consume-host")
             self.assertTrue(executable.is_file())
+            self.assertTrue((build_directory / "consumed.exe").is_file())
             self.assertEqual(
                 legacy_source.read_text(encoding="utf-8"),
                 "using System.Reflection;\n[assembly: AssemblyTitle(\"legacy\")]\n",
@@ -88,6 +91,10 @@ class DotnetHostToolTests(unittest.TestCase):
             )
             self.assertIn("Building .NET host tool ArchitectureChecks", up_to_date_build)
             self.assertEqual(executable.stat().st_mtime_ns, up_to_date_timestamp)
+
+            executable.unlink()
+            self.run_cmake("--build", str(build_directory), "--target", "consume-host")
+            self.assertTrue(executable.is_file())
 
             original_timestamp = executable.stat().st_mtime_ns
             time.sleep(1.1)

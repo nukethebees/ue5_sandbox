@@ -18,18 +18,17 @@ endfunction()
 
 function(sandbox_configure_jobserver)
   if(EXISTS "${IOJ_JOBSERVER_CLI}")
-    sandbox_jobserver_command(
-      compile_launcher STANDARD build "Compile C++")
-    sandbox_jobserver_command(
-      link_launcher STANDARD build "Link C++")
-    set(CMAKE_CXX_COMPILER_LAUNCHER
-      ${compile_launcher} ${CMAKE_CXX_COMPILER_LAUNCHER}
-      PARENT_SCOPE
-    )
-    set(CMAKE_CXX_LINKER_LAUNCHER
-      ${link_launcher} ${CMAKE_CXX_LINKER_LAUNCHER}
-      PARENT_SCOPE
-    )
+    foreach(language IN ITEMS C CXX)
+      sandbox_jobserver_command(compile_launcher STANDARD build "Compile ${language}")
+      sandbox_jobserver_command(link_launcher STANDARD build "Link ${language}")
+      set(CMAKE_${language}_COMPILER_LAUNCHER
+        ${compile_launcher} ${CMAKE_${language}_COMPILER_LAUNCHER} PARENT_SCOPE)
+      set(CMAKE_${language}_LINKER_LAUNCHER
+        ${link_launcher} ${CMAKE_${language}_LINKER_LAUNCHER} PARENT_SCOPE)
+    endforeach()
+    # CMake applies this only when add_test's command names an executable target.
+    sandbox_jobserver_command(test_launcher STANDARD test "Native executable test")
+    set(CMAKE_TEST_LAUNCHER ${test_launcher} ${CMAKE_TEST_LAUNCHER} PARENT_SCOPE)
   else()
     message(STATUS
       "The per-user jobserver is not installed; bootstrap targets will build "

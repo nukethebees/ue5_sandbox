@@ -1,7 +1,7 @@
 set(NATIVE_SOA_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/generated")
 add_custom_command(
   OUTPUT "${NATIVE_SOA_GENERATED}/native_soa_types.h" "${NATIVE_SOA_GENERATED}/native_soa_types.cpp"
-  COMMAND lispb generate
+  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target native-soa-fixture
@@ -15,7 +15,7 @@ add_custom_command(
 add_custom_target(generate-native-soa-fixture
   DEPENDS "${NATIVE_SOA_GENERATED}/native_soa_types.h")
 add_custom_target(check-generated-native-soa-fixture
-  COMMAND lispb check
+  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target native-soa-fixture

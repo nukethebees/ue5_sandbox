@@ -17,8 +17,10 @@ cmake_path(APPEND IOJ_DEVELOPER_TOOLS_INSTALL_ROOT bin set-live-coding-disabled.
 set(IOJ_SET_LIVE_CODING_DISABLED_TOOL "${IOJ_SET_LIVE_CODING_DISABLED_TOOL}"
   CACHE INTERNAL "Canonical set-live-coding-disabled executable")
 
+sandbox_jobserver_command(rust_build_command STANDARD build "Build set-live-coding-disabled")
+sandbox_jobserver_command(rust_test_command STANDARD test "Test set-live-coding-disabled")
 add_custom_target(set-live-coding-disabled
-  COMMAND cargo build
+  COMMAND ${rust_build_command} cargo build
     --manifest-path "${IOJ_SET_LIVE_CODING_DISABLED_MANIFEST}"
     --package set-live-coding-disabled
     --release
@@ -49,7 +51,7 @@ add_custom_target(require-set-live-coding-disabled
 
 add_test(
   NAME Sandbox.RustSetLiveCodingDisabled
-  COMMAND cargo test
+  COMMAND ${rust_test_command} cargo test
     --manifest-path "${IOJ_SET_LIVE_CODING_DISABLED_MANIFEST}"
     --package set-live-coding-disabled
 )

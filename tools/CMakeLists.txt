@@ -4,8 +4,9 @@ sandbox_add_dotnet_host_tool(
   "${PROJECT_SOURCE_DIR}/tools/CodeFormatTools/CodeFormatTools.csproj"
 )
 
+sandbox_jobserver_command(format_command STANDARD format "Format project sources")
 add_custom_target(format-code
-  COMMAND "${CMAKE_COMMAND}" -E env "LLVM_ROOT=${LLVM_ROOT}"
+  COMMAND ${format_command} "${CMAKE_COMMAND}" -E env "LLVM_ROOT=${LLVM_ROOT}"
     "${IOJ_CODE_FORMAT_TOOLS}" --changed
   DEPENDS code-format-tools-host
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -15,7 +16,7 @@ add_custom_target(format-code
 )
 
 add_custom_target(format-all-code
-  COMMAND "${CMAKE_COMMAND}" -E env "LLVM_ROOT=${LLVM_ROOT}"
+  COMMAND ${format_command} "${CMAKE_COMMAND}" -E env "LLVM_ROOT=${LLVM_ROOT}"
     "${IOJ_CODE_FORMAT_TOOLS}"
   DEPENDS code-format-tools-host
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
