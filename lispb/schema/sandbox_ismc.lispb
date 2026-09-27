@@ -16,21 +16,22 @@
   :header-include "sandbox/core/sandbox_ismc_render.h"
   :backend standard-library
   :namespace ml::sandbox_ismc
-  (fixed-point ScaleQ5_3
+  (fixed-point ScaleQ2_3
     :signed false
-    :total-bits 8
+    :total-bits 5
     :fractional-bits 3
     :rounding nearest-even)
-  (packed-value Scale8
-    :storage std::uint8_t
+  (packed-value Scale16
+    :storage std::uint16_t
     :mutable true
-    (field scale ml::sandbox_ismc::ScaleQ5_3 :bits auto :kind fixed-point))
+    (field x ml::sandbox_ismc::ScaleQ2_3 :bits auto :kind fixed-point)
+    (field y ml::sandbox_ismc::ScaleQ2_3 :bits auto :kind fixed-point)
+    (field z ml::sandbox_ismc::ScaleQ2_3 :bits auto :kind fixed-point)
+    (reserved unused :bits 1))
   (record Quat32
     (member bits std::uint32_t :initializer ""))
-  ; GPU ABI: keep field order and the explicit reserved bytes. Codec lives in C++/HLSL.
+  ; 12-byte GPU ABI: position XYZ, scale XYZ in 15 bits, then aligned quat32.
   (record PackedTransform
     (member position std::int16_t :count 3 :initializer "")
-    (member reserved_0 std::uint16_t :initializer "")
-    (member rotation ml::sandbox_ismc::Quat32 :initializer "")
-    (member scale ml::sandbox_ismc::Scale8 :count 3 :initializer "")
-    (member reserved_1 std::uint8_t :initializer "")))
+    (member scale ml::sandbox_ismc::Scale16 :initializer "")
+    (member rotation ml::sandbox_ismc::Quat32 :initializer "")))

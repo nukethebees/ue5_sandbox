@@ -4,4 +4,4 @@
 
 using FSandboxISMCRenderInstance = ml::sandbox_ismc::PackedTransform;
 
-static_assert(sizeof(FSandboxISMCRenderInstance) == 16);
+static_assert(sizeof(FSandboxISMCRenderInstance) == 12);

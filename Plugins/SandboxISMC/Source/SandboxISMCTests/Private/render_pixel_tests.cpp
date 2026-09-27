@@ -273,7 +273,7 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                                                 FRotator3f{-80, 172, 91}.Quaternion(),
                                                 FRotator3f{178, -34, 43}.Quaternion()};
                 TArray<FVector3f> const scales{
-                    {0.51f, 0.8f, 1.49f}, {1.19f, 0.38f, 0.94f}, {0.73f, 1.24f, 0.64f}};
+                    {3.875f, 0.8f, 1.49f}, {1.19f, 0.38f, 0.94f}, {0.73f, 1.24f, 0.64f}};
                 TArray<FSandboxISMCRenderInstance> packed;
                 packed.SetNumUninitialized(3);
                 FSandboxISMCInstanceChunkWriter cpu{
@@ -288,9 +288,8 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                                                    static_cast<double>(value.position[1]),
                                                    static_cast<double>(value.position[2])} *
                                                ml::sandbox_ismc::position_quantum};
-                    FVector const scale{value.scale[0].scale_value(),
-                                        value.scale[1].scale_value(),
-                                        value.scale[2].scale_value()};
+                    FVector const scale{
+                        value.scale.x_value(), value.scale.y_value(), value.scale.z_value()};
                     reference->AddInstance(FTransform{FQuat{q.X, q.Y, q.Z, q.W}, location, scale});
                     for (int32 channel{0}; channel < 3; ++channel) {
                         reference->SetCustomDataValue(
