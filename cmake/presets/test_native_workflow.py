@@ -38,6 +38,62 @@ class NativeWorkflowTests(unittest.TestCase):
         (PRESET_DIRECTORY / "unreal.json").read_text(encoding="utf-8")
     )
 
+    def test_asan_llvm_215376_workaround_option(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="sandbox asan workaround ") as directory:
+            fixture = Path(directory)
+            (fixture / "CMakeLists.txt").write_text(
+                'cmake_minimum_required(VERSION 4.4.2)\n'
+                'project(AsanWorkaround NONE)\n'
+                'set(WIN32 TRUE)\n'
+                'set(CMAKE_SIZEOF_VOID_P 8)\n'
+                'set(IOJ_IS_CLANG_CL TRUE)\n'
+                'set(IOJ_WITH_UNREAL FALSE)\n'
+                'set(resource_directory "${CMAKE_BINARY_DIR}/resource")\n'
+                'foreach(artifact IN ITEMS clang_rt.asan_dynamic-x86_64.dll\n'
+                '    clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)\n'
+                '  file(WRITE "${resource_directory}/lib/windows/${artifact}" "fixture")\n'
+                'endforeach()\n'
+                # Stub only compiler discovery; exercise the actual sanitizer target configuration.
+                'function(execute_process)\n'
+                '  cmake_parse_arguments(query "" "OUTPUT_VARIABLE;RESULT_VARIABLE" "" ${ARGN})\n'
+                '  set(${query_OUTPUT_VARIABLE} "${resource_directory}" PARENT_SCOPE)\n'
+                '  set(${query_RESULT_VARIABLE} 0 PARENT_SCOPE)\n'
+                'endfunction()\n'
+                f'add_subdirectory("{self.source_dir.as_posix()}/cmake/sanitizers" sanitizers)\n'
+                'get_property(option_type CACHE IOJ_ASAN_WORKAROUND_LLVM_215376 PROPERTY TYPE)\n'
+                'if(NOT option_type STREQUAL "BOOL")\n'
+                '  message(FATAL_ERROR "Workaround must be a BOOL cache option")\n'
+                'endif()\n'
+                'get_target_property(options ioj_asan INTERFACE_COMPILE_OPTIONS)\n'
+                'file(WRITE "${CMAKE_BINARY_DIR}/result.txt"\n'
+                '  "${IOJ_ASAN_WORKAROUND_LLVM_215376}\\n${options}")\n',
+                encoding="utf-8",
+            )
+            cases = (
+                ("default", True, None, True),
+                ("enabled", True, "ON", True),
+                ("disabled", True, "OFF", False),
+                ("asan_disabled", False, None, False),
+            )
+            for name, asan_enabled, setting, active in cases:
+                with self.subTest(case=name):
+                    build = fixture / name
+                    arguments = [f"-DIOJ_ENABLE_ASAN={'ON' if asan_enabled else 'OFF'}"]
+                    if setting is not None:
+                        arguments.append(f"-DIOJ_ASAN_WORKAROUND_LLVM_215376={setting}")
+                    output = self.run_cmake("-S", str(fixture), "-B", str(build), "-G", "Ninja", *arguments)
+                    value, options = (build / "result.txt").read_text().split("\n", 1)
+                    self.assertEqual(value, setting or "ON")
+                    self.assertEqual("/fsanitize=address" in options, asan_enabled)
+                    self.assertEqual("/clang:-fsanitize-address-use-after-return=never" in options, active)
+                    self.assertEqual("LLVM #215376 workaround active" in output, active)
+
+            # An explicit OFF must also remove the flag when reconfiguring an existing build.
+            output = self.run_cmake("-S", str(fixture), "-B", str(fixture / "default"),
+                                    "-DIOJ_ASAN_WORKAROUND_LLVM_215376=OFF")
+            self.assertNotIn("LLVM #215376 workaround active", output)
+            self.assertNotIn("use-after-return=never", (fixture / "default/result.txt").read_text())
+
     def test_llvm_root_selects_tools_without_development_packages(self) -> None:
         base = json.loads((PRESET_DIRECTORY / "base.json").read_text(encoding="utf-8"))
         self.assertNotIn("LLVM_ROOT", base["configurePresets"][0].get("cacheVariables", {}))

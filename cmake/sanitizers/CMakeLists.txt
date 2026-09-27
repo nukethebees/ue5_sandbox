@@ -12,6 +12,10 @@ function(sandbox_get_clang_cl_asan_paths runtime_output import_library_output th
   set(${thunk_output} "${runtime_thunk}" PARENT_SCOPE)
 endfunction()
 
+option(IOJ_ASAN_WORKAROUND_LLVM_215376
+  "Work around LLVM #215376 by disabling Windows ASAN stack-use-after-return instrumentation"
+  ON)
+
 add_library(ioj_asan INTERFACE)
 add_library(ioj::asan ALIAS ioj_asan)
 
@@ -35,12 +39,17 @@ endif()
 
 target_compile_options(ioj_asan INTERFACE
   /fsanitize=address
-  # Windows catch-handler rethrows corrupt the stack with runtime/always UAR instrumentation.
-  # https://github.com/llvm/llvm-project/issues/215376
-  /clang:-fsanitize-address-use-after-return=never
   /clang:-fno-omit-frame-pointer
   /RTC-
 )
+
+if(IOJ_ASAN_WORKAROUND_LLVM_215376)
+  # Upstream workaround, not project ASAN policy: Windows catch-handler rethrows
+  # corrupt the stack with runtime/always use-after-return instrumentation.
+  # https://github.com/llvm/llvm-project/issues/215376
+  target_compile_options(ioj_asan INTERFACE /clang:-fsanitize-address-use-after-return=never)
+  message(STATUS "ASAN: LLVM #215376 workaround active (stack-use-after-return disabled)")
+endif()
 
 target_link_options(ioj_asan INTERFACE
   /INCREMENTAL:NO
