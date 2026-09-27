@@ -109,15 +109,20 @@ if ($LASTEXITCODE -ne 0) { throw 'LLVM configure failed.' }
 & cmake --build $BuildDir --target clang clang-format clang-tidy clang-scan-deps llvm-ar llvm-nm llvm-readobj runtimes --parallel $Jobs
 if ($LASTEXITCODE -ne 0) { throw 'LLVM toolchain build failed.' }
 
-$checks = & (Join-Path $BuildDir 'bin/clang-tidy.exe') '-checks=-*,ioj-loop-condition-call' -list-checks
-if ($LASTEXITCODE -ne 0 -or ($checks -join "`n") -notmatch '(?m)^\s+ioj-loop-condition-call\s*$') {
-    throw 'The built clang-tidy did not register ioj-loop-condition-call.'
+$checks = & (Join-Path $BuildDir 'bin/clang-tidy.exe') '-checks=-*,ioj-*' -list-checks
+if ($LASTEXITCODE -ne 0) { throw 'Cannot query the built clang-tidy checks.' }
+foreach ($check in @('ioj-loop-condition-call', 'ioj-loop-view-construction',
+        'ioj-loop-view-accessor-call', 'ioj-no-pair', 'ioj-no-tuple')) {
+    if (($checks -join "`n") -notmatch "(?m)^\s+$check\s*$") {
+        throw "The built clang-tidy did not register $check."
+    }
 }
 $checks
 $projectSource = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../..')).Path
-& python (Join-Path $checkerSource 'tests/test_loop_condition_call.py') `
-    --clang-tidy (Join-Path $BuildDir 'bin/clang-tidy.exe') --source-dir $projectSource
-if ($LASTEXITCODE -ne 0) { throw 'IOJ clang-tidy semantic tests failed; installation is blocked.' }
+foreach ($test in Get-ChildItem -LiteralPath (Join-Path $checkerSource 'tests') -Filter 'test_*.py') {
+    & python $test.FullName --clang-tidy (Join-Path $BuildDir 'bin/clang-tidy.exe') --source-dir $projectSource
+    if ($LASTEXITCODE -ne 0) { throw "IOJ clang-tidy test $($test.Name) failed; installation is blocked." }
+}
 
 if ($Install) {
     foreach ($component in @('clang', 'clang-resource-headers', 'clang-format', 'clang-tidy', 'clang-scan-deps',

@@ -4,6 +4,8 @@ add_library(ioj-tidy-checks OBJECT
   lib/ExplicitStdType.hpp
   lib/NoPairCheck.cpp
   lib/NoPairCheck.hpp
+  lib/NoTupleCheck.cpp
+  lib/NoTupleCheck.hpp
   lib/SimulationPolicy.cpp
   lib/SimulationPolicy.hpp
   lib/LoopViewConstructionCheck.cpp

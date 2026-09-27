@@ -14,6 +14,7 @@ class LoopViewConstructionTests(TidyTest):
             ("span", "for (;;) { std::span<int> s(nullptr, 0); }", 1),
             ("compact_base", "for (;;) { ioj::sim::Compact v; }", 1),
             ("aggregate", "for (;;) { ioj::sim::LineTracesConstView v{}; }", 1),
+            ("aggregate_parentheses", "std::span<int> s; for (;;) { ioj::sim::LineTracesConstView v(s, s); }", 1),
             ("hoisted", "View v; for (;;) { consume(v); }", 0),
             ("ordinary", "for (;;) { OrdinaryView v; ioj::sim::PlayerReadView snapshot{}; }", 0),
             ("copies", "View v; for (;;) { View copy(v); auto& ref = v; consume(v); }", 0),

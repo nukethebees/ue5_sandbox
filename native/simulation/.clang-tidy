@@ -4,3 +4,4 @@ Checks:
   - ioj-loop-view-construction
   - ioj-loop-view-accessor-call
   - ioj-no-pair
+  - ioj-no-tuple

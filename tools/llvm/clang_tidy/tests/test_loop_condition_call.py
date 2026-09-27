@@ -119,7 +119,7 @@ class LoopConditionCallTests(unittest.TestCase):
                         "int get_count();\nvoid test() { for (int i = 0; i < get_count(); ++i) {} }\n",
                         encoding="utf-8",
                     )
-                    output = self.run_tidy(str(source), "--", "--driver-mode=cl", "/std:c++23")
+                    output = self.run_tidy(str(source), "--", "--driver-mode=cl", "/std:c++latest")
                     self.assertEqual(output.count(f"[{CHECK}]"), expected, output)
             effective = self.run_tidy(str(simulation / "input.cpp"), "-list-checks")
             self.assertIn("clang-analyzer-core.CallAndMessage", effective)

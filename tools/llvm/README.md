@@ -75,8 +75,11 @@ rebuild it automatically when a worktree changes.
 
 ```powershell
 cmake --build D:/llvm/build --target clang-tidy --parallel 24
-D:/llvm/build/bin/clang-tidy.exe '-checks=-*,ioj-loop-condition-call' -list-checks
-python tools/llvm/clang_tidy/tests/test_loop_condition_call.py --clang-tidy D:/llvm/build/bin/clang-tidy.exe --source-dir .
+D:/llvm/build/bin/clang-tidy.exe '-checks=-*,ioj-*' -list-checks
+Get-ChildItem tools/llvm/clang_tidy/tests/test_*.py | ForEach-Object {
+    python $_.FullName --clang-tidy D:/llvm/build/bin/clang-tidy.exe --source-dir .
+    if ($LASTEXITCODE -ne 0) { throw "IOJ checker tests failed: $($_.Name)" }
+}
 ```
 
 Run the semantic tests before installation, then configure and run `clang-tidy-simulation` against

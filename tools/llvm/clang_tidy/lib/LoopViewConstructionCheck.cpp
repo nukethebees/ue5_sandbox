@@ -6,13 +6,20 @@
 #include <clang/ASTMatchers/ASTMatchFinder.h>
 #include <clang/Lex/Lexer.h>
 
+namespace clang::ast_matchers {
+AST_MATCHER(Expr, is_paren_list_init) {
+    return isa<CXXParenListInitExpr>(Node);
+}
+} // namespace clang::ast_matchers
+
 namespace clang::tidy::ioj {
 
 void LoopViewConstructionCheck::registerMatchers(ast_matchers::MatchFinder* finder) {
     using namespace ast_matchers;
     finder->addMatcher(
         traverse(TK_IgnoreUnlessSpelledInSource,
-                 expr(anyOf(cxxConstructExpr(), initListExpr())).bind("construction")),
+                 expr(anyOf(cxxConstructExpr(), initListExpr(), is_paren_list_init()))
+                     .bind("construction")),
         this);
 }
 void LoopViewConstructionCheck::check(ast_matchers::MatchFinder::MatchResult const& result) {

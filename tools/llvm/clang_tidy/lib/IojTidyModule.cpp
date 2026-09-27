@@ -2,6 +2,7 @@
 #include "LoopViewAccessorCallCheck.hpp"
 #include "LoopViewConstructionCheck.hpp"
 #include "NoPairCheck.hpp"
+#include "NoTupleCheck.hpp"
 
 #include <clang-tidy/ClangTidyModule.h>
 
@@ -14,6 +15,7 @@ class IojTidyModule : public ClangTidyModule {
         factories.registerCheck<LoopViewConstructionCheck>("ioj-loop-view-construction");
         factories.registerCheck<LoopViewAccessorCallCheck>("ioj-loop-view-accessor-call");
         factories.registerCheck<NoPairCheck>("ioj-no-pair");
+        factories.registerCheck<NoTupleCheck>("ioj-no-tuple");
     }
 };
 

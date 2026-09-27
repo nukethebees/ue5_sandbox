@@ -24,7 +24,7 @@ if(ioj_tidy_checks MATCHES "(^|[\r\n])[ \t]+ioj-loop-condition-call([\r\n]|$)")
       --clang-tidy "${IOJ_CLANG_TIDY_EXECUTABLE}"
       --source-dir "${PROJECT_SOURCE_DIR}")
   set_tests_properties(ClangTidy.LoopConditionCall PROPERTIES LABELS "clang-tidy")
-  foreach(check IN ITEMS loop-view-construction loop-view-accessor-call no-pair)
+  foreach(check IN ITEMS loop-view-construction loop-view-accessor-call no-pair no-tuple)
     if(ioj_tidy_checks MATCHES "(^|[\r\n])[ \t]+ioj-${check}([\r\n]|$)")
       string(REPLACE "-" "_" test_name "${check}")
       add_test(NAME "ClangTidy.${check}"
@@ -34,6 +34,13 @@ if(ioj_tidy_checks MATCHES "(^|[\r\n])[ \t]+ioj-loop-condition-call([\r\n]|$)")
       set_tests_properties("ClangTidy.${check}" PROPERTIES LABELS "clang-tidy")
     endif()
   endforeach()
+  if(ioj_tidy_checks MATCHES "(^|[\r\n])[ \t]+ioj-no-tuple([\r\n]|$)")
+    add_test(NAME ClangTidy.SimulationPolicy
+      COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/llvm/clang_tidy/tests/test_simulation_policy.py"
+        --clang-tidy "${IOJ_CLANG_TIDY_EXECUTABLE}"
+        --source-dir "${PROJECT_SOURCE_DIR}")
+    set_tests_properties(ClangTidy.SimulationPolicy PROPERTIES LABELS "clang-tidy")
+  endif()
 else()
   message(STATUS "clang-tidy has no IOJ checks; running the standard checks only")
 endif()

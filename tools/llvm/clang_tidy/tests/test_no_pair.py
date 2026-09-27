@@ -6,7 +6,8 @@ class NoPairTests(TidyTest):
     dependency_source = "#include <utility>\ninline std::pair<int, int> dependency() { return {}; }\n"
 
     def test_explicit_uses(self) -> None:
-        self.assert_cases("#include <utility>\n#include <tuple>\n", (
+        self.assert_cases("#include <utility>\n#include <tuple>\n"
+                         "template<template<class...> class T> struct Holder {};\n", (
             ("local", "std::pair<int, float> value;", 1),
             ("member", "struct S { std::pair<int, float> value; };", 1),
             ("parameter", "void f(std::pair<int, float>);", 1),
@@ -14,6 +15,8 @@ class NoPairTests(TidyTest):
             ("alias", "using P = std::pair<int, float>; P value;", 1),
             ("typedef", "typedef std::pair<int, float> P;", 1),
             ("argument", "std::tuple<std::pair<int, float>> value;", 1),
+            ("template_argument", "Holder<std::pair> value;", 1),
+            ("nested", "std::pair<int, std::pair<int, int>> value;", 2),
             ("temporary", "auto value = std::pair<int, float>{1, 2.f};", 1),
             ("ctad", "auto value = std::pair{1, 2.f};", 1),
             ("ctad_variable", "std::pair value{1, 2.f};", 1),

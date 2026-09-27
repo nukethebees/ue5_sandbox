@@ -96,8 +96,8 @@ The enabled checks and audit compiler arguments are defined in `native/.clang-ti
 
 ## Simulation policy
 
-`native/simulation/.clang-tidy` inherits the native policy and enables exactly one custom check,
-`ioj-loop-condition-call`. It rejects source-level function and member calls in C-style `for`
+`native/simulation/.clang-tidy` inherits the native policy and enables five IOJ checks.
+`ioj-loop-condition-call` rejects source-level function and member calls in C-style `for`
 conditions, including function-object `operator()`. Operator syntax such as overloaded `<`, `!=`
 and `==` is allowed; a function call inside an operator's operands still warns. Explicit calls
 such as `index.operator<(end)` also warn. Implicit conversions in conditions and comparisons
@@ -117,6 +117,17 @@ for (SimTick tick{}; tick < maximum_ticks && !timeline.is_finished(); ++tick) {
 ```
 
 `simulation_benchmark` is included in the execution scope but does not inherit this custom policy.
+The additional checks are:
+
+- `ioj-loop-view-construction`: resolve known simulation views before repeated loop execution.
+- `ioj-loop-view-accessor-call`: resolve calls returning those views before repeated loop execution.
+- `ioj-no-pair` and `ioj-no-tuple`: replace explicit standard pair/tuple types with named aggregates.
+
+The view checks cover classic for, range-for, while and do/while, respecting nested callable
+boundaries. They do not estimate cost or prove loop invariance. All four checks preserve the
+translation-unit diagnostic scope, support normal `NOLINT`, and supply no fix-its.
+See [precise policy semantics and view-family extension points](../tools/llvm/clang_tidy/ARCHITECTURE.md).
+
 The existing translation-unit diagnostic scope is explicit because LLVM 24 changed its default
 header filter. When IOJ checks are available, run the registration, semantic and nested-policy tests:
 
