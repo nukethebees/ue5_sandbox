@@ -797,7 +797,7 @@ cmake_language(DEFER CALL check_simulation_policy)
                 / "Debug"
                 / "NativeBinaryTools.exe"
             )
-            self.assertIn(str(host_tool), dry_run)
+            self.assertIn(host_tool.as_posix(), dry_run.replace("\\", "/"))
             self.assertNotIn("tools/bin/NativeBinaryTools.exe", dry_run)
 
             build_ninja = (build_directory / "build.ninja").read_text(encoding="utf-8")
