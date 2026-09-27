@@ -4,9 +4,10 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 mod git;
+mod integrate;
 mod workspace;
 
-const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  git <args...>          Run Git within feature-workspace guardrails";
+const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  git <args...>          Run Git within feature-workspace guardrails\n  integrate [--keep-branch]  Privileged dev transaction; use authorized integrate-feature";
 
 fn worktree_root() -> Result<PathBuf, String> {
     let output = Command::new("git")
@@ -138,6 +139,15 @@ fn main() -> ExitCode {
                 return ExitCode::FAILURE;
             }
         }
+    }
+    if arguments.first().is_some_and(|arg| arg == "integrate") {
+        return match integrate::run(&arguments[1..]) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(error) => {
+                eprintln!("agent-task: {error}");
+                ExitCode::FAILURE
+            }
+        };
     }
     if arguments.len() == 1 && (arguments[0] == "--help" || arguments[0] == "-h") {
         println!("{USAGE}");

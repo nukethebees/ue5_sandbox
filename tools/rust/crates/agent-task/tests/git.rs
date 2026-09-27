@@ -5,6 +5,23 @@ use std::process::Stdio;
 use support::*;
 
 #[test]
+fn integration_cli_requires_real_jobserver_context() {
+    let repo = Repo::new();
+    let output = repo.tool().arg("integrate").output().unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("lease"));
+    let output = repo
+        .tool()
+        .arg("integrate")
+        .env("NUKETHEBEES_JOBSERVER_LEASE", "made-up")
+        .env("LOCALAPPDATA", &repo.root)
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("Cannot verify"));
+}
+
+#[test]
 fn feature_autonomy_and_revision_inputs() {
     let repo = Repo::new();
     repo.ok(&["commit", "--allow-empty", "-m", "ordinary"]);

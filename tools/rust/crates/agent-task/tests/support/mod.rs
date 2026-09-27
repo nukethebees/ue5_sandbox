@@ -24,6 +24,8 @@ impl Repo {
         repo.raw(&repo.dev, &["init", "-q", "-b", "dev"]);
         repo.raw(&repo.dev, &["config", "user.name", "Test"]);
         repo.raw(&repo.dev, &["config", "user.email", "test@example.invalid"]);
+        repo.raw(&repo.dev, &["config", "core.autocrlf", "false"]);
+        repo.raw(&repo.dev, &["config", "commit.gpgsign", "false"]);
         fs::write(repo.dev.join("file.txt"), "base\n").unwrap();
         repo.raw(&repo.dev, &["add", "."]);
         repo.raw(&repo.dev, &["commit", "-qm", "base"]);
@@ -64,7 +66,8 @@ impl Repo {
             .to_owned()
     }
     pub fn tool(&self) -> Command {
-        let mut cmd = Command::new(env!("CARGO_BIN_EXE_agent-task"));
+        let mut cmd =
+            Command::new(option_env!("CARGO_BIN_EXE_agent-task").expect("CLI test binary"));
         self.environment(&mut cmd);
         cmd.current_dir(&self.feature);
         cmd
