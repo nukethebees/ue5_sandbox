@@ -28,6 +28,7 @@ Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/enti
 Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/LevelDefinitionSoA.h
+native/core/include/sandbox/core/sandbox_ismc_scale.h
 native/simulation/include/ioj/sim/attack_distance_band.h
 native/simulation/include/ioj/sim/base_sim_config.h
 native/simulation/include/ioj/sim/capital_death_event.h

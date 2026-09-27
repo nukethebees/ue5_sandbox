@@ -10,3 +10,16 @@
     (member positions array @vector_3f_value)
     (member rotations array @quat_4f)
     (member scales array @vector_3f_value)))
+
+(module sandbox_ismc_render
+  :header "native/core/include/sandbox/core/sandbox_ismc_scale.h"
+  :namespace ml::sandbox_ismc
+  (fixed-point ScaleQ5_3
+    :signed false
+    :total-bits 8
+    :fractional-bits 3
+    :rounding nearest-even)
+  (packed-value Scale8
+    :storage std::uint8_t
+    :mutable true
+    (field scale ml::sandbox_ismc::ScaleQ5_3 :bits auto :kind fixed-point)))
