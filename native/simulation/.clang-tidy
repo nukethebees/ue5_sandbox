@@ -2,3 +2,4 @@ InheritParentConfig: true
 Checks:
   - ioj-loop-condition-call
   - ioj-loop-view-construction
+  - ioj-loop-view-accessor-call

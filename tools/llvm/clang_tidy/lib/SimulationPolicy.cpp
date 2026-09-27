@@ -86,24 +86,18 @@ bool is_view_type(QualType type) {
     return !type.isNull() && is_view_record(type.getNonReferenceType()->getAsCXXRecordDecl());
 }
 
-bool is_in_loop(Stmt const& statement, ASTContext& context) {
-    auto node{DynTypedNode::create(statement)};
-    while (true) {
-        auto const parents{context.getParents(node)};
-        if (parents.size() != 1) {
-            return false;
-        }
-        auto const& parent{parents[0]};
+static bool node_in_loop(DynTypedNode const& node, ASTContext& context) {
+    for (auto const& parent : context.getParents(node)) {
         auto const* child{node.get<Stmt>()};
         if (parent.get<FunctionDecl>() || parent.get<CXXRecordDecl>()) {
-            return false;
+            continue;
         }
         if (auto const* lambda{parent.get<LambdaExpr>()}; lambda && child == lambda->getBody()) {
-            return false;
+            continue;
         }
         if (parent.get<UnaryExprOrTypeTraitExpr>() || parent.get<CXXNoexceptExpr>() ||
             parent.get<RequiresExpr>()) {
-            return false;
+            continue;
         }
         if (auto const* loop{parent.get<ForStmt>()}) {
             if (child == loop->getBody() || child == loop->getCond() || child == loop->getInc() ||
@@ -117,8 +111,15 @@ bool is_in_loop(Stmt const& statement, ASTContext& context) {
         if (parent.get<WhileStmt>() || parent.get<DoStmt>()) {
             return true;
         }
-        node = parent;
+        if (node_in_loop(parent, context)) {
+            return true;
+        }
     }
+    return false;
+}
+
+bool is_in_loop(Stmt const& statement, ASTContext& context) {
+    return node_in_loop(DynTypedNode::create(statement), context);
 }
 
 } // namespace clang::tidy::ioj

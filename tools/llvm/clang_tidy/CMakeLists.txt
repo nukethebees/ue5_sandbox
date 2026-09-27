@@ -4,6 +4,8 @@ add_library(ioj-tidy-checks OBJECT
   lib/SimulationPolicy.hpp
   lib/LoopViewConstructionCheck.cpp
   lib/LoopViewConstructionCheck.hpp
+  lib/LoopViewAccessorCallCheck.cpp
+  lib/LoopViewAccessorCallCheck.hpp
   lib/IojTidyModule.cpp
   lib/LoopConditionCallCheck.cpp
   lib/LoopConditionCallCheck.hpp)

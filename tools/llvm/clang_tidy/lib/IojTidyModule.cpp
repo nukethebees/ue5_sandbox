@@ -1,5 +1,6 @@
 #include "LoopConditionCallCheck.hpp"
 #include "LoopViewConstructionCheck.hpp"
+#include "LoopViewAccessorCallCheck.hpp"
 
 #include <clang-tidy/ClangTidyModule.h>
 
@@ -10,6 +11,7 @@ class IojTidyModule : public ClangTidyModule {
     void addCheckFactories(ClangTidyCheckFactories& factories) override {
         factories.registerCheck<LoopConditionCallCheck>("ioj-loop-condition-call");
         factories.registerCheck<LoopViewConstructionCheck>("ioj-loop-view-construction");
+        factories.registerCheck<LoopViewAccessorCallCheck>("ioj-loop-view-accessor-call");
     }
 };
 
