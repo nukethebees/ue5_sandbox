@@ -41,6 +41,12 @@ symbol audits, plus `clang-scan-deps` for non-unity C++ dependency scanning.
 Native ASAN requires compiler-rt's Windows runtime DLL, import library and runtime
 thunk in the selected Clang resource directory. The explicit [LLVM toolchain build](../tools/llvm/README.md)
 installs and verifies these dependencies; game workflows do not repair missing toolchain contents.
+Run `cmake --workflow --preset win-x64-clangcl-debug-asan` for opt-in ASAN validation.
+Windows ASAN disables stack-use-after-return instrumentation because LLVM's `runtime` and
+`always` modes crash when an exception leaves a catch handler
+([LLVM #215376](https://github.com/llvm/llvm-project/issues/215376), reproduced with the pinned LLVM).
+Heap and stack bounds, use-after-free, and stack-use-after-scope checks remain enabled.
+Setting `ASAN_OPTIONS=detect_stack_use_after_return=1` cannot enable the omitted instrumentation.
 
 Project-owned build options and compile definitions use the `IOJ_` prefix. CMake passes
 `IOJ_NATIVE_TOOLCHAIN` to UnrealBuildTools, project-file generation, and UAT; Unreal module rules

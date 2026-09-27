@@ -5,23 +5,6 @@ ASAN = Feature(
     name="asan",
     display_name="ASan",
     cache_variables={"IOJ_ENABLE_ASAN": True},
-    excluded_tests=(
-        "Ast.RejectsInvalidFunctionQualifierCombinations",
-        "Generator.PreservesDestinationWhenAtomicReplacementFails",
-        "SourceLoader.ReportsSourceLocationForUnknownProperties",
-        "SlateCompiler.RejectsDuplicateOwnersAcrossInputs",
-        "SlateCompiler.ReportsMissingIncludesAndCycles",
-        "SlateCompiler.RejectsInvalidMacroDeclarationsAndInvocations",
-        "SlateCompiler.ReportsMacroDefinitionAndInvocationForSemanticErrors",
-        "SlateCompiler.RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs",
-        "SlateCompiler.ExpansionCanInspectSemanticallyInvalidTrees",
-        "SlateDsl.LibrariesRejectHostDependentForms",
-        "SlateDsl.RejectsRepeatedSingleUseParameters",
-        "SlateDsl.RejectsUndeclaredAndIncorrectParameterUses",
-        "SlateDsl.RejectsUnusedAndDuplicateParameters",
-        "SlateExpandCli",
-        "KernelParser.RejectsUnknownExpressionOperatorWithLocation",
-    ),
 )
 
 UNITY = Feature(

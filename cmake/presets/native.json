@@ -525,7 +525,7 @@
       "configurePreset": "win-x64-clangcl-debug",
       "filter": {
         "include": {
-          "label": "all"
+          "label": "^all$"
         }
       }
     },
@@ -535,7 +535,7 @@
       "configurePreset": "win-x64-clangcl-debug-unity",
       "filter": {
         "include": {
-          "label": "all"
+          "label": "^all$"
         }
       }
     },
@@ -545,10 +545,7 @@
       "configurePreset": "win-x64-clangcl-debug-asan",
       "filter": {
         "include": {
-          "label": "all"
-        },
-        "exclude": {
-          "name": "^(Ast\\.RejectsInvalidFunctionQualifierCombinations|Generator\\.PreservesDestinationWhenAtomicReplacementFails|SourceLoader\\.ReportsSourceLocationForUnknownProperties|SlateCompiler\\.RejectsDuplicateOwnersAcrossInputs|SlateCompiler\\.ReportsMissingIncludesAndCycles|SlateCompiler\\.RejectsInvalidMacroDeclarationsAndInvocations|SlateCompiler\\.ReportsMacroDefinitionAndInvocationForSemanticErrors|SlateCompiler\\.RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs|SlateCompiler\\.ExpansionCanInspectSemanticallyInvalidTrees|SlateDsl\\.LibrariesRejectHostDependentForms|SlateDsl\\.RejectsRepeatedSingleUseParameters|SlateDsl\\.RejectsUndeclaredAndIncorrectParameterUses|SlateDsl\\.RejectsUnusedAndDuplicateParameters|SlateExpandCli|KernelParser\\.RejectsUnknownExpressionOperatorWithLocation)$"
+          "label": "^all$"
         }
       }
     },
@@ -558,10 +555,7 @@
       "configurePreset": "win-x64-clangcl-debug-asan-unity",
       "filter": {
         "include": {
-          "label": "all"
-        },
-        "exclude": {
-          "name": "^(Ast\\.RejectsInvalidFunctionQualifierCombinations|Generator\\.PreservesDestinationWhenAtomicReplacementFails|SourceLoader\\.ReportsSourceLocationForUnknownProperties|SlateCompiler\\.RejectsDuplicateOwnersAcrossInputs|SlateCompiler\\.ReportsMissingIncludesAndCycles|SlateCompiler\\.RejectsInvalidMacroDeclarationsAndInvocations|SlateCompiler\\.ReportsMacroDefinitionAndInvocationForSemanticErrors|SlateCompiler\\.RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs|SlateCompiler\\.ExpansionCanInspectSemanticallyInvalidTrees|SlateDsl\\.LibrariesRejectHostDependentForms|SlateDsl\\.RejectsRepeatedSingleUseParameters|SlateDsl\\.RejectsUndeclaredAndIncorrectParameterUses|SlateDsl\\.RejectsUnusedAndDuplicateParameters|SlateExpandCli|KernelParser\\.RejectsUnknownExpressionOperatorWithLocation)$"
+          "label": "^all$"
         }
       }
     },
@@ -571,7 +565,7 @@
       "configurePreset": "win-x64-clangcl-release",
       "filter": {
         "include": {
-          "label": "all"
+          "label": "^all$"
         }
       }
     },
@@ -581,7 +575,7 @@
       "configurePreset": "win-x64-clangcl-release-unity",
       "filter": {
         "include": {
-          "label": "all"
+          "label": "^all$"
         }
       }
     },
@@ -591,10 +585,7 @@
       "configurePreset": "win-x64-clangcl-release-asan",
       "filter": {
         "include": {
-          "label": "all"
-        },
-        "exclude": {
-          "name": "^(Ast\\.RejectsInvalidFunctionQualifierCombinations|Generator\\.PreservesDestinationWhenAtomicReplacementFails|SourceLoader\\.ReportsSourceLocationForUnknownProperties|SlateCompiler\\.RejectsDuplicateOwnersAcrossInputs|SlateCompiler\\.ReportsMissingIncludesAndCycles|SlateCompiler\\.RejectsInvalidMacroDeclarationsAndInvocations|SlateCompiler\\.ReportsMacroDefinitionAndInvocationForSemanticErrors|SlateCompiler\\.RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs|SlateCompiler\\.ExpansionCanInspectSemanticallyInvalidTrees|SlateDsl\\.LibrariesRejectHostDependentForms|SlateDsl\\.RejectsRepeatedSingleUseParameters|SlateDsl\\.RejectsUndeclaredAndIncorrectParameterUses|SlateDsl\\.RejectsUnusedAndDuplicateParameters|SlateExpandCli|KernelParser\\.RejectsUnknownExpressionOperatorWithLocation)$"
+          "label": "^all$"
         }
       }
     },
@@ -604,10 +595,7 @@
       "configurePreset": "win-x64-clangcl-release-asan-unity",
       "filter": {
         "include": {
-          "label": "all"
-        },
-        "exclude": {
-          "name": "^(Ast\\.RejectsInvalidFunctionQualifierCombinations|Generator\\.PreservesDestinationWhenAtomicReplacementFails|SourceLoader\\.ReportsSourceLocationForUnknownProperties|SlateCompiler\\.RejectsDuplicateOwnersAcrossInputs|SlateCompiler\\.ReportsMissingIncludesAndCycles|SlateCompiler\\.RejectsInvalidMacroDeclarationsAndInvocations|SlateCompiler\\.ReportsMacroDefinitionAndInvocationForSemanticErrors|SlateCompiler\\.RestrictsIncludedFilesAndIsolatesMacrosBetweenInputs|SlateCompiler\\.ExpansionCanInspectSemanticallyInvalidTrees|SlateDsl\\.LibrariesRejectHostDependentForms|SlateDsl\\.RejectsRepeatedSingleUseParameters|SlateDsl\\.RejectsUndeclaredAndIncorrectParameterUses|SlateDsl\\.RejectsUnusedAndDuplicateParameters|SlateExpandCli|KernelParser\\.RejectsUnknownExpressionOperatorWithLocation)$"
+          "label": "^all$"
         }
       }
     },
@@ -617,7 +605,7 @@
       "configurePreset": "win-x64-msvc-debug",
       "filter": {
         "include": {
-          "label": "all"
+          "label": "^all$"
         }
       }
     },
@@ -627,7 +615,7 @@
       "configurePreset": "win-x64-msvc-debug-unity",
       "filter": {
         "include": {
-          "label": "all"
+          "label": "^all$"
         }
       }
     },
@@ -637,7 +625,7 @@
       "configurePreset": "win-x64-msvc-release",
       "filter": {
         "include": {
-          "label": "all"
+          "label": "^all$"
         }
       }
     },
@@ -647,7 +635,7 @@
       "configurePreset": "win-x64-msvc-release-unity",
       "filter": {
         "include": {
-          "label": "all"
+          "label": "^all$"
         }
       }
     },

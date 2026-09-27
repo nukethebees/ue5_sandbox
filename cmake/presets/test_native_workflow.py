@@ -491,6 +491,11 @@ class NativeWorkflowTests(unittest.TestCase):
             preset["name"]: preset for preset in self.unreal_presets["testPresets"]
         }
 
+        for name, preset in test_presets.items():
+            if name.startswith("win-x64-"):
+                with self.subTest(preset=name):
+                    self.assertEqual(preset["filter"]["include"]["label"], "^all$")
+
         self.assertEqual(
             test_presets["tool-tests"]["filter"]["include"]["label"],
             "^developer-tool$",
@@ -754,6 +759,7 @@ cmake_language(DEFER CALL check_simulation_policy)
         tools = inventory("-L", "^developer-tool$")
         self.assertTrue({"native-simulation-tests", "native-simulation-soak-tests"} <= native.keys())
         self.assertFalse(native.keys() & tools.keys())
+        self.assertFalse(inventory("-L", "^all$").keys() & tools.keys())
         expected_tools = {"layout-planner-ui-tests", "image-lab-tests", "tracy-benchmark-compare-tests", "Sandbox.RustSetLiveCodingDisabled"}
         expected_tools.update("Sandbox." + name for name in (
             "AgentGit", "AgentGitInstaller", "ArchitectureChecks", "BenchmarkTools", "CodeFormatTools",

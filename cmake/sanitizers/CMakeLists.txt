@@ -35,6 +35,9 @@ endif()
 
 target_compile_options(ioj_asan INTERFACE
   /fsanitize=address
+  # Windows catch-handler rethrows corrupt the stack with runtime/always UAR instrumentation.
+  # https://github.com/llvm/llvm-project/issues/215376
+  /clang:-fsanitize-address-use-after-return=never
   /clang:-fno-omit-frame-pointer
   /RTC-
 )

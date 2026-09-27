@@ -396,7 +396,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
 
 
 def test_filter(combination: Combination) -> dict[str, Any]:
-    test_filter: dict[str, Any] = {"include": {"label": "all"}}
+    test_filter: dict[str, Any] = {"include": {"label": "^all$"}}
     exclusions = tuple(
         test_name
         for feature in combination.features
