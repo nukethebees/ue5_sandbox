@@ -18,6 +18,7 @@ public class SandboxISMC : ModuleRules
 
         PrivateDependencyModuleNames.AddRange(new string[]
         {
+            "Projects",
             "RenderCore",
             "RHI",
         });

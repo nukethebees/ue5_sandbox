@@ -78,10 +78,15 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
             unsupported->bAutomaticallySetUsageInEditor = false;
             component->SetMaterial(0, unsupported);
             component->SetCastShadow(true);
-            component->set_instances(1, ESandboxISMCParallelism::Sequential, [](auto& chunk) {
-                chunk.set_transform(
-                    0, FVector3f::ZeroVector, FQuat4f::Identity, FVector3f::OneVector);
-            });
+            component->set_instances(1,
+                                     FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
+                                     ESandboxISMCParallelism::Sequential,
+                                     [](auto& chunk) {
+                                         chunk.set_transform(0,
+                                                             FVector3f::ZeroVector,
+                                                             FQuat4f::Identity,
+                                                             FVector3f::OneVector);
+                                     });
             component->RegisterComponent();
             world.SendAllEndOfFrameUpdates();
 
@@ -173,8 +178,9 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
                             if (element.AttributeIndex >= 8 && element.AttributeIndex <= 11) {
                                 ++instance_rows;
                                 TestRunner->TestTrue(
-                                    TEXT("Instance rows use the 64-byte instanced float4 stream"),
-                                    element.Stride == 64 && element.Type == VET_Float4 &&
+                                    TEXT("Instance rows use the 16-byte instanced uint stream"),
+                                    element.Stride == 16 && element.Type == VET_UInt &&
+                                        element.Offset == (element.AttributeIndex - 8) * 4 &&
                                         element.bUseInstanceIndex);
                             }
                         }
@@ -196,10 +202,15 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
             actor->SetRootComponent(component);
             actor->AddInstanceComponent(component);
             component->set_static_mesh(*NewObject<UStaticMesh>(component));
-            component->set_instances(1, ESandboxISMCParallelism::Sequential, [](auto& chunk) {
-                chunk.set_transform(
-                    0, FVector3f::ZeroVector, FQuat4f::Identity, FVector3f::OneVector);
-            });
+            component->set_instances(1,
+                                     FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
+                                     ESandboxISMCParallelism::Sequential,
+                                     [](auto& chunk) {
+                                         chunk.set_transform(0,
+                                                             FVector3f::ZeroVector,
+                                                             FQuat4f::Identity,
+                                                             FVector3f::OneVector);
+                                     });
             TestRunner->AddExpectedError(
                 TEXT("requires initialized, non-empty, inlined, non-optional LOD0"),
                 EAutomationExpectedErrorFlags::Contains,
@@ -216,10 +227,15 @@ TEST_CLASS(SandboxISMCRenderContracts, "SandboxISMC.RenderTests")
             FAssetCompilingManager::Get().FinishAllCompilation();
             mesh->GetRenderData()->LODResources[0].bBuffersInlined = false;
             component->set_static_mesh(*mesh);
-            component->set_instances(1, ESandboxISMCParallelism::Sequential, [](auto& chunk) {
-                chunk.set_transform(
-                    0, FVector3f::ZeroVector, FQuat4f::Identity, FVector3f::OneVector);
-            });
+            component->set_instances(1,
+                                     FBox3f{FVector3f::ZeroVector, FVector3f::ZeroVector},
+                                     ESandboxISMCParallelism::Sequential,
+                                     [](auto& chunk) {
+                                         chunk.set_transform(0,
+                                                             FVector3f::ZeroVector,
+                                                             FQuat4f::Identity,
+                                                             FVector3f::OneVector);
+                                     });
             TestRunner->AddExpectedError(
                 TEXT("requires initialized, non-empty, inlined, non-optional LOD0"),
                 EAutomationExpectedErrorFlags::Contains,

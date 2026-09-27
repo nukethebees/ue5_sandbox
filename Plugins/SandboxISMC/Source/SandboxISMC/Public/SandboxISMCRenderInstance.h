@@ -1,12 +1,7 @@
 #pragma once
 
-#include "Math/Vector4.h"
+#include "sandbox/core/sandbox_ismc_transform.h"
 
-struct SANDBOXISMC_API FSandboxISMCRenderInstance {
-    FVector4f origin;
-    FVector4f transform_row_0;
-    FVector4f transform_row_1;
-    FVector4f transform_row_2;
-};
+using FSandboxISMCRenderInstance = ml::sandbox_ismc::PackedTransform;
 
-static_assert(sizeof(FSandboxISMCRenderInstance) == 64);
+static_assert(sizeof(FSandboxISMCRenderInstance) == 16);

@@ -82,14 +82,20 @@ void FFighterPresentation::update_ismc() {
 
     auto const data{view().entities};
     auto const count{data.num()};
+    auto const locations{data.view_locations()};
+    FBox3f position_bounds{ForceInit};
     visible_indices_.Reset();
     for (int32 index{}; index < count; ++index) {
         if (::ioj::sim::is_alive(view().healths.health(index))) {
             visible_indices_.Add(index);
+            position_bounds += ml::to_unreal(::ioj::sim::vector_at(locations, index));
         }
     }
     instances->set_instances(
-        visible_indices_.Num(), ESandboxISMCParallelism::Auto, [this, &data](auto& chunk) {
+        visible_indices_.Num(),
+        position_bounds,
+        ESandboxISMCParallelism::Auto,
+        [this, &data](auto& chunk) {
             auto const first_index{chunk.first_index()};
             auto const chunk_count{chunk.num()};
             auto const locations{data.view_locations()};

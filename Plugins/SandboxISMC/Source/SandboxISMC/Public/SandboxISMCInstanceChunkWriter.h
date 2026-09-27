@@ -15,6 +15,8 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
                                     TArrayView<float> custom_data,
                                     int32 num_custom_data_floats,
                                     int32 first_index,
+                                    FBox3f position_bounds,
+                                    FVector3f position_root,
                                     FVector3f mesh_bounds_origin,
                                     FVector3f mesh_bounds_extent,
                                     bool has_mesh_bounds)
@@ -22,6 +24,8 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
         , custom_data_{custom_data}
         , num_custom_data_floats_{num_custom_data_floats}
         , first_index_{first_index}
+        , position_bounds_{position_bounds}
+        , position_root_{position_root}
         , mesh_bounds_origin_{mesh_bounds_origin}
         , mesh_bounds_extent_{mesh_bounds_extent}
         , has_mesh_bounds_{has_mesh_bounds} {
@@ -35,7 +39,8 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
     auto num_custom_data_floats() const -> int32 { return num_custom_data_floats_; }
 
     static auto supports_scale(FVector3f scale) -> bool {
-        return scale.X >= 0.0f && scale.Y >= 0.0f && scale.Z >= 0.0f;
+        return scale.X >= 0.0f && scale.Y >= 0.0f && scale.Z >= 0.0f && scale.X <= 31.875f &&
+               scale.Y <= 31.875f && scale.Z <= 31.875f;
     }
 
     auto custom_data(int32 local_index) -> TArrayView<float> {
@@ -47,19 +52,42 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
         -> void {
         check(instances_.IsValidIndex(local_index));
 
-        checkf(supports_scale(scale), TEXT("SandboxISMC does not support negative instance scale"));
-
-        auto const matrix{FTransform3f{rotation, position, scale}.ToMatrixWithScale()};
         auto& instance{instances_[local_index]};
-        instance.origin = FVector4f{position, 0.0f};
-        instance.transform_row_0 = FVector4f{matrix.M[0][0], matrix.M[0][1], matrix.M[0][2], 0.0f};
-        instance.transform_row_1 = FVector4f{matrix.M[1][0], matrix.M[1][1], matrix.M[1][2], 0.0f};
-        instance.transform_row_2 = FVector4f{matrix.M[2][0], matrix.M[2][1], matrix.M[2][2], 0.0f};
+        checkfSlow(position_bounds_.IsInsideOrOn(position),
+                   TEXT("SandboxISMC instance %d position is outside the snapshot domain"),
+                   first_index_ + local_index);
+        auto const quaternion{
+            ml::make_quaternion4f(rotation.X, rotation.Y, rotation.Z, rotation.W)};
+        checkfSlow(
+            ml::sandbox_ismc::is_normalized_quaternion(quaternion),
+            TEXT(
+                "SandboxISMC requires finite normalized rotation (length squared tolerance 1e-4)"));
+        for (int32 axis{0}; axis < 3; ++axis) {
+            auto const offset{
+                ml::sandbox_ismc::quantize_position(position[axis], position_root_[axis])};
+            auto const packed_scale{ml::sandbox_ismc::pack_scale(scale[axis])};
+            if (!offset || !packed_scale) [[unlikely]] {
+                UE_LOG(LogTemp,
+                       Fatal,
+                       TEXT("SandboxISMC instance %d axis %d cannot pack position=%g root=%g (16 "
+                            "UU, +/-524272), scale=%g (0..31.875)"),
+                       first_index_ + local_index,
+                       axis,
+                       position[axis],
+                       position_root_[axis],
+                       scale[axis]);
+            }
+            instance.position[axis] = *offset;
+            instance.scale[axis] = *packed_scale;
+        }
+        instance.rotation = ml::sandbox_ismc::pack_normalized_quat32(quaternion);
+        instance.reserved_0 = 0;
+        instance.reserved_1 = 0;
 
         if (has_mesh_bounds_) {
-            auto const row_0{matrix.GetScaledAxis(EAxis::X)};
-            auto const row_1{matrix.GetScaledAxis(EAxis::Y)};
-            auto const row_2{matrix.GetScaledAxis(EAxis::Z)};
+            auto const row_0{rotation.RotateVector(FVector3f::ForwardVector) * scale.X};
+            auto const row_1{rotation.RotateVector(FVector3f::RightVector) * scale.Y};
+            auto const row_2{rotation.RotateVector(FVector3f::UpVector) * scale.Z};
             auto const center{position + row_0 * mesh_bounds_origin_.X +
                               row_1 * mesh_bounds_origin_.Y + row_2 * mesh_bounds_origin_.Z};
             auto const extent{row_0.GetAbs() * mesh_bounds_extent_.X +
@@ -69,13 +97,29 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
         }
     }
 
+    // Source geometry bounds. The component adds codec error once per snapshot.
     auto bounds() const -> FBox3f const& { return bounds_; }
+
+    static auto expand_render_bounds(FBox3f source, FVector3f mesh_origin, FVector3f mesh_extent)
+        -> FBox3f {
+        if (!source.IsValid) {
+            return source;
+        }
+        auto const radius{(mesh_origin.GetAbs() + mesh_extent).Size()};
+        auto const codec_error{ml::sandbox_ismc::geometry_error(radius)};
+        auto const magnitude{source.Min.GetAbs().ComponentMax(source.Max.GetAbs())};
+        auto const margin{FVector3f{codec_error} +
+                          (magnitude + FVector3f{codec_error + 1.0f}) * (16.0f * FLT_EPSILON)};
+        return FBox3f{source.Min - margin, source.Max + margin};
+    }
   private:
     TArrayView<FSandboxISMCRenderInstance> instances_;
     TArrayView<float> custom_data_;
     FBox3f bounds_{ForceInit};
     int32 num_custom_data_floats_{0};
     int32 first_index_{0};
+    FBox3f position_bounds_{ForceInit};
+    FVector3f position_root_{FVector3f::ZeroVector};
     FVector3f mesh_bounds_origin_{FVector3f::ZeroVector};
     FVector3f mesh_bounds_extent_{FVector3f::ZeroVector};
     bool has_mesh_bounds_{false};

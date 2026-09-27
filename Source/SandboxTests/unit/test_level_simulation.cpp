@@ -700,12 +700,20 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
                                                custom_data,
                                                FLaserPresentation::n_custom_ismc_floats,
                                                0,
+                                               FBox3f{FVector3f{-524272}, FVector3f{524272}},
+                                               FVector3f::ZeroVector,
                                                FVector3f::ZeroVector,
                                                FVector3f::ZeroVector,
                                                false};
         presentation.fill_chunk(writer);
         for (int32 index{}; index < active_count; ++index) {
-            auto const id{FMath::RoundToInt(packed[index].origin.Y / 10.f)};
+            auto const source_index{presentation.visible_indices_[index]};
+            auto const source_y{
+                lasers.get_read_view().entities.view_locations().ys()[source_index]};
+            auto const decoded_y{packed[index].position[1] * ml::sandbox_ismc::position_quantum};
+            TestTrue(TEXT("Packed laser position matches its source within half a quantum"),
+                     FMath::Abs(decoded_y - source_y) <= ml::sandbox_ismc::position_quantum * 0.5f);
+            auto const id{FMath::RoundToInt(source_y / 10.f)};
             auto const& expected{expected_material_data[id - 1]};
             auto const actual{writer.custom_data(index)};
             auto const matches{actual[0] == expected.colour.R && actual[1] == expected.colour.G &&
