@@ -42,6 +42,20 @@ target_sources(native-core PRIVATE
 target_compile_features(native-core PUBLIC cxx_std_23)
 target_link_libraries(native-core PUBLIC ioj::cxx_conformance)
 target_include_directories(native-core PUBLIC include)
+
+# Separate translation units keep AVX2 out of the scalar reference and prevent
+# unity builds or contraction from changing the packing arithmetic.
+add_library(native-core-ismc-scalar OBJECT src/sandbox_ismc_packing.cpp)
+add_library(native-core-ismc-avx2 OBJECT src/sandbox_ismc_packing_avx2.cpp)
+foreach(target IN ITEMS native-core-ismc-scalar native-core-ismc-avx2)
+  set_target_properties(${target} PROPERTIES UNITY_BUILD OFF)
+  target_include_directories(${target} PRIVATE include)
+  target_link_libraries(${target} PRIVATE sandbox::native_defaults sandbox::handmade_math ioj::fp_precise)
+  ioj_apply_native_abi(${target})
+  ioj_enable_warnings(${target})
+endforeach()
+target_link_libraries(native-core-ismc-avx2 PRIVATE ioj::arch_avx2)
+target_link_libraries(native-core PRIVATE native-core-ismc-scalar native-core-ismc-avx2)
 target_link_libraries(native-core
   PUBLIC 
     sandbox::handmade_math
@@ -90,6 +104,7 @@ target_sources(native-core-tests PRIVATE
   tests/quantized_decimal_tests.cpp
   tests/rotation_tests.cpp
   tests/sandbox_ismc_transform_tests.cpp
+  tests/sandbox_ismc_packing_tests.cpp
   tests/space_dust_math_tests.cpp
   tests/static_string_view_tests.cpp
   tests/time_series_data_tests.cpp
@@ -106,7 +121,7 @@ target_compile_features(native-core-tests PRIVATE cxx_std_23)
 target_link_libraries(native-core-tests PRIVATE native-core sandbox::native_defaults ioj::test_pch)
 ioj_enable_warnings(native-core-tests)
 
-target_link_libraries(native-core-tests PRIVATE GTest::gtest_main)
+target_link_libraries(native-core-tests PRIVATE GTest::gtest_main CpuFeatures::cpu_features)
 
 add_test(NAME native-core-tests COMMAND native-core-tests)
 set_tests_properties(native-core-tests PROPERTIES LABELS "unit;all;native;native-core")
@@ -115,15 +130,35 @@ add_executable(native-core-benchmarks)
 target_sources(native-core-benchmarks PRIVATE
   benchmarks/projectile_intercept_benchmarks.cpp
   benchmarks/vector_lerp_benchmarks.cpp
+  benchmarks/sandbox_ismc_packing_benchmarks.cpp
 )
 target_compile_features(native-core-benchmarks PRIVATE cxx_std_23)
 target_link_libraries(native-core-benchmarks PRIVATE
   native-core
   benchmark::benchmark
   benchmark::benchmark_main
+  CpuFeatures::cpu_features
   sandbox::native_defaults
 )
 ioj_enable_warnings(native-core-benchmarks)
+
+sandbox_jobserver_command(native_core_ismc_benchmark_command BENCHMARK benchmark
+  "Sandbox ISMC scalar and AVX2 production-layout packing")
+add_custom_target(native-core-ismc-benchmark-report
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc"
+  COMMAND ${native_core_ismc_benchmark_command} "$<TARGET_FILE:native-core-benchmarks>"
+    --benchmark_filter=^ismc/
+    --benchmark_repetitions=5
+    --benchmark_min_time=0.05s
+    --benchmark_enable_random_interleaving=true
+    --benchmark_display_aggregates_only=true
+    "--benchmark_out=${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc/packing-results.json"
+    --benchmark_out_format=json
+  DEPENDS native-core-benchmarks
+  COMMENT "Comparing scalar and AVX2 transform packing with production AoS storage"
+  USES_TERMINAL
+  VERBATIM
+)
 
 sandbox_jobserver_command(native_core_vector_lerp_benchmark_command BENCHMARK benchmark
   "Native core vector lerp benchmark")

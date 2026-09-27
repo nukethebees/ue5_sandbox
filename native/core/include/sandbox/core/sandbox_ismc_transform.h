@@ -14,7 +14,7 @@
 namespace ml::sandbox_ismc {
 
 inline constexpr float position_quantum{16.0f};
-inline constexpr double inverse_position_quantum{1.0 / position_quantum};
+inline constexpr float inverse_position_quantum{1.0f / position_quantum};
 inline constexpr float quaternion_component_limit{0.7071067811865475244f};
 // 10/10/10 smallest-three error is below 0.3 degrees. The 0.006 chord
 // allowance also covers the normalized-input tolerance (squared length 1 +/- 1e-4).
@@ -86,21 +86,19 @@ inline constexpr float rotation_error_chord{0.006f};
 }
 
 [[nodiscard]] inline auto can_quantize_position(float position, float root) noexcept -> bool {
-    auto const offset{(static_cast<double>(position) - root) * inverse_position_quantum};
-    return offset >= -32767.5 && offset < 32767.5;
+    auto const offset{(position - root) * inverse_position_quantum};
+    return offset >= -32767.5f && offset < 32767.5f;
 }
 
 // Precondition: can_quantize_position(position, root).
 [[nodiscard]] inline auto quantize_position_unchecked(float position, float root) noexcept
     -> std::int16_t {
     // Round ties toward +infinity, independent of the process rounding mode.
-    // Double subtraction is necessary at rounding boundaries: e.g. root=262144,
-    // position=nextafter(8, 0) loses its side of the tie in float. Multiplication
-    // and truncation avoid division/floor.
-    auto const offset{(static_cast<double>(position) - root) * inverse_position_quantum};
+    // Float subtraction may move a value essentially on a boundary by one bucket.
+    auto const offset{(position - root) * inverse_position_quantum};
     auto const integral{static_cast<std::int32_t>(offset)};
-    auto const fraction{offset - integral};
-    return static_cast<std::int16_t>(integral + (fraction >= 0.5) - (fraction < -0.5));
+    auto const fraction{offset - static_cast<float>(integral)};
+    return static_cast<std::int16_t>(integral + (fraction >= 0.5f) - (fraction < -0.5f));
 }
 
 // Checked entry point for domain setup and tests, not the render hot path.
