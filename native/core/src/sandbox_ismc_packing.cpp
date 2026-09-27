@@ -49,15 +49,18 @@ auto accumulate_bounds(std::array<float, 3> const& position,
     }
 }
 
-template <bool CalculateBounds>
+template <PackingFields fields, BoundsMode bounds_mode>
 auto pack(TransformInput input,
           PackingParameters const& parameters,
           std::span<PackedTransform> output,
           TransformBounds* bounds) noexcept -> void {
-    assert(input.positions.size() == output.size() * 3 * sizeof(float));
-    assert(input.rotations.size() == output.size() * 4 * sizeof(float));
+    static_assert(bounds_mode == BoundsMode::Skip || fields == PackingFields::Transforms);
+    assert(fields == PackingFields::Rotations ||
+           input.positions.size() == output.size() * 3 * sizeof(float));
+    assert(fields == PackingFields::Positions ||
+           input.rotations.size() == output.size() * 4 * sizeof(float));
     TransformBounds batch{};
-    if constexpr (CalculateBounds) {
+    if constexpr (bounds_mode == BoundsMode::Calculate) {
         auto const limit{std::numeric_limits<float>::max()};
         batch = {make_vector3f(limit, limit, limit),
                  make_vector3f(-limit, -limit, -limit),
@@ -65,20 +68,26 @@ auto pack(TransformInput input,
     }
     auto const count{output.size()};
     for (std::size_t index{}; index < count; ++index) {
-        auto const position{load<3>(input.positions, index)};
-        auto const rotation{load<4>(input.rotations, index)};
+        std::array<float, 3> position{};
+        std::array<float, 4> rotation{};
         auto& packed{output[index]};
-        for (auto axis{0U}; axis < 3; ++axis) {
-            packed.position[axis] = quantize_position_unchecked(
-                position[axis], parameters.position_root.Elements[axis]);
+        if constexpr (fields != PackingFields::Rotations) {
+            position = load<3>(input.positions, index);
+            for (auto axis{0U}; axis < 3; ++axis) {
+                packed.position[axis] = quantize_position_unchecked(
+                    position[axis], parameters.position_root.Elements[axis]);
+            }
         }
-        packed.rotation =
-            pack_normalized_quat32(rotation[0], rotation[1], rotation[2], rotation[3]);
-        if constexpr (CalculateBounds) {
+        if constexpr (fields != PackingFields::Positions) {
+            rotation = load<4>(input.rotations, index);
+            packed.rotation =
+                pack_normalized_quat32(rotation[0], rotation[1], rotation[2], rotation[3]);
+        }
+        if constexpr (bounds_mode == BoundsMode::Calculate) {
             accumulate_bounds(position, rotation, parameters, batch);
         }
     }
-    if constexpr (CalculateBounds) {
+    if constexpr (bounds_mode == BoundsMode::Calculate) {
         *bounds = batch;
     }
 }
@@ -87,34 +96,24 @@ auto pack(TransformInput input,
 auto pack_positions_scalar(std::span<std::byte const> positions,
                            Vector3f root,
                            std::span<PackedTransform> output) noexcept -> void {
-    assert(positions.size() == output.size() * 3 * sizeof(float));
-    auto const count{output.size()};
-    for (std::size_t index{}; index < count; ++index) {
-        auto const position{scalar_detail::load<3>(positions, index)};
-        for (auto axis{0U}; axis < 3; ++axis) {
-            output[index].position[axis] =
-                quantize_position_unchecked(position[axis], root.Elements[axis]);
-        }
-    }
+    scalar_detail::pack<PackingFields::Positions, BoundsMode::Skip>(
+        {positions, {}}, {root, {}, {}}, output, nullptr);
 }
 auto pack_rotations_scalar(std::span<std::byte const> rotations,
                            std::span<PackedTransform> output) noexcept -> void {
-    assert(rotations.size() == output.size() * 4 * sizeof(float));
-    auto const count{output.size()};
-    for (std::size_t index{}; index < count; ++index) {
-        auto const rotation{scalar_detail::load<4>(rotations, index)};
-        output[index].rotation =
-            pack_normalized_quat32(rotation[0], rotation[1], rotation[2], rotation[3]);
-    }
+    scalar_detail::pack<PackingFields::Rotations, BoundsMode::Skip>(
+        {{}, rotations}, {}, output, nullptr);
 }
 auto pack_transforms_scalar(TransformInput input,
                             PackingParameters const& parameters,
                             std::span<PackedTransform> output,
                             TransformBounds* bounds) noexcept -> void {
     if (bounds != nullptr) {
-        scalar_detail::pack<true>(input, parameters, output, bounds);
+        scalar_detail::pack<PackingFields::Transforms, BoundsMode::Calculate>(
+            input, parameters, output, bounds);
     } else {
-        scalar_detail::pack<false>(input, parameters, output, nullptr);
+        scalar_detail::pack<PackingFields::Transforms, BoundsMode::Skip>(
+            input, parameters, output, nullptr);
     }
 }
 }

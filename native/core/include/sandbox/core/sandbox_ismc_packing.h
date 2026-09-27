@@ -28,6 +28,9 @@ struct TransformBounds {
     bool valid{};
 };
 
+enum class PackingFields { Positions, Rotations, Transforms };
+enum class BoundsMode { Skip, Calculate };
+
 // Partial kernels write only their respective fields. All kernels preserve reserved.
 auto pack_positions_scalar(std::span<std::byte const> positions,
                            Vector3f root,
