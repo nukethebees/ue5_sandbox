@@ -36,6 +36,10 @@ using VI = hn::Vec<DI>;
 inline constexpr auto lanes{HWY_LANES(float)};
 static_assert(lanes == (HWY_TARGET == HWY_AVX2 ? 8 : 16));
 
+inline constexpr auto index_bits{2};
+inline constexpr auto component_bits{10};
+inline constexpr float component_max{static_cast<float>((1U << component_bits) - 1U)};
+
 struct Vec3Batch {
     VF x;
     VF y;
@@ -65,12 +69,12 @@ auto quantize_position(VF value, VF root) noexcept -> VI {
     return integral + increment - decrement;
 }
 auto quantize_component(VF value) noexcept -> VI {
-    auto const mapped{(value + hn::Set(df, quaternion_component_limit)) *
-                          hn::Set(df, 1023.0f / (2.0f * quaternion_component_limit)) +
+    constexpr auto scale{component_max / (2.0f * quaternion_component_limit)};
+    auto const mapped{(value + hn::Set(df, quaternion_component_limit)) * hn::Set(df, scale) +
                       hn::Set(df, 0.5f)};
 
     // Clamp normalization drift before converting to ten bits.
-    return hn::ConvertTo(di, hn::Min(hn::Set(df, 1023.0f), hn::Max(hn::Zero(df), mapped)));
+    return hn::ConvertTo(di, hn::Min(hn::Set(df, component_max), hn::Max(hn::Zero(df), mapped)));
 }
 auto pack_rotation(QuatBatch q) noexcept -> VI {
     auto largest_index{hn::Zero(di)};
@@ -103,7 +107,9 @@ auto pack_rotation(QuatBatch q) noexcept -> VI {
     auto const c{quantize_component(hn::Xor(retained2, sign_mask))};
 
     // Store the index in two bits and each retained component in ten.
-    return largest_index | hn::ShiftLeft<2>(a) | hn::ShiftLeft<12>(b) | hn::ShiftLeft<22>(c);
+    return largest_index | hn::ShiftLeft<index_bits>(a) |
+           hn::ShiftLeft<index_bits + component_bits>(b) |
+           hn::ShiftLeft<index_bits + 2 * component_bits>(c);
 }
 
 struct BatchBounds {
