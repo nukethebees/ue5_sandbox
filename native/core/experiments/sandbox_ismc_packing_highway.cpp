@@ -32,20 +32,6 @@ using IntVec = hn::Vec<DInt>;
 inline constexpr auto lanes{HWY_LANES(float)};
 static_assert(lanes == (HWY_TARGET == HWY_AVX2 ? 8 : 16));
 
-template <std::size_t Components, std::size_t Axis>
-auto load_axis(std::span<std::byte const> bytes, std::size_t index) noexcept -> FloatVec {
-    // Copy byte-backed inputs without assuming alignment or typed aliases.
-    std::array<std::array<float, Components>, lanes> values{};
-    std::memcpy(values.data(), bytes.data() + index * Components * sizeof(float), sizeof(values));
-
-    std::array<float, lanes> axis{};
-    for (std::size_t lane{}; lane < lanes; ++lane) {
-        axis[lane] = values[lane][Axis];
-    }
-
-    return hn::LoadU(DFloat{}, axis.data());
-}
-
 auto quantize_position(FloatVec value, float root) noexcept -> IntVec {
     auto const offset{hn::Mul(hn::Sub(value, hn::Set(DFloat{}, root)),
                               hn::Set(DFloat{}, inverse_position_quantum))};
@@ -249,9 +235,11 @@ auto pack(TransformInput input,
         std::array<std::uint32_t, lanes> packed_rotation{};
 
         if constexpr (fields != PackingFields::Rotations) {
-            position_x = load_axis<3, 0>(input.positions, index);
-            position_y = load_axis<3, 1>(input.positions, index);
-            position_z = load_axis<3, 2>(input.positions, index);
+            // Copy object representations without assuming alignment or typed aliases.
+            std::array<float, 3 * lanes> xyz;
+            std::memcpy(
+                xyz.data(), input.positions.data() + index * 3 * sizeof(float), sizeof(xyz));
+            hn::LoadInterleaved3(DFloat{}, xyz.data(), position_x, position_y, position_z);
 
             auto const quantized_x{quantize_position(position_x, parameters.position_root.X)};
             auto const quantized_y{quantize_position(position_y, parameters.position_root.Y)};
@@ -263,10 +251,12 @@ auto pack(TransformInput input,
         }
 
         if constexpr (fields != PackingFields::Positions) {
-            auto const quaternion_x{load_axis<4, 0>(input.rotations, index)};
-            auto const quaternion_y{load_axis<4, 1>(input.rotations, index)};
-            auto const quaternion_z{load_axis<4, 2>(input.rotations, index)};
-            auto const quaternion_w{load_axis<4, 3>(input.rotations, index)};
+            std::array<float, 4 * lanes> xyzw;
+            std::memcpy(
+                xyzw.data(), input.rotations.data() + index * 4 * sizeof(float), sizeof(xyzw));
+            FloatVec quaternion_x{}, quaternion_y{}, quaternion_z{}, quaternion_w{};
+            hn::LoadInterleaved4(
+                DFloat{}, xyzw.data(), quaternion_x, quaternion_y, quaternion_z, quaternion_w);
 
             auto const rotation{
                 pack_rotation(quaternion_x, quaternion_y, quaternion_z, quaternion_w)};
