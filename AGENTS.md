@@ -52,6 +52,7 @@ Unreal Engine 5.8 project.
   feature work and unrelated jobserver resources remain concurrent.
   * Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs.
   * Admit ordinary commands once through `jobserver broker` or `jobserver run --shared machine`, with a descriptive operation name and metadata. Inspect current leases with `jobserver status` and their timeline with `jobserver trace`.
+  * When using the experimental `tools/agent-scheduler/agent-codex.ps1` launcher, request a ticket in a separate command: `agent-scheduler ticket shared "operation"`, or `exclusive` for a benchmark. Then issue the ordinary command directly; Codex waits for admission and releases on root exit. Do not wrap it again in `jobserver run`. Cheap inspections listed in the separate scheduling rules need no ticket. Use `agent-scheduler status` or `clear`; see `tools/agent-scheduler/README.md` for the example's scope.
   * Use queue metadata to understand ownership and contention; never cancel or kill another agent's job simply because it blocks yours.
   * A broker owns its local session processes. Closing it cancels pending work, kills its remaining local tree, and releases its leases. The daemon has no process-owner or kill-owned API.
 * Tooling and native-only candidates must not acquire Unreal resources unless their dependency
