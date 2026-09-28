@@ -1,189 +1,165 @@
-//! Executable demonstration against the real daemon; no model/API calls.
-use agent_scheduler::Scheduler;
+//! Contracts against an isolated real daemon. No scheduling sleeps or polling.
+use agent_scheduler::{Invocation, Scheduler};
 use anyhow::{Result, ensure};
-use std::process::Stdio;
-use std::time::Duration;
-use tokio::io::{AsyncBufReadExt, BufReader};
+use std::{sync::Arc, time::Duration};
 use tokio::process::Command;
-use tokio::sync::oneshot;
 use tokio_util::sync::CancellationToken;
 
-async fn ticket(client: &Scheduler, mode: &str) -> Result<()> {
-    let executable = std::env::current_exe()?
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("agent-scheduler.exe");
-    let output = Command::new(executable)
-        .args(["ticket", mode, "lease-example"])
-        .env("AGENT_SCHEDULER_SESSION", client.endpoint())
-        .output()
-        .await?;
-    ensure!(
-        output.status.success(),
-        "ticket failed: {}",
-        String::from_utf8_lossy(&output.stderr)
-    );
-    Ok(())
+async fn ticket(client: &Scheduler, mode: &str) -> Result<serde_json::Value> {
+    client
+        .request_ticket(mode, "lease-example", &CancellationToken::new())
+        .await
 }
 
-async fn idle(client: &Scheduler) -> Result<()> {
-    let executable = std::env::current_exe()?
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("agent-scheduler.exe");
-    for _ in 0..50 {
-        let output = Command::new(&executable)
-            .arg("status")
-            .env("AGENT_SCHEDULER_SESSION", client.endpoint())
-            .output()
-            .await?;
-        let status: serde_json::Value = serde_json::from_slice(&output.stdout)?;
-        if status["ticket"] == false {
-            return Ok(());
-        }
-        tokio::time::sleep(Duration::from_millis(20)).await;
-    }
-    anyhow::bail!("release was not acknowledged");
+async fn short_command(client: &Arc<Scheduler>) -> Result<()> {
+    let invocation = Invocation::default();
+    let observer = invocation
+        .before_spawn(client, "cmd /c exit 0", &CancellationToken::new())
+        .await?;
+    let mut child = Command::new("cmd.exe").args(["/c", "exit", "0"]).spawn()?;
+    invocation.accept();
+    let status = child.wait().await?;
+    observer.root_exited(status.code());
+    ensure!(status.success());
+    Ok(())
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let args: Vec<String> = std::env::args().collect();
-    if args.get(1).map(String::as_str) == Some("child") {
-        tokio::time::sleep(Duration::from_secs(4)).await;
-        return Ok(());
-    }
-    if args.get(1).map(String::as_str) == Some("root") {
-        let child = std::process::Command::new(&args[0])
-            .arg("child")
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()?;
-        println!("{}", child.id());
-        return Ok(());
-    }
-    let rules = args.get(1).expect("scheduling.rules path");
-    let a = Scheduler::open(rules).await?;
-    let b = Scheduler::open(rules).await?;
-    let c = Scheduler::open(rules).await?;
-    let cancellation = CancellationToken::new();
+    let rules = std::env::args().nth(1).expect("scheduling.rules path");
+    let a = Scheduler::open(&rules).await?;
+    let b = Scheduler::open(&rules).await?;
+    let c = Scheduler::open(&rules).await?;
+    let cancel = CancellationToken::new();
+    let invocation = Invocation::default();
+    invocation.before_spawn(&a, "rg --version", &cancel).await?;
+    ensure!(a.status()?["ticket"] == false);
     ensure!(
-        a.before_spawn("rg --version", &cancellation)
-            .await?
-            .is_none()
-    );
-    ensure!(
-        a.before_spawn("Write-Output NO_TICKET", &cancellation)
+        invocation
+            .before_spawn(&a, "Write-Output NO_TICKET", &cancel)
             .await
             .is_err()
     );
-    println!("PASS exemption and missing-ticket rejection");
+    println!("PASS exempt inspection and missing-ticket rejection");
 
-    ticket(&a, "shared").await?;
-    let mut shared = a
-        .before_spawn("cmake --build example", &cancellation)
-        .await?
-        .unwrap();
-    shared.started();
-    ticket(&b, "exclusive").await?;
-    let waiting = tokio::spawn({
-        let b = b.clone();
-        async move { b.before_spawn("benchmark", &CancellationToken::new()).await }
-    });
-    ticket(&c, "shared").await?;
-    let later = tokio::spawn({
-        let c = c.clone();
-        async move {
-            c.before_spawn("later build", &CancellationToken::new())
-                .await
+    ensure!(ticket(&a, "shared").await?["state"] == "granted");
+    ensure!(ticket(&b, "shared").await?["state"] == "granted");
+    ensure!(ticket(&c, "exclusive").await?["state"] == "queued");
+    short_command(&a).await?;
+    ensure!(ticket(&a, "shared").await?["state"] == "queued");
+    ensure!(c.status()?["state"] == "queued");
+    short_command(&b).await?;
+    let exclusive = Invocation::default();
+    exclusive.before_spawn(&c, "benchmark", &cancel).await?;
+    ensure!(a.status()?["state"] == "queued");
+    drop(exclusive);
+    tokio::time::timeout(Duration::from_secs(3), short_command(&a)).await??;
+    println!("PASS shared/shared, exclusive drain, FIFO barrier, pre-spawn release");
+
+    for _ in 0..40 {
+        ticket(&a, "shared").await?;
+        short_command(&a).await?;
+    }
+    println!("PASS 40 immediate ticket/command cycles without sleeps or status polling");
+
+    for race in [false, true] {
+        for _ in 0..20 {
+            ticket(&a, "shared").await?;
+            ticket(&b, "exclusive").await?;
+            let cancelled = CancellationToken::new();
+            let pending = Invocation::default();
+            {
+                let wait = pending.before_spawn(&b, "must never launch", &cancelled);
+                tokio::pin!(wait);
+                // Claim the queued request without relying on elapsed time.
+                tokio::select! { biased; result = &mut wait => panic!("unexpected admission: {result:?}"), _ = std::future::ready(()) => {} }
+                if race {
+                    short_command(&a).await?;
+                }
+                cancelled.cancel();
+                ensure!(wait.await.is_err());
+            }
+            drop(pending);
+            if !race {
+                short_command(&a).await?;
+            }
+            ticket(&b, "shared").await?;
+            short_command(&b).await?;
         }
-    });
-    tokio::time::sleep(Duration::from_millis(150)).await;
-    ensure!(!waiting.is_finished() && !later.is_finished());
-    shared.finish(0);
-    let mut exclusive = tokio::time::timeout(Duration::from_secs(2), waiting)
-        .await???
-        .unwrap();
-    exclusive.started();
-    ensure!(!later.is_finished());
-    exclusive.finish(0);
-    let later = tokio::time::timeout(Duration::from_secs(2), later)
-        .await???
-        .unwrap();
-    drop(later);
-    idle(&a).await?;
-    idle(&b).await?;
-    idle(&c).await?;
-    println!("PASS exclusive drain and FIFO barrier for later shared work");
+    }
+    println!("PASS queued cancellation, grant racing cancellation, immediate reuse");
 
     ticket(&a, "shared").await?;
-    let mut held = a
-        .before_spawn("held command", &cancellation)
-        .await?
-        .unwrap();
-    held.started();
-    ticket(&b, "exclusive").await?;
-    let cancel = CancellationToken::new();
-    let pending = tokio::spawn({
-        let b = b.clone();
-        let cancel = cancel.clone();
-        async move { b.before_spawn("must never launch", &cancel).await }
-    });
-    tokio::time::sleep(Duration::from_millis(50)).await;
-    cancel.cancel();
-    ensure!(pending.await?.is_err());
-    held.finish(0);
-    idle(&a).await?;
-    idle(&b).await?;
-    println!("PASS queued cancellation");
+    let before_spawn = Invocation::default();
+    let cancelled = CancellationToken::new();
+    cancelled.cancel();
+    ensure!(
+        before_spawn
+            .before_spawn(&a, "cancel before spawn", &cancelled)
+            .await
+            .is_err()
+    );
+    drop(before_spawn);
 
     ticket(&a, "shared").await?;
-    let permit = a
-        .before_spawn("persistent-descendant example", &cancellation)
-        .await?
-        .unwrap();
-    let mut root = Command::new(&args[0])
-        .arg("root")
-        .stdout(Stdio::piped())
-        .spawn()?;
-    let (exit_sender, exit_receiver) = oneshot::channel();
-    let done = permit.on_root_exit(exit_receiver);
-    let mut pid_line = String::new();
-    BufReader::new(root.stdout.take().unwrap())
-        .read_line(&mut pid_line)
-        .await?;
-    let status = root.wait().await?;
-    let child_pid: u32 = pid_line.trim().parse()?;
-    exit_sender.send(status.code().unwrap_or(-1)).unwrap();
-    ensure!(done.await? == 0);
-    ticket(&b, "exclusive").await?;
-    let exclusive = tokio::time::timeout(
-        Duration::from_secs(2),
-        b.before_spawn("benchmark after root", &cancellation),
-    )
-    .await??
-    .unwrap();
-    unsafe {
-        use windows_sys::Win32::System::Threading::{
-            GetExitCodeProcess, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
-        };
-        let child = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, child_pid);
-        ensure!(!child.is_null(), "descendant was not alive");
-        let mut code = 0;
-        let queried = GetExitCodeProcess(child, &mut code);
-        windows_sys::Win32::Foundation::CloseHandle(child);
+    {
+        let failed = Invocation::default();
+        failed.before_spawn(&a, "missing program", &cancel).await?;
         ensure!(
-            queried != 0 && code == 259,
-            "descendant exited before exclusive admission"
+            Command::new("scheduler-no-such-program.exe")
+                .spawn()
+                .is_err()
         );
     }
-    drop(exclusive);
-    idle(&b).await?;
-    println!("PASS exclusive admitted after root exit while descendant is still alive");
+    ticket(&a, "exclusive").await?;
+    short_command(&a).await?;
+    println!("PASS actual spawn error relinquishes ticket");
+
+    // Supplied only by the runner that owns this isolated daemon.
+    let pid: u32 = std::env::var("SCHEDULER_EXAMPLE_DAEMON_PID")?.parse()?;
+    ticket(&a, "shared").await?;
+    let running = Invocation::default();
+    let observer = running.before_spawn(&a, "already running", &cancel).await?;
+    let mut child = Command::new("cmd.exe")
+        .args(["/c", "pause"])
+        .stdin(std::process::Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()?;
+    running.accept();
+    ticket(&b, "exclusive").await?;
+    let waiting = Invocation::default();
+    let wait = waiting.before_spawn(&b, "blocked", &cancel);
+    tokio::pin!(wait);
+    tokio::select! { biased; result = &mut wait => panic!("unexpected admission: {result:?}"), _ = std::future::ready(()) => {} }
+    unsafe {
+        use windows_sys::Win32::System::Threading::{
+            OpenProcess, PROCESS_TERMINATE, TerminateProcess,
+        };
+        let handle = OpenProcess(PROCESS_TERMINATE, 0, pid);
+        ensure!(!handle.is_null());
+        let result = TerminateProcess(handle, 0);
+        windows_sys::Win32::Foundation::CloseHandle(handle);
+        ensure!(result != 0);
+    }
+    ensure!(
+        tokio::time::timeout(Duration::from_secs(3), wait)
+            .await?
+            .is_err()
+    );
+    tokio::time::timeout(Duration::from_secs(3), a.lost().cancelled()).await?;
+    ensure!(
+        child.try_wait()?.is_none(),
+        "scheduler killed an already running process"
+    );
+    ensure!(ticket(&a, "shared").await.is_err());
+    ensure!(
+        Invocation::default()
+            .before_spawn(&a, "rg --version", &cancel)
+            .await
+            .is_err()
+    );
+    child.kill().await?;
+    observer.root_exited(child.wait().await?.code());
+    println!("PASS disconnect wakes queue, fails future work, leaves running process to executor");
     Ok(())
 }

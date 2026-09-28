@@ -5,7 +5,7 @@ index 01a121b..e9cb2c3 100644
 @@ -105,6 +105,19 @@ dependencies = [
   "sha2 0.10.9",
  ]
- 
+
 +[[package]]
 +name = "agent-scheduler"
 +version = "0.1.0"
@@ -36,7 +36,7 @@ index 693fbd7..ec2d68e 100644
 +++ b/codex-rs/core/Cargo.toml
 @@ -12,6 +12,7 @@ path = "src/lib.rs"
  workspace = true
- 
+
  [dependencies]
 +agent-scheduler = { path = "../../../../tools/agent-scheduler" }
  anyhow = { workspace = true }
@@ -55,7 +55,7 @@ index 62be2d3..001f08d 100644
              "Configuring session: model={}; provider={:?}",
              session_configuration
 diff --git a/codex-rs/core/src/tools/runtimes/unified_exec.rs b/codex-rs/core/src/tools/runtimes/unified_exec.rs
-index 722b8df..638d8a3 100644
+index 722b8df..b90db78 100644
 --- a/codex-rs/core/src/tools/runtimes/unified_exec.rs
 +++ b/codex-rs/core/src/tools/runtimes/unified_exec.rs
 @@ -36,7 +36,6 @@ use crate::tools::sandboxing::ToolError;
@@ -66,13 +66,39 @@ index 722b8df..638d8a3 100644
  use crate::unified_exec::TerminalPermissions;
  use crate::unified_exec::TerminalSandboxSource;
  use crate::unified_exec::UnifiedExecError;
-@@ -269,6 +268,14 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
+@@ -111,6 +110,14 @@ pub struct UnifiedExecApprovalKey {
+ pub struct UnifiedExecRuntime<'a> {
+     manager: &'a UnifiedExecProcessManager,
+     shell_mode: UnifiedExecShellMode,
++    pub(crate) scheduling: agent_scheduler::Invocation,
++}
++
++impl crate::unified_exec::SpawnLifecycle for agent_scheduler::Attempt {
++    fn observe_spawn(&mut self, process: &mut codex_utils_pty::SpawnedProcess) {
++        let observer = self.clone();
++        process.on_root_exit(move |code| observer.root_exited(code));
++    }
+ }
+
+ pub(crate) struct UnifiedExecAttempt {
+@@ -158,6 +165,7 @@ impl<'a> UnifiedExecRuntime<'a> {
+         Self {
+             manager,
+             shell_mode,
++            scheduling: agent_scheduler::Invocation::default(),
+         }
+     }
+ }
+@@ -269,6 +277,17 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
          attempt: &SandboxAttempt<'_>,
          ctx: &ToolCtx,
      ) -> Result<UnifiedExecAttempt, ToolError> {
-+        if req.turn_environment.environment.is_remote() || req.shell_snapshot.is_some() {
++        if req.turn_environment.environment.is_remote()
++            || req.shell_snapshot.is_some()
++            || attempt.sandbox == codex_sandboxing::SandboxType::WindowsMxc
++        {
 +            return Err(ToolError::Rejected(
-+                "Scheduler example supports local Windows execution only".into(),
++                "Scheduler example supports local Windows pipe/PTY and restricted-token execution; remote, snapshots and MXC are unsupported".into(),
 +            ));
 +        }
 +        let scheduler = agent_scheduler::initialize()
@@ -81,7 +107,7 @@ index 722b8df..638d8a3 100644
          let base_command = &req.command;
          let windows_sandbox_proxy_settings_mode = ctx.session.windows_sandbox_proxy_settings_mode;
          let session_shell = ctx.session.user_shell();
-@@ -346,6 +353,10 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
+@@ -346,6 +365,10 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
          };
          let shell_snapshot_location = shell_snapshot.as_ref().map(|snapshot| snapshot.path());
          let mut env = exec_env_for_sandbox_permissions(&req.env, launch_sandbox_permissions);
@@ -92,97 +118,371 @@ index 722b8df..638d8a3 100644
          let snapshot_credential_context = if let Some(snapshot) = shell_snapshot.as_ref()
              && (managed_network.is_some() || base_command.get(1).is_some_and(|flag| flag == "-lc"))
          {
-@@ -708,6 +719,10 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
+@@ -708,6 +731,11 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
              error @ ToolError::Codex(_) => error,
          })?;
          let options = unified_exec_options(attempt.network_denial_cancellation_token.clone());
-+        let permit = scheduler
-+            .before_spawn(&req.hook_command, &ctx.cancellation_token)
++        let observer = self
++            .scheduling
++            .before_spawn(scheduler, &req.hook_command, &ctx.cancellation_token)
 +            .await
 +            .map_err(|error| ToolError::Rejected(error.to_string()))?;
          let process = self
              .manager
              .open_session_with_exec_env(
-@@ -723,7 +738,7 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
+@@ -723,7 +751,7 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
                  req.shell_snapshot.clone(),
                  windows_sandbox_proxy_settings_mode,
                  req.tty,
 -                Box::new(NoopSpawnLifecycle),
-+                Box::new(crate::unified_exec::SchedulerSpawnLifecycle(permit)),
++                Box::new(observer),
                  req.turn_environment.environment.as_ref(),
              )
              .await;
 diff --git a/codex-rs/core/src/unified_exec/mod.rs b/codex-rs/core/src/unified_exec/mod.rs
-index 3645306..30fd062 100644
+index 3645306..5410525 100644
 --- a/codex-rs/core/src/unified_exec/mod.rs
 +++ b/codex-rs/core/src/unified_exec/mod.rs
-@@ -62,7 +62,9 @@ pub(crate) fn set_deterministic_process_ids_for_tests(enabled: bool) {
+@@ -62,8 +62,8 @@ pub(crate) fn set_deterministic_process_ids_for_tests(enabled: bool) {
  }
- 
+
  pub(crate) use errors::UnifiedExecError;
 +#[cfg(test)]
  pub(crate) use process::NoopSpawnLifecycle;
-+pub(crate) use process::SchedulerSpawnLifecycle;
- #[cfg(unix)]
+-#[cfg(unix)]
  pub(crate) use process::SpawnLifecycle;
  pub(crate) use process::SpawnLifecycleHandle;
+ pub(crate) use process::UnifiedExecProcess;
 diff --git a/codex-rs/core/src/unified_exec/process.rs b/codex-rs/core/src/unified_exec/process.rs
-index 8305c02..5cb2a34 100644
+index 8305c02..e139ab9 100644
 --- a/codex-rs/core/src/unified_exec/process.rs
 +++ b/codex-rs/core/src/unified_exec/process.rs
-@@ -38,6 +38,9 @@ use crate::shell_snapshot::ShellSnapshotFile;
- 
+@@ -38,6 +38,8 @@ use crate::shell_snapshot::ShellSnapshotFile;
+
  const EARLY_EXIT_GRACE_PERIOD: Duration = Duration::from_millis(150);
  pub(crate) trait SpawnLifecycle: std::fmt::Debug + Send + Sync {
-+    fn take_scheduler_permit(&mut self) -> Option<agent_scheduler::Permit> {
-+        None
-+    }
++    /// Observe root exit separately from output/process completion.
++    fn observe_spawn(&mut self, _process: &mut SpawnedPty) {}
      /// Returns file descriptors that must stay open across the child `exec()`.
      ///
      /// The returned descriptors must already be valid in the parent process and
-@@ -52,12 +55,28 @@ pub(crate) trait SpawnLifecycle: std::fmt::Debug + Send + Sync {
- 
+@@ -52,10 +54,12 @@ pub(crate) trait SpawnLifecycle: std::fmt::Debug + Send + Sync {
+
  pub(crate) type SpawnLifecycleHandle = Box<dyn SpawnLifecycle>;
- 
+
 +#[cfg(test)]
  #[derive(Debug, Default)]
  /// Spawn lifecycle that performs no extra setup around process launch.
  pub(crate) struct NoopSpawnLifecycle;
- 
+
 +#[cfg(test)]
  impl SpawnLifecycle for NoopSpawnLifecycle {}
- 
-+pub(crate) struct SchedulerSpawnLifecycle(pub(crate) Option<agent_scheduler::Permit>);
-+
-+impl std::fmt::Debug for SchedulerSpawnLifecycle {
-+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-+        f.write_str("SchedulerSpawnLifecycle")
-+    }
-+}
-+
-+impl SpawnLifecycle for SchedulerSpawnLifecycle {
-+    fn take_scheduler_permit(&mut self) -> Option<agent_scheduler::Permit> {
-+        self.0.take()
-+    }
-+}
-+
+
  /// Output pending model polling and the retained completion transcript.
- /// Append both under the same lock so cancellation cannot split an update.
- #[derive(Default)]
 diff --git a/codex-rs/core/src/unified_exec/process_manager.rs b/codex-rs/core/src/unified_exec/process_manager.rs
-index 3dc3e97..fbeb8c3 100644
+index 3dc3e97..70a9b08 100644
 --- a/codex-rs/core/src/unified_exec/process_manager.rs
 +++ b/codex-rs/core/src/unified_exec/process_manager.rs
-@@ -1423,8 +1423,11 @@ impl UnifiedExecProcessManager {
+@@ -1423,8 +1423,9 @@ impl UnifiedExecProcessManager {
          })
          .await;
          spawn_lifecycle.after_spawn();
 -        let spawned =
 +        let mut spawned =
              spawn_result.map_err(|err| UnifiedExecError::create_process(err.to_string()))?;
-+        if let Some(permit) = spawn_lifecycle.take_scheduler_permit() {
-+            spawned.exit_rx = permit.on_root_exit(spawned.exit_rx);
-+        }
++        spawn_lifecycle.observe_spawn(&mut spawned);
          UnifiedExecProcess::from_spawned(spawned, request.sandbox, spawn_lifecycle).await
      }
- 
+
+@@ -1551,6 +1552,9 @@ impl UnifiedExecProcessManager {
+                 },
+                 other => UnifiedExecError::create_process(format!("{other:?}")),
+             });
++        if result.is_ok() {
++            runtime.scheduling.accept();
++        }
+         let outcome = match &result {
+             Ok(_) => "completed",
+             Err(_) if context.cancellation_token.is_cancelled() => "cancelled",
+diff --git a/codex-rs/utils/pty/src/process.rs b/codex-rs/utils/pty/src/process.rs
+index 5593450..c82150e 100644
+--- a/codex-rs/utils/pty/src/process.rs
++++ b/codex-rs/utils/pty/src/process.rs
+@@ -109,6 +109,7 @@ type ResizeFn = Box<dyn FnMut(TerminalSize) -> anyhow::Result<()> + Send>;
+
+ /// Handle for driving an interactive process (PTY or pipe).
+ pub struct ProcessHandle {
++    root_exit_rx: Option<oneshot::Receiver<i32>>,
+     writer_tx: StdMutex<Option<mpsc::Sender<Vec<u8>>>>,
+     killer: StdMutex<Option<Box<dyn ChildTerminator>>>,
+     reader_handle: StdMutex<Option<JoinHandle<()>>>,
+@@ -146,6 +147,7 @@ impl ProcessHandle {
+         resizer: Option<ResizeFn>,
+     ) -> Self {
+         Self {
++            root_exit_rx: None,
+             writer_tx: StdMutex::new(Some(writer_tx)),
+             killer: StdMutex::new(Some(killer)),
+             reader_handle: StdMutex::new(Some(reader_handle)),
+@@ -360,6 +362,35 @@ pub struct SpawnedProcess {
+     pub exit_rx: oneshot::Receiver<i32>,
+ }
+
++impl SpawnedProcess {
++    /// Supply a root-only event for backends whose ordinary exit waits for output.
++    pub fn with_root_exit(mut self, root_exit: oneshot::Receiver<i32>) -> Self {
++        self.session.root_exit_rx = Some(root_exit);
++        self
++    }
++
++    /// Observe true root exit before publishing ordinary process completion.
++    /// Output draining is unchanged. Standard pipe/PTY exit already comes from child.wait().
++    pub fn on_root_exit(&mut self, observer: impl FnOnce(Option<i32>) + Send + 'static) {
++        let root = self.session.root_exit_rx.take();
++        let (exit_tx, exit_rx) = oneshot::channel();
++        let original = std::mem::replace(&mut self.exit_rx, exit_rx);
++        tokio::spawn(async move {
++            let result = if let Some(root) = root {
++                observer(root.await.ok());
++                original.await
++            } else {
++                let result = original.await;
++                observer(result.as_ref().ok().copied());
++                result
++            };
++            if let Ok(code) = result {
++                let _ = exit_tx.send(code);
++            }
++        });
++    }
++}
++
+ /// Driver-backed process handles for non-standard spawn backends.
+ pub struct ProcessDriver {
+     pub writer_tx: mpsc::Sender<Vec<u8>>,
+diff --git a/codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs b/codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs
+index 8a00f8c..d26ca97 100644
+--- a/codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs
++++ b/codex-rs/windows-sandbox-rs/src/bin/command_runner/win.rs
+@@ -526,7 +526,7 @@ fn spawn_input_loop(
+                 Message::SpawnRequest { .. } => {}
+                 Message::SpawnReady { .. } => {}
+                 Message::Output { .. } => {}
+-                Message::Exit { .. } => {}
++                Message::RootExit { .. } | Message::Exit { .. } => {}
+                 Message::Error { .. } => {}
+             }
+         }
+@@ -683,6 +683,25 @@ pub fn main() -> Result<()> {
+             GetExitCodeProcess(pi.hProcess, &mut raw_exit);
+             exit_code = raw_exit as i32;
+         }
++        if child_stopped
++            && WaitForSingleObject(pi.hProcess, 0) == windows_sys::Win32::Foundation::WAIT_OBJECT_0
++        {
++            let mut root_code = 1;
++            if GetExitCodeProcess(pi.hProcess, &mut root_code) != 0 {
++                let root_exit = FramedMessage {
++                    version: IPC_PROTOCOL_VERSION,
++                    message: Message::RootExit {
++                        payload: ExitPayload {
++                            exit_code: root_code as i32,
++                            timed_out,
++                        },
++                    },
++                };
++                if let Ok(mut writer) = pipe_write.lock() {
++                    let _ = write_frame(&mut *writer, &root_exit);
++                }
++            }
++        }
+         if pi.hThread != 0 {
+             CloseHandle(pi.hThread);
+         }
+diff --git a/codex-rs/windows-sandbox-rs/src/elevated/ipc_framed.rs b/codex-rs/windows-sandbox-rs/src/elevated/ipc_framed.rs
+index 169c9e7..406e272 100644
+--- a/codex-rs/windows-sandbox-rs/src/elevated/ipc_framed.rs
++++ b/codex-rs/windows-sandbox-rs/src/elevated/ipc_framed.rs
+@@ -20,7 +20,7 @@ use std::io::Write;
+ use std::path::PathBuf;
+
+ /// Protocol version shared by the parent process and elevated command runner.
+-pub const IPC_PROTOCOL_VERSION: u8 = 6;
++pub const IPC_PROTOCOL_VERSION: u8 = 7;
+
+ /// Length-prefixed, JSON-encoded frame.
+ #[derive(Debug, Serialize, Deserialize, Clone)]
+@@ -43,6 +43,7 @@ pub enum Message {
+     Stdin { payload: StdinPayload },
+     CloseStdin { payload: EmptyPayload },
+     Resize { payload: ResizePayload },
++    RootExit { payload: ExitPayload },
+     Exit { payload: ExitPayload },
+     Error { payload: ErrorPayload },
+     Terminate { payload: EmptyPayload },
+diff --git a/codex-rs/windows-sandbox-rs/src/elevated_impl.rs b/codex-rs/windows-sandbox-rs/src/elevated_impl.rs
+index 69cdb39..e7292b5 100644
+--- a/codex-rs/windows-sandbox-rs/src/elevated_impl.rs
++++ b/codex-rs/windows-sandbox-rs/src/elevated_impl.rs
+@@ -266,6 +266,7 @@ mod windows_impl {
+                             break Err(err);
+                         }
+                     },
++                    Message::RootExit { .. } => {}
+                     Message::Exit { payload } => break Ok((payload.exit_code, payload.timed_out)),
+                     Message::Error { payload } => {
+                         break Err(anyhow::anyhow!("runner error: {}", payload.message));
+diff --git a/codex-rs/windows-sandbox-rs/src/unified_exec/backends/elevated.rs b/codex-rs/windows-sandbox-rs/src/unified_exec/backends/elevated.rs
+index 0fd0ba9..b16d527 100644
+--- a/codex-rs/windows-sandbox-rs/src/unified_exec/backends/elevated.rs
++++ b/codex-rs/windows-sandbox-rs/src/unified_exec/backends/elevated.rs
+@@ -236,6 +236,7 @@ pub(crate) async fn spawn_windows_sandbox_session_elevated_for_permission_profil
+         Some(broadcast::channel::<Vec<u8>>(256))
+     };
+     let (exit_tx, exit_rx) = oneshot::channel::<i32>();
++    let (root_tx, root_rx) = oneshot::channel::<i32>();
+
+     let outbound_tx = start_runner_pipe_writer(pipe_write);
+     let writer_handle = start_runner_stdin_writer(writer_rx, outbound_tx.clone(), tty, stdin_open);
+@@ -256,6 +257,7 @@ pub(crate) async fn spawn_windows_sandbox_session_elevated_for_permission_profil
+         stdout_tx,
+         stderr_rx.as_ref().map(|(tx, _rx)| tx.clone()),
+         exit_tx,
++        Some(root_tx),
+     );
+
+     Ok(finish_driver_spawn(
+@@ -274,7 +276,8 @@ pub(crate) async fn spawn_windows_sandbox_session_elevated_for_permission_profil
+             tty,
+         },
+         stdin_open,
+-    ))
++    )
++    .with_root_exit(root_rx))
+ }
+
+ #[cfg(test)]
+diff --git a/codex-rs/windows-sandbox-rs/src/unified_exec/backends/legacy.rs b/codex-rs/windows-sandbox-rs/src/unified_exec/backends/legacy.rs
+index 62a82a7..09d03ee 100644
+--- a/codex-rs/windows-sandbox-rs/src/unified_exec/backends/legacy.rs
++++ b/codex-rs/windows-sandbox-rs/src/unified_exec/backends/legacy.rs
+@@ -388,6 +388,7 @@ pub(crate) async fn spawn_windows_sandbox_session_legacy(
+         Some(broadcast::channel::<Vec<u8>>(256))
+     };
+     let (exit_tx, exit_rx) = oneshot::channel::<i32>();
++    let (root_tx, root_rx) = oneshot::channel::<i32>();
+
+     let LegacyProcessHandles {
+         process: pi,
+@@ -441,6 +442,16 @@ pub(crate) async fn spawn_windows_sandbox_session_legacy(
+                 wait_logs_base_dir.as_deref(),
+             );
+         }
++        // Root completion is independent of ConPTY shutdown and output-reader EOF.
++        unsafe {
++            let mut code = 1;
++            if WaitForSingleObject(pi.hProcess, INFINITE)
++                == windows_sys::Win32::Foundation::WAIT_OBJECT_0
++                && GetExitCodeProcess(pi.hProcess, &mut code) != 0
++            {
++                let _ = root_tx.send(code as i32);
++            }
++        }
+         if let Some(hpc) = hpc_for_wait
+             && let Ok(mut guard) = hpc.lock()
+         {
+@@ -485,5 +496,5 @@ pub(crate) async fn spawn_windows_sandbox_session_legacy(
+         tty,
+     };
+
+-    Ok(finish_driver_spawn(driver, stdin_open))
++    Ok(finish_driver_spawn(driver, stdin_open).with_root_exit(root_rx))
+ }
+diff --git a/codex-rs/windows-sandbox-rs/src/unified_exec/backends/windows_common.rs b/codex-rs/windows-sandbox-rs/src/unified_exec/backends/windows_common.rs
+index 05a8778..eb2410b 100644
+--- a/codex-rs/windows-sandbox-rs/src/unified_exec/backends/windows_common.rs
++++ b/codex-rs/windows-sandbox-rs/src/unified_exec/backends/windows_common.rs
+@@ -82,6 +82,7 @@ pub(crate) fn start_runner_stdout_reader(
+     stdout_tx: broadcast::Sender<Vec<u8>>,
+     stderr_tx: Option<broadcast::Sender<Vec<u8>>>,
+     exit_tx: oneshot::Sender<i32>,
++    mut root_tx: Option<oneshot::Sender<i32>>,
+ ) {
+     std::thread::spawn(move || {
+         let exit = loop {
+@@ -122,6 +123,11 @@ pub(crate) fn start_runner_stdout_reader(
+                         }
+                     }
+                 }
++                Message::RootExit { payload } => {
++                    if let Some(sender) = root_tx.take() {
++                        let _ = sender.send(payload.exit_code);
++                    }
++                }
+                 Message::Exit { payload } => {
+                     break Some((payload.exit_code, payload.timed_out));
+                 }
+diff --git a/codex-rs/windows-sandbox-rs/src/unified_exec/backends/windows_common_tests.rs b/codex-rs/windows-sandbox-rs/src/unified_exec/backends/windows_common_tests.rs
+index 1a957e1..8628a68 100644
+--- a/codex-rs/windows-sandbox-rs/src/unified_exec/backends/windows_common_tests.rs
++++ b/codex-rs/windows-sandbox-rs/src/unified_exec/backends/windows_common_tests.rs
+@@ -27,8 +27,58 @@ fn runner_result_reporting_preserves_exit_and_closed_pipe_results() -> Result<()
+         frames.rewind()?;
+         let (stdout_tx, _stdout_rx) = broadcast::channel(1);
+         let (exit_tx, exit_rx) = oneshot::channel();
+-        start_runner_stdout_reader(frames, stdout_tx, /*stderr_tx*/ None, exit_tx);
++        start_runner_stdout_reader(
++            frames, stdout_tx, /*stderr_tx*/ None, exit_tx, /*root_tx*/ None,
++        );
+         assert_eq!(exit_rx.blocking_recv()?, exit_code.unwrap_or(-1));
+     }
+     Ok(())
+ }
++
++#[test]
++fn runner_root_exit_is_separate_from_output_and_final_completion() -> Result<()> {
++    let mut frames = tempfile::tempfile()?;
++    for message in [
++        Message::RootExit {
++            payload: ExitPayload {
++                exit_code: 17,
++                timed_out: false,
++            },
++        },
++        Message::Output {
++            payload: crate::ipc_framed::OutputPayload {
++                data_b64: encode_bytes(b"tail"),
++                stream: OutputStream::Stdout,
++            },
++        },
++        Message::Exit {
++            payload: ExitPayload {
++                exit_code: 23,
++                timed_out: false,
++            },
++        },
++    ] {
++        write_frame(
++            &mut frames,
++            &FramedMessage {
++                version: IPC_PROTOCOL_VERSION,
++                message,
++            },
++        )?;
++    }
++    frames.rewind()?;
++    let (stdout_tx, mut stdout_rx) = broadcast::channel(4);
++    let (root_tx, root_rx) = oneshot::channel();
++    let (exit_tx, exit_rx) = oneshot::channel();
++    start_runner_stdout_reader(
++        frames,
++        stdout_tx,
++        /*stderr_tx*/ None,
++        exit_tx,
++        Some(root_tx),
++    );
++    assert_eq!(root_rx.blocking_recv()?, 17);
++    assert_eq!(stdout_rx.blocking_recv()?, b"tail");
++    assert_eq!(exit_rx.blocking_recv()?, 23);
++    Ok(())
++}

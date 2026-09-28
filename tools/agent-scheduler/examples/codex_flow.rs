@@ -2,7 +2,7 @@
 use anyhow::{Context, Result, ensure};
 use serde_json::{Value, json};
 use std::time::Duration;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+mod support;
 use tokio::net::TcpListener;
 use tokio::process::Command;
 
@@ -50,57 +50,51 @@ requires_openai_auth = false
         ),
     )?;
     let server = tokio::spawn(async move {
-        let commands = [
+        let mut commands = vec![
             "rg --version",
             "Write-Output NO_TICKET",
             "agent-scheduler ticket shared smoke",
             "Write-Output FORBIDDEN",
             "Write-Output SCHEDULED",
-            "agent-scheduler status",
         ];
+        for _ in 0..12 {
+            commands.push("agent-scheduler ticket shared immediate-next");
+            commands.push("Write-Output SCHEDULED");
+        }
+        commands.push("agent-scheduler status");
         let mut requests = Vec::new();
         for index in 0..=commands.len() {
-            let (mut socket, _) = listener.accept().await?;
-            let mut header = Vec::new();
-            while !header.ends_with(b"\r\n\r\n") {
-                header.push(socket.read_u8().await?);
-                ensure!(header.len() < 65536, "HTTP header too large");
+            let (socket, request) = support::request(&listener).await?;
+            if index > 0 {
+                let previous = commands[index - 1];
+                if previous.starts_with("agent-scheduler ticket")
+                    || previous == "Write-Output SCHEDULED"
+                {
+                    let id = format!("call_{}", index - 1);
+                    let output = request["input"]
+                        .as_array()
+                        .context("missing input")?
+                        .iter()
+                        .find(|item| {
+                            item["type"] == "function_call_output" && item["call_id"] == id
+                        })
+                        .and_then(|item| item["output"].as_str())
+                        .context("missing command result")?;
+                    ensure!(
+                        output.contains("Process exited with code 0"),
+                        "Immediate ticket/command failed: {output}"
+                    );
+                }
             }
-            let header = String::from_utf8(header)?;
-            ensure!(
-                header.starts_with("POST /v1/responses "),
-                "Unexpected request: {header}"
-            );
-            let size: usize = header
-                .lines()
-                .find_map(|line| {
-                    let (name, value) = line.split_once(':')?;
-                    name.eq_ignore_ascii_case("content-length")
-                        .then(|| value.trim().parse())
-                        .transpose()
-                        .ok()
-                        .flatten()
-                })
-                .context("Missing Content-Length")?;
-            ensure!(size < 16 * 1024 * 1024, "Fixture request too large");
-            let mut body = vec![0; size];
-            socket.read_exact(&mut body).await?;
-            requests.push(serde_json::from_slice::<Value>(&body)?);
-            let item = if index < commands.len() {
-                json!({"type":"function_call","call_id":format!("call_{index}"),"name":"exec_command","arguments":json!({"cmd":commands[index],"login":false,"yield_time_ms":1000}).to_string()})
-            } else {
-                json!({"type":"message","id":"done","role":"assistant","content":[{"type":"output_text","text":"SCHEDULER_FLOW_COMPLETE"}]})
-            };
-            let events = [
-                json!({"type":"response.created","response":{"id":format!("response_{index}")}}),
-                json!({"type":"response.output_item.done","item":item}),
-                json!({"type":"response.completed","response":{"id":format!("response_{index}"),"usage":{"input_tokens":0,"output_tokens":0,"total_tokens":0}}}),
-            ];
-            let response = events
-                .iter()
-                .map(|event| format!("data: {event}\n\n"))
-                .collect::<String>();
-            socket.write_all(format!("HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{response}", response.len()).as_bytes()).await?;
+            requests.push(request);
+            support::respond(
+                socket,
+                index,
+                commands
+                    .get(index)
+                    .map(|cmd| json!({"cmd":cmd,"login":false,"yield_time_ms":1000})),
+            )
+            .await?;
             println!("fixture response {index}");
         }
         Ok::<_, anyhow::Error>(requests)
@@ -128,6 +122,10 @@ requires_openai_auth = false
     eprintln!("{}", String::from_utf8_lossy(&output.stderr));
     ensure!(output.status.success(), "Patched Codex failed");
     let requests = tokio::time::timeout(Duration::from_secs(2), server).await???;
+    ensure!(
+        !support::outputs(&requests).contains("ticket already exists"),
+        "Immediate ticket reuse raced release acknowledgement"
+    );
     let mut text = Vec::new();
     for request in &requests {
         strings(&request["input"], &mut text);
@@ -153,7 +151,7 @@ requires_openai_auth = false
         "Ticket was not released"
     );
     println!(
-        "PASS real Codex: exempt command, missing ticket, unchanged security rejection, scheduled execution, automatic release"
+        "PASS real Codex: exemption, missing ticket, unchanged security rejection, 12 immediate ticket/command cycles, automatic release"
     );
     command.env(
         "NUKETHEBEES_JOBSERVER_TEST_PIPE",

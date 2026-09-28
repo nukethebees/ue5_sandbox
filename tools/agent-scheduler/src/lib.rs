@@ -1,5 +1,7 @@
 //! Windows-only example: scheduling policy and lease lifetime, without process execution.
+mod invocation;
 mod transport;
+pub use invocation::{Attempt, Invocation};
 
 use anyhow::{Context, Result, bail};
 use codex_execpolicy::{Decision, Policy, PolicyParser};
@@ -7,7 +9,7 @@ use codex_shell_command::powershell::parse_powershell_script_into_plain_commands
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
 use tokio::net::windows::named_pipe::ServerOptions;
-use tokio::sync::{OnceCell, mpsc, oneshot, watch};
+use tokio::sync::{OnceCell, mpsc, watch};
 use tokio_util::sync::CancellationToken;
 use transport::{WATCHDOG, connect, daemon_endpoint, read_frame, write_frame};
 
@@ -16,13 +18,41 @@ static SCHEDULER: OnceCell<Arc<Scheduler>> = OnceCell::const_new();
 #[derive(Default)]
 struct State {
     generation: u64,
-    ticket: bool,
-    claimed: bool,
-    lease: Option<u64>,
-    granted: bool,
-    finishing: bool,
-    running: bool,
-    error: Option<String>,
+    phase: Phase,
+}
+
+#[derive(Default)]
+enum Phase {
+    #[default]
+    Idle,
+    Ticket {
+        admission: Admission,
+        owner: Owner,
+    },
+    Failed(String),
+}
+
+#[derive(Clone, Copy)]
+enum Admission {
+    Requested,
+    Queued(u64),
+    Granted(u64),
+}
+
+impl Admission {
+    fn lease(self) -> Option<u64> {
+        match self {
+            Self::Requested => None,
+            Self::Queued(id) | Self::Granted(id) => Some(id),
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum Owner {
+    Available,
+    Invocation,
+    Releasing,
 }
 
 pub struct Scheduler {
@@ -50,11 +80,11 @@ impl Scheduler {
     pub async fn open(rules: &str) -> Result<Arc<Self>> {
         let mut parser = PolicyParser::new();
         parser.parse(rules, &std::fs::read_to_string(rules)?)?;
-        Self::connect(parser.build()).await
+        Self::connect(parser.build(), &daemon_endpoint()?).await
     }
 
-    async fn connect(policy: Policy) -> Result<Arc<Self>> {
-        let mut pipe = connect(&daemon_endpoint()?).await?;
+    async fn connect(policy: Policy, daemon: &str) -> Result<Arc<Self>> {
+        let mut pipe = connect(daemon).await?;
         write_frame(&mut pipe, &json!({"type":"hello", "protocol":{"major":2,"minor":0}, "client_version":"codex-example"})).await?;
         let hello = tokio::time::timeout(WATCHDOG, read_frame(&mut pipe)).await??;
         if hello["type"] != "hello_ack" || hello["protocol"]["major"] != 2 {
@@ -120,10 +150,15 @@ impl Scheduler {
         });
         let weak = Arc::downgrade(&scheduler);
         let endpoint = scheduler.endpoint.clone();
+        let lost = scheduler.lost.clone();
         tokio::spawn(async move {
             let mut listener = listener;
             loop {
-                if listener.connect().await.is_err() {
+                let connected = tokio::select! {
+                    _ = lost.cancelled() => break,
+                    result = listener.connect() => result,
+                };
+                if connected.is_err() {
                     break;
                 }
                 let mut connection = listener;
@@ -137,7 +172,19 @@ impl Scheduler {
                         tokio::time::timeout(WATCHDOG, read_frame(&mut connection)).await
                     {
                         if let Some(scheduler) = weak.upgrade() {
-                            let response = scheduler.control(request).await;
+                            let cancellation = CancellationToken::new();
+                            let response = {
+                                use tokio::io::AsyncReadExt;
+                                let response = scheduler.control(request, &cancellation);
+                                tokio::pin!(response);
+                                tokio::select! {
+                                    response = &mut response => response,
+                                    _ = connection.read_u8() => {
+                                        cancellation.cancel();
+                                        response.await
+                                    }
+                                }
+                            };
                             let _ = write_frame(&mut connection, &response).await;
                         }
                     }
@@ -149,152 +196,241 @@ impl Scheduler {
     }
 
     fn fail(&self, error: String) {
-        self.state.lock().unwrap().error = Some(error);
+        self.state.lock().unwrap().phase = Phase::Failed(error);
         self.lost.cancel();
         self.changed.send_modify(|revision| *revision += 1);
     }
 
     fn received(&self, message: Value) {
         let mut state = self.state.lock().unwrap();
-        match message["type"].as_str() {
-            Some("heartbeat" | "started") => return,
-            Some("queued" | "granted") => {
-                state.lease = message["lease"].as_u64();
-                state.granted = message["type"] == "granted";
+        if matches!(state.phase, Phase::Failed(_)) {
+            return;
+        }
+        let kind = message["type"].as_str().unwrap_or("");
+        if matches!(kind, "heartbeat" | "started") {
+            return;
+        }
+        let valid = match (&mut state.phase, kind, message["lease"].as_u64()) {
+            (Phase::Ticket { admission, .. }, "queued" | "granted", Some(id))
+                if admission.lease().is_none_or(|previous| previous == id) =>
+            {
+                *admission = if kind == "queued" {
+                    Admission::Queued(id)
+                } else {
+                    Admission::Granted(id)
+                };
+                true
             }
-            Some("released" | "cancelled") => {
-                *state = State {
-                    generation: state.generation,
-                    ..State::default()
-                }
+            (
+                Phase::Ticket {
+                    admission,
+                    owner: Owner::Releasing,
+                },
+                "released" | "cancelled",
+                Some(id),
+            ) if admission.lease().is_none_or(|previous| previous == id) => {
+                state.phase = Phase::Idle;
+                true
             }
-            _ => {
-                state.error = Some(format!("Jobserver protocol error: {message}"));
-                self.lost.cancel();
-            }
+            _ => false,
+        };
+        if !valid {
+            state.phase = Phase::Failed(format!("Jobserver protocol error: {message}"));
+            self.lost.cancel();
         }
         self.changed.send_modify(|revision| *revision += 1);
     }
 
-    async fn control(&self, request: Value) -> Value {
-        let mut changed = self.changed.subscribe();
-        let response = self.control_now(request);
-        if response["state"] != "requested" {
-            return response;
+    async fn control(&self, request: Value, cancellation: &CancellationToken) -> Value {
+        let result = match request["type"].as_str() {
+            Some("ticket") => {
+                self.request_ticket(
+                    request["mode"].as_str().unwrap_or(""),
+                    request["name"].as_str().unwrap_or("Codex command"),
+                    cancellation,
+                )
+                .await
+            }
+            Some("status") => self.status(),
+            Some("clear") => self.clear(),
+            _ => Err(anyhow::anyhow!(
+                "Use agent-scheduler ticket shared|exclusive NAME, status, or clear"
+            )),
+        };
+        result.unwrap_or_else(|error| json!({"error":error.to_string()}))
+    }
+
+    /// Wait out the preceding release acknowledgement before reserving a new generation.
+    pub async fn request_ticket(
+        &self,
+        mode: &str,
+        name: &str,
+        cancellation: &CancellationToken,
+    ) -> Result<Value> {
+        if !matches!(mode, "shared" | "exclusive") {
+            bail!("Choose shared or exclusive");
         }
+        let mut changed = self.changed.subscribe();
+        let generation = loop {
+            if cancellation.is_cancelled() {
+                bail!("Ticket request cancelled");
+            }
+            {
+                let mut state = self.state.lock().unwrap();
+                match &state.phase {
+                    Phase::Failed(error) => bail!("{error}"),
+                    Phase::Idle => {
+                        state.generation += 1;
+                        state.phase = Phase::Ticket {
+                            admission: Admission::Requested,
+                            owner: Owner::Available,
+                        };
+                        self.outgoing.send(
+                            json!({"type":"acquire", "gates":[{"name":"machine","mode":mode}],
+                            "metadata":{"name":name,"client":"codex-example"}}),
+                        )?;
+                        break state.generation;
+                    }
+                    Phase::Ticket {
+                        owner: Owner::Releasing,
+                        ..
+                    } => {}
+                    Phase::Ticket { .. } => {
+                        bail!("A ticket already exists; finish the command or clear it")
+                    }
+                }
+            }
+            tokio::select! {
+                _ = cancellation.cancelled() => bail!("Ticket request cancelled"),
+                result = changed.changed() => { result?; }
+            }
+        };
         loop {
+            if cancellation.is_cancelled() {
+                self.release(generation, None);
+                bail!("Ticket request cancelled");
+            }
             {
                 let state = self.state.lock().unwrap();
-                if let Some(error) = &state.error {
-                    return json!({"error":error});
+                if let Phase::Failed(error) = &state.phase {
+                    bail!("{error}");
                 }
-                if let Some(lease) = state.lease {
-                    return json!({"state":if state.granted {"granted"} else {"queued"},"client":self.client_id,"lease":lease});
+                if state.generation != generation {
+                    bail!("Ticket was cleared");
                 }
-                if !state.ticket {
-                    return json!({"error":"Ticket was cleared"});
+                match &state.phase {
+                    Phase::Ticket {
+                        owner: Owner::Releasing,
+                        ..
+                    }
+                    | Phase::Idle => bail!("Ticket was cleared"),
+                    Phase::Ticket { admission, .. } => {
+                        if let Some(lease) = admission.lease() {
+                            return Ok(
+                                json!({"state":if matches!(admission, Admission::Granted(_)) {"granted"} else {"queued"},"client":self.client_id,"lease":lease}),
+                            );
+                        }
+                    }
+                    Phase::Failed(_) => unreachable!(),
                 }
             }
-            if changed.changed().await.is_err() {
-                return json!({"error":"Scheduler stopped"});
+            tokio::select! {
+                _ = cancellation.cancelled() => {},
+                result = changed.changed() => { result?; }
             }
         }
     }
 
-    fn control_now(&self, request: Value) -> Value {
+    pub fn status(&self) -> Result<Value> {
+        let state = self.state.lock().unwrap();
+        match &state.phase {
+            Phase::Failed(error) => bail!("{error}"),
+            Phase::Idle => Ok(json!({"client":self.client_id,"state":"idle","ticket":false})),
+            Phase::Ticket { admission, owner } => Ok(json!({
+                "client":self.client_id,"ticket":true,"lease":admission.lease(),
+                "claimed":*owner == Owner::Invocation,
+                "state":match owner {
+                    Owner::Releasing => "releasing",
+                    Owner::Invocation if matches!(admission, Admission::Granted(_)) => "running",
+                    _ => match admission { Admission::Requested => "requested", Admission::Queued(_) => "queued", Admission::Granted(_) => "granted" }
+                }
+            })),
+        }
+    }
+
+    pub fn clear(&self) -> Result<Value> {
         let mut state = self.state.lock().unwrap();
-        if let Some(error) = &state.error {
-            return json!({"error":error});
+        match &mut state.phase {
+            Phase::Failed(error) => bail!("{error}"),
+            Phase::Ticket {
+                admission: Admission::Granted(_),
+                owner: Owner::Invocation,
+            } => bail!("Cancel the running command through Codex"),
+            Phase::Ticket { owner, .. } if *owner != Owner::Releasing => {
+                *owner = Owner::Releasing;
+                let _ = self.outgoing.send(json!({"type":"cancel"}));
+                self.changed.send_modify(|revision| *revision += 1);
+            }
+            _ => {}
         }
-        match request["type"].as_str() {
-            Some("ticket") => {
-                let mode = request["mode"].as_str().unwrap_or("");
-                if !matches!(mode, "shared" | "exclusive") {
-                    return json!({"error":"Choose shared or exclusive"});
-                }
-                if state.ticket {
-                    return json!({"error":"A ticket already exists; finish the command or clear it"});
-                }
-                state.ticket = true;
-                state.generation += 1;
-                let metadata = json!({"name":request["name"].as_str().unwrap_or("Codex command"), "client":"codex-example"});
-                let _ = self.outgoing.send(json!({"type":"acquire", "gates":[{"name":"machine","mode":mode}], "metadata":metadata}));
-                json!({"state":"requested", "client":self.client_id})
-            }
-            Some("clear") => {
-                if state.running || state.claimed && state.granted {
-                    return json!({"error":"Cancel the running command through Codex"});
-                }
-                if state.ticket && !state.finishing {
-                    state.finishing = true;
-                    let _ = self.outgoing.send(json!({"type":"cancel"}));
-                    self.changed.send_modify(|revision| *revision += 1);
-                }
-                json!({"state":"clearing"})
-            }
-            Some("status") => {
-                json!({"client":self.client_id,"ticket":state.ticket,"granted":state.granted,"claimed":state.claimed,"lease":state.lease})
-            }
-            _ => {
-                json!({"error":"Use agent-scheduler ticket shared|exclusive NAME, status, or clear"})
-            }
-        }
+        Ok(json!({"state":"clearing"}))
     }
 
-    /// Check exactly the displayed PowerShell command without executing or rewriting it.
-    pub async fn before_spawn(
-        self: &Arc<Self>,
-        command: &str,
-        cancellation: &CancellationToken,
-    ) -> Result<Option<Permit>> {
-        if self.lost.is_cancelled() {
-            bail!("Jobserver connection lost; restart this Codex session");
+    fn check_health(&self) -> Result<()> {
+        if let Phase::Failed(error) = &self.state.lock().unwrap().phase {
+            bail!("{error}");
         }
-        let exempt = parse_powershell_script_into_plain_commands(command).is_some_and(|commands| {
+        Ok(())
+    }
+
+    fn exempt(&self, command: &str) -> bool {
+        parse_powershell_script_into_plain_commands(command).is_some_and(|commands| {
             !commands.is_empty()
                 && commands.iter().all(|argv| {
                     self.policy.check(argv, &|_| Decision::Prompt).decision == Decision::Allow
                 })
-        });
-        if exempt {
-            return Ok(None);
+        })
+    }
+
+    fn claim(&self) -> Result<u64> {
+        let mut state = self.state.lock().unwrap();
+        match &mut state.phase {
+            Phase::Failed(error) => bail!("{error}"),
+            Phase::Ticket {
+                owner: Owner::Invocation,
+                ..
+            } => bail!("This session already has a logical command; wait for it to finish"),
+            Phase::Ticket { owner, .. } if *owner == Owner::Available => {
+                *owner = Owner::Invocation;
+                Ok(state.generation)
+            }
+            _ => bail!(
+                "No scheduling ticket. Run agent-scheduler ticket shared NAME (or exclusive for a benchmark), then retry the command."
+            ),
         }
+    }
+
+    async fn wait_granted(&self, generation: u64, cancellation: &CancellationToken) -> Result<()> {
         let mut changed = self.changed.subscribe();
-        let generation = {
-            let mut state = self.state.lock().unwrap();
-            if !state.ticket || state.finishing {
-                bail!(
-                    "No scheduling ticket. Run agent-scheduler ticket shared NAME (or exclusive for a benchmark), then retry the command."
-                );
-            }
-            if state.claimed {
-                bail!("This broker already has a command; wait for it to finish");
-            }
-            state.claimed = true;
-            state.generation
-        };
-        let permit = Permit {
-            scheduler: Arc::clone(self),
-            command: command.into(),
-            generation,
-            started: false,
-            finished: false,
-        };
         loop {
             {
                 let state = self.state.lock().unwrap();
-                if let Some(error) = &state.error {
+                if let Phase::Failed(error) = &state.phase {
                     bail!("{error}");
                 }
-                if state.generation != generation
-                    || !state.ticket
-                    || state.finishing
-                    || cancellation.is_cancelled()
-                {
+                if state.generation != generation || cancellation.is_cancelled() {
                     bail!("Scheduling wait cancelled; command was not launched");
                 }
-                if state.granted {
-                    return Ok(Some(permit));
+                match state.phase {
+                    Phase::Ticket {
+                        owner: Owner::Invocation,
+                        admission: Admission::Granted(_),
+                    } => return Ok(()),
+                    Phase::Ticket {
+                        owner: Owner::Invocation,
+                        ..
+                    } => {}
+                    _ => bail!("Scheduling wait cancelled; command was not launched"),
                 }
             }
             tokio::select! {
@@ -304,77 +440,38 @@ impl Scheduler {
         }
     }
 
+    fn command_started(&self, command: &str) {
+        let _ = self
+            .outgoing
+            .send(json!({"type":"health","state":format!("local command: {command}")}));
+    }
+
+    fn release(&self, generation: u64, exit_code: Option<i32>) {
+        let mut state = self.state.lock().unwrap();
+        if state.generation != generation {
+            return;
+        }
+        if let Phase::Ticket { admission, owner } = &mut state.phase {
+            if *owner == Owner::Releasing {
+                return;
+            }
+            *owner = Owner::Releasing;
+            let message = match (admission, exit_code) {
+                (Admission::Granted(lease), Some(code)) => {
+                    json!({"type":"release","lease":lease,"exit_code":code})
+                }
+                _ => json!({"type":"cancel"}),
+            };
+            let _ = self.outgoing.send(message);
+            self.changed.send_modify(|revision| *revision += 1);
+        }
+    }
+
     pub fn endpoint(&self) -> &str {
         &self.endpoint
     }
     pub fn lost(&self) -> CancellationToken {
         self.lost.clone()
-    }
-}
-
-pub struct Permit {
-    scheduler: Arc<Scheduler>,
-    command: String,
-    generation: u64,
-    started: bool,
-    finished: bool,
-}
-
-impl Permit {
-    pub fn started(&mut self) {
-        self.started = true;
-        self.scheduler.state.lock().unwrap().running = true;
-        let _ = self
-            .scheduler
-            .outgoing
-            .send(json!({"type":"health","state":format!("local command: {}", self.command)}));
-    }
-
-    pub fn finish(mut self, exit_code: i32) {
-        self.release(exit_code);
-    }
-
-    fn release(&mut self, exit_code: i32) {
-        if self.finished {
-            return;
-        }
-        self.finished = true;
-        let mut state = self.scheduler.state.lock().unwrap();
-        if state.generation != self.generation || !state.ticket || state.finishing {
-            return;
-        }
-        state.finishing = true;
-        let message = if self.started {
-            json!({"type":"release","lease":state.lease,"exit_code":exit_code})
-        } else {
-            json!({"type":"cancel"})
-        };
-        let _ = self.scheduler.outgoing.send(message);
-    }
-
-    /// Preserve Codex's existing exit receiver while releasing at root exit, without output draining.
-    pub fn on_root_exit(mut self, exit: oneshot::Receiver<i32>) -> oneshot::Receiver<i32> {
-        self.started();
-        let (sender, receiver) = oneshot::channel();
-        tokio::spawn(async move {
-            match exit.await {
-                Ok(code) => {
-                    self.finish(code);
-                    let _ = sender.send(code);
-                }
-                Err(_) => {
-                    self.scheduler
-                        .fail("Root exit notification was lost".into());
-                }
-            }
-        });
-        receiver
-    }
-}
-
-impl Drop for Permit {
-    fn drop(&mut self) {
-        self.release(-1);
     }
 }
 
@@ -395,3 +492,6 @@ pub async fn control(request: Value) -> Result<Value> {
     }
     Ok(response)
 }
+
+#[cfg(test)]
+mod tests;
