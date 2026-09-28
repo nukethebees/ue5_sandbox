@@ -41,8 +41,6 @@ internal static class JobserverExecution
             repository_paths.Root,
             "--exclusive",
             "machine",
-            "--exclusive",
-            "benchmark",
         };
         if (shared_resources is not null)
         {

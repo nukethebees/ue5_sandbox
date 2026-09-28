@@ -2,215 +2,56 @@ if(NOT WIN32)
   return()
 endif()
 
+add_library(jobserver-client
+  lib/src/authority.cpp lib/src/client.cpp lib/src/executor.cpp
+  lib/src/protocol.cpp lib/src/transport.cpp lib/src/types.cpp)
+add_library(jobserver::client ALIAS jobserver-client)
+target_include_directories(jobserver-client PUBLIC lib/include)
+target_link_libraries(jobserver-client PUBLIC ioj::cxx_standard ioj::cxx_conformance
+  nlohmann_json::nlohmann_json PRIVATE advapi32)
+
 add_library(jobserver-gate daemon/gate.cpp daemon/journal.cpp)
 target_include_directories(jobserver-gate PUBLIC daemon lib/include)
 target_link_libraries(jobserver-gate PUBLIC ioj::cxx_standard ioj::cxx_conformance nlohmann_json::nlohmann_json)
-ioj_enable_warnings(jobserver-gate)
+
+add_executable(jobserver cli/main.cpp cli/broker.cpp cli/doctor.cpp)
+target_link_libraries(jobserver PRIVATE jobserver::client ole32 oleaut32 taskschd)
+add_executable(jobserverd WIN32 daemon/main.cpp daemon/server.cpp)
+target_link_libraries(jobserverd PRIVATE jobserver-gate jobserver::client advapi32)
+
 add_executable(jobserver-gate-tests tests/gate_tests.cpp tests/journal_tests.cpp)
 target_link_libraries(jobserver-gate-tests PRIVATE jobserver-gate GTest::gtest_main)
-ioj_enable_warnings(jobserver-gate-tests)
-set_target_properties(jobserver-gate jobserver-gate-tests PROPERTIES CXX_COMPILER_LAUNCHER "" CXX_LINKER_LAUNCHER "" TEST_LAUNCHER "")
 add_test(NAME jobserver-gate-tests COMMAND jobserver-gate-tests)
 set_tests_properties(jobserver-gate-tests PROPERTIES LABELS "jobserver")
 
-add_library(jobserver-client)
-add_library(jobserver::client ALIAS jobserver-client)
-target_sources(jobserver-client PRIVATE
-  lib/src/authority.cpp
-  lib/src/client.cpp
-  lib/src/environment.hpp
-  lib/src/protocol.cpp
-  lib/src/transport.cpp
-  lib/src/types.cpp
-)
-target_include_directories(jobserver-client PUBLIC lib/include)
-target_link_libraries(jobserver-client
-  PUBLIC ioj::cxx_standard ioj::cxx_conformance ioj::asan
-  PRIVATE nlohmann_json::nlohmann_json advapi32
-)
-ioj_enable_warnings(jobserver-client)
-target_compile_definitions(jobserver-client PRIVATE
-  WIN32_LEAN_AND_MEAN
-  NOMINMAX
-)
-
-add_library(jobserver-scheduler)
-target_sources(jobserver-scheduler PRIVATE
-  daemon/scheduler.cpp
-)
-target_include_directories(jobserver-scheduler PUBLIC
-  daemon
-  lib/include
-)
-target_link_libraries(jobserver-scheduler PUBLIC
-  ioj::cxx_standard ioj::cxx_conformance
-  ioj::asan
-  nlohmann_json::nlohmann_json
-)
-ioj_enable_warnings(jobserver-scheduler)
-
-add_library(jobserver-supervisor)
-target_sources(jobserver-supervisor PRIVATE daemon/supervisor.cpp)
-target_include_directories(jobserver-supervisor PUBLIC
-  daemon
-  lib/include
-)
-target_include_directories(jobserver-supervisor PRIVATE lib/src)
-target_link_libraries(jobserver-supervisor
-  PUBLIC ioj::cxx_standard ioj::cxx_conformance
-  PRIVATE jobserver::client
-)
-ioj_enable_warnings(jobserver-supervisor)
-target_compile_definitions(jobserver-supervisor PRIVATE
-  WIN32_LEAN_AND_MEAN
-  NOMINMAX
-)
-
-add_executable(jobserver)
-ioj_enable_warnings(jobserver)
-target_sources(jobserver PRIVATE
-  cli/doctor.cpp
-  cli/main.cpp
-)
-target_link_libraries(jobserver PRIVATE
-  jobserver::client
-  jobserver-supervisor
-  nlohmann_json::nlohmann_json
-  ole32
-  oleaut32
-  taskschd
-)
-target_compile_definitions(jobserver PRIVATE
-  WIN32_LEAN_AND_MEAN
-  NOMINMAX
-)
-
-add_executable(jobserverd WIN32)
-ioj_enable_warnings(jobserverd)
-target_include_directories(jobserverd PRIVATE lib/src)
-target_sources(jobserverd PRIVATE
-  daemon/main.cpp
-  daemon/log_store.cpp
-  daemon/owned_processes.cpp
-  daemon/server.cpp
-)
-target_link_libraries(jobserverd PRIVATE
-  jobserver-scheduler
-  jobserver-supervisor
-  jobserver::client
-  advapi32
-)
-target_compile_definitions(jobserverd PRIVATE
-  WIN32_LEAN_AND_MEAN
-  NOMINMAX
-)
-
-add_executable(jobserver-test-helper)
-target_sources(jobserver-test-helper PRIVATE test_helpers/main.cpp)
-target_link_libraries(jobserver-test-helper PRIVATE ioj::cxx_standard ioj::cxx_conformance ioj::asan)
-ioj_enable_warnings(jobserver-test-helper)
-
-add_executable(jobserver-test-client)
-ioj_enable_warnings(jobserver-test-client)
-target_sources(jobserver-test-client PRIVATE test_helpers/client_main.cpp)
-target_link_libraries(jobserver-test-client PRIVATE jobserver::client)
-target_compile_definitions(jobserver-test-client PRIVATE
-  JOBSERVER_TEST_HELPER_PATH="$<TARGET_FILE:jobserver-test-helper>"
-)
-add_dependencies(jobserver-test-client jobserver-test-helper)
-
-add_executable(jobserver-tests)
-ioj_enable_warnings(jobserver-tests)
-target_sources(jobserver-tests PRIVATE
-  tests/protocol_tests.cpp
-  tests/log_store_tests.cpp
-  daemon/log_store.cpp
-  tests/scheduler_tests.cpp
-  tests/server_tests.cpp
-  tests/supervisor_tests.cpp
-)
-target_link_libraries(jobserver-tests PRIVATE
-  jobserver-scheduler
-  jobserver-supervisor
-  jobserver::client
-  GTest::gtest_main
-)
-target_compile_definitions(jobserver-tests PRIVATE
-  WIN32_LEAN_AND_MEAN
-  NOMINMAX
-)
+add_executable(jobserver-test-helper test_helpers/main.cpp)
+target_link_libraries(jobserver-test-helper PRIVATE ioj::cxx_standard ioj::cxx_conformance)
+add_executable(jobserver-tests tests/protocol_tests.cpp tests/server_tests.cpp)
+target_link_libraries(jobserver-tests PRIVATE jobserver::client GTest::gtest_main)
 target_compile_definitions(jobserver-tests PRIVATE
   JOBSERVER_CLI_PATH="$<TARGET_FILE:jobserver>"
   JOBSERVER_DAEMON_PATH="$<TARGET_FILE:jobserverd>"
-  JOBSERVER_TEST_CLIENT_PATH="$<TARGET_FILE:jobserver-test-client>"
-  JOBSERVER_TEST_HELPER_PATH="$<TARGET_FILE:jobserver-test-helper>"
-)
-add_dependencies(jobserver-tests
-  jobserver
-  jobserver-test-client
-  jobserver-test-helper
-  jobserverd
-)
+  JOBSERVER_TEST_HELPER_PATH="$<TARGET_FILE:jobserver-test-helper>")
+add_dependencies(jobserver-tests jobserver jobserverd jobserver-test-helper)
 add_test(NAME jobserver-tests COMMAND jobserver-tests)
+set_tests_properties(jobserver-tests PROPERTIES LABELS "jobserver;integration;subprocess" TIMEOUT 120)
+
+foreach(target IN ITEMS jobserver-client jobserver-gate jobserver jobserverd jobserver-gate-tests jobserver-test-helper jobserver-tests)
+  ioj_enable_warnings(${target})
+  target_compile_definitions(${target} PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+endforeach()
 add_test(NAME jobserver-version COMMAND jobserver --version)
-set_tests_properties(jobserver-version PROPERTIES
-  LABELS "jobserver" PASS_REGULAR_EXPRESSION "jobserver ")
-set_tests_properties(jobserver-tests PROPERTIES LABELS "jobserver;integration;subprocess")
-add_test(NAME jobserver-unreal-integration-tests
-  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/test_unreal_integration.py"
-    "${PROJECT_SOURCE_DIR}" "$<TARGET_FILE:jobserver>" "$<TARGET_FILE:jobserverd>"
-    "$<TARGET_FILE:jobserver-test-helper>" "${CMAKE_COMMAND}" "${CMAKE_CTEST_COMMAND}")
-set_tests_properties(jobserver-unreal-integration-tests PROPERTIES
-  LABELS "jobserver;integration;subprocess"
-  TIMEOUT 180)
+set_tests_properties(jobserver-version PROPERTIES LABELS "jobserver" PASS_REGULAR_EXPRESSION "jobserver ")
 
-option(IOJ_JOBSERVER_SYSTEM_TESTS
-  "Register tests that mutate the canonical per-user jobserver installation"
-  OFF
-)
+option(IOJ_JOBSERVER_SYSTEM_TESTS "Register tests that mutate the canonical installation" OFF)
 if(IOJ_JOBSERVER_SYSTEM_TESTS)
-  add_test(NAME jobserver-system-cross-worktree
-    COMMAND pwsh -NoProfile -File
-      "${CMAKE_CURRENT_SOURCE_DIR}/tests/system/CrossWorktree.ps1"
-      -SourceRoot "${PROJECT_SOURCE_DIR}"
-      -ClientPath "${IOJ_JOBSERVER_CLI}"
-  )
   add_test(NAME jobserver-system-upgrade
-    COMMAND pwsh -NoProfile -File
-      "${CMAKE_CURRENT_SOURCE_DIR}/tests/system/UpgradeLifecycle.ps1"
-      -BuildDirectory "${CMAKE_BINARY_DIR}"
-      -ClientPath "${IOJ_JOBSERVER_CLI}"
-      -BuiltClientPath "$<TARGET_FILE:jobserver>"
-      -BuiltDaemonPath "$<TARGET_FILE:jobserverd>"
-  )
-  set_tests_properties(
-    jobserver-system-cross-worktree
-    jobserver-system-upgrade
-    PROPERTIES
-      LABELS "jobserver;jobserver-system"
-      RUN_SERIAL TRUE
-      TIMEOUT 300
-  )
+    COMMAND pwsh -NoProfile -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/system/UpgradeLifecycle.ps1"
+      -BuildDirectory "${CMAKE_BINARY_DIR}" -ClientPath "${IOJ_JOBSERVER_CLI}"
+      -BuiltClientPath "$<TARGET_FILE:jobserver>" -BuiltDaemonPath "$<TARGET_FILE:jobserverd>")
+  set_tests_properties(jobserver-system-upgrade PROPERTIES LABELS "jobserver;jobserver-system"
+    RUN_SERIAL TRUE TIMEOUT 300)
 endif()
-
-# Keep the repair path independent from the installed jobserver version.
-set_target_properties(
-  jobserver-client
-  jobserver-scheduler
-  jobserver-supervisor
-  jobserver
-  jobserverd
-  jobserver-test-helper
-  jobserver-test-client
-  jobserver-tests
-  PROPERTIES
-    C_COMPILER_LAUNCHER ""
-    C_LINKER_LAUNCHER ""
-    CXX_COMPILER_LAUNCHER ""
-    CXX_LINKER_LAUNCHER ""
-    TEST_LAUNCHER ""
-)
-
 install(TARGETS jobserver jobserverd
   RUNTIME DESTINATION bin
   COMPONENT jobserver

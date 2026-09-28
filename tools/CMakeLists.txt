@@ -2,9 +2,8 @@ if(NOT IOJ_BUILD_DEVELOPER_TOOLS)
   return()
 endif()
 
-sandbox_jobserver_command(format_command STANDARD format "Format project sources")
 add_custom_target(format-code
-  COMMAND ${format_command} "${CMAKE_COMMAND}" -E env "LLVM_ROOT=${LLVM_ROOT}"
+  COMMAND "${CMAKE_COMMAND}" -E env "LLVM_ROOT=${LLVM_ROOT}"
     CodeFormatTools --changed
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Formatting Git-changed project source files"
@@ -13,7 +12,7 @@ add_custom_target(format-code
 )
 
 add_custom_target(format-all-code
-  COMMAND ${format_command} "${CMAKE_COMMAND}" -E env "LLVM_ROOT=${LLVM_ROOT}"
+  COMMAND "${CMAKE_COMMAND}" -E env "LLVM_ROOT=${LLVM_ROOT}"
     CodeFormatTools
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Formatting all project source files"

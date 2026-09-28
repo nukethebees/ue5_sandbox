@@ -1,6 +1,6 @@
 #include <sandbox/perf/benchmark_comparison.hpp>
 
-#include <jobserver/client.hpp>
+#include <jobserver/executor.hpp>
 
 #include <winsock2.h>
 #include <Windows.h>
@@ -849,7 +849,7 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
     app.add_option("--b-preset", options.b_preset)->required();
     app.add_option("--output-dir", options.output_directory);
     app.add_flag("--skip-build", options.skip_build);
-    app.add_flag("--jobserver-child", options.jobserver_child)->group("");
+    app.add_flag("--lease-held", options.lease_held)->group("");
     app.add_option("--connection-timeout-seconds", options.connection_timeout_seconds)
         ->default_val(30.0);
     app.add_option("--process-timeout-seconds", options.process_timeout_seconds)
@@ -1294,9 +1294,10 @@ auto run_application(int const argc,
         return parsed.exit_code;
     }
     auto const& options{*parsed.options};
-    auto const inside_jobserver{options.jobserver_child &&
-                                GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", nullptr, 0) !=
-                                    0};
+    wchar_t machine_mode[32]{};
+    GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_MACHINE_MODE", machine_mode, 32);
+    auto const inside_jobserver{options.lease_held &&
+                                std::wstring_view{machine_mode} == L"exclusive"};
     if (options.output_directory_explicit && !inside_jobserver &&
         std::filesystem::exists(options.output_directory) &&
         !std::filesystem::is_empty(options.output_directory)) {
@@ -1308,8 +1309,8 @@ auto run_application(int const argc,
     auto manifest = make_manifest(options, "preparing");
     write_json(options.output_directory / "manifest.json", manifest);
     try {
-        if (options.jobserver_child && !inside_jobserver) {
-            throw PipelineError{"invalid_jobserver_child",
+        if (options.lease_held && !inside_jobserver) {
+            throw PipelineError{"invalid_lease_held",
                                 "Jobserver child marker requires an active job"};
         }
         if (!options.skip_build) {
@@ -1317,25 +1318,27 @@ auto run_application(int const argc,
         }
         if (!inside_jobserver) {
             auto child_arguments{option_arguments(options)};
-            child_arguments.insert(child_arguments.begin(), "--jobserver-child");
-            jobserver::SubmitRequest request{
-                .metadata = {.name = "Tracy native benchmark comparison",
-                             .kind = "benchmark",
-                             .worktree = options.root},
-                .command = {.executable = executable_path(),
-                            .arguments = std::move(child_arguments),
-                            .working_directory = options.root,
-                            .environment = {}},
-                .resources = {{.name = "machine", .mode = jobserver::ClaimMode::exclusive},
-                              {.name = "benchmark", .mode = jobserver::ClaimMode::exclusive}},
-                .timeout = std::nullopt,
-                .suspect_after = std::nullopt,
-                .disconnect_policy = jobserver::DisconnectPolicy::cancel,
-            };
-            auto result{jobserver::Client::run(
-                request, [](std::string const& stream, std::string const& text) {
-                    (stream == "stderr" ? std::cerr : std::cout) << text << std::flush;
-                })};
+            child_arguments.insert(child_arguments.begin(), "--lease-held");
+            auto session{jobserver::Session::connect()};
+            if (!session) {
+                throw PipelineError{"jobserver_failed", session.error().message};
+            }
+            jobserver::LocalExecutor executor;
+            std::vector<jobserver::GateClaim> const gates{
+                {"machine", jobserver::LeaseMode::exclusive}};
+            auto grant{(*session)->acquire(gates,
+                                           Json{{"name", "Tracy native benchmark comparison"},
+                                                {"kind", "benchmark"},
+                                                {"worktree", options.root.string()}})};
+            if (!grant) {
+                throw PipelineError{"jobserver_failed", grant.error().message};
+            }
+            jobserver::Command command{executable_path(), std::move(child_arguments), options.root};
+            auto result{executor.run(command, **session, *grant, gates)};
+            auto released{(*session)->release(*grant, result ? *result : 1)};
+            if (!released) {
+                throw PipelineError{"jobserver_failed", released.error().message};
+            }
             if (!result) {
                 throw PipelineError{"jobserver_failed", result.error().message};
             }

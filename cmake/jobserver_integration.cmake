@@ -15,26 +15,6 @@ function(sandbox_jobserver_command output_variable mode kind operation)
   set(${output_variable} "${command}" PARENT_SCOPE)
 endfunction()
 
-function(sandbox_configure_jobserver)
-  if(EXISTS "${IOJ_JOBSERVER_CLI}")
-    foreach(language IN ITEMS C CXX)
-      sandbox_jobserver_command(compile_launcher STANDARD build "Compile ${language}")
-      sandbox_jobserver_command(link_launcher STANDARD build "Link ${language}")
-      set(CMAKE_${language}_COMPILER_LAUNCHER
-        ${compile_launcher} ${CMAKE_${language}_COMPILER_LAUNCHER} PARENT_SCOPE)
-      set(CMAKE_${language}_LINKER_LAUNCHER
-        ${link_launcher} ${CMAKE_${language}_LINKER_LAUNCHER} PARENT_SCOPE)
-    endforeach()
-    # CMake applies this only when add_test's command names an executable target.
-    sandbox_jobserver_command(test_launcher STANDARD test "Native executable test")
-    set(CMAKE_TEST_LAUNCHER ${test_launcher} ${CMAKE_TEST_LAUNCHER} PARENT_SCOPE)
-  else()
-    message(STATUS
-      "The per-user jobserver is not installed; bootstrap targets will build "
-      "without cross-worktree scheduling. Run the install-jobserver target.")
-  endif()
-endfunction()
-
 function(sandbox_add_jobserver_status_target)
   add_custom_target(jobserver-status
     COMMAND "${IOJ_JOBSERVER_CLI}" status

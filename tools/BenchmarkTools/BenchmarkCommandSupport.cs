@@ -95,7 +95,7 @@ internal static class BenchmarkCommandSupport
         bool skip_lease = false,
         CancellationToken cancellation_token = default)
     {
-        if (skip_lease || !string.IsNullOrWhiteSpace(application.Environment.GetEnvironmentVariable("NUKETHEBEES_JOBSERVER_JOB")))
+        if (skip_lease || application.Environment.GetEnvironmentVariable("NUKETHEBEES_JOBSERVER_MACHINE_MODE") == "exclusive")
         {
             return await action();
         }

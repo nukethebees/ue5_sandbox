@@ -82,10 +82,8 @@ function(add_unreal_packaging_targets)
       "-archivedirectory=${IOJ_GAME_ARCHIVE_ROOT}"
   )
 
-  sandbox_jobserver_command(run_staged_command STANDARD command
-    "Run staged Sandbox ${UE_PLATFORM} ${UE_CONFIGURATION}")
   add_custom_target(run-staged
-    COMMAND ${run_staged_command} "${CMAKE_COMMAND}" -E chdir
+    COMMAND "${CMAKE_COMMAND}" -E chdir
       "${IOJ_GAME_STAGE_DIRECTORY}"
       "${IOJ_GAME_STAGE_EXECUTABLE}"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"

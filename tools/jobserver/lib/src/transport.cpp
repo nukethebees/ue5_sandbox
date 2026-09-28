@@ -1,7 +1,5 @@
 #include "jobserver/transport.hpp"
 
-#include "test_barrier.hpp"
-
 #include "jobserver/protocol.hpp"
 
 #include <Windows.h>
@@ -180,9 +178,7 @@ auto write_exact(HANDLE const handle,
         auto result{IoResult::success};
         if (!WriteFile(handle, data, chunk, &written, &overlapped)) {
             auto const error{GetLastError()};
-            if (error == ERROR_IO_PENDING) {
-                test_barrier("during_output_write_pending");
-            }
+
             result = error == ERROR_IO_PENDING
                        ? complete_overlapped(handle, overlapped, written, deadline, stop_event)
                        : (error == ERROR_BROKEN_PIPE || error == ERROR_PIPE_NOT_CONNECTED

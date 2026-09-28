@@ -17,7 +17,7 @@ function Invoke-JobserverWorkflow {
     $log_path = Join-Path $log_directory "cmake-workflow-$Preset.log"
 
     Write-Host $Name
-    & cmake --workflow --preset $Preset 2>&1 | Tee-Object -FilePath $log_path | Out-Host
+    & (Get-JobserverPath) run --shared machine --name $Name --kind build --worktree $script:dev_project_root -- cmake --workflow --preset $Preset 2>&1 | Tee-Object -FilePath $log_path | Out-Host
     $exit_code = $LASTEXITCODE
 
     [PSCustomObject]@{
@@ -233,14 +233,6 @@ function get-ubt-build-state {
     }
 }
 
-function reset-ubt-build-state {
-    $jobserver = Get-JobserverPath
-    & $jobserver kill-owned --kind unreal-build
-    if ($LASTEXITCODE -ne 0) {
-        throw "Jobserver owned Unreal-build cleanup exited with code $LASTEXITCODE."
-    }
-}
-
 function cbuild {
     param(
         [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
@@ -283,7 +275,7 @@ function integrate-feature {
     }
 
     $arguments = @(
-        'lease',
+        'run',
         '--name', "Integrate $branch into dev",
         '--kind', 'integration',
         '--task', $branch,

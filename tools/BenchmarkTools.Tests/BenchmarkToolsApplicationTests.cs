@@ -23,7 +23,7 @@ public sealed class BenchmarkToolsApplicationTests
         AssertProcess(
             process_runner.Requests[2],
             @"C:\jobserver\jobserver.exe",
-            ["run", "--name", "native simulation benchmark", "--kind", "benchmark", "--worktree", repository.Root, "--exclusive", "machine", "--exclusive", "benchmark", "--", @"C:\tools with spaces\BenchmarkTools.exe", "native-simulation", "--level", repository.LevelPath, "--seconds", "1.25", "--game-speed", "1", "--build-preset", "preset with spaces", "--telemetry", "--fighter-stress-caps", "1000,2000", "--warmup-seconds", "5.5", "--saturation-timeout-seconds", "60.25", "--skip-build"],
+            ["run", "--name", "native simulation benchmark", "--kind", "benchmark", "--worktree", repository.Root, "--exclusive", "machine", "--", @"C:\tools with spaces\BenchmarkTools.exe", "native-simulation", "--level", repository.LevelPath, "--seconds", "1.25", "--game-speed", "1", "--build-preset", "preset with spaces", "--telemetry", "--fighter-stress-caps", "1000,2000", "--warmup-seconds", "5.5", "--saturation-timeout-seconds", "60.25", "--skip-build"],
             repository.Root);
     }
 
@@ -180,7 +180,7 @@ public sealed class BenchmarkToolsApplicationTests
     {
         public string? GetEnvironmentVariable(string variable_name)
         {
-            return variable_name == "NUKETHEBEES_JOBSERVER_JOB" ? job_id : null;
+            return variable_name == "NUKETHEBEES_JOBSERVER_MACHINE_MODE" ? (job_id is null ? null : "exclusive") : null;
         }
     }
 

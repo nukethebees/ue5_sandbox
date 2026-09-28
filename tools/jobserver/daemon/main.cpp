@@ -9,7 +9,6 @@
 #include <iostream>
 
 namespace jobserver::daemon_logging {
-inline constexpr std::uintmax_t maximum_log_size{1024U * 1024U};
 
 auto data_directory() -> std::filesystem::path {
     char* test_data{};
@@ -32,40 +31,8 @@ auto data_directory() -> std::filesystem::path {
     return result;
 }
 
-auto open() -> std::ofstream {
-    auto const directory{data_directory()};
-    if (directory.empty()) {
-        return {};
-    }
-    std::error_code error;
-    std::filesystem::create_directories(directory, error);
-    if (error) {
-        return {};
-    }
-
-    auto const current{directory / "jobserverd.log"};
-    auto const previous{directory / "jobserverd.previous.log"};
-    auto const size{std::filesystem::file_size(current, error)};
-    if (!error && size >= maximum_log_size) {
-        std::filesystem::remove(previous, error);
-        error.clear();
-        std::filesystem::rename(current, previous, error);
-    }
-    return std::ofstream{current, std::ios::app};
 }
-}
-
 auto WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) -> int {
-    auto log{jobserver::daemon_logging::open()};
-    auto* original_stderr{std::cerr.rdbuf()};
-    if (log) {
-        std::cerr.rdbuf(log.rdbuf());
-    }
-    std::cerr << "Jobserver daemon starting (pid " << GetCurrentProcessId() << ")\n";
-    jobserver::Server server;
-    auto const result{server.run()};
-    std::cerr << "Jobserver daemon exiting with code " << result << '\n';
-    std::cerr.flush();
-    std::cerr.rdbuf(original_stderr);
-    return result;
+    jobserver::Server server{jobserver::daemon_logging::data_directory()};
+    return server.run();
 }

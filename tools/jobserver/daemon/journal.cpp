@@ -66,6 +66,16 @@ RotatingLog::RotatingLog(std::filesystem::path path,
     auto const size{std::filesystem::file_size(path_, error)};
     written_ = error ? 0 : static_cast<std::size_t>(size);
     output_.open(path_, std::ios::app | std::ios::binary);
+    if (output_ && written_ != 0) {
+        std::ifstream tail{path_, std::ios::binary};
+        tail.seekg(-1, std::ios::end);
+        char last{};
+        if (tail.get(last) && last != '\n') {
+            output_.put('\n');
+            output_.flush();
+            ++written_;
+        }
+    }
     if (!output_) {
         std::cerr << "Cannot open journal " << path_ << '\n';
     }
@@ -183,17 +193,21 @@ void Journal::append(Event event, std::string payload) {
                           .count();
     payload.resize(std::min<std::size_t>(payload.size(), 32U * 1024U));
     insert(event, payload);
-    // Disk rows are independently decodable, including across segment rotation and crashes.
-    disk_.write(nlohmann::json::array({event.timestamp,
-                                       static_cast<unsigned>(event.kind),
-                                       event.client.value,
-                                       event.command.value,
-                                       event.lease.value,
-                                       event.gate.value,
-                                       event.related.value,
-                                       event.value,
-                                       payload})
-                    .dump());
+    auto const payload_id{payloads_[(first_ + size_ - 1) % capacity_].value};
+    // Rotate a payload definition together with its row, so each segment stands alone.
+    auto const definition{
+        payload_id ? nlohmann::json{{"payload", payload_id}, {"text", payload}}.dump() + "\n"
+                   : std::string{}};
+    disk_.write(definition + nlohmann::json::array({event.timestamp,
+                                                    static_cast<unsigned>(event.kind),
+                                                    event.client.value,
+                                                    event.command.value,
+                                                    event.lease.value,
+                                                    event.gate.value,
+                                                    event.related.value,
+                                                    event.value,
+                                                    payload_id})
+                                 .dump());
     human_.write(std::to_string(event.timestamp) + " " + event_name(event.kind) +
                  " client=" + std::to_string(event.client.value) +
                  " command=" + std::to_string(event.command.value) +
@@ -203,9 +217,16 @@ void Journal::load() {
     for (auto const& path : disk_.paths()) {
         std::ifstream input{path, std::ios::binary};
         std::string line;
+        std::string payload;
+        std::uint64_t payload_id{};
         while (std::getline(input, line)) {
             try {
                 auto const json = nlohmann::json::parse(line);
+                if (json.is_object()) {
+                    payload_id = json.at("payload").get<std::uint64_t>();
+                    payload = json.at("text").get<std::string>();
+                    continue;
+                }
                 if (!json.is_array() || json.size() != 9 ||
                     json[1].get<unsigned>() > static_cast<unsigned>(EventKind::protocol_error)) {
                     continue;
@@ -218,7 +239,10 @@ void Journal::load() {
                         GateId{json[5].get<std::uint32_t>()},
                         LeaseId{json[6].get<std::uint64_t>()},
                         json[7].get<std::int64_t>()},
-                       json[8].get<std::string>());
+                       json[8].get<std::uint64_t>() != 0 &&
+                               json[8].get<std::uint64_t>() == payload_id
+                           ? payload
+                           : std::string{});
             } catch (nlohmann::json::exception const&) { /* An interrupted final row is diagnostic
                                                             only. */
             }

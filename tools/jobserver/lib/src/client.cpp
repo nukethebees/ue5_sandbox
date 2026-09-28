@@ -1,141 +1,29 @@
 #include "jobserver/client.hpp"
 
-#include "environment.hpp"
-
-#include "jobserver/authority.hpp"
 #include "jobserver/protocol.hpp"
 #include "jobserver/transport.hpp"
 
 #include <Windows.h>
 
-#include <nlohmann/json.hpp>
-
 #include <chrono>
-#include <cwchar>
-#include <filesystem>
+#include <condition_variable>
+#include <deque>
 #include <fstream>
-#include <iterator>
-#include <string_view>
+#include <mutex>
 #include <thread>
 
 namespace jobserver {
 namespace {
 using Json = nlohmann::json;
-
 auto control_timeout() -> std::chrono::milliseconds {
-    constexpr auto default_timeout{std::chrono::seconds{5}};
-    wchar_t value[32]{};
-    auto const length{GetEnvironmentVariableW(
-        L"NUKETHEBEES_JOBSERVER_TEST_IO_TIMEOUT_MS", value, std::size(value))};
-    if (length == 0 || length >= std::size(value)) {
-        return default_timeout;
-    }
-    wchar_t* end{};
-    auto const parsed{std::wcstoul(value, &end, 10)};
-    return end != value && *end == L'\0' && parsed != 0 ? std::chrono::milliseconds{parsed}
-                                                        : default_timeout;
+    return std::chrono::seconds{5};
 }
-
-auto widen(std::string const& text) -> std::wstring {
-    if (text.empty()) {
-        return {};
-    }
-    auto const count{MultiByteToWideChar(
-        CP_UTF8, MB_ERR_INVALID_CHARS, text.data(), static_cast<int>(text.size()), nullptr, 0)};
-    if (count <= 0) {
-        return {};
-    }
-    std::wstring result(static_cast<std::size_t>(count), L'\0');
-    MultiByteToWideChar(CP_UTF8,
-                        MB_ERR_INVALID_CHARS,
-                        text.data(),
-                        static_cast<int>(text.size()),
-                        result.data(),
-                        count);
-    return result;
-}
-
-auto quote_argument(std::wstring const& argument) -> std::wstring {
-    if (!argument.empty() && argument.find_first_of(L" \t\"") == std::wstring::npos) {
-        return argument;
-    }
-    std::wstring result{L"\""};
-    std::size_t backslashes{};
-    for (auto const character : argument) {
-        if (character == L'\\') {
-            ++backslashes;
-        } else if (character == L'\"') {
-            result.append(backslashes * 2 + 1, L'\\');
-            result.push_back(character);
-            backslashes = 0;
-        } else {
-            result.append(backslashes, L'\\');
-            backslashes = 0;
-            result.push_back(character);
-        }
-    }
-    result.append(backslashes * 2, L'\\');
-    result.push_back(L'\"');
-    return result;
-}
-
-auto run_in_inherited_job(Command const& command) -> std::expected<int, Error> {
-    auto inherited_command{command};
-    auto const length{GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", nullptr, 0)};
-    std::wstring parent(length, L'\0');
-    auto const copied{GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", parent.data(), length)};
-    if (copied == 0 || copied >= length) {
-        return std::unexpected(Error{"nested_parent_not_active", "Nested parent ID changed"});
-    }
-    parent.resize(copied);
-    inherited_command.environment.push_back({.name = "NUKETHEBEES_JOBSERVER_JOB",
-                                             .value = path_to_utf8(std::filesystem::path{parent})});
-    auto environment{detail::make_environment(inherited_command)};
-    if (!environment) {
-        return std::unexpected(environment.error());
-    }
-    std::wstring command_line{quote_argument(command.executable.wstring())};
-    for (auto const& argument : command.arguments) {
-        command_line.push_back(L' ');
-        command_line += quote_argument(widen(argument));
-    }
-    STARTUPINFOW startup{};
-    startup.cb = sizeof(STARTUPINFOW);
-    startup.dwFlags = STARTF_USESTDHANDLES;
-    startup.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
-    startup.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
-    startup.hStdError = GetStdHandle(STD_ERROR_HANDLE);
-    PROCESS_INFORMATION process{};
-    auto const working_directory{
-        command.working_directory.empty() ? nullptr : command.working_directory.c_str()};
-    if (!CreateProcessW(command.executable.c_str(),
-                        command_line.data(),
-                        nullptr,
-                        nullptr,
-                        TRUE,
-                        CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
-                        environment->data(),
-                        working_directory,
-                        &startup,
-                        &process)) {
-        return std::unexpected(
-            Error{"process_creation_failed", "Could not create the nested jobserver command"});
-    }
-    CloseHandle(process.hThread);
-    WaitForSingleObject(process.hProcess, INFINITE);
-    DWORD exit_code{};
-    GetExitCodeProcess(process.hProcess, &exit_code);
-    CloseHandle(process.hProcess);
-    return static_cast<int>(exit_code);
-}
-
 void close_handle(void*& handle) {
-    if (handle != nullptr && handle != INVALID_HANDLE_VALUE) {
+    if (handle && handle != INVALID_HANDLE_VALUE) {
         CloseHandle(static_cast<HANDLE>(handle));
     }
     handle = nullptr;
 }
-
 auto request_daemon_start() -> bool {
     auto const& sid{transport::user_sid()};
     if (sid.empty()) {
@@ -207,7 +95,8 @@ auto request_daemon_start() -> bool {
     return finish(false);
 }
 
-auto connect_pipe(bool const control = false) -> std::expected<void*, Error> {
+auto connect_pipe(bool const control = false, ClientId* client = nullptr)
+    -> std::expected<void*, Error> {
     DWORD last_error{ERROR_SUCCESS};
     auto const test_endpoint{
         GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_TEST_PIPE", nullptr, 0) != 0};
@@ -223,22 +112,13 @@ auto connect_pipe(bool const control = false) -> std::expected<void*, Error> {
                                 OPEN_EXISTING,
                                 FILE_FLAG_OVERLAPPED,
                                 nullptr)};
-        if (control && handle == INVALID_HANDLE_VALUE && GetLastError() == ERROR_FILE_NOT_FOUND) {
-            handle = CreateFileW(transport::pipe_name().c_str(),
-                                 GENERIC_READ | GENERIC_WRITE,
-                                 0,
-                                 nullptr,
-                                 OPEN_EXISTING,
-                                 FILE_FLAG_OVERLAPPED,
-                                 nullptr);
-        }
         if (handle != INVALID_HANDLE_VALUE) {
             auto hello = Json::object();
             hello["type"] = "hello";
             hello["protocol"] = Json::object();
             hello["protocol"]["major"] = protocol::major_version;
             hello["protocol"]["minor"] = protocol::minor_version;
-            hello["client_version"] = "0.1.0";
+            hello["client_version"] = "0.2.0";
             auto const hello_text{hello.dump()};
             if (auto sent{transport::write_message(handle, hello_text, control_timeout())}; !sent) {
                 CloseHandle(handle);
@@ -256,6 +136,9 @@ auto connect_pipe(bool const control = false) -> std::expected<void*, Error> {
                                        : parsed.value("message", "Protocol mismatch")};
                 CloseHandle(handle);
                 return std::unexpected(Error{"handshake_failed", message});
+            }
+            if (client) {
+                *client = ClientId{parsed.at("client").get<std::uint64_t>()};
             }
             return handle;
         }
@@ -301,409 +184,7 @@ auto control_request(Json const& request, std::string_view const expected_type)
     return response;
 }
 
-auto claims_json(std::vector<ResourceClaim> const& claims) -> Json {
-    auto result = Json::array();
-    for (auto const& claim : claims) {
-        result.push_back(
-            {{"name", claim.name}, {"mode", to_string(claim.mode)}, {"units", claim.units}});
-    }
-    return result;
 }
-
-auto environment_value(wchar_t const* const name) -> std::string {
-    auto const size{GetEnvironmentVariableW(name, nullptr, 0)};
-    if (size == 0) {
-        return {};
-    }
-    std::wstring value(size, L'\0');
-    auto const copied{GetEnvironmentVariableW(name, value.data(), size)};
-    if (copied == 0 || copied >= size) {
-        return {};
-    }
-    value.resize(copied);
-    return path_to_utf8(std::filesystem::path{value});
-}
-
-auto canonical_path(std::filesystem::path path) -> std::filesystem::path {
-    std::error_code error;
-    if (path.empty()) {
-        return {};
-    }
-    auto canonical{std::filesystem::weakly_canonical(path, error)};
-    if (!error) {
-        return canonical;
-    }
-    error.clear();
-    auto absolute{std::filesystem::absolute(path, error)};
-    return error ? path.lexically_normal() : absolute.lexically_normal();
-}
-
-auto git_worktree_root(std::filesystem::path directory) -> std::filesystem::path {
-    if (directory.empty()) {
-        return {};
-    }
-    directory = canonical_path(std::move(directory));
-
-    for (;;) {
-        auto const dot_git{directory / ".git"};
-        std::error_code error;
-        if (std::filesystem::is_regular_file(dot_git, error) ||
-            std::filesystem::is_directory(dot_git, error)) {
-            return directory;
-        }
-        auto const parent{directory.parent_path()};
-        if (parent == directory) {
-            return {};
-        }
-        directory = parent;
-    }
-}
-
-auto worktree_for_path(std::filesystem::path path) -> std::filesystem::path {
-    auto const root{git_worktree_root(path)};
-    return root.empty() ? canonical_path(std::move(path)) : root;
-}
-
-auto git_branch(std::filesystem::path worktree) -> std::string {
-    worktree = git_worktree_root(std::move(worktree));
-    if (worktree.empty()) {
-        return {};
-    }
-
-    auto const dot_git{worktree / ".git"};
-    auto git_directory{dot_git};
-    std::error_code error;
-    if (std::filesystem::is_regular_file(dot_git, error)) {
-        std::ifstream git_file{dot_git};
-        std::string line;
-        std::getline(git_file, line);
-        constexpr std::string_view prefix{"gitdir: "};
-        if (!line.starts_with(prefix)) {
-            return {};
-        }
-        git_directory = path_from_utf8(line.substr(prefix.size()));
-        if (git_directory.is_relative()) {
-            git_directory = worktree / git_directory;
-        }
-    }
-
-    std::ifstream head{git_directory / "HEAD"};
-    std::string reference;
-    std::getline(head, reference);
-    constexpr std::string_view branch_prefix{"ref: refs/heads/"};
-    return reference.starts_with(branch_prefix) ? reference.substr(branch_prefix.size()) : "";
-}
-
-auto metadata_json(JobMetadata const& metadata) -> Json {
-    return Json{{"name", metadata.name},
-                {"kind", metadata.kind},
-                {"task", metadata.task},
-                {"worktree", path_to_utf8(metadata.worktree)},
-                {"submit_directory", path_to_utf8(metadata.submit_directory)}};
-}
-
-auto metadata_at_submission(JobMetadata metadata) -> JobMetadata {
-    metadata.submit_directory = canonical_path(std::filesystem::current_path());
-    metadata.worktree = worktree_for_path(metadata.worktree.empty() ? metadata.submit_directory
-                                                                    : metadata.worktree);
-    if (metadata.task.empty()) {
-        metadata.task = environment_value(L"NUKETHEBEES_JOBSERVER_TASK");
-    }
-    if (metadata.task.empty()) {
-        metadata.task =
-            git_branch(metadata.worktree.empty() ? metadata.submit_directory : metadata.worktree);
-    }
-    return metadata;
-}
-}
-
-Lease::Lease(void* const handle, std::string id)
-    : handle_{handle}
-    , id_{std::move(id)} {}
-Lease::Lease(Lease&& other) noexcept
-    : handle_{other.handle_}
-    , id_{std::move(other.id_)} {
-    other.handle_ = nullptr;
-}
-auto Lease::operator=(Lease&& other) noexcept -> Lease& {
-    if (this != &other) {
-        close_handle(handle_);
-        handle_ = other.handle_;
-        id_ = std::move(other.id_);
-        other.handle_ = nullptr;
-    }
-    return *this;
-}
-Lease::~Lease() {
-    close_handle(handle_);
-}
-auto Lease::id() const -> std::string const& {
-    return id_;
-}
-auto Lease::connected() const -> bool {
-    if (handle_ == nullptr) {
-        return false;
-    }
-    DWORD available{};
-    return PeekNamedPipe(static_cast<HANDLE>(handle_), nullptr, 0, nullptr, &available, nullptr) !=
-           FALSE;
-}
-auto Lease::release() -> std::expected<void, Error> {
-    if (handle_ == nullptr) {
-        return {};
-    }
-    auto const result{transport::write_message(
-        handle_, Json{{"type", "release"}, {"id", id_}}.dump(), control_timeout())};
-    close_handle(handle_);
-    return result;
-}
-
-auto Client::acquire(AcquireRequest const& request) -> std::expected<Lease, Error> {
-    auto const metadata{metadata_at_submission(request.metadata)};
-    auto handle{connect_pipe()};
-    if (!handle) {
-        return std::unexpected(handle.error());
-    }
-    auto const message = Json{{"type", "acquire"},
-                              {"metadata", metadata_json(metadata)},
-                              {"resources", claims_json(request.resources)}};
-    if (auto sent{transport::write_message(*handle, message.dump(), control_timeout())}; !sent) {
-        close_handle(*handle);
-        return std::unexpected(sent.error());
-    }
-    for (;;) {
-        auto response{transport::read_message(*handle)};
-        if (!response) {
-            close_handle(*handle);
-            return std::unexpected(response.error());
-        }
-        auto const parsed = Json::parse(*response, nullptr, false);
-        if (parsed.is_object() && parsed.value("type", "") == "queued") {
-            continue;
-        }
-        if (!parsed.is_object() || parsed.value("type", "") != "granted") {
-            close_handle(*handle);
-            auto const message{parsed.is_object()
-                                   ? parsed.value("message", "Invalid acquire response")
-                                   : "Invalid acquire response"};
-            return std::unexpected(Error{"acquire_failed", message});
-        }
-        return Lease{*handle, parsed.value("id", "")};
-    }
-}
-
-auto Client::run(SubmitRequest const& request, OutputCallback output) -> std::expected<int, Error> {
-    if (GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", nullptr, 0) != 0) {
-        if (!request.resources.empty()) {
-            auto handle{connect_pipe(true)};
-            if (!handle) {
-                return std::unexpected(handle.error());
-            }
-            auto const length{GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", nullptr, 0)};
-            std::wstring parent(length, L'\0');
-            auto const copied{
-                GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", parent.data(), length)};
-            if (copied == 0 || copied >= length) {
-                close_handle(*handle);
-                return std::unexpected(
-                    Error{"nested_parent_not_active", "Nested parent ID changed"});
-            }
-            parent.resize(copied);
-            auto const message = Json{{"type", "validate_nested"},
-                                      {"parent_id", path_to_utf8(std::filesystem::path{parent})},
-                                      {"resources", claims_json(request.resources)}};
-            auto sent{transport::write_message(*handle, message.dump(), control_timeout())};
-            if (!sent) {
-                close_handle(*handle);
-                return std::unexpected(sent.error());
-            }
-            auto response{transport::read_message(*handle, control_timeout())};
-            close_handle(*handle);
-            if (!response) {
-                return std::unexpected(response.error());
-            }
-            auto const parsed = Json::parse(*response, nullptr, false);
-            if (!parsed.is_object() || parsed.value("type", "") != "nested_validated") {
-                return std::unexpected(
-                    Error{parsed.is_object() ? parsed.value("code", "invalid_response")
-                                             : "invalid_response",
-                          parsed.is_object() ? parsed.value("message", "Invalid nested response")
-                                             : "Invalid nested response"});
-            }
-        }
-        return run_in_inherited_job(request.command);
-    }
-
-    auto const base_environment{detail::capture_environment()};
-    if (!base_environment) {
-        return std::unexpected(base_environment.error());
-    }
-    auto const metadata{metadata_at_submission(request.metadata)};
-    auto handle{connect_pipe()};
-    if (!handle) {
-        return std::unexpected(handle.error());
-    }
-    auto message = Json{
-        {"type", "submit"},
-        {"metadata", metadata_json(metadata)},
-        {"resources", claims_json(request.resources)},
-        {"command",
-         Json{{"executable", path_to_utf8(request.command.executable)},
-              {"arguments", request.command.arguments},
-              {"working_directory", path_to_utf8(request.command.working_directory)},
-              {"environment", Json::array()},
-              {"base_environment", *base_environment}}},
-        {"disconnect_policy",
-         request.disconnect_policy == DisconnectPolicy::cancel ? "cancel" : "continue"},
-    };
-    for (auto const& change : request.command.environment) {
-        message["command"]["environment"].push_back(
-            {{"name", change.name}, {"value", change.value ? Json(*change.value) : Json(nullptr)}});
-    }
-    if (request.timeout) {
-        message["timeout_ms"] = request.timeout->count();
-    }
-    if (request.suspect_after) {
-        message["suspect_after_ms"] = request.suspect_after->count();
-    }
-    if (auto sent{transport::write_message(*handle, message.dump(), control_timeout())}; !sent) {
-        close_handle(*handle);
-        return std::unexpected(sent.error());
-    }
-    for (;;) {
-        auto response{transport::read_message(*handle)};
-        if (!response) {
-            close_handle(*handle);
-            return std::unexpected(response.error());
-        }
-        auto const parsed = Json::parse(*response, nullptr, false);
-        if (!parsed.is_object()) {
-            close_handle(*handle);
-            return std::unexpected(Error{"invalid_json", "Daemon returned invalid JSON"});
-        }
-        auto const type{parsed.value("type", "")};
-        if (type == "output") {
-            auto const decoded{protocol::decode_base64(parsed.value("data", ""))};
-            if (!decoded) {
-                close_handle(*handle);
-                return std::unexpected(decoded.error());
-            }
-            output(parsed.value("stream", "stdout"), *decoded);
-        } else if (type == "completed") {
-            auto const exit_code{parsed.value("exit_code", 1)};
-            close_handle(*handle);
-            return exit_code;
-        } else if (type == "error") {
-            auto const error{Error{parsed.value("code", "server_error"),
-                                   parsed.value("message", "Scheduler error")}};
-            close_handle(*handle);
-            return std::unexpected(error);
-        }
-    }
-}
-
-auto Client::status(bool const include_history) -> std::expected<std::string, Error> {
-    auto handle{connect_pipe(true)};
-    if (!handle) {
-        return std::unexpected(handle.error());
-    }
-    auto const sent{transport::write_message(
-        *handle, Json{{"type", "status"}, {"history", include_history}}.dump(), control_timeout())};
-    if (!sent) {
-        close_handle(*handle);
-        return std::unexpected(sent.error());
-    }
-    auto response{transport::read_message(*handle, control_timeout())};
-    close_handle(*handle);
-    if (response) {
-        auto const parsed = Json::parse(*response, nullptr, false);
-        if (!parsed.is_object() || parsed.value("type", "") != "status") {
-            return std::unexpected(Error{
-                parsed.is_object() ? parsed.value("code", "invalid_response") : "invalid_response",
-                parsed.is_object() ? parsed.value("message", "Invalid status response")
-                                   : "Invalid status response"});
-        }
-    }
-    return response;
-}
-
-auto Client::processes(bool const owned, std::optional<std::filesystem::path> worktree)
-    -> std::expected<std::string, Error> {
-    auto const owner_worktree{worktree_for_path(std::filesystem::current_path())};
-    auto request = Json{
-        {"type", "processes"}, {"owned", owned}, {"owner_worktree", path_to_utf8(owner_worktree)}};
-    if (worktree) {
-        request["worktree"] = path_to_utf8(worktree_for_path(*worktree));
-    }
-    return control_request(request, "processes");
-}
-
-auto Client::process_owner(std::uint32_t const process_id) -> std::expected<std::string, Error> {
-    auto const owner_worktree{worktree_for_path(std::filesystem::current_path())};
-    return control_request(Json{{"type", "process_owner"},
-                                {"pid", process_id},
-                                {"owner_worktree", path_to_utf8(owner_worktree)}},
-                           "process_owner");
-}
-
-auto Client::kill_owned(std::optional<std::string> kind) -> std::expected<std::string, Error> {
-    auto const owner_worktree{worktree_for_path(std::filesystem::current_path())};
-    auto request = Json{{"type", "kill_owned"}, {"owner_worktree", path_to_utf8(owner_worktree)}};
-    if (kind) {
-        request["kind"] = *kind;
-    }
-    return control_request(request, "kill_owned");
-}
-
-auto Client::ping() -> std::expected<void, Error> {
-    auto handle{connect_pipe(true)};
-    if (!handle) {
-        return std::unexpected(handle.error());
-    }
-    auto sent{transport::write_message(*handle, Json{{"type", "ping"}}.dump(), control_timeout())};
-    if (!sent) {
-        close_handle(*handle);
-        return std::unexpected(sent.error());
-    }
-    auto response{transport::read_message(*handle, control_timeout())};
-    close_handle(*handle);
-    if (!response) {
-        return std::unexpected(response.error());
-    }
-    auto const parsed = Json::parse(*response, nullptr, false);
-    if (!parsed.is_object() || parsed.value("type", "") != "pong") {
-        return std::unexpected(Error{"invalid_ping", "Daemon returned an invalid ping response"});
-    }
-    return {};
-}
-
-auto Client::cancel(std::string const& id, bool const kill) -> std::expected<void, Error> {
-    auto handle{connect_pipe(true)};
-    if (!handle) {
-        return std::unexpected(handle.error());
-    }
-    auto const sent{transport::write_message(
-        *handle, Json{{"type", kill ? "kill" : "cancel"}, {"id", id}}.dump(), control_timeout())};
-    if (!sent) {
-        close_handle(*handle);
-        return std::unexpected(sent.error());
-    }
-    auto response{transport::read_message(*handle, control_timeout())};
-    close_handle(*handle);
-    if (!response) {
-        return std::unexpected(response.error());
-    }
-    auto const parsed = Json::parse(*response, nullptr, false);
-    if (!parsed.is_object()) {
-        return std::unexpected(Error{"invalid_json", "Daemon returned a non-object response"});
-    }
-    if (parsed.value("type", "") == "error") {
-        return std::unexpected(Error{parsed.value("code", "server_error"),
-                                     parsed.value("message", "Scheduler error")});
-    }
-    return {};
-}
-
 auto Client::start_daemon() -> std::expected<void, Error> {
     if (!request_daemon_start()) {
         return std::unexpected(
@@ -743,5 +224,226 @@ auto Client::check_daemon_recovery() -> std::expected<RecoveryAssessment, Error>
 
 auto Client::force_recover_daemon() -> std::expected<void, Error> {
     return force_recover_authority([] { return Client::ping().has_value(); });
+}
+
+auto Client::status() -> std::expected<std::string, Error> {
+    return control_request(Json{{"type", "status"}}, "status");
+}
+auto Client::trace(Json filters) -> std::expected<std::string, Error> {
+    filters["type"] = "trace";
+    return control_request(filters, "trace");
+}
+auto Client::ping() -> std::expected<void, Error> {
+    auto result{control_request(Json{{"type", "ping"}}, "pong")};
+    if (!result) {
+        return std::unexpected(result.error());
+    }
+    return {};
+}
+
+struct Session::State {
+    void* pipe{};
+    ClientId id{};
+    HANDLE lost{CreateEventW(nullptr, TRUE, FALSE, nullptr)};
+    mutable std::mutex mutex;
+    std::mutex write_mutex;
+    std::condition_variable changed;
+    std::deque<Json> replies;
+    std::optional<Error> error;
+    std::jthread reader;
+    ~State() {
+        reader.request_stop();
+        if (reader.joinable()) {
+            reader.join();
+        }
+        close_handle(pipe);
+        if (lost) {
+            CloseHandle(lost);
+        }
+    }
+    void fail(Error reason) {
+        {
+            std::scoped_lock lock{mutex};
+            if (!error) {
+                error = std::move(reason);
+            }
+        }
+        SetEvent(lost);
+        changed.notify_all();
+    }
+};
+Session::Session(std::unique_ptr<State> state)
+    : state_{std::move(state)} {}
+Session::~Session() = default;
+auto Session::connect() -> std::expected<std::unique_ptr<Session>, Error> {
+    auto state{std::make_unique<State>()};
+    if (!state->lost) {
+        return std::unexpected(Error{"event_failed", "Cannot create session liveness event"});
+    }
+    auto pipe{connect_pipe(false, &state->id)};
+    if (!pipe) {
+        return std::unexpected(pipe.error());
+    }
+    state->pipe = *pipe;
+    state->reader = std::jthread{[s = state.get()](std::stop_token stop) {
+        wchar_t value[32]{};
+        auto const size{
+            GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_TEST_WATCHDOG_MS", value, 32)};
+        auto const watchdog{size && size < 32 ? std::chrono::milliseconds{std::max(1, _wtoi(value))}
+                                              : std::chrono::seconds{20}};
+        while (!stop.stop_requested()) {
+            auto text{transport::read_message(s->pipe, watchdog, std::chrono::seconds{5}, stop)};
+            if (!text) {
+                auto error{text.error()};
+                if (error.code == "read_timeout") {
+                    error = {"server_unresponsive",
+                             "No jobserver traffic within watchdog deadline; session closed"};
+                }
+                s->fail(std::move(error));
+                std::scoped_lock write_lock{s->write_mutex};
+                if (!stop.stop_requested()) {
+                    static_cast<void>(transport::write_message(
+                        s->pipe,
+                        Json{{"type", "health"}, {"state", "connection_lost"}}.dump(),
+                        std::chrono::milliseconds{100}));
+                }
+                close_handle(s->pipe);
+                return;
+            }
+            try {
+                auto message = Json::parse(*text);
+                if (message.at("type") == "heartbeat") {
+                    continue;
+                }
+                {
+                    std::scoped_lock lock{s->mutex};
+                    if (s->replies.size() >= 16) {
+                        throw std::runtime_error{"Too many unsolicited replies"};
+                    }
+                    s->replies.push_back(std::move(message));
+                }
+                s->changed.notify_all();
+            } catch (std::exception const& error) {
+                s->fail({"invalid_response", error.what()});
+                std::scoped_lock write_lock{s->write_mutex};
+                close_handle(s->pipe);
+                return;
+            }
+        }
+    }};
+    return std::unique_ptr<Session>{new Session{std::move(state)}};
+}
+auto Session::id() const -> ClientId {
+    return state_->id;
+}
+auto Session::lost_event() const -> void* {
+    return state_->lost;
+}
+auto Session::failure() const -> Error {
+    std::scoped_lock lock{state_->mutex};
+    return state_->error.value_or(Error{"disconnected", "Jobserver connection lost"});
+}
+auto Session::send(Json const& message) -> std::expected<void, Error> {
+    std::scoped_lock lock{state_->write_mutex};
+    {
+        std::scoped_lock state_lock{state_->mutex};
+        if (state_->error) {
+            return std::unexpected(*state_->error);
+        }
+    }
+    auto result{transport::write_message(state_->pipe, message.dump(), control_timeout())};
+    if (!result) {
+        state_->fail(result.error());
+        state_->reader.request_stop();
+    }
+    return result;
+}
+auto Session::receive() -> std::expected<Json, Error> {
+    std::unique_lock lock{state_->mutex};
+    state_->changed.wait(lock, [&] { return state_->error || !state_->replies.empty(); });
+    if (state_->error) {
+        return std::unexpected(*state_->error);
+    }
+    auto message = std::move(state_->replies.front());
+    state_->replies.pop_front();
+    if (message.value("type", "") == "error") {
+        return std::unexpected(Error{message.value("code", "server_error"),
+                                     message.value("message", "Server rejected request")});
+    }
+    return message;
+}
+auto Session::acquire(std::vector<GateClaim> const& gates,
+                      Json const& metadata,
+                      std::stop_token const stop,
+                      std::function<void(Json const&)> const& state)
+    -> std::expected<Grant, Error> {
+    auto claims = Json::array();
+    for (auto const& gate : gates) {
+        claims.push_back({{"name", gate.name},
+                          {"mode", gate.mode == LeaseMode::exclusive ? "exclusive" : "shared"}});
+    }
+    if (auto sent{send(Json{{"type", "acquire"}, {"gates", claims}, {"metadata", metadata}})};
+        !sent) {
+        return std::unexpected(sent.error());
+    }
+    std::atomic<bool> cancelling{};
+    std::optional<std::stop_callback<std::function<void()>>> cancel{
+        std::in_place, stop, [&] {
+            cancelling = true;
+            static_cast<void>(send(Json{{"type", "cancel"}}));
+        }};
+    for (;;) {
+        auto response{receive()};
+        if (!response) {
+            return std::unexpected(response.error());
+        }
+        auto const type{response->value("type", "")};
+        if (state) {
+            state(*response);
+        }
+        if (type == "cancelled") {
+            return std::unexpected(Error{"cancelled", "Pending command cleared without launching"});
+        }
+        if (type == "granted") {
+            cancel.reset();
+            if (!cancelling) {
+                return Grant{state_->id,
+                             CommandId{response->at("command").get<std::uint64_t>()},
+                             LeaseId{response->at("lease").get<std::uint64_t>()}};
+            }
+        }
+        if (type != "queued" && type != "granted") {
+            return std::unexpected(Error{"invalid_response", "Expected admission response"});
+        }
+    }
+}
+auto Session::started(Grant const& grant, std::uint32_t const pid) -> std::expected<void, Error> {
+    if (auto sent{send(Json{{"type", "started"}, {"lease", grant.lease.value}, {"pid", pid}})};
+        !sent) {
+        return sent;
+    }
+    auto response{receive()};
+    if (!response) {
+        return std::unexpected(response.error());
+    }
+    if (response->value("type", "") != "started") {
+        return std::unexpected(Error{"invalid_response", "Expected start acknowledgement"});
+    }
+    return {};
+}
+auto Session::release(Grant const& grant, int const exit_code) -> std::expected<void, Error> {
+    if (auto sent{send(
+            Json{{"type", "release"}, {"lease", grant.lease.value}, {"exit_code", exit_code}})};
+        !sent) {
+        return sent;
+    }
+    auto response{receive()};
+    if (!response) {
+        return std::unexpected(response.error());
+    }
+    if (response->value("type", "") != "released") {
+        return std::unexpected(Error{"invalid_response", "Expected release acknowledgement"});
+    }
+    return {};
 }
 }

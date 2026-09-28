@@ -1,56 +1,52 @@
 #pragma once
-
 #include "jobserver/authority.hpp"
 #include "jobserver/types.hpp"
+
+#include <nlohmann/json.hpp>
 
 #include <expected>
 #include <functional>
 #include <memory>
-#include <optional>
-#include <string>
+#include <stop_token>
 
 namespace jobserver {
-using OutputCallback = std::function<void(std::string const& stream, std::string const& text)>;
-
-class Lease {
-  public:
-    Lease() = default;
-    Lease(Lease&&) noexcept;
-    auto operator=(Lease&&) noexcept -> Lease&;
-    Lease(Lease const&) = delete;
-    auto operator=(Lease const&) -> Lease& = delete;
-    ~Lease();
-
-    [[nodiscard]] auto id() const -> std::string const&;
-    [[nodiscard]] auto connected() const -> bool;
-    auto release() -> std::expected<void, Error>;
-  private:
-    friend class Client;
-    explicit Lease(void* handle, std::string id);
-    void* handle_{};
-    std::string id_;
+struct Grant {
+    ClientId client;
+    CommandId command;
+    LeaseId lease;
 };
-
+class Session {
+  public:
+    static auto connect() -> std::expected<std::unique_ptr<Session>, Error>;
+    ~Session();
+    Session(Session const&) = delete;
+    auto operator=(Session const&) -> Session& = delete;
+    [[nodiscard]] auto id() const -> ClientId;
+    [[nodiscard]] auto lost_event() const -> void*;
+    [[nodiscard]] auto failure() const -> Error;
+    auto acquire(std::vector<GateClaim> const& gates,
+                 nlohmann::json const& metadata,
+                 std::stop_token stop = {},
+                 std::function<void(nlohmann::json const&)> const& state = {})
+        -> std::expected<Grant, Error>;
+    auto started(Grant const& grant, std::uint32_t pid) -> std::expected<void, Error>;
+    auto release(Grant const& grant, int exit_code) -> std::expected<void, Error>;
+  private:
+    struct State;
+    explicit Session(std::unique_ptr<State> state);
+    auto send(nlohmann::json const& message) -> std::expected<void, Error>;
+    auto receive() -> std::expected<nlohmann::json, Error>;
+    std::unique_ptr<State> state_;
+};
 class Client {
   public:
-    [[nodiscard]] static auto acquire(AcquireRequest const& request) -> std::expected<Lease, Error>;
-    [[nodiscard]] static auto run(SubmitRequest const& request, OutputCallback output)
-        -> std::expected<int, Error>;
-    [[nodiscard]] static auto status(bool include_history = false)
+    static auto status() -> std::expected<std::string, Error>;
+    static auto trace(nlohmann::json filters = nlohmann::json::object())
         -> std::expected<std::string, Error>;
-    [[nodiscard]] static auto
-        processes(bool owned, std::optional<std::filesystem::path> worktree = std::nullopt)
-            -> std::expected<std::string, Error>;
-    [[nodiscard]] static auto process_owner(std::uint32_t process_id)
-        -> std::expected<std::string, Error>;
-    [[nodiscard]] static auto kill_owned(std::optional<std::string> kind = std::nullopt)
-        -> std::expected<std::string, Error>;
-    [[nodiscard]] static auto ping() -> std::expected<void, Error>;
-    [[nodiscard]] static auto cancel(std::string const& id, bool kill)
-        -> std::expected<void, Error>;
-    [[nodiscard]] static auto shutdown() -> std::expected<void, Error>;
-    [[nodiscard]] static auto start_daemon() -> std::expected<void, Error>;
-    [[nodiscard]] static auto check_daemon_recovery() -> std::expected<RecoveryAssessment, Error>;
-    [[nodiscard]] static auto force_recover_daemon() -> std::expected<void, Error>;
+    static auto ping() -> std::expected<void, Error>;
+    static auto shutdown() -> std::expected<void, Error>;
+    static auto start_daemon() -> std::expected<void, Error>;
+    static auto check_daemon_recovery() -> std::expected<RecoveryAssessment, Error>;
+    static auto force_recover_daemon() -> std::expected<void, Error>;
 };
 }

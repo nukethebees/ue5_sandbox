@@ -9,11 +9,6 @@
 #include <map>
 
 namespace jobserver {
-enum class LeaseMode { shared, exclusive };
-struct GateClaim {
-    std::string name;
-    LeaseMode mode{LeaseMode::shared};
-};
 struct Admission {
     ClientId client;
     CommandId command;

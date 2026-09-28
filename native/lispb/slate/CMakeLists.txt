@@ -41,7 +41,7 @@ set(SLATE_COMPILE_HEADERS
 )
 add_custom_command(
   OUTPUT ${SLATE_COMPILE_HEADERS}
-  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target slate-compile-fixture
@@ -96,7 +96,7 @@ foreach(document IN LISTS SLATE_CODEGEN_DOCUMENTS)
 endforeach()
 
 add_custom_target(generate-slate-code
-  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target slate-production
@@ -111,7 +111,7 @@ add_custom_target(generate-slate-code
 )
 
 add_custom_target(check-generated-slate-code
-  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" check
+  COMMAND "$<TARGET_FILE:lispb>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target slate-production

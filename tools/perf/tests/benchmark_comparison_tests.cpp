@@ -277,7 +277,7 @@ TEST(Process, WritesStructuredFailureWhenBenchmarkExitsBeforeProfilerReady) {
                                        "--output-dir",
                                        output.string(),
                                        "--skip-build",
-                                       "--jobserver-child",
+                                       "--lease-held",
                                        "--",
                                        "exit",
                                        "7"};
@@ -285,14 +285,14 @@ TEST(Process, WritesStructuredFailureWhenBenchmarkExitsBeforeProfilerReady) {
     for (auto const& argument : arguments) {
         raw_arguments.push_back(argument.c_str());
     }
-    SetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", L"test");
+    SetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_MACHINE_MODE", L"exclusive");
     std::ostringstream standard_output;
     std::ostringstream standard_error;
     auto const exit_code{run_application(static_cast<int>(raw_arguments.size()),
                                          raw_arguments.data(),
                                          standard_output,
                                          standard_error)};
-    SetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", nullptr);
+    SetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_MACHINE_MODE", nullptr);
     EXPECT_EQ(exit_code, 1);
     auto const failure = Json::parse(std::ifstream{output / "comparison.json"});
     ASSERT_TRUE(failure.is_object()) << failure.dump();
@@ -330,7 +330,7 @@ TEST(Process, StopsCaptureBeforeJoiningReadersWhenBenchmarkTimesOut) {
                                        "--process-timeout-seconds",
                                        "0.2",
                                        "--skip-build",
-                                       "--jobserver-child",
+                                       "--lease-held",
                                        "--",
                                        "ready-and-block"};
     std::vector<char const*> raw_arguments;
@@ -338,7 +338,7 @@ TEST(Process, StopsCaptureBeforeJoiningReadersWhenBenchmarkTimesOut) {
         raw_arguments.push_back(argument.c_str());
     }
 
-    SetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", L"test");
+    SetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_MACHINE_MODE", L"exclusive");
     std::ostringstream standard_output;
     std::ostringstream standard_error;
     auto const started{std::chrono::steady_clock::now()};
@@ -347,7 +347,7 @@ TEST(Process, StopsCaptureBeforeJoiningReadersWhenBenchmarkTimesOut) {
                                          standard_output,
                                          standard_error)};
     auto const elapsed{std::chrono::steady_clock::now() - started};
-    SetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", nullptr);
+    SetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_MACHINE_MODE", nullptr);
 
     EXPECT_EQ(exit_code, 1);
     EXPECT_LT(elapsed, std::chrono::seconds{5});

@@ -1,29 +1,12 @@
 include_guard(GLOBAL)
 
 function(sandbox_make_jobserver_command output_variable cli worktree mode kind operation)
-  set(known_kinds
-    build
-    unreal-build
-    test
-    unreal-test
-    unreal-command
-    benchmark
-    static-analysis
-    format
-    generate
-    package
-    integration
-    command
-  )
-  list(FIND known_kinds "${kind}" kind_index)
-  if(kind_index EQUAL -1)
-    message(FATAL_ERROR "Unknown jobserver kind '${kind}'.")
-  endif()
-
   if(mode STREQUAL "BENCHMARK")
-    set(machine_claim --exclusive machine --exclusive benchmark)
+    set(machine_claim --exclusive machine)
   elseif(mode STREQUAL "STANDARD")
-    set(machine_claim --shared machine)
+    # The outer broker/run owns ordinary machine admission.
+    set(${output_variable} "" PARENT_SCOPE)
+    return()
   else()
     message(FATAL_ERROR "Unknown jobserver activity mode '${mode}'.")
   endif()

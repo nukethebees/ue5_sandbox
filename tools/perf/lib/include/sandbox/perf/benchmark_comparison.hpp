@@ -29,7 +29,7 @@ struct CompareOptions {
     double process_timeout_seconds{1800.0};
     int top{5};
     std::vector<std::string> runner_arguments{};
-    bool jobserver_child{};
+    bool lease_held{};
 };
 
 struct CommandLineResult {

@@ -22,7 +22,12 @@ function(sandbox_unreal_jobserver_command output_variable mode engine_access kin
   endif()
 
   sandbox_jobserver_command(command "${mode}" "${kind}" "${operation}")
-  list(POP_BACK command)
+  if(command)
+    list(POP_BACK command)
+  else()
+    set(command "${IOJ_JOBSERVER_CLI}" run --name "${operation}" --kind "${kind}"
+      --worktree "${CMAKE_SOURCE_DIR}")
+  endif()
   if(engine_access STREQUAL "SHARED")
     list(APPEND command --shared "${UE_ENGINE_JOBSERVER_RESOURCE}" --)
   else()

@@ -120,7 +120,7 @@ internal sealed class BenchmarkToolsApplication(
             }
         }
 
-        if (string.IsNullOrWhiteSpace(environment.GetEnvironmentVariable("NUKETHEBEES_JOBSERVER_JOB")))
+        if (environment.GetEnvironmentVariable("NUKETHEBEES_JOBSERVER_MACHINE_MODE") != "exclusive")
         {
             var jobserver_request = JobserverExecution.CreateNativeSimulationRequest(
                 jobserver_locator.Locate(),
