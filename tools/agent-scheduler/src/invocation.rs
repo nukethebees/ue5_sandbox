@@ -19,7 +19,7 @@ struct Active {
 struct AttemptState {
     number: u64,
     disposition: Disposition,
-    root: Option<i32>,
+    root_exit_code: Option<i32>,
 }
 
 #[derive(Default, PartialEq)]
@@ -30,7 +30,7 @@ enum Disposition {
     Finished,
 }
 
-/// A generic process observer; it neither spawns nor owns the process.
+/// One physical attempt's root-exit observer; it neither spawns nor owns the process.
 #[derive(Clone)]
 pub struct Attempt {
     active: Option<Arc<Active>>,
@@ -39,7 +39,7 @@ pub struct Attempt {
 
 impl std::fmt::Debug for Attempt {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("RootExitObserver")
+        f.write_str("Attempt")
     }
 }
 
@@ -82,10 +82,10 @@ impl Invocation {
                 bail!("Logical command already accepted; cannot spawn another attempt");
             }
             attempt.number += 1;
-            attempt.root = None;
+            attempt.root_exit_code = None;
             attempt.number
         };
-        scheduler.command_started(command);
+        scheduler.record_command(command);
         Ok(Attempt {
             active: Some(active),
             number,
@@ -98,7 +98,7 @@ impl Invocation {
         if let Some(active) = self.active.lock().unwrap().as_ref() {
             let mut attempt = active.attempt.lock().unwrap();
             attempt.disposition = Disposition::Accepted;
-            if let Some(code) = attempt.root {
+            if let Some(code) = attempt.root_exit_code {
                 active.scheduler.release(active.generation, Some(code));
                 attempt.disposition = Disposition::Finished;
             }
@@ -120,7 +120,7 @@ impl Attempt {
                 .fail("Root exit notification was lost; restart this Codex session".into());
             return;
         };
-        attempt.root = Some(code);
+        attempt.root_exit_code = Some(code);
         if attempt.disposition == Disposition::Accepted {
             active.scheduler.release(active.generation, Some(code));
             attempt.disposition = Disposition::Finished;
@@ -130,12 +130,14 @@ impl Attempt {
 
 impl Drop for Invocation {
     fn drop(&mut self) {
-        if let Some(active) = self.active.lock().unwrap().take() {
+        if let Some(active) = self.active.get_mut().unwrap().take() {
             let mut attempt = active.attempt.lock().unwrap();
             if attempt.disposition == Disposition::Undecided {
                 // Spawn failure, denied retry, or cancellation. The session explicitly stays
                 // Releasing until the daemon acknowledges; Drop never pretends release is done.
-                active.scheduler.release(active.generation, attempt.root);
+                active
+                    .scheduler
+                    .release(active.generation, attempt.root_exit_code);
                 attempt.disposition = Disposition::Finished;
             }
         }

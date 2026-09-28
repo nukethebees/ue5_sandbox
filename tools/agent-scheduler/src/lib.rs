@@ -440,7 +440,7 @@ impl Scheduler {
         }
     }
 
-    fn command_started(&self, command: &str) {
+    fn record_command(&self, command: &str) {
         let _ = self
             .outgoing
             .send(json!({"type":"health","state":format!("local command: {command}")}));
