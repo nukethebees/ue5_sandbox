@@ -152,17 +152,8 @@ auto accumulate_bounds(Vec3Batch p,
     bounds.max.z = hn::Max(bounds.max.z, c.z + e.z);
 }
 auto reduce_axis(FloatVec minimum, FloatVec maximum, float& low, float& high) noexcept -> void {
-    // Keep the first equal lane (including signed zero) and ignore NaNs, as std::min/max do.
-    // Highway's tree reductions do not preserve this ordering.
-    std::array<float, lanes> minima{};
-    std::array<float, lanes> maxima{};
-    hn::StoreU(minimum, DFloat{}, minima.data());
-    hn::StoreU(maximum, DFloat{}, maxima.data());
-
-    for (auto lane{0U}; lane < lanes; ++lane) {
-        low = std::min(low, minima[lane]);
-        high = std::max(high, maxima[lane]);
-    }
+    low = std::min(low, hn::ReduceMin(DFloat{}, minimum));
+    high = std::max(high, hn::ReduceMax(DFloat{}, maximum));
 }
 
 template <PackingFields fields, BoundsMode bounds_mode>
