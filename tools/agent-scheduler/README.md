@@ -50,7 +50,10 @@ root exit retains the ticket until that retry/final decision is known.
 The accepted attempt releases on **root-process exit**, independently of descendants
 and output EOF. Ordinary pipe/PTY backends observe `child.wait()`; the restricted
 backend signals after its Win32 root wait and exit-code query, before output
-draining or ConPTY shutdown. Root notification uses the backend's completion code.
+draining or ConPTY shutdown. The scheduler records the backend's root exit code;
+Codex may separately report a logical timeout status such as `124`. Those diagnostic
+codes can differ because timeout handling belongs to Codex's higher-level command
+completion. Scheduler release does not wait for that final status or output EOF.
 Codex's output draining and ConPTY teardown remain unchanged, so console descendants
 may still be ended by Codex. The scheduler does not supervise or kill processes.
 
