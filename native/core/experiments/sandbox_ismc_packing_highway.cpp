@@ -32,13 +32,21 @@ using IntVec = hn::Vec<DInt>;
 inline constexpr auto lanes{HWY_LANES(float)};
 static_assert(lanes == (HWY_TARGET == HWY_AVX2 ? 8 : 16));
 
-auto quantize_position(FloatVec value, float root) noexcept -> IntVec {
-    auto const offset{hn::Mul(hn::Sub(value, hn::Set(DFloat{}, root)),
-                              hn::Set(DFloat{}, inverse_position_quantum))};
+struct Vec3Batch {
+    FloatVec x, y, z;
+};
 
+struct QuatBatch {
+    FloatVec x, y, z, w;
+};
+
+auto quantize_position(FloatVec value, FloatVec root) noexcept -> IntVec {
+    auto const offset{(value - root) * hn::Set(DFloat{}, inverse_position_quantum)};
+
+    // Quantizable positions fit int16, so the int32 conversion needs no saturation.
     // Round to the nearest integer; break ties toward positive infinity.
-    auto const integral{hn::ConvertTo(DInt{}, offset)};
-    auto const fraction{hn::Sub(offset, hn::ConvertTo(DFloat{}, integral))};
+    auto const integral{hn::ConvertInRangeTo(DInt{}, offset)};
+    auto const fraction{offset - hn::ConvertTo(DFloat{}, integral)};
 
     auto const increment{
         hn::IfThenElse(hn::RebindMask(DInt{}, hn::Ge(fraction, hn::Set(DFloat{}, 0.5f))),
@@ -49,154 +57,103 @@ auto quantize_position(FloatVec value, float root) noexcept -> IntVec {
                        hn::Set(DInt{}, 1),
                        hn::Zero(DInt{}))};
 
-    return hn::Sub(hn::Add(integral, increment), decrement);
+    return integral + increment - decrement;
 }
 auto quantize_component(FloatVec value) noexcept -> IntVec {
-    auto const mapped{
-        hn::Add(hn::Mul(hn::Add(value, hn::Set(DFloat{}, quaternion_component_limit)),
-                        hn::Set(DFloat{}, 1023.0f / (2.0f * quaternion_component_limit))),
-                hn::Set(DFloat{}, 0.5f))};
+    auto const mapped{(value + hn::Set(DFloat{}, quaternion_component_limit)) *
+                          hn::Set(DFloat{}, 1023.0f / (2.0f * quaternion_component_limit)) +
+                      hn::Set(DFloat{}, 0.5f)};
 
     // Clamp normalization drift before converting to ten bits.
     return hn::ConvertTo(DInt{},
                          hn::Min(hn::Set(DFloat{}, 1023.0f), hn::Max(hn::Zero(DFloat{}), mapped)));
 }
-auto pack_rotation(FloatVec quaternion_x,
-                   FloatVec quaternion_y,
-                   FloatVec quaternion_z,
-                   FloatVec quaternion_w) noexcept -> IntVec {
-    auto largest_component_index{hn::Zero(DInt{})};
-    auto largest_component{quaternion_x};
+auto pack_rotation(QuatBatch q) noexcept -> IntVec {
+    auto largest_index{hn::Zero(DInt{})};
+    auto largest{q.x};
 
     // Keep the first component when magnitudes tie.
-    auto const select_y{hn::Gt(hn::Abs(quaternion_y), hn::Abs(largest_component))};
-    largest_component_index = hn::IfThenElse(
-        hn::RebindMask(DInt{}, select_y), hn::Set(DInt{}, 1), largest_component_index);
-    largest_component = hn::IfThenElse(select_y, quaternion_y, largest_component);
+    auto const select_y{hn::Gt(hn::Abs(q.y), hn::Abs(largest))};
+    largest_index =
+        hn::IfThenElse(hn::RebindMask(DInt{}, select_y), hn::Set(DInt{}, 1), largest_index);
+    largest = hn::IfThenElse(select_y, q.y, largest);
 
-    auto const select_z{hn::Gt(hn::Abs(quaternion_z), hn::Abs(largest_component))};
-    largest_component_index = hn::IfThenElse(
-        hn::RebindMask(DInt{}, select_z), hn::Set(DInt{}, 2), largest_component_index);
-    largest_component = hn::IfThenElse(select_z, quaternion_z, largest_component);
+    auto const select_z{hn::Gt(hn::Abs(q.z), hn::Abs(largest))};
+    largest_index =
+        hn::IfThenElse(hn::RebindMask(DInt{}, select_z), hn::Set(DInt{}, 2), largest_index);
+    largest = hn::IfThenElse(select_z, q.z, largest);
 
-    auto const select_w{hn::Gt(hn::Abs(quaternion_w), hn::Abs(largest_component))};
-    largest_component_index = hn::IfThenElse(
-        hn::RebindMask(DInt{}, select_w), hn::Set(DInt{}, 3), largest_component_index);
-    largest_component = hn::IfThenElse(select_w, quaternion_w, largest_component);
+    auto const select_w{hn::Gt(hn::Abs(q.w), hn::Abs(largest))};
+    largest_index =
+        hn::IfThenElse(hn::RebindMask(DInt{}, select_w), hn::Set(DInt{}, 3), largest_index);
+    largest = hn::IfThenElse(select_w, q.w, largest);
 
     // Omit the largest component and canonicalize its sign.
-    auto const sign_mask{hn::And(largest_component, hn::Set(DFloat{}, -0.0f))};
-    auto const first_retained_component{
-        hn::IfThenElse(hn::RebindMask(DFloat{}, hn::Eq(largest_component_index, hn::Zero(DInt{}))),
-                       quaternion_y,
-                       quaternion_x)};
-    auto const second_retained_component{hn::IfThenElse(
-        hn::RebindMask(DFloat{}, hn::Lt(largest_component_index, hn::Set(DInt{}, 2))),
-        quaternion_z,
-        quaternion_y)};
-    auto const third_retained_component{hn::IfThenElse(
-        hn::RebindMask(DFloat{}, hn::Lt(largest_component_index, hn::Set(DInt{}, 3))),
-        quaternion_w,
-        quaternion_z)};
+    auto const sign_mask{hn::And(largest, hn::Set(DFloat{}, -0.0f))};
+    auto const retained0{hn::IfThenElse(
+        hn::RebindMask(DFloat{}, hn::Eq(largest_index, hn::Zero(DInt{}))), q.y, q.x)};
+    auto const retained1{hn::IfThenElse(
+        hn::RebindMask(DFloat{}, hn::Lt(largest_index, hn::Set(DInt{}, 2))), q.z, q.y)};
+    auto const retained2{hn::IfThenElse(
+        hn::RebindMask(DFloat{}, hn::Lt(largest_index, hn::Set(DInt{}, 3))), q.w, q.z)};
+
+    auto const a{quantize_component(hn::Xor(retained0, sign_mask))};
+    auto const b{quantize_component(hn::Xor(retained1, sign_mask))};
+    auto const c{quantize_component(hn::Xor(retained2, sign_mask))};
 
     // Store the index in two bits and each retained component in ten.
-    return hn::Or(
-        largest_component_index,
-        hn::Or(hn::ShiftLeft<2>(quantize_component(hn::Xor(first_retained_component, sign_mask))),
-               hn::Or(hn::ShiftLeft<12>(
-                          quantize_component(hn::Xor(second_retained_component, sign_mask))),
-                      hn::ShiftLeft<22>(
-                          quantize_component(hn::Xor(third_retained_component, sign_mask))))));
+    return largest_index | hn::ShiftLeft<2>(a) | hn::ShiftLeft<12>(b) | hn::ShiftLeft<22>(c);
 }
 
 struct BatchBounds {
-    FloatVec min_x;
-    FloatVec min_y;
-    FloatVec min_z;
-
-    FloatVec max_x;
-    FloatVec max_y;
-    FloatVec max_z;
+    Vec3Batch min;
+    Vec3Batch max;
 };
 
-auto accumulate_axis(FloatVec position_axis,
-                     FloatVec rotation_row_x,
-                     FloatVec rotation_row_y,
-                     FloatVec rotation_row_z,
-                     PackingParameters const& parameters,
-                     FloatVec& minimum,
-                     FloatVec& maximum) noexcept -> void {
-    auto const center{hn::Add(
-        hn::Add(hn::Add(position_axis,
-                        hn::Mul(rotation_row_x, hn::Set(DFloat{}, parameters.mesh_origin.X))),
-                hn::Mul(rotation_row_y, hn::Set(DFloat{}, parameters.mesh_origin.Y))),
-        hn::Mul(rotation_row_z, hn::Set(DFloat{}, parameters.mesh_origin.Z)))};
-
-    // Project the local AABB extents using the absolute rotation basis.
-    auto const extent{hn::Add(
-        hn::Add(hn::Mul(hn::Abs(rotation_row_x), hn::Set(DFloat{}, parameters.mesh_extent.X)),
-                hn::Mul(hn::Abs(rotation_row_y), hn::Set(DFloat{}, parameters.mesh_extent.Y))),
-        hn::Mul(hn::Abs(rotation_row_z), hn::Set(DFloat{}, parameters.mesh_extent.Z)))};
-
-    minimum = hn::Min(minimum, hn::Sub(center, extent));
-    maximum = hn::Max(maximum, hn::Add(center, extent));
-}
-auto accumulate_bounds(FloatVec position_x,
-                       FloatVec position_y,
-                       FloatVec position_z,
-                       FloatVec quaternion_x,
-                       FloatVec quaternion_y,
-                       FloatVec quaternion_z,
-                       FloatVec quaternion_w,
-                       PackingParameters const& parameters,
+auto accumulate_bounds(Vec3Batch p,
+                       QuatBatch q,
+                       Vec3Batch origin,
+                       Vec3Batch extent,
                        BatchBounds& bounds) noexcept -> void {
     auto const two{hn::Set(DFloat{}, 2.0f)};
     auto const one{hn::Set(DFloat{}, 1.0f)};
 
-    // Preserve scalar multiplication order for exact bounds parity.
-    auto const twice_x{hn::Mul(two, quaternion_x)};
-    auto const twice_y{hn::Mul(two, quaternion_y)};
-    auto const twice_z{hn::Mul(two, quaternion_z)};
-    auto const twice_w{hn::Mul(two, quaternion_w)};
+    // Preserve scalar evaluation order for exact bounds parity; do not fuse Mul/Add.
+    auto const x2{two * q.x};
+    auto const y2{two * q.y};
+    auto const z2{two * q.z};
+    auto const w2{two * q.w};
 
-    auto const twice_xx{hn::Mul(twice_x, quaternion_x)};
-    auto const twice_yy{hn::Mul(twice_y, quaternion_y)};
-    auto const twice_zz{hn::Mul(twice_z, quaternion_z)};
+    auto const xx{x2 * q.x}, yy{y2 * q.y}, zz{z2 * q.z};
+    auto const xy{x2 * q.y}, xz{x2 * q.z}, yz{y2 * q.z};
+    auto const wx{w2 * q.x}, wy{w2 * q.y}, wz{w2 * q.z};
 
-    auto const twice_xy{hn::Mul(twice_x, quaternion_y)};
-    auto const twice_xz{hn::Mul(twice_x, quaternion_z)};
-    auto const twice_yz{hn::Mul(twice_y, quaternion_z)};
+    // Rows of R, including the accepted small normalization error.
+    Vec3Batch const r0{one - (yy + zz), xy - wz, xz + wy};
+    Vec3Batch const r1{xy + wz, one - (xx + zz), yz - wx};
+    Vec3Batch const r2{xz - wy, yz + wx, one - (xx + yy)};
 
-    auto const twice_wx{hn::Mul(twice_w, quaternion_x)};
-    auto const twice_wy{hn::Mul(twice_w, quaternion_y)};
-    auto const twice_wz{hn::Mul(twice_w, quaternion_z)};
+    Vec3Batch const c{((p.x + r0.x * origin.x) + r0.y * origin.y) + r0.z * origin.z,
+                      ((p.y + r1.x * origin.x) + r1.y * origin.y) + r1.z * origin.z,
+                      ((p.z + r2.x * origin.x) + r2.y * origin.y) + r2.z * origin.z};
 
-    // Expand the quaternion into rotation rows.
-    accumulate_axis(position_x,
-                    hn::Sub(one, hn::Add(twice_yy, twice_zz)),
-                    hn::Sub(twice_xy, twice_wz),
-                    hn::Add(twice_xz, twice_wy),
-                    parameters,
-                    bounds.min_x,
-                    bounds.max_x);
+    // Project local AABB extents using |R|.
+    Vec3Batch const e{
+        (hn::Abs(r0.x) * extent.x + hn::Abs(r0.y) * extent.y) + hn::Abs(r0.z) * extent.z,
+        (hn::Abs(r1.x) * extent.x + hn::Abs(r1.y) * extent.y) + hn::Abs(r1.z) * extent.z,
+        (hn::Abs(r2.x) * extent.x + hn::Abs(r2.y) * extent.y) + hn::Abs(r2.z) * extent.z};
 
-    accumulate_axis(position_y,
-                    hn::Add(twice_xy, twice_wz),
-                    hn::Sub(one, hn::Add(twice_xx, twice_zz)),
-                    hn::Sub(twice_yz, twice_wx),
-                    parameters,
-                    bounds.min_y,
-                    bounds.max_y);
+    bounds.min.x = hn::Min(bounds.min.x, c.x - e.x);
+    bounds.min.y = hn::Min(bounds.min.y, c.y - e.y);
+    bounds.min.z = hn::Min(bounds.min.z, c.z - e.z);
 
-    accumulate_axis(position_z,
-                    hn::Sub(twice_xz, twice_wy),
-                    hn::Add(twice_yz, twice_wx),
-                    hn::Sub(one, hn::Add(twice_xx, twice_yy)),
-                    parameters,
-                    bounds.min_z,
-                    bounds.max_z);
+    bounds.max.x = hn::Max(bounds.max.x, c.x + e.x);
+    bounds.max.y = hn::Max(bounds.max.y, c.y + e.y);
+    bounds.max.z = hn::Max(bounds.max.z, c.z + e.z);
 }
 auto reduce_axis(FloatVec minimum, FloatVec maximum, float& low, float& high) noexcept -> void {
+    // Keep the first equal lane (including signed zero) and ignore NaNs, as std::min/max do.
+    // Highway's tree reductions do not preserve this ordering.
     std::array<float, lanes> minima{};
     std::array<float, lanes> maxima{};
     hn::StoreU(minimum, DFloat{}, minima.data());
@@ -210,7 +167,7 @@ auto reduce_axis(FloatVec minimum, FloatVec maximum, float& low, float& high) no
 
 template <PackingFields fields, BoundsMode bounds_mode>
 auto pack(TransformInput input,
-          PackingParameters const& parameters,
+          PackingParameters const& params,
           std::span<PackedTransform> output,
           TransformBounds* bounds) noexcept -> void {
     static_assert(bounds_mode == BoundsMode::Skip || fields == PackingFields::Transforms);
@@ -221,13 +178,21 @@ auto pack(TransformInput input,
 
     auto const limit{hn::Set(DFloat{}, std::numeric_limits<float>::max())};
     auto const negative_limit{hn::Set(DFloat{}, -std::numeric_limits<float>::max())};
-    BatchBounds batch{limit, limit, limit, negative_limit, negative_limit, negative_limit};
+    BatchBounds batch{{limit, limit, limit}, {negative_limit, negative_limit, negative_limit}};
+    Vec3Batch const origin{hn::Set(DFloat{}, params.mesh_origin.X),
+                           hn::Set(DFloat{}, params.mesh_origin.Y),
+                           hn::Set(DFloat{}, params.mesh_origin.Z)};
+    Vec3Batch const extent{hn::Set(DFloat{}, params.mesh_extent.X),
+                           hn::Set(DFloat{}, params.mesh_extent.Y),
+                           hn::Set(DFloat{}, params.mesh_extent.Z)};
+    Vec3Batch const root{hn::Set(DFloat{}, params.position_root.X),
+                         hn::Set(DFloat{}, params.position_root.Y),
+                         hn::Set(DFloat{}, params.position_root.Z)};
 
-    auto const vector_count{output.size() / lanes * lanes};
-    for (std::size_t index{}; index < vector_count; index += lanes) {
-        FloatVec position_x{};
-        FloatVec position_y{};
-        FloatVec position_z{};
+    auto* const dst{output.data()};
+    auto const simd_end{output.size() / lanes * lanes};
+    for (std::size_t index{}; index < simd_end; index += lanes) {
+        Vec3Batch p{};
 
         std::array<std::int32_t, lanes> packed_x{};
         std::array<std::int32_t, lanes> packed_y{};
@@ -236,14 +201,14 @@ auto pack(TransformInput input,
 
         if constexpr (fields != PackingFields::Rotations) {
             // Copy object representations without assuming alignment or typed aliases.
-            std::array<float, 3 * lanes> xyz;
+            std::array<float, 3 * lanes> xyz{};
             std::memcpy(
                 xyz.data(), input.positions.data() + index * 3 * sizeof(float), sizeof(xyz));
-            hn::LoadInterleaved3(DFloat{}, xyz.data(), position_x, position_y, position_z);
+            hn::LoadInterleaved3(DFloat{}, xyz.data(), p.x, p.y, p.z);
 
-            auto const quantized_x{quantize_position(position_x, parameters.position_root.X)};
-            auto const quantized_y{quantize_position(position_y, parameters.position_root.Y)};
-            auto const quantized_z{quantize_position(position_z, parameters.position_root.Z)};
+            auto const quantized_x{quantize_position(p.x, root.x)};
+            auto const quantized_y{quantize_position(p.y, root.y)};
+            auto const quantized_z{quantize_position(p.z, root.z)};
 
             hn::StoreU(quantized_x, DInt{}, packed_x.data());
             hn::StoreU(quantized_y, DInt{}, packed_y.data());
@@ -251,33 +216,23 @@ auto pack(TransformInput input,
         }
 
         if constexpr (fields != PackingFields::Positions) {
-            std::array<float, 4 * lanes> xyzw;
+            std::array<float, 4 * lanes> xyzw{};
             std::memcpy(
                 xyzw.data(), input.rotations.data() + index * 4 * sizeof(float), sizeof(xyzw));
-            FloatVec quaternion_x{}, quaternion_y{}, quaternion_z{}, quaternion_w{};
-            hn::LoadInterleaved4(
-                DFloat{}, xyzw.data(), quaternion_x, quaternion_y, quaternion_z, quaternion_w);
+            QuatBatch q{};
+            hn::LoadInterleaved4(DFloat{}, xyzw.data(), q.x, q.y, q.z, q.w);
 
-            auto const rotation{
-                pack_rotation(quaternion_x, quaternion_y, quaternion_z, quaternion_w)};
+            auto const rotation{pack_rotation(q)};
             hn::StoreU(hn::BitCast(DUInt{}, rotation), DUInt{}, packed_rotation.data());
 
             if constexpr (bounds_mode == BoundsMode::Calculate) {
-                accumulate_bounds(position_x,
-                                  position_y,
-                                  position_z,
-                                  quaternion_x,
-                                  quaternion_y,
-                                  quaternion_z,
-                                  quaternion_w,
-                                  parameters,
-                                  batch);
+                accumulate_bounds(p, q, origin, extent, batch);
             }
         }
 
         // Preserve the reserved halfword in each 12-byte output.
         for (auto lane{0U}; lane < lanes; ++lane) {
-            auto& packed{output[index + lane]};
+            auto& packed{dst[index + lane]};
             if constexpr (fields != PackingFields::Rotations) {
                 packed.position = {static_cast<std::int16_t>(packed_x[lane]),
                                    static_cast<std::int16_t>(packed_y[lane]),
@@ -291,24 +246,23 @@ auto pack(TransformInput input,
     }
 
     // Pack the remainder without reading beyond the input spans.
-    auto const tail{output.subspan(vector_count)};
+    auto const tail{output.subspan(simd_end)};
     if constexpr (fields == PackingFields::Transforms) {
-        TransformInput const remaining{input.positions.subspan(vector_count * 3 * sizeof(float)),
-                                       input.rotations.subspan(vector_count * 4 * sizeof(float))};
-        pack_transforms_scalar(remaining, parameters, tail, bounds);
+        TransformInput const remaining{input.positions.subspan(simd_end * 3 * sizeof(float)),
+                                       input.rotations.subspan(simd_end * 4 * sizeof(float))};
+        pack_transforms_scalar(remaining, params, tail, bounds);
     } else if constexpr (fields == PackingFields::Positions) {
-        pack_positions_scalar(input.positions.subspan(vector_count * 3 * sizeof(float)),
-                              parameters.position_root,
-                              tail);
+        pack_positions_scalar(
+            input.positions.subspan(simd_end * 3 * sizeof(float)), params.position_root, tail);
     } else {
-        pack_rotations_scalar(input.rotations.subspan(vector_count * 4 * sizeof(float)), tail);
+        pack_rotations_scalar(input.rotations.subspan(simd_end * 4 * sizeof(float)), tail);
     }
 
     if constexpr (bounds_mode == BoundsMode::Calculate) {
         // Merge vector extrema into the scalar tail bounds.
-        reduce_axis(batch.min_x, batch.max_x, bounds->minimum.X, bounds->maximum.X);
-        reduce_axis(batch.min_y, batch.max_y, bounds->minimum.Y, bounds->maximum.Y);
-        reduce_axis(batch.min_z, batch.max_z, bounds->minimum.Z, bounds->maximum.Z);
+        reduce_axis(batch.min.x, batch.max.x, bounds->minimum.X, bounds->maximum.X);
+        reduce_axis(batch.min.y, batch.max.y, bounds->minimum.Y, bounds->maximum.Y);
+        reduce_axis(batch.min.z, batch.max.z, bounds->minimum.Z, bounds->maximum.Z);
 
         bounds->valid = !output.empty();
     }
@@ -326,15 +280,14 @@ auto pack_rotations(std::span<std::byte const> rotations,
     detail::pack<PackingFields::Rotations, BoundsMode::Skip>({{}, rotations}, {}, output, nullptr);
 }
 auto pack_transforms(TransformInput input,
-                     PackingParameters const& parameters,
+                     PackingParameters const& params,
                      std::span<PackedTransform> output,
                      TransformBounds* bounds) noexcept -> void {
     if (bounds != nullptr) {
         detail::pack<PackingFields::Transforms, BoundsMode::Calculate>(
-            input, parameters, output, bounds);
+            input, params, output, bounds);
     } else {
-        detail::pack<PackingFields::Transforms, BoundsMode::Skip>(
-            input, parameters, output, nullptr);
+        detail::pack<PackingFields::Transforms, BoundsMode::Skip>(input, params, output, nullptr);
     }
 }
 }
