@@ -104,7 +104,7 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
                                                 .field_mask_name = "FFieldMask",
                                                 .field_enum_name = "EField",
                                             }}}},
-        };
+    };
 
     auto const header{render_modules(lower_modules(manifest)).front().content};
     EXPECT_NE(header.find("enum class EField : uint8"), std::string::npos);
@@ -617,7 +617,7 @@ TEST(Generator, RendersCompleteProductionManifest) {
     auto const manifest{load_sources(project.root / target.types, sources)};
     auto const files{render_modules(lower_modules(manifest))};
 
-    EXPECT_EQ(files.size(), 102);
+    EXPECT_EQ(files.size(), 103);
     EXPECT_EQ(files.front().path, "native/simulation/include/ioj/sim/sim_state.h");
     EXPECT_EQ(files.back().path,
               "Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp");
