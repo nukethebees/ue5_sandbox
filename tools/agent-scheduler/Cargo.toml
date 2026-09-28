@@ -1,0 +1,16 @@
+[package]
+name = "agent-scheduler"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+
+[dependencies]
+anyhow = "1"
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "io-util", "sync", "time", "signal", "process"] }
+tokio-util = "0.7"
+codex-execpolicy = { path = "../../.local/codex-upstream/codex-rs/execpolicy" }
+codex-shell-command = { path = "../../.local/codex-upstream/codex-rs/shell-command" }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_System_Threading"] }
+
