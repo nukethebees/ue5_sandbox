@@ -390,3 +390,37 @@ boundary positions, quaternion ties/signs, normalization tolerance, unaligned in
 preservation matched the scalar reference. Bounds matched exactly between scalar and AVX2 and
 were separately checked against rotated corners and Unreal's original rotated-basis formulation.
 Static analysis was skipped at the maintainer's request; ASAN was not requested.
+
+## Production Highway packing (2026-09-28)
+
+The chunk writer calls `pack_transforms` in `native/core`. This selects the Highway AVX2
+implementation after one cached CPU/OS capability check, with the scalar implementation as a
+fallback. Highway's AVX2 target also requires BMI2, FMA, F16C, AES and PCLMUL; checking its complete
+feature set avoids adding those requirements to the plugin's existing AVX2 baseline. The scalar
+reference and dispatcher are compiled separately without AVX2 flags. `SandboxCore.Build.cs` links
+the CMake-built Highway support library alongside `SandboxNativeCore.lib`.
+
+The production kernel retains byte-safe interleaved loads, eight-instance batches, scalar tails,
+and the existing packed layout. Bounds use explicit FMA for center/extent expressions and native
+horizontal reductions; packed quaternion quantization retains separate multiplication/addition.
+FMA can change bounds rounding relative to the scalar reference, although existing parity cases
+pass. This migration does not change the arithmetic from the validated Highway experiment.
+
+The intrinsic AVX2 implementation now lives under `experiments/`, alongside the AVX512 comparison.
+AVX512 remains experimental. Native correctness cases exercise the production entry points, and
+the packing benchmark identifies this path as `production`, including capability-check overhead.
+The `native-core-ismc-benchmark-report` target compares scalar, intrinsic AVX2 and production paths.
+
+Seven randomly interleaved Release repetitions (0.05 seconds minimum) on the same Ryzen 9 9950X3D
+measured these median microseconds, including the production dispatch:
+
+| Instances | Full intrinsic AVX2 | Full production | Bounds intrinsic AVX2 | Bounds production |
+| ---: | ---: | ---: | ---: | ---: |
+| 17 | 0.0526 | 0.0565 | 0.0834 | 0.0725 |
+| 2,000 | 2.816 | 2.584 | 4.369 | 3.697 |
+| 40,000 | 57.042 | 51.854 | 88.980 | 74.333 |
+
+Large batches improved 8–9% without bounds and 15–16% with bounds. Coherent rotations showed
+similar gains. The 17-instance case without bounds costs about four extra nanoseconds; with
+bounds it improved 13%. The migrated Highway hot loops retain the experiment's instruction,
+spill, reload and FMA counts. Raw samples are local at `.local/benchmarks/ismc-primary/packing.json`.
