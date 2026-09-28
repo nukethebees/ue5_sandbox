@@ -22,80 +22,81 @@ namespace detail {
 
 namespace hn = hwy::HWY_NAMESPACE;
 
-using DFloat = hn::ScalableTag<float>;
-using DInt = hn::RebindToSigned<DFloat>;
-using DUInt = hn::RebindToUnsigned<DFloat>;
+using DF = hn::ScalableTag<float>;
+using DI = hn::RebindToSigned<DF>;
+using DU = hn::RebindToUnsigned<DF>;
 
-using FloatVec = hn::Vec<DFloat>;
-using IntVec = hn::Vec<DInt>;
+inline constexpr DF df{};
+inline constexpr DI di{};
+inline constexpr DU du{};
+
+using VF = hn::Vec<DF>;
+using VI = hn::Vec<DI>;
 
 inline constexpr auto lanes{HWY_LANES(float)};
 static_assert(lanes == (HWY_TARGET == HWY_AVX2 ? 8 : 16));
 
 struct Vec3Batch {
-    FloatVec x, y, z;
+    VF x;
+    VF y;
+    VF z;
 };
 
 struct QuatBatch {
-    FloatVec x, y, z, w;
+    VF x;
+    VF y;
+    VF z;
+    VF w;
 };
 
-auto quantize_position(FloatVec value, FloatVec root) noexcept -> IntVec {
-    auto const offset{(value - root) * hn::Set(DFloat{}, inverse_position_quantum)};
+auto quantize_position(VF value, VF root) noexcept -> VI {
+    auto const offset{(value - root) * hn::Set(df, inverse_position_quantum)};
 
     // Quantizable positions fit int16, so the int32 conversion needs no saturation.
     // Round to the nearest integer; break ties toward positive infinity.
-    auto const integral{hn::ConvertInRangeTo(DInt{}, offset)};
-    auto const fraction{offset - hn::ConvertTo(DFloat{}, integral)};
+    auto const integral{hn::ConvertInRangeTo(di, offset)};
+    auto const fraction{offset - hn::ConvertTo(df, integral)};
 
-    auto const increment{
-        hn::IfThenElse(hn::RebindMask(DInt{}, hn::Ge(fraction, hn::Set(DFloat{}, 0.5f))),
-                       hn::Set(DInt{}, 1),
-                       hn::Zero(DInt{}))};
-    auto const decrement{
-        hn::IfThenElse(hn::RebindMask(DInt{}, hn::Lt(fraction, hn::Set(DFloat{}, -0.5f))),
-                       hn::Set(DInt{}, 1),
-                       hn::Zero(DInt{}))};
+    auto const increment{hn::IfThenElse(
+        hn::RebindMask(di, hn::Ge(fraction, hn::Set(df, 0.5f))), hn::Set(di, 1), hn::Zero(di))};
+    auto const decrement{hn::IfThenElse(
+        hn::RebindMask(di, hn::Lt(fraction, hn::Set(df, -0.5f))), hn::Set(di, 1), hn::Zero(di))};
 
     return integral + increment - decrement;
 }
-auto quantize_component(FloatVec value) noexcept -> IntVec {
-    auto const mapped{(value + hn::Set(DFloat{}, quaternion_component_limit)) *
-                          hn::Set(DFloat{}, 1023.0f / (2.0f * quaternion_component_limit)) +
-                      hn::Set(DFloat{}, 0.5f)};
+auto quantize_component(VF value) noexcept -> VI {
+    auto const mapped{(value + hn::Set(df, quaternion_component_limit)) *
+                          hn::Set(df, 1023.0f / (2.0f * quaternion_component_limit)) +
+                      hn::Set(df, 0.5f)};
 
     // Clamp normalization drift before converting to ten bits.
-    return hn::ConvertTo(DInt{},
-                         hn::Min(hn::Set(DFloat{}, 1023.0f), hn::Max(hn::Zero(DFloat{}), mapped)));
+    return hn::ConvertTo(di, hn::Min(hn::Set(df, 1023.0f), hn::Max(hn::Zero(df), mapped)));
 }
-auto pack_rotation(QuatBatch q) noexcept -> IntVec {
-    auto largest_index{hn::Zero(DInt{})};
+auto pack_rotation(QuatBatch q) noexcept -> VI {
+    auto largest_index{hn::Zero(di)};
     auto largest{q.x};
 
     // Keep the first component when magnitudes tie.
     auto const select_y{hn::Gt(hn::Abs(q.y), hn::Abs(largest))};
-    largest_index =
-        hn::IfThenElse(hn::RebindMask(DInt{}, select_y), hn::Set(DInt{}, 1), largest_index);
+    largest_index = hn::IfThenElse(hn::RebindMask(di, select_y), hn::Set(di, 1), largest_index);
     largest = hn::IfThenElse(select_y, q.y, largest);
 
     auto const select_z{hn::Gt(hn::Abs(q.z), hn::Abs(largest))};
-    largest_index =
-        hn::IfThenElse(hn::RebindMask(DInt{}, select_z), hn::Set(DInt{}, 2), largest_index);
+    largest_index = hn::IfThenElse(hn::RebindMask(di, select_z), hn::Set(di, 2), largest_index);
     largest = hn::IfThenElse(select_z, q.z, largest);
 
     auto const select_w{hn::Gt(hn::Abs(q.w), hn::Abs(largest))};
-    largest_index =
-        hn::IfThenElse(hn::RebindMask(DInt{}, select_w), hn::Set(DInt{}, 3), largest_index);
+    largest_index = hn::IfThenElse(hn::RebindMask(di, select_w), hn::Set(di, 3), largest_index);
     largest = hn::IfThenElse(select_w, q.w, largest);
 
     // Omit the largest component and canonicalize its sign.
-    auto const sign_mask{hn::And(largest, hn::Set(DFloat{}, -0.0f))};
-    auto const retained0{hn::IfThenElse(
-        hn::RebindMask(DFloat{}, hn::Eq(largest_index, hn::Zero(DInt{}))), q.y, q.x)};
-    auto const retained1{hn::IfThenElse(
-        hn::RebindMask(DFloat{}, hn::Lt(largest_index, hn::Set(DInt{}, 2))), q.z, q.y)};
-    auto const retained2{hn::IfThenElse(
-        hn::RebindMask(DFloat{}, hn::Lt(largest_index, hn::Set(DInt{}, 3))), q.w, q.z)};
+    auto const sign_mask{hn::And(largest, hn::Set(df, -0.0f))};
+    auto const retained0{
+        hn::IfThenElse(hn::RebindMask(df, hn::Eq(largest_index, hn::Zero(di))), q.y, q.x)};
+    auto const retained1{
+        hn::IfThenElse(hn::RebindMask(df, hn::Lt(largest_index, hn::Set(di, 2))), q.z, q.y)};
+    auto const retained2{
+        hn::IfThenElse(hn::RebindMask(df, hn::Lt(largest_index, hn::Set(di, 3))), q.w, q.z)};
 
     auto const a{quantize_component(hn::Xor(retained0, sign_mask))};
     auto const b{quantize_component(hn::Xor(retained1, sign_mask))};
@@ -115,8 +116,8 @@ auto accumulate_bounds(Vec3Batch p,
                        Vec3Batch origin,
                        Vec3Batch extent,
                        BatchBounds& bounds) noexcept -> void {
-    auto const two{hn::Set(DFloat{}, 2.0f)};
-    auto const one{hn::Set(DFloat{}, 1.0f)};
+    auto const two{hn::Set(df, 2.0f)};
+    auto const one{hn::Set(df, 1.0f)};
 
     // Preserve scalar evaluation order for exact bounds parity; do not fuse Mul/Add.
     auto const x2{two * q.x};
@@ -151,9 +152,9 @@ auto accumulate_bounds(Vec3Batch p,
     bounds.max.y = hn::Max(bounds.max.y, c.y + e.y);
     bounds.max.z = hn::Max(bounds.max.z, c.z + e.z);
 }
-auto reduce_axis(FloatVec minimum, FloatVec maximum, float& low, float& high) noexcept -> void {
-    low = std::min(low, hn::ReduceMin(DFloat{}, minimum));
-    high = std::max(high, hn::ReduceMax(DFloat{}, maximum));
+auto reduce_axis(VF minimum, VF maximum, float& low, float& high) noexcept -> void {
+    low = std::min(low, hn::ReduceMin(df, minimum));
+    high = std::max(high, hn::ReduceMax(df, maximum));
 }
 
 template <PackingFields fields, BoundsMode bounds_mode>
@@ -167,18 +168,18 @@ auto pack(TransformInput input,
     assert(fields == PackingFields::Positions ||
            input.rotations.size() == output.size() * 4 * sizeof(float));
 
-    auto const limit{hn::Set(DFloat{}, std::numeric_limits<float>::max())};
-    auto const negative_limit{hn::Set(DFloat{}, -std::numeric_limits<float>::max())};
+    auto const limit{hn::Set(df, std::numeric_limits<float>::max())};
+    auto const negative_limit{hn::Set(df, -std::numeric_limits<float>::max())};
     BatchBounds batch{{limit, limit, limit}, {negative_limit, negative_limit, negative_limit}};
-    Vec3Batch const origin{hn::Set(DFloat{}, params.mesh_origin.X),
-                           hn::Set(DFloat{}, params.mesh_origin.Y),
-                           hn::Set(DFloat{}, params.mesh_origin.Z)};
-    Vec3Batch const extent{hn::Set(DFloat{}, params.mesh_extent.X),
-                           hn::Set(DFloat{}, params.mesh_extent.Y),
-                           hn::Set(DFloat{}, params.mesh_extent.Z)};
-    Vec3Batch const root{hn::Set(DFloat{}, params.position_root.X),
-                         hn::Set(DFloat{}, params.position_root.Y),
-                         hn::Set(DFloat{}, params.position_root.Z)};
+    Vec3Batch const origin{hn::Set(df, params.mesh_origin.X),
+                           hn::Set(df, params.mesh_origin.Y),
+                           hn::Set(df, params.mesh_origin.Z)};
+    Vec3Batch const extent{hn::Set(df, params.mesh_extent.X),
+                           hn::Set(df, params.mesh_extent.Y),
+                           hn::Set(df, params.mesh_extent.Z)};
+    Vec3Batch const root{hn::Set(df, params.position_root.X),
+                         hn::Set(df, params.position_root.Y),
+                         hn::Set(df, params.position_root.Z)};
 
     auto* const dst{output.data()};
     auto const simd_end{output.size() / lanes * lanes};
@@ -195,15 +196,15 @@ auto pack(TransformInput input,
             std::array<float, 3 * lanes> xyz{};
             std::memcpy(
                 xyz.data(), input.positions.data() + index * 3 * sizeof(float), sizeof(xyz));
-            hn::LoadInterleaved3(DFloat{}, xyz.data(), p.x, p.y, p.z);
+            hn::LoadInterleaved3(df, xyz.data(), p.x, p.y, p.z);
 
             auto const quantized_x{quantize_position(p.x, root.x)};
             auto const quantized_y{quantize_position(p.y, root.y)};
             auto const quantized_z{quantize_position(p.z, root.z)};
 
-            hn::StoreU(quantized_x, DInt{}, packed_x.data());
-            hn::StoreU(quantized_y, DInt{}, packed_y.data());
-            hn::StoreU(quantized_z, DInt{}, packed_z.data());
+            hn::StoreU(quantized_x, di, packed_x.data());
+            hn::StoreU(quantized_y, di, packed_y.data());
+            hn::StoreU(quantized_z, di, packed_z.data());
         }
 
         if constexpr (fields != PackingFields::Positions) {
@@ -211,10 +212,10 @@ auto pack(TransformInput input,
             std::memcpy(
                 xyzw.data(), input.rotations.data() + index * 4 * sizeof(float), sizeof(xyzw));
             QuatBatch q{};
-            hn::LoadInterleaved4(DFloat{}, xyzw.data(), q.x, q.y, q.z, q.w);
+            hn::LoadInterleaved4(df, xyzw.data(), q.x, q.y, q.z, q.w);
 
             auto const rotation{pack_rotation(q)};
-            hn::StoreU(hn::BitCast(DUInt{}, rotation), DUInt{}, packed_rotation.data());
+            hn::StoreU(hn::BitCast(du, rotation), du, packed_rotation.data());
 
             if constexpr (bounds_mode == BoundsMode::Calculate) {
                 accumulate_bounds(p, q, origin, extent, batch);
