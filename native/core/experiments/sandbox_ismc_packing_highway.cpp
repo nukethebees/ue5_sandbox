@@ -125,7 +125,7 @@ auto accumulate_bounds(Vec3Batch p,
     auto const two{hn::Set(df, 2.0f)};
     auto const one{hn::Set(df, 1.0f)};
 
-    // Preserve scalar evaluation order for exact bounds parity; do not fuse Mul/Add.
+    // Preserve scalar multiplication order in the quaternion products.
     auto const x2{two * q.x};
     auto const y2{two * q.y};
     auto const z2{two * q.z};
@@ -140,15 +140,20 @@ auto accumulate_bounds(Vec3Batch p,
     Vec3Batch const r1{xy + wz, one - (xx + zz), yz - wx};
     Vec3Batch const r2{xz - wy, yz + wx, one - (xx + yy)};
 
-    Vec3Batch const c{((p.x + r0.x * origin.x) + r0.y * origin.y) + r0.z * origin.z,
-                      ((p.y + r1.x * origin.x) + r1.y * origin.y) + r1.z * origin.z,
-                      ((p.z + r2.x * origin.x) + r2.y * origin.y) + r2.z * origin.z};
+    Vec3Batch const c{
+        hn::MulAdd(r0.z, origin.z, hn::MulAdd(r0.y, origin.y, hn::MulAdd(r0.x, origin.x, p.x))),
+        hn::MulAdd(r1.z, origin.z, hn::MulAdd(r1.y, origin.y, hn::MulAdd(r1.x, origin.x, p.y))),
+        hn::MulAdd(r2.z, origin.z, hn::MulAdd(r2.y, origin.y, hn::MulAdd(r2.x, origin.x, p.z)))};
 
     // Project local AABB extents using |R|.
     Vec3Batch const e{
-        (hn::Abs(r0.x) * extent.x + hn::Abs(r0.y) * extent.y) + hn::Abs(r0.z) * extent.z,
-        (hn::Abs(r1.x) * extent.x + hn::Abs(r1.y) * extent.y) + hn::Abs(r1.z) * extent.z,
-        (hn::Abs(r2.x) * extent.x + hn::Abs(r2.y) * extent.y) + hn::Abs(r2.z) * extent.z};
+        hn::MulAdd(
+            hn::Abs(r0.z), extent.z, hn::MulAdd(hn::Abs(r0.y), extent.y, hn::Abs(r0.x) * extent.x)),
+        hn::MulAdd(
+            hn::Abs(r1.z), extent.z, hn::MulAdd(hn::Abs(r1.y), extent.y, hn::Abs(r1.x) * extent.x)),
+        hn::MulAdd(hn::Abs(r2.z),
+                   extent.z,
+                   hn::MulAdd(hn::Abs(r2.y), extent.y, hn::Abs(r2.x) * extent.x))};
 
     bounds.min.x = hn::Min(bounds.min.x, c.x - e.x);
     bounds.min.y = hn::Min(bounds.min.y, c.y - e.y);
