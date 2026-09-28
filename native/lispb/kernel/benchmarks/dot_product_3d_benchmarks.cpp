@@ -2,6 +2,7 @@
 
 #include <benchmark/benchmark.h>
 #include <cpuinfo_x86.h>
+#include <hwy/targets.h>
 
 #include <algorithm>
 #include <array>
@@ -190,7 +191,12 @@ void record_result(benchmark::State& state, std::int32_t const count, Output con
 void run_soa_benchmark(benchmark::State& state,
                        SoaKernel const kernel,
                        std::int32_t const count,
-                       bool const requires_avx512) {
+                       bool const requires_avx512,
+                       std::int64_t const highway_target) {
+    if (highway_target != 0 && (hwy::SupportedTargets() & highway_target) == 0) {
+        state.SkipWithMessage("Highway target unavailable");
+        return;
+    }
     if (requires_avx512 && !has_avx512()) {
         state.SkipWithError(
             "AVX-512 is unavailable or its register state is not enabled by the OS");
@@ -217,7 +223,12 @@ void run_soa_benchmark(benchmark::State& state,
 void run_aos_benchmark(benchmark::State& state,
                        AosKernel const kernel,
                        std::int32_t const count,
-                       bool const requires_avx512) {
+                       bool const requires_avx512,
+                       std::int64_t const highway_target) {
+    if (highway_target != 0 && (hwy::SupportedTargets() & highway_target) == 0) {
+        state.SkipWithMessage("Highway target unavailable");
+        return;
+    }
     if (requires_avx512 && !has_avx512()) {
         state.SkipWithError(
             "AVX-512 is unavailable or its register state is not enabled by the OS");
@@ -237,7 +248,12 @@ void run_aos_benchmark(benchmark::State& state,
 void run_chunk_benchmark(benchmark::State& state,
                          ChunkKernel const kernel,
                          std::int32_t const count,
-                         bool const requires_avx512) {
+                         bool const requires_avx512,
+                         std::int64_t const highway_target) {
+    if (highway_target != 0 && (hwy::SupportedTargets() & highway_target) == 0) {
+        state.SkipWithMessage("Highway target unavailable");
+        return;
+    }
     if (requires_avx512 && !has_avx512()) {
         state.SkipWithError(
             "AVX-512 is unavailable or its register state is not enabled by the OS");
@@ -265,9 +281,10 @@ struct Backend {
     AosKernel aos;
     ChunkKernel chunk;
     bool requires_avx512;
+    std::int64_t highway_target{};
 };
 
-auto backends() -> std::array<Backend, 4> {
+auto backends() -> std::array<Backend, 6> {
     return {
         Backend{"autovec-avx2",
                 static_cast<SoaKernel>(dot::backend::autovec_avx2::dot_product_3d),
@@ -289,11 +306,23 @@ auto backends() -> std::array<Backend, 4> {
                 static_cast<AosKernel>(dot::backend::avx512::dot_product_3d),
                 static_cast<ChunkKernel>(dot::backend::avx512::dot_product_3d),
                 true},
+        Backend{"highway-avx2",
+                static_cast<SoaKernel>(dot::backend::highway_avx2::dot_product_3d),
+                static_cast<AosKernel>(dot::backend::highway_avx2::dot_product_3d),
+                static_cast<ChunkKernel>(dot::backend::highway_avx2::dot_product_3d),
+                false,
+                HWY_AVX2},
+        Backend{"highway-avx512",
+                static_cast<SoaKernel>(dot::backend::highway_avx512::dot_product_3d),
+                static_cast<AosKernel>(dot::backend::highway_avx512::dot_product_3d),
+                static_cast<ChunkKernel>(dot::backend::highway_avx512::dot_product_3d),
+                true,
+                HWY_AVX3},
     };
 }
 
 auto register_benchmarks() -> bool {
-    constexpr std::array counts{4096, 16384, 65536, 100000};
+    constexpr std::array counts{17, 4096, 16384, 65536, 100000};
     for (auto const count : counts) {
         auto const name{"dot_product_3d/elementwise/aos/scalar/ordinary/aligned/" +
                         std::to_string(count)};
@@ -301,7 +330,8 @@ auto register_benchmarks() -> bool {
                                      run_aos_benchmark,
                                      static_cast<AosKernel>(dot::backend::scalar::dot_product_3d),
                                      count,
-                                     false)
+                                     false,
+                                     0)
             ->UseRealTime();
     }
     for (auto const& backend : backends()) {
@@ -313,19 +343,22 @@ auto register_benchmarks() -> bool {
                                          run_aos_benchmark,
                                          backend.aos,
                                          count,
-                                         backend.requires_avx512)
+                                         backend.requires_avx512,
+                                         backend.highway_target)
                 ->UseRealTime();
             benchmark::RegisterBenchmark(prefix + "soa-flat" + suffix,
                                          run_soa_benchmark,
                                          backend.soa,
                                          count,
-                                         backend.requires_avx512)
+                                         backend.requires_avx512,
+                                         backend.highway_target)
                 ->UseRealTime();
             benchmark::RegisterBenchmark(prefix + "soa-chunked16" + suffix,
                                          run_chunk_benchmark,
                                          backend.chunk,
                                          count,
-                                         backend.requires_avx512)
+                                         backend.requires_avx512,
+                                         backend.highway_target)
                 ->UseRealTime();
         }
     }

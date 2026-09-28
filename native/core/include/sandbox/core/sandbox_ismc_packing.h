@@ -28,6 +28,9 @@ struct TransformBounds {
     bool valid{};
 };
 
+enum class PackingFields { Positions, Rotations, Transforms };
+enum class BoundsMode { Skip, Calculate };
+
 // Partial kernels write only their respective fields. All kernels preserve reserved.
 auto pack_positions_scalar(std::span<std::byte const> positions,
                            Vector3f root,
@@ -39,15 +42,15 @@ auto pack_transforms_scalar(TransformInput input,
                             std::span<PackedTransform> output,
                             TransformBounds* bounds = nullptr) noexcept -> void;
 
-// Explicit AVX2 entry points: caller must establish AVX2 support (the Unreal
-// module already requires AVX2). Scalar entry points remain independently usable.
-auto pack_positions_avx2(std::span<std::byte const> positions,
-                         Vector3f root,
-                         std::span<PackedTransform> output) noexcept -> void;
-auto pack_rotations_avx2(std::span<std::byte const> rotations,
-                         std::span<PackedTransform> output) noexcept -> void;
-auto pack_transforms_avx2(TransformInput input,
-                          PackingParameters const& parameters,
-                          std::span<PackedTransform> output,
-                          TransformBounds* bounds = nullptr) noexcept -> void;
+// Production kernels use Highway AVX2 when its complete CPU/OS feature set is
+// available, otherwise scalar. Capability detection is cached across calls.
+auto pack_positions(std::span<std::byte const> positions,
+                    Vector3f root,
+                    std::span<PackedTransform> output) noexcept -> void;
+auto pack_rotations(std::span<std::byte const> rotations,
+                    std::span<PackedTransform> output) noexcept -> void;
+auto pack_transforms(TransformInput input,
+                     PackingParameters const& parameters,
+                     std::span<PackedTransform> output,
+                     TransformBounds* bounds = nullptr) noexcept -> void;
 }

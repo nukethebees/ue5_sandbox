@@ -45,17 +45,20 @@ target_include_directories(native-core PUBLIC include)
 
 # Separate translation units keep AVX2 out of the scalar reference and prevent
 # unity builds or contraction from changing the packing arithmetic.
-add_library(native-core-ismc-scalar OBJECT src/sandbox_ismc_packing.cpp)
-add_library(native-core-ismc-avx2 OBJECT src/sandbox_ismc_packing_avx2.cpp)
-foreach(target IN ITEMS native-core-ismc-scalar native-core-ismc-avx2)
-  set_target_properties(${target} PROPERTIES UNITY_BUILD OFF)
-  target_include_directories(${target} PRIVATE include)
-  target_link_libraries(${target} PRIVATE sandbox::native_defaults sandbox::handmade_math ioj::fp_precise)
-  ioj_apply_native_abi(${target})
-  ioj_enable_warnings(${target})
-endforeach()
-target_link_libraries(native-core-ismc-avx2 PRIVATE ioj::arch_avx2)
-target_link_libraries(native-core PRIVATE native-core-ismc-scalar native-core-ismc-avx2)
+add_library(native-core-ismc-scalar OBJECT
+  src/sandbox_ismc_packing.cpp
+  src/sandbox_ismc_packing_dispatch.cpp)
+set_target_properties(native-core-ismc-scalar PROPERTIES UNITY_BUILD OFF)
+target_include_directories(native-core-ismc-scalar PRIVATE include)
+target_link_libraries(native-core-ismc-scalar PRIVATE
+  hwy sandbox::native_defaults sandbox::handmade_math ioj::fp_precise)
+ioj_apply_native_abi(native-core-ismc-scalar)
+ioj_enable_warnings(native-core-ismc-scalar)
+add_library(native-core-ismc-highway-avx2 OBJECT src/sandbox_ismc_packing_highway.cpp)
+ioj_configure_highway_target(native-core-ismc-highway-avx2 avx2)
+target_include_directories(native-core-ismc-highway-avx2 PRIVATE include)
+target_link_libraries(native-core-ismc-highway-avx2 PRIVATE sandbox::handmade_math)
+target_link_libraries(native-core PRIVATE native-core-ismc-scalar native-core-ismc-highway-avx2)
 target_link_libraries(native-core
   PUBLIC 
     sandbox::handmade_math
@@ -126,6 +129,17 @@ target_link_libraries(native-core-tests PRIVATE GTest::gtest_main CpuFeatures::c
 add_test(NAME native-core-tests COMMAND native-core-tests)
 set_tests_properties(native-core-tests PROPERTIES LABELS "unit;all;native;native-core")
 
+add_library(native-core-ismc-avx2-experiment OBJECT EXCLUDE_FROM_ALL
+  experiments/sandbox_ismc_packing_avx2.cpp)
+set_target_properties(native-core-ismc-avx2-experiment PROPERTIES UNITY_BUILD OFF)
+target_include_directories(native-core-ismc-avx2-experiment PUBLIC experiments)
+target_link_libraries(native-core-ismc-avx2-experiment
+  PUBLIC native-core
+  PRIVATE sandbox::native_defaults ioj::arch_avx2 ioj::fp_precise)
+ioj_apply_native_abi(native-core-ismc-avx2-experiment)
+ioj_enable_warnings(native-core-ismc-avx2-experiment)
+target_link_libraries(native-core-tests PRIVATE native-core-ismc-avx2-experiment)
+
 add_library(native-core-ismc-avx512-experiment OBJECT EXCLUDE_FROM_ALL
   experiments/sandbox_ismc_packing_avx512.cpp)
 set_target_properties(native-core-ismc-avx512-experiment PROPERTIES UNITY_BUILD OFF)
@@ -137,6 +151,14 @@ ioj_apply_native_abi(native-core-ismc-avx512-experiment)
 ioj_enable_warnings(native-core-ismc-avx512-experiment)
 target_link_libraries(native-core-tests PRIVATE native-core-ismc-avx512-experiment)
 
+add_library(native-core-ismc-highway-avx512 OBJECT EXCLUDE_FROM_ALL
+  src/sandbox_ismc_packing_highway.cpp)
+ioj_configure_highway_target(native-core-ismc-highway-avx512 avx512)
+target_include_directories(native-core-ismc-highway-avx512 PUBLIC experiments)
+target_link_libraries(native-core-ismc-highway-avx512 PUBLIC native-core)
+target_link_libraries(native-core-tests PRIVATE native-core-ismc-highway-avx512)
+target_link_libraries(native-core-tests PRIVATE hwy)
+
 add_executable(native-core-benchmarks)
 target_sources(native-core-benchmarks PRIVATE
   benchmarks/projectile_intercept_benchmarks.cpp
@@ -146,7 +168,10 @@ target_sources(native-core-benchmarks PRIVATE
 target_compile_features(native-core-benchmarks PRIVATE cxx_std_23)
 target_link_libraries(native-core-benchmarks PRIVATE
   native-core
+  native-core-ismc-avx2-experiment
   native-core-ismc-avx512-experiment
+  native-core-ismc-highway-avx512
+  hwy
   benchmark::benchmark
   benchmark::benchmark_main
   CpuFeatures::cpu_features
@@ -155,11 +180,11 @@ target_link_libraries(native-core-benchmarks PRIVATE
 ioj_enable_warnings(native-core-benchmarks)
 
 sandbox_jobserver_command(native_core_ismc_benchmark_command BENCHMARK benchmark
-  "Sandbox ISMC scalar and AVX2 production-layout packing")
+  "Sandbox ISMC scalar, intrinsic AVX2 and production Highway packing")
 add_custom_target(native-core-ismc-benchmark-report
   COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc"
   COMMAND ${native_core_ismc_benchmark_command} "$<TARGET_FILE:native-core-benchmarks>"
-    "--benchmark_filter=^ismc/[^/]+/(scalar|avx2)/"
+    "--benchmark_filter=^ismc/[^/]+/(scalar|avx2|production)/"
     --benchmark_repetitions=5
     --benchmark_min_time=0.05s
     --benchmark_enable_random_interleaving=true
@@ -167,7 +192,7 @@ add_custom_target(native-core-ismc-benchmark-report
     "--benchmark_out=${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc/packing-results.json"
     --benchmark_out_format=json
   DEPENDS native-core-benchmarks
-  COMMENT "Comparing scalar and AVX2 transform packing with production AoS storage"
+  COMMENT "Comparing scalar, intrinsic AVX2 and production Highway packing"
   USES_TERMINAL
   VERBATIM
 )
@@ -206,6 +231,20 @@ add_custom_target(native-core-vector-lerp-benchmark-report
   COMMENT "Benchmarking fused native 3D lerp against three 1D lerps"
   USES_TERMINAL
   VERBATIM
+)
+
+sandbox_jobserver_command(native_core_highway_benchmark_command BENCHMARK benchmark
+  "Compare Highway and intrinsic ISMC packing")
+add_custom_target(native-core-highway-benchmark-report
+  COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/highway"
+  COMMAND ${native_core_highway_benchmark_command} "$<TARGET_FILE:native-core-benchmarks>"
+    "--benchmark_filter=^ismc/[^/]+/(scalar|avx2|avx512|production|highway-avx512)/(17|2000|40000)/real_time$"
+    --benchmark_repetitions=3 --benchmark_min_time=0.02s
+    --benchmark_enable_random_interleaving=true --benchmark_display_aggregates_only=true
+    "--benchmark_out=${PROJECT_SOURCE_DIR}/.local/benchmarks/highway/ismc.json"
+    --benchmark_out_format=json
+  DEPENDS native-core-benchmarks
+  USES_TERMINAL VERBATIM
 )
 
 add_library(native-core-static-string-view-reject-automatic OBJECT EXCLUDE_FROM_ALL)

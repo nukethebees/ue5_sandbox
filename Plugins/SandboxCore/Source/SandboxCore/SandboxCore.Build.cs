@@ -58,6 +58,18 @@ public class SandboxCore : ModuleRules
             }
             PublicAdditionalLibraries.Add(nativeCoreLibrary);
             ExternalDependencies.Add(nativeCoreLibrary);
+
+            string highwayLibrary = Path.Combine(
+                repositoryRoot, "Binaries", "Native", "Highway", nativeToolchain,
+                Target.Platform.ToString(), Target.Configuration.ToString(), "hwy.lib");
+            if (!File.Exists(highwayLibrary))
+            {
+                throw new BuildException(
+                    "SandboxCore expected the CMake-built Highway library at '{0}'. " +
+                    "Build Unreal targets through a repository CMake workflow.", highwayLibrary);
+            }
+            PublicAdditionalLibraries.Add(highwayLibrary);
+            ExternalDependencies.Add(highwayLibrary);
         }
 
         string includeDirectory = Path.Combine(repositoryRoot, "native", "sbx_mimalloc", "include");

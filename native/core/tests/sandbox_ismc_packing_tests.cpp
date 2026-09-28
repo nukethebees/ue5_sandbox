@@ -1,9 +1,12 @@
+#include "sandbox_ismc_packing_avx2.h"
 #include "sandbox_ismc_packing_avx512.h"
+#include "sandbox_ismc_packing_highway.h"
 
 #include "sandbox/core/sandbox_ismc_packing.h"
 
 #include <cpuinfo_x86.h>
 #include <gtest/gtest.h>
+#include <hwy/targets.h>
 
 #include <array>
 #include <cstring>
@@ -39,10 +42,37 @@ struct Inputs {
     }
 };
 
-auto compare(Inputs const& inputs, PackingParameters const& parameters, bool avx512) -> void {
-    auto const pack_transforms{avx512 ? experiment::pack_transforms_avx512 : pack_transforms_avx2};
-    auto const pack_positions{avx512 ? experiment::pack_positions_avx512 : pack_positions_avx2};
-    auto const pack_rotations{avx512 ? experiment::pack_rotations_avx512 : pack_rotations_avx2};
+enum class Backend { Avx2, Avx512, Production, HighwayAvx512 };
+auto supported(Backend backend) -> bool {
+    switch (backend) {
+        case Backend::Avx2:
+            return cpu_features::GetX86Info().features.avx2 != 0;
+        case Backend::Avx512:
+            return experiment::supports_avx512();
+        case Backend::Production:
+            return true;
+        case Backend::HighwayAvx512:
+            return (hwy::SupportedTargets() & HWY_AVX3) != 0;
+    }
+    return false;
+}
+
+auto compare(Inputs const& inputs, PackingParameters const& parameters, Backend backend) -> void {
+    auto const pack_transforms{backend == Backend::Production ? ml::sandbox_ismc::pack_transforms
+                               : backend == Backend::HighwayAvx512
+                                   ? experiment::highway_avx512::pack_transforms
+                               : backend == Backend::Avx512 ? experiment::pack_transforms_avx512
+                                                            : experiment::pack_transforms_avx2};
+    auto const pack_positions{backend == Backend::Production ? ml::sandbox_ismc::pack_positions
+                              : backend == Backend::HighwayAvx512
+                                  ? experiment::highway_avx512::pack_positions
+                              : backend == Backend::Avx512 ? experiment::pack_positions_avx512
+                                                           : experiment::pack_positions_avx2};
+    auto const pack_rotations{backend == Backend::Production ? ml::sandbox_ismc::pack_rotations
+                              : backend == Backend::HighwayAvx512
+                                  ? experiment::highway_avx512::pack_rotations
+                              : backend == Backend::Avx512 ? experiment::pack_rotations_avx512
+                                                           : experiment::pack_rotations_avx2};
     auto const count{inputs.positions.size()};
     std::vector<PackedTransform> scalar(count + 2);
     for (auto& packed : scalar) {
@@ -105,11 +135,10 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters, bool avx
     EXPECT_EQ(std::memcmp(scalar.data(), simd.data(), scalar.size() * sizeof(PackedTransform)), 0);
 }
 
-class SandboxISMCBatchPackingVariants : public ::testing::TestWithParam<bool> {};
+class SandboxISMCBatchPackingVariants : public ::testing::TestWithParam<Backend> {};
 
 TEST_P(SandboxISMCBatchPackingVariants, RandomBatchesAndEveryTailMatchExactly) {
-    if (GetParam() ? !experiment::supports_avx512()
-                   : cpu_features::GetX86Info().features.avx2 == 0) {
+    if (!supported(GetParam())) {
         GTEST_SKIP() << "Requested ISA unavailable";
     }
     PackingParameters const parameters{make_vector3f(262144, -262144, 1000000),
@@ -126,8 +155,7 @@ TEST_P(SandboxISMCBatchPackingVariants, RandomBatchesAndEveryTailMatchExactly) {
 }
 
 TEST_P(SandboxISMCBatchPackingVariants, BoundaryPositionsAndQuaternionTiesAndSigns) {
-    if (GetParam() ? !experiment::supports_avx512()
-                   : cpu_features::GetX86Info().features.avx2 == 0) {
+    if (!supported(GetParam())) {
         GTEST_SKIP() << "Requested ISA unavailable";
     }
     Inputs inputs{0};
@@ -165,10 +193,23 @@ TEST_P(SandboxISMCBatchPackingVariants, BoundaryPositionsAndQuaternionTiesAndSig
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(Isa,
-                         SandboxISMCBatchPackingVariants,
-                         ::testing::Bool(),
-                         [](auto const& info) { return info.param ? "Avx512" : "Avx2"; });
+INSTANTIATE_TEST_SUITE_P(
+    Isa,
+    SandboxISMCBatchPackingVariants,
+    ::testing::Values(Backend::Avx2, Backend::Avx512, Backend::Production, Backend::HighwayAvx512),
+    [](auto const& info) {
+        switch (info.param) {
+            case Backend::Avx2:
+                return "Avx2";
+            case Backend::Avx512:
+                return "Avx512";
+            case Backend::Production:
+                return "Production";
+            case Backend::HighwayAvx512:
+                return "HighwayAvx512";
+        }
+        return "Unknown";
+    });
 
 TEST(SandboxISMCBatchPacking, DirectBasisMatchesIndependentlyRotatedCorners) {
     Inputs inputs{1000};

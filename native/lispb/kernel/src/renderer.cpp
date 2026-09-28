@@ -59,6 +59,10 @@ auto render(KernelModule const& module, Profile const profile) -> std::vector<li
                                 render_native_avx2_lab_source(*emission, selected)},
             lispb::TextArtifact{*emission->avx512_source,
                                 render_native_avx512_lab_source(*emission, selected)}};
+        if (emission->highway_source) {
+            result.push_back(lispb::TextArtifact{
+                *emission->highway_source, render_native_highway_source(*emission, selected)});
+        }
         if (emission->dispatch_source) {
             result.push_back(
                 lispb::TextArtifact{*emission->dispatch_source,

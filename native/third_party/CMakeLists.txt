@@ -58,7 +58,39 @@ add_subdirectory(cpu_features_integration)
 unset(IOJ_CPU_FEATURES_SOURCE_DIRECTORY)
 ioj_apply_native_abi(cpu_features)
 
+set(HWY_ENABLE_CONTRIB OFF CACHE BOOL "" FORCE)
+set(HWY_ENABLE_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(HWY_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+set(HWY_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+set(HWY_ENABLE_LIST_TARGETS OFF CACHE BOOL "" FORCE)
+add_subdirectory(highway SYSTEM EXCLUDE_FROM_ALL)
+ioj_apply_native_abi(hwy)
+
+# Keep static SIMD targets isolated from baseline callers and unity builds.
+function(ioj_configure_highway_target target isa)
+  set_target_properties(${target} PROPERTIES UNITY_BUILD OFF)
+  target_compile_features(${target} PRIVATE cxx_std_23)
+  target_compile_definitions(${target} PRIVATE HWY_COMPILE_ONLY_STATIC)
+  target_link_libraries(${target} PRIVATE hwy sandbox::native_defaults ioj::fp_precise)
+  if(isa STREQUAL "avx512")
+    target_link_libraries(${target} PRIVATE ioj::arch_avx512)
+  else()
+    target_link_libraries(${target} PRIVATE ioj::arch_avx2)
+  endif()
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND MSVC)
+    target_compile_options(${target} PRIVATE /clang:-maes /clang:-mpclmul /clang:-mbmi2 /clang:-mfma /clang:-mf16c)
+  elseif(NOT MSVC)
+    target_compile_options(${target} PRIVATE -maes -mpclmul -mbmi2 -mfma -mf16c)
+  endif()
+  ioj_apply_native_abi(${target})
+  ioj_enable_warnings(${target})
+endfunction()
+
 if(IOJ_WITH_UNREAL)
+  set_target_properties(hwy PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/Highway/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+  )
   target_link_libraries(cpu_features PRIVATE ioj::unreal_avx2)
   set_target_properties(cpu_features PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
