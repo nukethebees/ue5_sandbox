@@ -1,25 +1,32 @@
 # NukeTheBees Jobserver
 
-The jobserver is the local Windows scheduler and process supervisor used to coordinate expensive
-development work across repository worktrees.
+The jobserver is a local Windows traffic gate. Ordinary commands and builds share the machine
+freely. An exclusive benchmark waits for admitted work to finish, blocks later arrivals, then
+runs alone. There are no compiler quotas or per-compiler launchers.
 
-The maintainer installs its canonical binaries with:
+Agents use the persistent `jobserver broker` with framed JSON input and output. For one command:
+
+```powershell
+jobserver run --shared machine --name "Native build" -- cmake --build --preset native
+jobserver run --exclusive machine --name "Measurement" -- benchmark.exe
+jobserver status
+jobserver trace --lease 123 --limit 100
+```
+
+The client executes locally and releases the lease when the root command exits. Persistent
+compiler-server children do not hold leases. Closing a broker terminates its remaining session
+processes and releases its leases through pipe disconnect.
+
+The maintainer installs the canonical binaries with:
 
 ```powershell
 cmake --preset native
 cmake --build --preset native --target install-jobserver
 ```
 
-Keep `%LOCALAPPDATA%\NukeTheBees\jobserver\bin` on PATH. `jobserver --version` reports
-the source version (`jobserver version` remains available). Installation retains the daemon's
-staged validation, drain/shutdown, startup verification, and rollback; never copy over live binaries.
+Keep `%LOCALAPPDATA%\NukeTheBees\jobserver\bin` on PATH. `jobserver --version` reports the
+source and protocol versions. Installation retains staged validation, drain/shutdown, startup
+verification, and rollback; never copy over live binaries. Protocol 2 requires matching clients
+and daemon. Agents do not update the canonical installation themselves.
 
-Use `jobserver status`, `jobserver history`, and `jobserver logs <job-id>` to inspect work. Submit
-ordinary work with `jobserver run`, exclusive benchmark work with `--exclusive machine` and
-`--exclusive benchmark`, and integration transactions with `jobserver lease`.
-
-Use `jobserver process-owner <pid>` to determine whether a process belongs to the current
-worktree, then use `jobserver kill-owned` only when it reports `SafeKill yes`.
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the daemon/client model, resources, leases, protocol, and
-failure behaviour.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the broker interface, FIFO rules, tracing, and failures.

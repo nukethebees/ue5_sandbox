@@ -81,18 +81,15 @@ appropriate dependencies. A bare target name is resolved by CMake only in comman
 responsible for transitive incremental input tracking and is invoked on each requested build.
 CTest's C# freshness check still rejects stale assemblies without rebuilding them.
 
-The scheduling contract is shared `machine` access for C/C++ compiler and executable-linker
-launchers, ordinary native executable tests (`TEST_LAUNCHER`), .NET and Cargo builds/tests,
-generators, formatting, shader tests, and static analysis. Benchmark measurements retain exclusive
-`machine` and `benchmark` access; report plotting uses shared access. Unreal commands additionally
-claim their canonical engine resource. BenchmarkTools owns its own measurement claims.
+Admit ordinary workflows once through `jobserver broker` or `jobserver run --shared machine`.
+CMake, Ninja, compilers, linkers, generators, and ordinary tests then run without inner machine
+leases. There are no compiler quotas or jobserver compiler/linker/test launchers. Multiple builds
+may overlap freely. Unreal commands additionally claim their canonical named engine gate.
 
-Intentional scheduling exceptions are short configure-time discovery/probes, file copies and
-fingerprints, and orchestration scripts whose child work already acquires claims (including
-nested CMake builds and the CMake regression suite). Jobserver integration/system tests use their
-own daemon fixtures; repair/install targets and their native prerequisites clear launchers so an
-existing working jobserver is never needed to repair it. When no installed jobserver exists,
-compiler/test launchers are omitted; explicit non-bootstrap work still requires installation.
+BenchmarkTools and benchmark CMake targets acquire `machine/exclusive` explicitly for measurement
+after build/setup. Run these orchestrators without an outer shared machine lease, so they cannot
+wait for their own caller. An older exclusive request blocks later shared arrivals until it finishes.
+Jobserver tests use isolated daemon fixtures; repair/install targets remain directly buildable.
 
 ASAN runtime staging is a build dependency of instrumented targets. Deleting the staged DLL is
 repaired by the next incremental build, including when the executable is otherwise up to date.

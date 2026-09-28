@@ -16,6 +16,20 @@ internal sealed class JobserverLocator : IJobserverLocator
 
 internal static class JobserverExecution
 {
+    public static ProcessRequest SetupRequest(BenchmarkToolsApplication application, ProcessRequest command)
+    {
+        if (application.Environment.GetEnvironmentVariable("NUKETHEBEES_JOBSERVER_MACHINE_MODE") is "shared" or "exclusive")
+        {
+            return command;
+        }
+        return command with
+        {
+            FileName = application.JobserverLocator.Locate(),
+            Arguments = ["run", "--name", "Benchmark setup", "--kind", "build", "--worktree", command.WorkingDirectory,
+                "--shared", "machine", "--", command.FileName, .. command.Arguments],
+        };
+    }
+
     public static ProcessRequest CreateRequest(
         string jobserver_path,
         string benchmark_tools_path,

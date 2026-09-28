@@ -102,7 +102,7 @@ internal sealed class BenchmarkToolsApplication(
         if (!request.SkipBuild)
         {
             var configure_result = await process_runner.RunAsync(
-                new ProcessRequest("cmake", ["--preset", RepositoryPaths.NativeSimulationConfigurePreset(request.BuildPreset)], repository_paths.Root),
+                JobserverExecution.SetupRequest(this, new ProcessRequest("cmake", ["--preset", RepositoryPaths.NativeSimulationConfigurePreset(request.BuildPreset)], repository_paths.Root)),
                 cancellation_token);
             if (configure_result.ExitCode != 0)
             {
@@ -111,7 +111,7 @@ internal sealed class BenchmarkToolsApplication(
             }
 
             var build_result = await process_runner.RunAsync(
-                new ProcessRequest("cmake", ["--build", "--preset", request.BuildPreset], repository_paths.Root),
+                JobserverExecution.SetupRequest(this, new ProcessRequest("cmake", ["--build", "--preset", request.BuildPreset], repository_paths.Root)),
                 cancellation_token);
             if (build_result.ExitCode != 0)
             {

@@ -379,13 +379,26 @@ auto run_command(std::filesystem::path const& executable,
         std::cout << ' ' << argument;
     }
     std::cout << '\n' << std::flush;
-    auto process{create_process(executable, arguments, working_directory, {}, false, false)};
-    auto const exit_code{wait_for_process(process, 3'600.0)};
-    if (!exit_code) {
-        stop_process(process);
-        throw PipelineError{"build_failed", "command timed out: " + executable.string()};
+    auto session{jobserver::Session::connect()};
+    if (!session) {
+        throw PipelineError{"jobserver_failed", session.error().message};
     }
-    return *exit_code;
+    jobserver::LocalExecutor executor;
+    std::vector<jobserver::GateClaim> const gates{{"machine", jobserver::LeaseMode::shared}};
+    auto grant{(*session)->acquire(gates,
+                                   Json{{"name", "Tracy benchmark setup"},
+                                        {"kind", "build"},
+                                        {"worktree", working_directory.string()}})};
+    if (!grant) {
+        throw PipelineError{"jobserver_failed", grant.error().message};
+    }
+    auto result{executor.run({executable, arguments, working_directory}, **session, *grant, gates)};
+    auto released{(*session)->release(*grant, result ? *result : 1)};
+    if (!result || !released) {
+        throw PipelineError{"jobserver_failed",
+                            !result ? result.error().message : released.error().message};
+    }
+    return *result;
 }
 
 auto capture_command(std::filesystem::path const& executable,
@@ -1309,9 +1322,13 @@ auto run_application(int const argc,
     auto manifest = make_manifest(options, "preparing");
     write_json(options.output_directory / "manifest.json", manifest);
     try {
+        if (machine_mode[0] && !inside_jobserver) {
+            throw PipelineError{"nested_machine_gate",
+                                "Run benchmark orchestration without an outer machine lease"};
+        }
         if (options.lease_held && !inside_jobserver) {
             throw PipelineError{"invalid_lease_held",
-                                "Jobserver child marker requires an active job"};
+                                "Measurement reentry requires an exclusive machine lease"};
         }
         if (!options.skip_build) {
             build_prerequisites(options);

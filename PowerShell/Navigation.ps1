@@ -95,7 +95,6 @@ Validation and build commands:
   Loading dev.ps1 disables MSBuild node reuse for the current user and shell.
   enable-ubt-build-safety  Persist disabled MSBuild node reuse for the current user.
   get-ubt-build-state      List Sandbox CMake, UBT, and UE MSBuild processes.
-  reset-ubt-build-state    Stop explicitly jobserver-owned Unreal build groups in this worktree.
 
 Run .\dev.ps1 --help to view this help without loading commands into your session.
 '@

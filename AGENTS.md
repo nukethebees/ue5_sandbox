@@ -51,9 +51,9 @@ Unreal Engine 5.8 project.
   worktree. This queues fairly for the exclusive `integration/dev` jobserver resource; ordinary
   feature work and unrelated jobserver resources remain concurrent.
   * Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs.
-  * When directly submitting a coordinated job, provide a descriptive operation name and an established jobserver kind; it should be identifiable from `jobserver status`, `show`, or `history`. 
+  * Admit ordinary commands once through `jobserver broker` or `jobserver run --shared machine`, with a descriptive operation name and metadata. Inspect current leases with `jobserver status` and their timeline with `jobserver trace`.
   * Use queue metadata to understand ownership and contention; never cancel or kill another agent's job simply because it blocks yours.
-  * Processes explicitly reported as owned by the current worktree by `jobserver process-owner` or `jobserver processes --owned` may be terminated with `jobserver kill-owned` without asking the user.
+  * A broker owns its local session processes. Closing it cancels pending work, kills its remaining local tree, and releases its leases. The daemon has no process-owner or kill-owned API.
 * Tooling and native-only candidates must not acquire Unreal resources unless their dependency
   surface requires Unreal. Run light, relevant tests after implementation; run expensive relevant
   gates once against the pinned final candidate.

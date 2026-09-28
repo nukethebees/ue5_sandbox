@@ -6,8 +6,10 @@ The PowerShell entry points perform that focused build automatically; there is n
 
 Benchmarks are opt-in measurements, not ordinary test runs. Complete build and setup work first,
 then use the repository runner or benchmark CMake target so the per-user jobserver can wait for
-older work and acquire exclusive benchmark and machine resources. Do not start measurements beside
-an unmanaged Unreal build or Editor session.
+older admitted work and acquire `machine/exclusive`. Later ordinary commands wait behind that
+request. Run benchmark orchestrators without an outer shared machine lease; build/setup precedes
+their exclusive measurement lease. Do not start measurements beside an unmanaged Unreal build or
+Editor session.
 
 Results are disposable local data unless a specific experiment says otherwise; write them beneath
 `.local/benchmarks/` rather than committing them.

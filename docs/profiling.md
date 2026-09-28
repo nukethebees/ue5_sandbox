@@ -29,7 +29,6 @@ $benchmark = Join-Path $repo 'out\build\native-benchmark\bin\native-simulation-b
   --kind benchmark `
   --worktree $repo `
   --exclusive machine `
-  --exclusive benchmark `
   -- $benchmark `
   --level (Join-Path $repo 'LevelScripts\FighterSchedulingBenchmark.scm') `
   --seconds 20 `
@@ -88,4 +87,4 @@ of `agent-task install-central-tools`. For installation testing, pass a private 
 
 - [Benchmarks](benchmarks.md): supported benchmark workloads and runners.
 - [Level scripts](../LevelScripts/README.md): find S7 benchmark scenarios.
-- [Jobserver](../tools/jobserver/README.md): resource claims and command supervision.
+- [Jobserver](../tools/jobserver/README.md): FIFO leases and local command admission.

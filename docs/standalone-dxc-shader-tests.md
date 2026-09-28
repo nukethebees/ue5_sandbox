@@ -105,7 +105,7 @@ build completed, the timed runs used its exact jobserver-wrapped commandlet:
   --name "Baseline HeatmapRDG Unreal run <n>" `
   --kind benchmark `
   --worktree "C:\Users\matthew\source\repos\nukethebees\wt\dev2" `
-  --exclusive machine --exclusive benchmark `
+  --exclusive machine `
   --shared unreal-build/8da32d479a17c0fbbf96cfbbcf14b092a6fd0bb3454eb8e1dadbb0c653e88d0b `
   -- "C:\dev\UE5.8.0\Engine\Binaries\Win64\UnrealEditor-Win64-DebugGame-Cmd.exe" `
   "C:\Users\matthew\source\repos\nukethebees\wt\dev2\Sandbox.uproject" `

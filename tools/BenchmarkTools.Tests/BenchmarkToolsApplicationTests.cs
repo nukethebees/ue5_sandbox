@@ -18,8 +18,8 @@ public sealed class BenchmarkToolsApplicationTests
 
         Assert.AreEqual(17, exit_code);
         Assert.AreEqual(3, process_runner.Requests.Count);
-        AssertProcess(process_runner.Requests[0], "cmake", ["--preset", "preset with spaces"], repository.Root);
-        AssertProcess(process_runner.Requests[1], "cmake", ["--build", "--preset", "preset with spaces"], repository.Root);
+        AssertSetup(process_runner.Requests[0], ["--preset", "preset with spaces"], repository.Root);
+        AssertSetup(process_runner.Requests[1], ["--build", "--preset", "preset with spaces"], repository.Root);
         AssertProcess(
             process_runner.Requests[2],
             @"C:\jobserver\jobserver.exe",
@@ -82,8 +82,8 @@ public sealed class BenchmarkToolsApplicationTests
 
         Assert.AreEqual(0, exit_code);
         Assert.AreEqual(3, process_runner.Requests.Count);
-        AssertProcess(process_runner.Requests[0], "cmake", ["--preset", "native-benchmark"], repository.Root);
-        AssertProcess(process_runner.Requests[1], "cmake", ["--build", "--preset", build_preset], repository.Root);
+        AssertSetup(process_runner.Requests[0], ["--preset", "native-benchmark"], repository.Root);
+        AssertSetup(process_runner.Requests[1], ["--build", "--preset", build_preset], repository.Root);
     }
 
     [DataTestMethod]
@@ -144,6 +144,13 @@ public sealed class BenchmarkToolsApplicationTests
         Assert.AreEqual(file_name, request.FileName);
         Assert.AreEqual(working_directory, request.WorkingDirectory);
         CollectionAssert.AreEqual(arguments, request.Arguments.ToArray());
+    }
+
+    private static void AssertSetup(ProcessRequest request, string[] arguments, string root)
+    {
+        AssertProcess(request, @"C:\jobserver\jobserver.exe",
+            ["run", "--name", "Benchmark setup", "--kind", "build", "--worktree", root,
+                "--shared", "machine", "--", "cmake", .. arguments], root);
     }
 
     private sealed class FakeProcessRunner(params int[] exit_codes) : IProcessRunner

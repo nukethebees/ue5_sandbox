@@ -6,6 +6,24 @@ namespace BenchmarkTools.Tests;
 public sealed class MigratedBenchmarkCommandTests
 {
     [TestMethod]
+    public async Task Telemetry_admits_setup_shared_and_leaves_exclusivity_to_ctest()
+    {
+        using var repository = new TemporaryRepository();
+        var runner = new RecordingRunner(_ => new ProcessResult(0));
+        var application = CreateApplication(runner, TextWriter.Null);
+
+        Assert.AreEqual(0, await application.RunAsync(["level-telemetry"], repository.Root));
+        Assert.AreEqual(3, runner.Requests.Count);
+        foreach (var setup in runner.Requests.Take(2))
+        {
+            Assert.AreEqual(@"C:\jobserver\jobserver.exe", setup.FileName);
+            CollectionAssert.Contains(setup.Arguments.ToArray(), "--shared");
+            CollectionAssert.DoesNotContain(setup.Arguments.ToArray(), "--exclusive");
+        }
+        Assert.AreEqual("ctest", runner.Requests[2].FileName);
+    }
+
+    [TestMethod]
     public async Task FrameMemoryLevel_emits_a_validated_native_result()
     {
         using var repository = new TemporaryRepository();

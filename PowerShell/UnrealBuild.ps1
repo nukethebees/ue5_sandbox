@@ -17,7 +17,11 @@ function Invoke-JobserverWorkflow {
     $log_path = Join-Path $log_directory "cmake-workflow-$Preset.log"
 
     Write-Host $Name
-    & (Get-JobserverPath) run --shared machine --name $Name --kind build --worktree $script:dev_project_root -- cmake --workflow --preset $Preset 2>&1 | Tee-Object -FilePath $log_path | Out-Host
+    if ($env:NUKETHEBEES_JOBSERVER_MACHINE_MODE -in @('shared', 'exclusive')) {
+        & cmake --workflow --preset $Preset 2>&1 | Tee-Object -FilePath $log_path | Out-Host
+    } else {
+        & (Get-JobserverPath) run --shared machine --name $Name --kind build --worktree $script:dev_project_root -- cmake --workflow --preset $Preset 2>&1 | Tee-Object -FilePath $log_path | Out-Host
+    }
     $exit_code = $LASTEXITCODE
 
     [PSCustomObject]@{
@@ -279,7 +283,10 @@ function integrate-feature {
         '--name', "Integrate $branch into dev",
         '--kind', 'integration',
         '--task', $branch,
-        '--worktree', $worktree,
+        '--worktree', $worktree
+        if ($env:NUKETHEBEES_JOBSERVER_MACHINE_MODE -notin @('shared', 'exclusive')) {
+            '--shared', 'machine'
+        }
         '--exclusive', 'integration/dev',
         '--', $agent_task, 'integrate'
     )
