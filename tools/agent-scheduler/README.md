@@ -1,25 +1,22 @@
 # Codex scheduler example (Windows)
 
-A small downstream Codex patch keeps normal approvals and process execution in
-Codex. A separate scheduling policy exempts cheap commands. Other commands need
-an explicit ticket, wait for FIFO admission, and release on root exit. A ticket
-belongs to one logical Codex command, including its legitimate internal sandbox
-retry. Codex still makes every approval and sandbox decision.
-The C++ daemon is unchanged.
+A small downstream patch connects Codex to the C++ jobserver. Codex keeps its
+normal approval, sandbox and process-execution decisions. The external Rust
+scheduler requires explicit tickets for commands not exempted by its own rules.
 
 ## Build and launch
 
-The pinned Codex checkout belongs at `.local/codex-upstream`; its revision is in
-`upstream-revision.txt`. Apply `codex.patch` to that revision. The checkout needs
-Git's `core.longpaths=true` on Windows. This example uses Cargo/CMake, not upstream
-Bazel packaging, and does not install or replace your normal Codex.
+The preparation script checks out the revision in `upstream-revision.txt` under
+`.local/codex-upstream` and applies `codex.patch`. Build with Cargo/CMake; nothing
+is installed over your normal Codex. The installed jobserver must be available
+when starting a session; connection failure stops startup.
 
 ```powershell
 tools/agent-scheduler/Prepare-Upstream.ps1
 cmake -S tools/agent-scheduler -B .local/scheduler-build -G Ninja
 cmake --build .local/scheduler-build --target scheduler-example codex-scheduler
 cmake --build .local/scheduler-build --target scheduler-unit-tests codex-process-tests
-tools/agent-scheduler/agent-codex.ps1
+tools/agent-scheduler/agent-codex.ps1 -c 'windows.sandbox="unelevated"' -c features.shell_snapshot=false
 ```
 
 Inside the custom Codex session, issue separate ordinary command-tool calls:
@@ -33,72 +30,56 @@ agent-scheduler ticket exclusive "Measure benchmark"
 
 `agent-scheduler status` shows this session's ticket. `agent-scheduler clear`
 cancels a pending ticket. Interrupting a waiting Codex tool call also cancels it.
-An exempt inspection command does not consume a ticket. A command without a
-ticket fails with instructions; it never implicitly acquires one.
-After a command completes, immediately requesting the next ticket is supported.
-The request asynchronously waits for any outstanding release acknowledgement;
-there is no need to sleep or poll status.
+Shared work overlaps freely. An exclusive ticket waits for admitted shared work
+to drain and blocks later shared requests until it finishes (FIFO admission).
+Use shared for ordinary work and exclusive for benchmarks, after build/setup.
 
 `scheduling.rules` is independent of Codex's security rules. All parsed components
-must be exempt; unrecognised/dynamic PowerShell syntax requires a ticket. Command
-text is never rewritten. Exempt inspections may run during exclusive work.
+must be exempt; unrecognised/dynamic PowerShell syntax requires a ticket.
+Exempt commands do not consume tickets and may run during exclusive work.
+Other commands fail with instructions if no ticket exists. No ticket is inferred,
+no command text is rewritten, and exemptions never bypass Codex security.
 
-## Demonstration and scope
+## Command lifetime and scope
 
-Run `tools/agent-scheduler/Run-Examples.ps1` from the repository root. It starts an
-isolated instance of the installed daemon. The demonstrations exercise concurrent
-shared work, FIFO exclusive admission, cancellation/grant races, spawn failure,
-immediate ticket reuse, daemon loss, and independent security rejection. Scripted
-local Responses events drive actual patched Codex execution, including a real
-sandbox-denied write and its approved retry using the original ticket. No model
-service is contacted. `-Only lifecycle` or `-Only leases` runs a focused group.
+A ticket belongs to one logical command, including legitimate internal sandbox
+retries. `UnifiedExecRuntime` calls the scheduler immediately before spawning;
+the process manager accepts the final attempt after Codex's retry loop. An early
+root exit retains the ticket until that retry/final decision is known.
 
-The descendant regression starts a root through Codex's actual Windows backend.
-Its child inherits stdout/stderr and waits for an explicit test release. Another
-client obtains exclusivity while that child is alive and the root is gone. It
-covers ordinary pipes/PTY and restricted-token pipes. Restricted PTY admission is
-also checked, preserving Codex's existing ConPTY shutdown behaviour (which can
-end console descendants). The scheduler never waits for descendants or output EOF.
+The accepted attempt releases on **root-process exit**, independently of descendants
+and output EOF. Ordinary pipe/PTY backends observe `child.wait()`; the restricted
+backend signals after its Win32 root wait and exit-code query, before output
+draining or ConPTY shutdown. Root notification uses the backend's completion code.
+Codex's output draining and ConPTY teardown remain unchanged, so console descendants
+may still be ended by Codex. The scheduler does not supervise or kill processes.
 
-Unit tests deliberately withhold a daemon release acknowledgement and check that
-the next ticket waits, can be cancelled, and fails promptly on disconnection.
+Immediately requesting the next ticket is supported: it waits asynchronously for
+the previous release acknowledgement. No sleep or status polling is necessary.
+Daemon loss marks the session failed and wakes admission/release waits. Future
+work fails, including exempt commands; restart Codex to reconnect. Already-running
+processes remain Codex's responsibility.
 
-This first example supports local Windows unified-exec commands, one ticket and
-one logical scheduled command per Codex process. It is not integrated into central-tools
-installation. User `/shell`, app-server `command/exec`, hooks, and MCP execution
-are outside this patch. Remote, shell-snapshot and MXC helper execution are
-rejected. MXC's additional helper/SDK process lifetime is outside this prototype's
-root-event contract.
+Supported: Windows local unified-exec, ordinary and unelevated restricted-token
+pipe/PTY backends, one ticket/logical scheduled command per Codex process.
+Elevated sandbox, MXC, remote and shell-snapshot execution are rejected. Elevated
+runner support is deliberately omitted because its lifecycle regression requires
+provisioned sandbox accounts/setup state. Its private IPC protocol is unchanged.
+User `/shell`, hooks, MCP and app-server `command/exec` are outside this patch.
+There is no central-tools installation integration.
 
-The persistent pipe owns the daemon ClientId. Daemon loss marks the scheduler
-failed and wakes queued admission and release-acknowledgement waits. Future work
-fails clearly, including exempt commands; restart Codex to reconnect. An already
-running process continues under Codex's normal ownership and cancellation. The
-scheduler adds no process killing, supervisor, or crash-containment mechanism.
-The daemon journal records the ticket name and command text (as a health payload);
-root PID reporting is omitted because Codex's common process handle does not expose it.
+## Validation
 
-## Patch boundaries
+Run `tools/agent-scheduler/Run-Examples.ps1` from the repository root. It uses an
+isolated installed daemon and scripted local Responses events; no model service
+is contacted. Coverage includes FIFO admission, cancellation/grant races, spawn
+failure, immediate ticket reuse, daemon loss, independent security rejection,
+startup failure and a real sandbox-denied write followed by an approved retry.
+`-Only lifecycle` or `-Only leases` selects a focused group.
 
-`UnifiedExecRuntime` owns an external `Invocation` for its approval/retry lifetime
-and calls `before_spawn` just before the existing local spawn. The process manager
-accepts the final attempt after the existing orchestrator returns successfully.
-Rejected attempts keep the ticket for a legitimate retry; failure or cancellation
-relinquishes it. No command arguments are rewritten.
-
-A generic process observer distinguishes root exit from full output completion.
-Ordinary pipe/PTY backends observe their existing `child.wait()` result. The legacy
-sandbox signals after its Win32 root wait and exit-code query, before ConPTY or
-output draining. The elevated runner sends a separate `RootExit` frame at the same
-boundary; its existing final `Exit` frame still follows output draining. The local
-build includes the matching command runner (private IPC version 7).
-Elevated-runner changes are compiled; the demonstrations use the restricted-token
-backend and do not provision machine-wide sandbox accounts or setup state.
-Focused runner-protocol tests check that early root notification preserves later
-output and final completion, and existing driver tests check output draining.
-
-The observer processes root exit before Codex publishes normal completion. The
-external crate owns all ticket generations, admission, retry state, cancellation,
-and release acknowledgement. An unsuccessful early root remains reserved while
-Codex decides whether to retry; the accepted final attempt releases on root exit.
-Codex output draining otherwise remains unchanged.
+The real Codex descendant regression obtains exclusivity while the root is gone
+and its child still holds inherited output handles (ordinary pipes/PTY and
+restricted pipes). Restricted PTY also checks root release, allowing Codex's
+existing ConPTY teardown to end the child. Unit tests hold release acknowledgements
+to verify asynchronous waiting, cancellation and disconnect handling; process tests
+check output draining.
