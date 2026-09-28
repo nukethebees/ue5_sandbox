@@ -4,7 +4,8 @@ namespace BenchmarkTools;
 
 internal sealed record SandboxIsmcRequest(string Editor, int Width, int Height, int Instances, double UpdatePercent,
     string Mode, string Visibility, string Bounds, string CustomData, bool Shadows, bool Churn, int MinInstances,
-    int HalfCycleUpdates, double ReplacementPercent, int WarmupUpdates, double WarmupSeconds, double Seconds, bool Trace)
+    int HalfCycleUpdates, double ReplacementPercent, int WarmupUpdates, double WarmupSeconds, double Seconds, bool Trace,
+    string? CacheDirectory = null)
 {
     internal static readonly HashSet<string> ValueArguments = ["--editor", "--width", "--height", "--instances", "--update-percent", "--mode",
         "--visibility", "--bounds", "--custom-data", "--shadows", "--churn", "--min-instances", "--half-cycle-updates", "--replacement-percent",
@@ -31,7 +32,8 @@ internal sealed record SandboxIsmcRequest(string Editor, int Width, int Height, 
             Choice("--churn", "0", "0", "1") == "1", Nonnegative("--min-instances", Math.Min(1000, instances), instances),
             args.PositiveInt32("--half-cycle-updates", 120), args.FiniteDouble("--replacement-percent", 5, 0, 100),
             Nonnegative("--warmup-updates", 0, int.MaxValue), args.FiniteDouble("--warmup-seconds", 1, 0, 3600),
-            args.FiniteDouble("--seconds", 5, .01, 3600), Choice("--trace", "1", "0", "1") == "1");
+            args.FiniteDouble("--seconds", 5, .01, 3600), Choice("--trace", "1", "0", "1") == "1",
+            Path.Combine(repository.Root, ".local", "benchmarks", "ddc"));
     }
 
     public Dictionary<string, string> Conditions() => new(StringComparer.Ordinal)
@@ -49,10 +51,9 @@ internal sealed record SandboxIsmcRequest(string Editor, int Width, int Height, 
 
     public IReadOnlyList<string> EditorArguments(string root, BenchmarkRunContext run)
     {
-        return [Path.Combine(root, "Sandbox.uproject"), "-unattended", "-nop4", "-nosplash", "-nosound", "-stdout", "-FullStdOutLogOutput", "-RenderOffscreen",
-            "-ddc=NoZenLocalFallback", $"-LocalDataCachePath={Path.Combine(root, ".local", "benchmarks", "ddc")}",
+        return [.. CommonArguments(root, run.Artifact("unreal.log")),
             "-ExecCmds=r.VSync 0;r.ScreenPercentage 100;r.DynamicRes.OperationMode 0;Automation Now;RunTests SandboxISMC.RemoteBenchmark;Quit",
-            "-SandboxISMCBenchmarkEndPIE", $"-abslog={run.Artifact("unreal.log")}",
+            "-SandboxISMCBenchmarkEndPIE",
             $"-ResX={Width}", $"-ResY={Height}", "-ForceRes", "-windowed",
             $"-SandboxISMCBenchmarkOutput={run.DirectoryPath}", $"-SandboxISMCBenchmarkRunId={run.Manifest.RunId}",
             $"-SandboxISMCBenchmarkWidth={Width}", $"-SandboxISMCBenchmarkHeight={Height}",
@@ -63,6 +64,17 @@ internal sealed record SandboxIsmcRequest(string Editor, int Width, int Height, 
             $"-SandboxISMCBenchmarkReplacementPercent={Number(ReplacementPercent)}", $"-SandboxISMCBenchmarkWarmupUpdates={WarmupUpdates}",
             $"-SandboxISMCBenchmarkWarmupSeconds={Number(WarmupSeconds)}", $"-SandboxISMCBenchmarkSeconds={Number(Seconds)}", $"-SandboxISMCBenchmarkTrace={(Trace ? 1 : 0)}"];
     }
+
+    internal static string MapPath(string root) => Path.Combine(root, "Plugins", "SandboxISMC", "Content", "Lab", "FT_SandboxISMCBenchmark.umap");
+
+    public IReadOnlyList<string> CacheArguments(string root, string log) =>
+        [.. CommonArguments(root, log), "-run=DerivedDataCache", "-fill", "-AllowCommandletRendering",
+         "-TargetPlatform=WindowsEditor", $"-Map={Path.ChangeExtension(MapPath(root), null)}",
+         "-ExecCmds=r.VSync 0;r.ScreenPercentage 100;r.DynamicRes.OperationMode 0"];
+
+    private IReadOnlyList<string> CommonArguments(string root, string log) =>
+        [Path.Combine(root, "Sandbox.uproject"), "-unattended", "-nop4", "-nosplash", "-nosound", "-stdout", "-FullStdOutLogOutput", "-RenderOffscreen",
+         "-ddc=NoZenLocalFallback", $"-LocalDataCachePath={CacheDirectory ?? Path.Combine(root, ".local", "benchmarks", "ddc")}", $"-abslog={log}"];
 
     private static string Number(double value) => value.ToString("G9", CultureInfo.InvariantCulture);
 }

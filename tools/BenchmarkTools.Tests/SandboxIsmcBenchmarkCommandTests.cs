@@ -39,16 +39,16 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         using var fixture = new Fixture();
         Assert.AreEqual(0, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--validate-only",
             "--repetitions", "10", "--warmup-runs", "3", "--seconds", "90", "--label", "12-byte packed transform"), fixture.Errors.ToString());
-        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == "test-jobserver"));
-        var processes = fixture.Runner.Requests.Where(item => item.FileName == fixture.Editor).ToArray();
+        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == "test-jobserver" && item.Arguments.Contains("--measurement-plan")));
+        var processes = fixture.Runner.Requests.Where(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")).ToArray();
         Assert.AreEqual(2, processes.Length);
         Assert.IsTrue(processes.All(item => item.Arguments.Contains("-SandboxISMCBenchmarkSeconds=0.5") && item.Timeout == TimeSpan.FromSeconds(60)));
         foreach (var process in processes)
         {
             var cache = process.Arguments.Single(value => value.StartsWith("-LocalDataCachePath=", StringComparison.Ordinal))["-LocalDataCachePath=".Length..];
-            var relative = Path.GetRelativePath(process.WorkingDirectory, cache);
+            Assert.AreEqual(Path.Combine(fixture.Root, ".local", "benchmarks", "ddc"), cache);
             // Reproduce the Windows workspace depth that hit Unreal's 119-character DDC limit.
-            var representative = Path.Combine(@"C:\Users\matthew\source\repos\nukethebees\wt\dev1\.local\benchmarks\wt\0", relative);
+            var representative = Path.Combine(@"C:\Users\matthew\source\repos\nukethebees\wt\dev1", Path.GetRelativePath(fixture.Root, cache));
             Assert.IsTrue(representative.Length <= 119, representative);
         }
         var report = File.ReadAllText(Path.Combine(fixture.RunDirectory, "comparison.md"));
@@ -65,6 +65,75 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     }
 
     [TestMethod]
+    public async Task Cache_preparation_is_bounded_and_finishes_before_the_measurement_lease()
+    {
+        using var fixture = new Fixture();
+        Assert.AreEqual(0, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--validate-only"), fixture.Errors.ToString());
+        var requests = fixture.Runner.Requests;
+        var cache_jobs = requests.Where(item => item.FileName == "test-jobserver" && item.Arguments.Contains("--prepare-cache-plan")).ToArray();
+        Assert.AreEqual(2, cache_jobs.Length);
+        foreach (var job in cache_jobs)
+        {
+            CollectionAssert.IsSubsetOf(new[] { "--shared", "machine", "--kind", "build" }, job.Arguments.ToArray());
+            Assert.IsFalse(job.Arguments.Contains("--exclusive") || job.Arguments.Contains("benchmark"));
+        }
+        var cache_processes = requests.Where(item => item.FileName == fixture.Editor && item.Arguments.Contains("-run=DerivedDataCache")).ToArray();
+        Assert.AreEqual(2, cache_processes.Length);
+        foreach (var process in cache_processes)
+        {
+            Assert.AreEqual(TimeSpan.FromMinutes(10), process.Timeout);
+            Assert.IsTrue(process.Arguments.Contains("-Map=" + Path.ChangeExtension(SandboxIsmcRequest.MapPath(process.WorkingDirectory), null)));
+            Assert.IsTrue(process.Arguments.Contains("-LocalDataCachePath=" + Path.Combine(fixture.Root, ".local", "benchmarks", "ddc")));
+            Assert.IsFalse(process.Arguments.Any(arg => arg.Contains("SandboxISMCBenchmark", StringComparison.Ordinal) && !arg.StartsWith("-Map=", StringComparison.Ordinal)));
+            Assert.IsTrue(requests.FindLastIndex(item => item.FileName == "cmake") < requests.IndexOf(process));
+        }
+        var measurement = requests.Single(item => item.FileName == "test-jobserver" && item.Arguments.Contains("--measurement-plan"));
+        Assert.IsTrue(cache_processes.All(process => requests.IndexOf(process) < requests.IndexOf(measurement)));
+        Assert.AreEqual(2, fixture.Document("captures.json").GetArrayLength());
+        var preparation = Path.Combine(fixture.RunDirectory, "preparation");
+        foreach (var path in Directory.GetFiles(preparation, "manifest.json", SearchOption.AllDirectories))
+        {
+            using var manifest = JsonDocument.Parse(File.ReadAllText(path));
+            Assert.AreEqual("complete", manifest.RootElement.GetProperty("status").GetString());
+            Assert.AreEqual("cache-preparation", manifest.RootElement.GetProperty("purpose").GetString());
+        }
+        Assert.IsFalse(File.Exists(Path.Combine(preparation, "latest.txt")));
+    }
+
+    [TestMethod]
+    [DataRow("exit", "exited with code 8")]
+    [DataRow("timeout", "timed out after 10 minutes before measurement")]
+    public async Task Cache_failure_preserves_logs_and_cleans_baseline_without_a_measurement_lease(string failure, string diagnostic)
+    {
+        using var fixture = new Fixture { CacheFailure = failure };
+        Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--validate-only"));
+        StringAssert.Contains(fixture.Errors.ToString(), diagnostic);
+        Assert.IsFalse(fixture.Runner.Requests.Any(item => item.Arguments.Contains("--measurement-plan")));
+        Assert.IsTrue(fixture.Runner.Requests.Any(item => item.Arguments.Contains("remove")));
+        Assert.AreEqual("failed", fixture.Document("manifest.json").GetProperty("status").GetString());
+        var directory = Directory.GetDirectories(Path.Combine(fixture.RunDirectory, "preparation")).Single();
+        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(directory, "manifest.json")));
+        Assert.AreEqual("failed", manifest.RootElement.GetProperty("status").GetString());
+        foreach (var log in new[] { "unreal.log", "process.log" })
+        {
+            Assert.IsTrue(File.Exists(Path.Combine(directory, log)));
+            StringAssert.Contains(fixture.Errors.ToString(), Path.Combine(directory, log));
+        }
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task Source_changes_during_cache_preparation_prevent_measurement(bool baseline)
+    {
+        using var fixture = new Fixture { SourceChangeStage = "cache", ChangeBaseline = baseline };
+        Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old"));
+        StringAssert.Contains(fixture.Errors.ToString(), "Source changed");
+        Assert.IsFalse(fixture.Runner.Requests.Any(item => item.Arguments.Contains("--measurement-plan")));
+        Assert.IsTrue(fixture.Runner.Requests.Any(item => item.Arguments.Contains("remove")));
+    }
+
+    [TestMethod]
     public async Task Validation_preserves_normal_protocol_failures()
     {
         using var fixture = new Fixture { TerminalError = "Viewport verification failed" };
@@ -77,7 +146,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     {
         using var fixture = new Fixture { RhiMismatch = true };
         Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--validate-only"));
-        Assert.AreEqual(2, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor));
+        Assert.AreEqual(2, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")));
         Assert.IsFalse(fixture.Document("comparison.json").GetProperty("comparable").GetBoolean());
         Assert.AreEqual(0, fixture.Document("comparison.json").GetProperty("metrics").GetArrayLength());
     }
@@ -141,7 +210,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         using var fixture = new Fixture();
         var result = await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--repetitions", "2", "--warmup-runs", "1");
         Assert.AreEqual(0, result, fixture.Errors.ToString());
-        var lease = fixture.Runner.Requests.Single(item => item.FileName == "test-jobserver");
+        var lease = fixture.Runner.Requests.Single(item => item.FileName == "test-jobserver" && item.Arguments.Contains("--measurement-plan"));
         CollectionAssert.IsSubsetOf(new[] { "--exclusive", "machine", "benchmark", "--shared" }, lease.Arguments.ToArray());
         Assert.AreEqual(2, lease.Arguments.Count(item => item == "--exclusive"));
         Assert.AreEqual(4, fixture.Runner.Requests.Count(item => item.FileName == "cmake"));
@@ -157,7 +226,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         Assert.AreEqual(2, comparison.GetProperty("metrics")[0].GetProperty("baseline").GetProperty("samples").GetInt32());
         Assert.AreEqual(11, comparison.GetProperty("metrics")[0].GetProperty("candidate").GetProperty("median").GetDouble());
         Assert.IsTrue(fixture.Runner.Requests.Any(item => item.FileName == "git" && item.Arguments.Contains("remove")));
-        Assert.IsTrue(fixture.Runner.Requests.Where(item => item.FileName == fixture.Editor).All(item =>
+        Assert.IsTrue(fixture.Runner.Requests.Where(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")).All(item =>
             item.Arguments.Any(arg => arg.StartsWith("-abslog=", StringComparison.Ordinal)) && item.Arguments.Contains("-ForceRes")));
     }
 
@@ -220,7 +289,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old"));
         StringAssert.Contains(fixture.Errors.ToString(), error);
         Assert.IsFalse(fixture.Errors.ToString().Contains("Expected artifact", StringComparison.Ordinal));
-        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor));
+        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")));
         Assert.AreEqual(0, Directory.GetFiles(fixture.RunDirectory, "metrics.csv", SearchOption.AllDirectories).Length);
         Assert.IsFalse(File.Exists(Path.Combine(fixture.RunDirectory, "comparison.json")));
     }
@@ -249,7 +318,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     {
         using var fixture = new Fixture { ViewportMismatch = true };
         Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old"));
-        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor));
+        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")));
         StringAssert.Contains(fixture.Errors.ToString(), "observed_width");
         Assert.IsFalse(File.Exists(Path.Combine(fixture.RunDirectory, "comparison.json")));
     }
@@ -274,7 +343,8 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         Assert.AreEqual(0, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--baseline-worktree", supplied, "--skip-build"), fixture.Errors.ToString());
         Assert.IsTrue(Directory.Exists(supplied));
         Assert.IsFalse(fixture.Runner.Requests.Any(item => item.Arguments.Contains("remove") || item.Arguments.Contains("add") || item.FileName == "cmake"));
-        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == "test-jobserver"));
+        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == "test-jobserver" && item.Arguments.Contains("--measurement-plan")));
+        Assert.AreEqual(2, fixture.Runner.Requests.Count(item => item.Arguments.Contains("--prepare-cache-plan")));
     }
 
     [TestMethod]
@@ -292,8 +362,8 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         Assert.AreEqual("failed", fixture.Document("manifest.json").GetProperty("status").GetString());
         Assert.IsFalse(File.Exists(Path.Combine(fixture.RunDirectory, "comparison.json")));
         Assert.IsTrue(fixture.Runner.Requests.Any(item => item.Arguments.Contains("remove")));
-        Assert.AreEqual(stage == "build" ? 0 : 1, fixture.Runner.Requests.Count(item => item.FileName == "test-jobserver"));
-        Assert.AreEqual(stage == "measured" ? 4 : 0, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor));
+        Assert.AreEqual(stage == "build" ? 0 : 1, fixture.Runner.Requests.Count(item => item.FileName == "test-jobserver" && item.Arguments.Contains("--measurement-plan")));
+        Assert.AreEqual(stage == "measured" ? 4 : 0, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")));
     }
 
     [TestMethod]
@@ -326,7 +396,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old"));
         Assert.AreEqual("failed", fixture.Document("manifest.json").GetProperty("status").GetString());
         Assert.IsTrue(fixture.Runner.Requests.Any(item => item.Arguments.Contains("remove")));
-        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor));
+        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")));
     }
 
     [TestMethod]
@@ -334,7 +404,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     {
         using var fixture = new Fixture();
         Assert.AreEqual(0, await fixture.Run("frame-memory-revision-ab", "--baseline", "old", "--iterations", "2", "--warmup-iterations", "1"), fixture.Errors.ToString());
-        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == "test-jobserver"));
+        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == "test-jobserver" && item.Arguments.Contains("--measurement-plan")));
         var records = fixture.Document("records.json");
         Assert.AreEqual(4, records.GetArrayLength());
         CollectionAssert.AreEqual(new[] { "baseline", "candidate", "candidate", "baseline" }, records.EnumerateArray().Select(item => item.GetProperty("state").GetString()).ToArray());
@@ -365,6 +435,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         public bool BuildFailure { get; init; }
         public bool MissingProtocol { get; init; }
         public string? ProcessFailure { get; init; }
+        public string? CacheFailure { get; init; }
         public string? TerminalError { get; init; }
         public int TerminalExitCode { get; init; }
         public string? WrongCondition { get; init; }
@@ -425,20 +496,27 @@ public sealed class SandboxIsmcBenchmarkCommandTests
             }
             if (process.FileName == "test-jobserver")
             {
-                if (SourceChangeStage == "queued") source_changed_ = true;
+                if (SourceChangeStage == "queued" && process.Arguments.Contains("--measurement-plan")) source_changed_ = true;
                 var index = process.Arguments.ToList().IndexOf("--");
                 return new ProcessResult(await Application(true).RunAsync(process.Arguments.Skip(index + 2).ToArray(), Root));
             }
             if (process.Arguments.Contains("native-simulation")) return new ProcessResult(0,
                 "{\"timing\":{\"mean_tick_microseconds\":10},\"memory\":{\"frame_peak_claimed_bytes\":1,\"frame_peak_payload_bytes\":1,\"frame_total_padding_bytes\":0,\"frame_total_root_claims\":1}}");
             if (process.FileName != Editor) throw new AssertFailedException("Unexpected executable: " + process.FileName);
-            if (SourceChangeStage == "measured") source_changed_ = true;
             Assert.IsNotNull(process.OutputLogPath);
             File.WriteAllText(process.OutputLogPath, "Unreal process output");
+            string Argument(string name) => process.Arguments.Single(item => item.StartsWith(name + "=", StringComparison.Ordinal))[(name.Length + 1)..];
+            if (process.Arguments.Contains("-run=DerivedDataCache"))
+            {
+                File.WriteAllText(Argument("-abslog"), "Cache preparation output");
+                if (SourceChangeStage == "cache") source_changed_ = true;
+                if (CacheFailure == "timeout") throw new ProcessTimeoutException("fixture cache timeout");
+                return new ProcessResult(CacheFailure == "exit" ? 8 : 0);
+            }
+            if (SourceChangeStage == "measured") source_changed_ = true;
             if (ProcessFailure == "timeout") throw new ProcessTimeoutException("fixture timeout");
             if (ProcessFailure == "launch") throw new ProcessLaunchException("fixture launch", new IOException("missing editor"));
             if (ProcessFailure == "exit") return new ProcessResult(7, StandardError: "fixture process failure");
-            string Argument(string name) => process.Arguments.Single(item => item.StartsWith(name + "=", StringComparison.Ordinal))[(name.Length + 1)..];
             var directory = Argument("-SandboxISMCBenchmarkOutput");
             var id = Argument("-SandboxISMCBenchmarkRunId");
             var is_candidate = process.WorkingDirectory == Root;
@@ -479,6 +557,8 @@ public sealed class SandboxIsmcBenchmarkCommandTests
             var path = Path.Combine(root, "Plugins", "SandboxISMC", "Source", "SandboxISMCLab", "Private", "SandboxISMCBenchmarkActor.cpp");
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             File.WriteAllText(path, "SandboxISMCBenchmarkRunId=");
+            Directory.CreateDirectory(Path.GetDirectoryName(SandboxIsmcRequest.MapPath(root))!);
+            File.WriteAllText(SandboxIsmcRequest.MapPath(root), "benchmark map");
         }
 
         public void Dispose() => directory_.Dispose();

@@ -7,6 +7,8 @@ internal static class SandboxIsmcBenchmarkCommand
     public static async Task<int> RunAsync(BenchmarkToolsApplication application, RepositoryPaths repository, IReadOnlyList<string> arguments,
         bool comparison, CancellationToken token)
     {
+        if (arguments.Count == 2 && arguments[0] == "--prepare-cache-plan")
+            return await SandboxIsmcCachePreparation.RunChildAsync(application, arguments[1], token);
         if (arguments.Count == 2 && arguments[0] == "--measurement-plan")
         {
             var plan = await BenchmarkMeasurement.ReadAsync(application, arguments[1], token);
@@ -124,6 +126,10 @@ internal static class SandboxIsmcBenchmarkCommand
                 application.StandardOutput.WriteLine($"Prepared baseline retained: {baseline.Root}");
                 return 0;
             }
+            await BenchmarkRunContext.VerifySourceAsync(application, candidate, token);
+            if (comparison) await BenchmarkRunContext.VerifySourceAsync(application, baseline, token);
+            await SandboxIsmcCachePreparation.RunAsync(application, repository, context, candidate, settings, "candidate", token);
+            if (comparison) await SandboxIsmcCachePreparation.RunAsync(application, repository, context, baseline, settings, "baseline", token);
             var sequence = comparison ? BenchmarkOrdering.Balanced(repetitions, warmups) : [new BenchmarkRepetition(1, 1, "candidate", false)];
             context.Manifest.Artifacts["sequence.json"] = context.Artifact("sequence.json");
             context.Manifest.Artifacts["measurement-plan.json"] = context.Artifact("measurement-plan.json");

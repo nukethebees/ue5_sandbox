@@ -133,9 +133,16 @@ disposable benchmark-owned state under `.local/benchmarks/wt/`; preparation does
 them. Supplied baselines remain untouched. A retained overlaid baseline is useful for inspection;
 the existing clean-worktree requirement still applies when supplying a baseline to a later run.
 
-Validation overrides repetition and timing options and caps each Editor process at 60 seconds.
+Before measurement, both revisions prepare the benchmark map's shaders and derived data through
+Unreal's DDC commandlet, with a separate ten-minute timeout per revision. Preparation uses shared
+machine/engine resources before the exclusive measurement lease, and retains logs under the run's
+`preparation/` directory. Both sides use the invoking checkout's persistent `.local/benchmarks/ddc`
+cache, which survives disposable baseline cleanup. This also runs with `--skip-build`;
+`--prepare-only` continues to build and retain the baseline without launching Unreal.
+
+Validation overrides repetition and timing options and caps each measured Editor process at 60 seconds.
 It uses the normal single comparison lease and artifacts, but its reports explicitly make **no
-performance conclusions**. Cold shader compilation may exceed that cap; prepare caches separately.
+performance conclusions**. Cache preparation has its own timeout and does not consume this limit.
 
 PIE requests a fixed scene viewport, observes its actual size on a later tick, and fails before
 warmup if it differs. It never writes Editor viewport preferences. Requested and observed sizes,
