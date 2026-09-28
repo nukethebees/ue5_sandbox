@@ -2,6 +2,17 @@ if(NOT WIN32)
   return()
 endif()
 
+add_library(jobserver-gate daemon/gate.cpp daemon/journal.cpp)
+target_include_directories(jobserver-gate PUBLIC daemon lib/include)
+target_link_libraries(jobserver-gate PUBLIC ioj::cxx_standard ioj::cxx_conformance nlohmann_json::nlohmann_json)
+ioj_enable_warnings(jobserver-gate)
+add_executable(jobserver-gate-tests tests/gate_tests.cpp tests/journal_tests.cpp)
+target_link_libraries(jobserver-gate-tests PRIVATE jobserver-gate GTest::gtest_main)
+ioj_enable_warnings(jobserver-gate-tests)
+set_target_properties(jobserver-gate jobserver-gate-tests PROPERTIES CXX_COMPILER_LAUNCHER "" CXX_LINKER_LAUNCHER "" TEST_LAUNCHER "")
+add_test(NAME jobserver-gate-tests COMMAND jobserver-gate-tests)
+set_tests_properties(jobserver-gate-tests PROPERTIES LABELS "jobserver")
+
 add_library(jobserver-client)
 add_library(jobserver::client ALIAS jobserver-client)
 target_sources(jobserver-client PRIVATE
