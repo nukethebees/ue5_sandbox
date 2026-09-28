@@ -71,20 +71,25 @@ def make_base_document() -> dict[str, Any]:
             "rhs": platform.host_system_name,
         }
         for compiler in platform.compilers:
-            configure_presets.append(
-                {
-                    "name": compiler.base_preset,
-                    "hidden": True,
-                    "inherits": "base",
-                    "architecture": {
-                        "value": platform.architecture,
-                        "strategy": "external",
-                    },
-                    "condition": condition,
-                    "toolchainFile": compiler.toolchain_file,
-                    "cacheVariables": {"UE_PLATFORM": platform.ue_platform},
+            preset: dict[str, Any] = {
+                "name": compiler.base_preset,
+                "hidden": True,
+                "inherits": "base",
+                "architecture": {
+                    "value": platform.architecture,
+                    "strategy": "external",
+                },
+                "condition": condition,
+                "toolchainFile": compiler.toolchain_file,
+                "cacheVariables": {"UE_PLATFORM": platform.ue_platform},
+            }
+            if compiler.name == "clangcl":
+                preset["vendor"] = {
+                    "microsoft.com/VisualStudioSettings/CMake/1.0": {
+                        "intelliSenseMode": "windows-clang-x64",
+                    }
                 }
-            )
+            configure_presets.append(preset)
 
     document["configurePresets"] = configure_presets
     document["testPresets"] = [

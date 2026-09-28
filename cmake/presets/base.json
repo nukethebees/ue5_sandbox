@@ -30,6 +30,11 @@
       "toolchainFile": "${sourceDir}/cmake/toolchains/windows-clang-cl.cmake",
       "cacheVariables": {
         "UE_PLATFORM": "Win64"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "intelliSenseMode": "windows-clang-x64"
+        }
       }
     },
     {
