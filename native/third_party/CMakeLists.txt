@@ -66,8 +66,8 @@ set(HWY_ENABLE_LIST_TARGETS OFF CACHE BOOL "" FORCE)
 add_subdirectory(highway SYSTEM EXCLUDE_FROM_ALL)
 ioj_apply_native_abi(hwy)
 
-# Keep explicit comparison targets isolated from baseline callers and unity builds.
-function(ioj_configure_highway_comparison target isa)
+# Keep static SIMD targets isolated from baseline callers and unity builds.
+function(ioj_configure_highway_target target isa)
   set_target_properties(${target} PROPERTIES UNITY_BUILD OFF)
   target_compile_features(${target} PRIVATE cxx_std_23)
   target_compile_definitions(${target} PRIVATE HWY_COMPILE_ONLY_STATIC)
@@ -87,6 +87,10 @@ function(ioj_configure_highway_comparison target isa)
 endfunction()
 
 if(IOJ_WITH_UNREAL)
+  set_target_properties(hwy PROPERTIES
+    ARCHIVE_OUTPUT_DIRECTORY
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/Highway/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+  )
   target_link_libraries(cpu_features PRIVATE ioj::unreal_avx2)
   set_target_properties(cpu_features PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY

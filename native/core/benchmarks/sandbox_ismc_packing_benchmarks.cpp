@@ -1,3 +1,4 @@
+#include "sandbox_ismc_packing_avx2.h"
 #include "sandbox_ismc_packing_avx512.h"
 #include "sandbox_ismc_packing_highway.h"
 
@@ -24,7 +25,7 @@ enum class Implementation {
     Scalar,
     Avx2,
     Avx512,
-    HighwayAvx2,
+    Production,
     HighwayAvx512,
 };
 
@@ -63,10 +64,8 @@ auto run(benchmark::State& state) -> void {
             return;
         }
     }
-    if constexpr (implementation == Implementation::HighwayAvx2 ||
-                  implementation == Implementation::HighwayAvx512) {
-        constexpr auto target{implementation == Implementation::HighwayAvx2 ? HWY_AVX2 : HWY_AVX3};
-        if ((hwy::SupportedTargets() & target) == 0) {
+    if constexpr (implementation == Implementation::HighwayAvx512) {
+        if ((hwy::SupportedTargets() & HWY_AVX3) == 0) {
             state.SkipWithMessage("Highway target unavailable");
             return;
         }
@@ -90,33 +89,30 @@ auto run(benchmark::State& state) -> void {
     for (auto _ : state) {
         static_cast<void>(_);
         if constexpr (operation == Operation::Position) {
-            constexpr auto kernel{implementation == Implementation::HighwayAvx2
-                                      ? experiment::highway_avx2::pack_positions
-                                  : implementation == Implementation::HighwayAvx512
-                                      ? experiment::highway_avx512::pack_positions
-                                  : implementation == Implementation::Avx512
-                                      ? experiment::pack_positions_avx512
-                                  : implementation == Implementation::Avx2 ? pack_positions_avx2
-                                                                           : pack_positions_scalar};
+            constexpr auto kernel{
+                implementation == Implementation::Production ? ml::sandbox_ismc::pack_positions
+                : implementation == Implementation::HighwayAvx512
+                    ? experiment::highway_avx512::pack_positions
+                : implementation == Implementation::Avx512 ? experiment::pack_positions_avx512
+                : implementation == Implementation::Avx2   ? experiment::pack_positions_avx2
+                                                           : pack_positions_scalar};
             kernel(input.positions, parameters.position_root, buffers.output);
         } else if constexpr (operation == Operation::Quaternion) {
-            constexpr auto kernel{implementation == Implementation::HighwayAvx2
-                                      ? experiment::highway_avx2::pack_rotations
-                                  : implementation == Implementation::HighwayAvx512
-                                      ? experiment::highway_avx512::pack_rotations
-                                  : implementation == Implementation::Avx512
-                                      ? experiment::pack_rotations_avx512
-                                  : implementation == Implementation::Avx2 ? pack_rotations_avx2
-                                                                           : pack_rotations_scalar};
+            constexpr auto kernel{
+                implementation == Implementation::Production ? ml::sandbox_ismc::pack_rotations
+                : implementation == Implementation::HighwayAvx512
+                    ? experiment::highway_avx512::pack_rotations
+                : implementation == Implementation::Avx512 ? experiment::pack_rotations_avx512
+                : implementation == Implementation::Avx2   ? experiment::pack_rotations_avx2
+                                                           : pack_rotations_scalar};
             kernel(input.rotations, buffers.output);
         } else {
             constexpr auto kernel{
-                implementation == Implementation::HighwayAvx2
-                    ? experiment::highway_avx2::pack_transforms
+                implementation == Implementation::Production ? ml::sandbox_ismc::pack_transforms
                 : implementation == Implementation::HighwayAvx512
                     ? experiment::highway_avx512::pack_transforms
                 : implementation == Implementation::Avx512 ? experiment::pack_transforms_avx512
-                : implementation == Implementation::Avx2   ? pack_transforms_avx2
+                : implementation == Implementation::Avx2   ? experiment::pack_transforms_avx2
                                                            : pack_transforms_scalar};
             kernel(input,
                    parameters,
@@ -135,16 +131,16 @@ auto register_comparison(char const* name) -> void {
     for (auto const implementation : {Implementation::Scalar,
                                       Implementation::Avx2,
                                       Implementation::Avx512,
-                                      Implementation::HighwayAvx2,
+                                      Implementation::Production,
                                       Implementation::HighwayAvx512}) {
-        auto const suffix{implementation == Implementation::HighwayAvx2     ? "/highway-avx2"
+        auto const suffix{implementation == Implementation::Production      ? "/production"
                           : implementation == Implementation::HighwayAvx512 ? "/highway-avx512"
                           : implementation == Implementation::Avx512        ? "/avx512"
                           : implementation == Implementation::Avx2          ? "/avx2"
                                                                             : "/scalar"};
         auto const label{std::string{"ismc/"} + name + suffix};
-        auto const function{implementation == Implementation::HighwayAvx2
-                                ? run<operation, Implementation::HighwayAvx2, Coherent>
+        auto const function{implementation == Implementation::Production
+                                ? run<operation, Implementation::Production, Coherent>
                             : implementation == Implementation::HighwayAvx512
                                 ? run<operation, Implementation::HighwayAvx512, Coherent>
                             : implementation == Implementation::Avx512

@@ -1,4 +1,4 @@
-#include "sandbox/core/sandbox_ismc_packing.h"
+#include "sandbox_ismc_packing_avx2.h"
 
 #include <immintrin.h>
 
@@ -7,7 +7,7 @@
 #include <cstring>
 #include <limits>
 
-namespace ml::sandbox_ismc {
+namespace ml::sandbox_ismc::experiment {
 namespace avx2_detail {
 template <std::size_t Components, std::size_t Axis>
 auto load_axis(std::span<std::byte const> bytes, std::size_t index) noexcept -> __m256 {

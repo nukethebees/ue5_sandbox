@@ -1,3 +1,4 @@
+#include "sandbox_ismc_packing_avx2.h"
 #include "sandbox_ismc_packing_avx512.h"
 #include "sandbox_ismc_packing_highway.h"
 
@@ -41,15 +42,15 @@ struct Inputs {
     }
 };
 
-enum class Backend { Avx2, Avx512, HighwayAvx2, HighwayAvx512 };
+enum class Backend { Avx2, Avx512, Production, HighwayAvx512 };
 auto supported(Backend backend) -> bool {
     switch (backend) {
         case Backend::Avx2:
             return cpu_features::GetX86Info().features.avx2 != 0;
         case Backend::Avx512:
             return experiment::supports_avx512();
-        case Backend::HighwayAvx2:
-            return (hwy::SupportedTargets() & HWY_AVX2) != 0;
+        case Backend::Production:
+            return true;
         case Backend::HighwayAvx512:
             return (hwy::SupportedTargets() & HWY_AVX3) != 0;
     }
@@ -57,21 +58,21 @@ auto supported(Backend backend) -> bool {
 }
 
 auto compare(Inputs const& inputs, PackingParameters const& parameters, Backend backend) -> void {
-    auto const pack_transforms{
-        backend == Backend::HighwayAvx2     ? experiment::highway_avx2::pack_transforms
-        : backend == Backend::HighwayAvx512 ? experiment::highway_avx512::pack_transforms
-        : backend == Backend::Avx512        ? experiment::pack_transforms_avx512
-                                            : pack_transforms_avx2};
-    auto const pack_positions{
-        backend == Backend::HighwayAvx2     ? experiment::highway_avx2::pack_positions
-        : backend == Backend::HighwayAvx512 ? experiment::highway_avx512::pack_positions
-        : backend == Backend::Avx512        ? experiment::pack_positions_avx512
-                                            : pack_positions_avx2};
-    auto const pack_rotations{
-        backend == Backend::HighwayAvx2     ? experiment::highway_avx2::pack_rotations
-        : backend == Backend::HighwayAvx512 ? experiment::highway_avx512::pack_rotations
-        : backend == Backend::Avx512        ? experiment::pack_rotations_avx512
-                                            : pack_rotations_avx2};
+    auto const pack_transforms{backend == Backend::Production ? ml::sandbox_ismc::pack_transforms
+                               : backend == Backend::HighwayAvx512
+                                   ? experiment::highway_avx512::pack_transforms
+                               : backend == Backend::Avx512 ? experiment::pack_transforms_avx512
+                                                            : experiment::pack_transforms_avx2};
+    auto const pack_positions{backend == Backend::Production ? ml::sandbox_ismc::pack_positions
+                              : backend == Backend::HighwayAvx512
+                                  ? experiment::highway_avx512::pack_positions
+                              : backend == Backend::Avx512 ? experiment::pack_positions_avx512
+                                                           : experiment::pack_positions_avx2};
+    auto const pack_rotations{backend == Backend::Production ? ml::sandbox_ismc::pack_rotations
+                              : backend == Backend::HighwayAvx512
+                                  ? experiment::highway_avx512::pack_rotations
+                              : backend == Backend::Avx512 ? experiment::pack_rotations_avx512
+                                                           : experiment::pack_rotations_avx2};
     auto const count{inputs.positions.size()};
     std::vector<PackedTransform> scalar(count + 2);
     for (auto& packed : scalar) {
@@ -195,15 +196,15 @@ TEST_P(SandboxISMCBatchPackingVariants, BoundaryPositionsAndQuaternionTiesAndSig
 INSTANTIATE_TEST_SUITE_P(
     Isa,
     SandboxISMCBatchPackingVariants,
-    ::testing::Values(Backend::Avx2, Backend::Avx512, Backend::HighwayAvx2, Backend::HighwayAvx512),
+    ::testing::Values(Backend::Avx2, Backend::Avx512, Backend::Production, Backend::HighwayAvx512),
     [](auto const& info) {
         switch (info.param) {
             case Backend::Avx2:
                 return "Avx2";
             case Backend::Avx512:
                 return "Avx512";
-            case Backend::HighwayAvx2:
-                return "HighwayAvx2";
+            case Backend::Production:
+                return "Production";
             case Backend::HighwayAvx512:
                 return "HighwayAvx512";
         }

@@ -2,7 +2,7 @@
 
 #include "sandbox/core/sandbox_ismc_packing.h"
 
-namespace ml::sandbox_ismc::experiment::highway_avx512 {
+namespace ml::sandbox_ismc::highway_avx2 {
 
 auto pack_positions(std::span<std::byte const> positions,
                     Vector3f root,
@@ -12,5 +12,5 @@ auto pack_rotations(std::span<std::byte const> rotations,
 auto pack_transforms(TransformInput input,
                      PackingParameters const& parameters,
                      std::span<PackedTransform> output,
-                     TransformBounds* bounds = nullptr) noexcept -> void;
+                     TransformBounds* bounds) noexcept -> void;
 }

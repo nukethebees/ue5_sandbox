@@ -8,17 +8,17 @@
 #include <limits>
 
 #if HWY_TARGET == HWY_AVX2
-#define IOJ_HIGHWAY_NAMESPACE highway_avx2
+#define IOJ_HIGHWAY_NAMESPACE ml::sandbox_ismc::highway_avx2
 #elif HWY_TARGET == HWY_AVX3
-#define IOJ_HIGHWAY_NAMESPACE highway_avx512
+#define IOJ_HIGHWAY_NAMESPACE ml::sandbox_ismc::experiment::highway_avx512
 #else
-#error Unsupported Highway packing comparison target
+#error Unsupported Highway packing target
 #endif
 
 HWY_BEFORE_NAMESPACE();
 
-namespace ml::sandbox_ismc::experiment::IOJ_HIGHWAY_NAMESPACE {
-namespace detail {
+namespace IOJ_HIGHWAY_NAMESPACE {
+namespace highway_detail {
 
 namespace hn = hwy::HWY_NAMESPACE;
 
@@ -275,22 +275,24 @@ auto pack(TransformInput input,
 auto pack_positions(std::span<std::byte const> positions,
                     Vector3f root,
                     std::span<PackedTransform> output) noexcept -> void {
-    detail::pack<PackingFields::Positions, BoundsMode::Skip>(
+    highway_detail::pack<PackingFields::Positions, BoundsMode::Skip>(
         {positions, {}}, {root, {}, {}}, output, nullptr);
 }
 auto pack_rotations(std::span<std::byte const> rotations,
                     std::span<PackedTransform> output) noexcept -> void {
-    detail::pack<PackingFields::Rotations, BoundsMode::Skip>({{}, rotations}, {}, output, nullptr);
+    highway_detail::pack<PackingFields::Rotations, BoundsMode::Skip>(
+        {{}, rotations}, {}, output, nullptr);
 }
 auto pack_transforms(TransformInput input,
                      PackingParameters const& params,
                      std::span<PackedTransform> output,
                      TransformBounds* bounds) noexcept -> void {
     if (bounds != nullptr) {
-        detail::pack<PackingFields::Transforms, BoundsMode::Calculate>(
+        highway_detail::pack<PackingFields::Transforms, BoundsMode::Calculate>(
             input, params, output, bounds);
     } else {
-        detail::pack<PackingFields::Transforms, BoundsMode::Skip>(input, params, output, nullptr);
+        highway_detail::pack<PackingFields::Transforms, BoundsMode::Skip>(
+            input, params, output, nullptr);
     }
 }
 }

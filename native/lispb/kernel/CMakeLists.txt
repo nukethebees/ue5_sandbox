@@ -327,7 +327,7 @@ target_link_libraries(kernel-native-dot-relaxed-avx512 PRIVATE
 
 foreach(isa IN ITEMS avx2 avx512)
   add_library(kernel-native-highway-${isa} OBJECT ${KERNEL_NATIVE_HIGHWAY_FILES})
-  ioj_configure_highway_comparison(kernel-native-highway-${isa} ${isa})
+  ioj_configure_highway_target(kernel-native-highway-${isa} ${isa})
   target_link_libraries(kernel-native-highway-${isa} PRIVATE ioj::fp_strict)
   target_include_directories(kernel-native-highway-${isa} PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
 endforeach()
