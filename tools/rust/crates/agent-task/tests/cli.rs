@@ -291,10 +291,10 @@ fn central_tool_installation_initializes_submodules_without_jobserver_or_clearin
     assert!(String::from_utf8_lossy(&output.stderr).contains("23"));
     assert!(directory.0.join("dependency/marker.txt").is_file());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("[1/7] Synchronizing submodules"));
-    assert!(stdout.contains("[2/7] Updating submodules"));
-    assert!(stdout.contains("[3/7] Generating CMake presets"));
-    assert!(!stdout.contains("[4/7]"));
+    assert!(stdout.contains("[1/8] Synchronizing submodules"));
+    assert!(stdout.contains("[2/8] Updating submodules"));
+    assert!(stdout.contains("[3/8] Generating CMake presets"));
+    assert!(!stdout.contains("[4/8]"));
     assert_eq!(
         fs::read_to_string(directory.0.join("out/keep.txt")).unwrap(),
         "build output"

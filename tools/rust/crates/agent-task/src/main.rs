@@ -95,23 +95,23 @@ fn prepare_worktree() -> Result<(), String> {
 fn install_central_tools() -> Result<(), String> {
     let root = worktree_root()?;
 
-    println!("[1/7] Synchronizing submodules");
+    println!("[1/8] Synchronizing submodules");
     run(&root, "git", &["submodule", "sync", "--recursive"])?;
 
-    println!("[2/7] Updating submodules");
+    println!("[2/8] Updating submodules");
     run(
         &root,
         "git",
         &["submodule", "update", "--init", "--recursive"],
     )?;
 
-    println!("[3/7] Generating CMake presets");
+    println!("[3/8] Generating CMake presets");
     run(&root, "python", &["cmake/presets/generate.py"])?;
 
-    println!("[4/7] Configuring native build");
+    println!("[4/8] Configuring native build");
     run(&root, "cmake", &["--preset", "native"])?;
 
-    println!("[5/7] Installing canonical jobserver");
+    println!("[5/8] Installing canonical jobserver");
     run(
         &root,
         "cmake",
@@ -125,7 +125,7 @@ fn install_central_tools() -> Result<(), String> {
     )?;
 
     for (step, tool) in [(6, "UnrealBuildTools"), (7, "CodeFormatTools")] {
-        println!("[{step}/7] Installing canonical {tool}");
+        println!("[{step}/8] Installing canonical {tool}");
         run(
             &root,
             "pwsh",
@@ -138,7 +138,16 @@ fn install_central_tools() -> Result<(), String> {
             ],
         )?;
     }
-    Ok(())
+    println!("[8/8] Installing scheduler-enabled Codex");
+    run(
+        &root,
+        "pwsh",
+        &[
+            "-NoProfile",
+            "-File",
+            "tools/install/Install-AgentCodex.ps1",
+        ],
+    )
 }
 
 fn main() -> ExitCode {
