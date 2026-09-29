@@ -1,32 +1,22 @@
-# NukeTheBees Jobserver
+# Jobserver
 
-The jobserver is a local Windows traffic gate. Ordinary commands and builds share the machine
-freely. An exclusive benchmark waits for admitted work to finish, blocks later arrivals, then
-runs alone. There are no compiler quotas or per-compiler launchers.
+A cooperative, per-user Windows FIFO admission gate for modified Codex.
+Shared tickets overlap. An exclusive ticket waits for earlier work and blocks later shared work.
 
-Agents use the persistent `jobserver broker` with framed JSON input and output. For one command:
+Agents request tickets inside [modified Codex](../agent-scheduler/README.md), then run ordinary commands.
+The server never executes programs, owns processes, or configures child environments.
+
+Human diagnostics:
 
 ```powershell
-jobserver run --shared machine --name "Native build" -- cmake --build --preset native
-jobserver run --exclusive machine --name "Measurement" -- benchmark.exe
 jobserver status
-jobserver trace --lease 123 --limit 100
+jobserver trace
+jobserver doctor
+jobserver --version
 ```
 
-The client executes locally and releases the lease when the root command exits. Persistent
-compiler-server children do not hold leases. Closing a broker terminates its remaining session
-processes and releases its leases through pipe disconnect.
+The maintainer installs the daemon and CLI with `agent-task install-central-tools`.
+`jobserver start` starts the registered logon task; `jobserver shutdown` succeeds only when no tickets remain.
+Missing components require maintainer action. There is no automatic recovery or installation.
 
-The maintainer installs the canonical binaries with:
-
-```powershell
-cmake --preset native
-cmake --build --preset native --target install-jobserver
-```
-
-Keep `%LOCALAPPDATA%\NukeTheBees\jobserver\bin` on PATH. `jobserver --version` reports the
-source and protocol versions. Installation retains staged validation, drain/shutdown, startup
-verification, and rollback; never copy over live binaries. Protocol 2 requires matching clients
-and daemon. Agents do not update the canonical installation themselves.
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for the broker interface, FIFO rules, tracing, and failures.
+See [architecture](ARCHITECTURE.md) for protocol, identity checks, and accepted limitations.

@@ -40,14 +40,6 @@ auto user_sid() -> std::wstring const& {
 
 auto pipe_name() -> std::wstring const& {
     static auto const value = [] {
-        if (auto const size{
-                GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_TEST_PIPE", nullptr, 0)};
-            size != 0) {
-            std::wstring override_name(size, L'\0');
-            GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_TEST_PIPE", override_name.data(), size);
-            override_name.resize(size - 1);
-            return override_name;
-        }
         return std::wstring{LR"(\\.\pipe\NukeTheBees.Jobserver.)"} + user_sid();
     }();
     return value;

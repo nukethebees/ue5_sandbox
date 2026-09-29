@@ -8,7 +8,7 @@
 #include <vector>
 
 namespace jobserver::protocol {
-inline constexpr std::uint32_t major_version{2};
+inline constexpr std::uint32_t major_version{3};
 inline constexpr std::uint32_t minor_version{0};
 inline constexpr std::uint32_t maximum_payload_size{1024U * 1024U};
 

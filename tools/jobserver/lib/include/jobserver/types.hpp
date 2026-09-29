@@ -6,16 +6,7 @@
 #include <vector>
 
 namespace jobserver {
-enum class LeaseMode { shared, exclusive };
-struct GateClaim {
-    std::string name;
-    LeaseMode mode{LeaseMode::shared};
-};
-struct Command {
-    std::filesystem::path executable;
-    std::vector<std::string> arguments;
-    std::filesystem::path working_directory;
-};
+enum class Mode { shared, exclusive };
 struct Error {
     std::string code;
     std::string message;

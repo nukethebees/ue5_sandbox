@@ -89,42 +89,6 @@ function Register-Daemon {
     }
 }
 
-function Test-StagedBinaries {
-    $client = Join-Path $stagingBin 'jobserver.exe'
-    $daemon = Join-Path $stagingBin 'jobserverd.exe'
-    $testPipe = "\\.\pipe\NukeTheBees.Jobserver.Install.$PID.$([Guid]::NewGuid().ToString('N'))"
-    $testData = Join-Path $staging 'data'
-    $previousPipe = $env:NUKETHEBEES_JOBSERVER_TEST_PIPE
-    $previousData = $env:NUKETHEBEES_JOBSERVER_TEST_DATA
-    $process = $null
-    try {
-        $env:NUKETHEBEES_JOBSERVER_TEST_PIPE = $testPipe
-        $env:NUKETHEBEES_JOBSERVER_TEST_DATA = $testData
-        $process = Start-Process -FilePath $daemon -PassThru -WindowStyle Hidden
-        $deadline = [DateTime]::UtcNow.AddSeconds(10)
-        do {
-            & $client ping *> $null
-            if ($LASTEXITCODE -eq 0) {
-                & $client shutdown *> $null
-                if ($LASTEXITCODE -ne 0 -or -not $process.WaitForExit(5000)) {
-                    throw 'The staged jobserver did not shut down cleanly.'
-                }
-                return
-            }
-            if ($process.HasExited) {
-                throw "The staged daemon exited with code $($process.ExitCode)."
-            }
-            Start-Sleep -Milliseconds 100
-        } while ([DateTime]::UtcNow -lt $deadline)
-        throw 'The staged client could not reach the staged daemon.'
-    } finally {
-        if ($null -ne $process -and -not $process.HasExited) {
-            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-        }
-        $env:NUKETHEBEES_JOBSERVER_TEST_PIPE = $previousPipe
-        $env:NUKETHEBEES_JOBSERVER_TEST_DATA = $previousData
-    }
-}
 
 try {
     try {
@@ -154,7 +118,6 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw 'The staged jobserver client failed validation.'
     }
-    Test-StagedBinaries
 
     if (Test-Path -LiteralPath $installedClient -PathType Leaf) {
         & $installedClient shutdown
@@ -180,10 +143,6 @@ try {
     }
     Move-Item -LiteralPath $stagingBin -Destination $bin
     $swapped = $true
-
-    if ($env:NUKETHEBEES_JOBSERVER_TEST_INSTALL_FAIL_AFTER_SWAP -eq '1') {
-        throw 'Injected jobserver installation failure after binary swap.'
-    }
 
     Register-Daemon $installedDaemon
     Wait-DaemonReady $installedClient $installedDaemon

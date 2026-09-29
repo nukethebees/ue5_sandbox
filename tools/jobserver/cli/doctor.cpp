@@ -162,7 +162,6 @@ auto run_doctor() -> std::vector<DoctorCheck> {
     }
     auto const root{app_data / "NukeTheBees" / "jobserver"};
     auto const bin{root / "bin"};
-    auto const data{root / "data"};
     auto const installed_client{bin / "jobserver.exe"};
     auto const installed_daemon{bin / "jobserverd.exe"};
 
@@ -218,45 +217,6 @@ auto run_doctor() -> std::vector<DoctorCheck> {
                 std::to_string(major) + "." + std::to_string(minor));
         }
     }
-
-    if (paths_equal(running_client, installed_client)) {
-        auto authority{Client::check_daemon_recovery()};
-        auto const valid{authority && authority->responsive && authority->authority_valid &&
-                         authority->process_running &&
-                         paths_equal(authority->executable, installed_daemon)};
-        add(checks,
-            valid ? DoctorStatus::pass : DoctorStatus::failure,
-            "authority record",
-            authority ? authority->reason : authority.error().message);
-    } else {
-        add(checks,
-            DoctorStatus::warning,
-            "authority record",
-            "run the installed client for canonical authority validation");
-    }
-
-    filesystem_error.clear();
-    std::filesystem::create_directories(data, filesystem_error);
-    auto const probe{data / (".doctor-" + std::to_string(GetCurrentProcessId()) + ".tmp")};
-    auto writable{!filesystem_error};
-    if (writable) {
-        std::ofstream output{probe, std::ios::trunc};
-        output << "probe";
-        writable = output.good();
-    }
-    std::filesystem::remove(probe, filesystem_error);
-    add(checks,
-        writable ? DoctorStatus::pass : DoctorStatus::failure,
-        "data directory",
-        path_to_utf8(data));
-
-    auto const daemon_log{data / "jobserverd.log"};
-    filesystem_error.clear();
-    auto const log_exists{std::filesystem::is_regular_file(daemon_log, filesystem_error)};
-    add(checks,
-        log_exists ? DoctorStatus::pass : DoctorStatus::warning,
-        "daemon log",
-        path_to_utf8(daemon_log));
 
     std::size_t abandoned_staging{};
     filesystem_error.clear();

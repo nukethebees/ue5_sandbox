@@ -2,92 +2,87 @@
 
 #include <gtest/gtest.h>
 
-namespace {
-using namespace jobserver;
-struct GateTest : testing::Test {
-    Journal journal{{}, 1000};
+namespace jobserver {
+
+TEST(GateQueue, SharedOverlapExclusiveBarrierAndDeterministicOrder) {
+    Journal journal;
     GateQueue queue{journal};
-    auto request(LeaseMode mode = LeaseMode::shared, std::string name = "machine") -> Admission {
-        return *queue.acquire(queue.connect(), {{std::move(name), mode}}, nlohmann::json::object());
+    auto const a{queue.connect()};
+    auto const b{queue.connect()};
+    auto const c{queue.connect()};
+    auto const d{queue.connect()};
+    auto const e{queue.connect()};
+    ASSERT_TRUE(queue.request(a, Mode::shared, "A"));
+    ASSERT_TRUE(queue.request(b, Mode::shared, "B"));
+    ASSERT_TRUE(queue.request(c, Mode::exclusive, "C"));
+    ASSERT_TRUE(queue.request(d, Mode::shared, "D"));
+    ASSERT_TRUE(queue.request(e, Mode::shared, "E"));
+    EXPECT_TRUE(queue.find(a)->granted);
+    EXPECT_TRUE(queue.find(b)->granted);
+    EXPECT_FALSE(queue.find(c)->granted);
+    EXPECT_FALSE(queue.find(d)->granted);
+    EXPECT_TRUE(queue.release(a));
+    EXPECT_FALSE(queue.find(c)->granted);
+    EXPECT_TRUE(queue.release(b));
+    EXPECT_TRUE(queue.find(c)->granted);
+    EXPECT_FALSE(queue.find(d)->granted);
+    EXPECT_TRUE(queue.release(c));
+    EXPECT_TRUE(queue.find(d)->granted);
+    EXPECT_TRUE(queue.find(e)->granted);
+    auto grants = nlohmann::json::array();
+    for (auto const& event : journal.trace()) {
+        if (event["event"] == "granted") {
+            grants.push_back(event["name"]);
+        }
     }
-    void release(Admission const& a) { ASSERT_TRUE(queue.release(a.client, a.lease, 0)); }
-};
-TEST_F(GateTest, SharedOverlapExclusiveDrainsAndLaterSharedResumeTogether) {
-    auto a{request()};
-    auto b{request()};
-    auto c{request()};
-    EXPECT_TRUE(a.granted && b.granted && c.granted);
-    auto d{request(LeaseMode::exclusive)};
-    auto e{request()};
-    auto f{request()};
-    EXPECT_FALSE(d.granted || e.granted || f.granted);
-    release(a);
-    release(b);
-    EXPECT_FALSE(queue.find(d.client)->granted);
-    release(c);
-    EXPECT_TRUE(queue.find(d.client)->granted);
-    EXPECT_FALSE(queue.find(e.client)->granted);
-    release(d);
-    EXPECT_TRUE(queue.find(e.client)->granted && queue.find(f.client)->granted);
+    EXPECT_EQ(grants, nlohmann::json::array({"A", "B", "C", "D", "E"}));
 }
-TEST_F(GateTest, ExclusiveRequestsKeepTheirOrder) {
-    auto a{request(LeaseMode::exclusive)};
-    auto b{request(LeaseMode::exclusive)};
-    auto c{request(LeaseMode::exclusive)};
-    release(a);
-    EXPECT_TRUE(queue.find(b.client)->granted);
-    EXPECT_FALSE(queue.find(c.client)->granted);
-    release(b);
-    EXPECT_TRUE(queue.find(c.client)->granted);
+
+TEST(GateQueue, RejectsSecondQueuedAndGrantedRequest) {
+    Journal journal;
+    GateQueue queue{journal};
+    auto const a{queue.connect()};
+    auto const b{queue.connect()};
+    ASSERT_TRUE(queue.request(a, Mode::exclusive, "A"));
+    ASSERT_TRUE(queue.request(b, Mode::shared, "B"));
+    EXPECT_FALSE(queue.request(a, Mode::shared, "duplicate granted"));
+    EXPECT_FALSE(queue.request(b, Mode::exclusive, "duplicate queued"));
+    EXPECT_EQ(queue.status()["tickets"].size(), 2U);
 }
-TEST_F(GateTest, DisconnectCancelsQueuedAndReleasesBothModes) {
-    auto a{request()};
-    auto b{request(LeaseMode::exclusive)};
-    auto c{request()};
-    queue.disconnect(b.client);
-    EXPECT_EQ(queue.find(b.client), nullptr);
-    EXPECT_TRUE(queue.find(c.client)->granted);
-    auto d{request(LeaseMode::exclusive)};
-    queue.disconnect(a.client);
-    queue.disconnect(c.client);
-    EXPECT_TRUE(queue.find(d.client)->granted);
-    auto e{request()};
-    queue.disconnect(d.client);
-    EXPECT_TRUE(queue.find(e.client)->granted);
+
+TEST(GateQueue, QueuedDisconnectRemovesBarrierAndAdmitsShared) {
+    Journal journal;
+    GateQueue queue{journal};
+    auto const a{queue.connect()};
+    auto const b{queue.connect()};
+    auto const c{queue.connect()};
+    ASSERT_TRUE(queue.request(a, Mode::shared, "A"));
+    ASSERT_TRUE(queue.request(b, Mode::exclusive, "B"));
+    ASSERT_TRUE(queue.request(c, Mode::shared, "C"));
+    queue.disconnect(b);
+    EXPECT_EQ(queue.find(b), nullptr);
+    EXPECT_TRUE(queue.find(c)->granted);
 }
-TEST_F(GateTest, NamedGatesAreIndependentAndMultiGateAdmissionIsAtomic) {
-    auto a{request(LeaseMode::exclusive, "integration/dev")};
-    auto b{request()};
-    auto c{*queue.acquire(
-        queue.connect(),
-        {{"integration/dev", LeaseMode::exclusive}, {"machine", LeaseMode::exclusive}},
-        nlohmann::json::object())};
-    auto d{request()};
-    EXPECT_TRUE(a.granted && b.granted);
-    EXPECT_FALSE(c.granted || d.granted);
-    release(b);
-    EXPECT_FALSE(queue.find(c.client)->granted);
-    release(a);
-    EXPECT_TRUE(queue.find(c.client)->granted);
+
+TEST(GateQueue, GrantedDisconnectAdmitsNextExclusive) {
+    Journal journal;
+    GateQueue queue{journal};
+    auto const a{queue.connect()};
+    auto const b{queue.connect()};
+    ASSERT_TRUE(queue.request(a, Mode::exclusive, "A"));
+    ASSERT_TRUE(queue.request(b, Mode::exclusive, "B"));
+    queue.disconnect(a);
+    EXPECT_TRUE(queue.find(b)->granted);
 }
-TEST_F(GateTest, StatusAndTraceIdentifyReservationAndExclusiveOwner) {
-    auto a{request()};
-    auto b{request(LeaseMode::exclusive)};
-    auto c{request()};
-    EXPECT_EQ(queue.find(c.client)->blockers, std::vector<LeaseId>{b.lease});
-    EXPECT_EQ(queue.status()["gates"][0]["exclusive_owner"], 0);
-    release(a);
-    EXPECT_EQ(queue.status()["gates"][0]["exclusive_owner"], b.lease.value);
-    auto events = journal.trace(
-        {.client = b.client, .lease = b.lease, .kind = EventKind::exclusive_granted});
-    ASSERT_EQ(events.size(), 1);
-    EXPECT_EQ(events[0]["command"], b.command.value);
-}
-TEST_F(GateTest, ClearCanRelinquishRacingGrantButCannotCancelStartedCommand) {
-    auto a{request()};
-    EXPECT_TRUE(queue.cancel(a.client, a.lease));
-    auto b{request()};
-    EXPECT_TRUE(queue.started(b.client, b.lease, 123));
-    EXPECT_FALSE(queue.cancel(b.client, b.lease));
+
+TEST(Journal, KeepsOnlyRecentDiagnosticEvents) {
+    Journal journal;
+    for (unsigned i{}; i < 1005; ++i) {
+        journal.append("requested", ClientId{i + 1});
+    }
+    auto const events = journal.trace();
+    EXPECT_EQ(events.size(), 1000U);
+    EXPECT_EQ(events.front()["client"], 6);
+    EXPECT_EQ(events.back()["client"], 1005);
 }
 }

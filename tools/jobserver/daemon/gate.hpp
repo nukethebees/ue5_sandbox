@@ -1,49 +1,35 @@
 #pragma once
-
 #include "journal.hpp"
 
 #include "jobserver/types.hpp"
 
 #include <expected>
-#include <functional>
-#include <map>
+#include <vector>
 
 namespace jobserver {
-struct Admission {
+struct Ticket {
     ClientId client;
-    CommandId command;
-    LeaseId lease;
-    std::vector<GateClaim> claims;
-    nlohmann::json metadata;
+    Mode mode;
+    std::string name;
     bool granted{};
-    bool started{};
-    std::vector<LeaseId> blockers{};
 };
 
-// All operations run under the server's state mutex. No process state belongs here.
+// The server serializes all queue operations under its mutex.
 class GateQueue {
   public:
     explicit GateQueue(Journal& journal);
     auto connect() -> ClientId;
     void disconnect(ClientId client);
-    auto acquire(ClientId client, std::vector<GateClaim> claims, nlohmann::json metadata)
-        -> std::expected<Admission, Error>;
-    auto cancel(ClientId client, LeaseId lease) -> bool;
-    auto release(ClientId client, LeaseId lease, int exit_code) -> bool;
-    auto started(ClientId client, LeaseId lease, std::uint32_t pid) -> bool;
-    [[nodiscard]] auto find(ClientId client) const -> Admission const*;
+    auto request(ClientId client, Mode mode, std::string name) -> std::expected<void, Error>;
+    auto release(ClientId client) -> bool;
+    [[nodiscard]] auto find(ClientId client) const -> Ticket const*;
     [[nodiscard]] auto status() const -> nlohmann::json;
-    [[nodiscard]] auto empty() const -> bool { return entries_.empty(); }
+    [[nodiscard]] auto empty() const -> bool { return tickets_.empty(); }
   private:
     void admit();
-    void record(EventKind kind, Admission const& entry, std::int64_t value = 0);
-    void exclusive_event(EventKind kind, Admission const& entry);
-    void remove(ClientId client, LeaseId lease, bool cancelled);
-    [[nodiscard]] auto conflicts(Admission const& left, Admission const& right) const -> bool;
     Journal& journal_;
-    std::uint64_t next_id_;
+    std::uint64_t next_id_{1};
     std::vector<ClientId> clients_;
-    std::vector<Admission> entries_;
-    std::map<std::string, GateId> gates_;
+    std::vector<Ticket> tickets_;
 };
 }
