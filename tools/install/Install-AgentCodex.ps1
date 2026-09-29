@@ -26,8 +26,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Pinned Codex preparation failed.' }
     cmake -S "$repo/tools/agent-scheduler" -B $build -G Ninja "-DCMAKE_BUILD_TYPE=$Configuration"
     if ($LASTEXITCODE -ne 0) { throw 'Scheduler configuration failed.' }
-    $jobserver = Join-Path $env:LOCALAPPDATA 'NukeTheBees/jobserver/bin/jobserver.exe'
-    & $jobserver run --shared machine --name install-agent-codex -- cmake --build $build --target scheduler-client codex-scheduler
+    cmake --build $build --target scheduler-client codex-scheduler
     if ($LASTEXITCODE -ne 0) { throw 'Scheduler/Codex build failed.' }
     cmake --install $build --prefix $candidate
     if ($LASTEXITCODE -ne 0) { throw 'Scheduler/Codex candidate install failed.' }

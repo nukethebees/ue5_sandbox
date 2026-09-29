@@ -6,6 +6,7 @@ Update `agent-task` once with `. ./dev.ps1` followed by `install-agent-task`, th
 run `agent-task install-central-tools`. This prepares the pinned source, builds
 Release Codex and the scheduler client, and installs them together under
 `%LOCALAPPDATA%\NukeTheBees\agent-codex\bin`. Close custom Codex sessions before updating.
+This maintainer-only installer builds directly, without requesting a jobserver lease.
 
 The `agent-codex.ps1` launcher forwards normal Codex arguments, selects the
 unelevated backend, disables shell snapshots, and loads the installed scheduling
