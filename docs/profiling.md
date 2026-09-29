@@ -15,22 +15,16 @@ cmake --preset native-benchmark
 cmake --build --preset native-simulation-benchmark
 ```
 
-Open the Tracy Profiler desktop application, then use the jobserver to run the benchmark with a
-connection wait. The wait keeps the timed workload from starting until the profiler connects (or
-the timeout expires).
+Open the Tracy Profiler desktop application, request an exclusive jobs-board ticket, check until
+Ready, and explicitly start it before running the benchmark. End it immediately when the command
+returns. The profiler connection wait keeps the timed workload from starting until the profiler
+connects (or the timeout expires).
 
 ```powershell
 $repo = (Get-Location).Path
-$jobserver = Join-Path $env:LOCALAPPDATA 'NukeTheBees\jobserver\bin\jobserver.exe'
 $benchmark = Join-Path $repo 'out\build\native-benchmark\bin\native-simulation-benchmark.exe'
 
-& $jobserver run `
-  --name 'fighter scheduling Tracy capture' `
-  --kind benchmark `
-  --worktree $repo `
-  --exclusive machine `
-  --exclusive benchmark `
-  -- $benchmark `
+& $benchmark `
   --level (Join-Path $repo 'LevelScripts\FighterSchedulingBenchmark.scm') `
   --seconds 20 `
   --fighter-stress-cap 2000 `
@@ -45,7 +39,7 @@ not save one automatically. Store local captures beneath `.local/benchmarks/` an
 them.
 
 `BenchmarkTools native-simulation` and its PowerShell report wrappers do not currently expose
-`--wait-for-profiler`. They are appropriate for unprofiled measurements; use the jobserver-wrapped
+`--wait-for-profiler`. They are appropriate for unprofiled measurements; use the
 executable above when a reliable Tracy capture is required.
 
 ## Comparing two native benchmark configurations
@@ -70,8 +64,9 @@ the worktree root explicitly so an installed copy can safely measure any checkou
   --b-preset native-simulation-benchmark
 ```
 
-The command builds missing prerequisites unless `--skip-build` is supplied, obtains the benchmark
-and machine jobserver claims, then records `manifest.json`, `comparison.json`, both captures, and
+Use the same request/check/start/end protocol with an exclusive ticket for this comparison.
+The command builds missing prerequisites
+unless `--skip-build` is supplied, then records `manifest.json`, `comparison.json`, both captures, and
 their exported CSVs. Run the focused `perf` tests and `tracy-benchmark-compare --version` on the
 candidate first. Install a validated version independently of a worktree with:
 
@@ -88,4 +83,4 @@ of `agent-task install-central-tools`. For installation testing, pass a private 
 
 - [Benchmarks](benchmarks.md): supported benchmark workloads and runners.
 - [Level scripts](../LevelScripts/README.md): find S7 benchmark scenarios.
-- [Jobserver](../tools/jobserver/README.md): resource claims and command supervision.
+- [Jobs board](../tools/jobserver/README.md): cooperative FIFO shared/exclusive tickets.

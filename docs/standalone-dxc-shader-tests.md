@@ -98,16 +98,11 @@ cmake --build --preset debug-game --target heatmap-benchmark
 ```
 
 That target initially encountered a recursive Ninja prerequisite-build stall. After the editor
-build completed, the timed runs used its exact jobserver-wrapped commandlet:
+build completed, the timed runs used this commandlet workload. To repeat it, use an exclusive
+[jobs-board ticket](../tools/jobserver/README.md): request, check until Ready, start, run, end.
 
 ```powershell
-& "$env:LOCALAPPDATA\NukeTheBees\jobserver\bin\jobserver.exe" run `
-  --name "Baseline HeatmapRDG Unreal run <n>" `
-  --kind benchmark `
-  --worktree "C:\Users\matthew\source\repos\nukethebees\wt\dev2" `
-  --exclusive machine --exclusive benchmark `
-  --shared unreal-build/8da32d479a17c0fbbf96cfbbcf14b092a6fd0bb3454eb8e1dadbb0c653e88d0b `
-  -- "C:\dev\UE5.8.0\Engine\Binaries\Win64\UnrealEditor-Win64-DebugGame-Cmd.exe" `
+& "C:\dev\UE5.8.0\Engine\Binaries\Win64\UnrealEditor-Win64-DebugGame-Cmd.exe" `
   "C:\Users\matthew\source\repos\nukethebees\wt\dev2\Sandbox.uproject" `
   -run=HeatmapBenchmark -Resolutions=32,64,128,256,512 -Warmup=10 -Iterations=100 `
   -Output=Saved/Benchmarks/HeatmapBenchmark.csv -AllowCommandletRendering `
@@ -116,7 +111,7 @@ build completed, the timed runs used its exact jobserver-wrapped commandlet:
 
 Each run is one commandlet workload covering five resolutions, with 10 warmup and 100 measured
 iterations per resolution for both the RDG and Slate implementations. Wall time includes
-jobserver/client and Unreal process startup, RHI and DDC setup, the benchmark, and shutdown.
+admission overhead and Unreal process startup, RHI and DDC setup, the benchmark, and shutdown.
 
 | Run | Cache state | Result | Wall clock | Approx. setup before report | Shader activity observed |
 | --- | --- | --- | ---: | ---: | --- |
@@ -184,17 +179,12 @@ remain unchanged.
 
 ## Post-audit measurements
 
-The focused Unreal timing command, used before and after removing the assertions, was:
+The focused Unreal timing workload, used before and after removing the assertions, was the
+following. Use the same exclusive jobs-board request/check/start/end protocol when repeating it:
 
 ```powershell
 $timer = [Diagnostics.Stopwatch]::StartNew()
-& "$env:LOCALAPPDATA\NukeTheBees\jobserver\bin\jobserver.exe" run `
-  --name "SandboxShaders shader mapping run <n>" `
-  --kind unreal-test `
-  --worktree "C:\Users\matthew\source\repos\nukethebees\wt\dev2" `
-  --shared machine `
-  --shared unreal-build/8da32d479a17c0fbbf96cfbbcf14b092a6fd0bb3454eb8e1dadbb0c653e88d0b `
-  -- "C:\dev\UE5.8.0\Engine\Binaries\Win64\UnrealEditor-Win64-DebugGame-Cmd.exe" `
+& "C:\dev\UE5.8.0\Engine\Binaries\Win64\UnrealEditor-Win64-DebugGame-Cmd.exe" `
   "C:\Users\matthew\source\repos\nukethebees\wt\dev2\Sandbox.uproject" `
   "-ExecCmds=Automation RunTests SandboxShaders.UnitTests.ShaderInfrastructure.InitialisesModulesAndShaderMapping; Quit" `
   -nullrhi -unattended -nop4 -nosplash -nosound -stdout -ddc=NoZenLocalFallback `

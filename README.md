@@ -31,7 +31,7 @@ For complete setup, build, testing, debugging, and packaging instructions, see
 
 | Area | Purpose | Guide |
 | --- | --- | --- |
-| `cmake/` | CMake wrapper, presets, jobserver and Unreal orchestration | [CMake guide](cmake/README.md) |
+| `cmake/` | CMake wrapper, presets, and Unreal orchestration | [CMake guide](cmake/README.md) |
 | `PowerShell/` and `dev.ps1` | Returning-developer navigation and build commands | [PowerShell guide](PowerShell/README.md) |
 | `native/` | Standalone C++ libraries, tools, simulations, and tests | [Native guide](native/README.md) |
 | `Codegen/` and `lispb/` | Generated C++/Slate/material outputs and their inputs | [Code generation guide](Codegen/README.md) |

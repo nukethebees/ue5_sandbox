@@ -7,7 +7,7 @@
 
 - The focused PowerShell benchmark names are interactive façades only: they build the
   revision-local `benchmark-tools-host` CMake target and forward their arguments. Benchmark execution,
-  validation, filesystem work, and jobserver claims live in BenchmarkTools.
+  validation and filesystem work live in BenchmarkTools.
 - `plot-*.py`: plotting and scientific presentation only.
 - `audit_module_migration.sh`: read-only migration checks. See [AGENTS.md](AGENTS.md) for the
   migration-audit contract.

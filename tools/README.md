@@ -10,13 +10,22 @@ The maintainer installs stable tools explicitly under
 | UnrealBuildTools | `agent-task install-central-tools` | csproj Version |
 | CodeFormatTools | `agent-task install-central-tools` | csproj Version |
 
-The maintainer manages PATH for ordinary tools. Internal jobserver calls use
-`%LOCALAPPDATA%\NukeTheBees\jobserver\bin\jobserver.exe`; its separate installer preserves
-staged validation, shutdown, startup verification, and rollback. See [jobserver](jobserver/README.md).
+Installers publish literal symlinks in `%NTB_APPDATA_LOCAL%\bin` (default
+`%LOCALAPPDATA%\NukeTheBees\bin`). Add only that directory to PATH; old per-tool PATH
+entries can be removed after reinstalling. Enable Windows Developer Mode before installing,
+or grant your account the **Create symbolic links** right and sign out/in. Installers check
+link creation before building or updating tools and refuse to overwrite unrelated files.
+The .NET tools publish as framework-dependent single-file executables so links do not need
+adjacent DLLs; the installed .NET runtime is still required.
+
+`agent-task jobs` accesses the per-user jobs board. Its installer shuts down an empty board,
+copies the binaries, registers the logon task, and verifies startup. See [jobserver](jobserver/README.md).
 Agents assume central tools are installed, report missing commands, and never install/update them
 or build local fallbacks. `--version` is for manual diagnosis; bump the source version when shipping changes.
 
-`agent-task prepare-worktree` checks for the canonical jobserver, clears output, updates submodules,
+Use stock Codex. This repository does not build or install it.
+
+`agent-task prepare-worktree` clears output, updates submodules,
 generates presets, disables Live Coding in existing
 `Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini`, and generates code.
 Missing settings are left absent. Preparation never installs tools or performs a broad build.
@@ -27,7 +36,8 @@ under `%LOCALAPPDATA%\NukeTheBees\bin`.
 For one C# tool, run `pwsh -NoProfile -File tools/install/Install-CentralDotnetTool.ps1 -ToolName
 UnrealBuildTools` (or `CodeFormatTools`). The installer publishes privately, runs focused project
 tests and candidate `--version`, then replaces the tool's bin directory. Failed validation leaves
-the existing installation intact. Use `-InstallRoot <private-tool-root>` for isolated testing.
+the existing installation intact. Use `-InstallRoot <private-tool-root>` for isolated testing;
+links then go into the sibling `bin` directory. `-LinkDirectory` overrides the link destination.
 
 `CodeFormatTools [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` reads formatting roots,
 extensions, and exclusions from the current checkout's `.code-format.json`. Styling stays in

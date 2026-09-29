@@ -26,7 +26,8 @@ an explicit `-BuildDir`. The selected paths are printed before building.
 All three LLVM paths remain overridable. `-VSCommonTools` may be omitted in an already initialized
 developer shell. `-Jobs` defaults to 24. Use a fresh build directory when changing compiler or
 configuration. Omit `-Install` to build and verify without changing installed tools.
-Coordinate costly builds through jobserver, and installation with users of that installation.
+Use a shared [jobs-board ticket](../jobserver/README.md) for costly builds: request, check until
+Ready, start, build, end. Coordinate installation with its users.
 
 The script verifies the revision before changing source, applies each owned patch independently,
 accepts already-applied patches, and rejects unrelated source edits. It does not fetch or update LLVM.

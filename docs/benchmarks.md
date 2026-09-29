@@ -5,9 +5,10 @@ BenchmarkTools intentionally tracks the checkout. Build its private host output 
 The PowerShell entry points perform that focused build automatically; there is no shared staging.
 
 Benchmarks are opt-in measurements, not ordinary test runs. Complete build and setup work first,
-then use the repository runner or benchmark CMake target so the per-user jobserver can wait for
-older work and acquire exclusive benchmark and machine resources. Do not start measurements beside
-an unmanaged Unreal build or Editor session.
+then request an exclusive jobs-board ticket. Check until Ready and explicitly start it before
+invoking the repository runner or benchmark CMake target. Immediately end it when the command
+returns, including failure. Earlier shared tickets finish first; later shared requests wait behind
+the benchmark. Do not start measurements beside an unmanaged Unreal build or Editor session.
 
 Results are disposable local data unless a specific experiment says otherwise; write them beneath
 `.local/benchmarks/` rather than committing them.
@@ -17,7 +18,7 @@ Results are disposable local data unless a specific experiment says otherwise; w
 | Measurement | Entry point | Notes |
 | --- | --- | --- |
 | Fighter scheduling simulation | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe fighter-simulation` | Default 2,000- and 4,000-fighter cases; writes JSON and summary CSV. The PowerShell name remains a façade. |
-| Generic native simulation | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe native-simulation` | Shared jobserver-aware C# runner around `native-simulation-benchmark` for an S7 level. |
+| Generic native simulation | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe native-simulation` | C# runner around `native-simulation-benchmark` for an S7 level. |
 | Frame-memory level workload | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe frame-memory-level` | Uses the batch benchmark scenario. The PowerShell name remains a façade. |
 | Revision A/B frame-memory comparison | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe frame-memory-revision-ab` | Safely creates and evaluates a detached baseline worktree. |
 | Level telemetry | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe level-telemetry` | Configures, builds, and runs the telemetry CTest preset. |
@@ -66,11 +67,11 @@ The workload waits for exact fighter saturation, applies a post-saturation warm-
 steady-state simulation. It disables fighter laser damage and raises ship health so the population
 remains stable while normal fighter behaviour and collision work remain active.
 
-For scripts and result plotters, see the [Scripts guide](../Scripts/README.md). For jobserver
-implementation details, see [tools/jobserver](../tools/jobserver/README.md).
+For scripts and result plotters, see the [Scripts guide](../Scripts/README.md). For coordination,
+see the [jobs-board workflow](../tools/jobserver/README.md).
 
-PowerShell remains the interactive/report façade, C# owns benchmark orchestration and jobserver
-integration, and Python remains for plotting or scientific analysis.
+PowerShell remains the interactive/report façade, C# owns benchmark orchestration, and Python
+remains for plotting or scientific analysis. Benchmark tools have no scheduling responsibilities.
 
 ## Related documentation
 
