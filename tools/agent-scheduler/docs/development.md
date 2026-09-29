@@ -7,6 +7,9 @@ run `agent-task install-central-tools`. This prepares the pinned source, builds
 Codex, its code-mode host, and the scheduler client using the root [ioj.toml](../../../ioj.toml), and installs them under
 `%LOCALAPPDATA%\NukeTheBees\agent-codex\bin`. Close custom Codex sessions before updating.
 This maintainer-only installer builds directly, without requesting a jobserver lease.
+If an old session locks a retired executable, installation succeeds with a cleanup
+warning. Close old sessions and rerun the installer to remove retained `.previous-*`
+directories; the new installation stays usable.
 
 The `agent-codex.ps1` launcher forwards normal Codex arguments, selects the
 unelevated backend, disables shell snapshots, and loads your external scheduling

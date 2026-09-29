@@ -50,8 +50,14 @@ try {
         if (Test-Path -LiteralPath $backup) { [IO.Directory]::Move($backup, $bin) }
         throw
     }
-    Remove-PrivateOutput $backup
     Publish-ToolLinks $bin @('agent-codex.ps1', 'agent-scheduler.exe', 'codex-scheduler.exe', 'codex-code-mode-host.exe') $links
+    foreach ($previous in Get-ChildItem -LiteralPath $root -Directory -Filter '.previous-*' -Force) {
+        try {
+            Remove-PrivateOutput $previous.FullName
+        } catch {
+            Write-Warning "Codex was installed successfully, but the previous installation at '$($previous.FullName)' could not be removed. A running Codex session may still be using it. Close old agent-codex sessions and rerun the installer to retry cleanup. Windows reported: $($_.Exception.Message)"
+        }
+    }
     Write-Host 'Installed scheduler-enabled Codex. Launch agent-codex.ps1. Normal codex is unchanged.'
     Write-Host "Reference rules: '$bin/scheduling.default.rules'. Keep active rules in '%NTB_APPDATA_LOCAL%\config\agent-scheduler\scheduling.rules' or set AGENT_SCHEDULER_RULES."
 } finally {
