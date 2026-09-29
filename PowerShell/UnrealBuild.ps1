@@ -1,10 +1,6 @@
 $env:MSBUILDDISABLENODEREUSE = '1'
 
-function Get-JobserverPath {
-    Join-Path $env:LOCALAPPDATA 'NukeTheBees/jobserver/bin/jobserver.exe'
-}
-
-function Invoke-JobserverWorkflow {
+function Invoke-CMakeWorkflow {
     param(
         [Parameter(Mandatory)]
         [string]$Name,
@@ -233,14 +229,6 @@ function get-ubt-build-state {
     }
 }
 
-function reset-ubt-build-state {
-    $jobserver = Get-JobserverPath
-    & $jobserver kill-owned --kind unreal-build
-    if ($LASTEXITCODE -ne 0) {
-        throw "Jobserver owned Unreal-build cleanup exited with code $LASTEXITCODE."
-    }
-}
-
 function cbuild {
     param(
         [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
@@ -252,7 +240,7 @@ function cbuild {
     try {
         foreach ($current_configuration in $configuration) {
             Write-Host "Building the project with CMake workflow '$current_configuration'."
-            $workflow_result = Invoke-JobserverWorkflow `
+            $workflow_result = Invoke-CMakeWorkflow `
                 -Name "CMake workflow: $current_configuration" `
                 -Preset $current_configuration
 
@@ -272,31 +260,9 @@ function integrate-feature {
     param([switch]$KeepBranch)
 
     $agent_task = (Get-Command agent-task -CommandType Application -ErrorAction Stop).Source
-    $jobserver = Get-JobserverPath
-    $worktree = & git rev-parse --show-toplevel
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Run integrate-feature from the feature worktree after user authorization.'
-    }
-    $branch = & git branch --show-current
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($branch)) {
-        throw 'Integration requires a feature branch.'
-    }
-
-    $arguments = @(
-        'lease',
-        '--name', "Integrate $branch into dev",
-        '--kind', 'integration',
-        '--task', $branch,
-        '--worktree', $worktree,
-        '--exclusive', 'integration/dev',
-        '--', $agent_task, 'integrate'
-    )
-    if ($KeepBranch) {
-        $arguments += '--keep-branch'
-    }
-
-    Write-Host "Queueing '$branch' for the exclusive 'integration/dev' reservation."
-    & $jobserver @arguments
+    $arguments = @('integrate')
+    if ($KeepBranch) { $arguments += '--keep-branch' }
+    & $agent_task @arguments
     if ($LASTEXITCODE -ne 0) {
         throw "Feature integration stopped (exit code $LASTEXITCODE). Follow the stage diagnostic above; nothing is retried automatically."
     }
@@ -349,7 +315,7 @@ function csetup {
 
             $workflow = "setup-worktree-$current_configuration"
             Write-Host "Preparing worktree with CMake workflow '$workflow'."
-            $workflow_result = Invoke-JobserverWorkflow `
+            $workflow_result = Invoke-CMakeWorkflow `
                 -Name "CMake setup workflow: $current_configuration" `
                 -Preset $workflow
 
@@ -400,8 +366,7 @@ function cprojectfiles {
 }
 
 function get-jobserver-state {
-    $jobserver = Get-JobserverPath
-    & $jobserver status
+    & agent-task jobs status
     if ($LASTEXITCODE -ne 0) {
         throw "Jobserver status exited with code $LASTEXITCODE."
     }

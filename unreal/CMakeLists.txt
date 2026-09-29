@@ -113,12 +113,8 @@ if(NOT UE_ROOT)
 endif()
 
 include("${PROJECT_SOURCE_DIR}/cmake/unreal_paths.cmake")
-sandbox_resolve_unreal_root(UE_ROOT_ABSOLUTE UE_ROOT_CANONICAL
-  "${UE_ROOT}" "${PROJECT_SOURCE_DIR}")
-
-include("${PROJECT_SOURCE_DIR}/cmake/unreal_jobserver.cmake")
-sandbox_configure_unreal_jobserver("${UE_ROOT_CANONICAL}")
-
+cmake_path(ABSOLUTE_PATH UE_ROOT BASE_DIRECTORY "${PROJECT_SOURCE_DIR}" NORMALIZE
+  OUTPUT_VARIABLE UE_ROOT_ABSOLUTE)
 sandbox_get_unreal_editor_names(UE_EDITOR_NAME UE_EDITOR_CMD_NAME "${UE_CONFIGURATION}")
 sandbox_configure_unreal_engine_paths(UE "${UE_ROOT_ABSOLUTE}"
   "${UE_EDITOR_NAME}" "${UE_EDITOR_CMD_NAME}")
@@ -362,7 +358,6 @@ sandbox_set_automation_test_properties(Sandbox.SparkRenderTests)
 sandbox_make_automation_exec_commands(spark_benchmark_commands
   "StartsWith:SandboxBenchmarks.SparkBenchmark")
 add_unreal_editor_test(SandboxBenchmarks.SparkBenchmark
-  ACTIVITY BENCHMARK
   ARGUMENTS
     "${spark_benchmark_commands}"
     "-SandboxSparkBenchmarkSeconds=${IOJ_SPARK_BENCHMARK_SECONDS}"
@@ -380,7 +375,6 @@ sandbox_set_automation_test_properties(SandboxBenchmarks.SparkBenchmark)
 sandbox_make_automation_exec_commands(level_telemetry_storage_benchmark_commands
   "SandboxBenchmarks.LevelTelemetryStorage")
 add_unreal_editor_test(SandboxBenchmarks.LevelTelemetryStorage
-  ACTIVITY BENCHMARK
   ARGUMENTS
     "${level_telemetry_storage_benchmark_commands}"
     "-SandboxTelemetryBenchmarkSamples=${IOJ_TELEMETRY_BENCHMARK_SAMPLES}"
@@ -393,7 +387,6 @@ sandbox_set_automation_test_properties(SandboxBenchmarks.LevelTelemetryStorage)
 sandbox_make_automation_exec_commands(ismc_remote_benchmark_commands
   "SandboxISMC.RemoteBenchmark")
 add_unreal_editor_test(SandboxISMC.RemoteBenchmark
-  ACTIVITY BENCHMARK
   ARGUMENTS
     "${ismc_remote_benchmark_commands}"
     "-SandboxISMCBenchmarkSeconds=${IOJ_ISMC_BENCHMARK_SECONDS}"
@@ -429,7 +422,6 @@ add_custom_target(dev-core
   DEPENDS
     editor
     native-tests
-    jobserver-tests
     check-cmake-presets
 )
 
@@ -468,17 +460,13 @@ add_unreal_editor_target(validate-ui-glow-material-unreal
   FOLDER "Sandbox/Unreal/Maintenance"
 )
 
-sandbox_unreal_jobserver_command(generate_world_soft_target_material_command STANDARD SHARED generate
-  "Generate world soft target material")
-sandbox_unreal_jobserver_command(generate_world_soft_target_assets_command STANDARD SHARED generate
-  "Generate world soft target assets")
 add_custom_target(generate-world-soft-target-assets
-  COMMAND ${generate_world_soft_target_material_command} "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
     -run=MaterialSynth
     "-Artifact=${WORLD_SOFT_TARGET_MATERIAL_ARTIFACT}"
     -Generate -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
-  COMMAND ${generate_world_soft_target_assets_command} "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
     -run=GenerateWorldSoftTargetAssets -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
   DEPENDS editor
@@ -566,7 +554,6 @@ sandbox_set_automation_test_properties(SandboxEditor.MaterialSynth)
 
 add_unreal_editor_test(SandboxUI.EntityOverlayBenchmark
   NO_LOCAL_DDC
-  ACTIVITY BENCHMARK
   ARGUMENTS
     -run=EntityOverlayBenchmark
     -RenderOffscreen
@@ -606,12 +593,10 @@ set_tests_properties(SandboxShaders.GpuStarfieldMatrix PROPERTIES
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
 
-sandbox_unreal_jobserver_command(gpu_tutorial_shader_tests_command STANDARD SHARED unreal-test
-  "Test SandboxGpuTutorials shaders")
 sandbox_make_automation_exec_commands(gpu_tutorial_shader_test_commands
   "StartsWith:SandboxGpuTutorials.UnitTests")
 add_custom_target(gpu-tutorial-shader-tests
-  COMMAND ${gpu_tutorial_shader_tests_command} "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
     "${gpu_tutorial_shader_test_commands}"
     -unattended
     -nop4

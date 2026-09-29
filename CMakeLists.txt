@@ -1,12 +1,10 @@
 cmake_minimum_required(VERSION 4.4.2)
 
-include(cmake/jobserver_integration.cmake)
-sandbox_configure_jobserver()
+
 
 project(SandboxUnrealBuild LANGUAGES CXX)
 enable_testing()
 
-sandbox_add_jobserver_status_target()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 if(CMAKE_UNITY_BUILD)

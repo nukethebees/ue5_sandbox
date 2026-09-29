@@ -65,11 +65,8 @@ endfunction()
 
 function(sandbox_add_clang_tidy_target target_name source_filter log_name description)
   set(sandbox_native_clang_tidy_log "${CMAKE_BINARY_DIR}/${log_name}.log")
-  sandbox_jobserver_command(clang_tidy_command STANDARD static-analysis
-    "clang-tidy: ${description}")
   add_custom_target(${target_name}
-    COMMAND ${clang_tidy_command}
-      "${IOJ_POWERSHELL_EXECUTABLE}" -NoProfile -File
+    COMMAND "${IOJ_POWERSHELL_EXECUTABLE}" -NoProfile -File
       "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/run_clang_tidy.ps1"
       -PythonExecutable "${Python3_EXECUTABLE}"
       -RunClangTidyExecutable "${IOJ_RUN_CLANG_TIDY_EXECUTABLE}"

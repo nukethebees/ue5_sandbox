@@ -20,7 +20,7 @@ its `bin` directory; missing tools are errors. Configured tests/tools receive th
 selection explicitly, independent of later shell changes.
 
 The CMake modules in this directory own compiler warnings, sanitizers, precompiled headers, Unreal
-build/packaging integration, and jobserver claims. See [Build and test](../docs/build-and-test.md)
+build/packaging integration. See [Build and test](../docs/build-and-test.md)
 for the supported workflows, [Benchmarks](../docs/benchmarks.md) for exclusive measurements, and
 [Profiling](../docs/profiling.md) for native level benchmark capture.
 
@@ -30,9 +30,8 @@ owns project-file generation and Live Coding validation. Reusable Unreal target 
 remain in `cmake/unreal.cmake`.
 
 `cmake/tests/` runs pure CMake self-tests during every configure. They cover Windows path handling,
-MSVC library-flag escaping, resource identities, command-list boundaries, Unreal editor and test
-executable naming, engine-tool paths, and package-artifact paths; the Python jobserver fixture
-remains responsible for integration coverage of generated Ninja and CTest files.
+MSVC library-flag escaping, command-list boundaries, Unreal editor and test executable naming,
+engine-tool paths, and package-artifact paths.
 
 `native` is the ordinary clang-cl Debug + unity native-only configuration and inherits
 `IOJ_WITH_UNREAL=OFF`. Use `cmake --build --preset native --target <target>` for targeted
@@ -81,18 +80,10 @@ appropriate dependencies. A bare target name is resolved by CMake only in comman
 responsible for transitive incremental input tracking and is invoked on each requested build.
 CTest's C# freshness check still rejects stale assemblies without rebuilding them.
 
-The scheduling contract is shared `machine` access for C/C++ compiler and executable-linker
-launchers, ordinary native executable tests (`TEST_LAUNCHER`), .NET and Cargo builds/tests,
-generators, formatting, shader tests, and static analysis. Benchmark measurements retain exclusive
-`machine` and `benchmark` access; report plotting uses shared access. Unreal commands additionally
-claim their canonical engine resource. BenchmarkTools owns its own measurement claims.
-
-Intentional scheduling exceptions are short configure-time discovery/probes, file copies and
-fingerprints, and orchestration scripts whose child work already acquires claims (including
-nested CMake builds and the CMake regression suite). Jobserver integration/system tests use their
-own daemon fixtures; repair/install targets and their native prerequisites clear launchers so an
-existing working jobserver is never needed to repair it. When no installed jobserver exists,
-compiler/test launchers are omitted; explicit non-bootstrap work still requires installation.
+CMake and its child tools execute ordinary commands. Use a shared jobs-board ticket for heavyweight
+builds/tests and an exclusive ticket for benchmarks or commands that modify shared Unreal engine
+output. Request, check until Ready, start immediately before the command, and end immediately when
+it returns. See the [jobs-board workflow](../tools/jobserver/README.md).
 
 ASAN runtime staging is a build dependency of instrumented targets. Deleting the staged DLL is
 repaired by the next incremental build, including when the executable is otherwise up to date.

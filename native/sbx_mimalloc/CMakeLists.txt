@@ -1,7 +1,5 @@
 ioj_find_llvm_tool(SBX_LLVM_NM llvm-nm)
 ioj_find_llvm_tool(SBX_LLVM_READOBJ llvm-readobj)
-sandbox_jobserver_command(mimalloc_generate_command STANDARD generate "Generate mimalloc symbol prefix")
-sandbox_jobserver_command(mimalloc_audit_command STANDARD static-analysis "Audit mimalloc symbols")
 
 set(SBX_MIMALLOC_ROOT "${PROJECT_SOURCE_DIR}/native/third_party/mimalloc")
 set(SBX_MIMALLOC_SOURCE "${SBX_MIMALLOC_ROOT}/src/static.c")
@@ -36,7 +34,7 @@ configure_sbx_mimalloc_object(sbx-mimalloc-prefix-probe)
 
 add_custom_command(
   OUTPUT "${SBX_MIMALLOC_PREFIX_HEADER}"
-  COMMAND ${mimalloc_generate_command} "${IOJ_NATIVE_BINARY_TOOLS}" mimalloc-symbols generate
+  COMMAND "${IOJ_NATIVE_BINARY_TOOLS}" mimalloc-symbols generate
     --nm "${SBX_LLVM_NM}"
     --readobj "${SBX_LLVM_READOBJ}"
     --output "${SBX_MIMALLOC_PREFIX_HEADER}"
@@ -69,7 +67,7 @@ endif()
 set(SBX_MIMALLOC_AUDIT_STAMP "${CMAKE_CURRENT_BINARY_DIR}/sbx-mimalloc-symbol-audit.stamp")
 add_custom_command(
   OUTPUT "${SBX_MIMALLOC_AUDIT_STAMP}"
-  COMMAND ${mimalloc_audit_command} "${IOJ_NATIVE_BINARY_TOOLS}" mimalloc-symbols verify
+  COMMAND "${IOJ_NATIVE_BINARY_TOOLS}" mimalloc-symbols verify
     --nm "${SBX_LLVM_NM}"
     --readobj "${SBX_LLVM_READOBJ}"
     $<TARGET_OBJECTS:sbx-mimalloc-implementation>

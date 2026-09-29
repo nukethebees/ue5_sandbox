@@ -39,8 +39,7 @@ function(sandbox_add_dxc_shader_test)
     "${shader_SOURCE}"
   )
 
-  sandbox_jobserver_command(test_command STANDARD test "Compile shader: ${shader_NAME}")
-  add_test(NAME "${shader_NAME}" COMMAND ${test_command} ${dxc_command})
+  add_test(NAME "${shader_NAME}" COMMAND ${dxc_command})
   set_tests_properties("${shader_NAME}" PROPERTIES
     LABELS "unit;all;native;native-shader"
   )

@@ -3,7 +3,7 @@ Set-StrictMode -Version Latest
 $installer = Join-Path $PSScriptRoot '../install/Install-Jobserver.ps1'
 $probe = @{ PathResolutionReached = $false }
 
-# The first path lookup is before mutex creation or any installation mutation.
+# The first path lookup is before any installation mutation.
 # Always stop there so even a regressed guard cannot reach the installed jobserver.
 function Resolve-Path {
     param([string]$LiteralPath)

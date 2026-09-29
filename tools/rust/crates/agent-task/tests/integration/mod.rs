@@ -4,43 +4,6 @@ mod support;
 use std::fs;
 use support::Repo;
 
-fn transaction(root: &Path, keep: bool) -> Result<(), String> {
-    super::transaction(root, keep, |_| Ok(()))
-}
-
-#[test]
-fn lease_is_reverified_before_promotion() {
-    let repo = Repo::new();
-    commit(&repo, &repo.feature, "feature.txt", "feature\n");
-    let base = repo.raw(&repo.dev, &["rev-parse", "HEAD"]);
-    let feature = repo.raw(&repo.feature, &["rev-parse", "HEAD"]);
-    let mut calls = 0;
-    let error = super::transaction(&repo.feature, false, |_| {
-        calls += 1;
-        if calls == 2 {
-            // The merge object exists at this boundary, but dev has not advanced.
-            let unreachable = repo.raw(&repo.feature, &["fsck", "--unreachable", "--no-reflogs"]);
-            let merge = unreachable
-                .lines()
-                .find_map(|line| line.strip_prefix("unreachable commit "))
-                .unwrap();
-            assert_eq!(
-                repo.raw(&repo.feature, &["show", "-s", "--format=%P", merge]),
-                format!("{base} {feature}")
-            );
-            assert_eq!(repo.raw(&repo.dev, &["rev-parse", "HEAD"]), base);
-            Err("integration lease expired".into())
-        } else {
-            Ok(())
-        }
-    })
-    .unwrap_err();
-    assert_eq!(calls, 2);
-    assert!(error.contains("lease expired"));
-    assert_eq!(repo.raw(&repo.dev, &["rev-parse", "HEAD"]), base);
-    assert_eq!(branch(&repo.feature).unwrap(), "feature");
-}
-
 #[test]
 fn final_rebase_flattens_merges_despite_ambient_configuration() {
     let repo = Repo::new();
@@ -74,27 +37,6 @@ fn commit(repo: &Repo, root: &Path, file: &str, content: &str) {
     fs::write(root.join(file), content).unwrap();
     repo.raw(root, &["add", file]);
     repo.raw(root, &["commit", "-qm", "change"]);
-}
-
-#[test]
-fn lease_requires_matching_running_exclusive_integration_job() {
-    let repo = Repo::new();
-    let status = serde_json::json!({"jobs": [{"id":"lease", "state":"RUNNING", "kind":"integration",
-        "worktree":repo.feature, "claims":[{"name":"integration/dev", "mode":"exclusive"}]}]});
-    assert!(check_lease(&status, "lease", &repo.feature).is_ok());
-    assert!(check_lease(&status, "missing", &repo.feature).is_err());
-    assert!(check_lease(&status, "lease", &repo.dev).is_err());
-    for (key, value) in [("state", "QUEUED"), ("kind", "build")] {
-        let mut wrong = status.clone();
-        wrong["jobs"][0][key] = value.into();
-        assert!(check_lease(&wrong, "lease", &repo.feature).is_err());
-    }
-    for (key, value) in [("name", "integration/main"), ("mode", "shared")] {
-        let mut wrong = status.clone();
-        wrong["jobs"][0]["claims"][0][key] = value.into();
-        assert!(check_lease(&wrong, "lease", &repo.feature).is_err());
-    }
-    assert!(check_lease(&serde_json::json!({}), "lease", &repo.feature).is_err());
 }
 
 #[test]

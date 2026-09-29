@@ -6,10 +6,11 @@ use std::process::{Command, ExitCode};
 mod git;
 mod git_cli;
 mod integrate;
+mod jobs;
 mod live_coding;
 mod workspace;
 
-const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  git <command>          Run supported feature Git operations (agent-task git --help)\n  integrate [--keep-branch]  Privileged dev transaction; use authorized integrate-feature";
+const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  jobs <command>         Cooperative jobs board (agent-task jobs --help)\n  git <command>          Run supported feature Git operations (agent-task git --help)\n  integrate [--keep-branch]  Privileged dev transaction; use authorized integrate-feature";
 
 fn worktree_root() -> Result<PathBuf, String> {
     let output = Command::new("git")
@@ -42,23 +43,8 @@ fn run(root: &Path, program: &str, arguments: &[&str]) -> Result<(), String> {
     Ok(())
 }
 
-fn require_jobserver() -> Result<(), String> {
-    let local_app_data = std::env::var_os("LOCALAPPDATA")
-        .filter(|value| !value.is_empty())
-        .ok_or("LOCALAPPDATA is not set. Set it and run 'agent-task install-central-tools'.")?;
-    let jobserver = PathBuf::from(local_app_data).join("NukeTheBees/jobserver/bin/jobserver.exe");
-    if !jobserver.is_file() {
-        return Err(format!(
-            "Canonical jobserver is missing at '{}'. Run 'agent-task install-central-tools' first.",
-            jobserver.display()
-        ));
-    }
-    Ok(())
-}
-
 fn prepare_worktree() -> Result<(), String> {
     let root = worktree_root()?;
-    require_jobserver()?;
 
     println!("[1/6] Clearing build output");
     let output = root.join("out");
@@ -94,6 +80,18 @@ fn prepare_worktree() -> Result<(), String> {
 
 fn install_central_tools() -> Result<(), String> {
     let root = worktree_root()?;
+
+    println!("Checking tool symlink support");
+    run(
+        &root,
+        "pwsh",
+        &[
+            "-NoProfile",
+            "-File",
+            "tools/install/ToolLinks.ps1",
+            "-CheckOnly",
+        ],
+    )?;
 
     println!("[1/7] Synchronizing submodules");
     run(&root, "git", &["submodule", "sync", "--recursive"])?;
@@ -143,6 +141,15 @@ fn install_central_tools() -> Result<(), String> {
 
 fn main() -> ExitCode {
     let arguments = std::env::args_os().skip(1).collect::<Vec<_>>();
+    if arguments.first().is_some_and(|arg| arg == "jobs") {
+        return match jobs::run(&arguments[1..]) {
+            Ok(code) => ExitCode::from(code as u8),
+            Err(error) => {
+                eprintln!("agent-task: {error}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     if arguments.first().is_some_and(|arg| arg == "git") {
         match git::run(&arguments[1..]) {
             Ok(code) => std::process::exit(code),

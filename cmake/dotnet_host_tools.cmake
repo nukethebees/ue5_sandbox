@@ -1,5 +1,4 @@
 include_guard(GLOBAL)
-include("${CMAKE_CURRENT_LIST_DIR}/jobserver_integration.cmake")
 
 add_custom_target(csharp-host-tools)
 
@@ -32,10 +31,9 @@ function(sandbox_add_dotnet_host_tool target_name output_variable project_file)
   set(output_file "${output_directory}/${tool_name}.exe")
   set(intermediate_directory "${output_directory}/obj/")
 
-  sandbox_jobserver_command(build_command STANDARD build "Build .NET host tool ${tool_name}")
   # MSBuild owns transitive input tracking; run it even when the apphost exists.
   add_custom_target(${target_name}
-    COMMAND ${build_command} "${IOJ_DOTNET_EXECUTABLE}" build "${project_file}"
+    COMMAND "${IOJ_DOTNET_EXECUTABLE}" build "${project_file}"
       --configuration "${dotnet_configuration}"
       --output "${output_directory}"
       --nologo

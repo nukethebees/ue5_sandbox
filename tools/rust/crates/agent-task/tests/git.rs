@@ -432,9 +432,6 @@ fn supported_git_streams_and_exit_status_are_preserved() {
         assert_eq!(wrapped.stdout, direct.stdout);
         assert_eq!(wrapped.stderr, direct.stderr);
     }
-    let output = repo.tool().arg("integrate").output().unwrap();
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("lease"));
 }
 
 #[test]

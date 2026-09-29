@@ -49,7 +49,7 @@ set(KERNEL_COMPILE_FILES
 )
 add_custom_command(
   OUTPUT ${KERNEL_COMPILE_FILES}
-  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target kernel-compile-fixture
@@ -106,7 +106,7 @@ set(KERNEL_STANDARD_FILES
 )
 add_custom_command(
   OUTPUT ${KERNEL_STANDARD_FILES}
-  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target kernel-standard
@@ -138,7 +138,7 @@ set_tests_properties(kernel-generated-standard-tests PROPERTIES LABELS "unit;all
 add_dependencies(kernel-codegen-tests kernel-generated-standard-tests)
 
 add_custom_target(generate-kernel-code
-  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target kernel-unreal
@@ -154,7 +154,7 @@ add_custom_target(generate-kernel-code
 )
 
 add_custom_target(check-generated-kernel-code
-  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" check
+  COMMAND "$<TARGET_FILE:lispb>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target kernel-unreal
@@ -170,7 +170,7 @@ add_custom_target(check-generated-kernel-code
 )
 
 add_custom_target(generate-native-core-kernels
-  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target kernel-native-core
@@ -186,7 +186,7 @@ add_custom_target(generate-native-core-kernels
 )
 
 add_custom_target(check-generated-native-core-kernels
-  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" check
+  COMMAND "$<TARGET_FILE:lispb>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target kernel-native-core
@@ -256,7 +256,7 @@ set(KERNEL_NATIVE_SIMD_FILES
 )
 add_custom_command(
   OUTPUT ${KERNEL_NATIVE_SIMD_FILES}
-  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target kernel-native-simd
@@ -428,8 +428,6 @@ function(add_kernel_benchmark_report target_name)
   if(REPORT_FILTER)
     set(filter_argument "--benchmark_filter=${REPORT_FILTER}")
   endif()
-  sandbox_jobserver_command(kernel_benchmark_command BENCHMARK benchmark "${REPORT_COMMENT}")
-  sandbox_jobserver_command(plot_command STANDARD generate "Plot kernel benchmark results")
 
   add_custom_target(${target_name}
     COMMAND "${CMAKE_COMMAND}" -E remove_directory
@@ -439,7 +437,7 @@ function(add_kernel_benchmark_report target_name)
     COMMAND "${CMAKE_COMMAND}" -E make_directory
       "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}"
       "${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
-    COMMAND ${kernel_benchmark_command} "$<TARGET_FILE:kernel-native-benchmarks>"
+    COMMAND "$<TARGET_FILE:kernel-native-benchmarks>"
       --benchmark_repetitions=7
       --benchmark_min_time=0.05s
       --benchmark_enable_random_interleaving=true
@@ -447,7 +445,7 @@ function(add_kernel_benchmark_report target_name)
       ${filter_argument}
       "--benchmark_out=${KERNEL_BENCHMARK_RESULTS}"
       --benchmark_out_format=json
-    COMMAND ${plot_command} "${CMAKE_COMMAND}" -E env
+    COMMAND "${CMAKE_COMMAND}" -E env
       "UV_CACHE_DIR=${KERNEL_BENCHMARK_UV_CACHE}"
       "MPLCONFIGDIR=${KERNEL_BENCHMARK_MATPLOTLIB_CACHE}"
       "uv" run --locked
@@ -478,11 +476,9 @@ add_kernel_benchmark_report(kernel-benchmark-report-full
   COMMENT "Benchmarking the comprehensive generated kernel matrix and plotting the results"
 )
 
-sandbox_jobserver_command(kernel_highway_benchmark_command BENCHMARK benchmark
-  "Compare Highway and intrinsic generated kernels")
 add_custom_target(kernel-highway-benchmark-report
   COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/highway"
-  COMMAND ${kernel_highway_benchmark_command} "$<TARGET_FILE:kernel-native-benchmarks>"
+  COMMAND "$<TARGET_FILE:kernel-native-benchmarks>"
     "--benchmark_filter=^(add_scaled/elementwise|dot_product/relaxed|dot_product_3d/elementwise)/[^/]+/[^/]+/ordinary/(aligned|unaligned)/(17|32|4096|65536)/real_time$"
     --benchmark_repetitions=3 --benchmark_min_time=0.02s
     --benchmark_enable_random_interleaving=true --benchmark_display_aggregates_only=true

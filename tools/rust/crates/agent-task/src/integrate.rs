@@ -1,52 +1,7 @@
 use crate::workspace::{self, branch, protected, query};
-use serde_json::Value;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-
-fn verify_lease(root: &Path) -> Result<(), String> {
-    let lease = std::env::var("NUKETHEBEES_JOBSERVER_LEASE")
-        .map_err(|_| "Integration requires an exclusive jobserver lease. After user authorization, use integrate-feature.")?;
-    let local = std::env::var_os("LOCALAPPDATA")
-        .ok_or("LOCALAPPDATA is missing; install the canonical jobserver.")?;
-    let output = Command::new(PathBuf::from(local).join("NukeTheBees/jobserver/bin/jobserver.exe"))
-        .args(["status", "--json"])
-        .output()
-        .map_err(|e| format!("Cannot verify integration lease: {e}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "Cannot verify integration lease: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-    let status: Value = serde_json::from_slice(&output.stdout)
-        .map_err(|e| format!("Invalid jobserver status: {e}"))?;
-    check_lease(&status, &lease, root)
-}
-
-fn check_lease(status: &Value, lease: &str, root: &Path) -> Result<(), String> {
-    let job = status["jobs"]
-        .as_array()
-        .and_then(|jobs| jobs.iter().find(|job| job["id"].as_str() == Some(lease)));
-    if let Some(job) = job {
-        let worktree = job["worktree"]
-            .as_str()
-            .and_then(|p| Path::new(p).canonicalize().ok());
-        let exclusive = job["claims"].as_array().is_some_and(|claims| {
-            claims
-                .iter()
-                .any(|claim| claim["name"] == "integration/dev" && claim["mode"] == "exclusive")
-        });
-        if job["state"] == "RUNNING"
-            && job["kind"] == "integration"
-            && worktree == Some(root.canonicalize().map_err(|e| e.to_string())?)
-            && exclusive
-        {
-            return Ok(());
-        }
-    }
-    Err("Lease is not a running integration job with exclusive integration/dev for this worktree. Use integrate-feature after user authorization.".into())
-}
 
 fn clean(root: &Path) -> Result<(), String> {
     if !query(root, &["status", "--porcelain", "--untracked-files=all"])?.is_empty() {
@@ -67,7 +22,7 @@ fn clean(root: &Path) -> Result<(), String> {
     ] {
         if Path::new(&admin).join(state).exists() {
             return Err(format!(
-                "Worktree '{}' has an in-progress Git operation ({state}); finish it outside the integration queue.",
+                "Worktree '{}' has an in-progress Git operation ({state}); finish it before integration.",
                 root.display()
             ));
         }
@@ -112,15 +67,10 @@ fn is_home_branch(name: &str) -> bool {
 
 fn compare_and_swap(root: &Path, expected: &str, commit: &str) -> Result<(), String> {
     query(root, &["update-ref", "-m", "integrate feature", "refs/heads/dev", commit, expected])
-        .map(|_| ()).map_err(|e| format!("Atomic promotion rejected (expected dev {expected}); no retry was attempted. Feature retained. Reinspect dev before requeueing. {e}"))
+        .map(|_| ()).map_err(|e| format!("Atomic promotion rejected (expected dev {expected}); no retry was attempted. Feature retained. Reinspect dev before trying integration again. {e}"))
 }
 
-fn transaction(
-    root: &Path,
-    keep: bool,
-    mut verify: impl FnMut(&Path) -> Result<(), String>,
-) -> Result<(), String> {
-    verify(root)?;
+fn transaction(root: &Path, keep: bool) -> Result<(), String> {
     println!("Integration stage: preflight");
     let feature = branch(root)?;
     if feature.is_empty() || protected(&feature) || is_home_branch(&feature) {
@@ -191,7 +141,6 @@ fn transaction(
         ],
     )?;
     println!("Integration stage: atomic-promotion");
-    verify(root)?;
     compare_and_swap(&dev, &base, &commit)?;
     println!("dev promoted to {commit}");
     println!("Integration stage: refresh and cleanup");
@@ -238,7 +187,7 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     workspace::check_environment()?;
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     let root = workspace::root(&cwd)?;
-    transaction(&root, !args.is_empty(), verify_lease)
+    transaction(&root, !args.is_empty())
 }
 
 #[cfg(test)]

@@ -56,7 +56,6 @@ impl Repo {
             .env("GIT_CONFIG_GLOBAL", self.root.join("empty-config"))
             .env("GIT_TERMINAL_PROMPT", "0")
             .env("GIT_EDITOR", "true");
-        cmd.env_remove("NUKETHEBEES_JOBSERVER_LEASE");
     }
     pub fn raw(&self, cwd: &Path, args: &[&str]) -> String {
         let output = self.git(cwd).args(args).output().unwrap();

@@ -1,14 +1,5 @@
 include_guard(GLOBAL)
 
-function(sandbox_resolve_unreal_root absolute_output canonical_output root base_directory)
-  cmake_path(ABSOLUTE_PATH root BASE_DIRECTORY "${base_directory}" NORMALIZE
-    OUTPUT_VARIABLE absolute_root)
-  file(REAL_PATH "${absolute_root}" canonical_root)
-  cmake_path(NORMAL_PATH canonical_root)
-  set(${absolute_output} "${absolute_root}" PARENT_SCOPE)
-  set(${canonical_output} "${canonical_root}" PARENT_SCOPE)
-endfunction()
-
 function(sandbox_get_unreal_editor_names editor_output editor_cmd_output configuration)
   if(configuration MATCHES "^(Debug|DebugGame|Development)$")
     set(editor_configuration "${configuration}")

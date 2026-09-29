@@ -17,16 +17,16 @@ then regenerates CMake presets, disables Live Coding in existing saved Editor se
 only the targets relevant to the task afterward. It stops on the first failure and streams
 subprocess output. Git, Python, CMake, and the repository build prerequisites must be available.
 
-Preparation checks for the canonical jobserver before clearing output. Install/update central
-per-user build tools explicitly when needed:
+The maintainer installs/updates central per-user build tools explicitly when needed:
 
 ```powershell
 agent-task install-central-tools
 ```
 
 This synchronizes and initializes/updates recursive submodules, generates presets, configures
-`native`, runs the canonical `install-jobserver` CMake target, then the UnrealBuildTools and CodeFormatTools
-installers, stopping on failure. Each tool lives in its own per-user bin directory; see
+`native`, runs the canonical `install-jobserver` CMake target, then the UnrealBuildTools
+and CodeFormatTools installers, stopping on failure.
+Each tool lives in its own per-user bin directory; see
 [developer tools](../README.md). This is a maintainer command, never an agent preflight.
 
 The maintainer installs/updates `agent-task` itself from the repository root with:
@@ -37,8 +37,10 @@ install-agent-task
 ```
 
 This runs the package tests, installs only `agent-task` with the pinned Rust toolchain, and
-smoke-tests the installed executable with `--version`. The maintainer manages PATH; add
-`%LOCALAPPDATA%\NukeTheBees\agent-task\bin`. Agents assume `agent-task` is already available.
+smoke-tests the installed executable with `--version`. Installers create symlinks in
+`%NTB_APPDATA_LOCAL%\bin`; add this single directory to PATH. Developer Mode or the
+Windows **Create symbolic links** privilege is required and checked before building.
+Agents assume `agent-task` is already available.
 
 Use the intentionally limited Git interface for routine feature work:
 
@@ -76,17 +78,21 @@ it, and add support only when a real workflow requires it. Raw mutations require
 maintainer exception. See [AGENTS.md](../../AGENTS.md).
 
 After validation and explicit user authorization, use `integrate-feature` from `dev.ps1`.
-It queues the exclusive `integration/dev` jobserver lease and invokes `agent-task integrate`.
+It calls `agent-task integrate` directly; this cheap Git transaction needs no jobs-board ticket.
 The privileged transaction requires clean feature/dev worktrees, rebases onto pinned dev with
 autostash, update-refs and rebase-merges explicitly disabled, runs cheap Git sanity checks,
-constructs a merge commit, rechecks the integration lease and advances dev with compare-and-swap.
+constructs a merge commit and advances dev with compare-and-swap.
 It refreshes dev, returns persistent devN worktrees home and safely deletes the feature branch.
 Use `integrate-feature -KeepBranch` to retain it. Worktrees without a devN home detach at the
 integrated feature tip before deletion. A failed final rebase is aborted; resolve normally outside
-the queue using `agent-task git`, validate and requeue. Promotion/cleanup failures report retained
+the integration command using `agent-task git`, validate and retry. Promotion/cleanup failures report retained
 state and require inspection before retrying. Integration does not orchestrate builds or tests.
 
-Only `agent-task git` and ordinary preparation commands belong in unconditional allow rules;
+`agent-task jobs request|check|start|end|cancel|status` provides manual shared/exclusive coordination.
+It forwards these operations to the installed jobserver CLI without a shell. Tickets are identified
+only by ID and remain until explicitly ended/cancelled. See the [jobs-board workflow](../jobserver/README.md).
+
+Only `agent-task git`, `agent-task jobs`, and ordinary preparation commands belong in unconditional allow rules;
 never whitelist all of `agent-task`, since `integrate` is privileged.
 
 The executable lives outside `out`, so it can clear build output while running. For development,

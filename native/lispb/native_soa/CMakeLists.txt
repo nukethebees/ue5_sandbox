@@ -1,7 +1,7 @@
 set(NATIVE_SOA_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/generated")
 add_custom_command(
   OUTPUT "${NATIVE_SOA_GENERATED}/native_soa_types.h" "${NATIVE_SOA_GENERATED}/native_soa_types.cpp"
-  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" generate
+  COMMAND "$<TARGET_FILE:lispb>" generate
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target native-soa-fixture
@@ -15,7 +15,7 @@ add_custom_command(
 add_custom_target(generate-native-soa-fixture
   DEPENDS "${NATIVE_SOA_GENERATED}/native_soa_types.h")
 add_custom_target(check-generated-native-soa-fixture
-  COMMAND ${lispb_command} "$<TARGET_FILE:lispb>" check
+  COMMAND "$<TARGET_FILE:lispb>" check
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target native-soa-fixture
@@ -67,30 +67,24 @@ add_test(NAME native-soa-dry-run COMMAND native-soa-benchmarks --benchmark_dry_r
   "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-dry-run.json" --benchmark_out_format=json)
 set_tests_properties(native-soa-dry-run PROPERTIES LABELS "native-soa")
 
-sandbox_jobserver_command(native_soa_production_report_command BENCHMARK benchmark
-  "Native SoA production benchmark")
 add_custom_target(native-soa-production-report
-  COMMAND ${native_soa_production_report_command} "$<TARGET_FILE:native-soa-benchmarks>"
+  COMMAND "$<TARGET_FILE:native-soa-benchmarks>"
     "--benchmark_filter=Production/" --benchmark_repetitions=7
     --benchmark_enable_random_interleaving=true --benchmark_min_time=0.1s
     "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-production-results.json"
     --benchmark_out_format=json
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
 
-sandbox_jobserver_command(native_soa_candidate_report_command BENCHMARK benchmark
-  "Native SoA candidate benchmark")
 add_custom_target(native-soa-candidate-report
-  COMMAND ${native_soa_candidate_report_command} "$<TARGET_FILE:native-soa-benchmarks>"
+  COMMAND "$<TARGET_FILE:native-soa-benchmarks>"
     "--benchmark_filter=Production/(Spinner|LaserHit)/" --benchmark_repetitions=7
     --benchmark_enable_random_interleaving=true --benchmark_min_time=0.1s
     "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-candidate-results.json"
     --benchmark_out_format=json
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
 
-sandbox_jobserver_command(native_soa_laser_hit_report_command BENCHMARK benchmark
-  "Native SoA laser-hit append benchmark")
 add_custom_target(native-soa-laser-hit-append-report
-  COMMAND ${native_soa_laser_hit_report_command} "$<TARGET_FILE:native-soa-benchmarks>"
+  COMMAND "$<TARGET_FILE:native-soa-benchmarks>"
     "--benchmark_filter=Production/LaserHit/" --benchmark_repetitions=9
     --benchmark_enable_random_interleaving=true --benchmark_min_time=0.3s
     "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-laser-hit-append-results.json"

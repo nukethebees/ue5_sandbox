@@ -179,11 +179,9 @@ target_link_libraries(native-core-benchmarks PRIVATE
 )
 ioj_enable_warnings(native-core-benchmarks)
 
-sandbox_jobserver_command(native_core_ismc_benchmark_command BENCHMARK benchmark
-  "Sandbox ISMC scalar, intrinsic AVX2 and production Highway packing")
 add_custom_target(native-core-ismc-benchmark-report
   COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc"
-  COMMAND ${native_core_ismc_benchmark_command} "$<TARGET_FILE:native-core-benchmarks>"
+  COMMAND "$<TARGET_FILE:native-core-benchmarks>"
     "--benchmark_filter=^ismc/[^/]+/(scalar|avx2|production)/"
     --benchmark_repetitions=5
     --benchmark_min_time=0.05s
@@ -197,11 +195,9 @@ add_custom_target(native-core-ismc-benchmark-report
   VERBATIM
 )
 
-sandbox_jobserver_command(native_core_ismc_avx512_benchmark_command BENCHMARK benchmark
-  "Sandbox ISMC experimental AVX512 comparison")
 add_custom_target(native-core-ismc-avx512-benchmark-report
   COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc"
-  COMMAND ${native_core_ismc_avx512_benchmark_command} "$<TARGET_FILE:native-core-benchmarks>"
+  COMMAND "$<TARGET_FILE:native-core-benchmarks>"
     --benchmark_filter=^ismc/
     --benchmark_repetitions=5
     --benchmark_min_time=0.05s
@@ -215,11 +211,9 @@ add_custom_target(native-core-ismc-avx512-benchmark-report
   VERBATIM
 )
 
-sandbox_jobserver_command(native_core_vector_lerp_benchmark_command BENCHMARK benchmark
-  "Native core vector lerp benchmark")
 add_custom_target(native-core-vector-lerp-benchmark-report
   COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/out/benchmarks/native-core"
-  COMMAND ${native_core_vector_lerp_benchmark_command} "$<TARGET_FILE:native-core-benchmarks>"
+  COMMAND "$<TARGET_FILE:native-core-benchmarks>"
     --benchmark_filter=^vector_lerp/
     --benchmark_repetitions=7
     --benchmark_min_time=0.05s
@@ -233,11 +227,9 @@ add_custom_target(native-core-vector-lerp-benchmark-report
   VERBATIM
 )
 
-sandbox_jobserver_command(native_core_highway_benchmark_command BENCHMARK benchmark
-  "Compare Highway and intrinsic ISMC packing")
 add_custom_target(native-core-highway-benchmark-report
   COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/highway"
-  COMMAND ${native_core_highway_benchmark_command} "$<TARGET_FILE:native-core-benchmarks>"
+  COMMAND "$<TARGET_FILE:native-core-benchmarks>"
     "--benchmark_filter=^ismc/[^/]+/(scalar|avx2|avx512|production|highway-avx512)/(17|2000|40000)/real_time$"
     --benchmark_repetitions=3 --benchmark_min_time=0.02s
     --benchmark_enable_random_interleaving=true --benchmark_display_aggregates_only=true

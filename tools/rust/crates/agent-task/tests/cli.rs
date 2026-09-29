@@ -35,11 +35,6 @@ fn git(root: &Path, arguments: &[&str]) {
 fn fixture() -> TemporaryDirectory {
     let directory = TemporaryDirectory::new();
     git(&directory.0, &["init", "--quiet"]);
-    let jobserver = directory
-        .0
-        .join("local-app-data/NukeTheBees/jobserver/bin/jobserver.exe");
-    fs::create_dir_all(jobserver.parent().unwrap()).unwrap();
-    fs::write(jobserver, "installed tool marker").unwrap();
     fs::create_dir_all(directory.0.join("cmake/presets")).unwrap();
     fs::write(
         directory.0.join("cmake/presets/generate.py"),
@@ -51,6 +46,12 @@ fn fixture() -> TemporaryDirectory {
         include_str!("fixtures/CMakeLists.txt"),
     )
     .unwrap();
+    fs::create_dir_all(directory.0.join("tools/install")).unwrap();
+    fs::write(
+        directory.0.join("tools/install/ToolLinks.ps1"),
+        include_str!("../../../../install/ToolLinks.ps1"),
+    )
+    .unwrap();
     directory
 }
 
@@ -59,7 +60,8 @@ fn tool(root: &Path, arguments: &[&str]) -> Command {
     command
         .args(arguments)
         .current_dir(root)
-        .env("LOCALAPPDATA", root.join("local-app-data"));
+        .env("LOCALAPPDATA", root.join("local-app-data"))
+        .env("NTB_APPDATA_LOCAL", root.join("local-app-data/NukeTheBees"));
     command
 }
 
@@ -92,6 +94,23 @@ fn help_and_invalid_arguments_do_not_start_initialization() {
         assert_eq!(output.status.code(), Some(2));
         assert!(output.stdout.is_empty());
     }
+}
+
+#[test]
+fn jobs_help_and_missing_client_work_outside_a_worktree() {
+    let directory = TemporaryDirectory::new();
+    let help = invoke(&directory.0, &["jobs", "--help"]);
+    assert!(help.status.success());
+    let text = String::from_utf8_lossy(&help.stdout);
+    assert!(text.contains("request shared|exclusive"));
+    assert!(text.contains("check|start|end|cancel"));
+    assert!(!invoke(&directory.0, &["jobs", "unknown"]).status.success());
+    let missing = invoke(&directory.0, &["jobs", "status"]);
+    assert!(!missing.status.success());
+    assert!(
+        String::from_utf8_lossy(&missing.stderr)
+            .contains("Ask the maintainer to install jobserver")
+    );
 }
 
 #[test]
@@ -174,7 +193,6 @@ fn nested_linked_worktree_cleans_only_its_root_out_and_runs_phases_in_order() {
     for phase in 1..=6 {
         assert!(stdout.contains(&format!("[{phase}/6]")), "{stdout}");
     }
-    assert!(!stdout.contains("task-start"), "{stdout}");
 }
 
 #[test]
@@ -210,35 +228,7 @@ fn invalid_saved_settings_warn_and_allow_code_generation() {
 }
 
 #[test]
-fn missing_central_tools_leave_build_output_untouched() {
-    let directory = fixture();
-    fs::create_dir(directory.0.join("out")).unwrap();
-    fs::write(directory.0.join("out/keep.txt"), "build output").unwrap();
-    let missing_installation = directory.0.join("empty-local-app-data");
-
-    let mut missing_jobserver = tool(&directory.0, &["prepare-worktree"]);
-    missing_jobserver.env("LOCALAPPDATA", &missing_installation);
-    let mut missing_environment = tool(&directory.0, &["prepare-worktree"]);
-    missing_environment.env_remove("LOCALAPPDATA");
-
-    for mut command in [missing_jobserver, missing_environment] {
-        let output = command.output().unwrap();
-        assert!(!output.status.success());
-        assert!(
-            String::from_utf8_lossy(&output.stderr).contains("agent-task install-central-tools")
-        );
-        assert!(output.stdout.is_empty());
-        assert_eq!(
-            fs::read_to_string(directory.0.join("out/keep.txt")).unwrap(),
-            "build output"
-        );
-        assert!(!directory.0.join("phases.txt").exists());
-        assert!(!missing_installation.exists());
-    }
-}
-
-#[test]
-fn central_tool_installation_initializes_submodules_without_jobserver_or_clearing_out() {
+fn central_tool_installation_initializes_submodules_without_clearing_out() {
     let directory = fixture();
     let dependency = TemporaryDirectory::new();
     git(&dependency.0, &["init", "--quiet"]);
@@ -291,10 +281,11 @@ fn central_tool_installation_initializes_submodules_without_jobserver_or_clearin
     assert!(String::from_utf8_lossy(&output.stderr).contains("23"));
     assert!(directory.0.join("dependency/marker.txt").is_file());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("[1/7] Synchronizing submodules"));
-    assert!(stdout.contains("[2/7] Updating submodules"));
-    assert!(stdout.contains("[3/7] Generating CMake presets"));
-    assert!(!stdout.contains("[4/7]"));
+    assert!(stdout.contains("Checking tool symlink support"));
+    assert!(stdout.contains("Synchronizing submodules"));
+    assert!(stdout.contains("Updating submodules"));
+    assert!(stdout.contains("Generating CMake presets"));
+    assert!(!stdout.contains("Configuring native build"));
     assert_eq!(
         fs::read_to_string(directory.0.join("out/keep.txt")).unwrap(),
         "build output"
@@ -308,7 +299,7 @@ fn failed_cleanup_stops_before_submodules() {
     let output = invoke(&directory.0, &["prepare-worktree"]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("Could not remove"));
-    assert!(!String::from_utf8_lossy(&output.stdout).contains("[2/6]"));
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("Synchronizing submodules"));
     assert!(directory.0.join("out").is_file());
 }
 
@@ -323,7 +314,7 @@ fn failed_preset_generation_stops_before_cmake() {
     let output = invoke(&directory.0, &["prepare-worktree"]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("python failed"));
-    assert!(!String::from_utf8_lossy(&output.stdout).contains("[6/6]"));
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("Generating code"));
     assert!(!directory.0.join("phases.txt").exists());
 }
 
@@ -338,7 +329,7 @@ fn failed_code_generation_returns_failure() {
     let output = invoke(&directory.0, &["prepare-worktree"]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("cmake failed"));
-    assert!(String::from_utf8_lossy(&output.stdout).contains("[6/6]"));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("Generating code"));
     assert_eq!(
         fs::read_to_string(directory.0.join("phases.txt")).unwrap(),
         "presets\n"

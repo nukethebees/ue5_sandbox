@@ -2,17 +2,8 @@ include_guard(GLOBAL)
 include("${CMAKE_CURRENT_LIST_DIR}/unreal_arguments.cmake")
 
 function(add_unreal_target target_name unreal_target)
-  if(unreal_target STREQUAL "SandboxEditor")
-    set(unreal_build_operation "Build Unreal Editor")
-  elseif(unreal_target STREQUAL "Sandbox")
-    set(unreal_build_operation "Build Unreal Game")
-  else()
-    set(unreal_build_operation "Build Unreal ${unreal_target}")
-  endif()
-  sandbox_unreal_build_jobserver_command(activity_command "${unreal_build_operation}")
-
   add_custom_target(${target_name}
-    COMMAND ${activity_command}
+    COMMAND
       ${IOJ_UNREAL_BUILD_TOOLS}
       --build-script "${UE_BUILD_SCRIPT}"
       --target ${unreal_target}
@@ -29,7 +20,7 @@ function(add_unreal_target target_name unreal_target)
 endfunction()
 
 function(add_unreal_editor_target target_name)
-  cmake_parse_arguments(PARSE_ARGV 1 editor_target "UNATTENDED" "ACTIVITY;COMMENT;EXECUTABLE;FOLDER" "ARGUMENTS;DEPENDS")
+  cmake_parse_arguments(PARSE_ARGV 1 editor_target "UNATTENDED" "COMMENT;EXECUTABLE;FOLDER" "ARGUMENTS;DEPENDS")
 
   if(editor_target_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR
@@ -39,31 +30,18 @@ function(add_unreal_editor_target target_name)
   if(NOT editor_target_COMMENT)
     message(FATAL_ERROR "add_unreal_editor_target(${target_name}) requires COMMENT.")
   endif()
-  if(NOT editor_target_ACTIVITY)
-    set(editor_target_ACTIVITY STANDARD)
-  endif()
-  if(NOT editor_target_ACTIVITY MATCHES "^(STANDARD|BENCHMARK)$")
-    message(FATAL_ERROR
-      "add_unreal_editor_target(${target_name}) ACTIVITY must be STANDARD or BENCHMARK.")
-  endif()
   if(NOT editor_target_EXECUTABLE)
     set(editor_target_EXECUTABLE "${UE_EDITOR_CMD_EXE}")
   endif()
 
   if(editor_target_UNATTENDED)
-    set(editor_target_engine_access SHARED)
     if(NOT "-unattended" IN_LIST editor_target_ARGUMENTS)
       list(APPEND editor_target_ARGUMENTS -unattended)
     endif()
-  else()
-    set(editor_target_engine_access EXCLUSIVE)
   endif()
 
-  sandbox_unreal_jobserver_command(activity_command "${editor_target_ACTIVITY}"
-    "${editor_target_engine_access}" unreal-command
-    "${editor_target_COMMENT}")
   add_custom_target(${target_name}
-    COMMAND ${activity_command} "${editor_target_EXECUTABLE}" "${IOJ_UPROJECT}"
+    COMMAND "${editor_target_EXECUTABLE}" "${IOJ_UPROJECT}"
       ${editor_target_ARGUMENTS}
     DEPENDS ${editor_target_DEPENDS}
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -96,10 +74,8 @@ function(add_unreal_commandlet_target target_name)
       "add_unreal_commandlet_target(${target_name}) requires COMMENT.")
   endif()
 
-  sandbox_unreal_jobserver_command(activity_command STANDARD SHARED unreal-command
-    "Run Unreal commandlet: ${commandlet_COMMANDLET}")
   add_custom_target(${target_name}
-    COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
+    COMMAND "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
       "-run=${commandlet_COMMANDLET}"
       "-LocalDataCachePath=${IOJ_LOCAL_DDC_DIR}"
       -ddc=NoZenLocalFallback
@@ -118,10 +94,8 @@ function(add_unreal_commandlet_target target_name)
 endfunction()
 
 function(add_unreal_benchmark_commandlet_target target_name commandlet)
-  sandbox_unreal_jobserver_command(activity_command BENCHMARK SHARED benchmark
-    "Benchmark Unreal commandlet: ${commandlet}")
   add_custom_target(${target_name}
-    COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
+    COMMAND "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
       "-run=${commandlet}"
       ${ARGN}
       -AllowCommandletRendering
@@ -133,14 +107,14 @@ function(add_unreal_benchmark_commandlet_target target_name commandlet)
       -stdout
     DEPENDS editor
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-    COMMENT "Running ${commandlet} with exclusive benchmark access"
+    COMMENT "Running ${commandlet}"
     USES_TERMINAL
     VERBATIM
   )
 endfunction()
 
 function(add_unreal_editor_test test_name)
-  cmake_parse_arguments(PARSE_ARGV 1 editor_test "NO_LOCAL_DDC" "ACTIVITY;TIMEOUT" "ARGUMENTS;LABELS")
+  cmake_parse_arguments(PARSE_ARGV 1 editor_test "NO_LOCAL_DDC" "TIMEOUT" "ARGUMENTS;LABELS")
 
   if(editor_test_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR
@@ -160,22 +134,6 @@ function(add_unreal_editor_test test_name)
     message(FATAL_ERROR "add_unreal_editor_test(${test_name}) requires TIMEOUT.")
   endif()
 
-  if(NOT editor_test_ACTIVITY)
-    set(editor_test_ACTIVITY STANDARD)
-  endif()
-  if(NOT editor_test_ACTIVITY MATCHES "^(STANDARD|BENCHMARK)$")
-    message(FATAL_ERROR
-      "add_unreal_editor_test(${test_name}) ACTIVITY must be STANDARD or BENCHMARK.")
-  endif()
-  if(editor_test_ACTIVITY STREQUAL "BENCHMARK")
-    set(editor_test_kind benchmark)
-  else()
-    set(editor_test_kind unreal-test)
-  endif()
-  sandbox_unreal_jobserver_command(activity_command "${editor_test_ACTIVITY}" SHARED
-    "${editor_test_kind}"
-    "Unreal test: ${test_name}")
-
   set(editor_test_common_arguments
     -unattended
     -nop4
@@ -192,7 +150,7 @@ function(add_unreal_editor_test test_name)
 
   add_test(
     NAME "${test_name}"
-    COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
+    COMMAND "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
       ${editor_test_ARGUMENTS}
       ${editor_test_common_arguments}
   )

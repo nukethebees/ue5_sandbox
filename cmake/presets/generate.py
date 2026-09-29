@@ -593,14 +593,6 @@ def make_unreal_document() -> dict[str, Any]:
                     "filter": {"include": {"label": label}, "exclude": {"label": "^developer-tool$"}},
                 }
             )
-    test_presets.append(
-        {
-            "name": "debug-game-jobserver-tests",
-            "inherits": "test-base",
-            "configurePreset": "debug-game",
-            "filter": {"include": {"label": "^jobserver$"}},
-        }
-    )
     test_presets.insert(
         1,
         {
@@ -729,16 +721,6 @@ def make_unreal_document() -> dict[str, Any]:
                     ],
                 }
             )
-    workflow_presets.append(
-        {
-            "name": "debug-game-jobserver-tests",
-            "steps": [
-                {"type": "configure", "name": "debug-game"},
-                {"type": "build", "name": "debug-game"},
-                {"type": "test", "name": "debug-game-jobserver-tests"},
-            ],
-        }
-    )
     workflow_presets.extend(
         [
             {

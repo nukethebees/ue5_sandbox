@@ -1,8 +1,5 @@
-sandbox_unreal_exclusive_jobserver_command(generate_project_files_command generate
-  "Generate Unreal project files")
-
 add_custom_target(generate-project-files
-  COMMAND ${generate_project_files_command}
+  COMMAND
     "${CMAKE_COMMAND}" -E env
     "IOJ_NATIVE_TOOLCHAIN=${IOJ_NATIVE_TOOLCHAIN}"
     "${UE_GENERATE_PROJECT_FILES_SCRIPT}"

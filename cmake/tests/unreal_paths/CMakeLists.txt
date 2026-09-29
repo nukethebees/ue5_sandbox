@@ -17,16 +17,6 @@ foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
     "${editor_cmd_name}" "${expected_editor_cmd}")
 endforeach()
 
-set(cmake_test_root "${CMAKE_CURRENT_BINARY_DIR}/root with spaces")
-file(MAKE_DIRECTORY "${cmake_test_root}/Engine")
-sandbox_resolve_unreal_root(root_absolute root_canonical
-  "${cmake_test_root}/Engine/.." "${CMAKE_CURRENT_BINARY_DIR}")
-cmake_path(NORMAL_PATH cmake_test_root OUTPUT_VARIABLE expected_root)
-sandbox_assert_equal("Unreal root resolves dot segments"
-  "${root_absolute}" "${expected_root}/")
-sandbox_assert_equal("Unreal root canonicalizes an existing directory"
-  "${root_canonical}" "${expected_root}")
-
 sandbox_configure_game_artifact_paths(game_artifact
   [=[C:\Artifacts Root\Sandbox]=] [=[C:\ignored]=] Win64 DebugGame)
 sandbox_assert_equal("artifact cook path"

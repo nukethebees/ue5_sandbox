@@ -1,56 +1,9 @@
 #pragma once
+#include "jobserver/transport.hpp"
 
-#include "jobserver/authority.hpp"
-#include "jobserver/types.hpp"
-
-#include <expected>
-#include <functional>
-#include <memory>
-#include <optional>
-#include <string>
+#include <nlohmann/json.hpp>
 
 namespace jobserver {
-using OutputCallback = std::function<void(std::string const& stream, std::string const& text)>;
-
-class Lease {
-  public:
-    Lease() = default;
-    Lease(Lease&&) noexcept;
-    auto operator=(Lease&&) noexcept -> Lease&;
-    Lease(Lease const&) = delete;
-    auto operator=(Lease const&) -> Lease& = delete;
-    ~Lease();
-
-    [[nodiscard]] auto id() const -> std::string const&;
-    [[nodiscard]] auto connected() const -> bool;
-    auto release() -> std::expected<void, Error>;
-  private:
-    friend class Client;
-    explicit Lease(void* handle, std::string id);
-    void* handle_{};
-    std::string id_;
-};
-
-class Client {
-  public:
-    [[nodiscard]] static auto acquire(AcquireRequest const& request) -> std::expected<Lease, Error>;
-    [[nodiscard]] static auto run(SubmitRequest const& request, OutputCallback output)
-        -> std::expected<int, Error>;
-    [[nodiscard]] static auto status(bool include_history = false)
-        -> std::expected<std::string, Error>;
-    [[nodiscard]] static auto
-        processes(bool owned, std::optional<std::filesystem::path> worktree = std::nullopt)
-            -> std::expected<std::string, Error>;
-    [[nodiscard]] static auto process_owner(std::uint32_t process_id)
-        -> std::expected<std::string, Error>;
-    [[nodiscard]] static auto kill_owned(std::optional<std::string> kind = std::nullopt)
-        -> std::expected<std::string, Error>;
-    [[nodiscard]] static auto ping() -> std::expected<void, Error>;
-    [[nodiscard]] static auto cancel(std::string const& id, bool kill)
-        -> std::expected<void, Error>;
-    [[nodiscard]] static auto shutdown() -> std::expected<void, Error>;
-    [[nodiscard]] static auto start_daemon() -> std::expected<void, Error>;
-    [[nodiscard]] static auto check_daemon_recovery() -> std::expected<RecoveryAssessment, Error>;
-    [[nodiscard]] static auto force_recover_daemon() -> std::expected<void, Error>;
-};
+auto request(nlohmann::json message, std::wstring const& endpoint = transport::pipe_name())
+    -> std::expected<nlohmann::json, Error>;
 }

@@ -413,6 +413,9 @@ class NativeWorkflowTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="sandbox tidy workflow ") as root:
             fixture = Path(root)
             build = fixture / "build with spaces"
+            (fixture / "capture.cmd").write_text(
+                f'@"{sys.executable}" "{fixture / "capture.py"}" %*\n', encoding="utf-8"
+            )
             (fixture / "capture.py").write_text(
                 "import json, pathlib, sys\n"
                 "args = sys.argv[1:]\n"
@@ -433,7 +436,7 @@ class NativeWorkflowTests(unittest.TestCase):
                 f'set(Python3_EXECUTABLE "{Path(sys.executable).as_posix()}")\n'
                 'set(IOJ_CLANG_TIDY_EXECUTABLE "${CMAKE_COMMAND}")\n'
                 'set(IOJ_RUN_CLANG_TIDY_EXECUTABLE "${CMAKE_COMMAND}")\n'
-                'set(IOJ_POWERSHELL_EXECUTABLE "${CMAKE_COMMAND}")\n'
+                f'set(IOJ_POWERSHELL_EXECUTABLE "{fixture.as_posix()}/capture.cmd")\n'
                 "function(ioj_find_llvm_tool output name)\n"
                 '  if(output STREQUAL "IOJ_RUN_CLANG_TIDY_EXECUTABLE" AND\n'
                 '     NOT "${name};${ARGN}" STREQUAL "run-clang-tidy;run-clang-tidy.py")\n'
@@ -453,10 +456,6 @@ class NativeWorkflowTests(unittest.TestCase):
                 "endfunction()\n"
                 "function(add_subdirectory directory)\n"
                 '  message(FATAL_ERROR "Tidy workflow tried to build an extra target: ${directory}")\n'
-                "endfunction()\n"
-                "function(sandbox_jobserver_command output)\n"
-                '  set(${output} "${Python3_EXECUTABLE}" '
-                '"${CMAKE_CURRENT_SOURCE_DIR}/capture.py" PARENT_SCOPE)\n'
                 "endfunction()\n"
                 'include("${PROJECT_SOURCE_DIR}/cmake/clang_tidy/CMakeLists.txt")\n'
                 "foreach(prerequisite IN ITEMS generate-native-soa-fixture kernel-native-generated-sources)\n"
@@ -778,19 +777,8 @@ cmake_language(DEFER CALL check_simulation_policy)
             self.assertIn("native-simulation-soak-tests", dry_run)
             self.check_test_inventory(build_directory)
 
-            rules = (build_directory / "CMakeFiles/rules.ninja").read_text(encoding="utf-8")
-            graph = (build_directory / "build.ninja").read_text(encoding="utf-8")
-            self.assertIn('--name "Compile C"', graph)
-            self.assertIn('--name "Compile CXX"', graph)
-            self.assertIn('--name "Link CXX"', rules)
             test_file = (build_directory / "native/core/CTestTestfile.cmake").read_text(encoding="utf-8")
-            self.assertIn('"--kind" "test"', test_file)
-            self.assertIn('"--shared" "machine" "--"', test_file)
             self.assertIn('native-core-tests.exe"', test_file)
-            bootstrap = self.run_cmake("--build", str(build_directory), "--target", "install-jobserver",
-                                      "--", "-t", "commands")
-            self.assertNotIn("jobserver.exe run", bootstrap)
-            self.assertNotIn('jobserver.exe" run', bootstrap)
 
             for report, executable in (
                 ("native-core-vector-lerp-benchmark-report", "native/core/native-core-benchmarks.exe"),
@@ -801,7 +789,7 @@ cmake_language(DEFER CALL check_simulation_policy)
             ):
                 commands = self.run_cmake("--build", str(build_directory), "--target", report,
                                           "--", "-t", "commands").replace("\\", "/")
-                self.assertIn(f'-- "{(build_directory / executable).as_posix()}"', commands)
+                self.assertIn(f'"{(build_directory / executable).as_posix()}"', commands)
 
             host_tool = (
                 build_directory

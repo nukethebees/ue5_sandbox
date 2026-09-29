@@ -459,16 +459,6 @@
       }
     },
     {
-      "name": "debug-game-jobserver-tests",
-      "inherits": "test-base",
-      "configurePreset": "debug-game",
-      "filter": {
-        "include": {
-          "label": "^jobserver$"
-        }
-      }
-    },
-    {
       "name": "debug-game-tests",
       "inherits": "test-base",
       "configurePreset": "debug-game",
@@ -815,23 +805,6 @@
         {
           "type": "test",
           "name": "debug-game-msvc-unit-tests"
-        }
-      ]
-    },
-    {
-      "name": "debug-game-jobserver-tests",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "debug-game"
-        },
-        {
-          "type": "build",
-          "name": "debug-game"
-        },
-        {
-          "type": "test",
-          "name": "debug-game-jobserver-tests"
         }
       ]
     },
