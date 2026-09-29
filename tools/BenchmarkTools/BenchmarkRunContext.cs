@@ -75,9 +75,10 @@ internal sealed class BenchmarkRunContext
 
     public static async Task<RevisionIdentity> SourceAsync(BenchmarkToolsApplication application, string root, CancellationToken token, string? artifact_root = null)
     {
+        await BenchmarkSubmodules.RequireCleanAsync(application, root, token);
         var commit = await BenchmarkGit.TextAsync(application, root, ["rev-parse", "--verify", "HEAD^{commit}"], token);
-        var status = await BenchmarkGit.TextAsync(application, root, ["status", "--porcelain=v1", "--untracked-files=no"], token);
-        var diff = await BenchmarkGit.OutputAsync(application, root, ["diff", "HEAD", "--binary", "--no-ext-diff", "--no-textconv"], token);
+        var status = await BenchmarkGit.TextAsync(application, root, ["status", "--porcelain=v1", "--untracked-files=no", "--ignore-submodules=none"], token);
+        var diff = await BenchmarkGit.OutputAsync(application, root, ["diff", "HEAD", "--binary", "--no-ext-diff", "--no-textconv", "--ignore-submodules=none"], token);
         var untracked = await BenchmarkGit.OutputAsync(application, root, ["ls-files", "--others", "--exclude-standard", "-z"], token);
         using var content = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         foreach (var path in untracked.Split('\0', StringSplitOptions.RemoveEmptyEntries).Order(StringComparer.Ordinal))

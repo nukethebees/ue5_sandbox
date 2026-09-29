@@ -4,6 +4,16 @@ namespace BenchmarkTools;
 
 internal static class BenchmarkSubmodules
 {
+    public static async Task RequireCleanAsync(BenchmarkToolsApplication application, string root, CancellationToken token)
+    {
+        // Foreach visits initialized modules only, including nested modules. Override ignore settings
+        // explicitly so an already-dirty module cannot hide later edits from source verification.
+        var status = await BenchmarkGit.TextAsync(application, root,
+            ["submodule", "foreach", "--quiet", "--recursive", "git status --porcelain=v1 --untracked-files=all --ignore-submodules=none"], token);
+        if (status.Length != 0)
+            throw new BenchmarkToolException($"Benchmark source contains dirty initialized submodules: '{root}'. Commit or remove submodule changes before benchmarking.\n{status}");
+    }
+
     public static async Task InitializeAsync(BenchmarkToolsApplication application, string target, string? source,
         IReadOnlyList<string>? paths, CancellationToken token)
     {
