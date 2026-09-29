@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'NukeTheBees/agent-codex'),
-    [ValidateSet('Release', 'Debug')][string]$Configuration = 'Release'
+    [ValidateSet('ReleaseNoLTO', 'Release', 'Debug')][string]$Configuration = 'ReleaseNoLTO'
 )
 
 $ErrorActionPreference = 'Stop'

@@ -10,6 +10,10 @@ set(CARGO_PROFILE_DIR debug)
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     set(CARGO_PROFILE_ARGS --release)
     set(CARGO_PROFILE_DIR release)
+elseif(CMAKE_BUILD_TYPE STREQUAL "ReleaseNoLTO")
+    set(CARGO_PROFILE_ARGS --config "${CMAKE_CURRENT_SOURCE_DIR}/build-profile.toml"
+        --profile release-no-lto)
+    set(CARGO_PROFILE_DIR release-no-lto)
 endif()
 
 add_custom_target(scheduler-client

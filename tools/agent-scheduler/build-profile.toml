@@ -1,0 +1,3 @@
+[profile.release-no-lto]
+inherits = "release"
+lto = "off"
