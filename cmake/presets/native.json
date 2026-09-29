@@ -280,96 +280,84 @@
       "name": "win-x64-clangcl-debug",
       "configurePreset": "win-x64-clangcl-debug",
       "targets": [
-        "native-tests",
-        "tracy-benchmark-compare-tests"
+        "native-tests"
       ]
     },
     {
       "name": "win-x64-clangcl-debug-unity",
       "configurePreset": "win-x64-clangcl-debug-unity",
       "targets": [
-        "native-tests",
-        "tracy-benchmark-compare-tests"
+        "native-tests"
       ]
     },
     {
       "name": "win-x64-clangcl-debug-asan",
       "configurePreset": "win-x64-clangcl-debug-asan",
       "targets": [
-        "native-tests",
-        "tracy-benchmark-compare-tests"
+        "native-tests"
       ]
     },
     {
       "name": "win-x64-clangcl-debug-asan-unity",
       "configurePreset": "win-x64-clangcl-debug-asan-unity",
       "targets": [
-        "native-tests",
-        "tracy-benchmark-compare-tests"
+        "native-tests"
       ]
     },
     {
       "name": "win-x64-clangcl-release",
       "configurePreset": "win-x64-clangcl-release",
       "targets": [
-        "native-tests",
-        "tracy-benchmark-compare-tests"
+        "native-tests"
       ]
     },
     {
       "name": "win-x64-clangcl-release-unity",
       "configurePreset": "win-x64-clangcl-release-unity",
       "targets": [
-        "native-tests",
-        "tracy-benchmark-compare-tests"
+        "native-tests"
       ]
     },
     {
       "name": "win-x64-clangcl-release-asan",
       "configurePreset": "win-x64-clangcl-release-asan",
       "targets": [
-        "native-tests",
-        "tracy-benchmark-compare-tests"
+        "native-tests"
       ]
     },
     {
       "name": "win-x64-clangcl-release-asan-unity",
       "configurePreset": "win-x64-clangcl-release-asan-unity",
       "targets": [
-        "native-tests",
-        "tracy-benchmark-compare-tests"
+        "native-tests"
       ]
     },
     {
       "name": "win-x64-msvc-debug",
       "configurePreset": "win-x64-msvc-debug",
       "targets": [
-        "native-tests",
-        "tracy-benchmark-compare-tests"
+        "native-tests"
       ]
     },
     {
       "name": "win-x64-msvc-debug-unity",
       "configurePreset": "win-x64-msvc-debug-unity",
       "targets": [
-        "native-tests",
-        "tracy-benchmark-compare-tests"
+        "native-tests"
       ]
     },
     {
       "name": "win-x64-msvc-release",
       "configurePreset": "win-x64-msvc-release",
       "targets": [
-        "native-tests",
-        "tracy-benchmark-compare-tests"
+        "native-tests"
       ]
     },
     {
       "name": "win-x64-msvc-release-unity",
       "configurePreset": "win-x64-msvc-release-unity",
       "targets": [
-        "native-tests",
-        "tracy-benchmark-compare-tests"
+        "native-tests"
       ]
     },
     {

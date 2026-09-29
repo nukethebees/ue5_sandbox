@@ -47,6 +47,5 @@ They launch domain subprocesses directly. The caller manages jobs-board admissio
 the tools do not maintain process trees or scheduling state.
 
 PowerShell worktree navigation uses read-only `git worktree list --porcelain -z`.
-Optional `tracy-benchmark-compare` has a separate explicit install; see [profiling](../docs/profiling.md).
 Other tools: [layout planner](layout_planner/README.md), [image lab](image_lab/README.md), and
 [LLVM checks](../docs/clang-tidy.md). Run focused tests for affected tools.

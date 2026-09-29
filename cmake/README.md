@@ -58,7 +58,7 @@ is the explicit broad suite and also includes standalone developer-tool tests.
 
 Standalone native policy follows `CMAKE_BUILD_TYPE`: presets own configuration, unity, ASAN,
 analysis, and profiling intent. `IOJ_ENABLE_PROFILING` defaults to `ON`, including native Release
-and benchmark configurations; `tracy-tools` explicitly disables instrumentation. Unreal presets
+and benchmark configurations. Unreal presets
 map their configuration to the native build type, retain Unreal-specific Tracy selection, and
 stage native artifacts for UBT. Toolchains continue to own pinned compiler/SDK discovery and CRT
 selection. Public C++23, C++ conformance (`ioj::cxx_conformance`), and ABI requirements are

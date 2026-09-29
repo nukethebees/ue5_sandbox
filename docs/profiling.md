@@ -42,43 +42,6 @@ them.
 `--wait-for-profiler`. They are appropriate for unprofiled measurements; use the
 executable above when a reliable Tracy capture is required.
 
-## Comparing two native benchmark configurations
-
-`tracy-benchmark-compare` captures the same level under two CMake presets, exports Tracy's
-inclusive and self-time zone CSVs, and writes a structured comparison beneath
-`.local/benchmarks/tracy-comparison/`. Build it with the Tracy tools:
-
-```powershell
-cmake --workflow --preset tracy-tools
-```
-
-The worktree executable is `out\build\tracy-tools\bin\tracy-benchmark-compare.exe`. It requires
-the worktree root explicitly so an installed copy can safely measure any checkout:
-
-```powershell
-.\out\build\tracy-tools\bin\tracy-benchmark-compare.exe `
-  --root (Get-Location) `
-  --level .\LevelScripts\FighterSchedulingBenchmark.scm `
-  --seconds 20 `
-  --a-preset native-simulation-benchmark `
-  --b-preset native-simulation-benchmark
-```
-
-Use the same request/check/start/end protocol with an exclusive ticket for this comparison.
-The command builds missing prerequisites
-unless `--skip-build` is supplied, then records `manifest.json`, `comparison.json`, both captures, and
-their exported CSVs. Run the focused `perf` tests and `tracy-benchmark-compare --version` on the
-candidate first. Install a validated version independently of a worktree with:
-
-```powershell
-cmake --install .\out\build\tracy-tools --component tracy-benchmark-compare --prefix $env:LOCALAPPDATA\NukeTheBees\tracy-benchmark-compare
-```
-
-The maintainer adds `%LOCALAPPDATA%\NukeTheBees\tracy-benchmark-compare\bin` to PATH.
-Invoke `tracy-benchmark-compare` by name afterward. `--version` reports the integer in
-`tools/perf/CMakeLists.txt`. This optional component remains separately installed; it is not part
-of `agent-task install-central-tools`. For installation testing, pass a private `--prefix`.
-
 ## SandboxISMC Insights captures
 
 Use `benchmark-tools sandbox-ismc` or `sandbox-ismc-revision-ab` for owned Insights captures.

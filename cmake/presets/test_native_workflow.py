@@ -889,7 +889,7 @@ cmake_language(DEFER CALL check_simulation_policy)
         self.assertTrue({"native-simulation-tests", "native-simulation-soak-tests"} <= native.keys())
         self.assertFalse(native.keys() & tools.keys())
         self.assertFalse(inventory("-L", "^all$").keys() & tools.keys())
-        expected_tools = {"layout-planner-ui-tests", "image-lab-tests", "tracy-benchmark-compare-tests", "tracy-benchmark-compare-version", "PowerShell.Navigation"}
+        expected_tools = {"layout-planner-ui-tests", "image-lab-tests", "PowerShell.Navigation"}
         expected_tools.update(("benchmark-tools", "game-package-tools", "native-binary-tools"))
         self.assertEqual(tools.keys(), expected_tools)
         self.assertEqual(inventory("-L", "^native-simulation$", "-LE", "soak|compile-contract").keys(),

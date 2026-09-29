@@ -12,31 +12,12 @@
   ],
   "configurePresets": [
     {
-      "name": "tracy-tools",
-      "displayName": "Vendored Tracy command-line tools",
-      "inherits": "win-x64-clangcl-release",
-      "cacheVariables": {
-        "IOJ_TRACY_TOOLS": true,
-        "IOJ_ENABLE_PROFILING": false
-      }
-    },
-    {
       "name": "native-benchmark",
       "displayName": "Native benchmarks (clang-cl Release + Unity)",
       "inherits": "win-x64-clangcl-release-unity"
     }
   ],
   "buildPresets": [
-    {
-      "name": "tracy-tools",
-      "configurePreset": "tracy-tools",
-      "targets": [
-        "tracy-capture",
-        "tracy-csvexport",
-        "tracy-benchmark-compare",
-        "tracy-benchmark-compare-tests"
-      ]
-    },
     {
       "name": "kernel-benchmark",
       "configurePreset": "native-benchmark",
@@ -100,16 +81,6 @@
   ],
   "testPresets": [
     {
-      "name": "tracy-benchmark-compare",
-      "inherits": "test-base",
-      "configurePreset": "tracy-tools",
-      "filter": {
-        "include": {
-          "label": "^perf$"
-        }
-      }
-    },
-    {
       "name": "kernel-benchmark-tests",
       "inherits": "test-base",
       "configurePreset": "native-benchmark",
@@ -151,19 +122,6 @@
     }
   ],
   "workflowPresets": [
-    {
-      "name": "tracy-tools",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "tracy-tools"
-        },
-        {
-          "type": "build",
-          "name": "tracy-tools"
-        }
-      ]
-    },
     {
       "name": "kernel-benchmark",
       "steps": [

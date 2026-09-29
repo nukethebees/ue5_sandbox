@@ -211,7 +211,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             {
                 "name": combination.name,
                 "configurePreset": combination.name,
-                "targets": ["native-tests", "tracy-benchmark-compare-tests"],
+                "targets": ["native-tests"],
             }
             for combination in combinations
         ),
@@ -797,31 +797,12 @@ def make_native_benchmark_document() -> dict[str, Any]:
     document["include"] = ["native.json"]
     document["configurePresets"] = [
         {
-            "name": "tracy-tools",
-            "displayName": "Vendored Tracy command-line tools",
-            "inherits": "win-x64-clangcl-release",
-            "cacheVariables": {
-                "IOJ_TRACY_TOOLS": True,
-                "IOJ_ENABLE_PROFILING": False,
-            },
-        },
-        {
             "name": BENCHMARK_CONFIGURATION,
             "displayName": "Native benchmarks (clang-cl Release + Unity)",
             "inherits": "win-x64-clangcl-release-unity",
         },
     ]
     document["buildPresets"] = [
-        {
-            "name": "tracy-tools",
-            "configurePreset": "tracy-tools",
-            "targets": [
-                "tracy-capture",
-                "tracy-csvexport",
-                "tracy-benchmark-compare",
-                "tracy-benchmark-compare-tests",
-            ],
-        },
         {
             "name": "kernel-benchmark",
             "configurePreset": BENCHMARK_CONFIGURATION,
@@ -876,12 +857,6 @@ def make_native_benchmark_document() -> dict[str, Any]:
     ]
     document["testPresets"] = [
         {
-            "name": "tracy-benchmark-compare",
-            "inherits": "test-base",
-            "configurePreset": "tracy-tools",
-            "filter": {"include": {"label": "^perf$"}},
-        },
-        {
             "name": "kernel-benchmark-tests",
             "inherits": "test-base",
             "configurePreset": BENCHMARK_CONFIGURATION,
@@ -915,13 +890,6 @@ def make_native_benchmark_document() -> dict[str, Any]:
         },
     ]
     document["workflowPresets"] = [
-        {
-            "name": "tracy-tools",
-            "steps": [
-                {"type": "configure", "name": "tracy-tools"},
-                {"type": "build", "name": "tracy-tools"},
-            ],
-        },
         _workflow("kernel-benchmark", BENCHMARK_CONFIGURATION, "kernel-benchmark-tests"),
         _workflow(
             "kernel-benchmark-plots",
