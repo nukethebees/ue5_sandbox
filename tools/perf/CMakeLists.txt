@@ -8,7 +8,7 @@ target_sources(tracy-benchmark-comparison-lib PRIVATE
 target_compile_features(tracy-benchmark-comparison-lib PUBLIC cxx_std_23)
 target_include_directories(tracy-benchmark-comparison-lib PUBLIC lib/include)
 target_link_libraries(tracy-benchmark-comparison-lib
-  PUBLIC jobserver::client nlohmann_json::nlohmann_json
+  PUBLIC nlohmann_json::nlohmann_json
   PRIVATE CLI11::CLI11 sandbox::native_defaults ws2_32
 )
 ioj_enable_warnings(tracy-benchmark-comparison-lib)

@@ -1,7 +1,5 @@
 #include <sandbox/perf/benchmark_comparison.hpp>
 
-#include <jobserver/client.hpp>
-
 #include <winsock2.h>
 #include <Windows.h>
 
@@ -379,13 +377,15 @@ auto run_command(std::filesystem::path const& executable,
         std::cout << ' ' << argument;
     }
     std::cout << '\n' << std::flush;
-    auto process{create_process(executable, arguments, working_directory, {}, false, false)};
-    auto const exit_code{wait_for_process(process, 3'600.0)};
-    if (!exit_code) {
-        stop_process(process);
-        throw PipelineError{"build_failed", "command timed out: " + executable.string()};
+    auto const process{create_process(executable, arguments, working_directory, {}, false, false)};
+    if (WaitForSingleObject(process.handle.get(), INFINITE) != WAIT_OBJECT_0) {
+        throw PipelineError{"operating_system_error", "Could not wait for build command"};
     }
-    return *exit_code;
+    DWORD exit_code{};
+    if (!GetExitCodeProcess(process.handle.get(), &exit_code)) {
+        throw PipelineError{"operating_system_error", "Could not read build exit code"};
+    }
+    return static_cast<int>(exit_code);
 }
 
 auto capture_command(std::filesystem::path const& executable,
@@ -497,51 +497,6 @@ auto statistics_json(std::optional<ZoneStatistics> const& statistics) -> Json {
                 {"min_ns", statistics->minimum_nanoseconds},
                 {"max_ns", statistics->maximum_nanoseconds},
                 {"source_line", statistics->source_line}};
-}
-
-auto option_arguments(CompareOptions const& options) -> std::vector<std::string> {
-    std::vector<std::string> result{"--root",
-                                    options.root.string(),
-                                    "--level",
-                                    options.level.string(),
-                                    "--seconds",
-                                    format_number(options.seconds),
-                                    "--game-speed",
-                                    std::to_string(options.game_speed),
-                                    "--a-preset",
-                                    options.a_preset,
-                                    "--b-preset",
-                                    options.b_preset,
-                                    "--output-dir",
-                                    options.output_directory.string(),
-                                    "--connection-timeout-seconds",
-                                    format_number(options.connection_timeout_seconds),
-                                    "--process-timeout-seconds",
-                                    format_number(options.process_timeout_seconds),
-                                    "--top",
-                                    std::to_string(options.top),
-                                    "--skip-build"};
-    if (!options.runner_arguments.empty()) {
-        result.push_back("--");
-        result.insert(
-            result.end(), options.runner_arguments.begin(), options.runner_arguments.end());
-    }
-    return result;
-}
-
-auto executable_path() -> std::filesystem::path {
-    std::vector<wchar_t> storage(MAX_PATH);
-    for (;;) {
-        auto const copied{
-            GetModuleFileNameW(nullptr, storage.data(), static_cast<DWORD>(storage.size()))};
-        if (copied == 0) {
-            throw PipelineError{"operating_system_error", "Could not locate comparison executable"};
-        }
-        if (copied < storage.size() - 1) {
-            return std::filesystem::path{std::wstring{storage.data(), copied}};
-        }
-        storage.resize(storage.size() * 2);
-    }
 }
 
 void build_prerequisites(CompareOptions const& options) {
@@ -849,7 +804,6 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
     app.add_option("--b-preset", options.b_preset)->required();
     app.add_option("--output-dir", options.output_directory);
     app.add_flag("--skip-build", options.skip_build);
-    app.add_flag("--jobserver-child", options.jobserver_child)->group("");
     app.add_option("--connection-timeout-seconds", options.connection_timeout_seconds)
         ->default_val(30.0);
     app.add_option("--process-timeout-seconds", options.process_timeout_seconds)
@@ -1294,11 +1248,7 @@ auto run_application(int const argc,
         return parsed.exit_code;
     }
     auto const& options{*parsed.options};
-    auto const inside_jobserver{options.jobserver_child &&
-                                GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", nullptr, 0) !=
-                                    0};
-    if (options.output_directory_explicit && !inside_jobserver &&
-        std::filesystem::exists(options.output_directory) &&
+    if (options.output_directory_explicit && std::filesystem::exists(options.output_directory) &&
         !std::filesystem::is_empty(options.output_directory)) {
         standard_error << "Tracy comparison failed: output directory is not empty: "
                        << options.output_directory.string() << '\n';
@@ -1308,43 +1258,8 @@ auto run_application(int const argc,
     auto manifest = make_manifest(options, "preparing");
     write_json(options.output_directory / "manifest.json", manifest);
     try {
-        if (options.jobserver_child && !inside_jobserver) {
-            throw PipelineError{"invalid_jobserver_child",
-                                "Jobserver child marker requires an active job"};
-        }
         if (!options.skip_build) {
             build_prerequisites(options);
-        }
-        if (!inside_jobserver) {
-            auto child_arguments{option_arguments(options)};
-            child_arguments.insert(child_arguments.begin(), "--jobserver-child");
-            jobserver::SubmitRequest request{
-                .metadata = {.name = "Tracy native benchmark comparison",
-                             .kind = "benchmark",
-                             .worktree = options.root},
-                .command = {.executable = executable_path(),
-                            .arguments = std::move(child_arguments),
-                            .working_directory = options.root,
-                            .environment = {}},
-                .resources = {{.name = "machine", .mode = jobserver::ClaimMode::exclusive},
-                              {.name = "benchmark", .mode = jobserver::ClaimMode::exclusive}},
-                .timeout = std::nullopt,
-                .suspect_after = std::nullopt,
-                .disconnect_policy = jobserver::DisconnectPolicy::cancel,
-            };
-            auto result{jobserver::Client::run(
-                request, [](std::string const& stream, std::string const& text) {
-                    (stream == "stderr" ? std::cerr : std::cout) << text << std::flush;
-                })};
-            if (!result) {
-                throw PipelineError{"jobserver_failed", result.error().message};
-            }
-            if (*result != 0 &&
-                !std::filesystem::is_regular_file(options.output_directory / "comparison.json")) {
-                throw PipelineError{"jobserver_failed",
-                                    "jobserver command exited with " + std::to_string(*result)};
-            }
-            return *result;
         }
         return run_comparison(options, manifest, standard_output);
     } catch (PipelineError const& error) {
