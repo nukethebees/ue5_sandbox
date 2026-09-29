@@ -32,6 +32,11 @@ Exempt commands do not consume tickets and may run during exclusive work.
 Other commands fail with instructions if no ticket exists. No ticket is inferred,
 no command text is rewritten, and exemptions never bypass Codex security.
 
+`ticket`, `status`, and `clear` connect to a local control pipe accessible to the
+current Windows logon session, including Codex's restricted token. They do not
+need an outside-sandbox approval just to reach that pipe. Approving these helpers
+does not approve the ordinary commands that use their tickets.
+
 ## Command lifetime
 
 A ticket belongs to one logical command, including legitimate internal sandbox

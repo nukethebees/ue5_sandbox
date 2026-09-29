@@ -8,10 +8,9 @@ use codex_execpolicy::{Decision, Policy, PolicyParser};
 use codex_shell_command::powershell::parse_powershell_script_into_plain_commands;
 use serde_json::{Value, json};
 use std::sync::{Arc, Mutex};
-use tokio::net::windows::named_pipe::ServerOptions;
 use tokio::sync::{OnceCell, mpsc, watch};
 use tokio_util::sync::CancellationToken;
-use transport::{WATCHDOG, connect, daemon_endpoint, read_frame, write_frame};
+use transport::{WATCHDOG, connect, daemon_endpoint, read_frame, session_listener, write_frame};
 
 static SCHEDULER: OnceCell<Arc<Scheduler>> = OnceCell::const_new();
 
@@ -84,7 +83,9 @@ impl Scheduler {
     }
 
     async fn connect(policy: Policy, daemon: &str) -> Result<Arc<Self>> {
-        let mut pipe = connect(daemon).await?;
+        let mut pipe = connect(daemon)
+            .await
+            .context("Start the jobserver before Codex")?;
         write_frame(&mut pipe, &json!({"type":"hello", "protocol":{"major":2,"minor":0}, "client_version":"codex-example"})).await?;
         let hello = tokio::time::timeout(WATCHDOG, read_frame(&mut pipe)).await??;
         if hello["type"] != "hello_ack" || hello["protocol"]["major"] != 2 {
@@ -92,9 +93,7 @@ impl Scheduler {
         }
         let client_id = hello["client"].as_u64().context("Missing ClientId")?;
         let endpoint = format!(r"\\.\pipe\NukeTheBees.CodexScheduler.{client_id}");
-        let listener = ServerOptions::new()
-            .first_pipe_instance(true)
-            .create(&endpoint)?;
+        let listener = session_listener(&endpoint, true)?;
         let (outgoing, mut messages) = mpsc::unbounded_channel();
         let (changed, _) = watch::channel(0);
         let scheduler = Arc::new(Self {
@@ -162,7 +161,7 @@ impl Scheduler {
                     break;
                 }
                 let mut connection = listener;
-                listener = match ServerOptions::new().create(&endpoint) {
+                listener = match session_listener(&endpoint, false) {
                     Ok(listener) => listener,
                     Err(_) => break,
                 };
@@ -484,7 +483,9 @@ impl Drop for Scheduler {
 pub async fn control(request: Value) -> Result<Value> {
     let endpoint = std::env::var("AGENT_SCHEDULER_SESSION")
         .context("Run this command inside the patched Codex session")?;
-    let mut pipe = connect(&endpoint).await?;
+    let mut pipe = connect(&endpoint)
+        .await
+        .context("Cannot reach this Codex session's scheduler control pipe")?;
     write_frame(&mut pipe, &request).await?;
     let response = tokio::time::timeout(WATCHDOG, read_frame(&mut pipe)).await??;
     if let Some(error) = response.get("error") {

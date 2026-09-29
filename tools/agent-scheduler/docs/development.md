@@ -56,7 +56,9 @@ tools/agent-scheduler/Run-Examples.ps1
 ```
 
 The demonstrations use an isolated instance of the installed daemon and scripted
-local Responses events; no model service is contacted. Coverage includes FIFO
+local Responses events; no model service is contacted. Run the launcher outside
+Codex's sandbox: the child Codex creates its own restricted-token sandbox.
+Coverage includes sandboxed `ticket`/`status`/`clear` access, FIFO
 admission, cancellation/grant races, spawn failure, immediate ticket reuse,
 daemon loss, independent security rejection, startup failure and a real
 sandbox-denied write followed by an approved retry.

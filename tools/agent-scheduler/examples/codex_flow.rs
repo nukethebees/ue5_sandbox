@@ -30,8 +30,6 @@ async fn main() -> Result<()> {
             "prefix_rule(pattern=[\"Write-Output\", \"FORBIDDEN\"], decision=\"forbidden\")\n",
             "prefix_rule(pattern=[\"Write-Output\", \"SCHEDULED\"], decision=\"allow\")\n",
             "prefix_rule(pattern=[\"Write-Output\", \"NO_TICKET\"], decision=\"allow\")\n",
-            "prefix_rule(pattern=[\"rg\", \"--version\"], decision=\"allow\")\n",
-            "prefix_rule(pattern=[\"agent-scheduler\", [\"ticket\", \"status\", \"clear\"]], decision=\"allow\")\n"
         ),
     )?;
     let listener = TcpListener::bind("127.0.0.1:0").await?;
@@ -44,6 +42,8 @@ model = "gpt-5.4"
 model_provider = "fixture"
 approval_policy = "never"
 sandbox_mode = "workspace-write"
+[windows]
+sandbox = "unelevated"
 [model_providers.fixture]
 name = "local scheduler fixture"
 base_url = "http://{address}/v1"
@@ -53,8 +53,12 @@ requires_openai_auth = false
         ),
     )?;
     let server = tokio::spawn(async move {
+        // No security allow rule for the helper: exercise the real restricted-token pipe access.
         let mut commands = vec![
-            "rg --version",
+            "Get-Content tools/agent-scheduler/README.md",
+            "agent-scheduler status",
+            "agent-scheduler ticket shared clear-example",
+            "agent-scheduler clear",
             "Write-Output NO_TICKET",
             "agent-scheduler ticket shared smoke",
             "Write-Output FORBIDDEN",
@@ -70,7 +74,8 @@ requires_openai_auth = false
             let (socket, request) = support::request(&listener).await?;
             if index > 0 {
                 let previous = commands[index - 1];
-                if previous.starts_with("agent-scheduler ticket")
+                if previous.starts_with("agent-scheduler ")
+                    || previous.starts_with("Get-Content ")
                     || previous == "Write-Output SCHEDULED"
                 {
                     let id = format!("call_{}", index - 1);
@@ -85,7 +90,7 @@ requires_openai_auth = false
                         .context("missing command result")?;
                     ensure!(
                         output.contains("Process exited with code 0"),
-                        "Immediate ticket/command failed: {output}"
+                        "Command failed ({previous}): {output}"
                     );
                 }
             }
@@ -162,7 +167,7 @@ requires_openai_auth = false
         "Ticket was not released"
     );
     println!(
-        "PASS real Codex: exemption, missing ticket, unchanged security rejection, 12 immediate ticket/command cycles, automatic release"
+        "PASS real Codex: sandboxed ticket/status/clear, exemption, missing ticket, unchanged security rejection, 12 immediate ticket/command cycles, automatic release"
     );
     command.env(
         "NUKETHEBEES_JOBSERVER_TEST_PIPE",
