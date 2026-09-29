@@ -97,7 +97,7 @@ public sealed class BenchmarkInfrastructureTests
     {
         using var directory = new BenchmarkTestDirectory();
         var runner = new ProcessRunner();
-        var app = new BenchmarkToolsApplication(runner, new TestJobserver(), new TestEnvironment(), TextWriter.Null, TextWriter.Null, "unused");
+        var app = new BenchmarkToolsApplication(runner, TextWriter.Null, TextWriter.Null, "unused");
         await Git("init", "--initial-branch=candidate");
         await Git("config", "user.name", "Benchmark test");
         await Git("config", "user.email", "benchmark@example.invalid");
@@ -158,7 +158,7 @@ public sealed class BenchmarkInfrastructureTests
     public async Task Source_fingerprint_detects_tracked_and_untracked_edits_but_ignores_owned_artifacts()
     {
         using var directory = new BenchmarkTestDirectory();
-        var app = new BenchmarkToolsApplication(new ProcessRunner(), new TestJobserver(), new TestEnvironment(), TextWriter.Null, TextWriter.Null, "unused");
+        var app = new BenchmarkToolsApplication(new ProcessRunner(), TextWriter.Null, TextWriter.Null, "unused");
         await Git("init", "--initial-branch=candidate");
         await Git("config", "user.name", "Benchmark test");
         await Git("config", "user.email", "benchmark@example.invalid");
@@ -221,7 +221,7 @@ public sealed class BenchmarkInfrastructureTests
             Directory.CreateDirectory(Path.GetDirectoryName(Path.Combine(directory.Root, path))!);
             File.Copy(Path.Combine(repository.Root, path), Path.Combine(directory.Root, path));
         }
-        var app = new BenchmarkToolsApplication(new ProcessRunner(), new TestJobserver(), new TestEnvironment(), TextWriter.Null, TextWriter.Null, "unused");
+        var app = new BenchmarkToolsApplication(new ProcessRunner(), TextWriter.Null, TextWriter.Null, "unused");
         await Git("init", "--initial-branch=candidate");
         await Git("config", "user.name", "Benchmark test");
         await Git("config", "user.email", "benchmark@example.invalid");
@@ -279,6 +279,3 @@ internal sealed class BenchmarkTestDirectory : IDisposable
         Directory.Delete(full, true);
     }
 }
-
-internal sealed class TestJobserver : IJobserverLocator { public string Locate() => "test-jobserver"; }
-internal sealed class TestEnvironment(string? job = null) : IEnvironment { public string? GetEnvironmentVariable(string name) => name == "NUKETHEBEES_JOBSERVER_JOB" ? job : null; }

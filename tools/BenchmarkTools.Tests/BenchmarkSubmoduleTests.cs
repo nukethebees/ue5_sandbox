@@ -14,7 +14,7 @@ public sealed class BenchmarkSubmoduleTests
     {
         using var directory = new BenchmarkTestDirectory();
         var runner = new RecordingGitRunner();
-        var app = new BenchmarkToolsApplication(runner, new TestJobserver(), new TestEnvironment(), TextWriter.Null, TextWriter.Null, "unused");
+        var app = new BenchmarkToolsApplication(runner, TextWriter.Null, TextWriter.Null, "unused");
         var candidate = Path.Combine(directory.Root, "candidate");
         var remote = Path.Combine(directory.Root, "origin");
         var local = Path.Combine(candidate, "deps", "library with spaces");

@@ -23,11 +23,8 @@ internal static class SandboxIsmcCachePreparation
         application.StandardOutput.WriteLine($"Preparing {side} shader/cache data (up to {Timeout.TotalMinutes:0} minutes): {run.DirectoryPath}");
         try
         {
-            var arguments = new List<string> { "run", "--name", $"SandboxISMC {side} cache preparation", "--kind", "build",
-                "--worktree", repository.Root, "--shared", "machine", "--shared", BenchmarkCommandSupport.EngineResource(request.Editor),
-                "--", application.ExecutablePath, "sandbox-ismc", "--prepare-cache-plan", run.Artifact("cache-plan.json") };
-            // The child owns the timeout so waiting for shared resources does not consume preparation time.
-            var result = await application.ProcessRunner.RunAsync(new ProcessRequest(application.JobserverLocator.Locate(), arguments, repository.Root), token);
+            var result = await application.ProcessRunner.RunAsync(new ProcessRequest(application.ExecutablePath,
+                ["sandbox-ismc", "--prepare-cache-plan", run.Artifact("cache-plan.json")], repository.Root), token);
             application.WriteProcessOutput(result);
             if (result.ExitCode != 0) throw new BenchmarkToolException($"SandboxISMC {side} cache preparation failed: {result.StandardError.Trim()} See '{run.DirectoryPath}'.");
             run.ValidateArtifacts();
@@ -42,8 +39,6 @@ internal static class SandboxIsmcCachePreparation
 
     public static async Task<int> RunChildAsync(BenchmarkToolsApplication application, string path, CancellationToken token)
     {
-        if (string.IsNullOrWhiteSpace(application.Environment.GetEnvironmentVariable("NUKETHEBEES_JOBSERVER_JOB")))
-            throw new BenchmarkToolException("Cache preparation requires a jobserver reservation.");
         var plan = JsonSerializer.Deserialize<Plan>(File.ReadAllText(path), BenchmarkCommandSupport.JsonOptions)
             ?? throw new BenchmarkToolException("Cache preparation plan is empty.");
         if (plan.SchemaVersion != 1) throw new BenchmarkToolException("Unsupported cache preparation plan schema.");

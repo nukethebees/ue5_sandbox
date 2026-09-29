@@ -24,8 +24,8 @@ Results are disposable local data unless a specific experiment says otherwise; w
 | Level telemetry | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe level-telemetry` | Configures, builds, and runs the telemetry CTest preset. |
 | GPU starfield | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe gpu-starfield` | Runs, validates, and writes versioned JSON/CSV/Markdown artifacts. |
 | SandboxISMC | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe sandbox-ismc` | Builds and runs the existing PIE benchmark with owned CSV, log, trace, and conditions artifacts. |
-| SandboxISMC revision comparison | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe sandbox-ismc-revision-ab` | Builds detached baseline/current candidate inputs, then measures complete interleaved repetitions under one reservation. |
-| SandboxISMC offline report | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe sandbox-ismc-report --run-dir <comparison-run>` | Regenerates reports from captured data, with no builds, processes, worktrees or lease. |
+| SandboxISMC revision comparison | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe sandbox-ismc-revision-ab` | Builds detached baseline/current candidate inputs, then measures complete interleaved repetitions. |
+| SandboxISMC offline report | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe sandbox-ismc-report --run-dir <comparison-run>` | Regenerates reports from captured data, with no builds, processes or worktrees. |
 | Unreal-backed measurements | Benchmark CMake presets and commandlet targets | Presets are in `cmake/presets/*benchmarks.json`. |
 
 Run the fighter benchmark with:
@@ -124,7 +124,7 @@ It is the caller's responsibility to ensure those binaries match their recorded 
 | `--repetitions`, `--warmup-runs` | 2, 0 | Comparison only: complete measured/warmup processes per side |
 | `--output-dir` | `.local/benchmarks/<command>` | Parent directory; every invocation allocates a unique child |
 | `--label` | empty | Human-readable manifest/report label; never a path or comparability input |
-| `--prepare-only` | off | Comparison only: prepare/build and verify both sources; retain owned baseline, no measurement lease |
+| `--prepare-only` | off | Comparison only: prepare/build and verify both sources; retain owned baseline without measurement |
 | `--validate-only` | off | Comparison only: one A/B pair, 0.25 s warmup and 0.5 s measurement per process, no warmup processes |
 
 Preparation and validation modes are mutually exclusive. Preparation writes `preparation.json`
@@ -134,14 +134,14 @@ them. Supplied baselines remain untouched. A retained overlaid baseline is usefu
 the existing clean-worktree requirement still applies when supplying a baseline to a later run.
 
 Before measurement, both revisions prepare the benchmark map's shaders and derived data through
-Unreal's DDC commandlet, with a separate ten-minute timeout per revision. Preparation uses shared
-machine/engine resources before the exclusive measurement lease, and retains logs under the run's
+Unreal's DDC commandlet, with a separate ten-minute timeout per revision. Preparation runs before
+the measurement child and retains logs under the run's
 `preparation/` directory. Both sides use the invoking checkout's persistent `.local/benchmarks/ddc`
 cache, which survives disposable baseline cleanup. This also runs with `--skip-build`;
 `--prepare-only` continues to build and retain the baseline without launching Unreal.
 
 Validation overrides repetition and timing options and caps each measured Editor process at 60 seconds.
-It uses the normal single comparison lease and artifacts, but its reports explicitly make **no
+It uses the normal comparison sequence and artifacts, but its reports explicitly make **no
 performance conclusions**. Cache preparation has its own timeout and does not consume this limit.
 
 PIE requests a fixed scene viewport, observes its actual size on a later tick, and fails before
@@ -175,7 +175,7 @@ The parent captures source HEAD, dirty status, a tracked diff hash, and a hash o
 and contents (link targets for untracked symbolic links). Ignored files and the exact owned run
 directory are excluded. Executable paths and effective arguments accompany the source identity.
 A dirty candidate is explicitly marked as such. Both revision commands check those fingerprints
-after preparation, after queueing for the reservation, and after measurement. A changed source
+after preparation, when the measurement child starts, and after measurement. A changed source
 fails the run before comparison deltas are published; measurements remain available for diagnosis.
 These snapshots do not lock the checkout or prove that prebuilt binaries match it. No artifact
 is selected by timestamp, and no files are collected from `Saved/Benchmarks` or a shared Editor log.
@@ -202,10 +202,14 @@ unsupported historical harnesses fail during preparation. This option cannot run
 preparation scripts or substitute renderer implementation files. Omit it when both revisions
 already support the protocol.
 
-Both revision commands build before reserving exclusive `machine` and `benchmark` resources.
-One job holds the reservation across all warmup and measured processes. Measured pairs alternate
-AB then BA (ABBA across two pairs); `sequence.json` records the exact ordering. Analysis runs after
-the lease releases. Keep actual campaigns within the repository's three-minute benchmark budget.
+Both revision commands build before launching one child for all warmup and measured processes.
+They run ordinary processes directly and never request tickets or acquire resource leases.
+The caller manages the exclusive jobs-board ticket for the benchmark invocation, ending it when
+the command returns. For SandboxISMC, use `--prepare-only` first under a shared ticket, then supply that baseline
+with `--skip-build` under the exclusive ticket to keep builds outside the benchmark turn; cache
+preparation still runs inside that invocation. Measured pairs alternate AB then BA (ABBA across
+two pairs); `sequence.json` records the exact ordering. Analysis follows measurement.
+Keep actual campaigns within the repository's three-minute benchmark budget.
 
 SandboxISMC writes `captures.json` with each process's original sample count/min/median/p95/max.
 `comparison.json`, `.csv`, and `.md` preserve baseline/candidate distributions of complete-run
@@ -225,7 +229,7 @@ are unchanged. Incomplete/failed runs or unsupported capture schemas fail clearl
 captures produce an incomparable report without deltas. Captures must contain the required render
 conditions, including Editor VSync and MaxFPS; older captures missing these cannot establish comparability.
 
-Frame-memory uses the same ownership, run manifest, ordering and lease infrastructure while retaining
+Frame-memory uses the same ownership, run manifest, ordering and measurement infrastructure while retaining
 its existing `raw-results.csv` and `paired-results.csv` reports. `--iterations` counts complete
 repetitions per side; `--warmup-iterations` produces separate complete warmup runs. Prepared historical
 binaries remain supported without requiring that revision's BenchmarkTools commands.

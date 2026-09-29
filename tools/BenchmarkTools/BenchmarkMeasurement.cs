@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace BenchmarkTools;
 
-// The parent owns preparation, analysis and cleanup. Only this immutable plan crosses the lease boundary.
+// The parent owns preparation, analysis and cleanup; the child executes the complete measurement plan.
 internal sealed record BenchmarkMeasurementPlan(string Output, RevisionIdentity Candidate, RevisionIdentity Baseline,
     IReadOnlyList<BenchmarkRepetition> Sequence, SandboxIsmcRequest? Ismc = null, bool ValidationOnly = false);
 
@@ -14,19 +14,15 @@ internal static class BenchmarkMeasurement
         await VerifySourcesAsync(application, plan, token);
         var path = Path.Combine(plan.Output, "measurement-plan.json");
         BenchmarkCommandSupport.WriteJson(path, plan);
-        var request = JobserverExecution.CreateRequest(application.JobserverLocator.Locate(), application.ExecutablePath,
-            repository, command + " complete comparison", [command, "--measurement-plan", path],
-            plan.Ismc is null ? null : [BenchmarkCommandSupport.EngineResource(plan.Ismc.Editor)]);
+        var request = new ProcessRequest(application.ExecutablePath, [command, "--measurement-plan", path], repository.Root);
         var result = await application.ProcessRunner.RunAsync(request, token);
         application.WriteProcessOutput(result);
-        if (result.ExitCode != 0) throw new BenchmarkToolException($"Measurement job failed with exit code {result.ExitCode}; see '{plan.Output}'.");
+        if (result.ExitCode != 0) throw new BenchmarkToolException($"Measurement process failed with exit code {result.ExitCode}; see '{plan.Output}'.");
         await VerifySourcesAsync(application, plan, token);
     }
 
     public static async Task<BenchmarkMeasurementPlan> ReadAsync(BenchmarkToolsApplication application, string path, CancellationToken token)
     {
-        if (string.IsNullOrWhiteSpace(application.Environment.GetEnvironmentVariable("NUKETHEBEES_JOBSERVER_JOB")))
-            throw new BenchmarkToolException("Measurement stage requires a jobserver reservation.");
         var plan = JsonSerializer.Deserialize<BenchmarkMeasurementPlan>(File.ReadAllText(path), BenchmarkCommandSupport.JsonOptions)
             ?? throw new BenchmarkToolException("Measurement plan is empty.");
         await VerifySourcesAsync(application, plan, token);

@@ -13,7 +13,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         using var fixture = new Fixture();
         Assert.AreEqual(0, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--prepare-only", "--label", "packed transform"), fixture.Errors.ToString());
         Assert.AreEqual(4, fixture.Runner.Requests.Count(item => item.FileName == "cmake"));
-        Assert.IsFalse(fixture.Runner.Requests.Any(item => item.FileName == fixture.Editor || item.FileName == "test-jobserver" || item.Arguments.Contains("remove")));
+        Assert.IsFalse(fixture.Runner.Requests.Any(item => item.FileName == fixture.Editor || item.FileName == "current-benchmark-tools" || item.Arguments.Contains("remove")));
         Assert.IsTrue(fixture.Runner.Requests.Any(item => item.Arguments.Contains("submodule")));
         Assert.AreEqual("prepared", fixture.Document("manifest.json").GetProperty("status").GetString());
         Assert.AreEqual("packed transform", fixture.Document("manifest.json").GetProperty("label").GetString());
@@ -34,12 +34,12 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     }
 
     [TestMethod]
-    public async Task Validation_is_one_short_pair_in_one_lease_and_identifies_reports()
+    public async Task Validation_is_one_short_pair_in_one_child_and_identifies_reports()
     {
         using var fixture = new Fixture();
         Assert.AreEqual(0, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--validate-only",
             "--repetitions", "10", "--warmup-runs", "3", "--seconds", "90", "--label", "12-byte packed transform"), fixture.Errors.ToString());
-        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == "test-jobserver" && item.Arguments.Contains("--measurement-plan")));
+        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == "current-benchmark-tools" && item.Arguments.Contains("--measurement-plan")));
         var processes = fixture.Runner.Requests.Where(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")).ToArray();
         Assert.AreEqual(2, processes.Length);
         Assert.IsTrue(processes.All(item => item.Arguments.Contains("-SandboxISMCBenchmarkSeconds=0.5") && item.Timeout == TimeSpan.FromSeconds(60)));
@@ -65,17 +65,17 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     }
 
     [TestMethod]
-    public async Task Cache_preparation_is_bounded_and_finishes_before_the_measurement_lease()
+    public async Task Cache_preparation_is_bounded_and_finishes_before_measurement()
     {
         using var fixture = new Fixture();
         Assert.AreEqual(0, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--validate-only"), fixture.Errors.ToString());
         var requests = fixture.Runner.Requests;
-        var cache_jobs = requests.Where(item => item.FileName == "test-jobserver" && item.Arguments.Contains("--prepare-cache-plan")).ToArray();
-        Assert.AreEqual(2, cache_jobs.Length);
-        foreach (var job in cache_jobs)
+        var cache_children = requests.Where(item => item.FileName == "current-benchmark-tools" && item.Arguments.Contains("--prepare-cache-plan")).ToArray();
+        Assert.AreEqual(2, cache_children.Length);
+        foreach (var child in cache_children)
         {
-            CollectionAssert.IsSubsetOf(new[] { "--shared", "machine", "--kind", "build" }, job.Arguments.ToArray());
-            Assert.IsFalse(job.Arguments.Contains("--exclusive") || job.Arguments.Contains("benchmark"));
+            CollectionAssert.AreEqual(new[] { "sandbox-ismc", "--prepare-cache-plan" }, child.Arguments.Take(2).ToArray());
+            Assert.AreEqual(3, child.Arguments.Count);
         }
         var cache_processes = requests.Where(item => item.FileName == fixture.Editor && item.Arguments.Contains("-run=DerivedDataCache")).ToArray();
         Assert.AreEqual(2, cache_processes.Length);
@@ -87,7 +87,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
             Assert.IsFalse(process.Arguments.Any(arg => arg.Contains("SandboxISMCBenchmark", StringComparison.Ordinal) && !arg.StartsWith("-Map=", StringComparison.Ordinal)));
             Assert.IsTrue(requests.FindLastIndex(item => item.FileName == "cmake") < requests.IndexOf(process));
         }
-        var measurement = requests.Single(item => item.FileName == "test-jobserver" && item.Arguments.Contains("--measurement-plan"));
+        var measurement = requests.Single(item => item.FileName == "current-benchmark-tools" && item.Arguments.Contains("--measurement-plan"));
         Assert.IsTrue(cache_processes.All(process => requests.IndexOf(process) < requests.IndexOf(measurement)));
         Assert.AreEqual(2, fixture.Document("captures.json").GetArrayLength());
         var preparation = Path.Combine(fixture.RunDirectory, "preparation");
@@ -103,7 +103,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     [TestMethod]
     [DataRow("exit", "exited with code 8")]
     [DataRow("timeout", "timed out after 10 minutes before measurement")]
-    public async Task Cache_failure_preserves_logs_and_cleans_baseline_without_a_measurement_lease(string failure, string diagnostic)
+    public async Task Cache_failure_preserves_logs_and_cleans_baseline_without_measurement(string failure, string diagnostic)
     {
         using var fixture = new Fixture { CacheFailure = failure };
         Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--validate-only"));
@@ -205,17 +205,16 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     }
 
     [TestMethod]
-    public async Task Comparison_builds_before_one_lease_and_interleaves_complete_runs()
+    public async Task Comparison_builds_before_one_measurement_child_and_interleaves_complete_runs()
     {
         using var fixture = new Fixture();
         var result = await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--repetitions", "2", "--warmup-runs", "1");
         Assert.AreEqual(0, result, fixture.Errors.ToString());
-        var lease = fixture.Runner.Requests.Single(item => item.FileName == "test-jobserver" && item.Arguments.Contains("--measurement-plan"));
-        CollectionAssert.IsSubsetOf(new[] { "--exclusive", "machine", "benchmark", "--shared" }, lease.Arguments.ToArray());
-        Assert.AreEqual(2, lease.Arguments.Count(item => item == "--exclusive"));
+        var measurement = fixture.Runner.Requests.Single(item => item.FileName == "current-benchmark-tools" && item.Arguments.Contains("--measurement-plan"));
+        CollectionAssert.AreEqual(new[] { "sandbox-ismc-revision-ab", "--measurement-plan", Path.Combine(fixture.RunDirectory, "measurement-plan.json") }, measurement.Arguments.ToArray());
         Assert.AreEqual(4, fixture.Runner.Requests.Count(item => item.FileName == "cmake"));
-        Assert.IsTrue(fixture.Runner.Requests.TakeWhile(item => item != lease).Count(item => item.FileName == "cmake") == 4);
-        Assert.IsFalse(fixture.Runner.Requests.SkipWhile(item => item != lease).Any(item => item.FileName == "cmake"));
+        Assert.IsTrue(fixture.Runner.Requests.TakeWhile(item => item != measurement).Count(item => item.FileName == "cmake") == 4);
+        Assert.IsFalse(fixture.Runner.Requests.SkipWhile(item => item != measurement).Any(item => item.FileName == "cmake"));
         var document = fixture.Document("captures.json");
         Assert.AreEqual(6, document.GetArrayLength());
         CollectionAssert.AreEqual(new[] { "baseline", "candidate", "baseline", "candidate", "candidate", "baseline" },
@@ -335,7 +334,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     }
 
     [TestMethod]
-    public async Task Supplied_worktree_is_not_removed_and_skip_build_keeps_one_lease()
+    public async Task Supplied_worktree_is_not_removed_and_skip_build_keeps_one_measurement_child()
     {
         using var fixture = new Fixture();
         var supplied = Path.Combine(fixture.Root, "prepared");
@@ -343,15 +342,15 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         Assert.AreEqual(0, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--baseline-worktree", supplied, "--skip-build"), fixture.Errors.ToString());
         Assert.IsTrue(Directory.Exists(supplied));
         Assert.IsFalse(fixture.Runner.Requests.Any(item => item.Arguments.Contains("remove") || item.Arguments.Contains("add") || item.FileName == "cmake"));
-        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == "test-jobserver" && item.Arguments.Contains("--measurement-plan")));
+        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == "current-benchmark-tools" && item.Arguments.Contains("--measurement-plan")));
         Assert.AreEqual(2, fixture.Runner.Requests.Count(item => item.Arguments.Contains("--prepare-cache-plan")));
     }
 
     [TestMethod]
     [DataRow("build", false)]
     [DataRow("build", true)]
-    [DataRow("queued", false)]
-    [DataRow("queued", true)]
+    [DataRow("child-start", false)]
+    [DataRow("child-start", true)]
     [DataRow("measured", false)]
     [DataRow("measured", true)]
     public async Task Source_changes_reject_results_and_clean_owned_baseline(string stage, bool baseline)
@@ -362,26 +361,26 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         Assert.AreEqual("failed", fixture.Document("manifest.json").GetProperty("status").GetString());
         Assert.IsFalse(File.Exists(Path.Combine(fixture.RunDirectory, "comparison.json")));
         Assert.IsTrue(fixture.Runner.Requests.Any(item => item.Arguments.Contains("remove")));
-        Assert.AreEqual(stage == "build" ? 0 : 1, fixture.Runner.Requests.Count(item => item.FileName == "test-jobserver" && item.Arguments.Contains("--measurement-plan")));
+        Assert.AreEqual(stage == "build" ? 0 : 1, fixture.Runner.Requests.Count(item => item.FileName == "current-benchmark-tools" && item.Arguments.Contains("--measurement-plan")));
         Assert.AreEqual(stage == "measured" ? 4 : 0, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")));
     }
 
     [TestMethod]
-    public async Task Frame_memory_reuses_the_source_validation_before_lease()
+    public async Task Frame_memory_reuses_the_source_validation_before_measurement()
     {
         using var fixture = new Fixture { SourceChangeStage = "build" };
         Assert.AreEqual(1, await fixture.Run("frame-memory-revision-ab", "--baseline", "old"));
         StringAssert.Contains(fixture.Errors.ToString(), "Source changed");
-        Assert.IsFalse(fixture.Runner.Requests.Any(item => item.FileName == "test-jobserver"));
+        Assert.IsFalse(fixture.Runner.Requests.Any(item => item.FileName == "current-benchmark-tools"));
     }
 
     [TestMethod]
-    public async Task Build_failure_cleans_owned_baseline_and_records_failure_without_a_lease()
+    public async Task Build_failure_cleans_owned_baseline_and_records_failure_without_measurement()
     {
         using var fixture = new Fixture { BuildFailure = true };
         Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old"));
         Assert.IsTrue(fixture.Runner.Requests.Any(item => item.Arguments.Contains("remove")));
-        Assert.IsFalse(fixture.Runner.Requests.Any(item => item.FileName == "test-jobserver"));
+        Assert.IsFalse(fixture.Runner.Requests.Any(item => item.FileName == "current-benchmark-tools"));
         Assert.AreEqual("failed", fixture.Document("manifest.json").GetProperty("status").GetString());
     }
 
@@ -400,11 +399,11 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     }
 
     [TestMethod]
-    public async Task Frame_memory_uses_shared_preparation_order_and_one_lease()
+    public async Task Frame_memory_uses_shared_preparation_order_and_one_measurement_child()
     {
         using var fixture = new Fixture();
         Assert.AreEqual(0, await fixture.Run("frame-memory-revision-ab", "--baseline", "old", "--iterations", "2", "--warmup-iterations", "1"), fixture.Errors.ToString());
-        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == "test-jobserver" && item.Arguments.Contains("--measurement-plan")));
+        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == "current-benchmark-tools" && item.Arguments.Contains("--measurement-plan")));
         var records = fixture.Document("records.json");
         Assert.AreEqual(4, records.GetArrayLength());
         CollectionAssert.AreEqual(new[] { "baseline", "candidate", "candidate", "baseline" }, records.EnumerateArray().Select(item => item.GetProperty("state").GetString()).ToArray());
@@ -417,7 +416,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         using var fixture = new Fixture { MissingProtocol = true };
         Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old"));
         StringAssert.Contains(fixture.Errors.ToString(), "lacks the owned-output/viewport protocol");
-        Assert.IsFalse(fixture.Runner.Requests.Any(item => item.FileName == "cmake" || item.FileName == "test-jobserver"));
+        Assert.IsFalse(fixture.Runner.Requests.Any(item => item.FileName == "cmake" || item.FileName == "current-benchmark-tools"));
     }
 
     private sealed class Fixture : IDisposable
@@ -459,7 +458,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
             var arguments = new List<string> { command, "--output-dir", Output };
             if (command != "frame-memory-revision-ab") arguments.AddRange(["--editor", Editor]);
             arguments.AddRange(args);
-            return await Application(false).RunAsync(arguments, Root);
+            return await Application().RunAsync(arguments, Root);
         }
 
         public JsonElement Document(string name)
@@ -468,9 +467,9 @@ public sealed class SandboxIsmcBenchmarkCommandTests
             return document.RootElement.Clone();
         }
 
-        public Task<int> Report() => Application(false).RunAsync(["sandbox-ismc-report", "--run-dir", RunDirectory], Path.GetTempPath());
+        public Task<int> Report() => Application().RunAsync(["sandbox-ismc-report", "--run-dir", RunDirectory], Path.GetTempPath());
 
-        private BenchmarkToolsApplication Application(bool child) => new(Runner, new TestJobserver(), new TestEnvironment(child ? "lease" : null), TextWriter.Null, Errors, "current-benchmark-tools");
+        private BenchmarkToolsApplication Application() => new(Runner, TextWriter.Null, Errors, "current-benchmark-tools");
 
         private async Task<ProcessResult> Respond(ProcessRequest process)
         {
@@ -494,11 +493,10 @@ public sealed class SandboxIsmcBenchmarkCommandTests
                 if (SourceChangeStage == "build") source_changed_ = true;
                 return new ProcessResult(BuildFailure ? 1 : 0, StandardError: BuildFailure ? "fixture build failure" : "");
             }
-            if (process.FileName == "test-jobserver")
+            if (process.FileName == "current-benchmark-tools" && (process.Arguments.Contains("--measurement-plan") || process.Arguments.Contains("--prepare-cache-plan")))
             {
-                if (SourceChangeStage == "queued" && process.Arguments.Contains("--measurement-plan")) source_changed_ = true;
-                var index = process.Arguments.ToList().IndexOf("--");
-                return new ProcessResult(await Application(true).RunAsync(process.Arguments.Skip(index + 2).ToArray(), Root));
+                if (SourceChangeStage == "child-start" && process.Arguments.Contains("--measurement-plan")) source_changed_ = true;
+                return new ProcessResult(await Application().RunAsync(process.Arguments, Root));
             }
             if (process.Arguments.Contains("native-simulation")) return new ProcessResult(0,
                 "{\"timing\":{\"mean_tick_microseconds\":10},\"memory\":{\"frame_peak_claimed_bytes\":1,\"frame_peak_payload_bytes\":1,\"frame_total_padding_bytes\":0,\"frame_total_root_claims\":1}}");
