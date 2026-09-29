@@ -1,101 +1,33 @@
-# Codex scheduler example (Windows)
+# Codex scheduler (Windows)
 
-A small downstream patch connects Codex to the C++ jobserver. Codex keeps its
-normal approval, sandbox and process-execution decisions. The external Rust
-scheduler requires explicit tickets for commands not exempted by its own rules.
+Explicit jobserver tickets for Codex commands. Shared work overlaps; exclusive
+benchmarks wait their turn and run alone. Codex keeps its normal security checks.
 
-## Build and launch
+## Install and launch
 
-Update `agent-task` once with `. ./dev.ps1` followed by `install-agent-task`, then run
-`agent-task install-central-tools`. This prepares the pinned source, builds Release
-Codex and the scheduler client, and installs them together under
-`%LOCALAPPDATA%\NukeTheBees\agent-codex\bin`. Close custom Codex sessions before updating.
-Add that directory to PATH and launch `agent-codex.ps1`, forwarding normal Codex
-arguments. The launcher selects the unelevated backend, disables shell snapshots,
-and loads the installed scheduling rules. Normal `codex` remains unchanged.
-
-For a local development build:
-
-The preparation script checks out the revision in `upstream-revision.txt` under
-`.local/codex-upstream` and applies `codex.patch`. Build with Cargo/CMake; nothing
-is installed over your normal Codex. The installed jobserver must be available
-when starting a session; connection failure stops startup.
+From the repository root:
 
 ```powershell
-tools/agent-scheduler/Prepare-Upstream.ps1
-cmake -S tools/agent-scheduler -B .local/scheduler-build -G Ninja
-cmake --build .local/scheduler-build --target scheduler-example codex-scheduler
-cmake --build .local/scheduler-build --target scheduler-unit-tests codex-process-tests
-tools/agent-scheduler/agent-codex.ps1
+. ./dev.ps1
+install-agent-task
+agent-task install-central-tools
 ```
 
-Inside the custom Codex session, issue separate ordinary command-tool calls:
+Add `%LOCALAPPDATA%\NukeTheBees\agent-codex\bin` to PATH, then run
+`agent-codex.ps1`. Normal `codex` remains unchanged.
+
+## Use
+
+Request a ticket in one command, then run the work in the next:
 
 ```powershell
 agent-scheduler ticket shared "Build native"
 cmake --build --preset native
-agent-scheduler ticket exclusive "Measure benchmark"
-# Run the benchmark command here.
 ```
 
-`agent-scheduler status` shows this session's ticket. `agent-scheduler clear`
-cancels a pending ticket. Interrupting a waiting Codex tool call also cancels it.
-Shared work overlaps freely. An exclusive ticket waits for admitted shared work
-to drain and blocks later shared requests until it finishes (FIFO admission).
-Use shared for ordinary work and exclusive for benchmarks, after build/setup.
+Use `exclusive` for benchmarks after build/setup. `agent-scheduler status` shows
+the ticket; `clear` cancels pending work. Cheap commands in `scheduling.rules`
+need no ticket. Tickets release on root exit, even if descendants remain alive.
 
-`scheduling.rules` is independent of Codex's security rules. All parsed components
-must be exempt; unrecognised/dynamic PowerShell syntax requires a ticket.
-Exempt commands do not consume tickets and may run during exclusive work.
-Other commands fail with instructions if no ticket exists. No ticket is inferred,
-no command text is rewritten, and exemptions never bypass Codex security.
-
-## Command lifetime and scope
-
-A ticket belongs to one logical command, including legitimate internal sandbox
-retries. `UnifiedExecRuntime` calls the scheduler immediately before spawning;
-the process manager accepts the final attempt after Codex's retry loop. An early
-root exit retains the ticket until that retry/final decision is known.
-
-The accepted attempt releases on **root-process exit**, independently of descendants
-and output EOF. Ordinary pipe/PTY backends observe `child.wait()`; the restricted
-backend signals after its Win32 root wait and exit-code query, before output
-draining or ConPTY shutdown. The scheduler records the backend's root exit code;
-Codex may separately report a logical timeout status such as `124`. Those diagnostic
-codes can differ because timeout handling belongs to Codex's higher-level command
-completion. Scheduler release does not wait for that final status or output EOF.
-Codex's output draining and ConPTY teardown remain unchanged, so console descendants
-may still be ended by Codex. The scheduler does not supervise or kill processes.
-
-Immediately requesting the next ticket is supported: it waits asynchronously for
-the previous release acknowledgement. No sleep or status polling is necessary.
-Daemon loss marks the session failed and wakes admission/release waits. Future
-work fails, including exempt commands; restart Codex to reconnect. Already-running
-processes remain Codex's responsibility.
-
-Supported: Windows local unified-exec, ordinary and unelevated restricted-token
-pipe/PTY backends, one ticket/logical scheduled command per Codex process.
-Elevated sandbox, MXC, remote and shell-snapshot execution are rejected. Elevated
-runner support is deliberately omitted because its lifecycle regression requires
-provisioned sandbox accounts/setup state. Its private IPC protocol is unchanged.
-User `/shell`, hooks, MCP and app-server `command/exec` are outside this patch.
-The standalone installer accepts `-InstallRoot <private-root>` and
-`-Configuration Debug` for staging validation without replacing installed tools.
-
-## Validation
-
-Run `tools/agent-scheduler/Run-Examples.ps1` from the repository root. It uses an
-isolated installed daemon and scripted local Responses events; no model service
-is contacted. Coverage includes FIFO admission, cancellation/grant races, spawn
-failure, immediate ticket reuse, daemon loss, independent security rejection,
-startup failure and a real sandbox-denied write followed by an approved retry.
-`-Only lifecycle` or `-Only leases` selects a focused group.
-Use `-InstalledBin <install-root>/bin` to exercise the installed launcher and its
-rules in the Codex integration demonstration.
-
-The real Codex descendant regression obtains exclusivity while the root is gone
-and its child still holds inherited output handles (ordinary pipes/PTY and
-restricted pipes). Restricted PTY also checks root release, allowing Codex's
-existing ConPTY teardown to end the child. Unit tests hold release acknowledgements
-to verify asynchronous waiting, cancellation and disconnect handling; process tests
-check output draining.
+- [Scheduling, rules and supported execution paths](docs/behavior.md)
+- [Installation details, local builds and validation](docs/development.md)
