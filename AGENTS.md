@@ -88,7 +88,7 @@ Unreal Engine 5.8 project.
   Agents never auto-install/update tools or construct local fallbacks.
   Report a missing command; use `--version` for manual source/install comparison when needed.
   CMake builds revision-local game-package-tools, native-binary-tools, and
-  BenchmarkTools privately on demand.
+  benchmark-tools privately on demand.
 * For final integration, only build and test what your work has affected
 * Keep benchmarks short; Not more than 3 minutes total
 * Standalone developer-tool tests are not part of the default validation path. Run

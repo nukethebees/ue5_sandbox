@@ -13,7 +13,6 @@ endif()
 
 include(cmake/compiler_detection.cmake)
 include(cmake/llvm_tools.cmake)
-include(cmake/dotnet_host_tools.cmake)
 include(cmake/rust_host_tools.cmake)
 include(cmake/ue_cache_vars.cmake)
 
@@ -34,10 +33,9 @@ endif()
 
 set(IOJ_HAS_PYTHON ${Python3_Interpreter_FOUND})
 
-sandbox_add_dotnet_host_tool(
-  benchmark-tools-host
+sandbox_add_rust_host_tool(
+  benchmark-tools
   IOJ_BENCHMARK_TOOLS
-  "${PROJECT_SOURCE_DIR}/tools/BenchmarkTools/BenchmarkTools.csproj"
 )
 
 add_subdirectory(native)

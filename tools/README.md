@@ -13,7 +13,7 @@ Installers publish literal symlinks in `%NTB_APPDATA_LOCAL%\bin` (default
 or grant your account the **Create symbolic links** right and sign out/in. Installers check
 link creation before building or updating tools and refuse to overwrite unrelated files.
 The two installers share only `install/ToolLinks.ps1`: destination selection, symlink preflight,
-and collision-safe publication. Revision-local .NET tools require the installed .NET SDK.
+and collision-safe publication. Revision-local Rust tools use the workspace's pinned Rust toolchain.
 
 `agent-task jobs` accesses the per-user jobs board. Its installer shuts down an empty board,
 copies the binaries, registers the logon task, and verifies startup. See [jobserver](jobserver/README.md).
@@ -39,9 +39,12 @@ CMake builds revision-local tools privately in each configuration's output direc
 
 - `game-package-tools`: exact package and asset expectations.
 - `native-binary-tools`: native object and mimalloc symbol-prefix integration.
-  Both are Rust crates, built under `out/build/<configuration>/rust-tools/`.
-- BenchmarkTools: revision-specific presets, executable locations, scenarios, and baselines.
+- `benchmark-tools`: revision-specific presets, executable locations, scenarios, and baselines.
   PowerShell benchmark commands build `benchmark-tools-host` through CMake on demand.
+
+All three are Rust crates built under `out/build/<configuration>/rust-tools/release/`.
+They launch domain subprocesses directly. The caller manages jobs-board admission and cancellation;
+the tools do not maintain process trees or scheduling state.
 
 PowerShell worktree navigation uses read-only `git worktree list --porcelain -z`.
 Optional `tracy-benchmark-compare` has a separate explicit install; see [profiling](../docs/profiling.md).

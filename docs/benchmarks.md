@@ -1,6 +1,6 @@
 # Benchmarks
 
-BenchmarkTools intentionally tracks the checkout. Build its private host output with
+benchmark-tools intentionally tracks the checkout. Build its private host output with
 `cmake --build --preset native --target benchmark-tools-host` after configuring `native`.
 The PowerShell entry points perform that focused build automatically; there is no shared staging.
 
@@ -17,15 +17,15 @@ Results are disposable local data unless a specific experiment says otherwise; w
 
 | Measurement | Entry point | Notes |
 | --- | --- | --- |
-| Fighter scheduling simulation | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe fighter-simulation` | Default 2,000- and 4,000-fighter cases; writes JSON and summary CSV. The PowerShell name remains a façade. |
-| Generic native simulation | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe native-simulation` | C# runner around `native-simulation-benchmark` for an S7 level. |
-| Frame-memory level workload | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe frame-memory-level` | Uses the batch benchmark scenario. The PowerShell name remains a façade. |
-| Revision A/B frame-memory comparison | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe frame-memory-revision-ab` | Safely creates and evaluates a detached baseline worktree. |
-| Level telemetry | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe level-telemetry` | Configures, builds, and runs the telemetry CTest preset. |
-| GPU starfield | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe gpu-starfield` | Runs, validates, and writes versioned JSON/CSV/Markdown artifacts. |
-| SandboxISMC | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe sandbox-ismc` | Builds and runs the existing PIE benchmark with owned CSV, log, trace, and conditions artifacts. |
-| SandboxISMC revision comparison | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe sandbox-ismc-revision-ab` | Builds detached baseline/current candidate inputs, then measures complete interleaved repetitions. |
-| SandboxISMC offline report | `out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe sandbox-ismc-report --run-dir <comparison-run>` | Regenerates reports from captured data, with no builds, processes or worktrees. |
+| Fighter scheduling simulation | `out/build/native/rust-tools/release/benchmark-tools.exe fighter-simulation` | Default 2,000- and 4,000-fighter cases; writes JSON and summary CSV. The PowerShell name remains a façade. |
+| Generic native simulation | `out/build/native/rust-tools/release/benchmark-tools.exe native-simulation` | Rust runner around `native-simulation-benchmark` for an S7 level. |
+| Frame-memory level workload | `out/build/native/rust-tools/release/benchmark-tools.exe frame-memory-level` | Uses the batch benchmark scenario. The PowerShell name remains a façade. |
+| Revision A/B frame-memory comparison | `out/build/native/rust-tools/release/benchmark-tools.exe frame-memory-revision-ab` | Safely creates and evaluates a detached baseline worktree. |
+| Level telemetry | `out/build/native/rust-tools/release/benchmark-tools.exe level-telemetry` | Configures, builds, and runs the telemetry CTest preset. |
+| GPU starfield | `out/build/native/rust-tools/release/benchmark-tools.exe gpu-starfield` | Runs, validates, and writes versioned JSON/CSV/Markdown artifacts. |
+| SandboxISMC | `out/build/native/rust-tools/release/benchmark-tools.exe sandbox-ismc` | Builds and runs the existing PIE benchmark with owned CSV, log, trace, and conditions artifacts. |
+| SandboxISMC revision comparison | `out/build/native/rust-tools/release/benchmark-tools.exe sandbox-ismc-revision-ab` | Builds detached baseline/current candidate inputs, then measures complete interleaved repetitions. |
+| SandboxISMC offline report | `out/build/native/rust-tools/release/benchmark-tools.exe sandbox-ismc-report --run-dir <comparison-run>` | Regenerates reports from captured data, with no builds, processes or worktrees. |
 | Unreal-backed measurements | Benchmark CMake presets and commandlet targets | Presets are in `cmake/presets/*benchmarks.json`. |
 
 Run the fighter benchmark with:
@@ -44,13 +44,13 @@ pwsh -NoProfile -File Scripts/run-fighter-simulation-benchmark.ps1 `
 Run a specific S7 level through the generic level benchmark runner with:
 
 ```powershell
-.\out\build\native\host-tools\BenchmarkTools\Debug\BenchmarkTools.exe native-simulation `
+.\out\build\native\rust-tools\release\benchmark-tools.exe native-simulation `
     --level .\LevelScripts\BenchmarkFleet_10.scm `
     --seconds 20
 ```
 
 Pass `--fighter-caps`, `--seconds`, `--warmup-seconds`, `--saturation-timeout-seconds`, or
-`--output-dir` to the C# command to change the workload or destination. The PowerShell façade maps
+`--output-dir` to the Rust command to change the workload or destination. The PowerShell façade maps
 its established parameter names. Use `--skip-build` only after confirming the benchmark binary is current.
 
 Fighter caps must be unique positive 32-bit integers. Results are emitted in the requested cap
@@ -73,7 +73,7 @@ remains stable while normal fighter behaviour and collision work remain active.
 For scripts and result plotters, see the [Scripts guide](../Scripts/README.md). For coordination,
 see the [jobs-board workflow](../tools/jobserver/README.md).
 
-PowerShell remains the interactive/report façade, C# owns benchmark orchestration, and Python
+PowerShell remains the interactive/report façade, Rust owns benchmark orchestration, and Python
 remains for plotting or scientific analysis. Benchmark tools have no scheduling responsibilities.
 
 ## SandboxISMC experiments
@@ -82,23 +82,23 @@ Build the current checkout's orchestrator with the host-tool target above. `UE_R
 Editor installation, or pass `--editor <Engine/Binaries/Win64/UnrealEditor-Cmd.exe>` explicitly.
 
 ```powershell
-.\out\build\native\host-tools\BenchmarkTools\Debug\BenchmarkTools.exe sandbox-ismc `
+.\out\build\native\rust-tools\release\benchmark-tools.exe sandbox-ismc `
   --instances 1000 --width 1280 --height 720 --warmup-seconds 1 --seconds 2
 
-.\out\build\native\host-tools\BenchmarkTools\Debug\BenchmarkTools.exe sandbox-ismc-revision-ab `
+.\out\build\native\rust-tools\release\benchmark-tools.exe sandbox-ismc-revision-ab `
   --baseline <commit-or-ref> --repetitions 2 --width 1280 --height 720 `
   --instances 40000 --mode custom --update-percent 100 --seconds 5
 
 # Prepare both binaries and retain the detached baseline without measuring.
-.\out\build\native\host-tools\BenchmarkTools\Debug\BenchmarkTools.exe sandbox-ismc-revision-ab `
+.\out\build\native\rust-tools\release\benchmark-tools.exe sandbox-ismc-revision-ab `
   --baseline <commit-or-ref> --prepare-only --label "packed transform"
 
 # A short protocol/comparability smoke, using a prepared clean baseline.
-.\out\build\native\host-tools\BenchmarkTools\Debug\BenchmarkTools.exe sandbox-ismc-revision-ab `
+.\out\build\native\rust-tools\release\benchmark-tools.exe sandbox-ismc-revision-ab `
   --baseline <commit-or-ref> --baseline-worktree <retained-path> --skip-build --validate-only
 
 # Re-analyse a completed experiment without Unreal or its source worktrees.
-.\out\build\native\host-tools\BenchmarkTools\Debug\BenchmarkTools.exe sandbox-ismc-report `
+.\out\build\native\rust-tools\release\benchmark-tools.exe sandbox-ismc-report `
   --run-dir .local/benchmarks/sandbox-ismc-revision-ab/<run-id>
 ```
 
@@ -130,19 +130,18 @@ It is the caller's responsibility to ensure those binaries match their recorded 
 Preparation and validation modes are mutually exclusive. Preparation writes `preparation.json`
 with effective source identities and prints the retained baseline path. Retained worktrees remain
 disposable benchmark-owned state under `.local/benchmarks/wt/`; preparation does not delete
-them. Supplied baselines remain untouched. A retained overlaid baseline is useful for inspection;
-the existing clean-worktree requirement still applies when supplying a baseline to a later run.
+them. Supplied baselines must be clean and remain untouched.
 
 Before measurement, both revisions prepare the benchmark map's shaders and derived data through
-the normal Editor, with a separate ten-minute timeout per revision. It loads the benchmark map,
+the normal Editor. It loads the benchmark map,
 finishes asset compilation, and exits without starting PIE. This warms the same shader variants
 used by measurement. Preparation runs before
-the measurement child and retains logs under the run's
+measurement and retains logs under the run's
 `preparation/` directory. Both sides use the invoking checkout's persistent `.local/benchmarks/ddc`
 cache, which survives disposable baseline cleanup. This also runs with `--skip-build`;
 `--prepare-only` continues to build and retain the baseline without launching Unreal.
 
-Validation overrides repetition and timing options and caps each measured Editor process at 60 seconds.
+Validation overrides repetition and timing options for a short measurement.
 It uses the normal comparison sequence and artifacts, but its reports explicitly make **no
 performance conclusions**. Cache preparation has its own timeout and does not consume this limit.
 
@@ -153,9 +152,9 @@ percentage, dynamic resolution and workload controls are recorded separately
 from revision provenance. Additional engine/GPU/driver metadata can extend the manifest without
 changing the workload schema; no hardware inventory is collected today.
 
-Run IDs combine UTC time with a GUID. Each command owns
+Run IDs combine UTC time, process ID, and a process-local counter. Each command owns
 `.local/benchmarks/<command>/<run-id>/manifest.json`, `measurement-plan.json`, and `sequence.json`.
-The family directory's atomically replaced `latest.txt` contains the absolute path of the newest
+The family directory's `latest.txt` contains the absolute path of the newest
 created run, including failures. It is only a navigation convenience and is never read to select
 benchmark artifacts. Per-process `runs/` directories have no pointer.
 SandboxISMC process artifacts live beneath `runs/<process-run-id>/`:
@@ -165,19 +164,20 @@ manifest.json      # status, source, effective arguments, expected artifacts, fa
 metrics.csv        # original Unreal within-run summaries
 result.json        # authoritative terminal state: schema, run ID, completion/error, conditions
 unreal.log         # Unreal's explicit absolute log destination
-process.log        # streamed stdout/stderr, retained on timeout or cancellation
+process.log        # captured stdout/stderr written when the Editor returns
 capture.utrace     # required when --trace 1
 ```
 
-Manifests and JSON outputs are replaced atomically. Failed runs retain their directory and error.
+Failed runs retain their directory and error. Interrupted writes may leave incomplete artifacts;
+offline reports reject incomplete runs. The caller owns cancellation and wall-clock limits.
 The runner reads the terminal result before requiring successful measurement artifacts. Known
 viewport/setup failures terminate PIE promptly and need no CSV or trace to explain the failure.
 Map-load and PIE-start failures publish the same terminal envelope even before the actor exists.
-The parent captures source HEAD, dirty status, a tracked diff hash, and a hash of untracked paths
+The runner captures source HEAD, dirty status, a tracked diff hash, and a hash of untracked paths
 and contents (link targets for untracked symbolic links). Ignored files and the exact owned run
 directory are excluded. Executable paths and effective arguments accompany the source identity.
 A dirty candidate is explicitly marked as such. Both revision commands check those fingerprints
-after preparation, when the measurement child starts, and after measurement. A changed source
+after preparation, before measurement, and after measurement. A changed source
 fails the run before comparison deltas are published; measurements remain available for diagnosis.
 First-party candidate edits are allowed, but initialized submodules must be clean, including
 untracked files. Source checks enforce this regardless of submodule ignore settings.
@@ -185,7 +185,7 @@ These snapshots do not lock the checkout or prove that prebuilt binaries match i
 is selected by timestamp, and no files are collected from `Saved/Benchmarks` or a shared Editor log.
 
 Comparisons use the current executable as the outer orchestrator even when the baseline predates
-BenchmarkTools. Baseline refs resolve once to exact commits. Owned inputs are detached worktrees
+benchmark-tools. Baseline refs resolve once to exact commits. Owned inputs are detached worktrees
 under `.local/benchmarks/wt/<number>`; the next unused slot is reserved exclusively, keeping Windows
 build paths short. The manifest records the path independently of the unique artifact run ID.
 No feature branches are created. Only owned worktrees are removed, including after failures.
@@ -197,16 +197,10 @@ Owned baseline submodules are seeded from the invoking checkout's local Git obje
 cache, then checked out at the baseline's exact pinned commits. Candidate edits are not copied.
 Original remote URLs are preserved; missing commits or LFS assets are fetched when necessary.
 
-For a historical SandboxISMC harness lacking the output/viewport protocol, explicitly add
-`--compatibility sandbox-ismc-v1`. This applies an embedded, reviewed patch limited to the lab
-actor/automation harness's output, viewport, termination and metadata plumbing plus its JSON
-dependency, in an owned detached baseline.
-The exact patch, SHA-256 and original revision are retained. Git checks every hunk before applying;
-unsupported historical harnesses fail during preparation. This option cannot run arbitrary
-preparation scripts or substitute renderer implementation files. Omit it when both revisions
-already support the protocol.
+Both SandboxISMC revisions must provide the current run-identity, viewport, and terminal-result
+protocol. The runner checks this before building.
 
-Both revision commands build before launching one child for all warmup and measured processes.
+Both revision commands build before running the complete warmup and measurement sequence.
 They run ordinary processes directly and never request tickets or acquire resource leases.
 The caller manages the exclusive jobs-board ticket for the benchmark invocation, ending it when
 the command returns. For SandboxISMC, use `--prepare-only` first under a shared ticket, then supply that baseline
@@ -230,7 +224,7 @@ Reports include the label, source SHAs/dirty markers, ordering, workload and obs
 Owned SandboxISMC runs disable the Editor's PIE screen-percentage override and require its observed
 value to remain zero, alongside the existing screen-percentage and dynamic-resolution controls.
 `sandbox-ismc-report --run-dir <path>` validates the manifest, sequence and `captures.json`, then
-atomically regenerates the three derived reports through the same comparison code. Raw captures
+regenerates the three derived reports through the same comparison code. Raw captures
 are unchanged. Incomplete/failed runs or unsupported capture schemas fail clearly; incomparable
 captures produce an incomparable report without deltas. Captures must contain the required render
 conditions, including Editor VSync and MaxFPS; older captures missing these cannot establish comparability.
@@ -238,7 +232,7 @@ conditions, including Editor VSync and MaxFPS; older captures missing these cann
 Frame-memory uses the same ownership, run manifest, ordering and measurement infrastructure while retaining
 its existing `raw-results.csv` and `paired-results.csv` reports. `--iterations` counts complete
 repetitions per side; `--warmup-iterations` produces separate complete warmup runs. Prepared historical
-binaries remain supported without requiring that revision's BenchmarkTools commands.
+binaries remain supported without requiring that revision's benchmark-tools commands.
 
 ## Related documentation
 

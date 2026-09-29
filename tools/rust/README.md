@@ -3,10 +3,11 @@
 This Cargo workspace holds the stable human/agent workflow CLI and revision-local domain tools.
 Rustup selects the pinned toolchain from `rust-toolchain.toml` when commands run in this directory.
 
-CMake builds `native-binary-tools` (mimalloc symbol generation/audit) and `game-package-tools`
-(package verification) privately on demand. They are not installed on PATH. Run their focused
-tests with `cargo test --locked -p native-binary-tools -p game-package-tools` here, or the matching
-CTest labels. These tools launch LLVM/UnrealPak directly; admission belongs to the outer workflow.
+CMake builds `native-binary-tools` (mimalloc symbol generation/audit), `game-package-tools`
+(package verification), and `benchmark-tools` (benchmark orchestration and reports) privately on demand.
+They are not installed on PATH. Run focused tests with `cargo test --locked -p <package>` here,
+or the matching CTest labels. These tools launch domain subprocesses directly; admission and
+cancellation belong to the outer workflow. See [benchmarks](../../docs/benchmarks.md) for workloads.
 
 ## agent-task
 

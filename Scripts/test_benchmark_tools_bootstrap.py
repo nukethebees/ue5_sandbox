@@ -71,14 +71,14 @@ class BenchmarkToolsBootstrapTests(unittest.TestCase):
             'if "%1"=="--preset" exit /b 0\n'
             'if "%BENCHMARK_FAIL_BUILD%"=="1" exit /b 23\n'
             'if not exist "%BENCHMARK_OUTPUT%" mkdir "%BENCHMARK_OUTPUT%"\n'
-            'type nul > "%BENCHMARK_OUTPUT%\\BenchmarkTools.exe"\n',
+            'type nul > "%BENCHMARK_OUTPUT%\\benchmark-tools.exe"\n',
             encoding="utf-8",
         )
         return temporary_root
 
     @staticmethod
     def runner(repository: Path) -> Path:
-        return repository / "out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe"
+        return repository / "out/build/native/rust-tools/release/benchmark-tools.exe"
 
     def invoke_resolver(self, repository: Path, overrides: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
         helper = self.source_dir / "Scripts" / "BenchmarkTools.ps1"

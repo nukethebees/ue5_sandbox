@@ -43,8 +43,8 @@ submodules, and regenerate presets and code. It does not perform a broad project
 build only the task's relevant targets afterward. See the
 [Rust tooling instructions](../tools/rust/README.md) for installation.
 For iteration, rebuild affected targets and select CTest labels; exclude `soak|compile-contract`
-when those categories are unrelated. C# registrations run without rebuilding and reject stale
-assemblies. `cmake --workflow --preset tool-tests` builds and runs the complete standalone suite;
+when those categories are unrelated. Rust tool registrations invoke Cargo, which incrementally
+rebuilds changed inputs. `cmake --workflow --preset tool-tests` builds and runs the complete standalone suite;
 ordinary native/game validation excludes standalone developer-tool tests. The focused
 `native-simulation-tests` preset excludes soak; `native-simulation-full-tests` includes it,
 and `native-simulation-soak-tests` runs it alone. Full `native-tests` retains soak and compile contracts.
@@ -68,17 +68,17 @@ Warnings-as-errors use `COMPILE_WARNING_AS_ERROR`; `CMAKE_COMPILE_WARNING_AS_ERR
 CMake's `--compile-no-warning-as-error` can disable that enforcement.
 
 Use `cmake --workflow --preset native-lean` for focused core, memory, and simulation library work.
-It sets `IOJ_BUILD_DEVELOPER_TOOLS=OFF`, omitting developer applications, their C# test suite,
-Rust tooling (except when required by Unreal), and SDL/ImGui/file-dialog configuration. Normal
+It sets `IOJ_BUILD_DEVELOPER_TOOLS=OFF`, omitting developer applications, their test suites,
+and SDL/ImGui/file-dialog configuration. Normal
 developer presets retain these capabilities. Native tests, benchmarks, and generators remain
-available: Python, .NET, GoogleTest, Google Benchmark, and LLVM tools are still required by
+available: Python, Rust, GoogleTest, Google Benchmark, and LLVM tools are still required by
 those consumers. The jobserver bootstrap targets remain available in lean mode.
 
 Built executables passed as arguments to wrappers must use `"$<TARGET_FILE:target>"` and retain
 appropriate dependencies. A bare target name is resolved by CMake only in command position.
-.NET host tools expose imported executable targets through the host-tool helper; MSBuild remains
-responsible for transitive incremental input tracking and is invoked on each requested build.
-CTest's C# freshness check still rejects stale assemblies without rebuilding them.
+Rust host tools expose imported executable targets through `rust_host_tools.cmake`. Cargo owns
+incremental input tracking and runs on each requested build. Outputs stay under the CMake build
+directory; no standalone .NET SDK or centrally installed domain tools are required.
 
 CMake and its child tools execute ordinary commands. Use a shared jobs-board ticket for heavyweight
 builds/tests and an exclusive ticket for benchmarks or commands that modify shared Unreal engine

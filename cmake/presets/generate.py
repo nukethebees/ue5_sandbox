@@ -504,16 +504,6 @@ def make_unreal_document() -> dict[str, Any]:
             "configurePreset": "development",
             "targets": ["worktree-dependencies"],
         },
-        {
-            "name": "csharp-host-tools-debug-game",
-            "configurePreset": "debug-game",
-            "targets": ["csharp-host-tools"],
-        },
-        {
-            "name": "csharp-host-tools-development",
-            "configurePreset": "development",
-            "targets": ["csharp-host-tools"],
-        },
     ]
     for suffix, _, _, _ in compiler_variants:
         for name, _, _, _ in unreal_configurations:

@@ -12,7 +12,7 @@ The top-level `.scm` scenarios include the fighter scheduling benchmark and deve
 level rather than launching a timing workload manually:
 
 ```powershell
-.\out\build\native\host-tools\BenchmarkTools\Debug\BenchmarkTools.exe native-simulation `
+.\out\build\native\rust-tools\release\benchmark-tools.exe native-simulation `
   --level .\LevelScripts\BenchmarkFleet_10.scm `
   --seconds 20
 ```

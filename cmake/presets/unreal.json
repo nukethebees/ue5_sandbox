@@ -164,20 +164,6 @@
       ]
     },
     {
-      "name": "csharp-host-tools-debug-game",
-      "configurePreset": "debug-game",
-      "targets": [
-        "csharp-host-tools"
-      ]
-    },
-    {
-      "name": "csharp-host-tools-development",
-      "configurePreset": "development",
-      "targets": [
-        "csharp-host-tools"
-      ]
-    },
-    {
       "name": "debug",
       "configurePreset": "debug",
       "targets": [

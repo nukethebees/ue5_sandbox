@@ -38,7 +38,7 @@ add_custom_command(
     --readobj "${SBX_LLVM_READOBJ}"
     --output "${SBX_MIMALLOC_PREFIX_HEADER}"
     $<TARGET_OBJECTS:sbx-mimalloc-prefix-probe>
-  DEPENDS $<TARGET_OBJECTS:sbx-mimalloc-prefix-probe> native-binary-tools-host
+  DEPENDS $<TARGET_OBJECTS:sbx-mimalloc-prefix-probe> "${IOJ_NATIVE_BINARY_TOOLS}" native-binary-tools-host
   COMMAND_EXPAND_LISTS
   VERBATIM
 )
@@ -71,7 +71,8 @@ add_custom_command(
     --readobj "${SBX_LLVM_READOBJ}"
     $<TARGET_OBJECTS:sbx-mimalloc-implementation>
   COMMAND "${CMAKE_COMMAND}" -E touch "${SBX_MIMALLOC_AUDIT_STAMP}"
-  DEPENDS sbx-mimalloc-implementation native-binary-tools-host
+  DEPENDS $<TARGET_OBJECTS:sbx-mimalloc-implementation> "${IOJ_NATIVE_BINARY_TOOLS}"
+    sbx-mimalloc-implementation native-binary-tools-host
   COMMAND_EXPAND_LISTS
   VERBATIM
 )

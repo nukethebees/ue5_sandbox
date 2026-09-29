@@ -17,7 +17,7 @@ function Get-BenchmarkToolsPath {
         Pop-Location
     }
 
-    $runner = Join-Path $repository_root 'out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe'
+    $runner = Join-Path $repository_root 'out/build/native/rust-tools/release/benchmark-tools.exe'
     if (-not (Test-Path -LiteralPath $runner -PathType Leaf)) {
         throw "BenchmarkTools host output was not found: $runner"
     }

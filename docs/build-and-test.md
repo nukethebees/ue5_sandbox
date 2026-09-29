@@ -17,7 +17,7 @@ The maintainer installs central tools and adds the shared tool-link directory to
 [developer tools](../tools/README.md)). Preparation owns submodules, presets, and code generation.
 For Unreal development, `csetup` then builds the DebugGame and Development dependencies.
 CMake invokes `agent-task` from PATH for formatting and Unreal build-script invocation,
-and builds revision-local C# tools on demand. See the
+and builds revision-local Rust tools on demand. See the
 [PowerShell guide](../PowerShell/README.md) for interactive commands.
 
 Alternatively, set `UE_ROOT` in the ignored `CMakeUserPresets.json` using a local configure preset
@@ -90,8 +90,8 @@ It does not perform a broad project/test build. Build only the targets relevant 
 
 For an explicit broad baseline, `cmake --workflow --preset task-start` remains available separately
 from normal task preparation. It builds native tests (including the soak), native developer-tool
-tests, all registered C# test assemblies, and generated-output consistency checks. It executes no tests and uses no
-Unreal resources. Binaries and C# intermediates are isolated under `out/build/native`.
+tests, all registered Rust tool test binaries, and generated-output consistency checks. It executes no tests and uses no
+Unreal resources. Build outputs are isolated under `out/build/native`.
 The `check-generated-code` build target owns the committed codegen fixture consistency check.
 
 ### Iteration: rebuild affected targets, then select tests
@@ -103,20 +103,16 @@ ctest --test-dir out/build/native -L '^native-simulation$' -LE 'soak|compile-con
 ctest --test-dir out/build/native -L '^native-binary-tools$' --output-on-failure
 ```
 
-CTest never rebuilds the C# assemblies. Each registered project uses `dotnet test --no-build
---no-restore`; a source fingerprint rejects stale binaries with the precise rebuild target.
-Adding/removing files and changing transitive C# dependencies also invalidate the fingerprint.
-Use `csharp-tests-build` after shared C# infrastructure changes.
+Rust tool CTest entries invoke `cargo test --locked` for the selected package. Cargo handles
+incremental rebuilds in the CMake build directory. `rust-tool-tests-build` prebuilds their tests.
 
 Labels are regular expressions, not shell globs. One `-L` selects any matching label; repeated
 `-L` options require every expression to match. `-LE 'soak|compile-contract'` excludes either
 category. `ctest --test-dir out/build/native -N -L <label>` previews selection without executing.
 
-C# labels include `csharp` and `benchmark`. Rust tool labels include
-`game-package-tools` and `native-binary-tools`. The `developer-tool` label includes
-all standalone C# projects and the registered layout, image-lab, and perf tests.
-Mixed integration assemblies carry `integration;subprocess`; pure assemblies carry `unit`.
-Labels apply to whole executables/assemblies, not individual GTest/MSTest cases.
+Rust tool labels include `benchmark-tools`, `game-package-tools`, and `native-binary-tools`.
+The `developer-tool` label includes these packages and the registered layout, image-lab, and perf tests.
+Labels apply to whole executables or Cargo packages, not individual test cases.
 The `native` label describes product/library validation, not implementation language. Layout
 planner and image lab belong to `developer-tool`; their consumed layout/image libraries route
 to the relevant tool explicitly. Image lab also carries `integration` for real file round trips.
@@ -161,22 +157,21 @@ validation includes `compile-contract`. Those nested builds retain a shared CTes
 The full native workflow excludes standalone layout-planner and image-lab tests. It is not the
 repeated inner loop.
 
-`tool-tests` builds its prerequisites before running the per-project tests, with no duplicate
-umbrella C# test. Use it for shared/unknown tool infrastructure or broad tool validation. Known
-C# tools use focused project builds and labels. PowerShell navigation queries read-only Git directly.
+`tool-tests` builds its prerequisites before running per-tool tests. Use it for shared/unknown
+tool infrastructure or broad tool validation. Known tools use focused builds and labels.
+PowerShell navigation queries read-only Git directly.
 Layout planner and image lab use their native workflows, jobserver its focused tests, and perf its
 benchmark validation. AgentTask uses `cargo test --package agent-task --locked` from `tools/rust`.
 
-CMake owns test registration in `cmake/csharp_tests.cmake` and cross-checks registered projects
-against `Tools.slnx` and transitive MSBuild references. Run the `cmake` infrastructure regressions
-when changing this wiring, including `CMake.CSharpTests`.
+CMake owns Rust test registration in `tools/rust/CMakeLists.txt`. Run the `cmake` infrastructure
+regressions when changing this wiring, including `CMake.RustHostTools`.
 
 After required validation and explicit user authorization, run `integrate-feature` for the
 privileged AgentTask Git transaction. This cheap operation needs no jobs-board ticket. Integration
 performs pinned rebase, cheap sanity checks, atomic dev promotion, refresh and cleanup. It does
 not select or rerun build/test gates. Resolve a conflicting final rebase with
 `agent-task git rebase dev`, validate, and retry.
-Validate shared C# build and registration changes with the CMake infrastructure checks.
+Validate shared tool build and registration changes with the CMake infrastructure checks.
 Python validation covers repository-owned Python under `Scripts` and `cmake` with Ruff and Pyright.
 
 Do not rebuild Unreal merely because a native implementation has a thin Unreal adapter. Settle

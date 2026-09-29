@@ -298,3 +298,17 @@ fn launch_failure_has_executable_context() {
     assert!(error.contains("Unable to start UnrealPak"));
     assert!(error.contains("missing tool.exe"));
 }
+
+#[cfg(windows)]
+#[test]
+fn unreal_pak_output_includes_stderr_and_reports_nonzero_exit() {
+    let executable = PathBuf::from(std::env::var_os("COMSPEC").unwrap());
+    let args = ["/d", "/c", "echo listing&echo diagnostic 1>&2"].map(OsString::from);
+    let output = run_unreal_pak(&executable, &args).unwrap();
+    assert!(output.contains("listing"));
+    assert!(output.contains("diagnostic"));
+    let args = ["/d", "/c", "echo pak failure 1>&2&exit /b 7"].map(OsString::from);
+    let error = run_unreal_pak(&executable, &args).unwrap_err().to_string();
+    assert!(error.contains("7"));
+    assert!(error.contains("pak failure"));
+}

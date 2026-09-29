@@ -1,0 +1,617 @@
+use crate::{
+    ismc::{Plan, Request},
+    revision::Repetition,
+    support::*,
+};
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+    path::Path,
+};
+
+pub type Conditions = BTreeMap<String, String>;
+pub const CONDITIONS: &[&str] = &[
+    "result_schema",
+    "mode",
+    "visibility",
+    "bounds",
+    "custom_data",
+    "rhi",
+    "instances",
+    "update_percent",
+    "churn",
+    "min_instances",
+    "half_cycle_updates",
+    "replacement_percent",
+    "warmup_updates",
+    "warmup_seconds",
+    "measurement_seconds",
+    "shadows",
+    "trace",
+    "requested_width",
+    "requested_height",
+    "observed_width",
+    "observed_height",
+    "grid_spacing",
+    "grid_gap",
+    "movement_amplitude",
+    "movement_frequency",
+    "rotation_speed",
+    "frame_limits_disabled",
+    "r.Editor.Viewport.OverridePIEScreenPercentage",
+    "r.ScreenPercentage",
+    "r.DynamicRes.OperationMode",
+    "r.VSync",
+    "r.VSyncEditor",
+    "t.MaxFPS",
+];
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Identity {
+    pub metric: String,
+    pub unit: String,
+    pub dimensions: Conditions,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Summary {
+    pub samples: usize,
+    pub min: f64,
+    pub median: f64,
+    pub p95: f64,
+    pub max: f64,
+}
+impl Summary {
+    pub fn validate(&self) -> Result<()> {
+        if self.samples == 0
+            || ![self.min, self.median, self.p95, self.max]
+                .iter()
+                .all(|x| x.is_finite())
+            || self.min > self.median
+            || self.median > self.p95
+            || self.p95 > self.max
+        {
+            return Err(
+                "Metric summary has no samples, non-finite values, or inconsistent quantiles."
+                    .into(),
+            );
+        }
+        Ok(())
+    }
+    pub fn across(values: impl IntoIterator<Item = f64>) -> Result<Self> {
+        let mut values: Vec<_> = values.into_iter().collect();
+        if values.is_empty() || !values.iter().all(|v| v.is_finite()) {
+            return Err("Run summaries must contain finite values.".into());
+        }
+        values.sort_by(f64::total_cmp);
+        let n = values.len();
+        let median = if n % 2 == 0 {
+            values[n / 2 - 1] / 2.0 + values[n / 2] / 2.0
+        } else {
+            values[n / 2]
+        };
+        Ok(Self {
+            samples: n,
+            min: values[0],
+            median,
+            p95: values[(0.95 * n as f64).ceil() as usize - 1],
+            max: values[n - 1],
+        })
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Metric {
+    pub identity: Identity,
+    pub summary: Summary,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Capture {
+    pub run_id: String,
+    pub directory: String,
+    pub repetition: Repetition,
+    pub conditions: Conditions,
+    pub metrics: Vec<Metric>,
+    pub schema_version: u32,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Pair {
+    repetition: u32,
+    baseline: f64,
+    candidate: f64,
+    delta: f64,
+    delta_percent: Option<f64>,
+}
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PairedMetric {
+    pub identity: Identity,
+    pub baseline: Summary,
+    pub candidate: Summary,
+    pub delta: Summary,
+    pub delta_percent: Option<Summary>,
+    pub pairs: Vec<Pair>,
+}
+#[derive(Serialize)]
+pub struct Comparison {
+    pub comparable: bool,
+    pub errors: Vec<String>,
+    pub metrics: Vec<PairedMetric>,
+}
+
+pub fn validate_conditions(conditions: &Conditions) -> Result<()> {
+    for &key in CONDITIONS {
+        let value = conditions
+            .get(key)
+            .filter(|s| !s.trim().is_empty())
+            .ok_or_else(|| format!("Missing comparability condition: {key}"))?;
+        if !["mode", "visibility", "bounds", "custom_data", "rhi"].contains(&key)
+            && !value.parse::<f64>().is_ok_and(f64::is_finite)
+        {
+            return Err(format!("Invalid numeric comparability condition: {key}").into());
+        }
+    }
+    if conditions["result_schema"] != "1" {
+        return Err("Unsupported SandboxISMC conditions schema.".into());
+    }
+    Ok(())
+}
+
+pub fn validate_request(conditions: &Conditions, request: &Request) -> Result<()> {
+    for (key, expected) in request.conditions() {
+        let actual = conditions
+            .get(&key)
+            .ok_or_else(|| format!("Missing comparability condition: {key}"))?;
+        let equal = if let Ok(number) = expected.parse::<f64>() {
+            actual.parse::<f64>().is_ok_and(|value| {
+                value.is_finite() && (number - value).abs() <= 1e-6_f64.max(number.abs() * 1e-6)
+            })
+        } else {
+            actual == &expected
+        };
+        if !equal {
+            return Err(format!(
+                "SandboxISMC condition mismatch: {key} requested {expected}, observed {actual}."
+            )
+            .into());
+        }
+    }
+    Ok(())
+}
+
+pub fn read_metrics(path: &Path, conditions: &Conditions) -> Result<Vec<Metric>> {
+    let content = fs::read_to_string(path)?;
+    let mut lines = content.trim_start_matches('\u{feff}').lines();
+    let header = parse_csv(lines.next().ok_or("Empty SandboxISMC CSV.")?)?;
+    if header.iter().collect::<BTreeSet<_>>().len() != header.len() {
+        return Err("Duplicate SandboxISMC CSV columns.".into());
+    }
+    let summaries = ["samples", "min", "median", "p95", "max"];
+    for name in [
+        "renderer",
+        "metric",
+        "unit",
+        "mode",
+        "instances",
+        "visibility",
+        "bounds",
+        "custom_data",
+        "update_percent",
+        "churn",
+        "min_instances",
+        "half_cycle_updates",
+        "replacement_percent",
+        "warmup_updates",
+        "warmup_seconds",
+        "measurement_seconds",
+        "updated_instances",
+    ]
+    .into_iter()
+    .chain(summaries)
+    {
+        if !header.iter().any(|c| c == name) {
+            return Err(format!("SandboxISMC CSV lacks {name}.").into());
+        }
+    }
+    let mut metrics = Vec::new();
+    for line in lines.filter(|s| !s.trim().is_empty()) {
+        let row = parse_csv(line)?;
+        if row.len() != header.len() {
+            return Err("SandboxISMC CSV row has incorrect column count.".into());
+        }
+        let row: BTreeMap<_, _> = header.iter().zip(row.iter()).collect();
+        let value = |key: &str| row.get(&key.to_owned()).unwrap().as_str();
+        let numeric = |key: &str| -> Result<f64> {
+            value(key)
+                .parse::<f64>()
+                .ok()
+                .filter(|v| v.is_finite())
+                .ok_or_else(|| format!("Invalid CSV numeric value: {key}").into())
+        };
+        for (key, expected) in conditions {
+            if let Some(actual) = row.get(key) {
+                let equal = if let Ok(number) = expected.parse::<f64>() {
+                    (numeric(key)? - number).abs() <= 0.000501
+                } else {
+                    expected == *actual
+                };
+                if !equal {
+                    return Err(format!("CSV/conditions mismatch: {key}").into());
+                }
+            }
+        }
+        let dimensions = header
+            .iter()
+            .zip(row_values(&header, &row))
+            .filter(|(k, _)| {
+                !["metric", "unit"].contains(&k.as_str()) && !summaries.contains(&k.as_str())
+            })
+            .map(|(k, v)| (k.clone(), v))
+            .collect();
+        metrics.push(Metric {
+            identity: Identity {
+                metric: value("metric").into(),
+                unit: value("unit").into(),
+                dimensions,
+            },
+            summary: Summary {
+                samples: value("samples").parse()?,
+                min: numeric("min")?,
+                median: numeric("median")?,
+                p95: numeric("p95")?,
+                max: numeric("max")?,
+            },
+        });
+    }
+    index(&metrics)?;
+    Ok(metrics)
+}
+
+fn row_values(header: &[String], row: &BTreeMap<&String, &String>) -> Vec<String> {
+    header.iter().map(|key| (*row[key]).clone()).collect()
+}
+
+type Key = (String, Conditions);
+fn index(metrics: &[Metric]) -> Result<BTreeMap<Key, &Metric>> {
+    let mut map = BTreeMap::new();
+    for metric in metrics {
+        metric.summary.validate()?;
+        if metric.identity.metric.trim().is_empty() || metric.identity.unit.trim().is_empty() {
+            return Err("Metric name and unit are required.".into());
+        }
+        let key = (
+            metric.identity.metric.clone(),
+            metric.identity.dimensions.clone(),
+        );
+        if map.insert(key, metric).is_some() {
+            return Err("Duplicate metric identity.".into());
+        }
+    }
+    if map.is_empty() {
+        return Err("Benchmark contains no metrics.".into());
+    }
+    Ok(map)
+}
+
+pub fn compare(captures: &[Capture]) -> Result<Comparison> {
+    let measured: Vec<_> = captures.iter().filter(|c| !c.repetition.warmup).collect();
+    let reference = *measured
+        .first()
+        .ok_or("No complete measured repetitions.")?;
+    let mut pairs: BTreeMap<u32, Vec<&Capture>> = BTreeMap::new();
+    for &capture in &measured {
+        pairs
+            .entry(capture.repetition.repetition)
+            .or_default()
+            .push(capture);
+    }
+    for (id, pair) in &pairs {
+        if *id == 0
+            || pair.len() != 2
+            || pair
+                .iter()
+                .filter(|c| c.repetition.side == "baseline")
+                .count()
+                != 1
+            || pair
+                .iter()
+                .filter(|c| c.repetition.side == "candidate")
+                .count()
+                != 1
+        {
+            return Err(format!(
+                "Repetition {id} requires exactly one measured baseline and one candidate."
+            )
+            .into());
+        }
+    }
+    let expected = index(&reference.metrics)?;
+    let mut errors = BTreeSet::new();
+    for capture in &measured {
+        let actual = index(&capture.metrics)?;
+        for key in reference.conditions.keys().chain(capture.conditions.keys()) {
+            if reference.conditions.get(key) != capture.conditions.get(key) {
+                errors.insert(format!("Comparability mismatch: {key}"));
+            }
+        }
+        for key in expected.keys().chain(actual.keys()) {
+            match (expected.get(key), actual.get(key)) {
+                (Some(a), Some(b)) if a.identity.unit != b.identity.unit => {
+                    errors.insert(format!("Unit mismatch: {}", key.0));
+                }
+                (None, _) | (_, None) => {
+                    errors.insert(format!("Missing metric or dimension mismatch: {}", key.0));
+                }
+                _ => {}
+            }
+        }
+    }
+    if !errors.is_empty() {
+        return Ok(Comparison {
+            comparable: false,
+            errors: errors.into_iter().collect(),
+            metrics: vec![],
+        });
+    }
+    let mut metrics = Vec::new();
+    for (key, metric) in expected {
+        let mut values = Vec::new();
+        for (&id, pair) in &pairs {
+            let a = pair
+                .iter()
+                .find(|c| c.repetition.side == "baseline")
+                .unwrap();
+            let b = pair
+                .iter()
+                .find(|c| c.repetition.side == "candidate")
+                .unwrap();
+            let baseline = index(&a.metrics)?[&key].summary.median;
+            let candidate = index(&b.metrics)?[&key].summary.median;
+            let delta = candidate - baseline;
+            let delta_percent = (baseline != 0.0).then(|| 100.0 * delta / baseline);
+            if !delta.is_finite() || delta_percent.is_some_and(|v| !v.is_finite()) {
+                return Err("Metric delta overflowed.".into());
+            }
+            values.push(Pair {
+                repetition: id,
+                baseline,
+                candidate,
+                delta,
+                delta_percent,
+            });
+        }
+        metrics.push(PairedMetric {
+            identity: metric.identity.clone(),
+            baseline: Summary::across(values.iter().map(|v| v.baseline))?,
+            candidate: Summary::across(values.iter().map(|v| v.candidate))?,
+            delta: Summary::across(values.iter().map(|v| v.delta))?,
+            delta_percent: if values.iter().all(|v| v.delta_percent.is_some()) {
+                Some(Summary::across(
+                    values.iter().map(|v| v.delta_percent.unwrap()),
+                )?)
+            } else {
+                None
+            },
+            pairs: values,
+        });
+    }
+    Ok(Comparison {
+        comparable: true,
+        errors: vec![],
+        metrics,
+    })
+}
+
+pub fn reports(
+    directory: &Path,
+    manifest: &Value,
+    plan: &Plan,
+    captures: &[Capture],
+) -> Result<bool> {
+    let request = plan
+        .ismc
+        .as_ref()
+        .ok_or("Comparison plan has no SandboxISMC workload.")?;
+    let mut actual: Vec<_> = captures.iter().map(|c| c.repetition.clone()).collect();
+    let mut expected = plan.sequence.clone();
+    actual.sort_by_key(|r| r.sequence);
+    expected.sort_by_key(|r| r.sequence);
+    if actual != expected
+        || captures
+            .iter()
+            .map(|c| &c.run_id)
+            .collect::<BTreeSet<_>>()
+            .len()
+            != captures.len()
+        || actual
+            .iter()
+            .map(|r| r.sequence)
+            .collect::<BTreeSet<_>>()
+            .len()
+            != actual.len()
+    {
+        return Err("Incomplete comparison or duplicate capture identity.".into());
+    }
+    for capture in captures {
+        if capture.schema_version != 1
+            || capture.run_id.trim().is_empty()
+            || capture.repetition.sequence == 0
+            || capture.repetition.repetition == 0
+            || !["baseline", "candidate"].contains(&capture.repetition.side.as_str())
+        {
+            return Err("Unsupported capture schema or invalid identity.".into());
+        }
+        validate_conditions(&capture.conditions)?;
+        index(&capture.metrics)?;
+    }
+    let comparison = compare(captures)?;
+    if comparison.comparable {
+        for capture in captures.iter().filter(|c| !c.repetition.warmup) {
+            validate_request(&capture.conditions, request)?;
+        }
+    }
+    let measured: Vec<_> = captures.iter().filter(|c| !c.repetition.warmup).collect();
+    let conditions = &measured[0].conditions;
+    let metadata = json!({"runId":manifest["runId"],"label":manifest["label"],"validationOnly":plan.validation_only,
+        "baseline":plan.baseline,"candidate":plan.candidate,"repetitions":measured.len()/2,"sequence":expected,"conditions":conditions});
+    write_json(
+        &directory.join("comparison.json"),
+        &json!({"schemaVersion":2,"metadata":metadata,
+        "comparable":comparison.comparable,"errors":comparison.errors,"metrics":comparison.metrics}),
+    )?;
+    let mut report = String::from("# SandboxISMC revision comparison\n\n");
+    report.push_str(&format!(
+        "{}\n\n",
+        escape(manifest["label"].as_str().unwrap_or(""))
+    ));
+    if plan.validation_only {
+        report.push_str(
+            "**Validation only — protocol/comparability smoke; no performance conclusions.**\n\n",
+        );
+    }
+    report.push_str(&format!("Run: {}. Baseline: {} ({}). Candidate: {} ({}).\n\nMeasured repetitions per side: {}. Order: {}.\n\n",
+        escape(manifest["runId"].as_str().unwrap_or("")),plan.baseline.commit,if plan.baseline.dirty {"dirty"} else {"clean"},
+        plan.candidate.commit,if plan.candidate.dirty {"dirty"} else {"clean"},measured.len()/2,
+        expected.iter().map(|r| format!("{}{}{}",if r.side=="baseline" {"A"} else {"B"},r.repetition,if r.warmup {" (warmup)"} else {""})).collect::<Vec<_>>().join(", ")));
+    report.push_str("| Condition | Value |\n|---|---|\n");
+    for (key, value) in conditions {
+        report.push_str(&format!("| {} | {} |\n", escape(key), escape(value)));
+    }
+    let mut rows = vec![
+        [
+            "renderer",
+            "metric",
+            "unit",
+            "baseline_runs",
+            "candidate_runs",
+            "baseline_run_median",
+            "candidate_run_median",
+            "paired_delta_median",
+            "paired_delta_percent_median",
+        ]
+        .map(str::to_owned)
+        .to_vec(),
+    ];
+    if comparison.comparable {
+        report.push_str("\nValues summarize complete-run medians. Deltas are paired candidate-minus-baseline differences by repetition ID. Samples count independent repetitions; captures.json preserves within-run summaries. Medians average the middle pair; p95 uses nearest rank. Percent summaries are unavailable if any baseline is zero.\n\n| Renderer | Metric | Unit | Pairs | Baseline median | Candidate median | Paired delta median | Paired delta % median |\n|---|---|---|---:|---:|---:|---:|---:|\n");
+        for item in &comparison.metrics {
+            let renderer = item
+                .identity
+                .dimensions
+                .get("renderer")
+                .cloned()
+                .unwrap_or_default();
+            let percent = item
+                .delta_percent
+                .as_ref()
+                .map(|s| s.median.to_string())
+                .unwrap_or_default();
+            report.push_str(&format!(
+                "| {} | {} | {} | {} | {} | {} | {} | {} |\n",
+                escape(&renderer),
+                escape(&item.identity.metric),
+                escape(&item.identity.unit),
+                item.delta.samples,
+                item.baseline.median,
+                item.candidate.median,
+                item.delta.median,
+                percent
+            ));
+            rows.push(vec![
+                renderer,
+                item.identity.metric.clone(),
+                item.identity.unit.clone(),
+                item.baseline.samples.to_string(),
+                item.candidate.samples.to_string(),
+                item.baseline.median.to_string(),
+                item.candidate.median.to_string(),
+                item.delta.median.to_string(),
+                percent,
+            ]);
+        }
+    } else {
+        report.push_str("\nIncomparable. No performance deltas were calculated.\n");
+        for error in &comparison.errors {
+            report.push_str(&format!("- {}\n", escape(error)));
+        }
+    }
+    write_text(&directory.join("comparison.md"), report)?;
+    write_csv(&directory.join("comparison.csv"), &rows)?;
+    Ok(comparison.comparable)
+}
+
+fn escape(value: &str) -> String {
+    value
+        .replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('|', "\\|")
+        .replace('*', "\\*")
+        .replace(['\r', '\n'], " ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn capture(side: &str, repetition: u32, median: f64) -> Capture {
+        Capture {
+            run_id: format!("{side}{repetition}"),
+            directory: String::new(),
+            repetition: Repetition {
+                sequence: repetition,
+                repetition,
+                side: side.into(),
+                warmup: false,
+            },
+            conditions: Conditions::new(),
+            schema_version: 1,
+            metrics: vec![Metric {
+                identity: Identity {
+                    metric: "time".into(),
+                    unit: "us".into(),
+                    dimensions: Conditions::new(),
+                },
+                summary: Summary::across([median]).unwrap(),
+            }],
+        }
+    }
+    #[test]
+    fn paired_deltas_are_not_the_difference_of_independent_medians() {
+        let captures = vec![
+            capture("baseline", 1, 1.0),
+            capture("candidate", 1, 2.0),
+            capture("baseline", 2, 100.0),
+            capture("candidate", 2, 90.0),
+            capture("baseline", 3, 3.0),
+            capture("candidate", 3, 4.0),
+        ];
+        let result = compare(&captures).unwrap();
+        assert!(result.comparable);
+        assert_eq!(result.metrics[0].delta.median, 1.0);
+        assert_eq!(result.metrics[0].delta.samples, 3);
+        assert_eq!(Summary::across([1.0, 4.0, 2.0, 3.0]).unwrap().median, 2.5);
+        assert_eq!(
+            Summary::across((1..=20).map(|v| v as f64)).unwrap().p95,
+            19.0
+        );
+    }
+    #[test]
+    fn zero_baselines_and_missing_or_mismatched_pairs() {
+        let mut captures = vec![capture("baseline", 1, 0.0), capture("candidate", 1, 1.0)];
+        assert!(
+            compare(&captures).unwrap().metrics[0]
+                .delta_percent
+                .is_none()
+        );
+        captures[1].metrics[0].identity.unit = "ms".into();
+        assert!(!compare(&captures).unwrap().comparable);
+        assert!(compare(&captures[..1]).is_err());
+        assert!(Summary::across([f64::NAN]).is_err());
+    }
+}

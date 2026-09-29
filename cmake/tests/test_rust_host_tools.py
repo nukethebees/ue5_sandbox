@@ -38,8 +38,11 @@ class RustHostToolTests(unittest.TestCase):
                 f'set(CMAKE_EXECUTABLE_SUFFIX "{suffix}")\n'
                 f'include("{helper}")\n'
                 'sandbox_add_rust_host_tool(fixture TOOL)\n'
-                'add_custom_target(consume COMMAND "${CMAKE_COMMAND}" -E copy\n'
-                '  "${TOOL}" "${CMAKE_BINARY_DIR}/consumed${CMAKE_EXECUTABLE_SUFFIX}" VERBATIM)\n',
+                'add_custom_command(OUTPUT "${CMAKE_BINARY_DIR}/consumed${CMAKE_EXECUTABLE_SUFFIX}"\n'
+                '  COMMAND "${CMAKE_COMMAND}" -E copy\n'
+                '  "${TOOL}" "${CMAKE_BINARY_DIR}/consumed${CMAKE_EXECUTABLE_SUFFIX}"\n'
+                '  DEPENDS "${TOOL}" fixture-host VERBATIM)\n'
+                'add_custom_target(consume DEPENDS "${CMAKE_BINARY_DIR}/consumed${CMAKE_EXECUTABLE_SUFFIX}")\n',
                 encoding="utf-8",
             )
             build = root / "build"
@@ -56,6 +59,7 @@ class RustHostToolTests(unittest.TestCase):
             program.write_text('mod message;\nfn main() { println!("{}", message::TEXT); }\n', encoding="utf-8")
             self.run_command(self.cmake, "--build", str(build), "--target", "consume")
             self.assertEqual(self.run_command(str(executable)).strip(), "after")
+            self.assertEqual(self.run_command(str(build / f"consumed{suffix}")).strip(), "after")
             executable.unlink()
             self.run_command(self.cmake, "--build", str(build), "--target", "consume")
             self.assertTrue(executable.is_file())
@@ -74,4 +78,3 @@ if __name__ == "__main__":
     RustHostToolTests.source_dir = args.source_dir.resolve()
     RustHostToolTests.cmake = args.cmake
     unittest.main(argv=[sys.argv[0]])
-

@@ -70,7 +70,7 @@ covered by Unreal tests. See [Build and test](../docs/build-and-test.md) for the
 and [Code generation](../Codegen/README.md) for generated outputs.
 
 To run a deterministic S7 level as a native benchmark, use
-`out/build/native/host-tools/BenchmarkTools/Debug/BenchmarkTools.exe native-simulation`; the fighter and frame-memory report runners build
+`out/build/native/rust-tools/release/benchmark-tools.exe native-simulation`; the fighter and frame-memory report runners build
 on the same tool. See [Benchmarks](../docs/benchmarks.md) for supported workloads and
 [Profiling](../docs/profiling.md) for Tracy capture.
 
