@@ -67,8 +67,10 @@ Unreal Engine 5.8 project.
 * If AgentTask is broken, report it once and follow an explicit maintainer instruction for any
   minimal alternative; do not repeatedly retry or deliberately bypass it.
 * You have permission to kill stale/hung processes that you spawned or were spawned in your worktree
-* Do not chain or batch CLI commands that may trigger an approval request when they wouldn't individually e.g. `git status --short; git branch --show-current`. 
-  * This includes routing command outputs to log files. Read the CLI output directly yourself.
+* Use one simple shell command per tool invocation for routine agent work. Do not combine commands with `;`, `&&`, `||`, pipelines, or script blocks, even when each command is individually approved or scheduling-exempt.
+  * Run inspections as separate tool calls and read their output directly. Independent calls may be batched through the tool API, without combining their shell command strings.
+  * Do not request a scheduling ticket merely to combine cheap inspections. Request tickets separately from the commands they admit.
+  * Do not redirect command output to log files. Existing build/test scripts may still be invoked normally.
 * Make commits for each discrete chunk of work as you work. Use good judgement.
 * Try to avoid making just one commit for all the work
 * Static analysis is not part of normal feature validation. Run it only when explicitly requested or when modifying static-analysis tooling.
