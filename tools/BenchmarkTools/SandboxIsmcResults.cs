@@ -15,7 +15,7 @@ internal static class SandboxIsmcResults
     internal static readonly string[] RequiredConditions = ["result_schema", "mode", "visibility", "bounds", "custom_data", "rhi", "instances", "update_percent",
         "churn", "min_instances", "half_cycle_updates", "replacement_percent", "warmup_updates", "warmup_seconds", "measurement_seconds", "shadows", "trace",
         "requested_width", "requested_height", "observed_width", "observed_height", "grid_spacing", "grid_gap", "movement_amplitude", "movement_frequency", "rotation_speed",
-        "frame_limits_disabled", "r.ScreenPercentage", "r.DynamicRes.OperationMode", "r.VSync", "r.VSyncEditor", "t.MaxFPS"];
+        "frame_limits_disabled", "r.Editor.Viewport.OverridePIEScreenPercentage", "r.ScreenPercentage", "r.DynamicRes.OperationMode", "r.VSync", "r.VSyncEditor", "t.MaxFPS"];
 
     public static IReadOnlyDictionary<string, string> ReadTerminal(BenchmarkRunContext run, SandboxIsmcRequest request)
     {
@@ -187,7 +187,7 @@ internal static class SandboxIsmcResults
         report.AppendLine($"Bounds: {Condition("bounds")}; visibility: {Condition("visibility")}; custom data: {Condition("custom_data")}; shadows: {Condition("shadows")}; trace: {Condition("trace")}.");
         report.AppendLine($"Churn: {Condition("churn")}; minimum: {Condition("min_instances")}; half-cycle: {Condition("half_cycle_updates")} updates; replacement: {Condition("replacement_percent")}%.");
         report.AppendLine($"Warmup: {Condition("warmup_seconds")} s / {Condition("warmup_updates")} updates; measurement: {Condition("measurement_seconds")} s per process.");
-        report.AppendLine($"Frame limits disabled: {Condition("frame_limits_disabled")}; VSync/Editor: {Condition("r.VSync")}/{Condition("r.VSyncEditor")}; MaxFPS: {Condition("t.MaxFPS")}; screen percentage: {Condition("r.ScreenPercentage")}; dynamic resolution: {Condition("r.DynamicRes.OperationMode")}.\n");
+        report.AppendLine($"Frame limits disabled: {Condition("frame_limits_disabled")}; VSync/Editor: {Condition("r.VSync")}/{Condition("r.VSyncEditor")}; MaxFPS: {Condition("t.MaxFPS")}; PIE screen-percentage override: {Condition("r.Editor.Viewport.OverridePIEScreenPercentage")}; screen percentage: {Condition("r.ScreenPercentage")}; dynamic resolution: {Condition("r.DynamicRes.OperationMode")}.\n");
         if (!comparison.Comparable)
         {
             report.AppendLine("Incomparable. No performance deltas were calculated.");

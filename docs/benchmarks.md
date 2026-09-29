@@ -179,6 +179,8 @@ directory are excluded. Executable paths and effective arguments accompany the s
 A dirty candidate is explicitly marked as such. Both revision commands check those fingerprints
 after preparation, when the measurement child starts, and after measurement. A changed source
 fails the run before comparison deltas are published; measurements remain available for diagnosis.
+First-party candidate edits are allowed, but initialized submodules must be clean, including
+untracked files. Source checks enforce this regardless of submodule ignore settings.
 These snapshots do not lock the checkout or prove that prebuilt binaries match it. No artifact
 is selected by timestamp, and no files are collected from `Saved/Benchmarks` or a shared Editor log.
 
@@ -225,6 +227,8 @@ duplicate identities, missing metrics, units/dimensions mismatches and non-finit
 observed comparability conditions must match across measured runs; an incomparable result contains
 errors and no performance deltas. Provenance such as revision, timestamp and artifact paths may differ.
 Reports include the label, source SHAs/dirty markers, ordering, workload and observed render controls.
+Owned SandboxISMC runs disable the Editor's PIE screen-percentage override and require its observed
+value to remain zero, alongside the existing screen-percentage and dynamic-resolution controls.
 `sandbox-ismc-report --run-dir <path>` validates the manifest, sequence and `captures.json`, then
 atomically regenerates the three derived reports through the same comparison code. Raw captures
 are unchanged. Incomplete/failed runs or unsupported capture schemas fail clearly; incomparable

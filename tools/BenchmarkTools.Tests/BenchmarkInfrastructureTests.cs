@@ -240,6 +240,7 @@ public sealed class BenchmarkInfrastructureTests
             Assert.IsTrue(effective.Dirty);
             await BenchmarkRunContext.VerifySourceAsync(app, effective, default);
             SandboxIsmcBenchmarkCommand.RequireProtocol(session.BaselineRoot);
+            StringAssert.Contains(File.ReadAllText(Path.Combine(session.BaselineRoot, paths[0])), "TEXT(\"r.Editor.Viewport.OverridePIEScreenPercentage\")");
             foreach (var path in paths)
                 Assert.AreEqual(File.ReadAllText(Path.Combine(directory.Root, path)), File.ReadAllText(Path.Combine(session.BaselineRoot, path)));
             var changed = await BenchmarkGit.TextAsync(app, session.BaselineRoot, ["diff", "--name-only"], default);

@@ -275,7 +275,7 @@ index cb841f6f9..c45dbae63 100644
      TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::save_report);
      if (frame_ms_.IsEmpty()) {
          UE_LOG(LogSandboxISMCBenchmark,
-@@ -1117,12 +1195,105 @@ void ASandboxISMCBenchmarkActor::save_report() const {
+@@ -1117,12 +1195,106 @@ void ASandboxISMCBenchmarkActor::save_report() const {
          append(TEXT("engine_ismc"), TEXT("api"), TEXT("ms"), engine_samples_.api_ms);
      }
 
@@ -367,7 +367,8 @@ index cb841f6f9..c45dbae63 100644
 +    number(TEXT("movement_frequency"), movement_frequency_hz_);
 +    number(TEXT("rotation_speed"), rotation_speed_degrees_);
 +    number(TEXT("frame_limits_disabled"), frame_rate_limits_disabled_ ? 1 : 0);
-+    for (auto const* name : {TEXT("r.ScreenPercentage"),
++    for (auto const* name : {TEXT("r.Editor.Viewport.OverridePIEScreenPercentage"),
++                             TEXT("r.ScreenPercentage"),
 +                             TEXT("r.DynamicRes.OperationMode"),
 +                             TEXT("r.VSync"),
 +                             TEXT("r.VSyncEditor"),

@@ -27,6 +27,7 @@ public sealed class SandboxIsmcResultsTests
     }
 
     [TestMethod]
+    [DataRow("r.Editor.Viewport.OverridePIEScreenPercentage")]
     [DataRow("frame_limits_disabled")]
     [DataRow("r.VSync")]
     [DataRow("r.VSyncEditor")]

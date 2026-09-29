@@ -27,10 +27,15 @@ internal static class FrameMemoryRevisionAbBenchmarkCommand
         var parsed = CommandArguments.Parse(arguments, value_arguments, flag_arguments);
         var iterations = parsed.PositiveInt32("--iterations", 5, 100);
         var warmups = parsed.NonnegativeInt32("--warmup-iterations", 0, 10);
+        var validation_only = parsed.HasFlag("--validate-only");
+        if (validation_only) { iterations = 1; warmups = 0; }
         var provided = parsed.Value("--baseline-worktree", string.Empty);
         if (parsed.HasFlag("--skip-build") && provided.Length == 0) throw new BenchmarkToolException("'--skip-build' requires '--baseline-worktree'.");
         var run = BenchmarkRunContext.Create(repository_paths, "frame-memory-revision-ab", parsed.Value("--output-dir", ".local/benchmarks/frame-memory-revision-ab"),
             new { Iterations = iterations, WarmupIterations = warmups, Seconds = 20, GameSpeed = 100 });
+        run.Manifest.Purpose = validation_only ? "validation" : "measurement";
+        run.Publish();
+        if (validation_only) application.StandardOutput.WriteLine("Validation only: one smoke A/B pair; no performance conclusions.");
         application.StandardOutput.WriteLine($"Artifacts: {run.DirectoryPath}");
         try
         {
@@ -40,9 +45,10 @@ internal static class FrameMemoryRevisionAbBenchmarkCommand
             run.Publish();
             if (!parsed.HasFlag("--skip-build"))
             {
+                string[] submodules = ["native/third_party/googletest", "native/third_party/cpu_features", "native/third_party/tracy", "native/third_party/cli11"];
+                await BenchmarkSubmodules.InitializeAsync(application, revisions.Candidate.Root, null, submodules, cancellation_token);
                 await BuildAsync(application, revisions.Candidate.Root, cancellation_token);
-                await revisions.InitializeSubmodulesAsync(cancellation_token,
-                    ["native/third_party/googletest", "native/third_party/cpu_features", "native/third_party/tracy", "native/third_party/cli11"]);
+                await revisions.InitializeSubmodulesAsync(cancellation_token, submodules);
                 await BuildAsync(application, revisions.BaselineRoot, cancellation_token);
             }
             if (parsed.HasFlag("--prepare-only"))
@@ -52,7 +58,7 @@ internal static class FrameMemoryRevisionAbBenchmarkCommand
                 run.Complete();
                 return 0;
             }
-            var sequence = BenchmarkOrdering.Balanced(parsed.HasFlag("--validate-only") ? 1 : iterations, parsed.HasFlag("--validate-only") ? 0 : warmups);
+            var sequence = BenchmarkOrdering.Balanced(iterations, warmups);
             BenchmarkCommandSupport.WriteJson(run.Artifact("sequence.json"), sequence);
             run.Manifest.Artifacts["sequence.json"] = run.Artifact("sequence.json");
             run.Manifest.Artifacts["measurement-plan.json"] = run.Artifact("measurement-plan.json");
@@ -60,14 +66,22 @@ internal static class FrameMemoryRevisionAbBenchmarkCommand
             run.Manifest.Status = "measuring";
             run.Publish();
             await BenchmarkMeasurement.RunAsync(application, repository_paths, "frame-memory-revision-ab",
-                new BenchmarkMeasurementPlan(run.DirectoryPath, revisions.Candidate, revisions.Baseline, sequence), cancellation_token);
+                new BenchmarkMeasurementPlan(run.DirectoryPath, revisions.Candidate, revisions.Baseline, sequence, ValidationOnly: validation_only), cancellation_token);
             run.ValidateArtifacts();
             var records = JsonSerializer.Deserialize<List<Record>>(File.ReadAllText(run.Artifact("records.json")), BenchmarkCommandSupport.JsonOptions)
                 ?? throw new BenchmarkToolException("Frame-memory results were empty.");
-            var paired = Pair(records, parsed.HasFlag("--validate-only") ? 1 : iterations);
             BenchmarkCommandSupport.WriteCsv(run.Artifact("raw-results.csv"), RawRows(records));
-            BenchmarkCommandSupport.WriteCsv(run.Artifact("paired-results.csv"), PairedRows(paired));
             run.Expect("raw-results.csv");
+            if (validation_only)
+            {
+                if (records.Count != 2 || records.Count(record => record.Pair == 1 && record.State == "baseline") != 1 ||
+                    records.Count(record => record.Pair == 1 && record.State == "candidate") != 1)
+                    throw new BenchmarkToolException("Frame-memory validation requires one baseline and one candidate result.");
+                run.Complete();
+                return 0;
+            }
+            var paired = Pair(records, iterations);
+            BenchmarkCommandSupport.WriteCsv(run.Artifact("paired-results.csv"), PairedRows(paired));
             run.Expect("paired-results.csv");
             application.StandardOutput.WriteLine($"native: mean delta {paired.Average(record => record.DeltaPercent):N3}%, median delta {Median(paired.Select(record => record.DeltaPercent)):N3}%");
             run.Complete();

@@ -1281,7 +1281,8 @@ void ASandboxISMCBenchmarkActor::save_conditions(FString const& error) const {
     number(TEXT("movement_frequency"), movement_frequency_hz_);
     number(TEXT("rotation_speed"), rotation_speed_degrees_);
     number(TEXT("frame_limits_disabled"), frame_rate_limits_disabled_ ? 1 : 0);
-    for (auto const* name : {TEXT("r.ScreenPercentage"),
+    for (auto const* name : {TEXT("r.Editor.Viewport.OverridePIEScreenPercentage"),
+                             TEXT("r.ScreenPercentage"),
                              TEXT("r.DynamicRes.OperationMode"),
                              TEXT("r.VSync"),
                              TEXT("r.VSyncEditor"),

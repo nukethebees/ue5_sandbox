@@ -46,7 +46,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         foreach (var process in processes)
         {
             Assert.AreEqual(SandboxIsmcRequest.MapPath(process.WorkingDirectory), process.Arguments[1]);
-            CollectionAssert.AreEqual(new[] { "r.VSync 0", "r.ScreenPercentage 100", "r.DynamicRes.OperationMode 0", "Automation Now;RunTests SandboxISMC.RemoteBenchmark;Quit" },
+            CollectionAssert.AreEqual(new[] { "r.VSync 0", "r.Editor.Viewport.OverridePIEScreenPercentage 0", "r.ScreenPercentage 100", "r.DynamicRes.OperationMode 0", "Automation Now;RunTests SandboxISMC.RemoteBenchmark;Quit" },
                 process.Arguments.Single(arg => arg.StartsWith("-ExecCmds=", StringComparison.Ordinal))["-ExecCmds=".Length..].Split(','));
             var cache = process.Arguments.Single(value => value.StartsWith("-LocalDataCachePath=", StringComparison.Ordinal))["-LocalDataCachePath=".Length..];
             Assert.AreEqual(Path.Combine(fixture.Root, ".local", "benchmarks", "ddc"), cache);
@@ -62,6 +62,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         StringAssert.Contains(report, "Candidate: commit");
         StringAssert.Contains(report, "instances: 40000");
         StringAssert.Contains(report, "RHI: D3D12");
+        StringAssert.Contains(report, "PIE screen-percentage override: 0");
         Assert.IsTrue(fixture.Document("comparison.json").GetProperty("metadata").GetProperty("validationOnly").GetBoolean());
         Assert.AreEqual("validation", fixture.Document("manifest.json").GetProperty("purpose").GetString());
         Assert.IsFalse(File.Exists(Path.Combine(fixture.RunDirectory, "runs", "latest.txt")));
@@ -87,7 +88,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
             Assert.AreEqual(TimeSpan.FromMinutes(10), process.Timeout);
             Assert.AreEqual(SandboxIsmcRequest.MapPath(process.WorkingDirectory), process.Arguments[1]);
             Assert.IsFalse(process.Arguments.Any(arg => arg.StartsWith("-run=", StringComparison.Ordinal)));
-            CollectionAssert.AreEqual(new[] { "r.VSync 0", "r.ScreenPercentage 100", "r.DynamicRes.OperationMode 0", "Editor.AsyncAssetCompilationFinishAll", "Automation Now;SoftQuit" },
+            CollectionAssert.AreEqual(new[] { "r.VSync 0", "r.Editor.Viewport.OverridePIEScreenPercentage 0", "r.ScreenPercentage 100", "r.DynamicRes.OperationMode 0", "Editor.AsyncAssetCompilationFinishAll", "Automation Now;SoftQuit" },
                 process.Arguments.Single(arg => arg.StartsWith("-ExecCmds=", StringComparison.Ordinal))["-ExecCmds=".Length..].Split(','));
             Assert.IsTrue(process.Arguments.Contains("-LocalDataCachePath=" + Path.Combine(fixture.Root, ".local", "benchmarks", "ddc")));
             Assert.IsFalse(process.Arguments.Any(arg => arg.Contains("SandboxISMCBenchmark", StringComparison.Ordinal) && arg != SandboxIsmcRequest.MapPath(process.WorkingDirectory)));
@@ -307,6 +308,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     }
 
     [TestMethod]
+    [DataRow("r.Editor.Viewport.OverridePIEScreenPercentage")]
     [DataRow("frame_limits_disabled")]
     [DataRow("r.VSync")]
     [DataRow("r.VSyncEditor")]
@@ -414,6 +416,43 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         Assert.AreEqual(4, records.GetArrayLength());
         CollectionAssert.AreEqual(new[] { "baseline", "candidate", "candidate", "baseline" }, records.EnumerateArray().Select(item => item.GetProperty("state").GetString()).ToArray());
         Assert.AreEqual(6, fixture.Runner.Requests.Count(item => item.Arguments.Contains("native-simulation")));
+        var preparations = fixture.Runner.Requests.Where(item => item.Arguments.Contains("submodule") && item.Arguments.Contains("init")).ToArray();
+        Assert.AreEqual(2, preparations.Length);
+        foreach (var preparation in preparations)
+        {
+            CollectionAssert.AreEqual(new[] { "native/third_party/googletest", "native/third_party/cpu_features", "native/third_party/tracy", "native/third_party/cli11" },
+                preparation.Arguments.SkipWhile(arg => arg != "--").Skip(1).ToArray());
+            var configure = fixture.Runner.Requests.First(item => item.FileName == "cmake" && item.WorkingDirectory == preparation.WorkingDirectory);
+            Assert.IsTrue(fixture.Runner.Requests.IndexOf(preparation) < fixture.Runner.Requests.IndexOf(configure));
+        }
+        Assert.AreEqual(fixture.Root, preparations[0].WorkingDirectory);
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task Frame_memory_validation_retains_one_smoke_pair_without_performance_conclusions(bool skip_build)
+    {
+        using var fixture = new Fixture();
+        var supplied = Path.Combine(fixture.Root, "prepared");
+        Fixture.WriteProtocol(supplied);
+        var args = new List<string> { "--baseline", "old", "--baseline-worktree", supplied, "--validate-only", "--iterations", "5", "--warmup-iterations", "3" };
+        if (skip_build) args.Add("--skip-build");
+        Assert.AreEqual(0, await fixture.Run("frame-memory-revision-ab", args.ToArray()), fixture.Errors.ToString());
+        Assert.AreEqual(2, fixture.Runner.Requests.Count(item => item.Arguments.Contains("native-simulation")));
+        Assert.AreEqual("validation", fixture.Document("manifest.json").GetProperty("purpose").GetString());
+        Assert.AreEqual("complete", fixture.Document("manifest.json").GetProperty("status").GetString());
+        Assert.IsTrue(fixture.Document("measurement-plan.json").GetProperty("validationOnly").GetBoolean());
+        Assert.AreEqual(2, fixture.Document("records.json").GetArrayLength());
+        Assert.IsTrue(File.Exists(Path.Combine(fixture.RunDirectory, "raw-results.csv")));
+        Assert.IsFalse(File.Exists(Path.Combine(fixture.RunDirectory, "paired-results.csv")));
+        StringAssert.Contains(fixture.Messages.ToString(), "Validation only");
+        Assert.IsFalse(fixture.Messages.ToString().Contains("delta", StringComparison.OrdinalIgnoreCase));
+        var preparations = fixture.Runner.Requests.Where(item => item.Arguments.Contains("submodule") && item.Arguments.Contains("init")).ToArray();
+        Assert.AreEqual(skip_build ? 0 : 1, preparations.Length);
+        Assert.IsTrue(preparations.All(item => item.WorkingDirectory == fixture.Root));
+        Assert.AreEqual(skip_build ? 0 : 4, fixture.Runner.Requests.Count(item => item.FileName == "cmake"));
+        Assert.IsFalse(fixture.Runner.Requests.Any(item => item.Arguments.Contains("remove")));
     }
 
     [TestMethod]
@@ -434,6 +473,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         public string RunDirectory => Directory.GetDirectories(Output).Single();
         public RecordingRunner Runner { get; }
         public StringWriter Errors { get; } = new();
+        public StringWriter Messages { get; } = new();
         public string? MissingArtifact { get; init; }
         public bool ViewportMismatch { get; init; }
         public bool RhiMismatch { get; init; }
@@ -475,7 +515,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
 
         public Task<int> Report() => Application().RunAsync(["sandbox-ismc-report", "--run-dir", RunDirectory], Path.GetTempPath());
 
-        private BenchmarkToolsApplication Application() => new(Runner, TextWriter.Null, Errors, "current-benchmark-tools");
+        private BenchmarkToolsApplication Application() => new(Runner, Messages, Errors, "current-benchmark-tools");
 
         private async Task<ProcessResult> Respond(ProcessRequest process)
         {

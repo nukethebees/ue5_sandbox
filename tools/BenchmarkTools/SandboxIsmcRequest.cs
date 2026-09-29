@@ -46,13 +46,13 @@ internal sealed record SandboxIsmcRequest(string Editor, int Width, int Height, 
         ["warmup_seconds"] = Number(WarmupSeconds), ["measurement_seconds"] = Number(Seconds), ["trace"] = Trace ? "1" : "0",
         ["requested_width"] = Number(Width), ["requested_height"] = Number(Height), ["observed_width"] = Number(Width), ["observed_height"] = Number(Height),
         ["frame_limits_disabled"] = "1", ["r.VSync"] = "0", ["r.VSyncEditor"] = "0", ["t.MaxFPS"] = "0",
-        ["r.ScreenPercentage"] = "100", ["r.DynamicRes.OperationMode"] = "0",
+        ["r.Editor.Viewport.OverridePIEScreenPercentage"] = "0", ["r.ScreenPercentage"] = "100", ["r.DynamicRes.OperationMode"] = "0",
     };
 
     public IReadOnlyList<string> EditorArguments(string root, BenchmarkRunContext run)
     {
         return [.. CommonArguments(root, run.Artifact("unreal.log")),
-            "-ExecCmds=r.VSync 0,r.ScreenPercentage 100,r.DynamicRes.OperationMode 0,Automation Now;RunTests SandboxISMC.RemoteBenchmark;Quit",
+            "-ExecCmds=r.VSync 0,r.Editor.Viewport.OverridePIEScreenPercentage 0,r.ScreenPercentage 100,r.DynamicRes.OperationMode 0,Automation Now;RunTests SandboxISMC.RemoteBenchmark;Quit",
             "-SandboxISMCBenchmarkEndPIE",
             $"-ResX={Width}", $"-ResY={Height}", "-ForceRes", "-windowed",
             $"-SandboxISMCBenchmarkOutput={run.DirectoryPath}", $"-SandboxISMCBenchmarkRunId={run.Manifest.RunId}",
@@ -69,7 +69,7 @@ internal sealed record SandboxIsmcRequest(string Editor, int Width, int Height, 
 
     public IReadOnlyList<string> CacheArguments(string root, string log) =>
         [.. CommonArguments(root, log),
-         "-ExecCmds=r.VSync 0,r.ScreenPercentage 100,r.DynamicRes.OperationMode 0,Editor.AsyncAssetCompilationFinishAll,Automation Now;SoftQuit"];
+         "-ExecCmds=r.VSync 0,r.Editor.Viewport.OverridePIEScreenPercentage 0,r.ScreenPercentage 100,r.DynamicRes.OperationMode 0,Editor.AsyncAssetCompilationFinishAll,Automation Now;SoftQuit"];
 
     private IReadOnlyList<string> CommonArguments(string root, string log) =>
         [Path.Combine(root, "Sandbox.uproject"), MapPath(root), "-unattended", "-nop4", "-nosplash", "-nosound", "-stdout", "-FullStdOutLogOutput", "-RenderOffscreen",
