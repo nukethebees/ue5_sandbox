@@ -9,12 +9,17 @@ The maintainer installs stable tools explicitly under
 | jobserver | `agent-task install-central-tools` | CLI source |
 | UnrealBuildTools | `agent-task install-central-tools` | csproj Version |
 | CodeFormatTools | `agent-task install-central-tools` | csproj Version |
+| agent-codex (Codex + scheduler) | `agent-task install-central-tools` | agent-scheduler/upstream-revision.txt + codex.patch |
 
 The maintainer manages PATH for ordinary tools. Internal jobserver calls use
 `%LOCALAPPDATA%\NukeTheBees\jobserver\bin\jobserver.exe`; its separate installer preserves
 staged validation, shutdown, startup verification, and rollback. See [jobserver](jobserver/README.md).
 Agents assume central tools are installed, report missing commands, and never install/update them
 or build local fallbacks. `--version` is for manual diagnosis; bump the source version when shipping changes.
+
+Launch the scheduler-enabled Codex with `agent-codex.ps1` from
+`%LOCALAPPDATA%\NukeTheBees\agent-codex\bin`. It uses `codex-scheduler.exe`, leaving
+normal `codex` untouched. See [scheduler usage](agent-scheduler/README.md).
 
 `agent-task prepare-worktree` checks for the canonical jobserver, clears output, updates submodules,
 generates presets, disables Live Coding in existing

@@ -6,6 +6,16 @@ scheduler requires explicit tickets for commands not exempted by its own rules.
 
 ## Build and launch
 
+Update `agent-task` once with `. ./dev.ps1` followed by `install-agent-task`, then run
+`agent-task install-central-tools`. This prepares the pinned source, builds Release
+Codex and the scheduler client, and installs them together under
+`%LOCALAPPDATA%\NukeTheBees\agent-codex\bin`. Close custom Codex sessions before updating.
+Add that directory to PATH and launch `agent-codex.ps1`, forwarding normal Codex
+arguments. The launcher selects the unelevated backend, disables shell snapshots,
+and loads the installed scheduling rules. Normal `codex` remains unchanged.
+
+For a local development build:
+
 The preparation script checks out the revision in `upstream-revision.txt` under
 `.local/codex-upstream` and applies `codex.patch`. Build with Cargo/CMake; nothing
 is installed over your normal Codex. The installed jobserver must be available
@@ -16,7 +26,7 @@ tools/agent-scheduler/Prepare-Upstream.ps1
 cmake -S tools/agent-scheduler -B .local/scheduler-build -G Ninja
 cmake --build .local/scheduler-build --target scheduler-example codex-scheduler
 cmake --build .local/scheduler-build --target scheduler-unit-tests codex-process-tests
-tools/agent-scheduler/agent-codex.ps1 -c 'windows.sandbox="unelevated"' -c features.shell_snapshot=false
+tools/agent-scheduler/agent-codex.ps1
 ```
 
 Inside the custom Codex session, issue separate ordinary command-tool calls:
@@ -69,7 +79,8 @@ Elevated sandbox, MXC, remote and shell-snapshot execution are rejected. Elevate
 runner support is deliberately omitted because its lifecycle regression requires
 provisioned sandbox accounts/setup state. Its private IPC protocol is unchanged.
 User `/shell`, hooks, MCP and app-server `command/exec` are outside this patch.
-There is no central-tools installation integration.
+The standalone installer accepts `-InstallRoot <private-root>` and
+`-Configuration Debug` for staging validation without replacing installed tools.
 
 ## Validation
 
@@ -79,6 +90,8 @@ is contacted. Coverage includes FIFO admission, cancellation/grant races, spawn
 failure, immediate ticket reuse, daemon loss, independent security rejection,
 startup failure and a real sandbox-denied write followed by an approved retry.
 `-Only lifecycle` or `-Only leases` selects a focused group.
+Use `-InstalledBin <install-root>/bin` to exercise the installed launcher and its
+rules in the Codex integration demonstration.
 
 The real Codex descendant regression obtains exclusivity while the root is gone
 and its child still holds inherited output handles (ordinary pipes/PTY and

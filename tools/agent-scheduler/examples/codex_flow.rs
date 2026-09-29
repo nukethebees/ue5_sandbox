@@ -18,7 +18,10 @@ fn strings(value: &Value, result: &mut Vec<String>) {
 #[tokio::main]
 async fn main() -> Result<()> {
     let repo = std::env::current_dir()?;
-    let bin = repo.join(".local/scheduler-target/debug");
+    let installed_bin = std::env::args_os().nth(1).map(std::path::PathBuf::from);
+    let bin = installed_bin
+        .clone()
+        .unwrap_or_else(|| repo.join(".local/scheduler-target/debug"));
     let home = repo.join(".local/codex-flow-example");
     std::fs::create_dir_all(home.join("rules"))?;
     std::fs::write(
@@ -99,7 +102,15 @@ requires_openai_auth = false
         }
         Ok::<_, anyhow::Error>(requests)
     });
-    let mut command = Command::new(bin.join("codex.exe"));
+    let mut command = if installed_bin.is_some() {
+        let mut launcher = Command::new("pwsh");
+        launcher
+            .args(["-NoProfile", "-File"])
+            .arg(bin.join("agent-codex.ps1"));
+        launcher
+    } else {
+        Command::new(bin.join("codex.exe"))
+    };
     command
         .args([
             "exec",

@@ -1,4 +1,7 @@
-param([ValidateSet('all', 'lifecycle', 'leases')][string]$Only = 'all')
+param(
+    [ValidateSet('all', 'lifecycle', 'leases')][string]$Only = 'all',
+    [string]$InstalledBin
+)
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path "$PSScriptRoot/../..").Path
 $bin = Join-Path $repo '.local/scheduler-target/debug'
@@ -25,7 +28,9 @@ try {
     }
     if (-not $ready) { throw 'Example daemon did not start.' }
     if ($Only -eq 'all') {
-        & "$bin/examples/codex_flow.exe"
+        $flowArgs = @()
+        if ($InstalledBin) { $flowArgs += (Resolve-Path -LiteralPath $InstalledBin).Path }
+        & "$bin/examples/codex_flow.exe" @flowArgs
         if ($LASTEXITCODE -ne 0) { throw 'Codex integration demonstration failed.' }
     }
     if ($Only -ne 'leases') {

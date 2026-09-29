@@ -25,8 +25,10 @@ agent-task install-central-tools
 ```
 
 This synchronizes and initializes/updates recursive submodules, generates presets, configures
-`native`, runs the canonical `install-jobserver` CMake target, then the UnrealBuildTools and CodeFormatTools
-installers, stopping on failure. Each tool lives in its own per-user bin directory; see
+`native`, runs the canonical `install-jobserver` CMake target, then the UnrealBuildTools,
+CodeFormatTools and scheduler-enabled Codex installers, stopping on failure.
+The [Codex launcher](../agent-scheduler/README.md) is `agent-codex.ps1`; it does not
+replace normal `codex`. Each tool lives in its own per-user bin directory; see
 [developer tools](../README.md). This is a maintainer command, never an agent preflight.
 
 The maintainer installs/updates `agent-task` itself from the repository root with:
