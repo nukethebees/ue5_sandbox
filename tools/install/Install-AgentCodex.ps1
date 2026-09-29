@@ -40,8 +40,8 @@ try {
     cmake --install $build --prefix $candidate
     if ($LASTEXITCODE -ne 0) { throw 'Scheduler/Codex candidate install failed.' }
 
-    pwsh -NoProfile -File "$candidate/bin/agent-codex.ps1" --version
-    if ($LASTEXITCODE -ne 0) { throw 'Scheduler/Codex launcher smoke test failed.' }
+    & "$candidate/bin/codex-scheduler.exe" --version
+    if ($LASTEXITCODE -ne 0) { throw 'Scheduler/Codex candidate smoke test failed.' }
 
     if (Test-Path -LiteralPath $bin) { [IO.Directory]::Move($bin, $backup) }
     try {
@@ -51,8 +51,9 @@ try {
         throw
     }
     Remove-PrivateOutput $backup
-    Publish-ToolLinks $bin @('agent-codex.ps1', 'agent-scheduler.exe', 'codex-scheduler.exe') $links
+    Publish-ToolLinks $bin @('agent-codex.ps1', 'agent-scheduler.exe', 'codex-scheduler.exe', 'codex-code-mode-host.exe') $links
     Write-Host 'Installed scheduler-enabled Codex. Launch agent-codex.ps1. Normal codex is unchanged.'
+    Write-Host "Reference rules: '$bin/scheduling.default.rules'. Keep active rules in '%NTB_APPDATA_LOCAL%\config\agent-scheduler\scheduling.rules' or set AGENT_SCHEDULER_RULES."
 } finally {
     Remove-PrivateOutput $candidate
 }

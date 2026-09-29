@@ -16,6 +16,9 @@ agent-task install-central-tools
 Add `%NTB_APPDATA_LOCAL%\bin` to PATH, then run
 `agent-codex.ps1`. Normal `codex` remains unchanged.
 Choose the build profile in the root [ioj.toml](../../ioj.toml).
+Before first launch, copy the installed `scheduling.default.rules` reference to
+`%NTB_APPDATA_LOCAL%\config\agent-scheduler\scheduling.rules` and review it.
+Updates leave this user-managed file untouched.
 
 ## Use
 

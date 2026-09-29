@@ -4,13 +4,17 @@
 
 Update `agent-task` once with `. ./dev.ps1` followed by `install-agent-task`, then
 run `agent-task install-central-tools`. This prepares the pinned source, builds
-Codex and the scheduler client using the root [ioj.toml](../../../ioj.toml), and installs them under
+Codex, its code-mode host, and the scheduler client using the root [ioj.toml](../../../ioj.toml), and installs them under
 `%LOCALAPPDATA%\NukeTheBees\agent-codex\bin`. Close custom Codex sessions before updating.
 This maintainer-only installer builds directly, without requesting a jobserver lease.
 
 The `agent-codex.ps1` launcher forwards normal Codex arguments, selects the
-unelevated backend, disables shell snapshots, and loads the installed scheduling
-rules. Normal `codex` remains unchanged.
+unelevated backend, disables shell snapshots, and loads your external scheduling
+rules ([setup](behavior.md#scheduling-rules)). Normal `codex` remains unchanged.
+`codex-code-mode-host.exe` is a required companion that executes code-mode tool
+programs such as `functions.exec`; it must be built and installed alongside Codex.
+The build reuses the pinned upstream package builder to fetch and verify OpenAI's
+V8 archive/bindings into `.local/codex-v8` before running Cargo.
 
 The [standalone installer](../../install/Install-AgentCodex.ps1) accepts
 `-InstallRoot <private-root>` and `-Configuration Debug` for staging validation
@@ -58,8 +62,9 @@ daemon loss, independent security rejection, startup failure and a real
 sandbox-denied write followed by an approved retry.
 
 `-Only lifecycle` or `-Only leases` selects a focused group.
-Use `-InstalledBin <install-root>/bin` to exercise the installed launcher and its
-rules in the Codex integration demonstration.
+Use `-InstalledBin <install-root>/bin` to exercise the installed launcher. The
+demonstration explicitly selects the repository's example rules through
+`AGENT_SCHEDULER_RULES`, leaving your active configuration untouched.
 
 The real Codex descendant regression obtains exclusivity while the root is gone
 and its child still holds inherited output handles (ordinary pipes/PTY and

@@ -95,7 +95,7 @@ requires_openai_auth = false
                 index,
                 commands
                     .get(index)
-                    .map(|cmd| json!({"cmd":cmd,"login":false,"yield_time_ms":1000})),
+                    .map(|cmd| json!({"cmd":cmd,"login":false,"yield_time_ms":30000})),
             )
             .await?;
             println!("fixture response {index}");

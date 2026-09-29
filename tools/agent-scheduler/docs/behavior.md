@@ -11,14 +11,20 @@ the previous release acknowledgement. No sleep or status polling is necessary.
 
 ## Scheduling rules
 
-The launcher sets `AGENT_SCHEDULER_RULES` to the installed file:
+The launcher reads your user-managed rules outside the installation:
 
 ```text
-%LOCALAPPDATA%\NukeTheBees\agent-codex\bin\scheduling.rules
+%NTB_APPDATA_LOCAL%\config\agent-scheduler\scheduling.rules
 ```
 
-Installation replaces this copy. Make lasting changes in the repository's
-[scheduling.rules](../scheduling.rules).
+`NTB_APPDATA_LOCAL` defaults to `%LOCALAPPDATA%\NukeTheBees`. Set
+`AGENT_SCHEDULER_RULES` to use another file. The launcher stops with setup instructions
+if the selected file is missing. Installation never creates or overwrites active rules;
+it installs `agent-codex\bin\scheduling.default.rules` only as a reference. Initially,
+create the configuration directory, copy that reference to `scheduling.rules`, and
+review its exemptions. Later installer updates leave your choices alone.
+If you edited the old `agent-codex\bin\scheduling.rules`, move those changes to
+the configuration file before updating; the installer replaces its own `bin` directory.
 
 Scheduling rules are independent of Codex's security rules. All parsed command
 components must be exempt; unrecognised/dynamic PowerShell syntax requires a ticket.

@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.25)
 project(agent-scheduler-example NONE)
 
 find_program(CARGO cargo REQUIRED)
+find_package(Python3 3.11 REQUIRED COMPONENTS Interpreter)
 get_filename_component(REPO_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 set(CODEX_ROOT "${REPO_ROOT}/.local/codex-upstream")
 set(EXAMPLE_TARGET "${REPO_ROOT}/.local/scheduler-target")
@@ -28,7 +29,9 @@ add_custom_target(scheduler-example
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     USES_TERMINAL)
 add_custom_target(codex-scheduler
-    COMMAND "${CARGO}" build --locked -p codex-cli --bin codex ${CARGO_PROFILE_ARGS}
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/build_codex.py"
+        "${CARGO}" build --locked -p codex-cli -p codex-code-mode-host
+        --bin codex --bin codex-code-mode-host ${CARGO_PROFILE_ARGS}
         --target-dir "${EXAMPLE_TARGET}"
     WORKING_DIRECTORY "${CODEX_ROOT}/codex-rs"
     USES_TERMINAL)
@@ -36,9 +39,11 @@ add_custom_target(codex-scheduler
 install(PROGRAMS "${EXAMPLE_TARGET}/${CARGO_PROFILE_DIR}/codex.exe"
     DESTINATION bin RENAME codex-scheduler.exe)
 install(PROGRAMS "${EXAMPLE_TARGET}/${CARGO_PROFILE_DIR}/agent-scheduler.exe"
+    "${EXAMPLE_TARGET}/${CARGO_PROFILE_DIR}/codex-code-mode-host.exe"
     "${CMAKE_CURRENT_SOURCE_DIR}/agent-codex.ps1" DESTINATION bin)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/scheduling.rules"
-    "${CMAKE_CURRENT_SOURCE_DIR}/upstream-revision.txt" DESTINATION bin)
+    DESTINATION bin RENAME scheduling.default.rules)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/upstream-revision.txt" DESTINATION bin)
 add_custom_target(scheduler-unit-tests
     COMMAND "${CARGO}" test --locked --lib --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/Cargo.toml"
         --target-dir "${EXAMPLE_TARGET}"
