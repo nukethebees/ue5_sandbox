@@ -6,11 +6,11 @@ namespace BenchmarkTools.Tests;
 public sealed class BenchmarkToolsApplicationTests
 {
     [TestMethod]
-    public async Task RunAsync_constructs_configure_build_and_jobserver_commands()
+    public async Task RunAsync_constructs_configure_build_and_benchmark_commands()
     {
         using var repository = new TemporaryRepository();
         var process_runner = new FakeProcessRunner(0, 0, 17);
-        var application = CreateApplication(process_runner, new FakeEnvironment(), @"C:\tools with spaces\BenchmarkTools.exe");
+        var application = CreateApplication(process_runner, @"C:\tools with spaces\BenchmarkTools.exe");
 
         var exit_code = await application.RunAsync(
             ["native-simulation", "--level", repository.LevelPath, "--seconds", "1.25", "--telemetry", "--fighter-stress-caps", "1000,2000", "--warmup-seconds", "5.5", "--saturation-timeout-seconds", "60.25", "--build-preset", "preset with spaces"],
@@ -18,12 +18,12 @@ public sealed class BenchmarkToolsApplicationTests
 
         Assert.AreEqual(17, exit_code);
         Assert.AreEqual(3, process_runner.Requests.Count);
-        AssertProcess(process_runner.Requests[0], "cmake", ["--preset", "preset with spaces"], repository.Root);
-        AssertProcess(process_runner.Requests[1], "cmake", ["--build", "--preset", "preset with spaces"], repository.Root);
+        AssertSetup(process_runner.Requests[0], ["--preset", "preset with spaces"], repository.Root);
+        AssertSetup(process_runner.Requests[1], ["--build", "--preset", "preset with spaces"], repository.Root);
         AssertProcess(
             process_runner.Requests[2],
-            @"C:\jobserver\jobserver.exe",
-            ["run", "--name", "native simulation benchmark", "--kind", "benchmark", "--worktree", repository.Root, "--exclusive", "machine", "--exclusive", "benchmark", "--", @"C:\tools with spaces\BenchmarkTools.exe", "native-simulation", "--level", repository.LevelPath, "--seconds", "1.25", "--game-speed", "1", "--build-preset", "preset with spaces", "--telemetry", "--fighter-stress-caps", "1000,2000", "--warmup-seconds", "5.5", "--saturation-timeout-seconds", "60.25", "--skip-build"],
+            repository.BenchmarkExecutablePath("preset with spaces"),
+            ["--level", repository.LevelPath, "--seconds", "1.25", "--game-speed", "1", "--telemetry", "--fighter-stress-caps", "1000", "2000", "--warmup-seconds", "5.5", "--saturation-timeout-seconds", "60.25"],
             repository.Root);
     }
 
@@ -32,7 +32,7 @@ public sealed class BenchmarkToolsApplicationTests
     {
         using var repository = new TemporaryRepository();
         var process_runner = new FakeProcessRunner(0);
-        var application = CreateApplication(process_runner, new FakeEnvironment());
+        var application = CreateApplication(process_runner);
 
         var exit_code = await application.RunAsync(
             ["native-simulation", "--level", repository.LevelPath, "--seconds", "1", "--skip-build"],
@@ -40,19 +40,19 @@ public sealed class BenchmarkToolsApplicationTests
 
         Assert.AreEqual(0, exit_code);
         Assert.AreEqual(1, process_runner.Requests.Count);
-        Assert.AreEqual(@"C:\jobserver\jobserver.exe", process_runner.Requests[0].FileName);
+        Assert.AreEqual(repository.BenchmarkExecutablePath("native-benchmark"), process_runner.Requests[0].FileName);
     }
 
     [DataTestMethod]
     [DataRow("native-simulation-benchmark", "native-benchmark")]
     [DataRow("frame-memory-level-benchmark", "native-benchmark")]
     [DataRow("custom preset", "custom preset")]
-    public async Task RunAsync_reentry_runs_benchmark_without_reacquiring_the_jobserver(string build_preset, string configure_preset)
+    public async Task RunAsync_runs_the_selected_benchmark_directly(string build_preset, string configure_preset)
     {
         using var repository = new TemporaryRepository();
         repository.CreateBenchmarkExecutable(configure_preset);
         var process_runner = new FakeProcessRunner(23);
-        var application = CreateApplication(process_runner, new FakeEnvironment("job-123"));
+        var application = CreateApplication(process_runner);
 
         var exit_code = await application.RunAsync(
             ["native-simulation", "--level", repository.LevelPath, "--seconds", "1", "--build-preset", build_preset, "--skip-build"],
@@ -74,7 +74,7 @@ public sealed class BenchmarkToolsApplicationTests
     {
         using var repository = new TemporaryRepository();
         var process_runner = new FakeProcessRunner(0, 0, 0);
-        var application = CreateApplication(process_runner, new FakeEnvironment());
+        var application = CreateApplication(process_runner);
 
         var exit_code = await application.RunAsync(
             ["native-simulation", "--level", repository.LevelPath, "--seconds", "1", "--build-preset", build_preset],
@@ -82,8 +82,8 @@ public sealed class BenchmarkToolsApplicationTests
 
         Assert.AreEqual(0, exit_code);
         Assert.AreEqual(3, process_runner.Requests.Count);
-        AssertProcess(process_runner.Requests[0], "cmake", ["--preset", "native-benchmark"], repository.Root);
-        AssertProcess(process_runner.Requests[1], "cmake", ["--build", "--preset", build_preset], repository.Root);
+        AssertSetup(process_runner.Requests[0], ["--preset", "native-benchmark"], repository.Root);
+        AssertSetup(process_runner.Requests[1], ["--build", "--preset", build_preset], repository.Root);
     }
 
     [DataTestMethod]
@@ -95,8 +95,7 @@ public sealed class BenchmarkToolsApplicationTests
         var process_runner = new BuildFailureRunner(failed_step);
         var standard_output = new StringWriter();
         var standard_error = new StringWriter();
-        var application = new BenchmarkToolsApplication(process_runner, new FakeJobserverLocator(),
-            new FakeEnvironment(), standard_output, standard_error, @"C:\tools\BenchmarkTools.exe");
+        var application = new BenchmarkToolsApplication(process_runner, standard_output, standard_error, @"C:\tools\BenchmarkTools.exe");
 
         var exit_code = await application.RunAsync(
             ["native-simulation", "--level", repository.LevelPath, "--seconds", "1"], repository.Root);
@@ -113,7 +112,7 @@ public sealed class BenchmarkToolsApplicationTests
         using var repository = new TemporaryRepository();
         var process_runner = new FakeProcessRunner();
         var standard_error = new StringWriter();
-        var application = CreateApplication(process_runner, new FakeEnvironment(), standard_error: standard_error);
+        var application = CreateApplication(process_runner, standard_error: standard_error);
 
         var exit_code = await application.RunAsync(
             ["native-simulation", "--level", repository.LevelPath, "--seconds", "1", "--fighter-stress-cap", "1", "--fighter-stress-caps", "2"],
@@ -126,14 +125,11 @@ public sealed class BenchmarkToolsApplicationTests
 
     private static BenchmarkToolsApplication CreateApplication(
         FakeProcessRunner process_runner,
-        FakeEnvironment environment,
         string executable_path = @"C:\tools\BenchmarkTools.exe",
         TextWriter? standard_error = null)
     {
         return new BenchmarkToolsApplication(
             process_runner,
-            new FakeJobserverLocator(),
-            environment,
             TextWriter.Null,
             standard_error ?? TextWriter.Null,
             executable_path);
@@ -144,6 +140,11 @@ public sealed class BenchmarkToolsApplicationTests
         Assert.AreEqual(file_name, request.FileName);
         Assert.AreEqual(working_directory, request.WorkingDirectory);
         CollectionAssert.AreEqual(arguments, request.Arguments.ToArray());
+    }
+
+    private static void AssertSetup(ProcessRequest request, string[] arguments, string root)
+    {
+        AssertProcess(request, "cmake", arguments, root);
     }
 
     private sealed class FakeProcessRunner(params int[] exit_codes) : IProcessRunner
@@ -159,11 +160,6 @@ public sealed class BenchmarkToolsApplicationTests
         }
     }
 
-    private sealed class FakeJobserverLocator : IJobserverLocator
-    {
-        public string Locate() => @"C:\jobserver\jobserver.exe";
-    }
-
     private sealed class BuildFailureRunner(int failed_step) : IProcessRunner
     {
         public int Calls { get; private set; }
@@ -173,14 +169,6 @@ public sealed class BenchmarkToolsApplicationTests
             return Task.FromResult(Calls++ == failed_step
                 ? new ProcessResult(19, "build progress", "CMake diagnostic")
                 : new ProcessResult(0));
-        }
-    }
-
-    private sealed class FakeEnvironment(string? job_id = null) : IEnvironment
-    {
-        public string? GetEnvironmentVariable(string variable_name)
-        {
-            return variable_name == "NUKETHEBEES_JOBSERVER_JOB" ? job_id : null;
         }
     }
 
@@ -195,6 +183,8 @@ public sealed class BenchmarkToolsApplicationTests
             LevelPath = Path.Combine(Root, "Level Scripts", "benchmark level.scm");
             Directory.CreateDirectory(Path.GetDirectoryName(LevelPath)!);
             File.WriteAllText(LevelPath, "(level)");
+            CreateBenchmarkExecutable("native-benchmark");
+            CreateBenchmarkExecutable("preset with spaces");
         }
 
         public string Root { get; }

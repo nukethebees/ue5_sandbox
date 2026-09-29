@@ -2,25 +2,10 @@ using System.Text.Json;
 
 namespace BenchmarkTools;
 
-internal interface IEnvironment
-{
-    string? GetEnvironmentVariable(string variable_name);
-}
-
-internal sealed class ProcessEnvironment : IEnvironment
-{
-    public string? GetEnvironmentVariable(string variable_name)
-    {
-        return Environment.GetEnvironmentVariable(variable_name);
-    }
-}
-
 internal sealed class BenchmarkToolException(string message) : Exception(message);
 
 internal sealed class BenchmarkToolsApplication(
     IProcessRunner process_runner,
-    IJobserverLocator jobserver_locator,
-    IEnvironment environment,
     TextWriter standard_output,
     TextWriter standard_error,
     string executable_path)
@@ -28,8 +13,6 @@ internal sealed class BenchmarkToolsApplication(
     private const string usage = "Usage: BenchmarkTools <native-simulation|fighter-simulation|frame-memory-level|frame-memory-revision-ab|level-telemetry|gpu-starfield> [options]";
 
     internal IProcessRunner ProcessRunner => process_runner;
-    internal IJobserverLocator JobserverLocator => jobserver_locator;
-    internal IEnvironment Environment => environment;
     internal string ExecutablePath => executable_path;
     internal TextWriter StandardOutput => standard_output;
     internal TextWriter StandardError => standard_error;
@@ -118,18 +101,6 @@ internal sealed class BenchmarkToolsApplication(
                 WriteProcessOutput(build_result);
                 return build_result.ExitCode;
             }
-        }
-
-        if (string.IsNullOrWhiteSpace(environment.GetEnvironmentVariable("NUKETHEBEES_JOBSERVER_JOB")))
-        {
-            var jobserver_request = JobserverExecution.CreateNativeSimulationRequest(
-                jobserver_locator.Locate(),
-                executable_path,
-                repository_paths,
-                request);
-            var jobserver_result = await process_runner.RunAsync(jobserver_request, cancellation_token);
-            WriteProcessOutput(jobserver_result);
-            return jobserver_result.ExitCode;
         }
 
         var benchmark_path = repository_paths.BenchmarkExecutable(request.BuildPreset);

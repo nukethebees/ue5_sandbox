@@ -127,21 +127,23 @@ public sealed class GpuStarfieldBenchmarkCommandTests
     }
 
     [TestMethod]
-    public async Task Cmake_style_gpu_arguments_parse_through_the_application()
+    public async Task Cmake_style_gpu_arguments_launch_the_editor_directly()
     {
         using var repository = new TestRepository();
         var editor = repository.CreateFile(Path.Combine("Engine", "Binaries", "Win64", "UnrealEditor-Cmd.exe"));
         var project = repository.CreateFile("Sandbox.uproject");
         var runner = new RecordingRunner();
-        var application = new BenchmarkToolsApplication(runner, new FakeJobserverLocator(), new EmptyEnvironment(), TextWriter.Null, TextWriter.Null, "BenchmarkTools.exe");
+        var application = new BenchmarkToolsApplication(runner, TextWriter.Null, TextWriter.Null, "BenchmarkTools.exe");
 
         var exit_code = await application.RunAsync([
             "gpu-starfield", $"--editor={editor}", $"--project={project}", $"--output={Path.Combine(repository.Root, "results")}",
             "--counts=100000,1000000", "--resolutions=1920x1080,3840x2160", "--size-multipliers=1,4", "--camera-modes=stationary",
         ], repository.Root);
 
-        Assert.AreEqual(0, exit_code);
-        Assert.AreEqual("run", runner.Requests.Single().Arguments[0]);
+        // The fake editor deliberately fails, so no capture files are required.
+        Assert.AreEqual(1, exit_code);
+        Assert.AreEqual(editor, runner.Requests.Single().FileName);
+        Assert.AreEqual(project, runner.Requests.Single().Arguments[0]);
     }
 
     private static GpuStarfieldBenchmarkCommand.Request Request(int repeats = 1, IReadOnlyList<bool>? camera_modes = null)
@@ -222,10 +224,7 @@ public sealed class GpuStarfieldBenchmarkCommandTests
         public Task<ProcessResult> RunAsync(ProcessRequest request, CancellationToken cancellation_token)
         {
             Requests.Add(request);
-            return Task.FromResult(new ProcessResult(0));
+            return Task.FromResult(new ProcessResult(19));
         }
     }
-
-    private sealed class FakeJobserverLocator : IJobserverLocator { public string Locate() => "jobserver.exe"; }
-    private sealed class EmptyEnvironment : IEnvironment { public string? GetEnvironmentVariable(string variable_name) => null; }
 }

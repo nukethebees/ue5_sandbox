@@ -12,17 +12,6 @@ internal static class LevelTelemetryBenchmarkCommand
             repository_paths,
             parsed.Value("--output-dir", ".local/benchmarks/level-telemetry"));
 
-        return await BenchmarkCommandSupport.RunWithBenchmarkLeaseAsync(
-            application,
-            repository_paths,
-            "level telemetry benchmark",
-            ["level-telemetry", "--samples", samples.ToString(System.Globalization.CultureInfo.InvariantCulture), "--output-dir", output],
-            async () => await RunInsideLeaseAsync(application, repository_paths, samples, output, cancellation_token),
-            cancellation_token: cancellation_token);
-    }
-
-    private static async Task<int> RunInsideLeaseAsync(BenchmarkToolsApplication application, RepositoryPaths repository_paths, int samples, string output, CancellationToken cancellation_token)
-    {
         Directory.CreateDirectory(output);
         var configure = await application.ProcessRunner.RunAsync(
             new ProcessRequest("cmake", ["--preset", "telemetry-benchmark", $"-DIOJ_TELEMETRY_BENCHMARK_SAMPLES={samples}"], repository_paths.Root), cancellation_token);
@@ -40,6 +29,7 @@ internal static class LevelTelemetryBenchmarkCommand
             return build.ExitCode;
         }
 
+        // The CTest benchmark entry acquires machine/exclusive at the measurement boundary.
         var test = await application.ProcessRunner.RunAsync(
             new ProcessRequest("ctest", ["--preset", "telemetry-benchmark", "--output-on-failure", "--verbose"], repository_paths.Root), cancellation_token);
         File.WriteAllText(Path.Combine(output, "telemetry-benchmark.log"), test.StandardOutput + test.StandardError);

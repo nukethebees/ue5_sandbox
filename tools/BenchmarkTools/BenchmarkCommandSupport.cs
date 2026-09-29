@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -85,33 +84,6 @@ internal static class BenchmarkCommandSupport
             new ProcessRequest(application.ExecutablePath, arguments, repository_paths.Root), cancellation_token);
     }
 
-    public static async Task<int> RunWithBenchmarkLeaseAsync(
-        BenchmarkToolsApplication application,
-        RepositoryPaths repository_paths,
-        string name,
-        IReadOnlyList<string> command_arguments,
-        Func<Task<int>> action,
-        IReadOnlyList<string>? shared_resources = null,
-        bool skip_lease = false,
-        CancellationToken cancellation_token = default)
-    {
-        if (skip_lease || !string.IsNullOrWhiteSpace(application.Environment.GetEnvironmentVariable("NUKETHEBEES_JOBSERVER_JOB")))
-        {
-            return await action();
-        }
-
-        var request = JobserverExecution.CreateRequest(
-            application.JobserverLocator.Locate(),
-            application.ExecutablePath,
-            repository_paths,
-            name,
-            command_arguments,
-            shared_resources);
-        var result = await application.ProcessRunner.RunAsync(request, cancellation_token);
-        application.WriteProcessOutput(result);
-        return result.ExitCode;
-    }
-
     public static string ResolveOutputDirectory(RepositoryPaths repository_paths, string output_directory)
     {
         var path = Path.IsPathFullyQualified(output_directory)
@@ -149,22 +121,6 @@ internal static class BenchmarkCommandSupport
             }
         }
         return results;
-    }
-
-    public static string EngineResource(string editor_path)
-    {
-        var editor = new FileInfo(Path.GetFullPath(editor_path));
-        var binaries = editor.Directory?.Parent;
-        var engine = binaries?.Parent;
-        var root = engine?.Parent;
-        if (root is null || !string.Equals(engine?.Name, "Engine", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new BenchmarkToolException($"Could not derive an Unreal Engine root from '{editor_path}'.");
-        }
-        var resolved_root = root.Exists ? root.ResolveLinkTarget(returnFinalTarget: true)?.FullName ?? root.FullName : root.FullName;
-        var canonical = resolved_root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).ToLowerInvariant();
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
-        return $"unreal-build/{hash}";
     }
 
     public static void WriteCsv(string path, IEnumerable<string[]> rows)
