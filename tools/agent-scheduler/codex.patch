@@ -1,11 +1,11 @@
 diff --git a/codex-rs/Cargo.lock b/codex-rs/Cargo.lock
-index 01a121b..e9cb2c3 100644
+index 01a121b..423c937 100644
 --- a/codex-rs/Cargo.lock
 +++ b/codex-rs/Cargo.lock
-@@ -105,6 +105,19 @@ dependencies = [
+@@ -105,6 +105,18 @@ dependencies = [
   "sha2 0.10.9",
  ]
-
+ 
 +[[package]]
 +name = "agent-scheduler"
 +version = "0.1.0"
@@ -15,14 +15,13 @@ index 01a121b..e9cb2c3 100644
 + "codex-shell-command",
 + "serde_json",
 + "tokio",
-+ "tokio-util",
 + "windows-sys 0.61.2",
 +]
 +
  [[package]]
  name = "ahash"
  version = "0.8.12"
-@@ -2888,6 +2901,7 @@ dependencies = [
+@@ -2888,6 +2900,7 @@ dependencies = [
  name = "codex-core"
  version = "0.0.0"
  dependencies = [
@@ -31,17 +30,25 @@ index 01a121b..e9cb2c3 100644
   "arc-swap",
   "assert_cmd",
 diff --git a/codex-rs/core/Cargo.toml b/codex-rs/core/Cargo.toml
-index 693fbd7..ec2d68e 100644
+index 693fbd7..aef0137 100644
 --- a/codex-rs/core/Cargo.toml
 +++ b/codex-rs/core/Cargo.toml
 @@ -12,6 +12,7 @@ path = "src/lib.rs"
  workspace = true
-
+ 
  [dependencies]
 +agent-scheduler = { path = "../../../../tools/agent-scheduler" }
  anyhow = { workspace = true }
  arc-swap = { workspace = true }
  async-channel = { workspace = true }
+@@ -139,6 +140,7 @@ openssl-sys = { workspace = true, features = ["vendored"] }
+ codex-shell-escalation = { workspace = true }
+ 
+ [dev-dependencies]
++agent-scheduler = { path = "../../../../tools/agent-scheduler", features = ["test-support"] }
+ assert_cmd = { workspace = true }
+ assert_matches = { workspace = true }
+ codex-exec-server-test-support = { workspace = true }
 diff --git a/codex-rs/core/src/session/session.rs b/codex-rs/core/src/session/session.rs
 index 62be2d3..001f08d 100644
 --- a/codex-rs/core/src/session/session.rs
@@ -54,249 +61,72 @@ index 62be2d3..001f08d 100644
          debug!(
              "Configuring session: model={}; provider={:?}",
              session_configuration
-diff --git a/codex-rs/core/src/tools/runtimes/unified_exec.rs b/codex-rs/core/src/tools/runtimes/unified_exec.rs
-index 722b8df..3bbb380 100644
---- a/codex-rs/core/src/tools/runtimes/unified_exec.rs
-+++ b/codex-rs/core/src/tools/runtimes/unified_exec.rs
-@@ -36,7 +36,6 @@ use crate::tools::sandboxing::ToolError;
- use crate::tools::sandboxing::ToolRuntime;
- use crate::tools::sandboxing::managed_network_for_sandbox_permissions;
- use crate::tools::sandboxing::sandbox_permissions_preserving_denied_reads;
--use crate::unified_exec::NoopSpawnLifecycle;
- use crate::unified_exec::TerminalPermissions;
- use crate::unified_exec::TerminalSandboxSource;
- use crate::unified_exec::UnifiedExecError;
-@@ -111,6 +110,14 @@ pub struct UnifiedExecApprovalKey {
- pub struct UnifiedExecRuntime<'a> {
-     manager: &'a UnifiedExecProcessManager,
-     shell_mode: UnifiedExecShellMode,
-+    pub(crate) scheduling: agent_scheduler::Invocation,
-+}
-+
-+impl crate::unified_exec::SpawnLifecycle for agent_scheduler::Attempt {
-+    fn observe_spawn(&mut self, process: &mut codex_utils_pty::SpawnedProcess) {
-+        let observer = self.clone();
-+        process.on_root_exit(move |code| observer.root_exited(code));
-+    }
+diff --git a/codex-rs/core/src/session/tests/guardian_tests.rs b/codex-rs/core/src/session/tests/guardian_tests.rs
+index 2d78c4a..a0d96cc 100644
+--- a/codex-rs/core/src/session/tests/guardian_tests.rs
++++ b/codex-rs/core/src/session/tests/guardian_tests.rs
+@@ -918,7 +918,7 @@ async fn delayed_exec_command_uses_its_captured_authority_after_next_turn_starts
  }
-
- pub(crate) struct UnifiedExecAttempt {
-@@ -158,6 +165,7 @@ impl<'a> UnifiedExecRuntime<'a> {
-         Self {
-             manager,
-             shell_mode,
-+            scheduling: agent_scheduler::Invocation::default(),
-         }
-     }
- }
-@@ -269,6 +277,20 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
-         attempt: &SandboxAttempt<'_>,
-         ctx: &ToolCtx,
-     ) -> Result<UnifiedExecAttempt, ToolError> {
-+        if req.turn_environment.environment.is_remote()
-+            || req.shell_snapshot.is_some()
-+            || attempt.sandbox == codex_sandboxing::SandboxType::WindowsMxc
-+            || (attempt.sandbox == codex_sandboxing::SandboxType::WindowsRestrictedToken
-+                && attempt.windows_sandbox_level
-+                    == codex_protocol::config_types::WindowsSandboxLevel::Elevated)
-+        {
-+            return Err(ToolError::Rejected(
-+                "Scheduler example supports local Windows pipe/PTY and unelevated restricted-token execution; elevated sandbox, remote, snapshots and MXC are unsupported".into(),
-+            ));
-+        }
-+        let scheduler = agent_scheduler::initialize()
-+            .await
-+            .map_err(|error| ToolError::Rejected(error.to_string()))?;
-         let base_command = &req.command;
-         let windows_sandbox_proxy_settings_mode = ctx.session.windows_sandbox_proxy_settings_mode;
-         let session_shell = ctx.session.user_shell();
-@@ -346,6 +368,10 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
-         };
-         let shell_snapshot_location = shell_snapshot.as_ref().map(|snapshot| snapshot.path());
-         let mut env = exec_env_for_sandbox_permissions(&req.env, launch_sandbox_permissions);
-+        env.insert(
-+            "AGENT_SCHEDULER_SESSION".into(),
-+            scheduler.endpoint().into(),
-+        );
-         let snapshot_credential_context = if let Some(snapshot) = shell_snapshot.as_ref()
-             && (managed_network.is_some() || base_command.get(1).is_some_and(|flag| flag == "-lc"))
-         {
-@@ -708,6 +734,11 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
-             error @ ToolError::Codex(_) => error,
-         })?;
-         let options = unified_exec_options(attempt.network_denial_cancellation_token.clone());
-+        let observer = self
-+            .scheduling
-+            .before_spawn(scheduler, &req.hook_command, &ctx.cancellation_token)
-+            .await
-+            .map_err(|error| ToolError::Rejected(error.to_string()))?;
-         let process = self
-             .manager
-             .open_session_with_exec_env(
-@@ -723,7 +754,7 @@ impl<'a> ToolRuntime<UnifiedExecRequest, UnifiedExecAttempt> for UnifiedExecRunt
-                 req.shell_snapshot.clone(),
-                 windows_sandbox_proxy_settings_mode,
-                 req.tty,
--                Box::new(NoopSpawnLifecycle),
-+                Box::new(observer),
-                 req.turn_environment.environment.as_ref(),
-             )
+ 
+ #[tokio::test]
+-async fn sandbox_denied_retry_uses_the_action_policy_and_reviewer() {
++async fn sandbox_denied_retry_consumes_one_scheduler_ticket() {
+     #[derive(Default)]
+     struct DeniedOnceRuntime {
+         attempts: usize,
+@@ -1024,17 +1024,24 @@ async fn sandbox_denied_retry_uses_the_action_policy_and_reviewer() {
              .await;
-diff --git a/codex-rs/core/src/unified_exec/mod.rs b/codex-rs/core/src/unified_exec/mod.rs
-index 3645306..5410525 100644
---- a/codex-rs/core/src/unified_exec/mod.rs
-+++ b/codex-rs/core/src/unified_exec/mod.rs
-@@ -62,8 +62,8 @@ pub(crate) fn set_deterministic_process_ids_for_tests(enabled: bool) {
- }
-
- pub(crate) use errors::UnifiedExecError;
-+#[cfg(test)]
- pub(crate) use process::NoopSpawnLifecycle;
--#[cfg(unix)]
- pub(crate) use process::SpawnLifecycle;
- pub(crate) use process::SpawnLifecycleHandle;
- pub(crate) use process::UnifiedExecProcess;
-diff --git a/codex-rs/core/src/unified_exec/process.rs b/codex-rs/core/src/unified_exec/process.rs
-index 8305c02..e139ab9 100644
---- a/codex-rs/core/src/unified_exec/process.rs
-+++ b/codex-rs/core/src/unified_exec/process.rs
-@@ -38,6 +38,8 @@ use crate::shell_snapshot::ShellSnapshotFile;
-
- const EARLY_EXIT_GRACE_PERIOD: Duration = Duration::from_millis(150);
- pub(crate) trait SpawnLifecycle: std::fmt::Debug + Send + Sync {
-+    /// Observe root exit separately from output/process completion.
-+    fn observe_spawn(&mut self, _process: &mut SpawnedPty) {}
-     /// Returns file descriptors that must stay open across the child `exec()`.
-     ///
-     /// The returned descriptors must already be valid in the parent process and
-@@ -52,10 +54,12 @@ pub(crate) trait SpawnLifecycle: std::fmt::Debug + Send + Sync {
-
- pub(crate) type SpawnLifecycleHandle = Box<dyn SpawnLifecycle>;
-
-+#[cfg(test)]
- #[derive(Debug, Default)]
- /// Spawn lifecycle that performs no extra setup around process launch.
- pub(crate) struct NoopSpawnLifecycle;
-
-+#[cfg(test)]
- impl SpawnLifecycle for NoopSpawnLifecycle {}
-
- /// Output pending model polling and the retained completion transcript.
-diff --git a/codex-rs/core/src/unified_exec/process_manager.rs b/codex-rs/core/src/unified_exec/process_manager.rs
-index 3dc3e97..70a9b08 100644
---- a/codex-rs/core/src/unified_exec/process_manager.rs
-+++ b/codex-rs/core/src/unified_exec/process_manager.rs
-@@ -1423,8 +1423,9 @@ impl UnifiedExecProcessManager {
-         })
-         .await;
-         spawn_lifecycle.after_spawn();
--        let spawned =
-+        let mut spawned =
-             spawn_result.map_err(|err| UnifiedExecError::create_process(err.to_string()))?;
-+        spawn_lifecycle.observe_spawn(&mut spawned);
-         UnifiedExecProcess::from_spawned(spawned, request.sandbox, spawn_lifecycle).await
-     }
-
-@@ -1551,6 +1552,9 @@ impl UnifiedExecProcessManager {
-                 },
-                 other => UnifiedExecError::create_process(format!("{other:?}")),
-             });
-+        if result.is_ok() {
-+            runtime.scheduling.accept();
-+        }
-         let outcome = match &result {
-             Ok(_) => "completed",
-             Err(_) if context.cancellation_token.is_cancelled() => "cancelled",
-diff --git a/codex-rs/utils/pty/src/process.rs b/codex-rs/utils/pty/src/process.rs
-index 5593450..b7e98b9 100644
---- a/codex-rs/utils/pty/src/process.rs
-+++ b/codex-rs/utils/pty/src/process.rs
-@@ -109,6 +109,7 @@ type ResizeFn = Box<dyn FnMut(TerminalSize) -> anyhow::Result<()> + Send>;
-
- /// Handle for driving an interactive process (PTY or pipe).
- pub struct ProcessHandle {
-+    root_exit_rx: Option<oneshot::Receiver<i32>>,
-     writer_tx: StdMutex<Option<mpsc::Sender<Vec<u8>>>>,
-     killer: StdMutex<Option<Box<dyn ChildTerminator>>>,
-     reader_handle: StdMutex<Option<JoinHandle<()>>>,
-@@ -146,6 +147,7 @@ impl ProcessHandle {
-         resizer: Option<ResizeFn>,
-     ) -> Self {
-         Self {
-+            root_exit_rx: None,
-             writer_tx: StdMutex::new(Some(writer_tx)),
-             killer: StdMutex::new(Some(killer)),
-             reader_handle: StdMutex::new(Some(reader_handle)),
-@@ -360,6 +362,36 @@ pub struct SpawnedProcess {
-     pub exit_rx: oneshot::Receiver<i32>,
- }
-
-+impl SpawnedProcess {
-+    /// Supply the root exit code separately when ordinary completion waits for output EOF.
-+    pub fn with_root_exit(mut self, root_exit: oneshot::Receiver<i32>) -> Self {
-+        self.session.root_exit_rx = Some(root_exit);
-+        self
-+    }
-+
-+    /// Observe true root exit before publishing ordinary process completion.
-+    /// Output draining is unchanged. Standard pipe/PTY exit already comes from child.wait().
-+    /// Register once per process; `None` means the root-exit notification was lost.
-+    pub fn on_root_exit(&mut self, observer: impl FnOnce(Option<i32>) + Send + 'static) {
-+        let root = self.session.root_exit_rx.take();
-+        let (exit_tx, exit_rx) = oneshot::channel();
-+        let original = std::mem::replace(&mut self.exit_rx, exit_rx);
-+        tokio::spawn(async move {
-+            let result = if let Some(root) = root {
-+                observer(root.await.ok());
-+                original.await
-+            } else {
-+                let result = original.await;
-+                observer(result.as_ref().ok().copied());
-+                result
-+            };
-+            if let Ok(code) = result {
-+                let _ = exit_tx.send(code);
-+            }
-+        });
-+    }
-+}
-+
- /// Driver-backed process handles for non-standard spawn backends.
- pub struct ProcessDriver {
-     pub writer_tx: mpsc::Sender<Vec<u8>>,
-diff --git a/codex-rs/windows-sandbox-rs/src/unified_exec/backends/legacy.rs b/codex-rs/windows-sandbox-rs/src/unified_exec/backends/legacy.rs
-index 62a82a7..09d03ee 100644
---- a/codex-rs/windows-sandbox-rs/src/unified_exec/backends/legacy.rs
-+++ b/codex-rs/windows-sandbox-rs/src/unified_exec/backends/legacy.rs
-@@ -388,6 +388,7 @@ pub(crate) async fn spawn_windows_sandbox_session_legacy(
-         Some(broadcast::channel::<Vec<u8>>(256))
      };
-     let (exit_tx, exit_rx) = oneshot::channel::<i32>();
-+    let (root_tx, root_rx) = oneshot::channel::<i32>();
-
-     let LegacyProcessHandles {
-         process: pi,
-@@ -441,6 +442,16 @@ pub(crate) async fn spawn_windows_sandbox_session_legacy(
-                 wait_logs_base_dir.as_deref(),
-             );
-         }
-+        // Root completion is independent of ConPTY shutdown and output-reader EOF.
-+        unsafe {
-+            let mut code = 1;
-+            if WaitForSingleObject(pi.hProcess, INFINITE)
-+                == windows_sys::Win32::Foundation::WAIT_OBJECT_0
-+                && GetExitCodeProcess(pi.hProcess, &mut code) != 0
-+            {
-+                let _ = root_tx.send(code as i32);
-+            }
-+        }
-         if let Some(hpc) = hpc_for_wait
-             && let Ok(mut guard) = hpc.lock()
-         {
-@@ -485,5 +496,5 @@ pub(crate) async fn spawn_windows_sandbox_session_legacy(
-         tty,
-     };
-
--    Ok(finish_driver_spawn(driver, stdin_open))
-+    Ok(finish_driver_spawn(driver, stdin_open).with_root_exit(root_rx))
+ 
++    let (scheduler, scheduler_peer) = agent_scheduler::test_support::single_ticket().await;
+     let (output, ()) = tokio::join!(
+-        orchestrator.run(&mut runtime, environment, &context),
++        scheduler.run(
++            "echo sandbox-retry",
++            orchestrator.run(&mut runtime, environment, &context)
++        ),
+         approve
+     );
+     assert_eq!(
+         output
++            .expect("scheduler operation succeeds")
+             .expect("approved sandbox retry should succeed")
+             .output,
+         "sandbox-retry-succeeded"
+     );
+     assert_eq!(runtime.attempts, 2);
++    assert_eq!(scheduler.status().unwrap()["state"], "none");
++    let _peer = scheduler_peer.await.unwrap();
  }
+ 
+ #[tokio::test]
+diff --git a/codex-rs/core/src/tools/registry.rs b/codex-rs/core/src/tools/registry.rs
+index 7d88650..4ad844e 100644
+--- a/codex-rs/core/src/tools/registry.rs
++++ b/codex-rs/core/src/tools/registry.rs
+@@ -808,7 +808,24 @@ async fn handle_any_tool(
+ ) -> Result<AnyToolResult, FunctionCallError> {
+     let call_id = invocation.call_id.clone();
+     let payload = invocation.payload.clone();
+-    let output = tool.handle(invocation.clone()).await?;
++    let output = if let Some(command) = shell_script_for_invocation(&invocation) {
++        let scheduler = agent_scheduler::get()
++            .map_err(|error| FunctionCallError::RespondToModel(error.to_string()))?;
++        if let Some(response) = scheduler
++            .control(&command)
++            .await
++            .map_err(|error| FunctionCallError::RespondToModel(error.to_string()))?
++        {
++            Box::new(FunctionToolOutput::from_text(response, Some(true))) as Box<dyn ToolOutput>
++        } else {
++            scheduler
++                .run(&command, tool.handle(invocation.clone()))
++                .await
++                .map_err(|error| FunctionCallError::RespondToModel(error.to_string()))??
++        }
++    } else {
++        tool.handle(invocation.clone()).await?
++    };
+     let post_tool_use_payload =
+         CoreToolRuntime::post_tool_use_payload(tool, &invocation, output.as_ref());
+     let result = AnyToolResult {

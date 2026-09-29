@@ -1,79 +1,37 @@
 # Installation and development
 
-## Central installation
+The maintainer runs `agent-task install-central-tools` to build/install the pinned modified Codex,
+its code-mode host, and jobserver. Agents report missing components rather than installing them.
+Canonical binaries live under `%LOCALAPPDATA%\NukeTheBees\agent-codex\bin`.
+Close modified Codex sessions before updating. The launcher forwards normal Codex arguments;
+security and sandbox settings remain Codex's responsibility.
 
-Update `agent-task` once with `. ./dev.ps1` followed by `install-agent-task`, then
-run `agent-task install-central-tools`. This prepares the pinned source, builds
-Codex, its code-mode host, and the scheduler client using the root [ioj.toml](../../../ioj.toml), and installs them under
-`%LOCALAPPDATA%\NukeTheBees\agent-codex\bin`. Close custom Codex sessions before updating.
-This maintainer-only installer builds directly, without requesting a jobserver lease.
-If an old session locks a retired executable, installation succeeds with a cleanup
-warning. Close old sessions and rerun the installer to remove retained `.previous-*`
-directories; the new installation stays usable.
+Set `[tools.codex].build_profile` in `ioj.toml` to `debug`, `release-no-lto`, or `release`.
+The standalone installer accepts a configuration override and a private staging root for build validation;
+only the canonical installation can connect to production admission.
+The build reuses the pinned upstream package builder's verified V8 artifacts in `.local/codex-v8`.
 
-The `agent-codex.ps1` launcher forwards normal Codex arguments, selects the
-unelevated backend, disables shell snapshots, and loads your external scheduling
-rules ([setup](behavior.md#scheduling-rules)). Normal `codex` remains unchanged.
-`codex-code-mode-host.exe` is a required companion that executes code-mode tool
-programs such as `functions.exec`; it must be built and installed alongside Codex.
-The build reuses the pinned upstream package builder to fetch and verify OpenAI's
-V8 archive/bindings into `.local/codex-v8` before running Cargo.
+## Source boundary
 
-The [standalone installer](../../install/Install-AgentCodex.ps1) accepts
-`-InstallRoot <private-root>` and `-Configuration Debug` for staging validation
-without replacing installed tools.
+`Prepare-Upstream.ps1` prepares the revision in `upstream-revision.txt` under `.local/codex-upstream`
+and applies `codex.patch`. The scheduler crate owns transport, policy, ticket state, pseudo-command
+parsing, and logical lifetime. The production patch adds its dependency, initializes once in session
+startup, and wraps `handle_any_tool` for `exec_command` in `core/src/tools/registry.rs`.
+There are no changes to PTY, sandbox backends, process management, or spawn/retry infrastructure.
 
-Set `[tools.codex].build_profile` to `debug` (the default), `release-no-lto`, or
-`release`. The installer reads this on every run; no AgentTask rebuild is needed.
-An explicit `-Configuration Debug`, `ReleaseNoLTO`, or `Release` overrides the file.
-Python 3.11 or newer reads TOML using its standard library.
-
-`release-no-lto` uses [build-profile.toml](../build-profile.toml): Cargo's
-`release-no-lto` profile inherits each workspace's release settings and disables
-all LTO with `lto = "off"`. Codex's other release settings remain unchanged.
-Artifacts live under `.local/scheduler-target/release-no-lto`. Use
-`-Configuration Release` for upstream's original release profile with ThinLTO.
-Local CMake builds select the derived profile with `-DCMAKE_BUILD_TYPE=ReleaseNoLTO`.
-
-## Local build
-
-Run these commands from the repository root. The preparation script checks out
-the revision in [upstream-revision.txt](../upstream-revision.txt) under
-`.local/codex-upstream` and applies [codex.patch](../codex.patch).
-The local build does not replace installed tools.
+## Focused validation
 
 ```powershell
-tools/agent-scheduler/Prepare-Upstream.ps1
 cmake -S tools/agent-scheduler -B .local/scheduler-build -G Ninja
-cmake --build .local/scheduler-build --target scheduler-example codex-scheduler
-tools/agent-scheduler/agent-codex.ps1
+cmake --build .local/scheduler-build --target scheduler-unit-tests
+cmake --build .local/scheduler-build --target codex-scheduler
+cmake --build .local/scheduler-build --target codex-retry-test
 ```
 
-## Validation
-
-From the repository root:
-
-```powershell
-cmake --build .local/scheduler-build --target scheduler-unit-tests codex-process-tests
-tools/agent-scheduler/Run-Examples.ps1
-```
-
-The demonstrations use an isolated instance of the installed daemon and scripted
-local Responses events; no model service is contacted. Run the launcher outside
-Codex's sandbox: the child Codex creates its own restricted-token sandbox.
-Coverage includes sandboxed `ticket`/`status`/`clear` access, FIFO
-admission, cancellation/grant races, spawn failure, immediate ticket reuse,
-daemon loss, independent security rejection, startup failure and a real
-sandbox-denied write followed by an approved retry.
-
-`-Only lifecycle` or `-Only leases` selects a focused group.
-Use `-InstalledBin <install-root>/bin` to exercise the installed launcher. The
-demonstration explicitly selects the repository's example rules through
-`AGENT_SCHEDULER_RULES`, leaving your active configuration untouched.
-
-The real Codex descendant regression obtains exclusivity while the root is gone
-and its child still holds inherited output handles (ordinary pipes/PTY and
-restricted pipes). Restricted PTY also checks root release, allowing Codex's
-existing ConPTY teardown to end the child. Unit tests hold release acknowledgements
-to verify asynchronous waiting, cancellation and disconnect handling; process tests
-check output draining.
+Scheduler tests use in-memory framed peers and exercise rules, missing tickets, queued/granted execution,
+single-ticket rejection, clearing, cancellation, and fail-closed disconnects.
+The pinned Codex regression wraps its existing sandbox-denied/approved-retry test in one scheduler call.
+Its mock admission peer asserts exactly one request and one release; no retry state reaches scheduling.
+The test-only feature is absent from installed builds. Jobserver tests independently cover FIFO and
+Windows identity restrictions. No live installation, model service, Unreal build, or process-survival
+test is needed.

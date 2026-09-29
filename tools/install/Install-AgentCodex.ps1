@@ -35,7 +35,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Pinned Codex preparation failed.' }
     cmake -S "$repo/tools/agent-scheduler" -B $build -G Ninja "-DCMAKE_BUILD_TYPE=$Configuration"
     if ($LASTEXITCODE -ne 0) { throw 'Scheduler configuration failed.' }
-    cmake --build $build --target scheduler-client codex-scheduler
+    cmake --build $build --target codex-scheduler
     if ($LASTEXITCODE -ne 0) { throw 'Scheduler/Codex build failed.' }
     cmake --install $build --prefix $candidate
     if ($LASTEXITCODE -ne 0) { throw 'Scheduler/Codex candidate install failed.' }
@@ -50,7 +50,7 @@ try {
         if (Test-Path -LiteralPath $backup) { [IO.Directory]::Move($backup, $bin) }
         throw
     }
-    Publish-ToolLinks $bin @('agent-codex.ps1', 'agent-scheduler.exe', 'codex-scheduler.exe', 'codex-code-mode-host.exe') $links
+    Publish-ToolLinks $bin @('agent-codex.ps1', 'codex-scheduler.exe', 'codex-code-mode-host.exe') $links
     foreach ($previous in Get-ChildItem -LiteralPath $root -Directory -Filter '.previous-*' -Force) {
         try {
             Remove-PrivateOutput $previous.FullName
@@ -59,7 +59,7 @@ try {
         }
     }
     Write-Host 'Installed scheduler-enabled Codex. Launch agent-codex.ps1. Normal codex is unchanged.'
-    Write-Host "Reference rules: '$bin/scheduling.default.rules'. Keep active rules in '%NTB_APPDATA_LOCAL%\config\agent-scheduler\scheduling.rules' or set AGENT_SCHEDULER_RULES."
+    Write-Host "Reference rules: '$bin/scheduling.default.rules'. Keep active rules in '%LOCALAPPDATA%\NukeTheBees\config\agent-scheduler\scheduling.rules'."
 } finally {
     Remove-PrivateOutput $candidate
 }

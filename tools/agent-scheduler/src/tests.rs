@@ -1,133 +1,192 @@
 use super::*;
-use tokio::net::windows::named_pipe::ServerOptions;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use tokio::io::DuplexStream;
 use tokio::sync::oneshot;
 
-async fn mock() -> (
-    Arc<Scheduler>,
-    tokio::net::windows::named_pipe::NamedPipeServer,
-) {
-    static NEXT_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
-    let id = (u64::from(std::process::id()) << 32)
-        | NEXT_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-    let endpoint = format!(r"\\.\pipe\SchedulerAckTest.{id}");
-    let mut server = ServerOptions::new()
-        .first_pipe_instance(true)
-        .create(&endpoint)
-        .unwrap();
-    let accept = async {
-        server.connect().await.unwrap();
-        assert_eq!(read_frame(&mut server).await.unwrap()["type"], "hello");
-        write_frame(
-            &mut server,
-            &json!({"type":"hello_ack","protocol":{"major":2},"client":id}),
-        )
-        .await
-        .unwrap();
-    };
-    let (client, ()) = tokio::join!(
-        Scheduler::connect(PolicyParser::new().build(), &endpoint),
-        accept
-    );
-    (client.unwrap(), server)
-}
-
-async fn expect(pipe: &mut tokio::net::windows::named_pipe::NamedPipeServer, kind: &str) -> Value {
-    loop {
-        let message = read_frame(pipe).await.unwrap();
-        if message["type"] == "health" {
-            continue;
-        }
-        assert_eq!(message["type"], kind);
-        return message;
-    }
+async fn fixture() -> (Arc<Scheduler>, DuplexStream) {
+    let (client, mut server) = tokio::io::duplex(8192);
+    let opening = tokio::spawn(async move {
+        let mut parser = PolicyParser::new();
+        parser
+            .parse(
+                "test.rules",
+                r#"prefix_rule(pattern=["rg"], decision="allow")"#,
+            )
+            .unwrap();
+        Scheduler::open(parser.build(), client).await.unwrap()
+    });
+    assert_eq!(read_frame(&mut server).await.unwrap()["type"], "hello");
+    write_frame(
+        &mut server,
+        &json!({"type":"hello_ack","protocol":{"major":3}}),
+    )
+    .await
+    .unwrap();
+    (opening.await.unwrap(), server)
 }
 
 #[tokio::test]
-async fn next_ticket_waits_for_ack_and_respects_cancellation() {
-    let (client, mut daemon) = mock().await;
-    let (released_tx, released) = oneshot::channel();
-    let (acknowledge, ack) = oneshot::channel();
-    let (stop, stopped) = oneshot::channel();
-    let server = tokio::spawn(async move {
-        expect(&mut daemon, "acquire").await;
-        write_frame(&mut daemon, &json!({"type":"granted","lease":1}))
-            .await
-            .unwrap();
-        assert_eq!(expect(&mut daemon, "release").await["lease"], 1);
-        released_tx.send(()).unwrap();
-        ack.await.unwrap();
-        write_frame(&mut daemon, &json!({"type":"released","lease":1}))
-            .await
-            .unwrap();
-        expect(&mut daemon, "acquire").await;
-        write_frame(&mut daemon, &json!({"type":"granted","lease":2}))
-            .await
-            .unwrap();
-        stopped.await.unwrap();
-    });
-    let cancellation = CancellationToken::new();
-    client
-        .request_ticket("shared", "one", &cancellation)
-        .await
-        .unwrap();
-    let invocation = Invocation::default();
-    let observer = invocation
-        .before_spawn(&client, "work", &cancellation)
-        .await
-        .unwrap();
-    invocation.accept();
-    observer.root_exited(Some(0));
-    released.await.unwrap();
-    let cancelled = CancellationToken::new();
-    {
-        let request = client.request_ticket("shared", "cancelled", &cancelled);
-        tokio::pin!(request);
-        tokio::select! { biased; result = &mut request => panic!("must await ack: {result:?}"), _ = std::future::ready(()) => {} }
-        cancelled.cancel();
-        assert!(request.await.unwrap_err().to_string().contains("cancelled"));
-    }
-    let request = client.request_ticket("shared", "two", &cancellation);
-    tokio::pin!(request);
-    tokio::select! { biased; result = &mut request => panic!("must await ack: {result:?}"), _ = std::future::ready(()) => {} }
-    acknowledge.send(()).unwrap();
-    assert_eq!(request.await.unwrap()["lease"], 2);
-    // Dropping/releasing an older logical invocation cannot change ticket 2.
-    observer.root_exited(Some(0));
-    drop(invocation);
-    assert_eq!(client.status().unwrap()["lease"], 2);
-    stop.send(()).unwrap();
-    server.await.unwrap();
-}
-
-#[tokio::test]
-async fn daemon_loss_wakes_a_ticket_waiting_for_release_ack() {
-    let (client, mut daemon) = mock().await;
-    let (disconnect, disconnected) = oneshot::channel();
-    let server = tokio::spawn(async move {
-        expect(&mut daemon, "acquire").await;
-        write_frame(&mut daemon, &json!({"type":"granted","lease":1}))
-            .await
-            .unwrap();
-        expect(&mut daemon, "cancel").await;
-        disconnected.await.unwrap();
-    });
-    let cancellation = CancellationToken::new();
-    client
-        .request_ticket("shared", "one", &cancellation)
-        .await
-        .unwrap();
-    client.clear().unwrap();
-    let next = client.request_ticket("shared", "two", &cancellation);
-    tokio::pin!(next);
-    tokio::select! { biased; result = &mut next => panic!("must await ack: {result:?}"), _ = std::future::ready(()) => {} }
-    disconnect.send(()).unwrap();
+async fn exempt_without_ticket_and_expensive_without_ticket() {
+    let (scheduler, _server) = fixture().await;
+    assert_eq!(scheduler.run("rg needle", async { 42 }).await.unwrap(), 42);
+    let result = scheduler
+        .run("cmake --build out", async { panic!("must not execute") })
+        .await;
     assert!(
-        tokio::time::timeout(std::time::Duration::from_secs(2), next)
-            .await
-            .unwrap()
+        result
             .unwrap_err()
             .to_string()
-            .contains("disconnected")
+            .contains("No scheduling ticket")
     );
-    server.await.unwrap();
+    assert_eq!(scheduler.status().unwrap()["state"], "none");
+}
+
+#[tokio::test]
+async fn queued_command_waits_and_completion_releases() {
+    let (scheduler, mut server) = fixture().await;
+    let (grant, wait) = oneshot::channel();
+    let daemon = tokio::spawn(async move {
+        assert_eq!(read_frame(&mut server).await.unwrap()["type"], "request");
+        write_frame(&mut server, &json!({"type":"queued"}))
+            .await
+            .unwrap();
+        wait.await.unwrap();
+        write_frame(&mut server, &json!({"type":"granted"}))
+            .await
+            .unwrap();
+        assert_eq!(read_frame(&mut server).await.unwrap()["type"], "release");
+        write_frame(&mut server, &json!({"type":"released"}))
+            .await
+            .unwrap();
+        server
+    });
+    scheduler.ticket("shared", "compile").await.unwrap();
+    assert!(scheduler.ticket("exclusive", "duplicate").await.is_err());
+    let executed = Arc::new(AtomicUsize::new(0));
+    let calls = executed.clone();
+    let client = scheduler.clone();
+    let command = tokio::spawn(async move {
+        client
+            .run("cmake --build out", async {
+                calls.fetch_add(1, Ordering::SeqCst);
+                17
+            })
+            .await
+    });
+    tokio::task::yield_now().await;
+    assert_eq!(executed.load(Ordering::SeqCst), 0);
+    grant.send(()).unwrap();
+    assert_eq!(command.await.unwrap().unwrap(), 17);
+    assert_eq!(executed.load(Ordering::SeqCst), 1);
+    assert_eq!(scheduler.status().unwrap()["state"], "none");
+    let _server = daemon.await.unwrap();
+}
+
+#[tokio::test]
+async fn granted_ticket_is_single_and_errors_release_it() {
+    let (scheduler, mut server) = fixture().await;
+    let daemon = tokio::spawn(async move {
+        assert_eq!(read_frame(&mut server).await.unwrap()["mode"], "exclusive");
+        write_frame(&mut server, &json!({"type":"granted"}))
+            .await
+            .unwrap();
+        assert_eq!(read_frame(&mut server).await.unwrap()["type"], "release");
+        write_frame(&mut server, &json!({"type":"released"}))
+            .await
+            .unwrap();
+        server
+    });
+    scheduler.ticket("exclusive", "benchmark").await.unwrap();
+    assert!(scheduler.ticket("shared", "duplicate").await.is_err());
+    assert_eq!(scheduler.run("rg read", async { 1 }).await.unwrap(), 1);
+    assert_eq!(scheduler.status().unwrap()["state"], "granted");
+    let result: Result<(), &str> = scheduler
+        .run("benchmark", async { Err("command failed") })
+        .await
+        .unwrap();
+    assert_eq!(result.unwrap_err(), "command failed");
+    assert_eq!(scheduler.status().unwrap()["state"], "none");
+    let _server = daemon.await.unwrap();
+}
+
+#[tokio::test]
+async fn internal_control_uses_the_existing_connection() {
+    let (scheduler, mut server) = fixture().await;
+    let daemon = tokio::spawn(async move {
+        let request = read_frame(&mut server).await.unwrap();
+        assert_eq!(
+            request,
+            json!({"type":"request","mode":"shared","name":"compile project"})
+        );
+        write_frame(&mut server, &json!({"type":"queued"}))
+            .await
+            .unwrap();
+        assert_eq!(read_frame(&mut server).await.unwrap()["type"], "release");
+        write_frame(&mut server, &json!({"type":"released"}))
+            .await
+            .unwrap();
+        server
+    });
+    assert!(
+        scheduler
+            .control(r#"agent-scheduler ticket shared "compile project""#)
+            .await
+            .unwrap()
+            .is_some()
+    );
+    assert!(
+        scheduler
+            .control("agent-scheduler status")
+            .await
+            .unwrap()
+            .unwrap()
+            .contains("queued")
+    );
+    scheduler.control("agent-scheduler clear").await.unwrap();
+    assert_eq!(scheduler.status().unwrap()["state"], "none");
+    let _server = daemon.await.unwrap();
+}
+
+#[tokio::test]
+async fn connection_loss_fails_closed_without_reconnect() {
+    let (scheduler, server) = fixture().await;
+    let mut changed = scheduler.state.subscribe();
+    drop(server);
+    changed.changed().await.unwrap();
+    assert!(
+        scheduler
+            .run("cmake --build out", async {})
+            .await
+            .unwrap_err()
+            .to_string()
+            .contains("connection lost")
+    );
+}
+
+#[tokio::test]
+async fn cancellation_releases_the_logical_call() {
+    let (scheduler, mut server) = fixture().await;
+    let daemon = tokio::spawn(async move {
+        read_frame(&mut server).await.unwrap();
+        write_frame(&mut server, &json!({"type":"queued"}))
+            .await
+            .unwrap();
+        assert_eq!(read_frame(&mut server).await.unwrap()["type"], "release");
+        write_frame(&mut server, &json!({"type":"released"}))
+            .await
+            .unwrap();
+        server
+    });
+    scheduler.ticket("shared", "cancel me").await.unwrap();
+    let client = scheduler.clone();
+    let command =
+        tokio::spawn(async move { client.run("compile", std::future::pending::<()>()).await });
+    tokio::task::yield_now().await;
+    command.abort();
+    let _ = command.await;
+    let _server = daemon.await.unwrap();
+    let mut changed = scheduler.state.subscribe();
+    while scheduler.healthy_state().unwrap() != State::None {
+        changed.changed().await.unwrap();
+    }
 }

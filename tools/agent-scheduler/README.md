@@ -1,37 +1,21 @@
-# Codex scheduler (Windows)
+# Modified Codex scheduler
 
-Explicit jobserver tickets for Codex commands. Shared work overlaps; exclusive
-benchmarks wait their turn and run alone. Codex keeps its normal security checks.
+Launch the canonical installation with `agent-codex.ps1`. It connects once to the canonical
+[jobserver](../jobserver/README.md) and loads separate scheduling exemption rules.
 
-## Install and launch
+Cheap exempt commands run normally. For an expensive command, make two separate tool calls:
 
-From the repository root:
-
-```powershell
-. ./dev.ps1
-install-agent-task
-agent-task install-central-tools
+```text
+agent-scheduler ticket shared "compile"
+cmake --build --preset native --target my-target
 ```
 
-Add `%NTB_APPDATA_LOCAL%\bin` to PATH, then run
-`agent-codex.ps1`. Normal `codex` remains unchanged.
-Choose the build profile in the root [ioj.toml](../../ioj.toml).
-Before first launch, copy the installed `scheduling.default.rules` reference to
-`%NTB_APPDATA_LOCAL%\config\agent-scheduler\scheduling.rules` and review it.
-Updates leave this user-managed file untouched.
+For a benchmark, request `exclusive` instead of `shared`, then run the ordinary benchmark command.
+`agent-scheduler status` inspects your ticket; `agent-scheduler clear` discards an unused ticket.
+These are internal Codex pseudo-commands, not executables or helper connections.
 
-## Use
+Codex waits for a queued ticket, executes the logical command, and releases when that call returns.
+Only one ticket and one scheduling operation may be outstanding. Exemptions never grant security approval.
+Missing components or connection loss fail closed; ask the maintainer to fix the installation.
 
-Request a ticket in one command, then run the work in the next:
-
-```powershell
-agent-scheduler ticket shared "Build native"
-cmake --build --preset native
-```
-
-Use `exclusive` for benchmarks after build/setup. `agent-scheduler status` shows
-the ticket; `clear` cancels pending work. Cheap commands in `scheduling.rules`
-need no ticket. Tickets release on root exit, even if descendants remain alive.
-
-- [Scheduling, rules and supported execution paths](docs/behavior.md)
-- [Installation details, local builds and validation](docs/development.md)
+See [behavior and limits](docs/behavior.md) and [installation/development](docs/development.md).

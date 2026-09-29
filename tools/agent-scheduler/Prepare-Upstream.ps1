@@ -17,4 +17,4 @@ git -C $checkout -c core.longpaths=true apply --check $patch
 if ($LASTEXITCODE -ne 0) { throw 'Scheduler patch does not apply cleanly.' }
 git -C $checkout -c core.longpaths=true apply $patch
 if ($LASTEXITCODE -ne 0) { throw 'Scheduler patch failed.' }
-Write-Output 'Pinned Codex scheduler example prepared.'
+Write-Output 'Pinned scheduler-enabled Codex prepared.'
