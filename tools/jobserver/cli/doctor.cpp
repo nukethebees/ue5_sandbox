@@ -43,7 +43,9 @@ auto current_executable() -> std::filesystem::path {
     if (size == 0 || size >= storage.size()) {
         return {};
     }
-    return std::filesystem::path{std::wstring_view{storage.data(), size}};
+    std::error_code error;
+    return std::filesystem::canonical(
+        std::filesystem::path{std::wstring_view{storage.data(), size}}, error);
 }
 
 auto process_executable(DWORD const process_id) -> std::filesystem::path {

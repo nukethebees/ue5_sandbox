@@ -11,14 +11,21 @@ The maintainer installs stable tools explicitly under
 | CodeFormatTools | `agent-task install-central-tools` | csproj Version |
 | agent-codex (Codex + scheduler) | `agent-task install-central-tools` | agent-scheduler/upstream-revision.txt + codex.patch |
 
-The maintainer manages PATH for ordinary tools. Internal jobserver calls use
+Installers publish literal symlinks in `%NTB_APPDATA_LOCAL%\bin` (default
+`%LOCALAPPDATA%\NukeTheBees\bin`). Add only that directory to PATH; old per-tool PATH
+entries can be removed after reinstalling. Enable Windows Developer Mode before installing,
+or grant your account the **Create symbolic links** right and sign out/in. Installers check
+link creation before building or updating tools and refuse to overwrite unrelated files.
+The .NET tools publish as framework-dependent single-file executables so links do not need
+adjacent DLLs; the installed .NET runtime is still required.
+
+Internal jobserver calls use
 `%LOCALAPPDATA%\NukeTheBees\jobserver\bin\jobserver.exe`; its separate installer preserves
 staged validation, shutdown, startup verification, and rollback. See [jobserver](jobserver/README.md).
 Agents assume central tools are installed, report missing commands, and never install/update them
 or build local fallbacks. `--version` is for manual diagnosis; bump the source version when shipping changes.
 
-Launch the scheduler-enabled Codex with `agent-codex.ps1` from
-`%LOCALAPPDATA%\NukeTheBees\agent-codex\bin`. It uses `codex-scheduler.exe`, leaving
+Launch the scheduler-enabled Codex with `agent-codex.ps1` from PATH. It uses `codex-scheduler.exe`, leaving
 normal `codex` untouched. See [scheduler usage](agent-scheduler/README.md).
 
 `agent-task prepare-worktree` checks for the canonical jobserver, clears output, updates submodules,
@@ -32,7 +39,8 @@ under `%LOCALAPPDATA%\NukeTheBees\bin`.
 For one C# tool, run `pwsh -NoProfile -File tools/install/Install-CentralDotnetTool.ps1 -ToolName
 UnrealBuildTools` (or `CodeFormatTools`). The installer publishes privately, runs focused project
 tests and candidate `--version`, then replaces the tool's bin directory. Failed validation leaves
-the existing installation intact. Use `-InstallRoot <private-tool-root>` for isolated testing.
+the existing installation intact. Use `-InstallRoot <private-tool-root>` for isolated testing;
+links then go into the sibling `bin` directory. `-LinkDirectory` overrides the link destination.
 
 `CodeFormatTools [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` reads formatting roots,
 extensions, and exclusions from the current checkout's `.code-format.json`. Styling stays in

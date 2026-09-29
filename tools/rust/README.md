@@ -39,8 +39,10 @@ install-agent-task
 ```
 
 This runs the package tests, installs only `agent-task` with the pinned Rust toolchain, and
-smoke-tests the installed executable with `--version`. The maintainer manages PATH; add
-`%LOCALAPPDATA%\NukeTheBees\agent-task\bin`. Agents assume `agent-task` is already available.
+smoke-tests the installed executable with `--version`. Installers create symlinks in
+`%NTB_APPDATA_LOCAL%\bin`; add this single directory to PATH. Developer Mode or the
+Windows **Create symbolic links** privilege is required and checked before building.
+Agents assume `agent-task` is already available.
 
 Use the intentionally limited Git interface for routine feature work:
 

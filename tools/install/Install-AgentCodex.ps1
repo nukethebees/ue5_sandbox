@@ -1,13 +1,17 @@
 [CmdletBinding()]
 param(
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'NukeTheBees/agent-codex'),
-    [ValidateSet('ReleaseNoLTO', 'Release', 'Debug')][string]$Configuration
+    [ValidateSet('ReleaseNoLTO', 'Release', 'Debug')][string]$Configuration,
+    [string]$LinkDirectory
 )
 
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
-if (-not $PSBoundParameters.ContainsKey('Configuration')) {
+. "$PSScriptRoot/ToolLinks.ps1"
+$links = Get-ToolLinkDirectory $InstallRoot $LinkDirectory
+Assert-ToolLinkSupport $links
+if (-not $Configuration) {
     $Configuration = python "$PSScriptRoot/codex_build_profile.py"
     if ($LASTEXITCODE -ne 0) { throw 'Could not read the Codex build profile from ioj.toml.' }
 }
@@ -47,7 +51,8 @@ try {
         throw
     }
     Remove-PrivateOutput $backup
-    Write-Host "Installed scheduler-enabled Codex. Add '$bin' to PATH and launch agent-codex.ps1. Normal codex is unchanged."
+    Publish-ToolLinks $bin @('agent-codex.ps1', 'agent-scheduler.exe', 'codex-scheduler.exe') $links
+    Write-Host 'Installed scheduler-enabled Codex. Launch agent-codex.ps1. Normal codex is unchanged.'
 } finally {
     Remove-PrivateOutput $candidate
 }

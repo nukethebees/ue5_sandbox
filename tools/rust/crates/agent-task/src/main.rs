@@ -95,6 +95,18 @@ fn prepare_worktree() -> Result<(), String> {
 fn install_central_tools() -> Result<(), String> {
     let root = worktree_root()?;
 
+    println!("Checking tool symlink support");
+    run(
+        &root,
+        "pwsh",
+        &[
+            "-NoProfile",
+            "-File",
+            "tools/install/ToolLinks.ps1",
+            "-CheckOnly",
+        ],
+    )?;
+
     println!("[1/8] Synchronizing submodules");
     run(&root, "git", &["submodule", "sync", "--recursive"])?;
 

@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory)]
     [ValidateSet('UnrealBuildTools', 'CodeFormatTools')]
     [string]$ToolName,
-    [string]$InstallRoot
+    [string]$InstallRoot,
+    [string]$LinkDirectory
 )
 
 $ErrorActionPreference = 'Stop'
@@ -12,6 +13,9 @@ if (-not $InstallRoot) {
     $InstallRoot = Join-Path $env:LOCALAPPDATA "NukeTheBees/$ToolName"
 }
 $root = [IO.Path]::GetFullPath($InstallRoot)
+. "$PSScriptRoot/ToolLinks.ps1"
+$links = Get-ToolLinkDirectory $root $LinkDirectory
+Assert-ToolLinkSupport $links
 $tools = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $candidate = Join-Path $root ".candidate-$([Guid]::NewGuid().ToString('N'))"
 $backup = Join-Path $root ".previous-$([Guid]::NewGuid().ToString('N'))"
@@ -29,7 +33,8 @@ function Remove-PrivateOutput([string]$Path) {
 
 try {
     dotnet publish "$tools/$ToolName/$ToolName.csproj" --configuration Release `
-        --artifacts-path $artifacts --output $published --nologo -p:SandboxCMakeHostToolBuild=true
+        --artifacts-path $artifacts --output $published --nologo -p:SandboxCMakeHostToolBuild=true `
+        --runtime win-x64 --self-contained false -p:PublishSingleFile=true
     if ($LASTEXITCODE -ne 0) { throw "$ToolName candidate publish failed ($LASTEXITCODE)." }
 
     dotnet test "$tools/$ToolName.Tests/$ToolName.Tests.csproj" --configuration Release `
@@ -48,7 +53,7 @@ try {
         throw
     }
     Remove-PrivateOutput $backup
-    Write-Host "Installed $ToolName. The maintainer must ensure '$bin' is on PATH."
+    Publish-ToolLinks $bin @("$ToolName.exe") $links
 } finally {
     Remove-PrivateOutput $candidate
 }

@@ -1,9 +1,12 @@
 $ErrorActionPreference = 'Stop'
-$bin = $PSScriptRoot
+$scriptFile = Get-Item -LiteralPath $PSCommandPath
+if ($scriptFile.LinkType -eq 'SymbolicLink') { $scriptFile = $scriptFile.ResolveLinkTarget($true) }
+$scriptRoot = $scriptFile.DirectoryName
+$bin = $scriptRoot
 $codex = Join-Path $bin 'codex-scheduler.exe'
-if (Test-Path -LiteralPath "$PSScriptRoot/Cargo.toml") {
+if (Test-Path -LiteralPath "$scriptRoot/Cargo.toml") {
     # The source launcher uses the local development build; installed files are siblings.
-    $repo = (Resolve-Path "$PSScriptRoot/../..").Path
+    $repo = (Resolve-Path "$scriptRoot/../..").Path
     $bin = Join-Path $repo '.local/scheduler-target/debug'
     $codex = Join-Path $bin 'codex.exe'
 }
@@ -12,7 +15,7 @@ $previousPath = $env:PATH
 $previousRules = $env:AGENT_SCHEDULER_RULES
 try {
     $env:PATH = "$bin;$previousPath"
-    $env:AGENT_SCHEDULER_RULES = Join-Path $PSScriptRoot 'scheduling.rules'
+    $env:AGENT_SCHEDULER_RULES = Join-Path $scriptRoot 'scheduling.rules'
     & $codex -c 'windows.sandbox="unelevated"' -c features.shell_snapshot=false @args
     $result = $LASTEXITCODE
 } finally {

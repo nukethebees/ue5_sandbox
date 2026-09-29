@@ -13,7 +13,7 @@ install-agent-task
 agent-task install-central-tools
 ```
 
-Add `%LOCALAPPDATA%\NukeTheBees\agent-codex\bin` to PATH, then run
+Add `%NTB_APPDATA_LOCAL%\bin` to PATH, then run
 `agent-codex.ps1`. Normal `codex` remains unchanged.
 Choose the build profile in the root [ioj.toml](../../ioj.toml).
 

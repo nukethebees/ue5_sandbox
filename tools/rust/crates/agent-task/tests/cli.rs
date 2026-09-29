@@ -51,6 +51,12 @@ fn fixture() -> TemporaryDirectory {
         include_str!("fixtures/CMakeLists.txt"),
     )
     .unwrap();
+    fs::create_dir_all(directory.0.join("tools/install")).unwrap();
+    fs::write(
+        directory.0.join("tools/install/ToolLinks.ps1"),
+        include_str!("../../../../install/ToolLinks.ps1"),
+    )
+    .unwrap();
     directory
 }
 
@@ -59,7 +65,8 @@ fn tool(root: &Path, arguments: &[&str]) -> Command {
     command
         .args(arguments)
         .current_dir(root)
-        .env("LOCALAPPDATA", root.join("local-app-data"));
+        .env("LOCALAPPDATA", root.join("local-app-data"))
+        .env("NTB_APPDATA_LOCAL", root.join("local-app-data/NukeTheBees"));
     command
 }
 
@@ -291,6 +298,7 @@ fn central_tool_installation_initializes_submodules_without_jobserver_or_clearin
     assert!(String::from_utf8_lossy(&output.stderr).contains("23"));
     assert!(directory.0.join("dependency/marker.txt").is_file());
     let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Checking tool symlink support"));
     assert!(stdout.contains("Synchronizing submodules"));
     assert!(stdout.contains("Updating submodules"));
     assert!(stdout.contains("Generating CMake presets"));
