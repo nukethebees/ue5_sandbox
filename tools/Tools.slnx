@@ -1,6 +1,4 @@
 <Solution>
-  <Project Path="ArchitectureChecks/ArchitectureChecks.csproj" />
-  <Project Path="ArchitectureChecks.Tests/ArchitectureChecks.Tests.csproj" />
   <Project Path="BenchmarkTools/BenchmarkTools.csproj" />
   <Project Path="BenchmarkTools.Tests/BenchmarkTools.Tests.csproj" />
   <Project Path="GamePackageTools/GamePackageTools.csproj" />

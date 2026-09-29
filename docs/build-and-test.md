@@ -100,8 +100,8 @@ The `check-generated-code` build target owns the committed codegen fixture consi
 cmake --build --preset native --target native-simulation-tests
 ctest --test-dir out/build/native -L '^native-simulation$' -LE 'soak|compile-contract' --output-on-failure
 
-cmake --build --preset native --target csharp-ArchitectureChecks-build
-ctest --test-dir out/build/native -L '^architecture$' --output-on-failure
+cmake --build --preset native --target csharp-NativeBinaryTools-build
+ctest --test-dir out/build/native -L '^native-binary$' --output-on-failure
 ```
 
 CTest never rebuilds the C# assemblies. Each registered project uses `dotnet test --no-build
@@ -113,7 +113,7 @@ Labels are regular expressions, not shell globs. One `-L` selects any matching l
 `-L` options require every expression to match. `-LE 'soak|compile-contract'` excludes either
 category. `ctest --test-dir out/build/native -N -L <label>` previews selection without executing.
 
-C# labels include `csharp`, `architecture`, `benchmark`,
+C# labels include `csharp`, `benchmark`,
 `game-package` and `native-binary`. The `developer-tool` label includes
 all standalone C# projects and the registered layout, image-lab, and perf tests.
 Mixed integration assemblies carry `integration;subprocess`; pure assemblies carry `unit`.

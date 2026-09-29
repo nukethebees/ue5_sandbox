@@ -15,12 +15,12 @@ class DotnetHostToolTests(unittest.TestCase):
     source_dir: Path
     cmake: str
 
-    def test_architecture_checks_builds_with_isolated_intermediates(self) -> None:
+    def test_native_binary_tools_builds_with_isolated_intermediates(self) -> None:
         with tempfile.TemporaryDirectory(prefix="sandbox dotnet host tool ") as temporary_root:
             fixture_root = Path(temporary_root) / "fixture"
-            tool_directory = fixture_root / "tools" / "ArchitectureChecks"
+            tool_directory = fixture_root / "tools" / "NativeBinaryTools"
             shutil.copytree(
-                self.source_dir / "tools" / "ArchitectureChecks",
+                self.source_dir / "tools" / "NativeBinaryTools",
                 tool_directory,
                 ignore=shutil.ignore_patterns("bin", "obj"),
             )
@@ -48,11 +48,11 @@ class DotnetHostToolTests(unittest.TestCase):
                         "cmake_minimum_required(VERSION 4.4.2)",
                         "project(DotnetHostToolFixture LANGUAGES NONE)",
                         f'include("{helper_path}")',
-                        "sandbox_add_dotnet_host_tool(architecture-checks-host "
-                        "IOJ_ARCHITECTURE_CHECKS "
-                        '"${CMAKE_CURRENT_SOURCE_DIR}/tools/ArchitectureChecks/ArchitectureChecks.csproj")',
+                        "sandbox_add_dotnet_host_tool(native-binary-tools-host "
+                        "IOJ_NATIVE_BINARY_TOOLS "
+                        '"${CMAKE_CURRENT_SOURCE_DIR}/tools/NativeBinaryTools/NativeBinaryTools.csproj")',
                         'add_custom_target(consume-host COMMAND "${CMAKE_COMMAND}" -E copy',
-                        '  "${IOJ_ARCHITECTURE_CHECKS}" "${CMAKE_BINARY_DIR}/consumed.exe" VERBATIM)',
+                        '  "${IOJ_NATIVE_BINARY_TOOLS}" "${CMAKE_BINARY_DIR}/consumed.exe" VERBATIM)',
                         "",
                     ]
                 ),
@@ -62,8 +62,8 @@ class DotnetHostToolTests(unittest.TestCase):
             build_directory = fixture_root / "build"
             self.run_cmake("-S", str(fixture_root), "-B", str(build_directory), "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Debug")
 
-            executable = build_directory / "host-tools" / "ArchitectureChecks" / "Debug" / "ArchitectureChecks.exe"
-            self.assertFalse((fixture_root / "tools" / "bin" / "ArchitectureChecks.exe").exists())
+            executable = build_directory / "host-tools" / "NativeBinaryTools" / "Debug" / "NativeBinaryTools.exe"
+            self.assertFalse((fixture_root / "tools" / "bin" / "NativeBinaryTools.exe").exists())
             self.run_cmake("--build", str(build_directory), "--target", "consume-host")
             self.assertTrue(executable.is_file())
             self.assertTrue((build_directory / "consumed.exe").is_file())
@@ -87,9 +87,9 @@ class DotnetHostToolTests(unittest.TestCase):
 
             up_to_date_timestamp = executable.stat().st_mtime_ns
             up_to_date_build = self.run_cmake(
-                "--build", str(build_directory), "--target", "architecture-checks-host"
+                "--build", str(build_directory), "--target", "native-binary-tools-host"
             )
-            self.assertIn("Building .NET host tool ArchitectureChecks", up_to_date_build)
+            self.assertIn("Building .NET host tool NativeBinaryTools", up_to_date_build)
             self.assertEqual(executable.stat().st_mtime_ns, up_to_date_timestamp)
 
             executable.unlink()
@@ -100,7 +100,7 @@ class DotnetHostToolTests(unittest.TestCase):
             time.sleep(1.1)
             program = tool_directory / "Program.cs"
             program.write_text(program.read_text(encoding="utf-8") + "\n", encoding="utf-8")
-            self.run_cmake("--build", str(build_directory), "--target", "architecture-checks-host")
+            self.run_cmake("--build", str(build_directory), "--target", "native-binary-tools-host")
             self.assertGreater(executable.stat().st_mtime_ns, original_timestamp)
             self.assertEqual(
                 [path.relative_to(source_obj_directory) for path in source_obj_directory.rglob("*") if path.is_file()],
@@ -110,7 +110,7 @@ class DotnetHostToolTests(unittest.TestCase):
             source_added_timestamp = executable.stat().st_mtime_ns
             added_source = tool_directory / "AddedSource.cs"
             added_source.write_text("internal sealed class AddedSource {}\n", encoding="utf-8")
-            self.run_cmake("--build", str(build_directory), "--target", "architecture-checks-host")
+            self.run_cmake("--build", str(build_directory), "--target", "native-binary-tools-host")
             self.assertGreater(executable.stat().st_mtime_ns, source_added_timestamp)
 
             added_source_timestamp = executable.stat().st_mtime_ns
@@ -119,7 +119,7 @@ class DotnetHostToolTests(unittest.TestCase):
                 "internal sealed class AddedSource { public int Value => 42; }\n",
                 encoding="utf-8",
             )
-            self.run_cmake("--build", str(build_directory), "--target", "architecture-checks-host")
+            self.run_cmake("--build", str(build_directory), "--target", "native-binary-tools-host")
             self.assertGreater(executable.stat().st_mtime_ns, added_source_timestamp)
 
     def test_workflows_do_not_prebuild_all_host_tools(self) -> None:

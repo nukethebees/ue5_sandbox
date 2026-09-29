@@ -927,7 +927,7 @@ cmake_language(DEFER CALL check_simulation_policy)
         self.assertFalse(inventory("-L", "^all$").keys() & tools.keys())
         expected_tools = {"layout-planner-ui-tests", "image-lab-tests", "tracy-benchmark-compare-tests", "tracy-benchmark-compare-version", "PowerShell.Navigation"}
         expected_tools.update("Sandbox." + name for name in (
-            "ArchitectureChecks", "BenchmarkTools",
+            "BenchmarkTools",
             "GamePackageTools", "NativeBinaryTools"))
         self.assertEqual(tools.keys(), expected_tools)
         self.assertEqual(inventory("-L", "^native-simulation$", "-LE", "soak|compile-contract").keys(),

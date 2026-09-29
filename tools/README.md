@@ -37,7 +37,6 @@ builds; `agent-task unreal-build` supplies the small build-script invocation bou
 
 CMake builds revision-local tools privately under `out/build/<configuration>/host-tools/`:
 
-- ArchitectureChecks: checked-out module and dependency policy.
 - GamePackageTools: exact package and asset expectations.
 - NativeBinaryTools: native object and mimalloc symbol-prefix integration.
 - BenchmarkTools: revision-specific presets, executable locations, scenarios, and baselines.

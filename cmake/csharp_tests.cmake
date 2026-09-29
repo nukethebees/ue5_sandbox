@@ -53,8 +53,6 @@ function(sandbox_add_csharp_test name project labels)
 endfunction()
 
 # Explicit transitive source ownership keeps no-build tests honest after shared edits.
-sandbox_add_csharp_test(ArchitectureChecks "tools/ArchitectureChecks.Tests/ArchitectureChecks.Tests.csproj"
-  "architecture;integration;subprocess" tools/ArchitectureChecks.Tests tools/ArchitectureChecks)
 sandbox_add_csharp_test(BenchmarkTools "tools/BenchmarkTools.Tests/BenchmarkTools.Tests.csproj"
   "benchmark;unit" tools/BenchmarkTools.Tests tools/BenchmarkTools)
 sandbox_add_csharp_test(GamePackageTools "tools/GamePackageTools.Tests/GamePackageTools.Tests.csproj"

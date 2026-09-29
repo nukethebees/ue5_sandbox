@@ -9,8 +9,6 @@
   revision-local `benchmark-tools-host` CMake target and forward their arguments. Benchmark execution,
   validation and filesystem work live in BenchmarkTools.
 - `plot-*.py`: plotting and scientific presentation only.
-- `audit_module_migration.sh`: read-only migration checks. See [AGENTS.md](AGENTS.md) for the
-  migration-audit contract.
 - `test_*.py` files: focused Python script validation support. Repository C++ and shader
   formatting uses centrally installed `agent-task format` from PATH with `.code-format.json` policy.
 - Mimalloc object-symbol analysis is provided by the `NativeBinaryTools` C# tool under `tools/`.

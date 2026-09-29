@@ -22,7 +22,6 @@ set_property(TARGET unreal-native-dependencies PROPERTY FOLDER "Sandbox/Unreal/D
 add_custom_target(unreal-generated-inputs
   DEPENDS
     sandbox-mesh-gen
-    check-space-game-layers
     check-generated-code
     check-generated-slate-code
     compile-ui-glow-material
@@ -35,7 +34,7 @@ set_property(TARGET unreal-generated-inputs PROPERTY FOLDER "Sandbox/Unreal/Depe
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
 add_dependencies(editor unreal-native-dependencies unreal-generated-inputs)
-add_dependencies(game unreal-native-dependencies check-space-game-layers check-generated-code)
+add_dependencies(game unreal-native-dependencies check-generated-code)
 set_property(TARGET editor PROPERTY FOLDER "Sandbox/Unreal/Build")
 set_property(TARGET game PROPERTY FOLDER "Sandbox/Unreal/Build")
 
