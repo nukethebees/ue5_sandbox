@@ -1,0 +1,4 @@
+# Project configuration. Tool-specific settings belong under [tools.<name>].
+[tools.codex]
+# debug, release-no-lto, or release (upstream ThinLTO).
+build_profile = "debug"

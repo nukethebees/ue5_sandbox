@@ -1,12 +1,17 @@
 [CmdletBinding()]
 param(
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'NukeTheBees/agent-codex'),
-    [ValidateSet('ReleaseNoLTO', 'Release', 'Debug')][string]$Configuration = 'ReleaseNoLTO'
+    [ValidateSet('ReleaseNoLTO', 'Release', 'Debug')][string]$Configuration
 )
 
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
+if (-not $PSBoundParameters.ContainsKey('Configuration')) {
+    $Configuration = python "$PSScriptRoot/codex_build_profile.py"
+    if ($LASTEXITCODE -ne 0) { throw 'Could not read the Codex build profile from ioj.toml.' }
+}
+Write-Host "Codex build configuration: $Configuration"
 $root = [IO.Path]::GetFullPath($InstallRoot)
 $build = Join-Path $repo ".local/scheduler-install-$Configuration"
 $candidate = Join-Path $root ".candidate-$([Guid]::NewGuid().ToString('N'))"

@@ -4,7 +4,7 @@
 
 Update `agent-task` once with `. ./dev.ps1` followed by `install-agent-task`, then
 run `agent-task install-central-tools`. This prepares the pinned source, builds
-Codex and the scheduler client with the `ReleaseNoLTO` configuration, and installs them under
+Codex and the scheduler client using the root [ioj.toml](../../../ioj.toml), and installs them under
 `%LOCALAPPDATA%\NukeTheBees\agent-codex\bin`. Close custom Codex sessions before updating.
 This maintainer-only installer builds directly, without requesting a jobserver lease.
 
@@ -16,7 +16,12 @@ The [standalone installer](../../install/Install-AgentCodex.ps1) accepts
 `-InstallRoot <private-root>` and `-Configuration Debug` for staging validation
 without replacing installed tools.
 
-The default uses [build-profile.toml](../build-profile.toml): Cargo's
+Set `[tools.codex].build_profile` to `debug` (the default), `release-no-lto`, or
+`release`. The installer reads this on every run; no AgentTask rebuild is needed.
+An explicit `-Configuration Debug`, `ReleaseNoLTO`, or `Release` overrides the file.
+Python 3.11 or newer reads TOML using its standard library.
+
+`release-no-lto` uses [build-profile.toml](../build-profile.toml): Cargo's
 `release-no-lto` profile inherits each workspace's release settings and disables
 all LTO with `lto = "off"`. Codex's other release settings remain unchanged.
 Artifacts live under `.local/scheduler-target/release-no-lto`. Use
