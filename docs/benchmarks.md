@@ -134,7 +134,9 @@ them. Supplied baselines remain untouched. A retained overlaid baseline is usefu
 the existing clean-worktree requirement still applies when supplying a baseline to a later run.
 
 Before measurement, both revisions prepare the benchmark map's shaders and derived data through
-Unreal's DDC commandlet, with a separate ten-minute timeout per revision. Preparation runs before
+the normal Editor, with a separate ten-minute timeout per revision. It loads the benchmark map,
+finishes asset compilation, and exits without starting PIE. This warms the same shader variants
+used by measurement. Preparation runs before
 the measurement child and retains logs under the run's
 `preparation/` directory. Both sides use the invoking checkout's persistent `.local/benchmarks/ddc`
 cache, which survives disposable baseline cleanup. This also runs with `--skip-build`;

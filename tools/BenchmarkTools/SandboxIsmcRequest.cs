@@ -52,7 +52,7 @@ internal sealed record SandboxIsmcRequest(string Editor, int Width, int Height, 
     public IReadOnlyList<string> EditorArguments(string root, BenchmarkRunContext run)
     {
         return [.. CommonArguments(root, run.Artifact("unreal.log")),
-            "-ExecCmds=r.VSync 0;r.ScreenPercentage 100;r.DynamicRes.OperationMode 0;Automation Now;RunTests SandboxISMC.RemoteBenchmark;Quit",
+            "-ExecCmds=r.VSync 0,r.ScreenPercentage 100,r.DynamicRes.OperationMode 0,Automation Now;RunTests SandboxISMC.RemoteBenchmark;Quit",
             "-SandboxISMCBenchmarkEndPIE",
             $"-ResX={Width}", $"-ResY={Height}", "-ForceRes", "-windowed",
             $"-SandboxISMCBenchmarkOutput={run.DirectoryPath}", $"-SandboxISMCBenchmarkRunId={run.Manifest.RunId}",
@@ -68,12 +68,11 @@ internal sealed record SandboxIsmcRequest(string Editor, int Width, int Height, 
     internal static string MapPath(string root) => Path.Combine(root, "Plugins", "SandboxISMC", "Content", "Lab", "FT_SandboxISMCBenchmark.umap");
 
     public IReadOnlyList<string> CacheArguments(string root, string log) =>
-        [.. CommonArguments(root, log), "-run=DerivedDataCache", "-fill", "-AllowCommandletRendering",
-         "-TargetPlatform=WindowsEditor", $"-Map={Path.ChangeExtension(MapPath(root), null)}",
-         "-ExecCmds=r.VSync 0;r.ScreenPercentage 100;r.DynamicRes.OperationMode 0"];
+        [.. CommonArguments(root, log),
+         "-ExecCmds=r.VSync 0,r.ScreenPercentage 100,r.DynamicRes.OperationMode 0,Editor.AsyncAssetCompilationFinishAll,Automation Now;SoftQuit"];
 
     private IReadOnlyList<string> CommonArguments(string root, string log) =>
-        [Path.Combine(root, "Sandbox.uproject"), "-unattended", "-nop4", "-nosplash", "-nosound", "-stdout", "-FullStdOutLogOutput", "-RenderOffscreen",
+        [Path.Combine(root, "Sandbox.uproject"), MapPath(root), "-unattended", "-nop4", "-nosplash", "-nosound", "-stdout", "-FullStdOutLogOutput", "-RenderOffscreen",
          "-ddc=NoZenLocalFallback", $"-LocalDataCachePath={CacheDirectory ?? Path.Combine(root, ".local", "benchmarks", "ddc")}", $"-abslog={log}"];
 
     private static string Number(double value) => value.ToString("G9", CultureInfo.InvariantCulture);

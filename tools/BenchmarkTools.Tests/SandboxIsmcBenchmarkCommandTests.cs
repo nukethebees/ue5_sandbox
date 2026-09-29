@@ -40,11 +40,14 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         Assert.AreEqual(0, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--validate-only",
             "--repetitions", "10", "--warmup-runs", "3", "--seconds", "90", "--label", "12-byte packed transform"), fixture.Errors.ToString());
         Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == "current-benchmark-tools" && item.Arguments.Contains("--measurement-plan")));
-        var processes = fixture.Runner.Requests.Where(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")).ToArray();
+        var processes = fixture.Runner.Requests.Where(item => item.FileName == fixture.Editor && item.Arguments.Contains("-SandboxISMCBenchmarkEndPIE")).ToArray();
         Assert.AreEqual(2, processes.Length);
         Assert.IsTrue(processes.All(item => item.Arguments.Contains("-SandboxISMCBenchmarkSeconds=0.5") && item.Timeout == TimeSpan.FromSeconds(60)));
         foreach (var process in processes)
         {
+            Assert.AreEqual(SandboxIsmcRequest.MapPath(process.WorkingDirectory), process.Arguments[1]);
+            CollectionAssert.AreEqual(new[] { "r.VSync 0", "r.ScreenPercentage 100", "r.DynamicRes.OperationMode 0", "Automation Now;RunTests SandboxISMC.RemoteBenchmark;Quit" },
+                process.Arguments.Single(arg => arg.StartsWith("-ExecCmds=", StringComparison.Ordinal))["-ExecCmds=".Length..].Split(','));
             var cache = process.Arguments.Single(value => value.StartsWith("-LocalDataCachePath=", StringComparison.Ordinal))["-LocalDataCachePath=".Length..];
             Assert.AreEqual(Path.Combine(fixture.Root, ".local", "benchmarks", "ddc"), cache);
             // Reproduce the Windows workspace depth that hit Unreal's 119-character DDC limit.
@@ -77,14 +80,17 @@ public sealed class SandboxIsmcBenchmarkCommandTests
             CollectionAssert.AreEqual(new[] { "sandbox-ismc", "--prepare-cache-plan" }, child.Arguments.Take(2).ToArray());
             Assert.AreEqual(3, child.Arguments.Count);
         }
-        var cache_processes = requests.Where(item => item.FileName == fixture.Editor && item.Arguments.Contains("-run=DerivedDataCache")).ToArray();
+        var cache_processes = requests.Where(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-SandboxISMCBenchmarkEndPIE")).ToArray();
         Assert.AreEqual(2, cache_processes.Length);
         foreach (var process in cache_processes)
         {
             Assert.AreEqual(TimeSpan.FromMinutes(10), process.Timeout);
-            Assert.IsTrue(process.Arguments.Contains("-Map=" + Path.ChangeExtension(SandboxIsmcRequest.MapPath(process.WorkingDirectory), null)));
+            Assert.AreEqual(SandboxIsmcRequest.MapPath(process.WorkingDirectory), process.Arguments[1]);
+            Assert.IsFalse(process.Arguments.Any(arg => arg.StartsWith("-run=", StringComparison.Ordinal)));
+            CollectionAssert.AreEqual(new[] { "r.VSync 0", "r.ScreenPercentage 100", "r.DynamicRes.OperationMode 0", "Editor.AsyncAssetCompilationFinishAll", "Automation Now;SoftQuit" },
+                process.Arguments.Single(arg => arg.StartsWith("-ExecCmds=", StringComparison.Ordinal))["-ExecCmds=".Length..].Split(','));
             Assert.IsTrue(process.Arguments.Contains("-LocalDataCachePath=" + Path.Combine(fixture.Root, ".local", "benchmarks", "ddc")));
-            Assert.IsFalse(process.Arguments.Any(arg => arg.Contains("SandboxISMCBenchmark", StringComparison.Ordinal) && !arg.StartsWith("-Map=", StringComparison.Ordinal)));
+            Assert.IsFalse(process.Arguments.Any(arg => arg.Contains("SandboxISMCBenchmark", StringComparison.Ordinal) && arg != SandboxIsmcRequest.MapPath(process.WorkingDirectory)));
             Assert.IsTrue(requests.FindLastIndex(item => item.FileName == "cmake") < requests.IndexOf(process));
         }
         var measurement = requests.Single(item => item.FileName == "current-benchmark-tools" && item.Arguments.Contains("--measurement-plan"));
@@ -146,7 +152,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     {
         using var fixture = new Fixture { RhiMismatch = true };
         Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old", "--validate-only"));
-        Assert.AreEqual(2, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")));
+        Assert.AreEqual(2, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && item.Arguments.Contains("-SandboxISMCBenchmarkEndPIE")));
         Assert.IsFalse(fixture.Document("comparison.json").GetProperty("comparable").GetBoolean());
         Assert.AreEqual(0, fixture.Document("comparison.json").GetProperty("metrics").GetArrayLength());
     }
@@ -225,7 +231,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         Assert.AreEqual(2, comparison.GetProperty("metrics")[0].GetProperty("baseline").GetProperty("samples").GetInt32());
         Assert.AreEqual(11, comparison.GetProperty("metrics")[0].GetProperty("candidate").GetProperty("median").GetDouble());
         Assert.IsTrue(fixture.Runner.Requests.Any(item => item.FileName == "git" && item.Arguments.Contains("remove")));
-        Assert.IsTrue(fixture.Runner.Requests.Where(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")).All(item =>
+        Assert.IsTrue(fixture.Runner.Requests.Where(item => item.FileName == fixture.Editor && item.Arguments.Contains("-SandboxISMCBenchmarkEndPIE")).All(item =>
             item.Arguments.Any(arg => arg.StartsWith("-abslog=", StringComparison.Ordinal)) && item.Arguments.Contains("-ForceRes")));
     }
 
@@ -288,7 +294,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old"));
         StringAssert.Contains(fixture.Errors.ToString(), error);
         Assert.IsFalse(fixture.Errors.ToString().Contains("Expected artifact", StringComparison.Ordinal));
-        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")));
+        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && item.Arguments.Contains("-SandboxISMCBenchmarkEndPIE")));
         Assert.AreEqual(0, Directory.GetFiles(fixture.RunDirectory, "metrics.csv", SearchOption.AllDirectories).Length);
         Assert.IsFalse(File.Exists(Path.Combine(fixture.RunDirectory, "comparison.json")));
     }
@@ -317,7 +323,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
     {
         using var fixture = new Fixture { ViewportMismatch = true };
         Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old"));
-        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")));
+        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && item.Arguments.Contains("-SandboxISMCBenchmarkEndPIE")));
         StringAssert.Contains(fixture.Errors.ToString(), "observed_width");
         Assert.IsFalse(File.Exists(Path.Combine(fixture.RunDirectory, "comparison.json")));
     }
@@ -362,7 +368,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         Assert.IsFalse(File.Exists(Path.Combine(fixture.RunDirectory, "comparison.json")));
         Assert.IsTrue(fixture.Runner.Requests.Any(item => item.Arguments.Contains("remove")));
         Assert.AreEqual(stage == "build" ? 0 : 1, fixture.Runner.Requests.Count(item => item.FileName == "current-benchmark-tools" && item.Arguments.Contains("--measurement-plan")));
-        Assert.AreEqual(stage == "measured" ? 4 : 0, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")));
+        Assert.AreEqual(stage == "measured" ? 4 : 0, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && item.Arguments.Contains("-SandboxISMCBenchmarkEndPIE")));
     }
 
     [TestMethod]
@@ -395,7 +401,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
         Assert.AreEqual(1, await fixture.Run("sandbox-ismc-revision-ab", "--baseline", "old"));
         Assert.AreEqual("failed", fixture.Document("manifest.json").GetProperty("status").GetString());
         Assert.IsTrue(fixture.Runner.Requests.Any(item => item.Arguments.Contains("remove")));
-        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && !item.Arguments.Contains("-run=DerivedDataCache")));
+        Assert.AreEqual(1, fixture.Runner.Requests.Count(item => item.FileName == fixture.Editor && item.Arguments.Contains("-SandboxISMCBenchmarkEndPIE")));
     }
 
     [TestMethod]
@@ -504,7 +510,7 @@ public sealed class SandboxIsmcBenchmarkCommandTests
             Assert.IsNotNull(process.OutputLogPath);
             File.WriteAllText(process.OutputLogPath, "Unreal process output");
             string Argument(string name) => process.Arguments.Single(item => item.StartsWith(name + "=", StringComparison.Ordinal))[(name.Length + 1)..];
-            if (process.Arguments.Contains("-run=DerivedDataCache"))
+            if (!process.Arguments.Contains("-SandboxISMCBenchmarkEndPIE"))
             {
                 File.WriteAllText(Argument("-abslog"), "Cache preparation output");
                 if (SourceChangeStage == "cache") source_changed_ = true;
