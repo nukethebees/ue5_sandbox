@@ -15,7 +15,8 @@ command text never infers or automatically requests admission.
 Active rules live at
 `%LOCALAPPDATA%\NukeTheBees\config\agent-scheduler\scheduling.rules`.
 The maintainer creates this file from the installed `scheduling.default.rules` and reviews exemptions.
-Installation never creates or overwrites active rules. A missing or invalid file prevents startup.
+Installation never creates or overwrites active rules. The wrapper loads them on its first command;
+a missing or invalid file fails that command and subsequent commands without retrying setup.
 
 Rules use Codex execpolicy prefix syntax, for example:
 

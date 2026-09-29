@@ -1,6 +1,4 @@
 //! One connection, one explicit ticket, one logical command boundary.
-#[cfg(feature = "test-support")]
-pub mod test_support;
 mod transport;
 
 use anyhow::{Context, Result, bail};
@@ -12,7 +10,7 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, OnceCell, OwnedMutexGuard, mpsc, watch};
 use transport::{connect, daemon_endpoint, read_frame, write_frame};
 
-static SCHEDULER: OnceCell<Arc<Scheduler>> = OnceCell::const_new();
+static SCHEDULER: OnceCell<Result<Arc<Scheduler>, String>> = OnceCell::const_new();
 
 #[derive(Clone, Debug, PartialEq)]
 enum State {
@@ -22,15 +20,34 @@ enum State {
     Failed(String),
 }
 
-pub struct Scheduler {
+struct Scheduler {
     policy: Policy,
     state: watch::Sender<State>,
     outgoing: mpsc::UnboundedSender<Value>,
     operation: Arc<Mutex<()>>,
 }
 
-/// Called once when Codex creates its session. Nested sessions are unsupported.
-pub async fn initialize() -> Result<()> {
+/// The sole Codex entry point. Connection setup and control commands stay inside the wrapper.
+pub async fn run<T>(
+    command: Option<&str>,
+    execution: impl Future<Output = T>,
+    control_output: impl FnOnce(String) -> T,
+) -> Result<T> {
+    let Some(command) = command else {
+        return Ok(execution.await);
+    };
+    let scheduler = SCHEDULER
+        .get_or_init(|| async { open_canonical().await.map_err(|error| format!("{error:#}")) })
+        .await
+        .as_ref()
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
+    if let Some(response) = scheduler.control(command).await? {
+        return Ok(control_output(response));
+    }
+    scheduler.run(command, execution).await
+}
+
+async fn open_canonical() -> Result<Arc<Scheduler>> {
     let local = std::env::var_os("LOCALAPPDATA").context("LOCALAPPDATA is missing")?;
     let rules =
         std::path::PathBuf::from(local).join("NukeTheBees/config/agent-scheduler/scheduling.rules");
@@ -43,16 +60,7 @@ pub async fn initialize() -> Result<()> {
     let mut parser = PolicyParser::new();
     parser.parse(&rules.to_string_lossy(), &source)?;
     let pipe = connect(&daemon_endpoint()?).await?;
-    let scheduler = Scheduler::open(parser.build(), pipe).await?;
-    SCHEDULER
-        .set(scheduler)
-        .map_err(|_| anyhow::anyhow!("Nested Codex scheduler sessions are unsupported"))
-}
-
-pub fn get() -> Result<&'static Arc<Scheduler>> {
-    SCHEDULER
-        .get()
-        .context("Modified Codex scheduler was not initialized")
+    Scheduler::open(parser.build(), pipe).await
 }
 
 impl Scheduler {
@@ -133,7 +141,7 @@ impl Scheduler {
         self.healthy_state()
     }
 
-    pub async fn ticket(&self, mode: &str, name: &str) -> Result<Value> {
+    async fn ticket(&self, mode: &str, name: &str) -> Result<Value> {
         let _operation = self.lock()?;
         if !matches!(mode, "shared" | "exclusive") || name.is_empty() || name.len() > 1024 {
             bail!("Use ticket shared|exclusive NAME (1 to 1024 bytes)");
@@ -156,7 +164,7 @@ impl Scheduler {
         self.status()
     }
 
-    pub fn status(&self) -> Result<Value> {
+    fn status(&self) -> Result<Value> {
         Ok(json!({"state":match self.healthy_state()? {
             State::None => "none", State::Queued => "queued", State::Granted => "granted",
             State::Failed(_) => unreachable!(),
@@ -176,7 +184,7 @@ impl Scheduler {
         }
     }
 
-    pub async fn clear(&self) -> Result<Value> {
+    async fn clear(&self) -> Result<Value> {
         let _operation = self.lock()?;
         self.release().await?;
         self.status()
@@ -192,7 +200,7 @@ impl Scheduler {
     }
 
     /// The future is the existing logical Codex operation, including all sandbox retries.
-    pub async fn run<T>(
+    async fn run<T>(
         self: &Arc<Self>,
         command: &str,
         execution: impl Future<Output = T>,
@@ -225,7 +233,7 @@ impl Scheduler {
     }
 
     /// Recognize only a standalone pseudo-command; nothing is spawned.
-    pub async fn control(&self, command: &str) -> Result<Option<String>> {
+    async fn control(&self, command: &str) -> Result<Option<String>> {
         let Some(commands) = parse_powershell_script_into_plain_commands(command) else {
             return Ok(None);
         };

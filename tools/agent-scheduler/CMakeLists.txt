@@ -38,9 +38,3 @@ add_custom_target(scheduler-unit-tests
         --target-dir "${SCHEDULER_TARGET}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     USES_TERMINAL)
-add_custom_target(codex-retry-test
-    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/build_codex.py"
-        "${CARGO}" test --locked -p codex-core --lib sandbox_denied_retry_consumes_one_scheduler_ticket
-        --target-dir "${SCHEDULER_TARGET}"
-    WORKING_DIRECTORY "${CODEX_ROOT}/codex-rs"
-    USES_TERMINAL)

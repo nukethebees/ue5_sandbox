@@ -5,9 +5,6 @@ edition = "2024"
 
 [workspace]
 
-[features]
-test-support = []
-
 [dependencies]
 anyhow = "1"
 serde_json = "1"

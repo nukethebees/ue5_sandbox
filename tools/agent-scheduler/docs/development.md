@@ -15,8 +15,9 @@ The build reuses the pinned upstream package builder's verified V8 artifacts in 
 
 `Prepare-Upstream.ps1` prepares the revision in `upstream-revision.txt` under `.local/codex-upstream`
 and applies `codex.patch`. The scheduler crate owns transport, policy, ticket state, pseudo-command
-parsing, and logical lifetime. The production patch adds its dependency, initializes once in session
-startup, and wraps `handle_any_tool` for `exec_command` in `core/src/tools/registry.rs`.
+parsing, and logical lifetime. The production patch adds its dependency and one wrapper call in
+`core/src/tools/registry.rs`. The wrapper loads rules and opens the single persistent connection
+on its first command, retaining either the client or its setup failure. Codex has no initialization hook.
 There are no changes to PTY, sandbox backends, process management, or spawn/retry infrastructure.
 
 ## Focused validation
@@ -25,13 +26,11 @@ There are no changes to PTY, sandbox backends, process management, or spawn/retr
 cmake -S tools/agent-scheduler -B .local/scheduler-build -G Ninja
 cmake --build .local/scheduler-build --target scheduler-unit-tests
 cmake --build .local/scheduler-build --target codex-scheduler
-cmake --build .local/scheduler-build --target codex-retry-test
 ```
 
 Scheduler tests use in-memory framed peers and exercise rules, missing tickets, queued/granted execution,
 single-ticket rejection, clearing, cancellation, and fail-closed disconnects.
-The pinned Codex regression wraps its existing sandbox-denied/approved-retry test in one scheduler call.
-Its mock admission peer asserts exactly one request and one release; no retry state reaches scheduling.
-The test-only feature is absent from installed builds. Jobserver tests independently cover FIFO and
-Windows identity restrictions. No live installation, model service, Unreal build, or process-survival
-test is needed.
+The crate's retry regression supplies a future that retries internally and asserts exactly one
+request and one release. Codex tests are unmodified; no test-only dependency or upstream test hook
+is required. Jobserver tests independently cover FIFO and Windows identity restrictions.
+No live installation, model service, Unreal build, or process-survival test is needed.

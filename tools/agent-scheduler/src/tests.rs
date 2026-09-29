@@ -3,6 +3,14 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::io::DuplexStream;
 use tokio::sync::oneshot;
 
+#[tokio::test]
+async fn wrapper_passes_non_commands_through_without_setup() {
+    assert!(SCHEDULER.get().is_none());
+    let result = run(None, async { 42 }, |_| panic!("not a control command")).await;
+    assert_eq!(result.unwrap(), 42);
+    assert!(SCHEDULER.get().is_none());
+}
+
 async fn fixture() -> (Arc<Scheduler>, DuplexStream) {
     let (client, mut server) = tokio::io::duplex(8192);
     let opening = tokio::spawn(async move {
@@ -78,6 +86,45 @@ async fn queued_command_waits_and_completion_releases() {
     grant.send(()).unwrap();
     assert_eq!(command.await.unwrap().unwrap(), 17);
     assert_eq!(executed.load(Ordering::SeqCst), 1);
+    assert_eq!(scheduler.status().unwrap()["state"], "none");
+    let _server = daemon.await.unwrap();
+}
+
+#[tokio::test]
+async fn retry_inside_the_logical_future_uses_one_ticket() {
+    let (scheduler, mut server) = fixture().await;
+    let daemon = tokio::spawn(async move {
+        assert_eq!(read_frame(&mut server).await.unwrap()["type"], "request");
+        write_frame(&mut server, &json!({"type":"granted"}))
+            .await
+            .unwrap();
+        assert_eq!(read_frame(&mut server).await.unwrap()["type"], "release");
+        write_frame(&mut server, &json!({"type":"released"}))
+            .await
+            .unwrap();
+        server
+    });
+    scheduler.ticket("shared", "logical retry").await.unwrap();
+    let mut attempts = 0;
+    let output = scheduler
+        .run("compile", async {
+            loop {
+                attempts += 1;
+                let result = if attempts == 1 {
+                    Err("sandbox denied")
+                } else {
+                    Ok(42)
+                };
+                match result {
+                    Ok(value) => break value,
+                    Err(_) => tokio::task::yield_now().await,
+                }
+            }
+        })
+        .await
+        .unwrap();
+    assert_eq!(output, 42);
+    assert_eq!(attempts, 2);
     assert_eq!(scheduler.status().unwrap()["state"], "none");
     let _server = daemon.await.unwrap();
 }

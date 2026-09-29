@@ -30,7 +30,7 @@ index 01a121b..423c937 100644
   "arc-swap",
   "assert_cmd",
 diff --git a/codex-rs/core/Cargo.toml b/codex-rs/core/Cargo.toml
-index 693fbd7..aef0137 100644
+index 693fbd7..ec2d68e 100644
 --- a/codex-rs/core/Cargo.toml
 +++ b/codex-rs/core/Cargo.toml
 @@ -12,6 +12,7 @@ path = "src/lib.rs"
@@ -41,92 +41,28 @@ index 693fbd7..aef0137 100644
  anyhow = { workspace = true }
  arc-swap = { workspace = true }
  async-channel = { workspace = true }
-@@ -139,6 +140,7 @@ openssl-sys = { workspace = true, features = ["vendored"] }
- codex-shell-escalation = { workspace = true }
- 
- [dev-dependencies]
-+agent-scheduler = { path = "../../../../tools/agent-scheduler", features = ["test-support"] }
- assert_cmd = { workspace = true }
- assert_matches = { workspace = true }
- codex-exec-server-test-support = { workspace = true }
-diff --git a/codex-rs/core/src/session/session.rs b/codex-rs/core/src/session/session.rs
-index 62be2d3..001f08d 100644
---- a/codex-rs/core/src/session/session.rs
-+++ b/codex-rs/core/src/session/session.rs
-@@ -774,6 +774,7 @@ impl Session {
-         git_enrichment_policy: GitEnrichmentPolicy,
-         windows_sandbox_proxy_settings_mode: codex_sandboxing::WindowsSandboxProxySettingsMode,
-     ) -> anyhow::Result<Arc<Self>> {
-+        agent_scheduler::initialize().await?;
-         debug!(
-             "Configuring session: model={}; provider={:?}",
-             session_configuration
-diff --git a/codex-rs/core/src/session/tests/guardian_tests.rs b/codex-rs/core/src/session/tests/guardian_tests.rs
-index 2d78c4a..a0d96cc 100644
---- a/codex-rs/core/src/session/tests/guardian_tests.rs
-+++ b/codex-rs/core/src/session/tests/guardian_tests.rs
-@@ -918,7 +918,7 @@ async fn delayed_exec_command_uses_its_captured_authority_after_next_turn_starts
- }
- 
- #[tokio::test]
--async fn sandbox_denied_retry_uses_the_action_policy_and_reviewer() {
-+async fn sandbox_denied_retry_consumes_one_scheduler_ticket() {
-     #[derive(Default)]
-     struct DeniedOnceRuntime {
-         attempts: usize,
-@@ -1024,17 +1024,24 @@ async fn sandbox_denied_retry_uses_the_action_policy_and_reviewer() {
-             .await;
-     };
- 
-+    let (scheduler, scheduler_peer) = agent_scheduler::test_support::single_ticket().await;
-     let (output, ()) = tokio::join!(
--        orchestrator.run(&mut runtime, environment, &context),
-+        scheduler.run(
-+            "echo sandbox-retry",
-+            orchestrator.run(&mut runtime, environment, &context)
-+        ),
-         approve
-     );
-     assert_eq!(
-         output
-+            .expect("scheduler operation succeeds")
-             .expect("approved sandbox retry should succeed")
-             .output,
-         "sandbox-retry-succeeded"
-     );
-     assert_eq!(runtime.attempts, 2);
-+    assert_eq!(scheduler.status().unwrap()["state"], "none");
-+    let _peer = scheduler_peer.await.unwrap();
- }
- 
- #[tokio::test]
 diff --git a/codex-rs/core/src/tools/registry.rs b/codex-rs/core/src/tools/registry.rs
-index 7d88650..4ad844e 100644
+index 7d88650..5c0424e 100644
 --- a/codex-rs/core/src/tools/registry.rs
 +++ b/codex-rs/core/src/tools/registry.rs
-@@ -808,7 +808,24 @@ async fn handle_any_tool(
+@@ -808,7 +808,19 @@ async fn handle_any_tool(
  ) -> Result<AnyToolResult, FunctionCallError> {
      let call_id = invocation.call_id.clone();
      let payload = invocation.payload.clone();
 -    let output = tool.handle(invocation.clone()).await?;
-+    let output = if let Some(command) = shell_script_for_invocation(&invocation) {
-+        let scheduler = agent_scheduler::get()
-+            .map_err(|error| FunctionCallError::RespondToModel(error.to_string()))?;
-+        if let Some(response) = scheduler
-+            .control(&command)
-+            .await
-+            .map_err(|error| FunctionCallError::RespondToModel(error.to_string()))?
-+        {
-+            Box::new(FunctionToolOutput::from_text(response, Some(true))) as Box<dyn ToolOutput>
-+        } else {
-+            scheduler
-+                .run(&command, tool.handle(invocation.clone()))
-+                .await
-+                .map_err(|error| FunctionCallError::RespondToModel(error.to_string()))??
-+        }
-+    } else {
-+        tool.handle(invocation.clone()).await?
-+    };
++    let command = shell_script_for_invocation(&invocation);
++    let output = agent_scheduler::run(
++        command.as_deref(),
++        tool.handle(invocation.clone()),
++        |response| {
++            Ok(
++                Box::new(FunctionToolOutput::from_text(response, Some(true)))
++                    as Box<dyn ToolOutput>,
++            )
++        },
++    )
++    .await
++    .map_err(|error| FunctionCallError::RespondToModel(error.to_string()))??;
      let post_tool_use_payload =
          CoreToolRuntime::post_tool_use_payload(tool, &invocation, output.as_ref());
      let result = AnyToolResult {

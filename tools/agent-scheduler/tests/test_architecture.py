@@ -14,8 +14,6 @@ class ArchitectureTests(unittest.TestCase):
         self.assertEqual(paths, {
             "codex-rs/Cargo.lock",
             "codex-rs/core/Cargo.toml",
-            "codex-rs/core/src/session/session.rs",
-            "codex-rs/core/src/session/tests/guardian_tests.rs",
             "codex-rs/core/src/tools/registry.rs",
         })
 
