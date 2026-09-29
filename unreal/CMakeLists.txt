@@ -175,10 +175,9 @@ set(IOJ_GAME_CONFIGURATION_ROOT
 set(IOJ_LIVE_CODING_DISABLED_ARGUMENT
   "-ini:EditorPerProjectUserSettings:[/Script/LiveCoding.LiveCodingSettings]:bEnabled=False"
 )
-sandbox_add_dotnet_host_tool(
-  game-package-tools-host
+sandbox_add_rust_host_tool(
+  game-package-tools
   IOJ_GAME_PACKAGE_TOOLS
-  "${PROJECT_SOURCE_DIR}/tools/GamePackageTools/GamePackageTools.csproj"
 )
 file(MAKE_DIRECTORY "${IOJ_LOCAL_DDC_DIR}")
 

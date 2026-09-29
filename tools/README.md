@@ -35,10 +35,11 @@ extensions, and exclusions from the current checkout's `.code-format.json`. Styl
 `cmake --workflow --preset format-code` for changed C++ files and CMake's Unreal presets for
 builds; `agent-task unreal-build` supplies the small build-script invocation boundary.
 
-CMake builds revision-local tools privately under `out/build/<configuration>/host-tools/`:
+CMake builds revision-local tools privately in each configuration's output directory:
 
-- GamePackageTools: exact package and asset expectations.
-- NativeBinaryTools: native object and mimalloc symbol-prefix integration.
+- `game-package-tools`: exact package and asset expectations.
+- `native-binary-tools`: native object and mimalloc symbol-prefix integration.
+  Both are Rust crates, built under `out/build/<configuration>/rust-tools/`.
 - BenchmarkTools: revision-specific presets, executable locations, scenarios, and baselines.
   PowerShell benchmark commands build `benchmark-tools-host` through CMake on demand.
 

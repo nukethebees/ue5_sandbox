@@ -692,7 +692,6 @@ class NativeWorkflowTests(unittest.TestCase):
                 {"type": "test", "name": name}])
 
     def test_native_target_dry_run_has_no_unreal_dependency(self) -> None:
-        generated_sources = self.create_generated_source_sentinels()
         with tempfile.TemporaryDirectory(
             prefix="sandbox native workflow "
         ) as temporary_root:
@@ -817,13 +816,11 @@ cmake_language(DEFER CALL check_simulation_policy)
 
             host_tool = (
                 build_directory
-                / "host-tools"
-                / "NativeBinaryTools"
-                / "Debug"
-                / "NativeBinaryTools.exe"
+                / "rust-tools"
+                / "release"
+                / "native-binary-tools.exe"
             )
             self.assertIn(host_tool.as_posix(), dry_run.replace("\\", "/"))
-            self.assertNotIn("tools/bin/NativeBinaryTools.exe", dry_run)
 
             build_ninja = (build_directory / "build.ninja").read_text(encoding="utf-8")
             verify_globs = build_directory / "CMakeFiles/VerifyGlobs.cmake"
@@ -837,25 +834,8 @@ cmake_language(DEFER CALL check_simulation_policy)
                 for owner in owners:
                     self.assertTrue(owner.startswith("native/third_party/"), owner)
             normalized_build_ninja = build_ninja.replace("\\", "/").replace("$:", ":")
-            native_binary_tools_directory = self.source_dir / "tools" / "NativeBinaryTools"
-            self.assertIn(
-                (native_binary_tools_directory / "NativeBinaryTools.csproj").as_posix(),
-                normalized_build_ninja,
-            )
-            self.assertNotIn(
-                (native_binary_tools_directory / "Program.cs").as_posix(),
-                normalized_build_ninja,
-            )
-            self.assertNotIn(
-                (native_binary_tools_directory / "obj").as_posix(),
-                normalized_build_ninja,
-            )
-            self.assertNotIn(
-                (native_binary_tools_directory / "bin").as_posix(),
-                normalized_build_ninja,
-            )
-            for generated_source in generated_sources:
-                self.assertNotIn(generated_source.as_posix(), normalized_build_ninja)
+            self.assertIn("build --locked --release --package native-binary-tools", normalized_build_ninja)
+            self.assertIn((self.source_dir / "tools" / "rust").as_posix(), normalized_build_ninja)
 
     @unittest.skipUnless(sys.platform == "win32", "requires Windows Ninja semantics")
     def test_ninja_direct_build_regenerates_after_configure_input_changes(self) -> None:
@@ -901,19 +881,6 @@ cmake_language(DEFER CALL check_simulation_policy)
             self.run_cmake("--build", str(build_directory), "--target", "verify_configuration")
             self.assertEqual(configured_file.read_text(encoding="utf-8"), "after\n")
 
-    def create_generated_source_sentinels(self) -> tuple[Path, ...]:
-        native_binary_tools_directory = self.source_dir / "tools" / "NativeBinaryTools"
-        generated_sources = (
-            native_binary_tools_directory / "obj" / "cmake-native-workflow-test" / "Ignored.cs",
-            native_binary_tools_directory / "bin" / "cmake-native-workflow-test" / "Ignored.cs",
-        )
-        for generated_source in generated_sources:
-            generated_source.parent.mkdir(parents=True, exist_ok=True)
-            generated_source.write_text("// CMake source-discovery sentinel.\n", encoding="utf-8")
-
-        self.addCleanup(self.remove_generated_source_sentinels, generated_sources)
-        return generated_sources
-
     def check_test_inventory(self, build: Path) -> None:
         def inventory(*filters: str) -> dict[str, dict[str, Any]]:
             result = subprocess.run(["ctest", "--test-dir", str(build), "--show-only=json-v1", *filters],
@@ -926,9 +893,7 @@ cmake_language(DEFER CALL check_simulation_policy)
         self.assertFalse(native.keys() & tools.keys())
         self.assertFalse(inventory("-L", "^all$").keys() & tools.keys())
         expected_tools = {"layout-planner-ui-tests", "image-lab-tests", "tracy-benchmark-compare-tests", "tracy-benchmark-compare-version", "PowerShell.Navigation"}
-        expected_tools.update("Sandbox." + name for name in (
-            "BenchmarkTools",
-            "GamePackageTools", "NativeBinaryTools"))
+        expected_tools.update(("Sandbox.BenchmarkTools", "game-package-tools", "native-binary-tools"))
         self.assertEqual(tools.keys(), expected_tools)
         self.assertEqual(inventory("-L", "^native-simulation$", "-LE", "soak|compile-contract").keys(),
                          {"native-simulation-tests"})
@@ -952,12 +917,6 @@ cmake_language(DEFER CALL check_simulation_policy)
         self.assertTrue(contracts.keys() <= native.keys())
         for test in contracts.values():
             self.assertTrue(any(prop["name"] == "RESOURCE_LOCK" for prop in test["properties"]))
-
-    @staticmethod
-    def remove_generated_source_sentinels(generated_sources: tuple[Path, ...]) -> None:
-        for generated_source in generated_sources:
-            generated_source.unlink(missing_ok=True)
-            generated_source.parent.rmdir()
 
     def run_cmake(self, *arguments: str) -> str:
         environment = os.environ.copy()

@@ -87,7 +87,7 @@ Unreal Engine 5.8 project.
   and invoked from PATH.
   Agents never auto-install/update tools or construct local fallbacks.
   Report a missing command; use `--version` for manual source/install comparison when needed.
-  CMake builds revision-local GamePackageTools, NativeBinaryTools, and
+  CMake builds revision-local game-package-tools, native-binary-tools, and
   BenchmarkTools privately on demand.
 * For final integration, only build and test what your work has affected
 * Keep benchmarks short; Not more than 3 minutes total

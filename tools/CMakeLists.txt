@@ -21,13 +21,14 @@ add_custom_target(format-all-code
 )
 
 include("${PROJECT_SOURCE_DIR}/cmake/csharp_tests.cmake")
+add_subdirectory(rust)
 
 add_subdirectory(perf)
 add_subdirectory(layout_planner)
 add_subdirectory(image_lab)
 
 add_custom_target(developer-tools-build
-  DEPENDS csharp-tests-build layout-planner-ui-tests image-lab-tests tracy-benchmark-compare-tests
+  DEPENDS csharp-tests-build rust-tool-tests-build layout-planner-ui-tests image-lab-tests tracy-benchmark-compare-tests
 )
 add_custom_target(task-start-build
   DEPENDS native-tests developer-tools-build

@@ -2,4 +2,6 @@
 resolver = "2"
 members = [
     "crates/agent-task",
+    "crates/native-binary-tools",
+    "crates/game-package-tools",
 ]

@@ -55,10 +55,6 @@ endfunction()
 # Explicit transitive source ownership keeps no-build tests honest after shared edits.
 sandbox_add_csharp_test(BenchmarkTools "tools/BenchmarkTools.Tests/BenchmarkTools.Tests.csproj"
   "benchmark;unit" tools/BenchmarkTools.Tests tools/BenchmarkTools)
-sandbox_add_csharp_test(GamePackageTools "tools/GamePackageTools.Tests/GamePackageTools.Tests.csproj"
-  "game-package;unit" tools/GamePackageTools.Tests tools/GamePackageTools)
-sandbox_add_csharp_test(NativeBinaryTools "tools/NativeBinaryTools.Tests/NativeBinaryTools.Tests.csproj"
-  "native-binary;integration;subprocess" tools/NativeBinaryTools.Tests tools/NativeBinaryTools)
 
 list(JOIN sandbox_csharp_entries ",\n    " sandbox_csharp_entries_json)
 file(CONFIGURE OUTPUT "${sandbox_csharp_metadata}" CONTENT

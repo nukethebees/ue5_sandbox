@@ -27,7 +27,7 @@ ctest --preset native-simulation-tests
 cmake --workflow --preset native-tests
 ```
 
-Mimalloc validation builds its small `NativeBinaryTools` host dependency into the native build
+Mimalloc validation builds its small Rust `native-binary-tools` host dependency into the native build
 tree when needed. Revision-local tools are built privately by CMake; stable tools are invoked from PATH.
 
 Use `native-core-tests` for the core-focused workflow. The detailed matrix presets remain available

@@ -14,6 +14,7 @@ endif()
 include(cmake/compiler_detection.cmake)
 include(cmake/llvm_tools.cmake)
 include(cmake/dotnet_host_tools.cmake)
+include(cmake/rust_host_tools.cmake)
 include(cmake/ue_cache_vars.cmake)
 
 ioj_is_msvc_frontend(IOJ_MSVC_FRONTEND)

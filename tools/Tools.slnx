@@ -1,8 +1,4 @@
 <Solution>
   <Project Path="BenchmarkTools/BenchmarkTools.csproj" />
   <Project Path="BenchmarkTools.Tests/BenchmarkTools.Tests.csproj" />
-  <Project Path="GamePackageTools/GamePackageTools.csproj" />
-  <Project Path="GamePackageTools.Tests/GamePackageTools.Tests.csproj" />
-  <Project Path="NativeBinaryTools/NativeBinaryTools.csproj" />
-  <Project Path="NativeBinaryTools.Tests/NativeBinaryTools.Tests.csproj" />
 </Solution>

@@ -35,12 +35,12 @@ set_tests_properties(Scripts.BenchmarkToolsBootstrap PROPERTIES
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
 
-add_test(NAME CMake.DotnetHostTools
-  COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/cmake/tests/test_dotnet_host_tools.py"
+add_test(NAME CMake.RustHostTools
+  COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/cmake/tests/test_rust_host_tools.py"
     --source-dir "${PROJECT_SOURCE_DIR}"
     --cmake "${CMAKE_COMMAND}"
 )
-set_tests_properties(CMake.DotnetHostTools PROPERTIES
+set_tests_properties(CMake.RustHostTools PROPERTIES
   LABELS "integration;subprocess;cmake"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )

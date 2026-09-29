@@ -6,10 +6,9 @@ set(SBX_MIMALLOC_SOURCE "${SBX_MIMALLOC_ROOT}/src/static.c")
 set(SBX_MIMALLOC_PREFIX_HEADER
   "${CMAKE_CURRENT_BINARY_DIR}/generated/sbx_mimalloc_prefix.h"
 )
-sandbox_add_dotnet_host_tool(
-  native-binary-tools-host
+sandbox_add_rust_host_tool(
+  native-binary-tools
   IOJ_NATIVE_BINARY_TOOLS
-  "${PROJECT_SOURCE_DIR}/tools/NativeBinaryTools/NativeBinaryTools.csproj"
 )
 
 set_source_files_properties("${SBX_MIMALLOC_SOURCE}" PROPERTIES LANGUAGE CXX)
