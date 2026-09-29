@@ -11,7 +11,7 @@ PowerShell session:
 
 ```powershell
 . .\dev.ps1
-csetup
+agent-task prepare-worktree
 ```
 
 The leading dot keeps the commands available in the current session. Run `dev-help` for the

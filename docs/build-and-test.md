@@ -10,15 +10,15 @@ initialize the worktree:
 
 ```powershell
 . .\dev.ps1
-csetup
+agent-task prepare-worktree
 ```
 
-The maintainer first installs central tools and adds each per-tool bin directory to PATH (see
-[developer tools](../tools/README.md)). `csetup` synchronizes submodules, regenerates presets,
-and prepares the DebugGame and Development worktrees; it never installs tools. CMake invokes
-UnrealBuildTools and CodeFormatTools from PATH and builds revision-local C# tools on demand.
-Use `csetup native` when only the native toolchain is needed; it avoids Unreal worktree preparation. See the
-[PowerShell guide](../PowerShell/README.md) for the other session commands.
+The maintainer installs central tools and adds the shared tool-link directory to PATH (see
+[developer tools](../tools/README.md)). Preparation owns submodules, presets, and code generation.
+For Unreal development, `csetup` then builds the DebugGame and Development dependencies.
+CMake invokes `agent-task` from PATH for formatting and Unreal build-script invocation,
+and builds revision-local C# tools on demand. See the
+[PowerShell guide](../PowerShell/README.md) for interactive commands.
 
 Alternatively, set `UE_ROOT` in the ignored `CMakeUserPresets.json` using a local configure preset
 that inherits from `development`. CMake builds pinned native dependencies from source; no package
@@ -58,7 +58,7 @@ While the workaround is active, `ASAN_OPTIONS=detect_stack_use_after_return=1` c
 omitted instrumentation.
 
 Project-owned build options and compile definitions use the `IOJ_` prefix. CMake passes
-`IOJ_NATIVE_TOOLCHAIN` to UnrealBuildTools, project-file generation, and UAT; Unreal module rules
+`IOJ_NATIVE_TOOLCHAIN` to `agent-task unreal-build`, project-file generation, and UAT; Unreal module rules
 read that same environment variable. Set `IOJ_WITH_UNREAL=OFF` for standalone native builds.
 
 ## Development validation
@@ -77,10 +77,9 @@ agent-task prepare-worktree
 
 The maintainer installs/updates `agent-task` with `. .\dev.ps1` followed by `install-agent-task`
 and manages PATH; agents assume it is available. On a fresh setup, run
-`agent-task install-central-tools` for jobserver, UnrealBuildTools, and CodeFormatTools.
-Each has its own `%LOCALAPPDATA%\NukeTheBees\<ToolName>\bin` directory.
+`agent-task prepare-worktree`, then `agent-task install-central-tools` for jobserver.
+The install command only configures native and runs the jobserver installation target.
 Agents report missing commands instead of installing them; `--version` allows manual diagnosis.
-It initializes/updates submodules before configuring the native build and running the install targets.
 Preparation does not install missing tools.
 See the [Rust tooling instructions](../tools/rust/README.md).
 Preparation removes only the worktree-root `out` directory, synchronizes and initializes/updates
@@ -101,8 +100,8 @@ The `check-generated-code` build target owns the committed codegen fixture consi
 cmake --build --preset native --target native-simulation-tests
 ctest --test-dir out/build/native -L '^native-simulation$' -LE 'soak|compile-contract' --output-on-failure
 
-cmake --build --preset native --target csharp-CodeFormatTools-build
-ctest --test-dir out/build/native -L '^formatting$' --output-on-failure
+cmake --build --preset native --target csharp-ArchitectureChecks-build
+ctest --test-dir out/build/native -L '^architecture$' --output-on-failure
 ```
 
 CTest never rebuilds the C# assemblies. Each registered project uses `dotnet test --no-build
@@ -114,9 +113,9 @@ Labels are regular expressions, not shell globs. One `-L` selects any matching l
 `-L` options require every expression to match. `-LE 'soak|compile-contract'` excludes either
 category. `ctest --test-dir out/build/native -N -L <label>` previews selection without executing.
 
-C# labels include `csharp`, `architecture`, `benchmark`, `formatting`,
-`game-package`, `git`, `native-binary`, and `unreal-build`. The `developer-tool` label includes
-all standalone C# projects, Rust tests, and the registered layout, image-lab, and perf tests.
+C# labels include `csharp`, `architecture`, `benchmark`,
+`game-package` and `native-binary`. The `developer-tool` label includes
+all standalone C# projects and the registered layout, image-lab, and perf tests.
 Mixed integration assemblies carry `integration;subprocess`; pure assemblies carry `unit`.
 Labels apply to whole executables/assemblies, not individual GTest/MSTest cases.
 The `native` label describes product/library validation, not implementation language. Layout

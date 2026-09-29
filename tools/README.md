@@ -7,16 +7,13 @@ The maintainer installs stable tools explicitly under
 | --- | --- | --- |
 | agent-task | `. .\dev.ps1`, then `install-agent-task` | Cargo.toml |
 | jobserver | `agent-task install-central-tools` | CLI source |
-| UnrealBuildTools | `agent-task install-central-tools` | csproj Version |
-| CodeFormatTools | `agent-task install-central-tools` | csproj Version |
 
 Installers publish literal symlinks in `%NTB_APPDATA_LOCAL%\bin` (default
-`%LOCALAPPDATA%\NukeTheBees\bin`). Add only that directory to PATH; old per-tool PATH
-entries can be removed after reinstalling. Enable Windows Developer Mode before installing,
+`%LOCALAPPDATA%\NukeTheBees\bin`). Add only that directory to PATH. Enable Windows Developer Mode before installing,
 or grant your account the **Create symbolic links** right and sign out/in. Installers check
 link creation before building or updating tools and refuse to overwrite unrelated files.
-The .NET tools publish as framework-dependent single-file executables so links do not need
-adjacent DLLs; the installed .NET runtime is still required.
+The two installers share only `install/ToolLinks.ps1`: destination selection, symlink preflight,
+and collision-safe publication. Revision-local .NET tools require the installed .NET SDK.
 
 `agent-task jobs` accesses the per-user jobs board. Its installer shuts down an empty board,
 copies the binaries, registers the logon task, and verifies startup. See [jobserver](jobserver/README.md).
@@ -30,18 +27,13 @@ generates presets, disables Live Coding in existing
 `Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini`, and generates code.
 Missing settings are left absent. Preparation never installs tools or performs a broad build.
 See the [Rust guide](rust/README.md) for AgentTask installation and feature Git operations.
-Obsolete `set-live-coding-disabled` installations can be deleted manually, including old copies
-under `%LOCALAPPDATA%\NukeTheBees\bin`.
+After preparation, `agent-task install-central-tools` configures native and installs jobserver.
 
-For one C# tool, run `pwsh -NoProfile -File tools/install/Install-CentralDotnetTool.ps1 -ToolName
-UnrealBuildTools` (or `CodeFormatTools`). The installer publishes privately, runs focused project
-tests and candidate `--version`, then replaces the tool's bin directory. Failed validation leaves
-the existing installation intact. Use `-InstallRoot <private-tool-root>` for isolated testing;
-links then go into the sibling `bin` directory. `-LinkDirectory` overrides the link destination.
-
-`CodeFormatTools [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` reads formatting roots,
+`agent-task format [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` reads formatting roots,
 extensions, and exclusions from the current checkout's `.code-format.json`. Styling stays in
-`.clang-format`. CMake formatting and Unreal builds invoke the central commands from PATH.
+`.clang-format`. CMake formatting and Unreal builds invoke `agent-task` from PATH. Use
+`cmake --workflow --preset format-code` for changed C++ files and CMake's Unreal presets for
+builds; `agent-task unreal-build` supplies the small build-script invocation boundary.
 
 CMake builds revision-local tools privately under `out/build/<configuration>/host-tools/`:
 

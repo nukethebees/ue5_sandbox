@@ -11,7 +11,7 @@ for Unreal compilation; use CMake workflows and build presets instead of invokin
 - `CMakeUserPresets.json` is ignored and is the place for machine-specific values such as `UE_ROOT`.
 
 Regenerate preset files with `python cmake/presets/generate.py`; verify them without writing with
-`python cmake/presets/generate.py --check`. `csetup` performs regeneration as part of worktree
+`python cmake/presets/generate.py --check`. `agent-task prepare-worktree` performs regeneration as part of worktree
 setup.
 
 `LLVM_ROOT` is an environment variable, not a project cache option. Set it before configuring

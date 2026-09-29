@@ -1,7 +1,6 @@
-# Rust developer-tool experiments
+# AgentTask
 
-This Cargo workspace holds small native developer-tool experiments. It does not establish Rust as
-the replacement for every C#, Python, or C++ tool.
+This Cargo workspace holds the stable human/agent workflow CLI.
 Rustup selects the pinned toolchain from `rust-toolchain.toml` when commands run in this directory.
 
 ## agent-task
@@ -23,9 +22,8 @@ The maintainer installs/updates central per-user build tools explicitly when nee
 agent-task install-central-tools
 ```
 
-This synchronizes and initializes/updates recursive submodules, generates presets, configures
-`native`, runs the canonical `install-jobserver` CMake target, then the UnrealBuildTools
-and CodeFormatTools installers, stopping on failure.
+Run preparation first. This command configures `native` and runs the canonical
+`install-jobserver` CMake target, stopping on failure. It does not repeat worktree preparation.
 Each tool lives in its own per-user bin directory; see
 [developer tools](../README.md). This is a maintainer command, never an agent preflight.
 
@@ -41,6 +39,19 @@ smoke-tests the installed executable with `--version`. Installers create symlink
 `%NTB_APPDATA_LOCAL%\bin`; add this single directory to PATH. Developer Mode or the
 Windows **Create symbolic links** privilege is required and checked before building.
 Agents assume `agent-task` is already available.
+
+`agent-task format [--all|--changed|--staged] [--jobs N] [--verbose]` uses the current
+worktree's `.code-format.json` and `.clang-format`. The default is all sources; changed selection
+includes staged, unstaged, and untracked sources. Staged selection rejects files with unstaged
+edits before formatting and re-stages only selected files after successful formatting, using the
+same constrained Git checks as `agent-task git`. The default worker count is half the logical
+processors, capped at 16. Diagnostics use repository-relative paths.
+
+CMake invokes `agent-task unreal-build --build-script <path> --target <target> --platform <platform>
+--configuration <configuration> --project <path> --native-toolchain <name>` for Unreal targets.
+It validates both paths, sets `IOJ_NATIVE_TOOLCHAIN`, and forwards Unreal's exit code. Windows
+batch scripts run through the command processor. MSBuild node reuse is disabled for that child:
+the cooperative jobs board does not supervise or reap descendants.
 
 Use the intentionally limited Git interface for routine feature work:
 

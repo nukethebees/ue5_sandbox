@@ -13,7 +13,7 @@ The `LLVM_ROOT` environment variable selects `bin/clang-cl.exe`, `bin/clang-tidy
 from one installation; native archiving and symbol audits also select that root's `llvm-lib`,
 `llvm-nm` and `llvm-readobj`. Set it before configuring; it is not a CMake cache option.
 When unset, normal PATH discovery applies. An incomplete explicit root fails lookup.
-CMake captures this selection and forwards it to child tests and CodeFormatTools; standalone formatting uses the
+CMake captures this selection and forwards it to child tests and `agent-task format`; standalone formatting uses the
 `LLVM_ROOT` environment variable for the matching clang-format.
 
 By default, tidy uses the selected executable directly. The optional machine installation can
