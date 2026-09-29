@@ -26,15 +26,6 @@ internal static class GpuStarfieldBenchmarkCommand
     public static async Task<int> RunAsync(BenchmarkToolsApplication application, RepositoryPaths repository_paths, IReadOnlyList<string> arguments, CancellationToken cancellation_token)
     {
         var request = ParseRequest(arguments, repository_paths);
-        var command = request.ToArguments();
-        return await BenchmarkCommandSupport.RunWithBenchmarkLeaseAsync(
-            application, repository_paths, "GPU starfield benchmark", command,
-            async () => await RunInsideLeaseAsync(application, repository_paths, request, cancellation_token),
-            [BenchmarkCommandSupport.EngineResource(request.Editor)], cancellation_token: cancellation_token);
-    }
-
-    private static async Task<int> RunInsideLeaseAsync(BenchmarkToolsApplication application, RepositoryPaths repository_paths, Request request, CancellationToken cancellation_token)
-    {
         var run_directory = Path.Combine(request.Output, DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture));
         if (Directory.Exists(run_directory))
         {
@@ -339,7 +330,6 @@ internal static class GpuStarfieldBenchmarkCommand
             if (resolutions.Length == 0 || sizes.Length == 0 || modes.Length == 0) throw new BenchmarkToolException("GPU starfield lists cannot be empty.");
             return new Request(Path.GetFullPath(parsed.Required("--editor")), Path.GetFullPath(parsed.Required("--project")), BenchmarkCommandSupport.ResolveOutputDirectory(paths, parsed.Required("--output")), counts, resolutions.SelectMany(resolution => sizes.Select(size => new Configuration(resolution.width, resolution.height, size))).ToArray(), modes, parsed.PositiveInt32("--warmup-frames", 60), parsed.PositiveInt32("--capture-frames", 180), parsed.PositiveInt32("--repeats", 3), parsed.PositiveInt32("--trim-frames", 10), parsed.PositiveInt32("--timeout-seconds", 1800));
         }
-        public IReadOnlyList<string> ToArguments() => ["gpu-starfield", "--editor", Editor, "--project", Project, "--output", Output, "--counts", string.Join(',', Counts), "--resolutions", string.Join(',', Configurations.Select(configuration => $"{configuration.Width}x{configuration.Height}").Distinct()), "--size-multipliers", string.Join(',', Configurations.Select(configuration => configuration.SizeMultiplier.ToString("R", CultureInfo.InvariantCulture)).Distinct()), "--camera-modes", string.Join(',', CameraModes.Select(mode => mode ? "moving" : "stationary")), "--warmup-frames", WarmupFrames.ToString(CultureInfo.InvariantCulture), "--capture-frames", CaptureFrames.ToString(CultureInfo.InvariantCulture), "--repeats", Repeats.ToString(CultureInfo.InvariantCulture), "--trim-frames", TrimFrames.ToString(CultureInfo.InvariantCulture), "--timeout-seconds", TimeoutSeconds.ToString(CultureInfo.InvariantCulture)];
         private static int[] ParseInts(string value, int minimum, int maximum, string name) { var values = new List<int>(); var seen = new HashSet<int>(); foreach (var item in value.Split(',', StringSplitOptions.None)) { if (!int.TryParse(item.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out var number) || number < minimum || number > maximum || !seen.Add(number)) throw new BenchmarkToolException($"'{name}' must contain unique values in the range {minimum}..{maximum}."); values.Add(number); } if (values.Count == 0) throw new BenchmarkToolException($"'{name}' cannot be empty."); return [.. values]; }
     }
 }

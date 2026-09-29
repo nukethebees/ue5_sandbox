@@ -91,7 +91,7 @@ Validation and build commands:
                            Config may be debug-game or development; default is debug-game, development.
   cprojectfiles [config]   Regenerate Unreal project files without building dependencies.
                            Config may be debug-game or development; default is debug-game.
-  get-jobserver-state      Show running/queued jobs and resource ownership.
+  get-jobserver-state      Show queued and granted scheduler tickets.
   Loading dev.ps1 disables MSBuild node reuse for the current user and shell.
   enable-ubt-build-safety  Persist disabled MSBuild node reuse for the current user.
   get-ubt-build-state      List Sandbox CMake, UBT, and UE MSBuild processes.

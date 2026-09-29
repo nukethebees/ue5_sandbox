@@ -17,8 +17,7 @@ then regenerates CMake presets, disables Live Coding in existing saved Editor se
 only the targets relevant to the task afterward. It stops on the first failure and streams
 subprocess output. Git, Python, CMake, and the repository build prerequisites must be available.
 
-Preparation checks for the canonical jobserver before clearing output. Install/update central
-per-user build tools explicitly when needed:
+The maintainer installs/updates central per-user build tools explicitly when needed:
 
 ```powershell
 agent-task install-central-tools
@@ -80,14 +79,15 @@ it, and add support only when a real workflow requires it. Raw mutations require
 maintainer exception. See [AGENTS.md](../../AGENTS.md).
 
 After validation and explicit user authorization, use `integrate-feature` from `dev.ps1`.
-It queues the exclusive `integration/dev` jobserver lease and invokes `agent-task integrate`.
+Request an exclusive scheduler ticket separately, then invoke `integrate-feature`, which calls
+`agent-task integrate` directly.
 The privileged transaction requires clean feature/dev worktrees, rebases onto pinned dev with
 autostash, update-refs and rebase-merges explicitly disabled, runs cheap Git sanity checks,
-constructs a merge commit, rechecks the integration lease and advances dev with compare-and-swap.
+constructs a merge commit and advances dev with compare-and-swap.
 It refreshes dev, returns persistent devN worktrees home and safely deletes the feature branch.
 Use `integrate-feature -KeepBranch` to retain it. Worktrees without a devN home detach at the
 integrated feature tip before deletion. A failed final rebase is aborted; resolve normally outside
-the queue using `agent-task git`, validate and requeue. Promotion/cleanup failures report retained
+the integration command using `agent-task git`, validate and retry with a new ticket. Promotion/cleanup failures report retained
 state and require inspection before retrying. Integration does not orchestrate builds or tests.
 
 Only `agent-task git` and ordinary preparation commands belong in unconditional allow rules;

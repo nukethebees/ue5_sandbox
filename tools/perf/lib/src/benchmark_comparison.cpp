@@ -1,7 +1,5 @@
 #include <sandbox/perf/benchmark_comparison.hpp>
 
-#include <jobserver/executor.hpp>
-
 #include <winsock2.h>
 #include <Windows.h>
 
@@ -379,26 +377,15 @@ auto run_command(std::filesystem::path const& executable,
         std::cout << ' ' << argument;
     }
     std::cout << '\n' << std::flush;
-    auto session{jobserver::Session::connect()};
-    if (!session) {
-        throw PipelineError{"jobserver_failed", session.error().message};
+    auto const process{create_process(executable, arguments, working_directory, {}, false, false)};
+    if (WaitForSingleObject(process.handle.get(), INFINITE) != WAIT_OBJECT_0) {
+        throw PipelineError{"operating_system_error", "Could not wait for build command"};
     }
-    jobserver::LocalExecutor executor;
-    std::vector<jobserver::GateClaim> const gates{{"machine", jobserver::LeaseMode::shared}};
-    auto grant{(*session)->acquire(gates,
-                                   Json{{"name", "Tracy benchmark setup"},
-                                        {"kind", "build"},
-                                        {"worktree", working_directory.string()}})};
-    if (!grant) {
-        throw PipelineError{"jobserver_failed", grant.error().message};
+    DWORD exit_code{};
+    if (!GetExitCodeProcess(process.handle.get(), &exit_code)) {
+        throw PipelineError{"operating_system_error", "Could not read build exit code"};
     }
-    auto result{executor.run({executable, arguments, working_directory}, **session, *grant, gates)};
-    auto released{(*session)->release(*grant, result ? *result : 1)};
-    if (!result || !released) {
-        throw PipelineError{"jobserver_failed",
-                            !result ? result.error().message : released.error().message};
-    }
-    return *result;
+    return static_cast<int>(exit_code);
 }
 
 auto capture_command(std::filesystem::path const& executable,
@@ -510,51 +497,6 @@ auto statistics_json(std::optional<ZoneStatistics> const& statistics) -> Json {
                 {"min_ns", statistics->minimum_nanoseconds},
                 {"max_ns", statistics->maximum_nanoseconds},
                 {"source_line", statistics->source_line}};
-}
-
-auto option_arguments(CompareOptions const& options) -> std::vector<std::string> {
-    std::vector<std::string> result{"--root",
-                                    options.root.string(),
-                                    "--level",
-                                    options.level.string(),
-                                    "--seconds",
-                                    format_number(options.seconds),
-                                    "--game-speed",
-                                    std::to_string(options.game_speed),
-                                    "--a-preset",
-                                    options.a_preset,
-                                    "--b-preset",
-                                    options.b_preset,
-                                    "--output-dir",
-                                    options.output_directory.string(),
-                                    "--connection-timeout-seconds",
-                                    format_number(options.connection_timeout_seconds),
-                                    "--process-timeout-seconds",
-                                    format_number(options.process_timeout_seconds),
-                                    "--top",
-                                    std::to_string(options.top),
-                                    "--skip-build"};
-    if (!options.runner_arguments.empty()) {
-        result.push_back("--");
-        result.insert(
-            result.end(), options.runner_arguments.begin(), options.runner_arguments.end());
-    }
-    return result;
-}
-
-auto executable_path() -> std::filesystem::path {
-    std::vector<wchar_t> storage(MAX_PATH);
-    for (;;) {
-        auto const copied{
-            GetModuleFileNameW(nullptr, storage.data(), static_cast<DWORD>(storage.size()))};
-        if (copied == 0) {
-            throw PipelineError{"operating_system_error", "Could not locate comparison executable"};
-        }
-        if (copied < storage.size() - 1) {
-            return std::filesystem::path{std::wstring{storage.data(), copied}};
-        }
-        storage.resize(storage.size() * 2);
-    }
 }
 
 void build_prerequisites(CompareOptions const& options) {
@@ -862,7 +804,6 @@ auto parse_command_line(int const argc, char const* const* argv) -> CommandLineR
     app.add_option("--b-preset", options.b_preset)->required();
     app.add_option("--output-dir", options.output_directory);
     app.add_flag("--skip-build", options.skip_build);
-    app.add_flag("--lease-held", options.lease_held)->group("");
     app.add_option("--connection-timeout-seconds", options.connection_timeout_seconds)
         ->default_val(30.0);
     app.add_option("--process-timeout-seconds", options.process_timeout_seconds)
@@ -1307,12 +1248,7 @@ auto run_application(int const argc,
         return parsed.exit_code;
     }
     auto const& options{*parsed.options};
-    wchar_t machine_mode[32]{};
-    GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_MACHINE_MODE", machine_mode, 32);
-    auto const inside_jobserver{options.lease_held &&
-                                std::wstring_view{machine_mode} == L"exclusive"};
-    if (options.output_directory_explicit && !inside_jobserver &&
-        std::filesystem::exists(options.output_directory) &&
+    if (options.output_directory_explicit && std::filesystem::exists(options.output_directory) &&
         !std::filesystem::is_empty(options.output_directory)) {
         standard_error << "Tracy comparison failed: output directory is not empty: "
                        << options.output_directory.string() << '\n';
@@ -1322,49 +1258,8 @@ auto run_application(int const argc,
     auto manifest = make_manifest(options, "preparing");
     write_json(options.output_directory / "manifest.json", manifest);
     try {
-        if (machine_mode[0] && !inside_jobserver) {
-            throw PipelineError{"nested_machine_gate",
-                                "Run benchmark orchestration without an outer machine lease"};
-        }
-        if (options.lease_held && !inside_jobserver) {
-            throw PipelineError{"invalid_lease_held",
-                                "Measurement reentry requires an exclusive machine lease"};
-        }
         if (!options.skip_build) {
             build_prerequisites(options);
-        }
-        if (!inside_jobserver) {
-            auto child_arguments{option_arguments(options)};
-            child_arguments.insert(child_arguments.begin(), "--lease-held");
-            auto session{jobserver::Session::connect()};
-            if (!session) {
-                throw PipelineError{"jobserver_failed", session.error().message};
-            }
-            jobserver::LocalExecutor executor;
-            std::vector<jobserver::GateClaim> const gates{
-                {"machine", jobserver::LeaseMode::exclusive}};
-            auto grant{(*session)->acquire(gates,
-                                           Json{{"name", "Tracy native benchmark comparison"},
-                                                {"kind", "benchmark"},
-                                                {"worktree", options.root.string()}})};
-            if (!grant) {
-                throw PipelineError{"jobserver_failed", grant.error().message};
-            }
-            jobserver::Command command{executable_path(), std::move(child_arguments), options.root};
-            auto result{executor.run(command, **session, *grant, gates)};
-            auto released{(*session)->release(*grant, result ? *result : 1)};
-            if (!released) {
-                throw PipelineError{"jobserver_failed", released.error().message};
-            }
-            if (!result) {
-                throw PipelineError{"jobserver_failed", result.error().message};
-            }
-            if (*result != 0 &&
-                !std::filesystem::is_regular_file(options.output_directory / "comparison.json")) {
-                throw PipelineError{"jobserver_failed",
-                                    "jobserver command exited with " + std::to_string(*result)};
-            }
-            return *result;
         }
         return run_comparison(options, manifest, standard_output);
     } catch (PipelineError const& error) {

@@ -6,7 +6,7 @@ namespace BenchmarkTools.Tests;
 public sealed class MigratedBenchmarkCommandTests
 {
     [TestMethod]
-    public async Task Telemetry_admits_setup_shared_and_leaves_exclusivity_to_ctest()
+    public async Task Telemetry_runs_cmake_and_ctest_directly()
     {
         using var repository = new TemporaryRepository();
         var runner = new RecordingRunner(_ => new ProcessResult(0));
@@ -16,9 +16,7 @@ public sealed class MigratedBenchmarkCommandTests
         Assert.AreEqual(3, runner.Requests.Count);
         foreach (var setup in runner.Requests.Take(2))
         {
-            Assert.AreEqual(@"C:\jobserver\jobserver.exe", setup.FileName);
-            CollectionAssert.Contains(setup.Arguments.ToArray(), "--shared");
-            CollectionAssert.DoesNotContain(setup.Arguments.ToArray(), "--exclusive");
+            Assert.AreEqual("cmake", setup.FileName);
         }
         Assert.AreEqual("ctest", runner.Requests[2].FileName);
     }
@@ -39,21 +37,12 @@ public sealed class MigratedBenchmarkCommandTests
     }
 
     [TestMethod]
-    public void EngineResource_matches_the_cmake_identity_shape()
-    {
-        var resource = BenchmarkCommandSupport.EngineResource(@"C:\Unreal Engine\Engine\Binaries\Win64\UnrealEditor-Cmd.exe");
-
-        StringAssert.StartsWith(resource, "unreal-build/");
-        Assert.AreEqual("unreal-build/".Length + 64, resource.Length);
-    }
-
-    [TestMethod]
     public async Task MigratedCommands_reject_invalid_options_before_launching_processes()
     {
         using var repository = new TemporaryRepository();
         var runner = new RecordingRunner(_ => throw new AssertFailedException("The command should not launch a process."));
         var errors = new StringWriter();
-        var application = new BenchmarkToolsApplication(runner, new FakeJobserverLocator(), new FakeEnvironment(), TextWriter.Null, errors, @"C:\tools\BenchmarkTools.exe");
+        var application = new BenchmarkToolsApplication(runner, TextWriter.Null, errors, @"C:\tools\BenchmarkTools.exe");
 
         Assert.AreEqual(1, await application.RunAsync(["fighter-simulation", "--fighter-caps", "1,1"], repository.Root));
         Assert.AreEqual(1, await application.RunAsync(["level-telemetry", "--samples", "0"], repository.Root));
@@ -76,7 +65,7 @@ public sealed class MigratedBenchmarkCommandTests
             }
             return new ProcessResult(0, "{}\n");
         });
-        var application = new BenchmarkToolsApplication(runner, new FakeJobserverLocator(), new FakeEnvironment(), TextWriter.Null, errors, @"C:\tools\BenchmarkTools.exe");
+        var application = new BenchmarkToolsApplication(runner, TextWriter.Null, errors, @"C:\tools\BenchmarkTools.exe");
         var prepared = Path.Combine(repository.Root, "prepared");
         Directory.CreateDirectory(prepared);
 
@@ -114,7 +103,7 @@ public sealed class MigratedBenchmarkCommandTests
 
     private static BenchmarkToolsApplication CreateApplication(RecordingRunner runner, TextWriter output)
     {
-        return new BenchmarkToolsApplication(runner, new FakeJobserverLocator(), new FakeEnvironment(), output, TextWriter.Null, @"C:\tools\BenchmarkTools.exe");
+        return new BenchmarkToolsApplication(runner, output, TextWriter.Null, @"C:\tools\BenchmarkTools.exe");
     }
 
     private sealed class RecordingRunner(Func<ProcessRequest, ProcessResult> result_factory) : IProcessRunner
@@ -126,16 +115,6 @@ public sealed class MigratedBenchmarkCommandTests
             Requests.Add(request);
             return Task.FromResult(result_factory(request));
         }
-    }
-
-    private sealed class FakeJobserverLocator : IJobserverLocator
-    {
-        public string Locate() => @"C:\jobserver\jobserver.exe";
-    }
-
-    private sealed class FakeEnvironment : IEnvironment
-    {
-        public string? GetEnvironmentVariable(string variable_name) => "job";
     }
 
     private sealed class TemporaryRepository : IDisposable

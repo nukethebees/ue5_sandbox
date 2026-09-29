@@ -13,10 +13,9 @@ function(add_unreal_build_cook_run_target target_name)
     message(FATAL_ERROR
       "add_unreal_build_cook_run_target(${target_name}) requires COMMENT.")
   endif()
-  sandbox_unreal_exclusive_jobserver_command(activity_command package "${uat_COMMENT}")
 
   add_custom_target(${target_name}
-    COMMAND ${activity_command}
+    COMMAND
       "${CMAKE_COMMAND}" -E env
       "IOJ_NATIVE_TOOLCHAIN=${IOJ_NATIVE_TOOLCHAIN}"
       "UE-LocalDataCachePath=${IOJ_LOCAL_DDC_DIR}"
@@ -92,10 +91,8 @@ function(add_unreal_packaging_targets)
     VERBATIM
   )
 
-  sandbox_unreal_jobserver_command(verify_package_command STANDARD SHARED package
-    "Verify Sandbox package ${UE_PLATFORM} ${UE_CONFIGURATION}")
   add_custom_target(verify-package
-    COMMAND ${verify_package_command} "${IOJ_GAME_PACKAGE_TOOLS}"
+    COMMAND "${IOJ_GAME_PACKAGE_TOOLS}"
       --project-root "${PROJECT_SOURCE_DIR}"
       --package-root "${IOJ_GAME_ARCHIVE_DIRECTORY}"
       --unreal-pak "${UE_UNREAL_PAK_EXE}"

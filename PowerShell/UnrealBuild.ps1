@@ -4,7 +4,7 @@ function Get-JobserverPath {
     Join-Path $env:LOCALAPPDATA 'NukeTheBees/jobserver/bin/jobserver.exe'
 }
 
-function Invoke-JobserverWorkflow {
+function Invoke-CMakeWorkflow {
     param(
         [Parameter(Mandatory)]
         [string]$Name,
@@ -17,11 +17,7 @@ function Invoke-JobserverWorkflow {
     $log_path = Join-Path $log_directory "cmake-workflow-$Preset.log"
 
     Write-Host $Name
-    if ($env:NUKETHEBEES_JOBSERVER_MACHINE_MODE -in @('shared', 'exclusive')) {
-        & cmake --workflow --preset $Preset 2>&1 | Tee-Object -FilePath $log_path | Out-Host
-    } else {
-        & (Get-JobserverPath) run --shared machine --name $Name --kind build --worktree $script:dev_project_root -- cmake --workflow --preset $Preset 2>&1 | Tee-Object -FilePath $log_path | Out-Host
-    }
+    & cmake --workflow --preset $Preset 2>&1 | Tee-Object -FilePath $log_path | Out-Host
     $exit_code = $LASTEXITCODE
 
     [PSCustomObject]@{
@@ -248,7 +244,7 @@ function cbuild {
     try {
         foreach ($current_configuration in $configuration) {
             Write-Host "Building the project with CMake workflow '$current_configuration'."
-            $workflow_result = Invoke-JobserverWorkflow `
+            $workflow_result = Invoke-CMakeWorkflow `
                 -Name "CMake workflow: $current_configuration" `
                 -Preset $current_configuration
 
@@ -268,34 +264,9 @@ function integrate-feature {
     param([switch]$KeepBranch)
 
     $agent_task = (Get-Command agent-task -CommandType Application -ErrorAction Stop).Source
-    $jobserver = Get-JobserverPath
-    $worktree = & git rev-parse --show-toplevel
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Run integrate-feature from the feature worktree after user authorization.'
-    }
-    $branch = & git branch --show-current
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($branch)) {
-        throw 'Integration requires a feature branch.'
-    }
-
-    $arguments = @(
-        'run',
-        '--name', "Integrate $branch into dev",
-        '--kind', 'integration',
-        '--task', $branch,
-        '--worktree', $worktree
-        if ($env:NUKETHEBEES_JOBSERVER_MACHINE_MODE -notin @('shared', 'exclusive')) {
-            '--shared', 'machine'
-        }
-        '--exclusive', 'integration/dev',
-        '--', $agent_task, 'integrate'
-    )
-    if ($KeepBranch) {
-        $arguments += '--keep-branch'
-    }
-
-    Write-Host "Queueing '$branch' for the exclusive 'integration/dev' reservation."
-    & $jobserver @arguments
+    $arguments = @('integrate')
+    if ($KeepBranch) { $arguments += '--keep-branch' }
+    & $agent_task @arguments
     if ($LASTEXITCODE -ne 0) {
         throw "Feature integration stopped (exit code $LASTEXITCODE). Follow the stage diagnostic above; nothing is retried automatically."
     }
@@ -348,7 +319,7 @@ function csetup {
 
             $workflow = "setup-worktree-$current_configuration"
             Write-Host "Preparing worktree with CMake workflow '$workflow'."
-            $workflow_result = Invoke-JobserverWorkflow `
+            $workflow_result = Invoke-CMakeWorkflow `
                 -Name "CMake setup workflow: $current_configuration" `
                 -Preset $workflow
 

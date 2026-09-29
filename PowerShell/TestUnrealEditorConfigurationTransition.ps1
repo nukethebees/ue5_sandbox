@@ -1,8 +1,3 @@
-[CmdletBinding()]
-param(
-    [switch]$UnderEngineLease
-)
-
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
@@ -38,44 +33,8 @@ function Invoke-ModuleLoadSmoke {
     }
 }
 
-function Get-EngineResource {
-    $cache_path = Join-Path $project_root 'out\build\debug-game\CMakeCache.txt'
-    $cache_entry = Select-String -LiteralPath $cache_path `
-        -Pattern '^UE_ENGINE_JOBSERVER_RESOURCE:INTERNAL=(?<resource>.+)$'
-    if ($null -eq $cache_entry) {
-        throw "The configured engine jobserver resource was not found in '$cache_path'."
-    }
-
-    $cache_entry.Matches[0].Groups['resource'].Value
-}
-
 Push-Location -LiteralPath $project_root
 try {
-    if (-not $UnderEngineLease) {
-        Invoke-CMake @('--preset', 'debug-game')
-        Invoke-CMake @('--preset', 'development')
-
-        $jobserver = Join-Path $env:LOCALAPPDATA 'NukeTheBees\jobserver\bin\jobserver.exe'
-        if (-not (Test-Path -LiteralPath $jobserver -PathType Leaf)) {
-            throw "The per-user jobserver is not installed: '$jobserver'."
-        }
-
-        $engine_resource = Get-EngineResource
-        & $jobserver run `
-            --name 'Unreal editor configuration transition' `
-            --kind test `
-            --worktree $project_root `
-            --shared machine `
-            --exclusive $engine_resource `
-            -- `
-            pwsh -NoProfile -File $PSCommandPath -UnderEngineLease
-        if ($LASTEXITCODE -ne 0) {
-            throw "The editor configuration transition exited with code $LASTEXITCODE."
-        }
-
-        return
-    }
-
     Invoke-ModuleLoadSmoke 'debug-game'
     Invoke-ModuleLoadSmoke 'development'
     Invoke-ModuleLoadSmoke 'debug-game'

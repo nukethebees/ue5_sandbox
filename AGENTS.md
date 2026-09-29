@@ -29,8 +29,7 @@ Unreal Engine 5.8 project.
   that worktree's `out`, initializes/updates submodules, regenerates presets and code, and disables
   Live Coding once if saved Editor settings exist.
   It does not perform a broad project/test build; build only the targets needed for the task afterward.
-  The canonical jobserver must be installed before preparation can clear `out`. The maintainer
-  installs/updates `agent-task` and manages PATH; agents invoke it by name from PATH. If it cannot be found or launched, halt and report the problem so the maintainer can fix it; do not use an absolute-path fallback or install it automatically.
+  The maintainer installs/updates `agent-task` and manages PATH; agents invoke it by name from PATH. If it cannot be found or launched, halt and report the problem so the maintainer can fix it; do not use an absolute-path fallback or install it automatically.
 * After worktree preparation, build only affected targets and execute relevant CTest labels.
   Use `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"` for the
   fast loop. Include the applicable expensive categories once for final validation.
@@ -39,7 +38,7 @@ Unreal Engine 5.8 project.
   contracts but excludes standalone developer-tool tests.
 * Perform feature work on dedicated feature branches
 * Do not bypass instructions here unless explicitly told to
-* Use the CMake workflows and jobserver described in [Builds](#builds). 
+* Use the CMake workflows described in [Builds](#builds).
 * **Fast default:** 
   * Understand the task
   * Finish the coherent implementation and required cleanup
@@ -47,20 +46,23 @@ Unreal Engine 5.8 project.
   * Run the smallest useful native/focused validation
   * Fix with focused checks then report ready
   * Only build and run what is needed.
-* After the user authorizes integration, run `integrate-feature` from the feature
-  worktree. This queues fairly for the exclusive `integration/dev` jobserver resource; ordinary
-  feature work and unrelated jobserver resources remain concurrent.
-  * Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs.
-  * Admit ordinary commands once through `jobserver broker` or `jobserver run --shared machine`, with a descriptive operation name and metadata. Inspect current leases with `jobserver status` and their timeline with `jobserver trace`.
-  * When using the experimental `tools/agent-scheduler/agent-codex.ps1` launcher, request a ticket in a separate command: `agent-scheduler ticket shared "operation"`, or `exclusive` for a benchmark. Then issue the ordinary command directly; Codex waits for admission and releases on root exit. Do not wrap it again in `jobserver run`. Cheap inspections listed in the separate scheduling rules need no ticket. Use `agent-scheduler status` or `clear`; see `tools/agent-scheduler/README.md` for the example's scope.
-  * Use queue metadata to understand ownership and contention; never cancel or kill another agent's job simply because it blocks yours.
-  * A broker owns its local session processes. Closing it cancels pending work, kills its remaining local tree, and releases its leases. The daemon has no process-owner or kill-owned API.
-* Tooling and native-only candidates must not acquire Unreal resources unless their dependency
-  surface requires Unreal. Run light, relevant tests after implementation; run expensive relevant
-  gates once against the pinned final candidate.
+* Use modified Codex (`agent-codex.ps1`) for scheduling. Cheap commands exempt under the
+  separate scheduling rules run normally. Before an expensive command, request
+  `agent-scheduler ticket shared "operation"` as a separate action; use `exclusive` for
+  benchmarks or machine-exclusive work. Then run the ordinary command. Codex waits for
+  admission and releases the ticket when the logical command call returns.
+  One connection and one outstanding ticket per Codex session; no nesting or sub-agents.
+  Exemptions do not grant security approval. Missing components fail closed: report them
+  to the maintainer. Ordinary tools have no scheduling responsibilities.
+  See [scheduler workflow](tools/agent-scheduler/README.md).
+* Use `jobserver status` or `jobserver trace` for read-only inspection. Never cancel another client's work.
+* After explicit integration authorization, request an exclusive ticket, then run
+  `integrate-feature` from the feature worktree.
+* Run light, relevant tests after implementation and expensive relevant gates once against
+  the final candidate. Tooling/native work must not build Unreal without a dependency reason.
 * Integration performs a cheap final Git transaction. Complete affected builds, focused tests, and review before requesting integration authorization.
-* A final-rebase conflict is aborted and releases the integration job. Resolve with
-  `agent-task git rebase dev` outside the queue, validate the resolution, then requeue.
+* A final-rebase conflict is aborted; logical command completion releases the ticket. Resolve with
+  `agent-task git rebase dev` before integration, validate the resolution, then request a fresh ticket.
   Report the stopped stage, blocker, required action, and retained state.
 * `agent-task integrate` is privileged and is not part of the unconditional Git permission surface.
   Invoke it through `integrate-feature` only after explicit user authorization.
@@ -80,7 +82,7 @@ Unreal Engine 5.8 project.
 * CMake is used to drive all builds, including UBT
 * Load dev.ps1 when starting a task
 * Stable tools are maintainer-installed under `%LOCALAPPDATA%\NukeTheBees\<ToolName>\bin`
-  and invoked from PATH. Internal jobserver calls use its canonical per-user executable.
+  and invoked from PATH.
   Agents never auto-install/update tools or construct local fallbacks.
   Report a missing command; use `--version` for manual source/install comparison when needed.
   CMake builds revision-local ArchitectureChecks, GamePackageTools, NativeBinaryTools, and
@@ -102,7 +104,10 @@ Unreal Engine 5.8 project.
 * Once enough context exists, implement rather than continuing exploration.
 * Keep README.md files concise and user-oriented. Put detailed notes in an adjacent ARCHITECTURE.md.
 * Treat obvious temporary contention for shared resources as a wait condition: do not repeatedly retry across consecutive turns; sleep within the shell/tool invocation before retrying with 10s, then 30s, then 60s backoff (capped at 60s). Investigate and report the failure if persists unreasonably.
-* Do not preserve architecture the user asked to replace through compatibility wrappers or indirection merely to reduce the diff. Avoid unrelated refactors.
+* When replacing an experimental architecture or workflow on a feature branch, remove the superseded path
+  completely unless the maintainer requests compatibility. Feature branches are the rollback
+  mechanism. Keep one canonical path: no obsolete implementations, compatibility wrappers,
+  fallback execution, duplicate configuration, or alternate workflows "just in case".
 * When explicitly granted autonomy, use judgement to resolve reasonable ambiguities while keeping scope controlled.
 * Store local development roadmaps under `.local/plans/` and disposable session hand-offs under `.local/handoffs/`; never commit them.
 * Use common tools like `clang-tidy` from PATH, not from explicit file paths.

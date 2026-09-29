@@ -14,7 +14,7 @@ internal static class LevelTelemetryBenchmarkCommand
 
         Directory.CreateDirectory(output);
         var configure = await application.ProcessRunner.RunAsync(
-            JobserverExecution.SetupRequest(application, new ProcessRequest("cmake", ["--preset", "telemetry-benchmark", $"-DIOJ_TELEMETRY_BENCHMARK_SAMPLES={samples}"], repository_paths.Root)), cancellation_token);
+            new ProcessRequest("cmake", ["--preset", "telemetry-benchmark", $"-DIOJ_TELEMETRY_BENCHMARK_SAMPLES={samples}"], repository_paths.Root), cancellation_token);
         application.WriteProcessOutput(configure);
         if (configure.ExitCode != 0)
         {
@@ -22,7 +22,7 @@ internal static class LevelTelemetryBenchmarkCommand
         }
 
         var build = await application.ProcessRunner.RunAsync(
-            JobserverExecution.SetupRequest(application, new ProcessRequest("cmake", ["--build", "--preset", "telemetry-benchmark"], repository_paths.Root)), cancellation_token);
+            new ProcessRequest("cmake", ["--build", "--preset", "telemetry-benchmark"], repository_paths.Root), cancellation_token);
         application.WriteProcessOutput(build);
         if (build.ExitCode != 0)
         {

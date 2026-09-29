@@ -81,7 +81,7 @@ and manages PATH; agents assume it is available. On a fresh setup, run
 Each has its own `%LOCALAPPDATA%\NukeTheBees\<ToolName>\bin` directory.
 Agents report missing commands instead of installing them; `--version` allows manual diagnosis.
 It initializes/updates submodules before configuring the native build and running the install targets.
-Preparation checks for the jobserver before removing output; it does not install missing tools.
+Preparation does not install missing tools.
 See the [Rust tooling instructions](../tools/rust/README.md).
 Preparation removes only the worktree-root `out` directory, synchronizes and initializes/updates
 recursive submodules, runs `python cmake/presets/generate.py`, disables Live Coding in existing
@@ -173,11 +173,11 @@ CMake owns test registration in `cmake/csharp_tests.cmake` and cross-checks regi
 against `Tools.slnx` and transitive MSBuild references. Run the `cmake` infrastructure regressions
 when changing this wiring, including `CMake.CSharpTests`.
 
-After required validation and explicit user authorization, `integrate-feature` queues the
-exclusive integration/dev resource and runs the privileged AgentTask Git transaction. Integration
+After required validation and explicit user authorization, request an exclusive scheduler ticket
+separately, then run `integrate-feature` for the privileged AgentTask Git transaction. Integration
 performs pinned rebase, cheap sanity checks, atomic dev promotion, refresh and cleanup. It does
-not select or rerun build/test gates. Resolve a conflicting final rebase outside the queue with
-`agent-task git rebase dev`, validate, and requeue.
+not select or rerun build/test gates. Resolve a conflicting final rebase with
+`agent-task git rebase dev`, validate, and retry with a new ticket.
 Validate shared C# build and registration changes with the CMake infrastructure checks.
 Python validation covers repository-owned Python under `Scripts` and `cmake` with Ruff and Pyright.
 
@@ -261,24 +261,22 @@ Run the focused configuration transition regression with:
 pwsh -NoProfile -File PowerShell/TestUnrealEditorConfigurationTransition.ps1
 ```
 
-It takes one exclusive engine lease, then builds and smoke-tests `SandboxEditor` as DebugGame,
-Development, then DebugGame again without asserting any particular BuildId value. Holding the
-parent lease prevents another worktree from invalidating one step's UBT metadata before its smoke
-reader starts.
+Request one exclusive ticket before this command. It builds and smoke-tests `SandboxEditor` as
+DebugGame, Development, then DebugGame again without asserting any particular BuildId value.
 
 ## Coordination
 
-CMake-managed Unreal builds take the repository's canonical engine gate exclusively. Unattended
-editor tests and commandlets hold a compatible shared claim for their lifetime; interactive managed
-editor launches hold it exclusively because Unreal can prompt to compile missing modules during
-startup. The per-user jobserver also coordinates costly work across worktrees. Load `dev.ps1` and
-run `get-jobserver-state` to inspect it. Do not overlap manually launched Editors, Visual Studio
-builds, Live Coding, or direct UBT work with a managed Unreal build.
+Modified Codex coordinates costly commands through one persistent scheduler connection. Request
+a shared ticket separately for ordinary builds/tests, or an exclusive ticket for benchmarks and
+commands that modify shared Unreal engine output. Then run the ordinary command; logical command
+completion releases admission. Cheap scheduling-exempt inspections need no ticket. Tools and CMake
+do not schedule themselves. See the [scheduler workflow](../tools/agent-scheduler/README.md).
+Do not overlap manually launched Editors, Visual Studio builds, Live Coding, or direct UBT work
+with a managed Unreal build. Scheduling is cooperative and does not track lingering processes.
 
 Normal project builds intentionally do not pass `-NoEngineChanges`. Project-owned runtime
 dependencies such as `SandboxTracyClient.dll` are staged into the Editor target's engine output
-directory, which that option treats as an engine change. Correctness instead comes from routing the
-entire UBT process tree through the exclusive canonical engine claim.
+directory, which that option treats as an engine change. Request exclusive access for these builds.
 
 See [the CMake guide](../cmake/README.md) for preset structure and [the native guide](../native/README.md)
 for standalone-only workflows. Use [Benchmarks](benchmarks.md) for exclusive performance

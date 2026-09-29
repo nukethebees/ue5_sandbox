@@ -35,11 +35,6 @@ fn git(root: &Path, arguments: &[&str]) {
 fn fixture() -> TemporaryDirectory {
     let directory = TemporaryDirectory::new();
     git(&directory.0, &["init", "--quiet"]);
-    let jobserver = directory
-        .0
-        .join("local-app-data/NukeTheBees/jobserver/bin/jobserver.exe");
-    fs::create_dir_all(jobserver.parent().unwrap()).unwrap();
-    fs::write(jobserver, "installed tool marker").unwrap();
     fs::create_dir_all(directory.0.join("cmake/presets")).unwrap();
     fs::write(
         directory.0.join("cmake/presets/generate.py"),
@@ -217,35 +212,7 @@ fn invalid_saved_settings_warn_and_allow_code_generation() {
 }
 
 #[test]
-fn missing_central_tools_leave_build_output_untouched() {
-    let directory = fixture();
-    fs::create_dir(directory.0.join("out")).unwrap();
-    fs::write(directory.0.join("out/keep.txt"), "build output").unwrap();
-    let missing_installation = directory.0.join("empty-local-app-data");
-
-    let mut missing_jobserver = tool(&directory.0, &["prepare-worktree"]);
-    missing_jobserver.env("LOCALAPPDATA", &missing_installation);
-    let mut missing_environment = tool(&directory.0, &["prepare-worktree"]);
-    missing_environment.env_remove("LOCALAPPDATA");
-
-    for mut command in [missing_jobserver, missing_environment] {
-        let output = command.output().unwrap();
-        assert!(!output.status.success());
-        assert!(
-            String::from_utf8_lossy(&output.stderr).contains("agent-task install-central-tools")
-        );
-        assert!(output.stdout.is_empty());
-        assert_eq!(
-            fs::read_to_string(directory.0.join("out/keep.txt")).unwrap(),
-            "build output"
-        );
-        assert!(!directory.0.join("phases.txt").exists());
-        assert!(!missing_installation.exists());
-    }
-}
-
-#[test]
-fn central_tool_installation_initializes_submodules_without_jobserver_or_clearing_out() {
+fn central_tool_installation_initializes_submodules_without_clearing_out() {
     let directory = fixture();
     let dependency = TemporaryDirectory::new();
     git(&dependency.0, &["init", "--quiet"]);

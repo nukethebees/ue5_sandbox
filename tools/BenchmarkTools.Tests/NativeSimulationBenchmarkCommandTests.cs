@@ -140,7 +140,7 @@ public sealed class NativeSimulationBenchmarkCommandTests
     }
 
     [TestMethod]
-    public void ToCommandArguments_only_includes_warmup_and_saturation_for_fighter_stress()
+    public void ToBenchmarkArguments_only_includes_warmup_and_saturation_for_fighter_stress()
     {
         var request = new NativeSimulationBenchmarkRequest(
             "level.scm",
@@ -154,7 +154,7 @@ public sealed class NativeSimulationBenchmarkCommandTests
             "native-simulation-benchmark",
             false);
 
-        CollectionAssert.DoesNotContain(request.ToCommandArguments(include_skip_build: false).ToList(), "--warmup-seconds");
-        CollectionAssert.DoesNotContain(request.ToCommandArguments(include_skip_build: false).ToList(), "--saturation-timeout-seconds");
+        CollectionAssert.DoesNotContain(request.ToBenchmarkArguments().ToList(), "--warmup-seconds");
+        CollectionAssert.DoesNotContain(request.ToBenchmarkArguments().ToList(), "--saturation-timeout-seconds");
     }
 }

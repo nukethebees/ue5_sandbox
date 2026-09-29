@@ -42,23 +42,8 @@ fn run(root: &Path, program: &str, arguments: &[&str]) -> Result<(), String> {
     Ok(())
 }
 
-fn require_jobserver() -> Result<(), String> {
-    let local_app_data = std::env::var_os("LOCALAPPDATA")
-        .filter(|value| !value.is_empty())
-        .ok_or("LOCALAPPDATA is not set. Set it and run 'agent-task install-central-tools'.")?;
-    let jobserver = PathBuf::from(local_app_data).join("NukeTheBees/jobserver/bin/jobserver.exe");
-    if !jobserver.is_file() {
-        return Err(format!(
-            "Canonical jobserver is missing at '{}'. Run 'agent-task install-central-tools' first.",
-            jobserver.display()
-        ));
-    }
-    Ok(())
-}
-
 fn prepare_worktree() -> Result<(), String> {
     let root = worktree_root()?;
-    require_jobserver()?;
 
     println!("[1/6] Clearing build output");
     let output = root.join("out");

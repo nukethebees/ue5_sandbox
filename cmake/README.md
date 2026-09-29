@@ -20,7 +20,7 @@ its `bin` directory; missing tools are errors. Configured tests/tools receive th
 selection explicitly, independent of later shell changes.
 
 The CMake modules in this directory own compiler warnings, sanitizers, precompiled headers, Unreal
-build/packaging integration, and jobserver claims. See [Build and test](../docs/build-and-test.md)
+build/packaging integration. See [Build and test](../docs/build-and-test.md)
 for the supported workflows, [Benchmarks](../docs/benchmarks.md) for exclusive measurements, and
 [Profiling](../docs/profiling.md) for native level benchmark capture.
 
@@ -30,9 +30,8 @@ owns project-file generation and Live Coding validation. Reusable Unreal target 
 remain in `cmake/unreal.cmake`.
 
 `cmake/tests/` runs pure CMake self-tests during every configure. They cover Windows path handling,
-MSVC library-flag escaping, resource identities, command-list boundaries, Unreal editor and test
-executable naming, engine-tool paths, and package-artifact paths; the Python jobserver fixture
-remains responsible for integration coverage of generated Ninja and CTest files.
+MSVC library-flag escaping, command-list boundaries, Unreal editor and test executable naming,
+engine-tool paths, and package-artifact paths.
 
 `native` is the ordinary clang-cl Debug + unity native-only configuration and inherits
 `IOJ_WITH_UNREAL=OFF`. Use `cmake --build --preset native --target <target>` for targeted
@@ -81,15 +80,10 @@ appropriate dependencies. A bare target name is resolved by CMake only in comman
 responsible for transitive incremental input tracking and is invoked on each requested build.
 CTest's C# freshness check still rejects stale assemblies without rebuilding them.
 
-Admit ordinary workflows once through `jobserver broker` or `jobserver run --shared machine`.
-CMake, Ninja, compilers, linkers, generators, and ordinary tests then run without inner machine
-leases. There are no compiler quotas or jobserver compiler/linker/test launchers. Multiple builds
-may overlap freely. Unreal commands additionally claim their canonical named engine gate.
-
-BenchmarkTools and benchmark CMake targets acquire `machine/exclusive` explicitly for measurement
-after build/setup. Run these orchestrators without an outer shared machine lease, so they cannot
-wait for their own caller. An older exclusive request blocks later shared arrivals until it finishes.
-Jobserver tests use isolated daemon fixtures; repair/install targets remain directly buildable.
+CMake and its child tools execute ordinary commands. In modified Codex, request a shared ticket
+before a build/test command or an exclusive ticket before a benchmark. Request exclusive access
+when work can modify shared Unreal engine output. Scheduling ends when the logical Codex command
+returns; see the [scheduler workflow](../tools/agent-scheduler/README.md).
 
 ASAN runtime staging is a build dependency of instrumented targets. Deleting the staged DLL is
 repaired by the next incremental build, including when the executable is otherwise up to date.

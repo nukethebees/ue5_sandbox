@@ -216,7 +216,7 @@ was accepting the supplied-bounds command-line switch. Native simulation represe
 
 Each case used 5 seconds warmup followed by 60 measured seconds: 40000 engine cubes, custom-only,
 all visible, 100% updated, no custom data, shadows off, identical map/camera, 1250x452 offscreen PIE
-viewport, D3D12/SM6, RTX 5090, driver 610.88. The jobserver held the exclusive machine resource;
+viewport, D3D12/SM6, RTX 5090, driver 610.88. The measurements used exclusive machine access;
 no coordinated builds ran during measurements. Initial baseline trials had substantial frame-time
 variation and a different viewport, so they were repeated and excluded from this comparison.
 
@@ -288,7 +288,7 @@ compression is inherently too slow.
 
 One new matched comparison used the same configuration and workload listed above, with the original
 1250x452 viewport reset before each run. Each case had 5 seconds warmup and 60 seconds measurement,
-under the jobserver's exclusive machine reservation. No builds, tests or static analysis ran alongside
+under an exclusive machine reservation. No builds, tests or static analysis ran alongside
 these measurements. Phase 1 sources were temporarily installed from `c58aa5fce`, with only the existing
 supplied-bounds CLI option added; the optimized sources were then restored byte-for-byte. The local
 engine hook remained installed for both versions, with its ordinary LocalVF path unchanged for Phase 1.
@@ -358,7 +358,7 @@ The plugin already requires AVX2; no additional runtime dispatch framework was i
 The scalar entry points remain available as an independent reference/fallback.
 
 Google Benchmark measurements on a Ryzen 9 9950X3D, Windows, clang-cl 24 Release, used five
-randomly interleaved repetitions with a 0.05-second minimum under the exclusive jobserver benchmark
+randomly interleaved repetitions with a 0.05-second minimum under an exclusive benchmark
 claim. Setup/allocation was outside timing. All cases retained production AoS reads and writes;
 these are complete packing kernels, not an ideal SoA arithmetic experiment. Median microseconds:
 

@@ -800,7 +800,9 @@ cmake_language(DEFER CALL check_simulation_policy)
             ):
                 commands = self.run_cmake("--build", str(build_directory), "--target", report,
                                           "--", "-t", "commands").replace("\\", "/")
-                self.assertIn(f'-- "{(build_directory / executable).as_posix()}"', commands)
+                self.assertIn(f'"{(build_directory / executable).as_posix()}"', commands)
+                self.assertNotIn("jobserver", commands.lower())
+                self.assertNotIn("NUKETHEBEES_JOBSERVER_MACHINE_MODE", commands)
 
             host_tool = (
                 build_directory

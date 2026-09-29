@@ -1,5 +1,4 @@
 include_guard(GLOBAL)
-include("${CMAKE_CURRENT_LIST_DIR}/jobserver_integration.cmake")
 
 add_custom_target(csharp-host-tools)
 

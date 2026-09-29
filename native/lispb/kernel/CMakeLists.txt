@@ -428,7 +428,6 @@ function(add_kernel_benchmark_report target_name)
   if(REPORT_FILTER)
     set(filter_argument "--benchmark_filter=${REPORT_FILTER}")
   endif()
-  sandbox_jobserver_command(kernel_benchmark_command BENCHMARK benchmark "${REPORT_COMMENT}")
 
   add_custom_target(${target_name}
     COMMAND "${CMAKE_COMMAND}" -E remove_directory
@@ -438,7 +437,7 @@ function(add_kernel_benchmark_report target_name)
     COMMAND "${CMAKE_COMMAND}" -E make_directory
       "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}"
       "${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
-    COMMAND ${kernel_benchmark_command} "$<TARGET_FILE:kernel-native-benchmarks>"
+    COMMAND "$<TARGET_FILE:kernel-native-benchmarks>"
       --benchmark_repetitions=7
       --benchmark_min_time=0.05s
       --benchmark_enable_random_interleaving=true
@@ -477,11 +476,9 @@ add_kernel_benchmark_report(kernel-benchmark-report-full
   COMMENT "Benchmarking the comprehensive generated kernel matrix and plotting the results"
 )
 
-sandbox_jobserver_command(kernel_highway_benchmark_command BENCHMARK benchmark
-  "Compare Highway and intrinsic generated kernels")
 add_custom_target(kernel-highway-benchmark-report
   COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/highway"
-  COMMAND ${kernel_highway_benchmark_command} "$<TARGET_FILE:kernel-native-benchmarks>"
+  COMMAND "$<TARGET_FILE:kernel-native-benchmarks>"
     "--benchmark_filter=^(add_scaled/elementwise|dot_product/relaxed|dot_product_3d/elementwise)/[^/]+/[^/]+/ordinary/(aligned|unaligned)/(17|32|4096|65536)/real_time$"
     --benchmark_repetitions=3 --benchmark_min_time=0.02s
     --benchmark_enable_random_interleaving=true --benchmark_display_aggregates_only=true
