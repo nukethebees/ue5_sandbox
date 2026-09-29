@@ -291,10 +291,10 @@ fn central_tool_installation_initializes_submodules_without_jobserver_or_clearin
     assert!(String::from_utf8_lossy(&output.stderr).contains("23"));
     assert!(directory.0.join("dependency/marker.txt").is_file());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("[1/8] Synchronizing submodules"));
-    assert!(stdout.contains("[2/8] Updating submodules"));
-    assert!(stdout.contains("[3/8] Generating CMake presets"));
-    assert!(!stdout.contains("[4/8]"));
+    assert!(stdout.contains("Synchronizing submodules"));
+    assert!(stdout.contains("Updating submodules"));
+    assert!(stdout.contains("Generating CMake presets"));
+    assert!(!stdout.contains("Configuring native build"));
     assert_eq!(
         fs::read_to_string(directory.0.join("out/keep.txt")).unwrap(),
         "build output"
@@ -308,7 +308,7 @@ fn failed_cleanup_stops_before_submodules() {
     let output = invoke(&directory.0, &["prepare-worktree"]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("Could not remove"));
-    assert!(!String::from_utf8_lossy(&output.stdout).contains("[2/6]"));
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("Synchronizing submodules"));
     assert!(directory.0.join("out").is_file());
 }
 
@@ -323,7 +323,7 @@ fn failed_preset_generation_stops_before_cmake() {
     let output = invoke(&directory.0, &["prepare-worktree"]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("python failed"));
-    assert!(!String::from_utf8_lossy(&output.stdout).contains("[6/6]"));
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("Generating code"));
     assert!(!directory.0.join("phases.txt").exists());
 }
 
@@ -338,7 +338,7 @@ fn failed_code_generation_returns_failure() {
     let output = invoke(&directory.0, &["prepare-worktree"]);
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("cmake failed"));
-    assert!(String::from_utf8_lossy(&output.stdout).contains("[6/6]"));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("Generating code"));
     assert_eq!(
         fs::read_to_string(directory.0.join("phases.txt")).unwrap(),
         "presets\n"
