@@ -4,7 +4,7 @@ endif()
 
 add_custom_target(format-code
   COMMAND "${CMAKE_COMMAND}" -E env "LLVM_ROOT=${LLVM_ROOT}"
-    CodeFormatTools --changed
+    agent-task format --changed
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Formatting Git-changed project source files"
   USES_TERMINAL
@@ -13,7 +13,7 @@ add_custom_target(format-code
 
 add_custom_target(format-all-code
   COMMAND "${CMAKE_COMMAND}" -E env "LLVM_ROOT=${LLVM_ROOT}"
-    CodeFormatTools
+    agent-task format --all
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Formatting all project source files"
   USES_TERMINAL

@@ -3,12 +3,8 @@
   <Project Path="ArchitectureChecks.Tests/ArchitectureChecks.Tests.csproj" />
   <Project Path="BenchmarkTools/BenchmarkTools.csproj" />
   <Project Path="BenchmarkTools.Tests/BenchmarkTools.Tests.csproj" />
-  <Project Path="CodeFormatTools/CodeFormatTools.csproj" />
-  <Project Path="CodeFormatTools.Tests/CodeFormatTools.Tests.csproj" />
   <Project Path="GamePackageTools/GamePackageTools.csproj" />
   <Project Path="GamePackageTools.Tests/GamePackageTools.Tests.csproj" />
   <Project Path="NativeBinaryTools/NativeBinaryTools.csproj" />
   <Project Path="NativeBinaryTools.Tests/NativeBinaryTools.Tests.csproj" />
-  <Project Path="UnrealBuildTools/UnrealBuildTools.csproj" />
-  <Project Path="UnrealBuildTools.Tests/UnrealBuildTools.Tests.csproj" />
 </Solution>

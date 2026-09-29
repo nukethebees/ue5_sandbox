@@ -1,8 +1,3 @@
-[CmdletBinding()]
-param([switch]$CheckOnly, [string]$CheckDirectory)
-
-$ErrorActionPreference = 'Stop'
-
 function Get-ToolLinkDirectory([string]$InstallRoot, [string]$Directory) {
     if ($Directory) { return [IO.Path]::GetFullPath($Directory) }
 
@@ -44,8 +39,4 @@ function Publish-ToolLinks([string]$Bin, [string[]]$Names, [string]$Directory) {
         }
     }
     Write-Host "Tool links are in '$Directory'. Keep this one directory on PATH."
-}
-
-if ($CheckOnly) {
-    Assert-ToolLinkSupport (Get-ToolLinkDirectory '' $CheckDirectory)
 }

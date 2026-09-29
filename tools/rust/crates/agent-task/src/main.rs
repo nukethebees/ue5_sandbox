@@ -3,14 +3,16 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
+mod format;
 mod git;
 mod git_cli;
 mod integrate;
 mod jobs;
 mod live_coding;
+mod unreal_build;
 mod workspace;
 
-const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  jobs <command>         Cooperative jobs board (agent-task jobs --help)\n  git <command>          Run supported feature Git operations (agent-task git --help)\n  integrate [--keep-branch]  Privileged dev transaction; use authorized integrate-feature";
+const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  format [options]      Format sources using revision-local policy\n  unreal-build [options] Invoke the Unreal build script\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  jobs <command>         Cooperative jobs board (agent-task jobs --help)\n  git <command>          Run supported feature Git operations (agent-task git --help)\n  integrate [--keep-branch]  Privileged dev transaction; use authorized integrate-feature";
 
 fn worktree_root() -> Result<PathBuf, String> {
     let output = Command::new("git")
@@ -81,35 +83,10 @@ fn prepare_worktree() -> Result<(), String> {
 fn install_central_tools() -> Result<(), String> {
     let root = worktree_root()?;
 
-    println!("Checking tool symlink support");
-    run(
-        &root,
-        "pwsh",
-        &[
-            "-NoProfile",
-            "-File",
-            "tools/install/ToolLinks.ps1",
-            "-CheckOnly",
-        ],
-    )?;
-
-    println!("[1/7] Synchronizing submodules");
-    run(&root, "git", &["submodule", "sync", "--recursive"])?;
-
-    println!("[2/7] Updating submodules");
-    run(
-        &root,
-        "git",
-        &["submodule", "update", "--init", "--recursive"],
-    )?;
-
-    println!("[3/7] Generating CMake presets");
-    run(&root, "python", &["cmake/presets/generate.py"])?;
-
-    println!("[4/7] Configuring native build");
+    println!("[1/2] Configuring native build (run prepare-worktree first)");
     run(&root, "cmake", &["--preset", "native"])?;
 
-    println!("[5/7] Installing canonical jobserver");
+    println!("[2/2] Installing canonical jobserver");
     run(
         &root,
         "cmake",
@@ -120,27 +97,28 @@ fn install_central_tools() -> Result<(), String> {
             "--target",
             "install-jobserver",
         ],
-    )?;
-
-    for (step, tool) in [(6, "UnrealBuildTools"), (7, "CodeFormatTools")] {
-        println!("[{step}/7] Installing canonical {tool}");
-        run(
-            &root,
-            "pwsh",
-            &[
-                "-NoProfile",
-                "-File",
-                "tools/install/Install-CentralDotnetTool.ps1",
-                "-ToolName",
-                tool,
-            ],
-        )?;
-    }
-    Ok(())
+    )
 }
 
 fn main() -> ExitCode {
     let arguments = std::env::args_os().skip(1).collect::<Vec<_>>();
+    if arguments
+        .first()
+        .is_some_and(|arg| arg == "format" || arg == "unreal-build")
+    {
+        let result = if arguments[0] == "format" {
+            format::run(&arguments[1..])
+        } else {
+            unreal_build::run(&arguments[1..])
+        };
+        match result {
+            Ok(code) => std::process::exit(code),
+            Err(error) => {
+                eprintln!("agent-task: {error}");
+                return ExitCode::FAILURE;
+            }
+        }
+    }
     if arguments.first().is_some_and(|arg| arg == "jobs") {
         return match jobs::run(&arguments[1..]) {
             Ok(code) => ExitCode::from(code as u8),

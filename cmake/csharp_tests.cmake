@@ -57,14 +57,10 @@ sandbox_add_csharp_test(ArchitectureChecks "tools/ArchitectureChecks.Tests/Archi
   "architecture;integration;subprocess" tools/ArchitectureChecks.Tests tools/ArchitectureChecks)
 sandbox_add_csharp_test(BenchmarkTools "tools/BenchmarkTools.Tests/BenchmarkTools.Tests.csproj"
   "benchmark;unit" tools/BenchmarkTools.Tests tools/BenchmarkTools)
-sandbox_add_csharp_test(CodeFormatTools "tools/CodeFormatTools.Tests/CodeFormatTools.Tests.csproj"
-  "formatting;integration;subprocess" tools/CodeFormatTools.Tests tools/CodeFormatTools)
 sandbox_add_csharp_test(GamePackageTools "tools/GamePackageTools.Tests/GamePackageTools.Tests.csproj"
   "game-package;unit" tools/GamePackageTools.Tests tools/GamePackageTools)
 sandbox_add_csharp_test(NativeBinaryTools "tools/NativeBinaryTools.Tests/NativeBinaryTools.Tests.csproj"
   "native-binary;integration;subprocess" tools/NativeBinaryTools.Tests tools/NativeBinaryTools)
-sandbox_add_csharp_test(UnrealBuildTools "tools/UnrealBuildTools.Tests/UnrealBuildTools.Tests.csproj"
-  "unreal-build;integration;subprocess" tools/UnrealBuildTools.Tests tools/UnrealBuildTools)
 
 list(JOIN sandbox_csharp_entries ",\n    " sandbox_csharp_entries_json)
 file(CONFIGURE OUTPUT "${sandbox_csharp_metadata}" CONTENT

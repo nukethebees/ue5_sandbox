@@ -33,6 +33,30 @@ class NativeWorkflowTests(unittest.TestCase):
     cmake: str
     llvm_root: str
 
+    def test_unreal_build_invocation_uses_agent_task(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="sandbox unreal invocation ") as directory:
+            fixture = Path(directory)
+            (fixture / "CMakeLists.txt").write_text(
+                'cmake_minimum_required(VERSION 4.4.2)\n'
+                'project(UnrealInvocation NONE)\n'
+                f'include("{self.source_dir.as_posix()}/cmake/unreal.cmake")\n'
+                'set(UE_BUILD_SCRIPT "${CMAKE_SOURCE_DIR}/Engine Root/Build.bat")\n'
+                'set(IOJ_UPROJECT "${CMAKE_SOURCE_DIR}/Game Root/Game.uproject")\n'
+                'set(UE_PLATFORM Win64)\n'
+                'set(UE_CONFIGURATION DebugGame)\n'
+                'set(IOJ_NATIVE_TOOLCHAIN test-native)\n'
+                'add_unreal_target(editor SandboxEditor)\n', encoding="utf-8",
+            )
+            build = fixture / "build"
+            self.run_cmake("-S", str(fixture), "-B", str(build), "-G", "Ninja")
+            commands = self.run_cmake("--build", str(build), "--target", "editor", "--", "-t", "commands")
+            self.assertIn("agent-task unreal-build", commands)
+            for argument in ("--target SandboxEditor", "--platform Win64", "--configuration DebugGame",
+                             "--native-toolchain test-native"):
+                self.assertIn(argument, commands)
+            self.assertRegex(commands, r'--build-script "[^"\n]*Engine Root[/\\]Build.bat"')
+            self.assertRegex(commands, r'--project "[^"\n]*Game Root[/\\]Game.uproject"')
+
     def test_compile_options_do_not_require_an_executable_link(self) -> None:
         with tempfile.TemporaryDirectory(prefix="sandbox option probes ") as directory:
             fixture = Path(directory)
@@ -768,7 +792,7 @@ cmake_language(DEFER CALL check_simulation_policy)
                 "-t",
                 "commands",
             )
-            self.assertNotRegex(dry_run, r"UnrealBuildTools|UnrealEditor|RunUBT")
+            self.assertNotRegex(dry_run, r"agent-task unreal-build|UnrealEditor|RunUBT")
             self.assertNotRegex(dry_run, r"(?i)(?:^|[\\/\s])unreal(?:[\\/\s]|$)")
             self.assertNotIn("Tools.slnx", dry_run)
             self.assertNotIn("dotnet.exe\" test", dry_run)
@@ -903,8 +927,8 @@ cmake_language(DEFER CALL check_simulation_policy)
         self.assertFalse(inventory("-L", "^all$").keys() & tools.keys())
         expected_tools = {"layout-planner-ui-tests", "image-lab-tests", "tracy-benchmark-compare-tests", "tracy-benchmark-compare-version", "PowerShell.Navigation"}
         expected_tools.update("Sandbox." + name for name in (
-            "ArchitectureChecks", "BenchmarkTools", "CodeFormatTools",
-            "GamePackageTools", "NativeBinaryTools", "UnrealBuildTools"))
+            "ArchitectureChecks", "BenchmarkTools",
+            "GamePackageTools", "NativeBinaryTools"))
         self.assertEqual(tools.keys(), expected_tools)
         self.assertEqual(inventory("-L", "^native-simulation$", "-LE", "soak|compile-contract").keys(),
                          {"native-simulation-tests"})

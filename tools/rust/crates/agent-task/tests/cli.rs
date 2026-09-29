@@ -46,12 +46,6 @@ fn fixture() -> TemporaryDirectory {
         include_str!("fixtures/CMakeLists.txt"),
     )
     .unwrap();
-    fs::create_dir_all(directory.0.join("tools/install")).unwrap();
-    fs::write(
-        directory.0.join("tools/install/ToolLinks.ps1"),
-        include_str!("../../../../install/ToolLinks.ps1"),
-    )
-    .unwrap();
     directory
 }
 
@@ -228,68 +222,36 @@ fn invalid_saved_settings_warn_and_allow_code_generation() {
 }
 
 #[test]
-fn central_tool_installation_initializes_submodules_without_clearing_out() {
+fn central_tool_installation_only_configures_and_installs_jobserver() {
     let directory = fixture();
-    let dependency = TemporaryDirectory::new();
-    git(&dependency.0, &["init", "--quiet"]);
-    fs::write(dependency.0.join("marker.txt"), "dependency").unwrap();
-    git(&dependency.0, &["add", "."]);
-    git(
-        &dependency.0,
-        &[
-            "-c",
-            "user.name=Test",
-            "-c",
-            "user.email=test@example.invalid",
-            "-c",
-            "commit.gpgsign=false",
-            "commit",
-            "--quiet",
-            "-m",
-            "dependency",
-        ],
-    );
-    git(
-        &directory.0,
-        &[
-            "-c",
-            "protocol.file.allow=always",
-            "submodule",
-            "add",
-            "--",
-            dependency.0.to_str().unwrap(),
-            "dependency",
-        ],
-    );
-    git(&directory.0, &["submodule", "deinit", "--force", "--all"]);
-    assert!(!directory.0.join("dependency/marker.txt").exists());
-
     fs::create_dir(directory.0.join("out")).unwrap();
     fs::write(directory.0.join("out/keep.txt"), "build output").unwrap();
-    fs::write(
-        directory.0.join("cmake/presets/generate.py"),
-        "from pathlib import Path\nassert Path('dependency/marker.txt').is_file()\nraise SystemExit(23)\n",
-    )
-    .unwrap();
-    let output = tool(&directory.0, &["install-central-tools"])
-        .env("LOCALAPPDATA", directory.0.join("empty-local-app-data"))
-        .output()
-        .unwrap();
-
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("python failed"));
-    assert!(String::from_utf8_lossy(&output.stderr).contains("23"));
-    assert!(directory.0.join("dependency/marker.txt").is_file());
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Checking tool symlink support"));
-    assert!(stdout.contains("Synchronizing submodules"));
-    assert!(stdout.contains("Updating submodules"));
-    assert!(stdout.contains("Generating CMake presets"));
-    assert!(!stdout.contains("Configuring native build"));
+    fs::write(directory.0.join("CMakePresets.json"), r#"{
+        "version": 6,
+        "configurePresets": [{"name":"native", "generator":"Ninja", "binaryDir":"${sourceDir}/out/native", "cacheVariables":{"PHASE":"configure"}}],
+        "buildPresets": [{"name":"native", "configurePreset":"native"}]
+    }"#).unwrap();
+    fs::write(directory.0.join("CMakeLists.txt"), concat!(
+        "cmake_minimum_required(VERSION 3.25)\nproject(Fixture NONE)\n",
+        "file(APPEND \"${CMAKE_SOURCE_DIR}/phases.txt\" \"configure\\n\")\n",
+        "add_custom_target(install-jobserver COMMAND \"${CMAKE_COMMAND}\" -E touch \"${CMAKE_SOURCE_DIR}/installed.txt\")\n"
+    )).unwrap();
+    let output = invoke(&directory.0, &["install-central-tools"]);
+    assert!(output.status.success(), "{output:?}");
+    assert!(directory.0.join("installed.txt").is_file());
+    assert_eq!(
+        fs::read_to_string(directory.0.join("phases.txt")).unwrap(),
+        if cfg!(windows) {
+            "configure\r\n"
+        } else {
+            "configure\n"
+        }
+    );
     assert_eq!(
         fs::read_to_string(directory.0.join("out/keep.txt")).unwrap(),
         "build output"
     );
+    assert!(!String::from_utf8_lossy(&output.stdout).contains("submodules"));
 }
 
 #[test]

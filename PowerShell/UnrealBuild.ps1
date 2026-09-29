@@ -1,3 +1,4 @@
+# The cooperative jobs board does not reap MSBuild workers from interactive Unreal workflows.
 $env:MSBUILDDISABLENODEREUSE = '1'
 
 function Invoke-CMakeWorkflow {
@@ -68,167 +69,6 @@ function Write-GeneratedSourceWarning {
     Write-Warning $message
 }
 
-function Update-WorktreeSubmodules {
-    Write-Host 'Synchronizing Git submodule URLs.'
-    & git submodule sync --recursive
-    if ($LASTEXITCODE -ne 0) {
-        throw "Git submodule synchronization exited with code $LASTEXITCODE."
-    }
-
-    Write-Host 'Initializing pinned Git submodules.'
-    & git submodule update --init --recursive
-    if ($LASTEXITCODE -ne 0) {
-        throw "Git submodule update exited with code $LASTEXITCODE."
-    }
-}
-
-function Remove-RetiredVcpkgBuildDirectory {
-    param(
-        [Parameter(Mandatory)]
-        [string]$configuration
-    )
-
-    $manifest_path = Join-Path $script:dev_project_root 'vcpkg.json'
-    if (Test-Path -LiteralPath $manifest_path -PathType Leaf) {
-        return
-    }
-
-    $build_directory = Join-Path $script:dev_project_root "out\build\$configuration"
-    $cmake_files_directory = Join-Path $build_directory 'CMakeFiles'
-    if (-not (Test-Path -LiteralPath $cmake_files_directory -PathType Container)) {
-        return
-    }
-
-    $system_files = Get-ChildItem -LiteralPath $cmake_files_directory -Filter 'CMakeSystem.cmake' -Recurse -File
-    $uses_retired_vcpkg = $system_files | Where-Object {
-        Select-String -LiteralPath $_.FullName -SimpleMatch 'vcpkg/scripts/buildsystems/vcpkg.cmake' -Quiet
-    }
-
-    if ($null -eq $uses_retired_vcpkg) {
-        return
-    }
-
-    Write-Host "Removing obsolete vcpkg CMake build directory: $build_directory"
-    Remove-Item -LiteralPath $build_directory -Recurse -Force
-}
-
-function Get-UbtEngineRoot {
-    if ([string]::IsNullOrWhiteSpace($env:UE_ROOT)) {
-        throw 'UE_ROOT is not set. Set it to the Unreal Engine installation root.'
-    }
-
-    $engine_root = [System.IO.Path]::GetFullPath($env:UE_ROOT)
-    $dotnet_path = Join-Path $engine_root 'Engine\Binaries\ThirdParty\DotNet\10.0\win-x64\dotnet.exe'
-
-    if (-not (Test-Path -LiteralPath $dotnet_path -PathType Leaf)) {
-        throw "UE_ROOT '$engine_root' does not contain the expected bundled .NET executable: $dotnet_path"
-    }
-
-    $engine_root
-}
-
-function Get-UbtProcessSnapshot {
-    try {
-        @(Get-CimInstance Win32_Process -ErrorAction Stop)
-    } catch {
-        throw "Unable to inspect Windows processes: $($_.Exception.Message)"
-    }
-}
-
-function Test-SandboxCMakeProcess {
-    param(
-        [Parameter(Mandatory)]
-        $process
-    )
-
-    $process.Name -eq 'cmake.exe' -and
-        $process.CommandLine -match '--preset\s+(debug-game|debug-game-unit-tests|debug-game-tests|debug-game-level-tests|generate-project-files|resave-assets|setup-worktree-(debug-game|development))'
-}
-
-function Test-UbtProcess {
-    param(
-        [Parameter(Mandatory)]
-        $process,
-        [Parameter(Mandatory)]
-        [string]$engine_root
-    )
-
-    $escaped_engine_root = [regex]::Escape($engine_root.TrimEnd('\'))
-    $process.Name -eq 'dotnet.exe' -and
-        $process.CommandLine -match "^`"?$escaped_engine_root\\Engine\\" -and
-        $process.CommandLine -match 'UnrealBuildTool(?:\.dll)?'
-}
-
-function Test-UbtMsBuildWorker {
-    param(
-        [Parameter(Mandatory)]
-        $process,
-        [Parameter(Mandatory)]
-        [string]$engine_root
-    )
-
-    $escaped_engine_root = [regex]::Escape($engine_root.TrimEnd('\'))
-    $process.Name -eq 'dotnet.exe' -and
-        $process.CommandLine -match "^`"?$escaped_engine_root\\Engine\\" -and
-        $process.CommandLine -match 'MSBuild\.dll' -and
-        $process.CommandLine -match '/nodemode:1'
-}
-
-function ConvertTo-UbtProcessState {
-    param(
-        [Parameter(Mandatory)]
-        $process,
-        [Parameter(Mandatory)]
-        [System.Collections.Generic.HashSet[uint32]]$process_ids,
-        [Parameter(Mandatory)]
-        [string]$kind
-    )
-
-    [PSCustomObject]@{
-        Kind = $kind
-        ProcessId = $process.ProcessId
-        ParentProcessId = $process.ParentProcessId
-        ParentAlive = $process_ids.Contains([uint32]$process.ParentProcessId)
-        Created = $process.CreationDate
-        CommandLine = $process.CommandLine
-    }
-}
-
-function enable-ubt-build-safety {
-    $value = '1'
-    $env:MSBUILDDISABLENODEREUSE = $value
-    $persisted_value = [Environment]::GetEnvironmentVariable(
-        'MSBUILDDISABLENODEREUSE',
-        [EnvironmentVariableTarget]::User)
-
-    if ($persisted_value -ne $value) {
-        [Environment]::SetEnvironmentVariable(
-            'MSBUILDDISABLENODEREUSE',
-            $value,
-            [EnvironmentVariableTarget]::User)
-
-        Write-Host 'Persisted MSBUILDDISABLENODEREUSE=1 for the current user.'
-        Write-Host 'Sign out and back in before using Explorer or already-running development tools.'
-    }
-}
-
-function get-ubt-build-state {
-    $engine_root = Get-UbtEngineRoot
-    $processes = Get-UbtProcessSnapshot
-    $process_ids = [System.Collections.Generic.HashSet[uint32]]::new()
-    $processes.ProcessId | ForEach-Object { $null = $process_ids.Add([uint32]$_) }
-
-    foreach ($process in $processes) {
-        if (Test-SandboxCMakeProcess $process) {
-            ConvertTo-UbtProcessState $process $process_ids 'CMake workflow'
-        } elseif (Test-UbtProcess $process $engine_root) {
-            ConvertTo-UbtProcessState $process $process_ids 'UnrealBuildTool'
-        } elseif (Test-UbtMsBuildWorker $process $engine_root) {
-            ConvertTo-UbtProcessState $process $process_ids 'UE MSBuild worker'
-        }
-    }
-}
-
 function cbuild {
     param(
         [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
@@ -271,7 +111,7 @@ function integrate-feature {
 function csetup {
     param(
         [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
-        [ValidateSet('all', 'native', 'debug-game', 'development')]
+        [ValidateSet('all', 'debug-game', 'development')]
         [string[]]$configuration = @('all')
     )
 
@@ -287,32 +127,7 @@ function csetup {
 
     Push-Location -LiteralPath $script:dev_project_root
     try {
-        Update-WorktreeSubmodules
-
-        $requires_unreal_setup = @($configurations | Where-Object { $_ -ne 'native' })
-
-        $preset_generator = Join-Path $script:dev_project_root 'cmake\presets\generate.py'
-        if (-not (Test-Path -LiteralPath $preset_generator -PathType Leaf)) {
-            throw "CMake preset generator was not found: $preset_generator"
-        }
-
-        Write-Host 'Generating CMake presets.'
-        & python $preset_generator
-
-        if ($LASTEXITCODE -ne 0) {
-            throw "CMake preset generation exited with code $LASTEXITCODE."
-        }
-
-        foreach ($current_configuration in $requires_unreal_setup) {
-            Remove-RetiredVcpkgBuildDirectory -configuration $current_configuration
-        }
-
         foreach ($current_configuration in $configurations) {
-            if ($current_configuration -eq 'native') {
-                Write-Host 'Prepared native-only development prerequisites.'
-                continue
-            }
-
             $workflow = "setup-worktree-$current_configuration"
             Write-Host "Preparing worktree with CMake workflow '$workflow'."
             $workflow_result = Invoke-CMakeWorkflow `
@@ -371,5 +186,3 @@ function get-jobserver-state {
         throw "Jobserver status exited with code $LASTEXITCODE."
     }
 }
-
-enable-ubt-build-safety

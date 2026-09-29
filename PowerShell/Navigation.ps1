@@ -83,18 +83,16 @@ Validation and build commands:
                            Workflows include native-tests, native-core-tests, native-simulation-tests, tool-tests,
                            and the explicit Unreal configurations; default is native-tests.
                            Stops on the first failed workflow.
-  csetup [config ...]      Update pinned submodules, generate native presets, and prepare supported
+  csetup [config ...]      Run CMake setup workflows for supported
                            development configurations.
-                           Config may be native, all, debug-game, or development; default is all.
-                           Native setup avoids Unreal worktree preparation and C# tool staging.
+                           Config may be all, debug-game, or development; default is all.
+                           Run agent-task prepare-worktree first.
   cplay [config ...]       Prepare and build one or more playable Editor configurations.
                            Config may be debug-game or development; default is debug-game, development.
   cprojectfiles [config]   Regenerate Unreal project files without building dependencies.
                            Config may be debug-game or development; default is debug-game.
   get-jobserver-state      Show the shared jobs board.
-  Loading dev.ps1 disables MSBuild node reuse for the current user and shell.
-  enable-ubt-build-safety  Persist disabled MSBuild node reuse for the current user.
-  get-ubt-build-state      List Sandbox CMake, UBT, and UE MSBuild processes.
+  Loading dev.ps1 disables MSBuild node reuse in the current shell.
 
 Run .\dev.ps1 --help to view this help without loading commands into your session.
 '@
