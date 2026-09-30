@@ -185,15 +185,16 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
             allotted_geometry.ToPaintGeometry(plot_size, FSlateLayoutTransform{plot_origin})};
         out_draw_elements.PushClip(FSlateClippingZone{clip_geometry});
         for (auto const& bar : histogram_geometry.bars) {
-            draw_histogram_box(
-                out_draw_elements,
-                bar_layer,
-                allotted_geometry,
-                plot_origin + FVector2f{bar.position.x, bar.position.y},
-                FVector2f{bar.size.x, bar.size.y},
-                draw_effect,
-                (bar.bin_index == hovered_bin_ ? style_.hovered_bar_color : style_.bar_color) *
-                    inherited_tint);
+            draw_histogram_box(out_draw_elements,
+                               bar_layer,
+                               allotted_geometry,
+                               plot_origin + FVector2f{bar.position.x, bar.position.y},
+                               FVector2f{bar.size.x, bar.size.y},
+                               draw_effect,
+                               (bar.bin_index == static_cast<uint32>(hovered_bin_)
+                                    ? style_.hovered_bar_color
+                                    : style_.bar_color) *
+                                   inherited_tint);
         }
         out_draw_elements.PopClip();
     }

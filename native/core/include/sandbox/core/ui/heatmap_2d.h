@@ -9,6 +9,7 @@
 #include <vector>
 
 namespace ml::ui::heatmap_2d {
+inline constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};
 inline constexpr std::size_t maximum_cells_per_batch{
     (static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max()) + 1U) / 4U};
 
@@ -51,9 +52,9 @@ struct PlotLayout {
 };
 
 struct CellGeometry {
-    std::int32_t cell_index{-1};
-    std::int32_t column{-1};
-    std::int32_t row{-1};
+    std::uint32_t cell_index{invalid_index};
+    std::uint32_t column{invalid_index};
+    std::uint32_t row{invalid_index};
     Vector2f position{};
     Vector2f size{};
     Color4f color{};

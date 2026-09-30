@@ -76,7 +76,7 @@ auto build_geometry(std::span<std::int32_t const> const bins,
         auto const bar_height{static_cast<float>(count) * pixels_per_sample};
         auto const x{static_cast<float>(index) * geometry.slot_width +
                      (geometry.slot_width - geometry.bar_width) * 0.5f};
-        geometry.bars.push_back({.bin_index = static_cast<std::int32_t>(index),
+        geometry.bars.push_back({.bin_index = static_cast<std::uint32_t>(index),
                                  .count = count,
                                  .position = {x, height - bar_height},
                                  .size = {geometry.bar_width, bar_height}});

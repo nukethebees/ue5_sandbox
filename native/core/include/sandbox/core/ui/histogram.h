@@ -3,13 +3,15 @@
 #include "sandbox/core/ui/types.h"
 
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <span>
 #include <vector>
 
 namespace ml::ui::histogram {
+inline constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};
 struct BarGeometry {
-    std::int32_t bin_index{-1};
+    std::uint32_t bin_index{invalid_index};
     std::int32_t count{};
     Vector2f position{};
     Vector2f size{};

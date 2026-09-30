@@ -135,9 +135,9 @@ auto build_cell_geometry(Grid const& grid,
             static_cast<std::int32_t>(std::lround(normalized * static_cast<float>(lut_max))),
             std::int32_t{},
             lut_max)};
-        auto const index{static_cast<std::int32_t>(i)};
-        auto const column{index % grid.columns};
-        auto const row{index / grid.columns};
+        auto const index{static_cast<std::uint32_t>(i)};
+        auto const column{index % static_cast<std::uint32_t>(grid.columns)};
+        auto const row{index / static_cast<std::uint32_t>(grid.columns)};
         result.push_back({.cell_index = index,
                           .column = column,
                           .row = row,

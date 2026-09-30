@@ -37,7 +37,7 @@ auto pack_display_data(ObjectiveRole const role, Color4f const fill_color) noexc
 void Collector::begin(Vector3f const origin, float const maximum_range) noexcept {
     origin_ = origin;
     maximum_range_squared_ = maximum_range * maximum_range;
-    first_objective_index_ = -1;
+    first_objective_index_ = invalid_index;
     accepted_count_ = 0;
     invalid_health_count_ = 0;
 }
@@ -68,10 +68,10 @@ auto Collector::try_add(Vector3f const position,
                                    .display_data = display_data}};
     auto const objective{(display_data & objective_role_mask) != 0};
     if (objective) {
-        if (first_objective_index_ < 0) {
+        if (first_objective_index_ == invalid_index) {
             first_objective_index_ = accepted_count_;
         }
-    } else if (first_objective_index_ >= 0) {
+    } else if (first_objective_index_ != invalid_index) {
         addition.swap_index = first_objective_index_;
         ++first_objective_index_;
     }

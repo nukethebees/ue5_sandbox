@@ -54,8 +54,8 @@ auto build_geometry(std::span<Bar const> const bars, Vector2f const plot_size, f
                 continue;
             }
             auto const segment_top{std::max(segment_bottom - value * pixels_per_value, 0.0f)};
-            result.segments.push_back({.bar_index = static_cast<std::int32_t>(bar_index),
-                                       .segment_index = static_cast<std::int32_t>(segment_index),
+            result.segments.push_back({.bar_index = static_cast<std::uint32_t>(bar_index),
+                                       .segment_index = static_cast<std::uint32_t>(segment_index),
                                        .position = {x, segment_top},
                                        .size = {result.bar_width, segment_bottom - segment_top}});
             segment_bottom = segment_top;

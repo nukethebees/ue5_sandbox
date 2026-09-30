@@ -3,13 +3,15 @@
 #include "sandbox/core/ui/types.h"
 
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <vector>
 
 namespace ml::ui::stacked_bar_chart {
+inline constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};
 struct SegmentGeometry {
-    std::int32_t bar_index{-1};
-    std::int32_t segment_index{-1};
+    std::uint32_t bar_index{invalid_index};
+    std::uint32_t segment_index{invalid_index};
     Vector2f position{};
     Vector2f size{};
 };

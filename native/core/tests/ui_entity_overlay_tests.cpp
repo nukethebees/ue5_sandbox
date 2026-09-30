@@ -9,7 +9,7 @@ namespace {
 void apply(std::vector<ml::ui::entity_overlay::Instance>& output,
            ml::ui::entity_overlay::Addition addition) {
     output.push_back(addition.instance);
-    if (addition.swap_index >= 0) {
+    if (addition.swap_index != ml::ui::entity_overlay::invalid_index) {
         std::swap(output[static_cast<std::size_t>(addition.swap_index)], output.back());
     }
 }

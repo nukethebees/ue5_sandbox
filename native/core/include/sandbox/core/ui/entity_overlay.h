@@ -3,9 +3,11 @@
 #include "sandbox/core/ui/types.h"
 
 #include <cstdint>
+#include <limits>
 #include <optional>
 
 namespace ml::ui::entity_overlay {
+inline constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};
 enum class ObjectiveRole : std::uint32_t {
     None,
     Defend,
@@ -21,7 +23,7 @@ struct Instance {
 
 struct Addition {
     Instance instance{};
-    std::int32_t swap_index{-1};
+    std::uint32_t swap_index{invalid_index};
 };
 
 [[nodiscard]] auto source_sizes_match(std::size_t position_count,
@@ -46,8 +48,8 @@ class Collector {
   private:
     Vector3f origin_{};
     float maximum_range_squared_{};
-    std::int32_t first_objective_index_{-1};
-    std::int32_t accepted_count_{};
+    std::uint32_t first_objective_index_{invalid_index};
+    std::uint32_t accepted_count_{};
     std::int32_t invalid_health_count_{};
 };
 }

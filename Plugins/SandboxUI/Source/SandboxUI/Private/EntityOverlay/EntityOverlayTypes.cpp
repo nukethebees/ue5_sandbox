@@ -62,7 +62,7 @@ auto FEntityOverlayCollector::try_add_impl(FVector3f const position,
                                                    .health = instance.health,
                                                    .world_radius = instance.world_radius,
                                                    .display_data = instance.display_data})};
-    if (addition->swap_index >= 0) {
+    if (addition->swap_index != ml::ui::entity_overlay::invalid_index) {
         output_instances_->Swap(addition->swap_index, added_index);
     }
     return true;
