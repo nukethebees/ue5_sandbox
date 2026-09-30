@@ -17,9 +17,9 @@ class FTestBatchOrchestratorResetScenario final : public FSimulationTestScenario
     struct FSimulationSample {
         int32 actor_count{0};
         int32 ledger_alive{0};
-        int32 capital_count{0};
-        int32 fighter_count{0};
-        int32 laser_count{0};
+        uint32 capital_count{0};
+        uint32 fighter_count{0};
+        uint32 laser_count{0};
     };
   public:
     explicit FTestBatchOrchestratorResetScenario(FSimulationTestContext& context);

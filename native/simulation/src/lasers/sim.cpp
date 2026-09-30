@@ -220,12 +220,11 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
         job_indices.end(),
         [=, this, &collision_scratch](std::uint32_t const job_index) {
             auto const i_start{job_index * updates_per_slice};
-            auto const i_end{std::min(i_start + updates_per_slice, n)};
-            auto const trace_count{i_end - i_start};
-            if (trace_count <= 0) {
+            if (i_start >= n) {
                 return;
             }
 
+            auto const trace_count{std::min(updates_per_slice, n - i_start)};
             auto const trace_locations{locations.slice(i_start, trace_count)};
             auto const trace_velocities{velocities.slice(i_start, trace_count)};
             auto const trace_starts{

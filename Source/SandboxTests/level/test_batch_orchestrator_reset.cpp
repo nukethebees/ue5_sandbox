@@ -157,7 +157,7 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     test_driver->orchestrator.start_simulation();
     auto const& telemetry{
         test_driver->orchestrator.get_level_telemetry_manager().get_active_entity_count_data()};
-    checks.are_equal(int32{1}, telemetry.num(), TEXT("Restart records one telemetry baseline"));
+    checks.are_equal(uint32{1}, telemetry.num(), TEXT("Restart records one telemetry baseline"));
     checks.are_equal(uint64{0}, telemetry.last_time(), TEXT("Restart baseline uses tick zero"));
     checks.are_equal(test_driver->get_ledger().count_alive(),
                      telemetry.last_value(),
@@ -175,9 +175,9 @@ void FTestBatchOrchestratorResetScenario::check_reset() {
                    TEXT("Reset removes transient level actors"));
     checks.are_equal(1, initial_ledger_alive, TEXT("Initial simulation contains one entity"));
     checks.are_equal(0, reset_sample.ledger_alive, TEXT("Reset clears ledger entities"));
-    checks.are_equal(0, reset_sample.capital_count, TEXT("Reset clears capital instances"));
-    checks.are_equal(0, reset_sample.fighter_count, TEXT("Reset clears fighter instances"));
-    checks.are_equal(0, reset_sample.laser_count, TEXT("Reset clears projectile instances"));
+    checks.are_equal(0u, reset_sample.capital_count, TEXT("Reset clears capital instances"));
+    checks.are_equal(0u, reset_sample.fighter_count, TEXT("Reset clears fighter instances"));
+    checks.are_equal(0u, reset_sample.laser_count, TEXT("Reset clears projectile instances"));
 
     for (auto const& blocker : blockers) {
         checks.is_true(!ml::is_actor_in_world(*test_driver->get_world(), blocker.Get()),

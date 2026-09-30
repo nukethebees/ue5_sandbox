@@ -175,9 +175,9 @@ void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
         orchestrator.tick(dt * 4.0);
         orchestrator.clear_end_tick_test_hook();
         checks.are_equal(
-            int32{2}, observations.num(), TEXT("Each catch-up frame produces one observation"));
+            uint32{2}, observations.num(), TEXT("Each catch-up frame produces one observation"));
         auto const sample_count{observations.num()};
-        for (int32 index{}; index < sample_count; ++index) {
+        for (uint32 index{}; index < sample_count; ++index) {
             auto const& sample{observations.value_at(index)};
             checks.are_equal(static_cast<uint64>((index + 1) * 4),
                              sample.completed_ticks,
@@ -281,7 +281,7 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     checks.is_greater_than(
-        telemetry_observations.num(), int32{0}, TEXT("Telemetry observations recorded"));
+        telemetry_observations.num(), uint32{0}, TEXT("Telemetry observations recorded"));
     if (telemetry_observations.is_empty()) {
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
         return;
@@ -289,7 +289,7 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
 
     auto const& initial_observation{telemetry_observations.value_at(0)};
     checks.are_equal(
-        int32{1}, initial_observation.telemetry_sample_count, TEXT("Tick-zero baseline recorded"));
+        uint32{1}, initial_observation.telemetry_sample_count, TEXT("Tick-zero baseline recorded"));
     checks.are_equal(
         uint64{0}, initial_observation.last_telemetry_tick, TEXT("Baseline uses tick zero"));
     checks.are_equal(initial_active_entity_count,
@@ -299,7 +299,7 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
                      initial_observation.telemetry_player_ship_count,
                      TEXT("Current state records the player ship"));
     checks.are_equal(
-        int32{1}, initial_observation.kill_sample_count, TEXT("Tick-zero kill baseline recorded"));
+        uint32{1}, initial_observation.kill_sample_count, TEXT("Tick-zero kill baseline recorded"));
     checks.are_equal(
         uint64{0}, initial_observation.last_kill_tick, TEXT("Kill baseline uses tick zero"));
     checks.are_equal(
@@ -309,7 +309,7 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
                      TEXT("Current state issued IDs match the ledger"));
 
     int32 changed_observation_index{INDEX_NONE};
-    auto const observation_count{telemetry_observations.num()};
+    auto const observation_count{static_cast<int32>(telemetry_observations.num())};
     for (int32 i{0}; i < observation_count; ++i) {
         if (telemetry_observations.value_at(i).telemetry_sample_count >
             telemetry_samples_before_change) {

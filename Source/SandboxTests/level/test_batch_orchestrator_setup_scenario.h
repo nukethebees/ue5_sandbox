@@ -15,13 +15,13 @@ enum class EOrchestratorSetupScenario : uint8 {
 class FTestBatchOrchestratorSetupScenario final : public FSimulationTestScenario {
     struct FTelemetryObservation {
         uint64 completed_ticks{0};
-        int32 telemetry_sample_count{0};
+        uint32 telemetry_sample_count{0};
         uint64 last_telemetry_tick{0};
         int32 telemetry_entity_count{0};
         int32 alive_entity_count{0};
         int32 telemetry_player_ship_count{0};
         int32 ledger_player_ship_count{0};
-        int32 kill_sample_count{0};
+        uint32 kill_sample_count{0};
         uint64 last_kill_tick{0};
         int32 cumulative_kill_count{0};
         int32 issued_unique_id_count{0};
@@ -44,8 +44,8 @@ class FTestBatchOrchestratorSetupScenario final : public FSimulationTestScenario
     TimeSeriesData<FTelemetryObservation> telemetry_observations;
     int32 telemetry_player_team_index{0};
     int32 initial_active_entity_count{0};
-    int32 telemetry_samples_before_change{0};
-    int32 kill_samples_before_change{0};
+    uint32 telemetry_samples_before_change{0};
+    uint32 kill_samples_before_change{0};
     int32 initial_issued_unique_id_count{0};
 };
 }
