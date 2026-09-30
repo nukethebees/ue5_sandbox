@@ -1,12 +1,12 @@
 set(BUILD_GMOCK OFF CACHE BOOL "" FORCE)
 set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-add_subdirectory(googletest)
+add_subdirectory(googletest EXCLUDE_FROM_ALL)
 
 set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
 set(JSON_Install OFF CACHE BOOL "" FORCE)
 set(JSON_SystemInclude ON CACHE BOOL "" FORCE)
-add_subdirectory(nlohmann_json)
+add_subdirectory(nlohmann_json EXCLUDE_FROM_ALL)
 
 set(CLI11_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(CLI11_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -54,7 +54,7 @@ foreach(google_test_target IN ITEMS gtest gtest_main)
 endforeach()
 
 set(IOJ_CPU_FEATURES_SOURCE_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/cpu_features")
-add_subdirectory(cpu_features_integration)
+add_subdirectory(cpu_features_integration EXCLUDE_FROM_ALL)
 unset(IOJ_CPU_FEATURES_SOURCE_DIRECTORY)
 ioj_apply_native_abi(cpu_features)
 
@@ -103,7 +103,7 @@ set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_ENABLE_DOXYGEN OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_INSTALL_DOCS OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_INSTALL_TOOLS OFF CACHE BOOL "" FORCE)
-add_subdirectory(benchmark)
+add_subdirectory(benchmark EXCLUDE_FROM_ALL)
 
 foreach(google_benchmark_target IN ITEMS benchmark benchmark_main)
   target_link_libraries(${google_benchmark_target} PRIVATE "$<BUILD_LOCAL_INTERFACE:ioj::asan>")

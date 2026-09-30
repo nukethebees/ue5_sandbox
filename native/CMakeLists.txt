@@ -17,8 +17,8 @@ target_link_libraries(sandbox_native_defaults INTERFACE
 
 enable_language(C)
 
-add_subdirectory(third_party)
-add_subdirectory(third_party/handmade_math)
+add_subdirectory(third_party EXCLUDE_FROM_ALL)
+add_subdirectory(third_party/handmade_math EXCLUDE_FROM_ALL)
 
 if(IOJ_WITH_UNREAL)
   set(IOJ_WITH_TRACY OFF)
