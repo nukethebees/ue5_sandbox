@@ -87,25 +87,12 @@ auto make_fire_point_candidate(Vector3f const target_location,
     auto const candidate_location{target_location +
                                   forward_direction(rotation) * desired_attack_distance};
 
-    std::array<double, 3> const target{target_location.X, target_location.Y, target_location.Z};
-    std::array<double, 3> const candidate{
-        candidate_location.X, candidate_location.Y, candidate_location.Z};
-    std::array<double, 3> aim{
-        target[0] - candidate[0], target[1] - candidate[1], target[2] - candidate[2]};
-    ml::native_math::safe_normal_components(aim[0], aim[1], aim[2]);
-    std::array<double, 3> const start{candidate[0] + aim[0] * fire_point_distance,
-                                      candidate[1] + aim[1] * fire_point_distance,
-                                      candidate[2] + aim[2] * fire_point_distance};
-    std::array<double, 3> direction{
-        target[0] - start[0], target[1] - start[1], target[2] - start[2]};
-    ml::native_math::safe_normal_components(direction[0], direction[1], direction[2]);
-    return {candidate_location,
-            HMM_V3(static_cast<float>(start[0]),
-                   static_cast<float>(start[1]),
-                   static_cast<float>(start[2])),
-            HMM_V3(static_cast<float>(target[0] - direction[0] * trace_end_offset),
-                   static_cast<float>(target[1] - direction[1] * trace_end_offset),
-                   static_cast<float>(target[2] - direction[2] * trace_end_offset))};
+    auto const aim{ml::native_math::safe_normal(target_location - candidate_location)};
+    auto const trace_start{candidate_location + aim * fire_point_distance};
+    auto const direction{ml::native_math::safe_normal(target_location - trace_start)};
+    auto const trace_end{target_location - direction * trace_end_offset};
+
+    return {candidate_location, trace_start, trace_end};
 }
 }
 namespace diagnostic_detail {
