@@ -1062,8 +1062,8 @@ TEST(SimulationModelDefaults, LaserSource) {
 
 namespace ioj::sim::model_contract {
 struct OriginalIndexSpan {
-    std::int32_t offset{0};
-    std::int32_t count{0};
+    std::uint32_t offset{0};
+    std::uint32_t count{0};
 };
 static_assert(sizeof(IndexSpan) == sizeof(OriginalIndexSpan));
 static_assert(alignof(IndexSpan) == alignof(OriginalIndexSpan));
@@ -1133,7 +1133,7 @@ TEST(SimulationModelDefaults, LineTraceResult) {
 namespace ioj::sim::model_contract {
 struct OriginalCapitalDeathEvent {
     Vector3f location;
-    std::int32_t batch_index{};
+    std::uint32_t batch_index{};
 };
 static_assert(sizeof(CapitalDeathEvent) == sizeof(OriginalCapitalDeathEvent));
 static_assert(alignof(CapitalDeathEvent) == alignof(OriginalCapitalDeathEvent));

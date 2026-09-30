@@ -97,7 +97,7 @@ auto Sim::register_turrets(SingleAllocationLevelTurretSpawnEvents::ConstView con
     auto const spawn_data_rotations{spawn_data.view_rotations()};
     auto const spawn_data_healths{spawn_data.healths()};
 
-    for (std::int32_t local_index{}; local_index < n_to_add; ++local_index) {
+    for (std::uint32_t local_index{}; local_index < n_to_add; ++local_index) {
         auto const index{first_new_index + local_index};
         auto const location{vector_at(spawn_data_locations, local_index)};
         set_vector(entities_locations, index, location);
@@ -113,13 +113,13 @@ auto Sim::register_turrets(SingleAllocationLevelTurretSpawnEvents::ConstView con
         }
     }
 
-    for (std::int32_t i{}; i < n_to_add; ++i) {
+    for (std::uint32_t i{}; i < n_to_add; ++i) {
         auto const rotation{rotation_at(spawn_data_rotations, i)};
         set_rotation(entities_rotations, first_new_index + i, rotation);
     }
     std::vector<EntityUniqueId> new_ids;
     new_ids.reserve(spawn_count);
-    for (std::int32_t i{}; i < n_to_add; ++i) {
+    for (std::uint32_t i{}; i < n_to_add; ++i) {
         auto const id{ledger_.record_spawn(
             EntityType::Turret, spawn_data_teams[i], is_alive(spawn_data_healths[i]))};
         new_ids.push_back(id);
@@ -134,7 +134,7 @@ auto Sim::register_turrets(SingleAllocationLevelTurretSpawnEvents::ConstView con
                                   static_cast<std::size_t>(first_new_index), spawn_count),
                               std::span<std::uint32_t>{entities.integral_biases()}.subspan(
                                   static_cast<std::size_t>(first_new_index), spawn_count));
-    for (std::int32_t i{}; i < n_to_add; ++i) {
+    for (std::uint32_t i{}; i < n_to_add; ++i) {
         auto const index{first_new_index + i};
         frame_changes_.push_back({.kind = EntityFrameChangeKind::Spawn,
                                   .index = index,
@@ -194,7 +194,7 @@ void Sim::prepare_tick(float const) {
 void Sim::refresh_target_data(ml::FrameScratch& scratch) {
     auto const entities{this->entities.get_view()};
     auto const count{entities.num()};
-    ml::FrameArray<std::int32_t> order{&scratch};
+    ml::FrameArray<std::uint32_t> order{&scratch};
     ml::FrameArray<std::uint8_t> alive{&scratch};
     order.set_num(count);
     alive.set_num(count);
@@ -209,7 +209,7 @@ void Sim::refresh_target_data(ml::FrameScratch& scratch) {
          {target_velocities.xs(), target_velocities.ys(), target_velocities.zs()},
          {},
          alive});
-    for (std::int32_t index{}; index < count; ++index) {
+    for (std::uint32_t index{}; index < count; ++index) {
         if (!alive[index]) {
             target_ids[index] = {};
         }
@@ -248,7 +248,7 @@ void Sim::resolve_damage_events() {
 void Sim::publish_deaths() {
     auto const deaths{entity_death_info.get_const_view()};
     auto const death_count{deaths.num()};
-    for (std::int32_t i{}; i < death_count; ++i) {
+    for (std::uint32_t i{}; i < death_count; ++i) {
         ledger_.record_death(deaths.victims[i], deaths.killers[i], deaths.reasons[i]);
     }
 }
@@ -281,7 +281,7 @@ void Sim::finish_action() {
 /* **************************************** */
 // Accessors
 /* **************************************** */
-auto Sim::get_num_instances() const noexcept -> std::int32_t {
+auto Sim::get_num_instances() const noexcept -> std::uint32_t {
     return entities.num();
 }
 auto Sim::get_target_ids() const -> std::span<EntityUniqueId const> {
@@ -302,25 +302,26 @@ void Sim::perform_search(ml::FrameScratch& scratch) {
     auto const radius{config.detection_radius};
 
     auto const hardware_thread_count{
-        static_cast<std::int32_t>(std::max(1u, std::thread::hardware_concurrency()))};
-    auto const max_jobs_for_grain_size{std::max(1, n_turrets / config.search_slice_size)};
+        static_cast<std::uint32_t>(std::max(1u, std::thread::hardware_concurrency()))};
+    auto const max_jobs_for_grain_size{
+        std::max(1u, n_turrets / static_cast<std::uint32_t>(config.search_slice_size))};
     auto const n_jobs{std::min(hardware_thread_count, max_jobs_for_grain_size)};
     auto const turrets_per_job{(n_turrets + n_jobs - 1) / n_jobs};
 
-    ml::FrameArray<std::int32_t> jobs{&scratch};
+    ml::FrameArray<std::uint32_t> jobs{&scratch};
     jobs.set_num(n_jobs);
     auto const job_indices{jobs.view()};
-    std::iota(job_indices.begin(), job_indices.end(), 0);
+    std::iota(job_indices.begin(), job_indices.end(), 0u);
     std::for_each(std::execution::par,
                   job_indices.begin(),
                   job_indices.end(),
-                  [=, this](std::int32_t const i) {
+                  [=, this](std::uint32_t const i) {
                       perform_search_on_slice(i, n_turrets, turrets_per_job, radius);
                   });
 }
-void Sim::perform_search_on_slice(std::int32_t const job_index,
-                                  std::int32_t const n_turrets,
-                                  std::int32_t const turrets_per_job,
+void Sim::perform_search_on_slice(std::uint32_t const job_index,
+                                  std::uint32_t const n_turrets,
+                                  std::uint32_t const turrets_per_job,
                                   float const radius) {
     auto const begin{job_index * turrets_per_job};
     auto const end{std::min(begin + turrets_per_job, n_turrets)};
@@ -341,7 +342,7 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
     ml::FixedArray<EntityUniqueId, 128> target_ids;
     auto const target_capacity{target_ids.capacity_view()};
 
-    for (std::int32_t i{begin}; i < end; ++i) {
+    for (std::uint32_t i{begin}; i < end; ++i) {
         if (!refresh_countdowns.try_consume(i)) {
             continue;
         }
@@ -364,7 +365,7 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
             Vectors3fView const candidate_locations_view{std::span{candidate_xs}.first(count),
                                                          std::span{candidate_ys}.first(count),
                                                          std::span{candidate_zs}.first(count)};
-            std::array<std::int32_t, 128> order{};
+            std::array<std::uint32_t, 128> order{};
             std::array<Team, 128> teams{};
             std::array<std::uint8_t, 128> alive{};
             agents_.gather_targets(target_ids,
@@ -382,7 +383,7 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
             // NOLINTEND(ioj-loop-view-construction,ioj-loop-view-accessor-call)
 
             if (target_count > 0) {
-                auto const target_offset{static_cast<std::int32_t>(
+                auto const target_offset{static_cast<std::uint32_t>(
                     integral_biases[i] % static_cast<std::uint32_t>(target_count))};
                 auto const loop_bounds{
                     ml::make_rotated_loop_bounds(0, target_count, target_offset)};
@@ -416,7 +417,7 @@ void Sim::fire_at_enemies(ml::FrameScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::fire_at_enemies");
 
     auto const count{get_num_instances()};
-    ml::FrameArray<std::int32_t> candidate_indices{&scratch};
+    ml::FrameArray<std::uint32_t> candidate_indices{&scratch};
     ml::FrameArray<EntityUniqueId> hit_ids{&scratch};
     FrameVectors3f starts{scratch};
     FrameVectors3f ends{scratch};
@@ -434,7 +435,7 @@ void Sim::fire_at_enemies(ml::FrameScratch& scratch) {
     auto const target_locations{entities.view_target_locations()};
     auto const fire_point_locations{entities.view_fire_point_locations()};
 
-    for (std::int32_t index{}; index < count; ++index) {
+    for (std::uint32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};
         auto& target{target_ids[element]};
         if (!target.is_valid()) {
@@ -477,7 +478,7 @@ void Sim::fire_at_enemies(ml::FrameScratch& scratch) {
     auto const entity_ids{entities.entity_ids()};
     auto const teams{entities.teams()};
 
-    for (std::int32_t candidate{}; candidate < candidate_count; ++candidate) {
+    for (std::uint32_t candidate{}; candidate < candidate_count; ++candidate) {
         auto const index{candidate_indices[candidate]};
         auto const element{static_cast<std::size_t>(index)};
         if (hit_ids[candidate] != target_ids[element]) {

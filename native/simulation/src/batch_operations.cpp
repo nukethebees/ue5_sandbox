@@ -11,7 +11,7 @@
 #include <functional>
 
 namespace ioj::sim::batch {
-void sort_and_deduplicate_removal_indices(std::vector<std::int32_t>& local_indices_to_remove) {
+void sort_and_deduplicate_removal_indices(std::vector<std::uint32_t>& local_indices_to_remove) {
     std::ranges::sort(local_indices_to_remove, std::greater{});
     auto const unique_end{std::ranges::unique(local_indices_to_remove).begin()};
     local_indices_to_remove.erase(unique_end, local_indices_to_remove.end());
@@ -21,7 +21,7 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
                            AgentIndices const& indexes,
                            [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
                            HealthView const healths,
-                           std::vector<std::int32_t>& local_indices_to_remove,
+                           std::vector<std::uint32_t>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info,
                            EntityLedger& ledger) {
     SANDBOX_PROFILE_SCOPE("batch::resolve_damage_events");
@@ -32,11 +32,11 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
     local_indices_to_remove.resize(removal_count + static_cast<std::size_t>(n_direct_events));
     entity_death_info.add_uninitialised(n_direct_events);
 
-    assert(healths.num() == static_cast<std::int32_t>(entity_ids.size()));
-    auto current_removal_count{static_cast<std::int32_t>(removal_count)};
+    assert(healths.num() == static_cast<std::uint32_t>(entity_ids.size()));
+    auto current_removal_count{static_cast<std::uint32_t>(removal_count)};
     auto current_death_count{death_count};
     auto const removal_storage{std::span{local_indices_to_remove}};
-    for (std::int32_t event_index{}; event_index < n_direct_events; ++event_index) {
+    for (std::uint32_t event_index{}; event_index < n_direct_events; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
         auto const id{damage_events.damaged_entities[element]};
         auto const local_index{indexes.find(id)};

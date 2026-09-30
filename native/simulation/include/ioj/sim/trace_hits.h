@@ -22,7 +22,7 @@ struct TraceHitsConstView;
 struct TraceHitsConstView {
     using View = TraceHitsView;
     using ConstView = TraceHitsConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     Vectors3fConstView locations;
     std::span<EntityUniqueId const> entities;
     std::span<ioj::sim::collision::StaticGeometryIndex const> static_geometry_indices;
@@ -42,8 +42,7 @@ struct TraceHitsConstView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> TraceHitsConstView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
+        ml::native_soa::require(offset <= num() && count <= num() - offset);
         return {
             locations.slice(offset, count),
             entities.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -69,13 +68,14 @@ struct TraceHitsConstView {
     }
     auto left(size_type const count) const -> TraceHitsConstView { return slice(0, count); }
     auto right(size_type const count) const -> TraceHitsConstView {
+        ml::native_soa::require(count <= num());
         return slice(num() - count, count);
     }
 };
 struct TraceHitsView {
     using View = TraceHitsView;
     using ConstView = TraceHitsConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     Vectors3fView locations;
     std::span<EntityUniqueId> entities;
     std::span<ioj::sim::collision::StaticGeometryIndex> static_geometry_indices;
@@ -95,8 +95,7 @@ struct TraceHitsView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> TraceHitsView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
+        ml::native_soa::require(offset <= num() && count <= num() - offset);
         return {
             locations.slice(offset, count),
             entities.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -121,13 +120,16 @@ struct TraceHitsView {
         return get_const_view().slice(offset, count);
     }
     auto left(size_type const count) const -> TraceHitsView { return slice(0, count); }
-    auto right(size_type const count) const -> TraceHitsView { return slice(num() - count, count); }
+    auto right(size_type const count) const -> TraceHitsView {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     void set(size_type const index,
              Vector3f const new_locations,
              EntityUniqueId const new_entities,
              ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices,
              ioj::sim::TraceHit const new_hits) const {
-        ml::native_soa::require(index >= 0 && index < num());
+        ml::native_soa::require(index < num());
         locations.set(index, new_locations);
         entities[static_cast<std::size_t>(index)] = new_entities;
         static_geometry_indices[static_cast<std::size_t>(index)] = new_static_geometry_indices;
@@ -137,7 +139,7 @@ struct TraceHitsView {
 struct TraceHits {
     using View = TraceHitsView;
     using ConstView = TraceHitsConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     Vectors3f locations;
     ml::native_soa::Vector<EntityUniqueId> entities;
     ml::native_soa::Vector<ioj::sim::collision::StaticGeometryIndex> static_geometry_indices;
@@ -178,11 +180,11 @@ struct TraceHits {
     void remove_at_swap(size_type const index, size_type const count) {
         ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
     }
-    void apply_permutation(std::span<size_type> const indices) {
+    void apply_permutation(std::span<std::int32_t> const indices) {
         ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
-    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
         ml::native_soa::vector_storage_ops::sort(
             *this, std::forward<Compare>(compare), scratch_indices);
     }
@@ -237,9 +239,15 @@ struct TraceHits {
         return get_const_view(offset, count);
     }
     auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View { return slice(num() - count, count); }
+    auto right(size_type const count) -> View {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
+    auto right(size_type const count) const -> ConstView {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
         locations.copy_element(dst_index, other.locations, src_index);

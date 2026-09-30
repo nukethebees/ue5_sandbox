@@ -41,10 +41,10 @@ void LevelEventManager::initialise(CompiledLevelEvents data, EntityUniqueId cons
     mission_manager_.bind_level_event_data(schedule_.mission_events.values,
                                            spawn_manager_.get_entity_ids());
 
-    [[maybe_unused]] std::int32_t spawn_group_count{};
-    [[maybe_unused]] std::int32_t mission_group_count{};
-    std::int32_t mission_tick_count{};
-    for (std::int32_t event_index{}; static_cast<std::size_t>(event_index) < event_tick_count;
+    [[maybe_unused]] std::uint32_t spawn_group_count{};
+    [[maybe_unused]] std::uint32_t mission_group_count{};
+    std::uint32_t mission_tick_count{};
+    for (std::uint32_t event_index{}; static_cast<std::size_t>(event_index) < event_tick_count;
          ++event_index) {
         if (event_index != 0) {
             assert(schedule_.execution_ticks[event_index - 1] <
@@ -108,7 +108,7 @@ auto LevelEventManager::get_entity_id(std::int32_t const entity_index) const -> 
 
 auto LevelEventManager::has_future_spawns() const noexcept -> bool {
     auto const event_count{schedule_.event_group_counts.size()};
-    for (std::int32_t index{next_event_index_}; static_cast<std::size_t>(index) < event_count;
+    for (std::uint32_t index{next_event_index_}; static_cast<std::size_t>(index) < event_count;
          ++index) {
         if (schedule_.event_group_counts[index].spawn_groups != 0) {
             return true;

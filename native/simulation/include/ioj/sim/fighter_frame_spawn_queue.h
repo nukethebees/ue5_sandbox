@@ -10,7 +10,7 @@
 namespace ioj::sim::fighters {
 struct FrameSpawnQueue {
     explicit FrameSpawnQueue(ml::FrameScratch& scratch);
-    void reserve(std::int32_t count);
+    void reserve(std::uint32_t count);
     void clear();
     void add(Vector3f location,
              Rotator3f rotation,
@@ -28,7 +28,7 @@ struct FrameSpawnQueue {
     auto parents() const -> std::span<EntityUniqueId const> { return parents_.view(); }
     auto targets() -> std::span<EntityUniqueId> { return targets_.view(); }
     auto targets() const -> std::span<EntityUniqueId const> { return targets_.view(); }
-    auto num() const -> std::int32_t { return locations_.num(); }
+    auto num() const -> std::uint32_t { return locations_.num(); }
     void validate() const {
         locations_.validate();
         rotations_.validate();

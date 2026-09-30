@@ -13,8 +13,8 @@ void DamageQueue::prepare(AgentIndices const& indexes, ml::FrameScratch& scratch
         return;
     }
 
-    std::int32_t live_count{};
-    for (std::int32_t i{}; i < count; ++i) {
+    std::uint32_t live_count{};
+    for (std::uint32_t i{}; i < count; ++i) {
         auto const id{events_.damaged_entities[i]};
         assert(id.is_valid());
         if (indexes.find(id) == AgentIndices::invalid_index) {
@@ -29,8 +29,8 @@ void DamageQueue::prepare(AgentIndices const& indexes, ml::FrameScratch& scratch
     events_.set_num(live_count);
 
     EntityTypeSizes write_offsets{};
-    std::int32_t offset{};
-    std::int32_t groups{};
+    std::uint32_t offset{};
+    std::uint32_t groups{};
     auto const entity_type_count{EntityTypeSizes::size()};
     for (std::size_t i{}; i < entity_type_count; ++i) {
         auto const type{static_cast<EntityType>(i)};
@@ -46,10 +46,10 @@ void DamageQueue::prepare(AgentIndices const& indexes, ml::FrameScratch& scratch
 
     ml::FrameArray<std::int32_t> order{&scratch};
     order.set_num(live_count);
-    for (std::int32_t i{}; i < live_count; ++i) {
+    for (std::uint32_t i{}; i < live_count; ++i) {
         auto const type{events_.damaged_entities[i].entity_type()};
-        auto const destination{static_cast<std::int32_t>(write_offsets[type]++)};
-        order[destination] = i;
+        auto const destination{static_cast<std::uint32_t>(write_offsets[type]++)};
+        order[destination] = static_cast<std::int32_t>(i);
     }
     events_.apply_permutation(order);
 }

@@ -20,9 +20,9 @@ struct FrameHitDetails {
     auto operator=(FrameHitDetails&&) -> FrameHitDetails& = delete;
     ~FrameHitDetails() = default;
 
-    void reserve(std::int32_t count);
+    void reserve(std::uint32_t count);
     void add(Vector3f location, Vector3f emission_direction, LaserSource source);
-    [[nodiscard]] auto num() const noexcept -> std::int32_t;
+    [[nodiscard]] auto num() const noexcept -> std::uint32_t;
 
     auto view_locations() -> FrameVectors3f& { return locations_; }
     auto view_locations() const -> FrameVectors3f const& { return locations_; }

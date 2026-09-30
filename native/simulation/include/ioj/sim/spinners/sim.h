@@ -42,7 +42,7 @@ struct Sim {
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto get_num_instances() const noexcept -> std::int32_t;
+    auto get_num_instances() const noexcept -> std::uint32_t;
     auto get_laser_simulation() const -> lasers::Sim const& { return laser_simulation; }
 
     /* **************************************** */
@@ -58,7 +58,7 @@ struct Sim {
     void apply_movement(ml::FrameScratch& scratch);
     void generate_fire_commands();
     void materialize_fire_commands(ml::FrameScratch& scratch);
-    std::vector<std::int32_t> pending_fire_indices_;
+    std::vector<std::uint32_t> pending_fire_indices_;
     void finish_action();
 
     /* **************************************** */
@@ -91,7 +91,7 @@ struct Sim {
         auto const next_fire_point_indices{appended.next_fire_point_indices()};
         auto const entity_ids{appended.entity_ids()};
 
-        for (std::int32_t i{}; i < n; ++i) {
+        for (std::uint32_t i{}; i < n; ++i) {
             xs[i] = new_xs[i];
             ys[i] = new_ys[i];
             zs[i] = new_zs[i];
@@ -102,7 +102,7 @@ struct Sim {
 
         entities.get_const_view().validate();
 
-        for (std::int32_t i{0}; i < n; ++i) {
+        for (std::uint32_t i{0}; i < n; ++i) {
             entity_ids[i] = ledger_.record_spawn(EntityType::TubeSpinner, Team::White, true);
         }
 

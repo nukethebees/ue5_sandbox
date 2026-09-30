@@ -45,8 +45,8 @@ struct Sim {
                 frame_output_.hit_ordinals};
     }
     void reset_frame_output() { frame_output_.reset(); }
-    auto get_num_instances() const noexcept -> std::int32_t;
-    auto get_number_spawned() const noexcept -> std::int32_t { return number_spawned; }
+    auto get_num_instances() const noexcept -> std::uint32_t;
+    auto get_number_spawned() const noexcept -> std::uint32_t { return number_spawned; }
 
     /* **************************************** */
     // Spawning and configuration
@@ -79,7 +79,7 @@ struct Sim {
     void expire_instances(float dt, ml::FrameScratch& scratch);
     void update_locations(float dt);
     void handle_collisions(float dt, ml::FrameScratch& scratch);
-    void remove_instances(std::span<std::int32_t const> indices);
+    void remove_instances(std::span<std::uint32_t const> indices);
 
     /* **************************************** */
     // Buffer cleanup
@@ -99,7 +99,7 @@ struct Sim {
 
     FrameOutput frame_output_;
 
-    std::int32_t number_spawned{0};
-    std::vector<std::int32_t> pending_removals_;
+    std::uint32_t number_spawned{0};
+    std::vector<std::uint32_t> pending_removals_;
 };
 } // namespace ioj::sim::lasers

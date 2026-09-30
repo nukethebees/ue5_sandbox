@@ -343,7 +343,7 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     auto const locations{fighters.get_locations()};
     result.locations.reserve(locations.num());
     auto const location_count{locations.num()};
-    for (std::int32_t i{}; i < location_count; ++i) {
+    for (std::uint32_t i{}; i < location_count; ++i) {
         result.locations.push_back(vector_at(locations, i));
     }
     return result;
@@ -451,7 +451,7 @@ void run_worldless_fighter_hard_avoidance_authority(tests::SimulationFixture con
     harness.on_end_tick = [&](LevelSim&) {
         auto const locations{fighters.get_locations()};
         auto const location_count{locations.num()};
-        for (std::int32_t i{}; i < location_count; ++i) {
+        for (std::uint32_t i{}; i < location_count; ++i) {
             auto const location{vector_at(locations, i)};
             entered_obstacle =
                 entered_obstacle || (location.X >= expanded_min.X && location.X <= expanded_max.X &&

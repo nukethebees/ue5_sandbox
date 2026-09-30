@@ -50,8 +50,8 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
     auto const target{capitals.get_id(1)};
 
     struct Sample {
-        std::int32_t active_lasers{};
-        std::int32_t total_spawned{};
+        std::uint32_t active_lasers{};
+        std::uint32_t total_spawned{};
         std::int32_t target_health{};
         std::int32_t alive_entities{};
         std::int32_t kills{};
@@ -119,8 +119,8 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
         return;
     }
 
-    auto const expected_spawn_count{scenario == LaserLifecycleScenario::SimultaneousLethalHits ? 2
-                                                                                               : 1};
+    auto const expected_spawn_count{
+        scenario == LaserLifecycleScenario::SimultaneousLethalHits ? 2u : 1u};
     auto observed_committed_projectile{false};
     for (auto const& sample : samples.values()) {
         if (sample.total_spawned == expected_spawn_count) {

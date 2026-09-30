@@ -8,7 +8,7 @@
 
 namespace ioj::sim {
 struct FrameVectors3f {
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
 
     explicit FrameVectors3f(ml::FrameScratch& scratch);
 

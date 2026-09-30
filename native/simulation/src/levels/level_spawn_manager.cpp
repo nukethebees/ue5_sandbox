@@ -58,7 +58,7 @@ void LevelSpawnManager::spawn_initial(
 
 void LevelSpawnManager::spawn(LevelSpawnGroupsConstView const groups) {
     auto const group_count{groups.num()};
-    for (std::int32_t index{}; index < group_count; ++index) {
+    for (std::uint32_t index{}; index < group_count; ++index) {
         auto const offset{groups.offsets[index]};
         auto const count{groups.counts[index]};
         switch (groups.types[index]) {
@@ -79,7 +79,7 @@ void LevelSpawnManager::spawn(LevelSpawnGroupsConstView const groups) {
             }
         }
     }
-    for (std::int32_t index{}; index < group_count; ++index) {
+    for (std::uint32_t index{}; index < group_count; ++index) {
         if (groups.types[index] == EntityType::CapitalShip) {
             resolve_capital_targets(
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-group payload.
@@ -95,7 +95,7 @@ void LevelSpawnManager::spawn_capitals(
     spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
     auto const entity_indices{events.entity_indices()};
 
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         set_entity_id(entity_indices[i], ids[i]);
     }
 }
@@ -106,7 +106,7 @@ void LevelSpawnManager::resolve_capital_targets(
     auto const entity_indices{events.entity_indices()};
     auto const target_entity_indices{events.target_entity_indices()};
 
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         auto const target_index{target_entity_indices[i]};
         if (target_index != -1) {
             auto const source_id{get_id(entity_indices[i])};
@@ -122,7 +122,7 @@ void LevelSpawnManager::spawn_turrets(
     auto const count{events.num()};
     auto const entity_indices{events.entity_indices()};
 
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         set_entity_id(entity_indices[i], ids[i]);
     }
 }
@@ -135,7 +135,7 @@ void LevelSpawnManager::spawn_spinners(
     auto const count{events.num()};
     auto const entity_indices{events.entity_indices()};
 
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         set_entity_id(entity_indices[i], ids[i]);
     }
 }

@@ -527,7 +527,7 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     auto const entity_overlaps{fixture.get_entity_overlaps()};
     EXPECT_TRUE(entity_overlaps.num() >= entity_count) << "Large query produces dynamic overlaps";
     auto const entity_overlap_count{entity_overlaps.num()};
-    for (std::int32_t index{}; index < entity_overlap_count; ++index) {
+    for (std::uint32_t index{}; index < entity_overlap_count; ++index) {
         EXPECT_TRUE(fixture.owners.agents.is_alive(entity_overlaps.first_entities[index]) &&
                     fixture.owners.agents.is_alive(entity_overlaps.second_entities[index]))
             << "Dynamic overlap handles remain valid";
@@ -549,11 +549,12 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
         << "Every moved entity overlaps the large static AABB";
     auto const static_overlap_count{static_overlaps.num()};
     auto const static_geometry_count{fixture.query_manager.get_static_collision_bounds().num()};
-    for (std::int32_t index{}; index < static_overlap_count; ++index) {
+    for (std::uint32_t index{}; index < static_overlap_count; ++index) {
         EXPECT_TRUE(fixture.owners.agents.is_alive(static_overlaps.entities[index]))
             << "Static overlap entity remains valid";
         EXPECT_TRUE(static_overlaps.static_geometry_indices[index] >= 0 &&
-                    static_overlaps.static_geometry_indices[index] < static_geometry_count)
+                    static_cast<std::uint32_t>(static_overlaps.static_geometry_indices[index]) <
+                        static_geometry_count)
             << "Static overlap index remains valid";
         if (index > 0) {
             auto const previous_entity{static_overlaps.entities[index - 1]};
@@ -567,7 +568,7 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     }
     for (auto const moved : moved_entities) {
         bool found_large_static{};
-        for (std::int32_t index{}; index < static_overlap_count; ++index) {
+        for (std::uint32_t index{}; index < static_overlap_count; ++index) {
             found_large_static = found_large_static ||
                                  (static_overlaps.entities[index] == moved &&
                                   static_overlaps.static_geometry_indices[index] == large_static);

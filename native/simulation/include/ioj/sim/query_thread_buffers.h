@@ -8,7 +8,7 @@
 
 namespace ioj::sim {
 struct QueryThreadBuffers {
-    void ensure_entity_stamp_count(std::int32_t entity_count);
+    void ensure_entity_stamp_count(std::uint32_t entity_count);
     [[nodiscard]] auto advance_range_query_stamp() noexcept -> std::uint32_t;
 
     LineTraces line_traces;

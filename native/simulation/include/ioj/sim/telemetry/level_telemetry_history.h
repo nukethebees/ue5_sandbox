@@ -84,7 +84,7 @@ static_assert(std::is_trivially_copyable_v<HistoryFieldMask>);
 struct HistoryRowsSingleView;
 struct HistoryRowsSingleConstView;
 struct HistoryRowsSingleLayout {
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
     inline static constexpr size_type capacity_granularity{

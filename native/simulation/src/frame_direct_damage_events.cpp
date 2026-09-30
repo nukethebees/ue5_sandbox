@@ -6,7 +6,7 @@ FrameDirectDamageEvents::FrameDirectDamageEvents(ml::FrameScratch& scratch)
     , damage_amounts{&scratch}
     , instigators{&scratch} {}
 
-void FrameDirectDamageEvents::reserve(std::int32_t const count) {
+void FrameDirectDamageEvents::reserve(std::uint32_t const count) {
     damaged_entities.reserve(count);
     damage_amounts.reserve(count);
     instigators.reserve(count);

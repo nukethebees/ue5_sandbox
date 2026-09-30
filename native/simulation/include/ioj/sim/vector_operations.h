@@ -34,7 +34,7 @@ inline void multiply_in_place(VectorColumns auto const& vectors, float const sca
     auto const ys{vectors.ys()};
     auto const zs{vectors.zs()};
     auto const count{vectors.num()};
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         xs[i] *= scale;
         ys[i] *= scale;
         zs[i] *= scale;
@@ -52,7 +52,7 @@ inline void add_scaled_in_place(VectorColumns auto const& dst,
     auto const src_ys{src.ys()};
     auto const src_zs{src.zs()};
     auto const count{dst.num()};
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         dst_xs[i] += src_xs[i] * scale;
         dst_ys[i] += src_ys[i] * scale;
         dst_zs[i] += src_zs[i] * scale;
@@ -74,7 +74,7 @@ inline void direction(VectorColumns auto const& out,
     auto const to_ys{to.ys()};
     auto const to_zs{to.zs()};
     auto const count{out.num()};
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         auto const x{to_xs[i] - from_xs[i]};
         auto const y{to_ys[i] - from_ys[i]};
         auto const z{to_zs[i] - from_zs[i]};
@@ -89,7 +89,7 @@ inline void to_rotations(Rotators3f& out, VectorColumns auto const& directions) 
     out.set_num(directions.num());
     auto const rotations{out.get_view()};
     auto const direction_count{directions.num()};
-    for (std::int32_t i{}; i < direction_count; ++i) {
+    for (std::uint32_t i{}; i < direction_count; ++i) {
         rotations.set(i, direction_to_rotation(vector_at(directions, i)));
     }
 }

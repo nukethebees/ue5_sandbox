@@ -63,7 +63,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
 
     auto const damaged_handle{simulation.get_capital_ships().get_id(0)};
     struct DamageSample {
-        std::int32_t capital_count{};
+        std::uint32_t capital_count{};
         std::int32_t ledger_alive_count{};
         std::int32_t health{};
         std::int32_t telemetry_active_count{};
@@ -111,7 +111,7 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
     struct Sample {
         std::int32_t player_health{};
         std::int32_t capital_health{};
-        std::int32_t dynamic_overlap_count{};
+        std::uint32_t dynamic_overlap_count{};
         std::int32_t kill_count{};
         bool player_alive{};
     };

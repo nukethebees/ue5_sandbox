@@ -17,7 +17,7 @@ namespace ioj::sim::lasers {
 struct SpawnRequestsSingleView;
 struct SpawnRequestsSingleConstView;
 struct SpawnRequestsSingleLayout {
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
     inline static constexpr size_type capacity_granularity{
@@ -119,7 +119,7 @@ struct SpawnRequestsSingleConstView_locations : SpawnRequestsSingleView_location
         return slice(offset, count);
     }
     using equivalent_type = Vector3f;
-    auto operator[](std::int32_t index) const -> equivalent_type {
+    auto operator[](std::uint32_t index) const -> equivalent_type {
         return HMM_V3(xs()[index], ys()[index], zs()[index]);
     }
 };
@@ -136,7 +136,7 @@ struct SpawnRequestsSingleView_locations : SpawnRequestsSingleView_locationsImpl
         return slice(offset, count);
     }
     using equivalent_type = Vector3f;
-    auto operator[](std::int32_t index) const -> equivalent_type {
+    auto operator[](std::uint32_t index) const -> equivalent_type {
         return HMM_V3(xs()[index], ys()[index], zs()[index]);
     }
 };
@@ -203,7 +203,7 @@ struct SpawnRequestsSingleConstView_rotations : SpawnRequestsSingleView_rotation
         return slice(offset, count);
     }
     using equivalent_type = Rotator3f;
-    auto operator[](std::int32_t index) const -> equivalent_type {
+    auto operator[](std::uint32_t index) const -> equivalent_type {
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
@@ -220,7 +220,7 @@ struct SpawnRequestsSingleView_rotations : SpawnRequestsSingleView_rotationsImpl
         return slice(offset, count);
     }
     using equivalent_type = Rotator3f;
-    auto operator[](std::int32_t index) const -> equivalent_type {
+    auto operator[](std::uint32_t index) const -> equivalent_type {
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
@@ -290,7 +290,7 @@ struct SpawnRequestsSingleConstView_base_velocities
         return slice(offset, count);
     }
     using equivalent_type = Vector3f;
-    auto operator[](std::int32_t index) const -> equivalent_type {
+    auto operator[](std::uint32_t index) const -> equivalent_type {
         return HMM_V3(xs()[index], ys()[index], zs()[index]);
     }
 };
@@ -308,7 +308,7 @@ struct SpawnRequestsSingleView_base_velocities
         return slice(offset, count);
     }
     using equivalent_type = Vector3f;
-    auto operator[](std::int32_t index) const -> equivalent_type {
+    auto operator[](std::uint32_t index) const -> equivalent_type {
         return HMM_V3(xs()[index], ys()[index], zs()[index]);
     }
 };
@@ -873,7 +873,7 @@ struct SingleAllocationLaserSpawnRequests
 struct EntitiesSingleView;
 struct EntitiesSingleConstView;
 struct EntitiesSingleLayout {
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
     inline static constexpr size_type capacity_granularity{
@@ -978,7 +978,7 @@ struct EntitiesSingleConstView_locations : EntitiesSingleView_locationsImpl<true
         return slice(offset, count);
     }
     using equivalent_type = Vector3f;
-    auto operator[](std::int32_t index) const -> equivalent_type {
+    auto operator[](std::uint32_t index) const -> equivalent_type {
         return HMM_V3(xs()[index], ys()[index], zs()[index]);
     }
 };
@@ -994,7 +994,7 @@ struct EntitiesSingleView_locations : EntitiesSingleView_locationsImpl<false> {
         return slice(offset, count);
     }
     using equivalent_type = Vector3f;
-    auto operator[](std::int32_t index) const -> equivalent_type {
+    auto operator[](std::uint32_t index) const -> equivalent_type {
         return HMM_V3(xs()[index], ys()[index], zs()[index]);
     }
 };
@@ -1061,7 +1061,7 @@ struct EntitiesSingleConstView_rotations : EntitiesSingleView_rotationsImpl<true
         return slice(offset, count);
     }
     using equivalent_type = Rotator3f;
-    auto operator[](std::int32_t index) const -> equivalent_type {
+    auto operator[](std::uint32_t index) const -> equivalent_type {
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
@@ -1077,7 +1077,7 @@ struct EntitiesSingleView_rotations : EntitiesSingleView_rotationsImpl<false> {
         return slice(offset, count);
     }
     using equivalent_type = Rotator3f;
-    auto operator[](std::int32_t index) const -> equivalent_type {
+    auto operator[](std::uint32_t index) const -> equivalent_type {
         return equivalent_type{pitches()[index], yaws()[index], rolls()[index]};
     }
 };
@@ -1144,7 +1144,7 @@ struct EntitiesSingleConstView_velocities : EntitiesSingleView_velocitiesImpl<tr
         return slice(offset, count);
     }
     using equivalent_type = Vector3f;
-    auto operator[](std::int32_t index) const -> equivalent_type {
+    auto operator[](std::uint32_t index) const -> equivalent_type {
         return HMM_V3(xs()[index], ys()[index], zs()[index]);
     }
 };
@@ -1160,7 +1160,7 @@ struct EntitiesSingleView_velocities : EntitiesSingleView_velocitiesImpl<false> 
         return slice(offset, count);
     }
     using equivalent_type = Vector3f;
-    auto operator[](std::int32_t index) const -> equivalent_type {
+    auto operator[](std::uint32_t index) const -> equivalent_type {
         return HMM_V3(xs()[index], ys()[index], zs()[index]);
     }
 };

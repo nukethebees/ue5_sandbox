@@ -62,7 +62,7 @@ struct Sim {
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto get_num_instances() const noexcept -> std::int32_t;
+    auto get_num_instances() const noexcept -> std::uint32_t;
     auto get_target_ids() const -> std::span<EntityUniqueId const>;
     auto get_laser_simulation() const -> lasers::Sim const& { return laser_simulation; }
 
@@ -98,9 +98,9 @@ struct Sim {
     /* **************************************** */
     void perform_search(ml::FrameScratch& scratch);
     void refresh_target_data(ml::FrameScratch& scratch);
-    void perform_search_on_slice(std::int32_t job_index,
-                                 std::int32_t n_turrets,
-                                 std::int32_t turrets_per_job,
+    void perform_search_on_slice(std::uint32_t job_index,
+                                 std::uint32_t n_turrets,
+                                 std::uint32_t turrets_per_job,
                                  float radius);
 
     /* **************************************** */
@@ -140,6 +140,6 @@ struct Sim {
     std::int16_t cooldown_restart_ticks_{};
     std::int16_t cooldown_cleaner_{};
 
-    std::vector<std::int32_t> local_indices_to_remove;
+    std::vector<std::uint32_t> local_indices_to_remove;
 };
 } // namespace ioj::sim::turrets

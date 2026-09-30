@@ -17,7 +17,7 @@ struct Rotators3fConstView;
 struct Rotators3fConstView {
     using View = Rotators3fView;
     using ConstView = Rotators3fConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     using equivalent_type = Rotator3f;
     auto operator[](size_type const index) const -> equivalent_type {
         return {pitches[static_cast<std::size_t>(index)],
@@ -39,8 +39,7 @@ struct Rotators3fConstView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> Rotators3fConstView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
+        ml::native_soa::require(offset <= num() && count <= num() - offset);
         return {
             pitches.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             yaws.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -63,13 +62,14 @@ struct Rotators3fConstView {
     }
     auto left(size_type const count) const -> Rotators3fConstView { return slice(0, count); }
     auto right(size_type const count) const -> Rotators3fConstView {
+        ml::native_soa::require(count <= num());
         return slice(num() - count, count);
     }
 };
 struct Rotators3fView {
     using View = Rotators3fView;
     using ConstView = Rotators3fConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     using equivalent_type = Rotator3f;
     auto operator[](size_type const index) const -> equivalent_type {
         return {pitches[static_cast<std::size_t>(index)],
@@ -91,8 +91,7 @@ struct Rotators3fView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> Rotators3fView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
+        ml::native_soa::require(offset <= num() && count <= num() - offset);
         return {
             pitches.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             yaws.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -115,13 +114,14 @@ struct Rotators3fView {
     }
     auto left(size_type const count) const -> Rotators3fView { return slice(0, count); }
     auto right(size_type const count) const -> Rotators3fView {
+        ml::native_soa::require(count <= num());
         return slice(num() - count, count);
     }
     void set(size_type const index,
              float const new_pitches,
              float const new_yaws,
              float const new_rolls) const {
-        ml::native_soa::require(index >= 0 && index < num());
+        ml::native_soa::require(index < num());
         pitches[static_cast<std::size_t>(index)] = new_pitches;
         yaws[static_cast<std::size_t>(index)] = new_yaws;
         rolls[static_cast<std::size_t>(index)] = new_rolls;
@@ -133,7 +133,7 @@ struct Rotators3fView {
 struct Rotators3f {
     using View = Rotators3fView;
     using ConstView = Rotators3fConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     using equivalent_type = Rotator3f;
     auto operator[](size_type const index) const -> equivalent_type {
         return get_const_view()[index];
@@ -172,11 +172,11 @@ struct Rotators3f {
     void set_num(size_type const count) {
         ml::native_soa::vector_storage_ops::set_num(*this, count);
     }
-    void apply_permutation(std::span<size_type> const indices) {
+    void apply_permutation(std::span<std::int32_t> const indices) {
         ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
-    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
         ml::native_soa::vector_storage_ops::sort(
             *this, std::forward<Compare>(compare), scratch_indices);
     }
@@ -259,9 +259,15 @@ struct Rotators3f {
         return get_const_view(offset, count);
     }
     auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View { return slice(num() - count, count); }
+    auto right(size_type const count) -> View {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
+    auto right(size_type const count) const -> ConstView {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
         pitches[static_cast<std::size_t>(dst_index)] =

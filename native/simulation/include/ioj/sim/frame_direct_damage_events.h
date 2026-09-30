@@ -18,7 +18,7 @@ struct FrameDirectDamageEvents {
     auto operator=(FrameDirectDamageEvents&&) -> FrameDirectDamageEvents& = delete;
     ~FrameDirectDamageEvents() = default;
 
-    void reserve(std::int32_t count);
+    void reserve(std::uint32_t count);
     void add(EntityUniqueId damaged_entity, std::int32_t damage_amount, EntityUniqueId instigator);
     [[nodiscard]] auto get_const_view() const noexcept -> DirectDamageEventsConstView;
 

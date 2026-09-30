@@ -70,7 +70,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
         auto const entity_ids{entities.entity_ids()};
         auto const locations{entities.view_locations()};
         auto const aim_directions{entities.view_aim_directions()};
-        for (std::int32_t index{}; index < entity_count; ++index) {
+        for (std::uint32_t index{}; index < entity_count; ++index) {
             previous_transforms.emplace(
                 entity_ids[index],
                 FighterTransformSnapshot{
@@ -90,7 +90,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
         auto const entity_ids{entities.entity_ids()};
         auto const locations{entities.view_locations()};
         auto const aim_directions{entities.view_aim_directions()};
-        for (std::int32_t index{}; index < entity_count; ++index) {
+        for (std::uint32_t index{}; index < entity_count; ++index) {
             auto const id{entity_ids[index]};
             auto const current{FighterTransformSnapshot{
                 .location = vector_at(locations, index),

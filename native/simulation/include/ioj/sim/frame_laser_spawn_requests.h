@@ -21,8 +21,8 @@ struct FrameSpawnRequests {
     auto operator=(FrameSpawnRequests&&) -> FrameSpawnRequests& = delete;
     ~FrameSpawnRequests() = default;
 
-    void reserve(std::int32_t count);
-    void set_num(std::int32_t count);
+    void reserve(std::uint32_t count);
+    void set_num(std::uint32_t count);
     void add(Vector3f location,
              Rotator3f rotation,
              Vector3f base_velocity,
@@ -34,7 +34,7 @@ struct FrameSpawnRequests {
     void set_damages(std::int32_t value);
     void set_speeds(float value);
     void set_max_distances(float value);
-    [[nodiscard]] auto num() const noexcept -> std::int32_t;
+    [[nodiscard]] auto num() const noexcept -> std::uint32_t;
 
     auto view_locations() -> FrameVectors3f& { return locations_; }
     auto view_locations() const -> FrameVectors3f const& { return locations_; }

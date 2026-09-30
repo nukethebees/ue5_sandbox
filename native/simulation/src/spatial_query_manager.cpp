@@ -78,7 +78,7 @@ auto trace_impl(ioj::sim::SpatialQueryManager const& manager,
     auto const trace_view{[&] {
         if constexpr (Mode == QueryMode::TargetLineOfSight || Mode == QueryMode::ClosestHit) {
             traces.set_num(count);
-            for (std::int32_t i{}; i < count; ++i) {
+            for (std::uint32_t i{}; i < count; ++i) {
                 if constexpr (Mode == QueryMode::TargetLineOfSight) {
                     traces.set(i, request.scalar_start, request.end_locations[i]);
                 } else {
@@ -112,15 +112,15 @@ auto trace_impl(ioj::sim::SpatialQueryManager const& manager,
         };
     } else {
         if constexpr (Mode == QueryMode::HitEntity) {
-            for (std::int32_t i{}; i < count; ++i) {
+            for (std::uint32_t i{}; i < count; ++i) {
                 request.out_entity_ids[i] = hits.entities[i];
             }
         } else if constexpr (Mode == QueryMode::ClearLine) {
-            for (std::int32_t i{}; i < count; ++i) {
+            for (std::uint32_t i{}; i < count; ++i) {
                 request.out_flags[i] = static_cast<ioj::sim::LineQueryResult>(hits.hits[i] == 0);
             }
         } else if constexpr (Mode == QueryMode::TargetLineOfSight) {
-            for (std::int32_t i{}; i < count; ++i) {
+            for (std::uint32_t i{}; i < count; ++i) {
                 request.out_flags[i] = static_cast<ioj::sim::LineQueryResult>(
                     hits.hits[i] == 0 || hits.entities[i] == request.targets[i]);
             }
@@ -171,7 +171,7 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                                Vector3f const origin,
                                float const radius,
                                std::span<EntityUniqueId> const out_entities,
-                               IncludeEntity&& include_entity) -> std::int32_t {
+                               IncludeEntity&& include_entity) -> std::uint32_t {
     if (out_entities.empty()) {
         return 0;
     }
@@ -205,10 +205,10 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
         offsets[type] = total_count;
         total_count += counts[type];
     }
-    buffers.ensure_entity_stamp_count(static_cast<std::int32_t>(total_count));
+    buffers.ensure_entity_stamp_count(static_cast<std::uint32_t>(total_count));
     auto const query_stamp{buffers.advance_range_query_stamp()};
     auto const radius_squared{radius * radius};
-    std::int32_t count{};
+    std::uint32_t count{};
 
     for (auto x{min_coord.x}; x <= max_coord.x; ++x) {
         for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
@@ -242,7 +242,7 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                     }
 
                     out_entities[static_cast<std::size_t>(count++)] = id;
-                    if (count >= static_cast<std::int32_t>(out_entities.size())) {
+                    if (count >= static_cast<std::uint32_t>(out_entities.size())) {
                         return count;
                     }
                 }
@@ -269,7 +269,7 @@ auto find_any_non_team_entity(AgentAccessor const& agents,
 /* **************************************** */
 // Thread buffer management
 /* **************************************** */
-void SpatialQueryManager::reserve_thread_buffers(std::int32_t const count) {
+void SpatialQueryManager::reserve_thread_buffers(std::uint32_t const count) {
     auto const maximum_thread_buffer_count{std::max(1u, std::thread::hardware_concurrency()) * 2u};
     if (count <= 0 || static_cast<unsigned>(count) > maximum_thread_buffer_count) {
         ml::fatal_error(std::format(
@@ -282,7 +282,7 @@ void SpatialQueryManager::reserve_thread_buffers(std::int32_t const count) {
     }
 }
 
-auto SpatialQueryManager::acquire_thread_buffer() const -> std::int32_t {
+auto SpatialQueryManager::acquire_thread_buffer() const -> std::uint32_t {
     auto const index{thread_buffer_pool_.try_acquire()};
     if (!index.has_value()) {
         ml::fatal_error("Spatial query thread buffer pool exhausted; reserve buffers before "
@@ -292,7 +292,7 @@ auto SpatialQueryManager::acquire_thread_buffer() const -> std::int32_t {
     return *index;
 }
 
-void SpatialQueryManager::release_thread_buffer(std::int32_t const index) const {
+void SpatialQueryManager::release_thread_buffer(std::uint32_t const index) const {
     if (!thread_buffer_pool_.release(index)) {
         ml::fatal_error("Invalid spatial query thread buffer release");
     }
@@ -427,7 +427,7 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
     Vector3f const& origin,
     Team const team,
     float const radius,
-    std::span<EntityUniqueId> const out_entities) const -> std::int32_t {
+    std::span<EntityUniqueId> const out_entities) const -> std::uint32_t {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::collect_non_team_entities_in_range");
 
     if (out_entities.empty()) {
@@ -456,7 +456,7 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     EntityType const entity_type,
     float const radius,
     EntityUniqueId const ignored_entity,
-    std::span<EntityUniqueId> const out_entities) const -> std::int32_t {
+    std::span<EntityUniqueId> const out_entities) const -> std::uint32_t {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::collect_entities_of_type_in_range");
 
     if (out_entities.empty()) {

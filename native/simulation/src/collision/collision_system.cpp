@@ -113,8 +113,8 @@ void CollisionSystem::finalize_overlaps(ml::FrameScratch& scratch) {
             },
             sort_indices.view());
 
-        std::int32_t write_index{1};
-        for (std::int32_t read_index{1}; read_index < entity_overlap_count; ++read_index) {
+        std::uint32_t write_index{1};
+        for (std::uint32_t read_index{1}; read_index < entity_overlap_count; ++read_index) {
             if (entity_entity_overlaps_.first_entities[read_index] ==
                     entity_entity_overlaps_.first_entities[write_index - 1] &&
                 entity_entity_overlaps_.second_entities[read_index] ==
@@ -141,8 +141,8 @@ void CollisionSystem::finalize_overlaps(ml::FrameScratch& scratch) {
             },
             sort_indices.view());
 
-        std::int32_t write_index{1};
-        for (std::int32_t read_index{1}; read_index < static_overlap_count; ++read_index) {
+        std::uint32_t write_index{1};
+        for (std::uint32_t read_index{1}; read_index < static_overlap_count; ++read_index) {
             if (entity_static_overlaps_.entities[read_index] ==
                     entity_static_overlaps_.entities[write_index - 1] &&
                 entity_static_overlaps_.static_geometry_indices[read_index] ==

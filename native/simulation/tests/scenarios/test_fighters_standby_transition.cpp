@@ -34,7 +34,7 @@ void run_worldless_fighters_standby_transition(tests::SimulationFixture const& c
     auto const enemy{capitals.get_id(1)};
 
     struct Sample {
-        std::int32_t capital_count{};
+        std::uint32_t capital_count{};
         std::vector<fighters::Sim::Task> tasks{};
         std::vector<Vector3f> velocities{};
         std::vector<EntityUniqueId> parents{};

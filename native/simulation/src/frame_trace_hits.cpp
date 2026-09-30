@@ -7,7 +7,7 @@ FrameTraceHits::FrameTraceHits(ml::FrameScratch& scratch)
     , static_geometry_indices{&scratch}
     , hits{&scratch} {}
 
-void FrameTraceHits::set_num(std::int32_t const count) {
+void FrameTraceHits::set_num(std::uint32_t const count) {
     locations.set_num(count);
     entities.set_num(count);
     static_geometry_indices.set_num(count);
@@ -25,7 +25,7 @@ auto FrameTraceHits::get_view() noexcept -> TraceHitsView {
 auto FrameTraceHits::get_const_view() const noexcept -> TraceHitsConstView {
     return {locations.get_const_view(), entities, static_geometry_indices, hits};
 }
-auto FrameTraceHits::num() const noexcept -> std::int32_t {
+auto FrameTraceHits::num() const noexcept -> std::uint32_t {
     return locations.num();
 }
 } // namespace ioj::sim

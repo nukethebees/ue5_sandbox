@@ -106,8 +106,8 @@ auto vector_string(Vector3f const value) -> std::string {
 // Navigation helpers
 /* **************************************** */
 auto Sim::get_navigation_tick_period(NavigationRiskTier const tier) const -> std::int16_t {
-    auto const index{static_cast<std::int32_t>(tier)};
-    assert(index >= 0 && static_cast<std::size_t>(index) < navigation_tick_periods.size());
+    auto const index{static_cast<std::uint32_t>(tier)};
+    assert(index < navigation_tick_periods.size());
     return navigation_tick_periods[index];
 }
 
@@ -124,14 +124,14 @@ void Sim::set_config(FighterSimConfig const& new_config,
         is_participant = 0;
     }
     for (auto const team : level_data.participating_teams) {
-        auto const team_index{static_cast<std::int32_t>(team)};
-        if (team_index >= 0 && static_cast<std::size_t>(team_index) < participant_mask.size()) {
+        auto const team_index{static_cast<std::uint32_t>(team)};
+        if (team_index < participant_mask.size()) {
             participant_mask[team_index] = 1;
         }
     }
 
-    assert(std::in_range<std::int32_t>(level_data.participating_teams.size()));
-    auto const participant_count{static_cast<std::int32_t>(level_data.participating_teams.size())};
+    assert(std::in_range<std::uint32_t>(level_data.participating_teams.size()));
+    auto const participant_count{static_cast<std::uint32_t>(level_data.participating_teams.size())};
     per_team_limit =
         participant_count == 0 ? 0 : std::max(0, config.max_live_fighters) / participant_count;
 }
@@ -185,14 +185,14 @@ void Sim::begin_play() {
            std::in_range<std::int16_t>(attack_reposition_tick_period));
     reposition_restart_ticks_ = static_cast<std::int16_t>(attack_reposition_tick_period);
 
-    std::array<float, static_cast<std::int32_t>(NavigationRiskTier::Count)> const frequencies{
+    std::array<float, static_cast<std::uint32_t>(NavigationRiskTier::Count)> const frequencies{
         config.avoidance_clear_update_frequency,
         config.avoidance_update_frequency,
         config.avoidance_active_update_frequency,
         config.avoidance_immediate_update_frequency,
     };
     auto const frequency_count{frequencies.size()};
-    for (std::int32_t i{}; static_cast<std::size_t>(i) < frequency_count; ++i) {
+    for (std::uint32_t i{}; static_cast<std::size_t>(i) < frequency_count; ++i) {
         auto const period{simulation_clock.frequency_to_tick_period(frequencies[i])};
         assert(period > 0 && std::in_range<std::int16_t>(period));
         navigation_tick_periods[i] = static_cast<std::int16_t>(period);
@@ -234,9 +234,8 @@ void Sim::prepare_tick(float const dt) {
         capacity = per_team_limit;
     }
     for (auto const team : data.teams()) {
-        auto const team_index{static_cast<std::int32_t>(team)};
-        if (team_index >= 0 && static_cast<std::size_t>(team_index) < participant_mask.size() &&
-            participant_mask[team_index] != 0) {
+        auto const team_index{static_cast<std::uint32_t>(team)};
+        if (team_index < participant_mask.size() && participant_mask[team_index] != 0) {
             remaining_team_capacity[team_index] =
                 std::max(0, remaining_team_capacity[team_index] - 1);
         } else {
@@ -270,7 +269,7 @@ void Sim::think(float const dt, ml::FrameScratch& scratch) {
 
     {
         SANDBOX_PROFILE_SCOPE("fighters::Sim::awareness_scan");
-        for (std::int32_t i{0}; i < n; ++i) {
+        for (std::uint32_t i{0}; i < n; ++i) {
             if (!awareness_countdowns.try_consume(i)) {
                 continue;
             }
@@ -286,7 +285,7 @@ void Sim::think(float const dt, ml::FrameScratch& scratch) {
                 fighter_location, teams[i], awareness_radius, nearby_entities)};
             auto const aim_direction{vector_at(aim_directions, i)};
             EntityUniqueId selected_target{};
-            for (std::int32_t nearby_index{}; nearby_index < n_nearby_entities; ++nearby_index) {
+            for (std::uint32_t nearby_index{}; nearby_index < n_nearby_entities; ++nearby_index) {
                 auto const candidate{nearby_entities[nearby_index]};
                 auto const state{agents_.read_alive(candidate)};
                 if (!state) {
@@ -350,7 +349,7 @@ void Sim::plan_movement(float const dt, ml::FrameScratch& scratch) {
 
         auto reposition_countdowns{ml::TickCountdownView<std::int16_t>{
             attack_view.attack_reposition_countdowns(), reposition_restart_ticks_}};
-        for (std::int32_t index{}; index < n_attack; ++index) {
+        for (std::uint32_t index{}; index < n_attack; ++index) {
             auto const element{static_cast<std::size_t>(index)};
             auto const location{vector_at(locations, index)};
             auto const target_location{vector_at(target_locations, index)};
@@ -402,7 +401,7 @@ void Sim::plan_movement(float const dt, ml::FrameScratch& scratch) {
         auto const desired_directions{attack_view.view_desired_aiming_directions()};
         auto const aim_directions{attack_view.view_aim_directions()};
         auto const planned_directions{attack_view.view_planned_aim_directions()};
-        for (std::int32_t index{}; index < n_attack; ++index) {
+        for (std::uint32_t index{}; index < n_attack; ++index) {
             auto const choice{choices[index]};
             auto const desired_direction{is_avoidance_direction_choice(choice)
                                              ? vector_at(movement_directions, index)
@@ -418,7 +417,7 @@ void Sim::plan_movement(float const dt, ml::FrameScratch& scratch) {
         auto const count{view.num()};
         auto const move_distances{view.move_distances()};
         auto const speeds{view.speeds()};
-        for (std::int32_t index{}; index < count; ++index) {
+        for (std::uint32_t index{}; index < count; ++index) {
             move_distances[index] = std::min(move_distances[index], speeds[index] * dt);
         }
     }};
@@ -432,7 +431,7 @@ void Sim::plan_movement(float const dt, ml::FrameScratch& scratch) {
     auto const attack_target_distance_sq{attack_view.target_distance_sq()};
     auto const attack_target_distances{attack_view.target_distances()};
 
-    for (std::int32_t index{}; index < n_attack; ++index) {
+    for (std::uint32_t index{}; index < n_attack; ++index) {
         auto const next_location{vector_at(attack_locations, index) +
                                  vector_at(attack_directions, index) *
                                      attack_move_distances[index]};
@@ -450,7 +449,7 @@ void Sim::apply_movement(ml::FrameScratch& scratch) {
     auto const planned_directions{data.view_planned_aim_directions()};
     auto const entity_ids{data.entity_ids()};
 
-    for (std::int32_t index{}; index < count; ++index) {
+    for (std::uint32_t index{}; index < count; ++index) {
         auto const direction{vector_at(aim_directions, index)};
         auto const planned_direction{vector_at(planned_directions, index)};
         if (direction.X == planned_direction.X && direction.Y == planned_direction.Y &&
@@ -518,7 +517,7 @@ void Sim::resolve_damage_events() {
     auto const teams{data.teams()};
     auto const target_ids{data.target_ids()};
 
-    for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {
+    for (std::uint32_t event_index{}; event_index < damage_count; ++event_index) {
         auto const event_element{static_cast<std::size_t>(event_index)};
         auto const damaged_id{damage_events.damaged_entities[event_element]};
         assert(damaged_id.is_valid() && damaged_id.entity_type() == EntityType::Fighter);
@@ -542,7 +541,7 @@ void Sim::resolve_damage_events() {
 void Sim::publish_deaths() {
     auto const deaths{entity_death_info.get_const_view()};
     auto const death_count{deaths.num()};
-    for (std::int32_t i{}; i < death_count; ++i) {
+    for (std::uint32_t i{}; i < death_count; ++i) {
         ledger_.record_death(deaths.victims[i], deaths.killers[i], deaths.reasons[i]);
     }
 }
@@ -596,7 +595,7 @@ void Sim::move(float const dt, TaskView fighters, ml::FrameScratch& scratch) {
     auto const velocity_ys{velocities.ys()};
     auto const velocity_zs{velocities.zs()};
 
-    for (std::int32_t index{}; index < count; ++index) {
+    for (std::uint32_t index{}; index < count; ++index) {
         auto const move_distance{move_distances[index]};
         auto const velocity_scale{move_distance / dt};
         velocity_xs[index] = direction_xs[index] * velocity_scale;
@@ -613,7 +612,7 @@ void Sim::move(float const dt, TaskView fighters, ml::FrameScratch& scratch) {
                                                  1.f,
                                                  count);
     auto const before_locations{previous_locations.get_const_view()};
-    for (std::int32_t index{}; index < count; ++index) {
+    for (std::uint32_t index{}; index < count; ++index) {
         auto const before{before_locations[index]};
         auto const after{vector_at(locations, index)};
         if (before.X != after.X || before.Y != after.Y || before.Z != after.Z) {
@@ -656,7 +655,7 @@ void Sim::collect_navigation_updates(NavigationScratch& scratch) {
     ml::PeriodicTickCountdownView<std::int16_t> const countdowns{
         data.navigation_update_countdowns_remaining_ticks(),
         data.navigation_update_countdowns_periods()};
-    auto const count{static_cast<std::int32_t>(countdowns.num())};
+    auto const count{static_cast<std::uint32_t>(countdowns.num())};
     scratch.ready_fighter_indices.reserve(count);
     scratch.observed_risk_tiers.set_num(count);
 
@@ -718,8 +717,8 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
         ++navigation_telemetry.separation_query_count;
         navigation_telemetry.separation_candidate_count += n_nearby;
 
-        std::int32_t neighbour_count{};
-        for (std::int32_t index{}; index < n_nearby; ++index) {
+        std::uint32_t neighbour_count{};
+        for (std::uint32_t index{}; index < n_nearby; ++index) {
             auto const local_index{agents_.indexes().find(nearby_fighters[index])};
             if (local_index != AgentIndices::invalid_index &&
                 is_alive(healths.health(local_index))) {
@@ -825,7 +824,7 @@ void Sim::scan_preferred_navigation(NavigationScratch& scratch,
     if (n_direct_traces > 0) {
         execute_navigation_sweeps(scratch, clearance);
 
-        for (std::int32_t index{}; index < n_direct_traces; ++index) {
+        for (std::uint32_t index{}; index < n_direct_traces; ++index) {
             auto const fighter_index{scratch.trace_fighter_indices[index]};
             auto const element{static_cast<std::size_t>(fighter_index)};
             if (scratch.line_of_sight_results[index] == 0 || scratch.trace_hits.hits[index] != 0) {
@@ -935,7 +934,7 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
     auto const separation_steering{data.view_separation_steering()};
     auto const risk_tiers{data.navigation_risk_tiers()};
 
-    for (std::int32_t blocked_index{}; blocked_index < n_blocked_fighters; ++blocked_index) {
+    for (std::uint32_t blocked_index{}; blocked_index < n_blocked_fighters; ++blocked_index) {
         auto const fighter_index{scratch.blocked_fighter_indices[blocked_index]};
         auto const fighter_location{vector_at(locations, fighter_index)};
         // Partial progress must leave room until the next active scan, including its margin.
@@ -970,7 +969,7 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
                 collision_radius_ + config.avoidance_clearance_buffer,
                 safe_progress_distance,
                 risk_tiers[fighter_index]));
-            for (std::int32_t trace_index{candidate_begin}; trace_index < candidate_end;
+            for (std::uint32_t trace_index{candidate_begin}; trace_index < candidate_end;
                  ++trace_index) {
                 ml::log_error(
                     std::format("[FighterStop] choice={} end={} inWorld={} hit={} "
@@ -1083,7 +1082,7 @@ void Sim::publish_navigation_telemetry() const {
 /* **************************************** */
 // Accessors
 /* **************************************** */
-auto Sim::get_num_instances() const noexcept -> std::int32_t {
+auto Sim::get_num_instances() const noexcept -> std::uint32_t {
     return entity_buffers.current().num();
 }
 void Sim::set_parent_id(EntityUniqueId const fighter, EntityUniqueId const parent) {
@@ -1101,10 +1100,10 @@ void Sim::set_parent_id(EntityUniqueId const fighter, EntityUniqueId const paren
         ++membership_revision_;
     }
 }
-auto Sim::get_view(std::int32_t const offset, std::int32_t const width) -> EntityStorage::View {
+auto Sim::get_view(std::uint32_t const offset, std::uint32_t const width) -> EntityStorage::View {
     return entity_buffers.current().get_view(offset, width);
 }
-auto Sim::get_const_view(std::int32_t const offset, std::int32_t const width) const
+auto Sim::get_const_view(std::uint32_t const offset, std::uint32_t const width) const
     -> EntityStorage::ConstView {
     return entity_buffers.current().get_const_view(offset, width);
 }
@@ -1161,7 +1160,7 @@ auto Sim::get_task_span(Task const task) const -> IndexSpan {
 /* **************************************** */
 // Targets
 /* **************************************** */
-void Sim::set_target_id_unchecked(std::int32_t const fighter_index,
+void Sim::set_target_id_unchecked(std::uint32_t const fighter_index,
                                   EntityUniqueId const new_target) noexcept {
     entity_buffers.current().get_view().target_ids()[fighter_index] = new_target;
 }
@@ -1171,14 +1170,14 @@ void Sim::set_target_id(EntityUniqueId const fighter, EntityUniqueId const new_t
 void Sim::refresh_target_data(ml::FrameScratch& scratch) {
     auto const data{entity_buffers.current().get_view()};
     auto const count{data.num()};
-    ml::FrameArray<std::int32_t> order{&scratch};
+    ml::FrameArray<std::uint32_t> order{&scratch};
     ml::FrameArray<std::uint8_t> alive{&scratch};
     order.set_num(count);
     alive.set_num(count);
     auto const target_ids{data.target_ids()};
     auto const target_radii{data.target_radii()};
 
-    for (std::int32_t index{}; index < count; ++index) {
+    for (std::uint32_t index{}; index < count; ++index) {
         auto const target_id{target_ids[index]};
         target_radii[index] =
             target_id.is_valid()
@@ -1195,7 +1194,7 @@ void Sim::refresh_target_data(ml::FrameScratch& scratch) {
                              data.view_target_velocities().zs()},
                             {},
                             alive});
-    for (std::int32_t index{}; index < count; ++index) {
+    for (std::uint32_t index{}; index < count; ++index) {
         if (!alive[index]) {
             target_ids[index] = {};
             target_radii[index] = 0.f;
@@ -1225,7 +1224,7 @@ bool Sim::tasks_are_contiguous() const noexcept {
         current_task = task;
     }
 
-    std::int32_t offset{};
+    std::uint32_t offset{};
     auto const counts{get_task_counts()};
     for (std::size_t group{}; group < n_task_types; ++group) {
         if (task_spans[group] != IndexSpan{offset, counts[group]}) {
@@ -1242,7 +1241,7 @@ void Sim::refresh_layout() {
     auto const task_counts{get_task_counts()};
     auto const n_fighters{get_num_instances()};
     TaskCounts write_indices{};
-    std::int32_t offset{};
+    std::uint32_t offset{};
     for (std::size_t group{}; group < n_task_types; ++group) {
         write_indices[group] = offset;
         task_spans[group] = {offset, task_counts[group]};
@@ -1258,7 +1257,7 @@ void Sim::refresh_layout() {
     auto const old_tasks{old_data.get_const_view().tasks()};
     bool reordered{};
     for (std::size_t group{}; group < n_task_types; ++group) {
-        for (std::int32_t index{}; index < n_fighters; ++index) {
+        for (std::uint32_t index{}; index < n_fighters; ++index) {
             if (static_cast<std::size_t>(old_tasks[index]) == group) {
                 reordered |= new_data.num() != index;
                 // Each retained entity is copied from its original row.
@@ -1278,7 +1277,7 @@ void Sim::refresh_layout() {
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Sim::accept_spawn_count(std::span<Team const> const teams) -> std::int32_t {
+auto Sim::accept_spawn_count(std::span<Team const> const teams) -> std::uint32_t {
     if (teams.empty()) {
         return 0;
     }
@@ -1287,7 +1286,7 @@ auto Sim::accept_spawn_count(std::span<Team const> const teams) -> std::int32_t 
     if (team_index >= participant_mask.size() || participant_mask[team_index] == 0) {
         ml::log_error(
             std::format("Rejected fighter spawn request for invalid or non-participating team {}",
-                        static_cast<std::int32_t>(teams[0])));
+                        static_cast<std::uint32_t>(teams[0])));
         return 0;
     }
 
@@ -1300,19 +1299,20 @@ auto Sim::accept_spawn_count(std::span<Team const> const teams) -> std::int32_t 
 
     auto& capacity{remaining_team_capacity[team_index]};
     assert(capacity >= 0);
-    auto const accepted_count{std::min(static_cast<std::int32_t>(teams.size()), capacity)};
-    capacity -= accepted_count;
+    auto const accepted_count{
+        std::min(static_cast<std::uint32_t>(teams.size()), static_cast<std::uint32_t>(capacity))};
+    capacity -= static_cast<std::int32_t>(accepted_count);
     return accepted_count;
 }
 auto Sim::queue_spawns(SingleAllocationFighterSpawnQueue::ConstView const new_spawns)
-    -> std::int32_t {
+    -> std::uint32_t {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::queue_spawns");
     new_spawns.validate();
     auto const count{accept_spawn_count(new_spawns.teams())};
     spawn_queue.append_from(new_spawns, 0, count);
     return count;
 }
-auto Sim::queue_spawns(FrameSpawnQueue const& new_spawns) -> std::int32_t {
+auto Sim::queue_spawns(FrameSpawnQueue const& new_spawns) -> std::uint32_t {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::queue_spawns");
     new_spawns.validate();
     auto const count{accept_spawn_count(new_spawns.teams())};
@@ -1327,7 +1327,7 @@ void Sim::reassign_pending_spawns(EntityUniqueId const parent, EntityUniqueId co
     auto const pending_count{pending.num()};
     auto const parents{pending.parents()};
 
-    for (std::int32_t index{}; index < pending_count; ++index) {
+    for (std::uint32_t index{}; index < pending_count; ++index) {
         if (parents[index] == parent) {
             parents[index] = replacement;
         }
@@ -1369,7 +1369,7 @@ void Sim::commit_spawns() {
     auto const pitches{spawns.view_rotations().pitches()};
     auto const yaws{spawns.view_rotations().yaws()};
     auto const rolls{spawns.view_rotations().rolls()};
-    for (std::int32_t index{}; index < n_new; ++index) {
+    for (std::uint32_t index{}; index < n_new; ++index) {
         set_vector(aim_directions,
                    index,
                    forward_direction(Rotator3f{pitches[index], yaws[index], rolls[index]}));
@@ -1377,7 +1377,7 @@ void Sim::commit_spawns() {
 
     auto const entity_ids{new_data.entity_ids()};
     auto const teams{new_data.teams()};
-    for (std::int32_t i{0}; i < n_new; ++i) {
+    for (std::uint32_t i{0}; i < n_new; ++i) {
         entity_ids[i] =
             ledger_.record_spawn(EntityType::Fighter, teams[i], is_alive(config.health));
     }
@@ -1392,7 +1392,7 @@ void Sim::commit_spawns() {
         auto const parent_ids{new_data.parent_ids()};
         auto const target_ids{new_data.target_ids()};
         auto const spawn_locations{new_data.view_locations()};
-        for (std::int32_t i{}; i < n_new; ++i) {
+        for (std::uint32_t i{}; i < n_new; ++i) {
             if (!diagnostics::take_report(diagnostics_enabled_, diagnostic_spawn_reports, 64)) {
                 break;
             }
@@ -1440,7 +1440,7 @@ void Sim::handle_firing(TaskView data, ml::FrameScratch& scratch) {
     auto const move_distances{data.move_distances()};
 
     auto predicted_location =
-        [locations, movement_directions, move_distances](std::int32_t const index) {
+        [locations, movement_directions, move_distances](std::uint32_t const index) {
             return vector_at(locations, index) +
                    vector_at(movement_directions, index) * move_distances[index];
         };
@@ -1454,12 +1454,12 @@ void Sim::handle_firing(TaskView data, ml::FrameScratch& scratch) {
     auto const arrival_distance{config.arrival_distance};
     auto const attack_position_arrival_distance_sq{arrival_distance * arrival_distance};
     ml::FrameArray<float> aiming_dot_products{&scratch};
-    ml::FrameArray<std::int32_t> can_fire{&scratch};
+    ml::FrameArray<std::uint32_t> can_fire{&scratch};
     FrameVectors3f line_of_sight_starts{scratch};
     FrameVectors3f line_of_sight_ends{scratch};
     ml::FrameArray<LineQueryResult> line_of_sight_results{&scratch};
     ml::FrameArray<EntityUniqueId> firing_ignored_entities{&scratch};
-    ml::FrameArray<std::int32_t> firing_position_fighter_indices{&scratch};
+    ml::FrameArray<std::uint32_t> firing_position_fighter_indices{&scratch};
     FrameVectors3f firing_position_candidates{scratch};
 
     firing_position_fighter_indices.reserve(n_ships);
@@ -1482,7 +1482,7 @@ void Sim::handle_firing(TaskView data, ml::FrameScratch& scratch) {
     auto const target_ids{data.target_ids()};
 
     can_fire.reserve(n_ships);
-    for (std::int32_t index{}; index < n_ships; ++index) {
+    for (std::uint32_t index{}; index < n_ships; ++index) {
         auto const element{static_cast<std::size_t>(index)};
         if (!cooldowns.is_ready(element)) {
             continue;
@@ -1505,7 +1505,7 @@ void Sim::handle_firing(TaskView data, ml::FrameScratch& scratch) {
     line_of_sight_starts.set_num(firing_count);
     line_of_sight_ends.set_num(firing_count);
     firing_ignored_entities.set_num(firing_count);
-    for (std::int32_t index{}; index < firing_count; ++index) {
+    for (std::uint32_t index{}; index < firing_count; ++index) {
         auto const fighter_index{can_fire[index]};
         auto const element{static_cast<std::size_t>(fighter_index)};
         auto const direction{vector_at(planned_directions, fighter_index)};
@@ -1532,7 +1532,8 @@ void Sim::handle_firing(TaskView data, ml::FrameScratch& scratch) {
 
     auto const desired_move_locations{data.view_desired_move_locations()};
 
-    for (auto index{can_fire.num() - 1}; index >= 0; --index) {
+    for (auto remaining{can_fire.num()}; remaining > 0; --remaining) {
+        auto const index{remaining - 1};
         auto const fighter_index{can_fire[index]};
         if (line_of_sight_results[index] != 0) {
             continue;
@@ -1563,7 +1564,7 @@ void Sim::handle_firing(TaskView data, ml::FrameScratch& scratch) {
         firing_ignored_entities.set_num(n_fighters);
         firing_position_candidates.set_num(n_fighters);
 
-        for (std::int32_t i{}; i < n_fighters; ++i) {
+        for (std::uint32_t i{}; i < n_fighters; ++i) {
             auto const ship_index{firing_position_fighter_indices[i]};
             firing_ignored_entities[i] = entity_ids[ship_index];
             auto const candidate{firing_detail::make_fire_point_candidate(
@@ -1591,7 +1592,8 @@ void Sim::handle_firing(TaskView data, ml::FrameScratch& scratch) {
         auto const candidate_locations{firing_position_candidates.get_const_view()};
         // NOLINTEND(ioj-loop-view-construction,ioj-loop-view-accessor-call)
 
-        for (auto index{n_fighters - 1}; index >= 0; --index) {
+        for (auto remaining{n_fighters}; remaining > 0; --remaining) {
+            auto const index{remaining - 1};
             if (line_of_sight_results[index] == 0) {
                 continue;
             }
@@ -1606,7 +1608,7 @@ void Sim::handle_firing(TaskView data, ml::FrameScratch& scratch) {
 
     auto const n_can_fire{can_fire.num()};
     auto const attack_offset{get_task_span(Task::Attack).offset};
-    for (std::int32_t i{0}; i < n_can_fire; ++i) {
+    for (std::uint32_t i{0}; i < n_can_fire; ++i) {
         auto const ship_index{can_fire[i]};
         pending_fire_indices_.push_back(attack_offset + ship_index);
         attack_cooldowns[ship_index] = attack_restart_ticks_;
@@ -1668,7 +1670,7 @@ void Sim::commit_orders() {
             remaining_ticks[index] = 0;
         }};
 
-    for (std::int32_t index{}; index < n_orders; ++index) {
+    for (std::uint32_t index{}; index < n_orders; ++index) {
         auto const id{orders.entity_ids[index]};
         auto const fighter_index{agents_.indexes().find(id)};
         if (fighter_index == AgentIndices::invalid_index ||
@@ -1720,7 +1722,7 @@ void Sim::check_fighter_tasks() const {
     auto const n_tasks{data.num()};
     auto const tasks{data.tasks()};
 
-    for (std::int32_t i{}; i < n_tasks; ++i) {
+    for (std::uint32_t i{}; i < n_tasks; ++i) {
         auto const task{tasks[i]};
         auto const task_value{std::to_underlying(task)};
         if (task == current_task_group) {

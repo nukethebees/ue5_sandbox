@@ -40,7 +40,7 @@ auto snapshot_with_terminal_sample(Data const& source,
 template <typename Data>
 bool contains_only_nonnegative_values(Data const& data) {
     auto const sample_count{data.num()};
-    for (std::int32_t i{0}; i < sample_count; ++i) {
+    for (std::uint32_t i{0}; i < sample_count; ++i) {
         if (data.value_at(i) < 0) {
             return false;
         }
@@ -327,7 +327,7 @@ auto LevelTelemetryManager::get_history_stats() const noexcept -> LevelTelemetry
 
 auto LevelTelemetryManager::materialize_tick_series() const -> LevelTelemetryTickSeries {
     using namespace level_telemetry_detail;
-    std::array<std::int32_t, FieldMask::field_count> sample_counts{};
+    std::array<std::uint32_t, FieldMask::field_count> sample_counts{};
     history_.for_each_block([&sample_counts](auto const block) {
         auto const rows{block};
         for (auto const mask : rows.validity_masks()) {
@@ -375,7 +375,7 @@ auto LevelTelemetryManager::materialize_tick_series() const -> LevelTelemetryTic
         auto const active_lasers{rows.active_lasers()};
         auto const lasers_fired{rows.lasers_fired()};
 
-        for (std::int32_t row{}; row < row_count; ++row) {
+        for (std::uint32_t row{}; row < row_count; ++row) {
             auto const tick{completed_ticks[row]};
             auto const mask{validity_masks[row]};
             if (mask.has(Field::ActiveEntities)) {

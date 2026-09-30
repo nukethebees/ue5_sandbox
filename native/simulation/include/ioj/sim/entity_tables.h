@@ -86,7 +86,7 @@ struct EntityTables {
         health_indices_.bind(type, owners, indices);
     }
 
-    void remove_health_rows(std::span<std::int32_t const> const rows,
+    void remove_health_rows(std::span<std::uint32_t const> const rows,
                             std::span<HealthIndex const> const indices,
                             std::span<EntityUniqueId const> const owners) {
         health.remove_rows(rows, indices, owners, [this](HealthMove const& move) {

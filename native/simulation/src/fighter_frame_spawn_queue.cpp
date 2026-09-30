@@ -7,7 +7,7 @@ FrameSpawnQueue::FrameSpawnQueue(ml::FrameScratch& scratch)
     , teams_{&scratch}
     , parents_{&scratch}
     , targets_{&scratch} {}
-void FrameSpawnQueue::reserve(std::int32_t const count) {
+void FrameSpawnQueue::reserve(std::uint32_t const count) {
     locations_.reserve(count);
     rotations_.reserve(count);
     teams_.reserve(count);

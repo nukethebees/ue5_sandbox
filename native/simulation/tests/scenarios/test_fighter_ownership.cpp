@@ -57,7 +57,7 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
         Sample sample;
         auto const count{capitals.get_num_instances()};
         auto const parent_ids{simulation.get_fighters().get_parent_ids()};
-        for (std::int32_t i{}; i < count; ++i) {
+        for (std::uint32_t i{}; i < count; ++i) {
             auto const id{capitals.get_id(i)};
             sample.capitals.push_back(id);
             sample.capital_teams.push_back(capitals.get_team(id));
@@ -85,7 +85,7 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
         for (auto const team : {Team::Green, Team::Red}) {
             EntityUniqueId victim;
             auto const count{capitals.get_num_instances()};
-            for (std::int32_t i{}; i < count; ++i) {
+            for (std::uint32_t i{}; i < count; ++i) {
                 auto const id{capitals.get_id(i)};
                 if (capitals.get_team(id) == team) {
                     victim = id;
@@ -203,7 +203,7 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
         EXPECT_EQ(expected_fighters, static_cast<std::int32_t>(capitals.get_fighter_ids().size()))
             << "Capital-owned and simulation fighter counts match";
         auto const capital_count{capitals.get_num_instances()};
-        for (std::int32_t i{}; i < capital_count; ++i) {
+        for (std::uint32_t i{}; i < capital_count; ++i) {
             EXPECT_NE(capitals.get_id(i), capitals.get_target_id(i))
                 << "Capital does not target itself";
         }

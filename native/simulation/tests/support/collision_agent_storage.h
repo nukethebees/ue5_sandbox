@@ -202,7 +202,7 @@ struct CollisionAgentStorage {
     }
 
     void remove_health(HealthIndex const index, EntityUniqueId const id) {
-        std::array const rows{0};
+        std::array const rows{0u};
         std::array const indices{index};
         std::array const ids{id};
         entity_tables.remove_health_rows(rows, indices, ids);

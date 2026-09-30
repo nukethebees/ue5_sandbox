@@ -28,7 +28,7 @@ class EntityLedger {
     auto get_issued_counts() const noexcept -> EntityTypeSizes const& {
         return ids_.issued_counts();
     }
-    auto get_num_unique_ids_issued() const noexcept -> std::int32_t { return history_.num(); }
+    auto get_num_unique_ids_issued() const noexcept -> std::uint32_t { return history_.num(); }
     auto get_kills(EntityUniqueId id) const -> std::uint32_t;
     auto count_alive() const noexcept -> std::int32_t { return statistics_.alive_count(); }
     auto count_alive(EntityType type) const noexcept -> std::int32_t {

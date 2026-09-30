@@ -74,7 +74,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     auto const capital_count{capitals.num()};
     auto const teams{capitals.teams()};
     auto const entity_ids{capitals.entity_ids()};
-    for (std::int32_t index{}; index < capital_count; ++index) {
+    for (std::uint32_t index{}; index < capital_count; ++index) {
         if (teams[index] != player->team) {
             available_targets.push_back(entity_ids[index]);
         }

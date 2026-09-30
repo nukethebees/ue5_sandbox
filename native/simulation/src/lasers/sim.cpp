@@ -71,8 +71,8 @@ void Sim::finish_action() {
     profiling::plot("Sandbox/LaserCount", get_num_instances());
 }
 
-auto Sim::get_num_instances() const noexcept -> std::int32_t {
-    return static_cast<std::int32_t>(
+auto Sim::get_num_instances() const noexcept -> std::uint32_t {
+    return static_cast<std::uint32_t>(
         std::ranges::count(entities.get_const_view().active(), std::uint8_t{1}));
 }
 
@@ -120,7 +120,7 @@ void Sim::process_pending_spawns() {
     auto const requests_damages{requests.damages()};
     auto const requests_instigator_ids{requests.instigator_ids()};
 
-    for (std::int32_t spawn_index{}; spawn_index < n_to_add; ++spawn_index) {
+    for (std::uint32_t spawn_index{}; spawn_index < n_to_add; ++spawn_index) {
         output_active[spawn_index] = 1;
         auto const speed{requests_speeds[spawn_index]};
         auto const lifetime{requests_max_distances[spawn_index] / speed};
@@ -160,10 +160,11 @@ void Sim::expire_instances(float const dt, ml::FrameScratch& scratch) {
 
     ml::subtract_in_place(std::span<float>{lifetimes}, dt);
 
-    ml::FrameArray<std::int32_t> expired_indices{&scratch};
+    ml::FrameArray<std::uint32_t> expired_indices{&scratch};
     auto const count{entities.num()};
     expired_indices.reserve(count);
-    for (std::int32_t index{count - 1}; index >= 0; --index) {
+    for (auto remaining{count}; remaining > 0; --remaining) {
+        auto const index{remaining - 1};
         if (active[index] != 0 && lifetimes[index] <= 0.f) {
             active[index] = 0;
             expired_indices.add(index);
@@ -180,7 +181,7 @@ void Sim::update_locations(float const dt) {
     auto const locations{entities.view_locations()};
     auto const velocities{entities.view_velocities()};
 
-    for (std::int32_t index{}; index < count; ++index) {
+    for (std::uint32_t index{}; index < count; ++index) {
         if (active[index] != 0) {
             auto const step{std::min(dt, std::max(0.f, lifetimes[index]))};
             set_vector(locations,
@@ -203,12 +204,12 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
     auto const locations{entities.view_locations().get_const_view()};
     auto const velocities{entities.view_velocities().get_const_view()};
     assert(config.collision_jobs > 0);
-    auto const job_count{std::min(n, config.collision_jobs)};
+    auto const job_count{std::min(n, static_cast<std::uint32_t>(config.collision_jobs))};
     auto const updates_per_slice{n / job_count + (n % job_count != 0)};
-    ml::FrameArray<std::int32_t> jobs{&scratch};
+    ml::FrameArray<std::uint32_t> jobs{&scratch};
     jobs.set_num(job_count);
     auto const job_indices{jobs.view()};
-    std::iota(job_indices.begin(), job_indices.end(), 0);
+    std::iota(job_indices.begin(), job_indices.end(), 0u);
     auto const active_rows{entities.active()};
     auto const lifetimes{entities.lifetimes_remaining()};
     auto const instigator_ids{entities.instigator_ids()};
@@ -217,7 +218,7 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
         std::execution::par,
         job_indices.begin(),
         job_indices.end(),
-        [=, this, &collision_scratch](std::int32_t const job_index) {
+        [=, this, &collision_scratch](std::uint32_t const job_index) {
             auto const i_start{job_index * updates_per_slice};
             auto const i_end{std::min(i_start + updates_per_slice, n)};
             auto const trace_count{i_end - i_start};
@@ -231,7 +232,7 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
                 collision_scratch.trace_starts.get_view().slice(i_start, trace_count)};
             auto const trace_ends{
                 collision_scratch.trace_ends.get_view().slice(i_start, trace_count)};
-            for (std::int32_t trace_index{}; trace_index < trace_count; ++trace_index) {
+            for (std::uint32_t trace_index{}; trace_index < trace_count; ++trace_index) {
                 auto const start{vector_at(trace_locations, trace_index)};
                 trace_starts.set(trace_index, start);
                 auto const index{i_start + trace_index};
@@ -252,11 +253,11 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
                 trace_starts_view, trace_ends_view, hits, ignored_entities);
         });
 
-    ml::FrameArray<std::int32_t> to_remove{&scratch};
+    ml::FrameArray<std::uint32_t> to_remove{&scratch};
     FrameHitDetails hit_details{scratch};
     FrameDirectDamageEvents collision_damage_events{scratch};
     auto const trace_hits{collision_scratch.trace_hits.get_const_view()};
-    auto const hit_count{static_cast<std::int32_t>(
+    auto const hit_count{static_cast<std::uint32_t>(
         std::ranges::count_if(trace_hits.hits, [](auto const hit) { return hit != 0; }))};
     to_remove.reserve(hit_count);
     collision_damage_events.reserve(hit_count);
@@ -265,7 +266,7 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
     auto const sources{entities.sources()};
 
     constexpr float safe_normal_tolerance{1.e-8f};
-    for (std::int32_t entity_index{}; entity_index < n; ++entity_index) {
+    for (std::uint32_t entity_index{}; entity_index < n; ++entity_index) {
         auto const element{static_cast<std::size_t>(entity_index)};
         if (active_rows[element] == 0 || trace_hits.hits[element] == 0) {
             continue;
@@ -296,7 +297,7 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
 
     frame_output_.append_hits(hit_details, simulation_clock.get_completed_ticks());
 }
-void Sim::remove_instances(std::span<std::int32_t const> const indices) {
+void Sim::remove_instances(std::span<std::uint32_t const> const indices) {
     assert(std::ranges::is_sorted(indices, std::greater{}));
     for (auto const index : indices) {
         entities.remove_at_swap(index, 1);

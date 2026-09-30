@@ -12,13 +12,13 @@ struct EntityDeathInfo;
 class EntityLedger;
 }
 namespace ioj::sim::batch {
-void sort_and_deduplicate_removal_indices(std::vector<std::int32_t>& local_indices_to_remove);
+void sort_and_deduplicate_removal_indices(std::vector<std::uint32_t>& local_indices_to_remove);
 
 void resolve_damage_events(DirectDamageEventsConstView damage_events,
                            AgentIndices const& indexes,
                            [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
                            HealthView healths,
-                           std::vector<std::int32_t>& local_indices_to_remove,
+                           std::vector<std::uint32_t>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info,
                            EntityLedger& ledger);
 

@@ -18,7 +18,7 @@ struct FighterOrderQueueConstView;
 struct FighterOrderQueueConstView {
     using View = FighterOrderQueueView;
     using ConstView = FighterOrderQueueConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     std::span<EntityUniqueId const> entity_ids;
     std::span<FighterOrder const> orders;
     std::span<FighterTask const> tasks;
@@ -36,8 +36,7 @@ struct FighterOrderQueueConstView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> FighterOrderQueueConstView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
+        ml::native_soa::require(offset <= num() && count <= num() - offset);
         return {
             entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             orders.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -63,13 +62,14 @@ struct FighterOrderQueueConstView {
     }
     auto left(size_type const count) const -> FighterOrderQueueConstView { return slice(0, count); }
     auto right(size_type const count) const -> FighterOrderQueueConstView {
+        ml::native_soa::require(count <= num());
         return slice(num() - count, count);
     }
 };
 struct FighterOrderQueueView {
     using View = FighterOrderQueueView;
     using ConstView = FighterOrderQueueConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     std::span<EntityUniqueId> entity_ids;
     std::span<FighterOrder> orders;
     std::span<FighterTask> tasks;
@@ -87,8 +87,7 @@ struct FighterOrderQueueView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> FighterOrderQueueView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
+        ml::native_soa::require(offset <= num() && count <= num() - offset);
         return {
             entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             orders.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -113,6 +112,7 @@ struct FighterOrderQueueView {
     }
     auto left(size_type const count) const -> FighterOrderQueueView { return slice(0, count); }
     auto right(size_type const count) const -> FighterOrderQueueView {
+        ml::native_soa::require(count <= num());
         return slice(num() - count, count);
     }
     void set(size_type const index,
@@ -120,7 +120,7 @@ struct FighterOrderQueueView {
              FighterOrder const new_orders,
              FighterTask const new_tasks,
              EntityUniqueId const new_targets) const {
-        ml::native_soa::require(index >= 0 && index < num());
+        ml::native_soa::require(index < num());
         entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
         orders[static_cast<std::size_t>(index)] = new_orders;
         tasks[static_cast<std::size_t>(index)] = new_tasks;
@@ -130,7 +130,7 @@ struct FighterOrderQueueView {
 struct FighterOrderQueue {
     using View = FighterOrderQueueView;
     using ConstView = FighterOrderQueueConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     ml::native_soa::Vector<EntityUniqueId> entity_ids;
     ml::native_soa::Vector<FighterOrder> orders;
     ml::native_soa::Vector<FighterTask> tasks;
@@ -168,11 +168,11 @@ struct FighterOrderQueue {
     void set_num(size_type const count) {
         ml::native_soa::vector_storage_ops::set_num(*this, count);
     }
-    void apply_permutation(std::span<size_type> const indices) {
+    void apply_permutation(std::span<std::int32_t> const indices) {
         ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
-    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
         ml::native_soa::vector_storage_ops::sort(
             *this, std::forward<Compare>(compare), scratch_indices);
     }
@@ -266,9 +266,15 @@ struct FighterOrderQueue {
         return get_const_view(offset, count);
     }
     auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View { return slice(num() - count, count); }
+    auto right(size_type const count) -> View {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
+    auto right(size_type const count) const -> ConstView {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
         entity_ids[static_cast<std::size_t>(dst_index)] =

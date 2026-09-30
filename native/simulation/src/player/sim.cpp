@@ -156,7 +156,7 @@ void Sim::resolve_damage_events() {
     auto& health{health_ref()};
     EntityUniqueId killer{};
     auto const damage_count{damage_events.num()};
-    for (std::int32_t event_index{}; event_index < damage_count; ++event_index) {
+    for (std::uint32_t event_index{}; event_index < damage_count; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
         assert(damage_events.damaged_entities[element] == unique_entity_id);
         if (is_dead(health)) {
@@ -518,14 +518,14 @@ void Sim::materialize_fire_command() {
 
 void Sim::fire_lasers_from(std::span<Transform3d const> const fire_points) {
     lasers::SingleAllocationLaserSpawnRequests new_lasers;
-    auto const laser_count{static_cast<std::int32_t>(fire_points.size())};
+    auto const laser_count{static_cast<std::uint32_t>(fire_points.size())};
     new_lasers.add_uninitialised(laser_count);
     auto const laser_columns{new_lasers.get_view()};
     auto const locations{laser_columns.view_locations()};
     auto const rotations{laser_columns.view_rotations()};
     auto const base_velocities{laser_columns.view_base_velocities()};
 
-    for (std::int32_t i{0}; i < laser_count; ++i) {
+    for (std::uint32_t i{}; i < laser_count; ++i) {
         set_vector(locations, i, to_float(fire_points[i].location));
         set_rotation(rotations, i, to_float(fire_points[i].rotator()));
         set_vector(base_velocities, i, to_float(state_.physical.velocity));
@@ -676,10 +676,10 @@ void Sim::configure_speed_sampling() {
     assert(sample_tick_period > 0);
 
     auto const sample_count{(sample_window_ticks + sample_tick_period - 1) / sample_tick_period};
-    assert(std::in_range<std::int32_t>(sample_count));
+    assert(std::in_range<std::uint32_t>(sample_count));
 
     speed_sample_index = 0;
-    speed_sample_max = static_cast<std::int32_t>(sample_count);
+    speed_sample_max = static_cast<std::uint32_t>(sample_count);
     speed_sample_tick_period = static_cast<std::int32_t>(sample_tick_period);
     speed_sample_ticks_remaining = speed_sample_tick_period;
     speed_samples.assign(static_cast<std::size_t>(speed_sample_max), ml::Vector2d{});

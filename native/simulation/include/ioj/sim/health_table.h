@@ -21,13 +21,13 @@ class HealthConstView {
     // supplying indices/owners invalidates this view and its entity-to-component correspondence.
     HealthConstView() = default;
 
-    [[nodiscard]] auto num() const noexcept -> std::int32_t {
-        return static_cast<std::int32_t>(indices_.size());
+    [[nodiscard]] auto num() const noexcept -> std::uint32_t {
+        return static_cast<std::uint32_t>(indices_.size());
     }
     [[nodiscard]] auto is_empty() const noexcept -> bool { return indices_.empty(); }
     [[nodiscard]] auto indices() const noexcept -> std::span<HealthIndex const> { return indices_; }
-    [[nodiscard]] auto health(std::int32_t row) const -> Health;
-    [[nodiscard]] auto owner(std::int32_t row) const -> EntityUniqueId;
+    [[nodiscard]] auto health(std::uint32_t row) const -> Health;
+    [[nodiscard]] auto owner(std::uint32_t row) const -> EntityUniqueId;
     void copy_to(std::span<Health> output) const;
   private:
     friend class HealthTable;
@@ -53,13 +53,13 @@ class HealthView {
     // supplying indices/owners invalidates this view and its entity-to-component correspondence.
     HealthView() = default;
 
-    [[nodiscard]] auto num() const noexcept -> std::int32_t {
-        return static_cast<std::int32_t>(indices_.size());
+    [[nodiscard]] auto num() const noexcept -> std::uint32_t {
+        return static_cast<std::uint32_t>(indices_.size());
     }
     [[nodiscard]] auto is_empty() const noexcept -> bool { return indices_.empty(); }
     [[nodiscard]] auto indices() const noexcept -> std::span<HealthIndex const> { return indices_; }
-    [[nodiscard]] auto health(std::int32_t row) const -> Health&;
-    [[nodiscard]] auto owner(std::int32_t row) const -> EntityUniqueId;
+    [[nodiscard]] auto health(std::uint32_t row) const -> Health&;
+    [[nodiscard]] auto owner(std::uint32_t row) const -> EntityUniqueId;
     void copy_from(std::span<Health const> input) const;
     void copy_to(std::span<Health> output) const;
   private:
@@ -94,15 +94,15 @@ class HealthTable {
     template <typename HandleMove>
     // Rows are entity-row indices in strictly descending order. The owning entity storage and
     // its index/owner spans must remain structurally unchanged until every move is handled.
-    void remove_rows(std::span<std::int32_t const> const rows,
+    void remove_rows(std::span<std::uint32_t const> const rows,
                      std::span<HealthIndex const> const indices,
                      std::span<EntityUniqueId const> const owners,
                      HandleMove&& handle_move) {
         assert(indices.size() == owners.size());
 #ifndef NDEBUG
-        auto previous_row{static_cast<std::int32_t>(indices.size())};
+        auto previous_row{static_cast<std::uint32_t>(indices.size())};
         for (auto const row : rows) {
-            assert(row >= 0 && row < previous_row);
+            assert(row < previous_row);
             auto const element{static_cast<std::size_t>(row)};
             assert(contains(indices[element], owners[element]));
             previous_row = row;
@@ -126,8 +126,8 @@ class HealthTable {
     [[nodiscard]] auto contains(HealthIndex index, EntityUniqueId owner) const noexcept -> bool;
     [[nodiscard]] auto get_health(HealthIndex index, EntityUniqueId owner) const -> Health;
     [[nodiscard]] auto get_owner(HealthIndex index) const -> EntityUniqueId;
-    [[nodiscard]] auto num_slots() const noexcept -> std::int32_t {
-        return static_cast<std::int32_t>(values_.size());
+    [[nodiscard]] auto num_slots() const noexcept -> std::uint32_t {
+        return static_cast<std::uint32_t>(values_.size());
     }
   private:
     [[nodiscard]] auto remove(HealthIndex index, EntityUniqueId owner) -> std::optional<HealthMove>;

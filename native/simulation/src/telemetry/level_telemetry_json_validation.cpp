@@ -88,7 +88,7 @@ auto validate_series(Series const& source, std::string_view const path)
     -> std::expected<void, std::string> {
     auto const count{source.num()};
     SimTick previous_tick{};
-    for (std::int32_t index{}; index < count; ++index) {
+    for (std::uint32_t index{}; index < count; ++index) {
         auto const tick_path{std::string{path} + ".ticks[" + std::to_string(index) + "]"};
         auto const tick{source.time_at(index)};
         auto const valid_tick{validate_json_integer(tick, tick_path, true)};
@@ -207,8 +207,8 @@ auto validate_level_telemetry_json_record(LevelTelemetryRunRecord const& record)
             }
         }
     }
-    auto const sample_count{static_cast<std::int32_t>(record.battle_samples.size())};
-    for (std::int32_t index{}; index < sample_count; ++index) {
+    auto const sample_count{static_cast<std::uint32_t>(record.battle_samples.size())};
+    for (std::uint32_t index{}; index < sample_count; ++index) {
         auto const& sample{record.battle_samples[index]};
         auto const path{"battle_samples[" + std::to_string(index) + "]"};
         auto const tick{

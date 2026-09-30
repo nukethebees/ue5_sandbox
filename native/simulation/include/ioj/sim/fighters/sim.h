@@ -51,7 +51,7 @@ struct Sim {
     using Task = FighterTask;
     static constexpr auto n_task_types{static_cast<std::size_t>(Task::COUNT)};
     using TaskSpans = std::array<IndexSpan, n_task_types>;
-    using TaskCounts = std::array<std::int32_t, n_task_types>;
+    using TaskCounts = std::array<std::uint32_t, n_task_types>;
     using TaskView = EntityStorage::View;
     using ConstTaskView = EntityStorage::ConstView;
 
@@ -82,12 +82,13 @@ struct Sim {
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto get_num_instances() const noexcept -> std::int32_t;
+    auto get_num_instances() const noexcept -> std::uint32_t;
     auto get_overlap_candidates() const noexcept -> std::span<EntityUniqueId const> {
         return overlap_candidates_;
     }
     auto get_laser_simulation() const noexcept -> lasers::Sim const& { return laser_simulation; }
-    auto get_const_view(std::int32_t offset, std::int32_t width) const -> EntityStorage::ConstView;
+    auto get_const_view(std::uint32_t offset, std::uint32_t width) const
+        -> EntityStorage::ConstView;
     auto get_membership_revision() const noexcept -> std::uint64_t { return membership_revision_; }
     auto get_layout_revision() const noexcept -> std::uint64_t { return layout_revision_; }
     auto get_entity_ids() const -> std::span<EntityUniqueId const> {
@@ -132,10 +133,10 @@ struct Sim {
 
     inline static constexpr std::int8_t direct_movement_choice{-1};
     inline static constexpr std::int8_t stop_movement_choice{-2};
-    inline static constexpr std::int32_t n_avoidance_choices{avoidance_direction_count};
+    inline static constexpr std::uint32_t n_avoidance_choices{avoidance_direction_count};
     inline static constexpr std::uint8_t clear_scans_to_end_avoidance{2};
     inline static constexpr std::uint8_t lower_risk_scans_to_demote{2};
-    inline static constexpr std::int32_t max_separation_neighbours{separation_neighbour_limit};
+    inline static constexpr std::uint32_t max_separation_neighbours{separation_neighbour_limit};
 
     /* **************************************** */
     // Navigation
@@ -160,7 +161,7 @@ struct Sim {
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto get_view(std::int32_t offset, std::int32_t width) -> EntityStorage::View;
+    auto get_view(std::uint32_t offset, std::uint32_t width) -> EntityStorage::View;
     auto get_task_view(Task task) noexcept -> TaskView;
     auto get_const_task_view(Task task) const noexcept -> ConstTaskView;
     auto find_index(EntityUniqueId fighter) const noexcept -> std::uint32_t;
@@ -197,9 +198,9 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto queue_spawns(SingleAllocationFighterSpawnQueue::ConstView new_spawns) -> std::int32_t;
-    auto queue_spawns(FrameSpawnQueue const& new_spawns) -> std::int32_t;
-    auto accept_spawn_count(std::span<Team const> teams) -> std::int32_t;
+    auto queue_spawns(SingleAllocationFighterSpawnQueue::ConstView new_spawns) -> std::uint32_t;
+    auto queue_spawns(FrameSpawnQueue const& new_spawns) -> std::uint32_t;
+    auto accept_spawn_count(std::span<Team const> teams) -> std::uint32_t;
     void reassign_pending_spawns(EntityUniqueId parent, EntityUniqueId replacement);
     void commit_spawns();
 
@@ -217,7 +218,7 @@ struct Sim {
     /* **************************************** */
     // Targets
     /* **************************************** */
-    void set_target_id_unchecked(std::int32_t fighter_index, EntityUniqueId new_target) noexcept;
+    void set_target_id_unchecked(std::uint32_t fighter_index, EntityUniqueId new_target) noexcept;
     void set_target_id(EntityUniqueId fighter, EntityUniqueId new_target) noexcept;
     void refresh_target_data(ml::FrameScratch& scratch);
 
@@ -252,7 +253,7 @@ struct Sim {
     std::int32_t per_team_limit{};
     SimClock const& simulation_clock;
     std::int16_t attack_retry_cooldown_tick_value{0};
-    std::array<std::int16_t, static_cast<std::int32_t>(NavigationRiskTier::Count)>
+    std::array<std::int16_t, static_cast<std::uint32_t>(NavigationRiskTier::Count)>
         navigation_tick_periods{};
     float minimum_navigation_lookahead_time{};
 
@@ -275,14 +276,14 @@ struct Sim {
 
     SingleAllocationFighterSpawnQueue spawn_queue;
 
-    std::vector<std::int32_t> local_indices_to_remove;
+    std::vector<std::uint32_t> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
 
     TaskSpans task_spans{};
     FighterOrderQueue order_queue{};
 
     lasers::Sim& laser_simulation;
-    std::vector<std::int32_t> pending_fire_indices_;
+    std::vector<std::uint32_t> pending_fire_indices_;
     std::vector<EntityUniqueId> overlap_candidates_;
 
     NavigationTelemetrySnapshot navigation_telemetry;

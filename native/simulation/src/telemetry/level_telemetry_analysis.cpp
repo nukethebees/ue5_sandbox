@@ -10,7 +10,8 @@ namespace {
 template <typename Series>
 auto as_of(Series const& series, std::uint64_t const tick) -> typename Series::value_type const* {
     auto const count{series.num()};
-    for (std::int32_t index{count - 1}; index >= 0; --index) {
+    for (auto remaining{count}; remaining > 0; --remaining) {
+        auto const index{remaining - 1};
         if (series.time_at(index) <= tick) {
             return &series.value_at(index);
         }
@@ -108,7 +109,7 @@ auto analyze(AnalysisInput const input) -> Analysis {
         std::vector<std::uint64_t> ticks;
         auto const collect_ticks{[&ticks](auto const& series) {
             auto const count{series.num()};
-            for (std::int32_t index{}; index < count; ++index) {
+            for (std::uint32_t index{}; index < count; ++index) {
                 ticks.push_back(series.time_at(index));
             }
         }};

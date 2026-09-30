@@ -13,7 +13,7 @@ FrameSpawnRequests::FrameSpawnRequests(ml::FrameScratch& scratch)
     , instigator_ids_{&scratch}
     , sources_{&scratch} {}
 
-void FrameSpawnRequests::reserve(std::int32_t const count) {
+void FrameSpawnRequests::reserve(std::uint32_t const count) {
     locations_.reserve(count);
     rotations_.reserve(count);
     base_velocities_.reserve(count);
@@ -23,7 +23,7 @@ void FrameSpawnRequests::reserve(std::int32_t const count) {
     instigator_ids_.reserve(count);
     sources_.reserve(count);
 }
-void FrameSpawnRequests::set_num(std::int32_t const count) {
+void FrameSpawnRequests::set_num(std::uint32_t const count) {
     locations_.set_num(count);
     rotations_.set_num(count);
     base_velocities_.set_num(count);
@@ -59,7 +59,7 @@ void FrameSpawnRequests::set_speeds(float const value) {
 void FrameSpawnRequests::set_max_distances(float const value) {
     std::ranges::fill(max_distances_, value);
 }
-auto FrameSpawnRequests::num() const noexcept -> std::int32_t {
+auto FrameSpawnRequests::num() const noexcept -> std::uint32_t {
     return locations_.num();
 }
 } // namespace lasers

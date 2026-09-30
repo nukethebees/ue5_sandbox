@@ -33,8 +33,8 @@ class LevelEventManager {
     LevelEventSchedule schedule_{};
     LevelSpawnManager spawn_manager_;
     MissionManager& mission_manager_;
-    std::int32_t next_event_index_{};
-    std::int32_t spawn_group_offset_{};
-    std::int32_t mission_group_offset_{};
+    std::uint32_t next_event_index_{};
+    std::uint32_t spawn_group_offset_{};
+    std::uint32_t mission_group_offset_{};
 };
 }

@@ -6,7 +6,7 @@ FrameHitDetails::FrameHitDetails(ml::FrameScratch& scratch)
     , emission_directions_{scratch}
     , sources_{&scratch} {}
 
-void FrameHitDetails::reserve(std::int32_t const count) {
+void FrameHitDetails::reserve(std::uint32_t const count) {
     locations_.reserve(count);
     emission_directions_.reserve(count);
     sources_.reserve(count);
@@ -20,7 +20,7 @@ void FrameHitDetails::add(Vector3f const location,
     sources_.add(source);
 }
 
-auto FrameHitDetails::num() const noexcept -> std::int32_t {
+auto FrameHitDetails::num() const noexcept -> std::uint32_t {
     return locations_.num();
 }
 } // namespace lasers

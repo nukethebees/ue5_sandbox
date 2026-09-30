@@ -17,7 +17,7 @@ struct TargetState {
 }
 
 void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
-                                   std::span<std::int32_t> const order,
+                                   std::span<std::uint32_t> const order,
                                    AgentTargetView const output) const {
     auto const count{ids.size()};
     assert(order.size() == count && output.alive.size() == count);
@@ -25,10 +25,10 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
     assert(output.velocities.is_empty() ||
            static_cast<std::size_t>(output.velocities.num()) == count);
     assert(output.teams.empty() || output.teams.size() == count);
-    std::iota(order.begin(), order.end(), 0);
-    std::ranges::sort(order, {}, [&](std::int32_t const row) { return ids[row]; });
+    std::iota(order.begin(), order.end(), 0u);
+    std::ranges::sort(order, {}, [&](std::uint32_t const row) { return ids[row]; });
     auto const scatter{
-        [&](std::int32_t const row, agent_accessor_detail::TargetState const& state) {
+        [&](std::uint32_t const row, agent_accessor_detail::TargetState const& state) {
             output.locations.set(row, state.location);
             if (!output.velocities.is_empty()) {
                 output.velocities.set(row, state.velocity);
@@ -39,7 +39,7 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
             output.alive[row] = state.alive;
         }};
     auto const gather_group{
-        [&](std::span<std::int32_t const> const rows, EntityType const type, auto&& read) {
+        [&](std::span<std::uint32_t const> const rows, EntityType const type, auto&& read) {
             auto const indexes{indexes_.group(type)};
             auto const base{entity_identity_offsets[type]};
             EntityUniqueId previous;
@@ -52,7 +52,7 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
                                          ? indexes[offset - base]
                                          : AgentIndices::invalid_index};
                     state = index != AgentIndices::invalid_index
-                              ? read(static_cast<std::int32_t>(index))
+                              ? read(index)
                               : agent_accessor_detail::TargetState{};
                     if (!state.alive) {
                         state = {};
@@ -90,7 +90,7 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
         }
         switch (type) {
             case EntityType::PlayerShip:
-                gather_group(group, type, [&](std::int32_t) {
+                gather_group(group, type, [&](std::uint32_t) {
                     if (player_.transform == nullptr) {
                         return agent_accessor_detail::TargetState{};
                     }
@@ -105,7 +105,7 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
                 auto const healths{capitals_healths_};
                 auto const locations{capital_locations};
                 auto const teams{capital_teams};
-                gather_group(group, type, [&](std::int32_t const index) {
+                gather_group(group, type, [&](std::uint32_t const index) {
                     return agent_accessor_detail::TargetState{vector_at(locations, index),
                                                               {},
                                                               teams[index],
@@ -117,7 +117,7 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
                 auto const locations{fighter_locations};
                 auto const velocities{fighter_velocities};
                 auto const teams{fighter_teams};
-                gather_group(group, type, [&](std::int32_t const index) {
+                gather_group(group, type, [&](std::uint32_t const index) {
                     return agent_accessor_detail::TargetState{vector_at(locations, index),
                                                               vector_at(velocities, index),
                                                               teams[index],
@@ -128,7 +128,7 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
                 auto const healths{turrets_healths_};
                 auto const locations{turret_locations};
                 auto const teams{turret_teams};
-                gather_group(group, type, [&](std::int32_t const index) {
+                gather_group(group, type, [&](std::uint32_t const index) {
                     return agent_accessor_detail::TargetState{vector_at(locations, index),
                                                               {},
                                                               teams[index],
@@ -137,7 +137,7 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
             } break;
             case EntityType::TubeSpinner: {
                 auto const locations{spinner_locations};
-                gather_group(group, type, [&](std::int32_t const index) {
+                gather_group(group, type, [&](std::uint32_t const index) {
                     return agent_accessor_detail::TargetState{
                         vector_at(locations, index), {}, Team::White, true};
                 });

@@ -9,7 +9,7 @@ inline auto copy_vectors(VectorColumns auto const& source) -> std::vector<Vector
     std::vector<Vector3f> result{};
     result.reserve(source.num());
     auto const source_count{source.num()};
-    for (std::int32_t i{}; i < source_count; ++i) {
+    for (std::uint32_t i{}; i < source_count; ++i) {
         result.push_back(vector_at(source, i));
     }
     return result;

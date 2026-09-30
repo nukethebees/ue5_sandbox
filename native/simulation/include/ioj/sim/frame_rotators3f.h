@@ -18,15 +18,15 @@ struct FrameRotators3f {
     auto operator=(FrameRotators3f&&) -> FrameRotators3f& = delete;
     ~FrameRotators3f() = default;
 
-    void reserve(std::int32_t count);
-    void set_num(std::int32_t count);
+    void reserve(std::uint32_t count);
+    void set_num(std::uint32_t count);
     void clear() noexcept;
     void add(Rotator3f value);
-    void set(std::int32_t index, Rotator3f value);
+    void set(std::uint32_t index, Rotator3f value);
 
     [[nodiscard]] auto get_view() noexcept -> Rotators3fView;
     [[nodiscard]] auto get_const_view() const noexcept -> Rotators3fConstView;
-    [[nodiscard]] auto num() const noexcept -> std::int32_t;
+    [[nodiscard]] auto num() const noexcept -> std::uint32_t;
 
     auto pitches() -> std::span<float> { return pitches_.view(); }
     auto pitches() const -> std::span<float const> { return pitches_.view(); }

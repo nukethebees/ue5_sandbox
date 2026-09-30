@@ -114,7 +114,7 @@ class AgentAccessor {
         auto const capital_rolls{capitals_.view_rotations().rolls()};
         auto const capital_teams{capitals_.teams()};
         auto const capital_count{capitals_.num()};
-        for (std::int32_t i{}; i < capital_count; ++i) {
+        for (std::uint32_t i{}; i < capital_count; ++i) {
             if (sim::is_alive(capital_healths.health(i))) {
                 visit(capital_ids[i],
                       vector_at(capital_locations, i),
@@ -130,7 +130,7 @@ class AgentAccessor {
         auto const turret_rolls{turrets_.view_rotations().rolls()};
         auto const turret_teams{turrets_.teams()};
         auto const turret_count{turrets_.num()};
-        for (std::int32_t i{}; i < turret_count; ++i) {
+        for (std::uint32_t i{}; i < turret_count; ++i) {
             if (sim::is_alive(turret_healths.health(i))) {
                 visit(turret_ids[i],
                       vector_at(turret_locations, i),
@@ -144,7 +144,7 @@ class AgentAccessor {
         auto const fighter_directions{fighters_.view_aim_directions()};
         auto const fighter_teams{fighters_.teams()};
         auto const fighter_count{fighters_.num()};
-        for (std::int32_t i{}; i < fighter_count; ++i) {
+        for (std::uint32_t i{}; i < fighter_count; ++i) {
             if (sim::is_alive(fighter_healths.health(i))) {
                 visit(fighter_ids[i],
                       vector_at(fighter_locations, i),
@@ -156,7 +156,7 @@ class AgentAccessor {
         auto const spinner_locations{spinners_.view_locations()};
         auto const spinner_yaws{spinners_.yaws()};
         auto const spinner_count{spinners_.num()};
-        for (std::int32_t i{}; i < spinner_count; ++i) {
+        for (std::uint32_t i{}; i < spinner_count; ++i) {
             visit(spinner_ids[i],
                   vector_at(spinner_locations, i),
                   Rotator3f{.pitch = 0.f, .yaw = spinner_yaws[i], .roll = 0.f},
@@ -167,7 +167,7 @@ class AgentAccessor {
     // Sorts a scratch row permutation; IDs and destination SOA rows stay in caller order.
     // Velocities and teams may be omitted. Missing/dead targets produce zeroed fields.
     void gather_targets(std::span<EntityUniqueId const> ids,
-                        std::span<std::int32_t> order,
+                        std::span<std::uint32_t> order,
                         AgentTargetView output) const;
 
     [[nodiscard]] auto read_spatial(EntityUniqueId const id) const

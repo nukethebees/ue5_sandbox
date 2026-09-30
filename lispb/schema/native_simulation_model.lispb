@@ -436,11 +436,11 @@
   (record IndexSpan
     :comparison three-way
     :comparison-noexcept true
-    (member offset std::int32_t :initializer "0")
-    (member count std::int32_t :initializer "0")
+    (member offset std::uint32_t :initializer "0")
+    (member count std::uint32_t :initializer "0")
     (function is_empty bool :const true :noexcept true :constexpr true :nodiscard true :body ("return count == 0;"))
-    (function start std::int32_t :const true :noexcept true :constexpr true :nodiscard true :body ("return offset;"))
-    (function end std::int32_t :const true :noexcept true :constexpr true :nodiscard true :body ("return offset + count;"))))
+    (function start std::uint32_t :const true :noexcept true :constexpr true :nodiscard true :body ("return offset;"))
+    (function end std::uint32_t :const true :noexcept true :constexpr true :nodiscard true :body ("return offset + count;"))))
 
 (module native_health_move
   :header "native/simulation/include/ioj/sim/health_move.h"
@@ -470,7 +470,7 @@
   :namespace ioj::sim
   (record CapitalDeathEvent
     (member location @native_vector_3f)
-    (member batch_index std::int32_t :initializer "")))
+    (member batch_index std::uint32_t :initializer "")))
 
 (module native_navigation_telemetry
   :header "native/simulation/include/ioj/sim/navigation_telemetry.h"

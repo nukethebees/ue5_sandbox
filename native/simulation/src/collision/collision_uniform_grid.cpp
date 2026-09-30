@@ -77,7 +77,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
     }
 
     auto const trace_count{traces.num()};
-    for (std::int32_t trace_index{}; trace_index < trace_count; ++trace_index) {
+    for (std::uint32_t trace_index{}; trace_index < trace_count; ++trace_index) {
         auto const output_index{static_cast<std::size_t>(trace_index)};
         hits.hits[output_index] = TraceHit{};
         hits.entities[output_index] = EntityUniqueId{};
@@ -112,12 +112,12 @@ void trace_grid_aabbs(GridGeometry const geometry,
                    static_cast<std::size_t>(cell_index) < entity_storage.cell_counts.size());
             auto const element{static_cast<std::size_t>(cell_index)};
             auto const count{entity_storage.cell_counts[element]};
-            auto const entity_count{static_cast<std::int32_t>(count)};
+            auto const entity_count{static_cast<std::uint32_t>(count)};
             if (entity_count > 0) {
                 auto const entities{std::span{entity_storage.entities}.subspan(
                     static_cast<std::size_t>(entity_storage.cell_offsets[element]), count)};
                 auto const aabb_offset{entity_storage.cell_offsets[element]};
-                for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {
+                for (std::uint32_t entity_index{}; entity_index < entity_count; ++entity_index) {
                     auto const entity{entities[static_cast<std::size_t>(entity_index)]};
                     auto const id{entity};
                     if (!agents.is_alive(id)) {
@@ -419,7 +419,7 @@ void append_grid_overlaps(GridGeometry const geometry,
                        static_cast<std::size_t>(cell_index) < entity_storage.cell_counts.size());
                 auto const element{static_cast<std::size_t>(cell_index)};
                 auto const count{entity_storage.cell_counts[element]};
-                auto const entity_count{static_cast<std::int32_t>(count)};
+                auto const entity_count{static_cast<std::uint32_t>(count)};
                 if (entity_count > 0) {
                     // Each cell selects a distinct entity range.
                     // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
@@ -427,7 +427,8 @@ void append_grid_overlaps(GridGeometry const geometry,
                         static_cast<std::size_t>(entity_storage.cell_offsets[element]), count)};
                     auto const aabb_offset{entity_storage.cell_offsets[element]};
 
-                    for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {
+                    for (std::uint32_t entity_index{}; entity_index < entity_count;
+                         ++entity_index) {
                         auto const entity{entities[static_cast<std::size_t>(entity_index)]};
                         auto const id{entity};
                         if (id == ignored_entity || !agents.is_alive(id)) {
@@ -711,7 +712,7 @@ void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& ent
         auto const output_max_zs{output.max_zs()};
         auto const entity_ids{rebuild_entity_data.entity_ids()};
 
-        for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {
+        for (std::uint32_t entity_index{}; entity_index < entity_count; ++entity_index) {
             auto const min_cell{CellCoord{
                 min_cell_xs[entity_index], min_cell_ys[entity_index], min_cell_zs[entity_index]}};
             auto const max_cell{CellCoord{

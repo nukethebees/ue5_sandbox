@@ -9,7 +9,7 @@
 namespace ioj::sim {
 
 namespace level_telemetry_block_history_detail {
-auto capacity_for_bytes(std::size_t const bytes) -> std::int32_t {
+auto capacity_for_bytes(std::size_t const bytes) -> std::uint32_t {
     using Layout = telemetry::HistoryRowsSingleLayout;
     auto low{std::size_t{0}};
     auto high{static_cast<std::size_t>(Layout::max_capacity / Layout::capacity_granularity)};
@@ -21,7 +21,7 @@ auto capacity_for_bytes(std::size_t const bytes) -> std::int32_t {
             high = middle - 1;
         }
     }
-    return static_cast<std::int32_t>(low * Layout::capacity_granularity);
+    return static_cast<std::uint32_t>(low * Layout::capacity_granularity);
 }
 
 constexpr auto logical_payload_bytes_per_row() -> std::size_t {
@@ -30,7 +30,7 @@ constexpr auto logical_payload_bytes_per_row() -> std::size_t {
 }
 }
 
-LevelTelemetryBlockHistory::Block::Block(GameMemoryBlock memory_block, std::int32_t const capacity)
+LevelTelemetryBlockHistory::Block::Block(GameMemoryBlock memory_block, std::uint32_t const capacity)
     : memory_block{std::move(memory_block)}
     , storage{} {
     storage = {.data_ = this->memory_block.data(), .num_ = 0, .capacity_ = capacity};
@@ -83,14 +83,14 @@ auto LevelTelemetryBlockHistory::last_const_view() const -> telemetry::HistoryRo
     return {&storage, storage.num_ - 1, 1};
 }
 
-auto LevelTelemetryBlockHistory::block_data(std::int32_t const index) const -> std::byte const* {
-    assert(index >= 0 && static_cast<std::size_t>(index) < blocks_.size());
+auto LevelTelemetryBlockHistory::block_data(std::uint32_t const index) const -> std::byte const* {
+    assert(static_cast<std::size_t>(index) < blocks_.size());
     return blocks_[index].memory_block.data();
 }
 
-auto LevelTelemetryBlockHistory::block_view(std::int32_t const index) const
+auto LevelTelemetryBlockHistory::block_view(std::uint32_t const index) const
     -> telemetry::HistoryRowsSingleConstView {
-    assert(index >= 0 && index < used_block_count_);
+    assert(index < used_block_count_);
     auto const& storage{blocks_[index].storage};
     return {&storage, 0, storage.num_};
 }
@@ -103,18 +103,18 @@ auto LevelTelemetryBlockHistory::get_stats() const noexcept -> LevelTelemetryBlo
     return {.configured_block_bytes = config_.block_bytes,
             .layout_bytes_per_block = layout_bytes_per_block_,
             .rows_per_block = rows_per_block_,
-            .acquired_block_count = static_cast<std::int32_t>(blocks_.size()),
-            .retained_block_count = static_cast<std::int32_t>(blocks_.size()),
+            .acquired_block_count = static_cast<std::uint32_t>(blocks_.size()),
+            .retained_block_count = static_cast<std::uint32_t>(blocks_.size()),
             .peak_block_count = peak_block_count_,
             .total_sample_capacity = capacity(),
             .total_byte_capacity =
-                layout_bytes_per_block_ * static_cast<std::int32_t>(blocks_.size()),
+                layout_bytes_per_block_ * static_cast<std::uint32_t>(blocks_.size()),
             .used_sample_count = row_count_,
             .used_payload_bytes = logical_payload_bytes_per_row_ * row_count_,
             .unused_samples_in_final_block = unused_samples,
             .unused_payload_bytes_in_final_block = logical_payload_bytes_per_row_ * unused_samples,
             .fixed_layout_overhead_bytes =
-                overhead_per_block * static_cast<std::int32_t>(blocks_.size())};
+                overhead_per_block * static_cast<std::uint32_t>(blocks_.size())};
 }
 
 auto LevelTelemetryBlockHistory::acquire_or_reuse_next_block() -> Block& {
@@ -125,12 +125,12 @@ auto LevelTelemetryBlockHistory::acquire_or_reuse_next_block() -> Block& {
         }
     }
 
-    if (used_block_count_ == static_cast<std::int32_t>(blocks_.size())) {
+    if (used_block_count_ == static_cast<std::uint32_t>(blocks_.size())) {
         using Layout = telemetry::HistoryRowsSingleLayout;
         blocks_.emplace_back(
             memory_.acquire_block(layout_bytes_per_block_, Layout::allocation_alignment),
             rows_per_block_);
-        peak_block_count_ = std::max(peak_block_count_, static_cast<std::int32_t>(blocks_.size()));
+        peak_block_count_ = std::max(peak_block_count_, static_cast<std::uint32_t>(blocks_.size()));
     }
 
     auto& next{blocks_[used_block_count_++]};

@@ -18,19 +18,19 @@ struct AgentDisplayBatch {
     HealthConstView healths;
     std::span<Team const> teams;
 
-    auto num() const noexcept -> std::int32_t { return locations.num(); }
-    auto health(std::int32_t index) const -> Health {
+    auto num() const noexcept -> std::uint32_t { return locations.num(); }
+    auto health(std::uint32_t index) const -> Health {
         return healths.is_empty() ? 1000000 : healths.health(index);
     }
-    auto team(std::int32_t index) const -> Team {
+    auto team(std::uint32_t index) const -> Team {
         return teams.empty() ? Team::White : teams[index];
     }
-    auto velocity(std::int32_t index) const -> Vector3f {
+    auto velocity(std::uint32_t index) const -> Vector3f {
         return velocities.num() == 0 ? Vector3f{} : vector_at(velocities, index);
     }
 };
-inline auto display_entity_count(std::span<AgentDisplayBatch const> batches) -> std::int32_t {
-    std::int32_t count{};
+inline auto display_entity_count(std::span<AgentDisplayBatch const> batches) -> std::uint32_t {
+    std::uint32_t count{};
     for (auto const& batch : batches) {
         count += batch.num();
     }

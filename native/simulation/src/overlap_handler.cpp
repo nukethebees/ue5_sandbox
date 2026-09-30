@@ -24,13 +24,13 @@ void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps) {
                            overlaps.entity_static_overlaps.num());
 
     auto const entity_pair_count{overlaps.entity_entity_overlaps.num()};
-    for (std::int32_t index{}; index < entity_pair_count; ++index) {
+    for (std::uint32_t index{}; index < entity_pair_count; ++index) {
         append_damage(overlaps.entity_entity_overlaps.first_entities[index]);
         append_damage(overlaps.entity_entity_overlaps.second_entities[index]);
     }
 
     auto const static_overlap_count{overlaps.entity_static_overlaps.num()};
-    for (std::int32_t index{}; index < static_overlap_count; ++index) {
+    for (std::uint32_t index{}; index < static_overlap_count; ++index) {
         append_damage(overlaps.entity_static_overlaps.entities[index]);
     }
 

@@ -5,8 +5,7 @@
 #include <cstddef>
 
 namespace ioj::sim {
-void QueryThreadBuffers::ensure_entity_stamp_count(std::int32_t const entity_count) {
-    assert(entity_count >= 0);
+void QueryThreadBuffers::ensure_entity_stamp_count(std::uint32_t const entity_count) {
     auto const required_count{static_cast<std::size_t>(entity_count)};
     if (range_query_entity_stamps.size() < required_count) {
         range_query_entity_stamps.resize(required_count);

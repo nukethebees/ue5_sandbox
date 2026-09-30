@@ -1504,7 +1504,7 @@ void CollisionUniformGridTraceRunner::test_invariance_properties() {
     auto const compare_same_entity_order{[&baseline_hits](TraceHits const& candidate_hits,
                                                           char const* const description) {
         auto const count{baseline_hits.num()};
-        for (std::int32_t i{}; i < count; ++i) {
+        for (std::uint32_t i{}; i < count; ++i) {
             SCOPED_TRACE(::testing::Message() << "index " << i);
             EXPECT_EQ(baseline_hits.hits[i], candidate_hits.hits[i]) << description;
             if (baseline_hits.hits[i] == 0 || candidate_hits.hits[i] == 0) {

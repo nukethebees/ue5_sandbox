@@ -71,36 +71,36 @@ struct Sim {
     /* **************************************** */
     // Accessors
     /* **************************************** */
-    auto get_num_instances() const noexcept -> std::int32_t;
+    auto get_num_instances() const noexcept -> std::uint32_t;
     auto is_valid(EntityUniqueId id) const noexcept -> bool;
-    auto get_id(std::int32_t index) const -> EntityUniqueId {
+    auto get_id(std::uint32_t index) const -> EntityUniqueId {
         return entities.get_const_view().entity_ids()[index];
     }
-    auto get_fighter_spawn_slots() const noexcept -> std::int32_t;
-    auto get_fighters_spawned() const noexcept -> std::int32_t { return fighters_spawned; }
+    auto get_fighter_spawn_slots() const noexcept -> std::uint32_t;
+    auto get_fighters_spawned() const noexcept -> std::uint32_t { return fighters_spawned; }
     auto get_fighter_ids() const noexcept -> std::span<EntityUniqueId const> {
         return {fighter_ids.data(), fighter_ids.size()};
     }
     auto get_fighter_id_spans() const noexcept -> std::span<IndexSpan const> {
         return entities.get_const_view().fighter_id_spans();
     }
-    auto get_fighter_id_span(std::int32_t index) const noexcept -> IndexSpan {
+    auto get_fighter_id_span(std::uint32_t index) const noexcept -> IndexSpan {
         return entities.get_const_view().fighter_id_spans()[index];
     }
-    auto get_fighter_ids(std::int32_t index) const noexcept -> std::span<EntityUniqueId const>;
+    auto get_fighter_ids(std::uint32_t index) const noexcept -> std::span<EntityUniqueId const>;
     auto get_fighter_ids(IndexSpan span) const noexcept -> std::span<EntityUniqueId const>;
-    auto get_target_id(std::int32_t index) const noexcept -> EntityUniqueId {
+    auto get_target_id(std::uint32_t index) const noexcept -> EntityUniqueId {
         return entities.get_const_view().target_ids()[index];
     }
     auto get_target_ids() const noexcept -> std::span<EntityUniqueId const> {
         return entities.get_const_view().target_ids();
     }
-    auto get_team(std::int32_t index) const noexcept -> Team {
+    auto get_team(std::uint32_t index) const noexcept -> Team {
         return entities.get_const_view().teams()[index];
     }
     auto get_team(EntityUniqueId id) const noexcept -> Team;
     auto get_health(EntityUniqueId id) const noexcept -> Health;
-    auto find_first_index_on_team(Team team) const noexcept -> std::optional<std::int32_t>;
+    auto find_first_index_on_team(Team team) const noexcept -> std::optional<std::uint32_t>;
     auto find_first_id_on_team(Team team) const noexcept -> std::optional<EntityUniqueId>;
 
     /* **************************************** */
@@ -173,7 +173,7 @@ struct Sim {
     SpatialQueryManager const& spatial_query_manager;
 
     EntityStorage entities{};
-    std::vector<std::int32_t> local_indices_to_remove;
+    std::vector<std::uint32_t> local_indices_to_remove;
     EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;
     std::vector<CapitalDeathEvent> deaths_;
@@ -183,7 +183,7 @@ struct Sim {
     std::uint64_t fighter_membership_revision_{};
     std::uint64_t fighter_layout_revision_{};
     bool fighter_ids_current_{};
-    std::int32_t fighters_spawned{0};
+    std::uint32_t fighters_spawned{0};
 
     FighterOrderQueue fighter_order_queue{};
 };

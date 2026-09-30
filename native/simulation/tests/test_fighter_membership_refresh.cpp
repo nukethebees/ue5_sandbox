@@ -40,7 +40,7 @@ class FighterMembershipRefresh : public ::testing::Test {
         expect_membership();
     }
 
-    void spawn(std::int32_t const count) {
+    void spawn(std::uint32_t const count) {
         SingleAllocationFighterSpawnQueue spawns;
         spawns.add_defaulted(count);
         auto const data{spawns.get_view()};
@@ -48,7 +48,7 @@ class FighterMembershipRefresh : public ::testing::Test {
         auto const teams{data.teams()};
         auto const parents{data.parents()};
         auto const targets{data.targets()};
-        for (std::int32_t index{}; index < count; ++index) {
+        for (std::uint32_t index{}; index < count; ++index) {
             set_vector(locations, index, {{100.f + 100.f * index, 100.f, 0.f}});
             teams[index] = Team::Green;
             parents[index] = first_parent;
@@ -69,15 +69,15 @@ class FighterMembershipRefresh : public ::testing::Test {
         auto const fighter_view{simulation.get_fighters().get_read_view()};
         auto const& entities{fighter_view.entities};
         std::vector<EntityUniqueId> flat;
-        std::int32_t offset{};
+        std::uint32_t offset{};
         auto const capital_count{capitals.entities.num()};
         auto const fighter_count{entities.num()};
         auto const parent_ids{entities.parent_ids()};
         auto const capital_ids{capitals.entities.entity_ids()};
         auto const fighter_ids{entities.entity_ids()};
-        for (std::int32_t capital_index{}; capital_index < capital_count; ++capital_index) {
+        for (std::uint32_t capital_index{}; capital_index < capital_count; ++capital_index) {
             std::vector<EntityUniqueId> expected;
-            for (std::int32_t fighter_index{}; fighter_index < fighter_count; ++fighter_index) {
+            for (std::uint32_t fighter_index{}; fighter_index < fighter_count; ++fighter_index) {
                 if (is_alive(fighter_view.healths.health(fighter_index)) &&
                     parent_ids[fighter_index] == capital_ids[capital_index]) {
                     expected.push_back(fighter_ids[fighter_index]);
@@ -89,8 +89,8 @@ class FighterMembershipRefresh : public ::testing::Test {
             EXPECT_TRUE(std::ranges::equal(actual, expected));
             EXPECT_TRUE(std::ranges::equal(capitals.get_fighter_ids(capital_index), expected));
             EXPECT_EQ(capitals.entities.fighter_id_spans()[capital_index],
-                      (IndexSpan{offset, static_cast<std::int32_t>(expected.size())}));
-            offset += static_cast<std::int32_t>(expected.size());
+                      (IndexSpan{offset, static_cast<std::uint32_t>(expected.size())}));
+            offset += static_cast<std::uint32_t>(expected.size());
             flat.insert(flat.end(), expected.begin(), expected.end());
         }
         EXPECT_TRUE(std::ranges::equal(simulation.get_capital_ships().get_fighter_ids(), flat));

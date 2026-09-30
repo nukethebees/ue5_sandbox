@@ -19,11 +19,11 @@ struct FrameTraceHits {
     auto operator=(FrameTraceHits&&) -> FrameTraceHits& = delete;
     ~FrameTraceHits() = default;
 
-    void set_num(std::int32_t count);
+    void set_num(std::uint32_t count);
     void clear() noexcept;
     [[nodiscard]] auto get_view() noexcept -> TraceHitsView;
     [[nodiscard]] auto get_const_view() const noexcept -> TraceHitsConstView;
-    [[nodiscard]] auto num() const noexcept -> std::int32_t;
+    [[nodiscard]] auto num() const noexcept -> std::uint32_t;
 
     FrameVectors3f locations;
     ml::FrameArray<EntityUniqueId> entities;

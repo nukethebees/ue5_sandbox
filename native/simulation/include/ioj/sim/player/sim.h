@@ -176,8 +176,8 @@ struct Sim {
 
     bool speed_sampling_enabled{};
 
-    std::int32_t speed_sample_index{0};
-    std::int32_t speed_sample_max{0};
+    std::uint32_t speed_sample_index{0};
+    std::uint32_t speed_sample_max{0};
     std::int32_t speed_sample_ticks_remaining{0};
     std::int32_t speed_sample_tick_period{1};
     std::vector<ml::Vector2d> speed_samples;

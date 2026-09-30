@@ -14,7 +14,7 @@ struct FrameOutput {
     void append_hits(Source const& new_hits, SimTick const tick) {
         auto const count{new_hits.num()};
         hits.append_from(new_hits);
-        for (std::int32_t index{}; index < count; ++index) {
+        for (std::uint32_t index{}; index < count; ++index) {
             hit_ticks.push_back(tick);
             hit_ordinals.push_back(index);
         }

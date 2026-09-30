@@ -20,7 +20,7 @@ struct LevelSpawnGroupsConstView;
 struct LevelSpawnGroupsConstView {
     using View = LevelSpawnGroupsView;
     using ConstView = LevelSpawnGroupsConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     std::span<ioj::sim::EntityType const> types;
     std::span<std::int32_t const> offsets;
     std::span<LevelEventCount const> counts;
@@ -36,8 +36,7 @@ struct LevelSpawnGroupsConstView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> LevelSpawnGroupsConstView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
+        ml::native_soa::require(offset <= num() && count <= num() - offset);
         return {
             types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             offsets.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -61,13 +60,14 @@ struct LevelSpawnGroupsConstView {
     }
     auto left(size_type const count) const -> LevelSpawnGroupsConstView { return slice(0, count); }
     auto right(size_type const count) const -> LevelSpawnGroupsConstView {
+        ml::native_soa::require(count <= num());
         return slice(num() - count, count);
     }
 };
 struct LevelSpawnGroupsView {
     using View = LevelSpawnGroupsView;
     using ConstView = LevelSpawnGroupsConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     std::span<ioj::sim::EntityType> types;
     std::span<std::int32_t> offsets;
     std::span<LevelEventCount> counts;
@@ -83,8 +83,7 @@ struct LevelSpawnGroupsView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> LevelSpawnGroupsView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
+        ml::native_soa::require(offset <= num() && count <= num() - offset);
         return {
             types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             offsets.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -107,13 +106,14 @@ struct LevelSpawnGroupsView {
     }
     auto left(size_type const count) const -> LevelSpawnGroupsView { return slice(0, count); }
     auto right(size_type const count) const -> LevelSpawnGroupsView {
+        ml::native_soa::require(count <= num());
         return slice(num() - count, count);
     }
     void set(size_type const index,
              ioj::sim::EntityType const new_types,
              std::int32_t const new_offsets,
              LevelEventCount const new_counts) const {
-        ml::native_soa::require(index >= 0 && index < num());
+        ml::native_soa::require(index < num());
         types[static_cast<std::size_t>(index)] = new_types;
         offsets[static_cast<std::size_t>(index)] = new_offsets;
         counts[static_cast<std::size_t>(index)] = new_counts;
@@ -122,7 +122,7 @@ struct LevelSpawnGroupsView {
 struct LevelSpawnGroups {
     using View = LevelSpawnGroupsView;
     using ConstView = LevelSpawnGroupsConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     ml::native_soa::Vector<ioj::sim::EntityType> types;
     ml::native_soa::Vector<std::int32_t> offsets;
     ml::native_soa::Vector<LevelEventCount> counts;
@@ -157,11 +157,11 @@ struct LevelSpawnGroups {
     void set_num(size_type const count) {
         ml::native_soa::vector_storage_ops::set_num(*this, count);
     }
-    void apply_permutation(std::span<size_type> const indices) {
+    void apply_permutation(std::span<std::int32_t> const indices) {
         ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
-    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
         ml::native_soa::vector_storage_ops::sort(
             *this, std::forward<Compare>(compare), scratch_indices);
     }
@@ -242,9 +242,15 @@ struct LevelSpawnGroups {
         return get_const_view(offset, count);
     }
     auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View { return slice(num() - count, count); }
+    auto right(size_type const count) -> View {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
+    auto right(size_type const count) const -> ConstView {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
         types[static_cast<std::size_t>(dst_index)] =
@@ -268,7 +274,7 @@ struct LevelSpawnGroups {
 struct LevelCapitalSpawnEventsSingleView;
 struct LevelCapitalSpawnEventsSingleConstView;
 struct LevelCapitalSpawnEventsSingleLayout {
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
     inline static constexpr size_type capacity_granularity{
@@ -943,7 +949,7 @@ struct SingleAllocationLevelCapitalSpawnEvents
 struct LevelTurretSpawnEventsSingleView;
 struct LevelTurretSpawnEventsSingleConstView;
 struct LevelTurretSpawnEventsSingleLayout {
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
     inline static constexpr size_type capacity_granularity{
@@ -1549,7 +1555,7 @@ struct SingleAllocationLevelTurretSpawnEvents
 struct LevelSpinnerSpawnEventsSingleView;
 struct LevelSpinnerSpawnEventsSingleConstView;
 struct LevelSpinnerSpawnEventsSingleLayout {
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
     inline static constexpr size_type capacity_granularity{
@@ -1992,7 +1998,7 @@ struct LevelMissionEventGroupsConstView;
 struct LevelMissionEventGroupsConstView {
     using View = LevelMissionEventGroupsView;
     using ConstView = LevelMissionEventGroupsConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     std::span<LevelMissionEventType const> types;
     std::span<std::int32_t const> offsets;
     std::span<LevelEventCount const> counts;
@@ -2009,8 +2015,7 @@ struct LevelMissionEventGroupsConstView {
     }
     auto slice(size_type const offset, size_type const count) const
         -> LevelMissionEventGroupsConstView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
+        ml::native_soa::require(offset <= num() && count <= num() - offset);
         return {
             types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             offsets.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -2036,13 +2041,14 @@ struct LevelMissionEventGroupsConstView {
         return slice(0, count);
     }
     auto right(size_type const count) const -> LevelMissionEventGroupsConstView {
+        ml::native_soa::require(count <= num());
         return slice(num() - count, count);
     }
 };
 struct LevelMissionEventGroupsView {
     using View = LevelMissionEventGroupsView;
     using ConstView = LevelMissionEventGroupsConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     std::span<LevelMissionEventType> types;
     std::span<std::int32_t> offsets;
     std::span<LevelEventCount> counts;
@@ -2058,8 +2064,7 @@ struct LevelMissionEventGroupsView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> LevelMissionEventGroupsView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
+        ml::native_soa::require(offset <= num() && count <= num() - offset);
         return {
             types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             offsets.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -2085,13 +2090,14 @@ struct LevelMissionEventGroupsView {
         return slice(0, count);
     }
     auto right(size_type const count) const -> LevelMissionEventGroupsView {
+        ml::native_soa::require(count <= num());
         return slice(num() - count, count);
     }
     void set(size_type const index,
              LevelMissionEventType const new_types,
              std::int32_t const new_offsets,
              LevelEventCount const new_counts) const {
-        ml::native_soa::require(index >= 0 && index < num());
+        ml::native_soa::require(index < num());
         types[static_cast<std::size_t>(index)] = new_types;
         offsets[static_cast<std::size_t>(index)] = new_offsets;
         counts[static_cast<std::size_t>(index)] = new_counts;
@@ -2100,7 +2106,7 @@ struct LevelMissionEventGroupsView {
 struct LevelMissionEventGroups {
     using View = LevelMissionEventGroupsView;
     using ConstView = LevelMissionEventGroupsConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     ml::native_soa::Vector<LevelMissionEventType> types;
     ml::native_soa::Vector<std::int32_t> offsets;
     ml::native_soa::Vector<LevelEventCount> counts;
@@ -2135,11 +2141,11 @@ struct LevelMissionEventGroups {
     void set_num(size_type const count) {
         ml::native_soa::vector_storage_ops::set_num(*this, count);
     }
-    void apply_permutation(std::span<size_type> const indices) {
+    void apply_permutation(std::span<std::int32_t> const indices) {
         ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
-    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
         ml::native_soa::vector_storage_ops::sort(
             *this, std::forward<Compare>(compare), scratch_indices);
     }
@@ -2220,9 +2226,15 @@ struct LevelMissionEventGroups {
         return get_const_view(offset, count);
     }
     auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View { return slice(num() - count, count); }
+    auto right(size_type const count) -> View {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
+    auto right(size_type const count) const -> ConstView {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
         types[static_cast<std::size_t>(dst_index)] =

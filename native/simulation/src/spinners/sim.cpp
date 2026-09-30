@@ -73,7 +73,7 @@ void Sim::finish_action() {
 /* **************************************** */
 // Accessors
 /* **************************************** */
-auto Sim::get_num_instances() const noexcept -> std::int32_t {
+auto Sim::get_num_instances() const noexcept -> std::uint32_t {
     return entities.num();
 }
 
@@ -93,7 +93,7 @@ void Sim::fire_lasers() {
     pending_fire_indices_.reserve(count);
     auto cooldowns{ml::TickCountdownView<std::int16_t>{entity_columns.laser_cooldowns(),
                                                        cooldown_restart_ticks_}};
-    for (std::int32_t index{}; index < count; ++index) {
+    for (std::uint32_t index{}; index < count; ++index) {
         if (cooldowns.try_consume(static_cast<std::size_t>(index))) {
             pending_fire_indices_.push_back(index);
         }
@@ -102,8 +102,8 @@ void Sim::fire_lasers() {
 void Sim::materialize_fire_commands(ml::FrameScratch& scratch) {
     auto const entity_columns{entities.get_view()};
     lasers::FrameSpawnRequests new_lasers{scratch};
-    auto const ready_count{static_cast<std::int32_t>(pending_fire_indices_.size())};
-    auto const fire_point_count{static_cast<std::int32_t>(config.fire_point_offsets.size())};
+    auto const ready_count{static_cast<std::uint32_t>(pending_fire_indices_.size())};
+    auto const fire_point_count{static_cast<std::uint32_t>(config.fire_point_offsets.size())};
     new_lasers.set_num(ready_count);
     auto const next_fire_points{entity_columns.next_fire_point_indices()};
     auto const locations{entity_columns.view_locations()};
@@ -119,11 +119,12 @@ void Sim::materialize_fire_commands(ml::FrameScratch& scratch) {
     auto const laser_instigator_ids{new_lasers.instigator_ids()};
     auto const laser_sources{new_lasers.sources()};
 
-    for (std::int32_t request_index{}; request_index < ready_count; ++request_index) {
+    for (std::uint32_t request_index{}; request_index < ready_count; ++request_index) {
         auto const index{pending_fire_indices_[request_index]};
         auto const element{static_cast<std::size_t>(index)};
         auto& next_fire_point{next_fire_points[element]};
-        assert(next_fire_point >= 0 && next_fire_point < fire_point_count);
+        assert(next_fire_point >= 0 &&
+               static_cast<std::uint32_t>(next_fire_point) < fire_point_count);
         auto const& fire_point{
             config.fire_point_offsets[static_cast<std::size_t>(next_fire_point)]};
         set_vector(

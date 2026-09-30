@@ -37,9 +37,9 @@ TEST(HealthTable, AllocatesCrossTypeRowsAndExposesBulkViews) {
     table.add(owners, values, indices);
 
     auto healths{table.get_view(indices, owners)};
-    ASSERT_EQ(healths.num(), static_cast<std::int32_t>(owners.size()));
+    ASSERT_EQ(healths.num(), static_cast<std::uint32_t>(owners.size()));
     auto const health_count{healths.num()};
-    for (std::int32_t row{}; row < health_count; ++row) {
+    for (std::uint32_t row{}; row < health_count; ++row) {
         EXPECT_EQ(healths.health(row), values[static_cast<std::size_t>(row)]);
         EXPECT_EQ(healths.owner(row), owners[static_cast<std::size_t>(row)]);
         EXPECT_TRUE(table.contains(indices[static_cast<std::size_t>(row)],
@@ -65,7 +65,7 @@ TEST(HealthTable, DenseRemovalMovesFinalRowAndRepairsMapping) {
     std::array<HealthIndex, owners.size()> indices{};
     table.add(owners, values, indices);
 
-    std::array const removed_rows{1};
+    std::array const removed_rows{1u};
     table.remove_rows(removed_rows, indices, owners, [&](HealthMove const& move) {
         apply_move(owners, indices, move);
     });
@@ -93,8 +93,8 @@ TEST(HealthTable, LastRowRemovalShrinksWithoutFixup) {
     std::array<HealthIndex, owners.size()> indices{};
     table.add(owners, 100, indices);
 
-    std::array const rows{1};
-    std::int32_t move_count{};
+    std::array const rows{1u};
+    std::uint32_t move_count{};
     table.remove_rows(rows, indices, owners, [&](HealthMove const&) { ++move_count; });
 
     EXPECT_EQ(move_count, 0);
@@ -116,7 +116,7 @@ TEST(HealthTable, MultipleDenseRemovalsRepairEverySurvivor) {
     std::array<HealthIndex, owners.size()> indices{};
     table.add(owners, values, indices);
 
-    std::array const rows{3, 1};
+    std::array const rows{3u, 1u};
     table.remove_rows(
         rows, indices, owners, [&](HealthMove const& move) { apply_move(owners, indices, move); });
 
@@ -132,7 +132,7 @@ TEST(HealthTable, MultipleDenseRemovalsRepairEverySurvivor) {
 }
 
 TEST(HealthTable, DenseBatchRemovalHandlesBoundaryAndBatchShapes) {
-    auto run_case = [](std::span<std::int32_t const> const removed_rows) {
+    auto run_case = [](std::span<std::uint32_t const> const removed_rows) {
         HealthTable table;
         std::array const owners{
             make_id(EntityType::Fighter, 0),
@@ -151,10 +151,10 @@ TEST(HealthTable, DenseBatchRemovalHandlesBoundaryAndBatchShapes) {
         });
 
         EXPECT_EQ(table.num_slots(),
-                  static_cast<std::int32_t>(owners.size() - removed_rows.size()));
+                  static_cast<std::uint32_t>(owners.size() - removed_rows.size()));
         auto const owner_count{owners.size()};
         for (std::size_t row{}; row < owner_count; ++row) {
-            auto const removed{std::ranges::find(removed_rows, static_cast<std::int32_t>(row)) !=
+            auto const removed{std::ranges::find(removed_rows, static_cast<std::uint32_t>(row)) !=
                                removed_rows.end()};
             EXPECT_EQ(table.contains(indices[row], owners[row]), !removed);
             if (!removed) {
@@ -164,13 +164,13 @@ TEST(HealthTable, DenseBatchRemovalHandlesBoundaryAndBatchShapes) {
     };
 
     run_case({});
-    run_case(std::array{0});
-    run_case(std::array{2});
-    run_case(std::array{5});
-    run_case(std::array{3, 2});
-    run_case(std::array{5, 3, 1});
-    run_case(std::array{5, 4, 3, 2, 0});
-    run_case(std::array{5, 4, 3, 2, 1, 0});
+    run_case(std::array{0u});
+    run_case(std::array{2u});
+    run_case(std::array{5u});
+    run_case(std::array{3u, 2u});
+    run_case(std::array{5u, 3u, 1u});
+    run_case(std::array{5u, 4u, 3u, 2u, 0u});
+    run_case(std::array{5u, 4u, 3u, 2u, 1u, 0u});
 }
 
 TEST(HealthTable, MovedRowCanAlsoBeRemovedLaterInBatch) {
@@ -187,7 +187,7 @@ TEST(HealthTable, MovedRowCanAlsoBeRemovedLaterInBatch) {
     table.add(table_order, std::array<Health, owners.size()>{10, 30, 40, 20}, table_indices);
     indices = {table_indices[0], table_indices[3], table_indices[1], table_indices[2]};
 
-    std::array const removed_rows{3, 1};
+    std::array const removed_rows{3u, 1u};
     table.remove_rows(removed_rows, indices, owners, [&](HealthMove const& move) {
         apply_move(owners, indices, move);
     });
@@ -218,7 +218,7 @@ TEST(EntityTables, DenseRemovalRepairsCrossTypeMapping) {
     tables.bind_health_indices(
         EntityType::Turret, std::span{owners}.last<1>(), std::span{indices}.last<1>());
 
-    std::array const removed_rows{0};
+    std::array const removed_rows{0u};
     tables.remove_health_rows(
         removed_rows, std::span{indices}.first<2>(), std::span{owners}.first<2>());
 
@@ -244,7 +244,7 @@ TEST(EntityTables, MultipleDenseRemovalsRepairSameTypeMappings) {
     indexes.bind(EntityType::Fighter, owners);
     tables.bind_health_indices(EntityType::Fighter, owners, indices);
 
-    std::array const removed_rows{4, 1, 0};
+    std::array const removed_rows{4u, 1u, 0u};
     tables.remove_health_rows(removed_rows, indices, owners);
 
     EXPECT_EQ(tables.health.num_slots(), 2);
@@ -272,7 +272,7 @@ TEST(EntityTables, RetainedPlayerUsesTheSameReverseMappingContract) {
     tables.bind_health_indices(
         EntityType::PlayerShip, std::span{owners}.last<1>(), std::span{indices}.last<1>());
 
-    std::array const removed_rows{0};
+    std::array const removed_rows{0u};
     tables.remove_health_rows(
         removed_rows, std::span{indices}.first<1>(), std::span{owners}.first<1>());
 

@@ -43,8 +43,8 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     std::vector<CellMembershipCount> cell_counts(static_cast<std::size_t>(cell_count));
 
     auto const aabbs{aabbs_.get_const_view()};
-    auto const aabb_count{aabbs.num()};
-    assert(aabb_count <= invalid_aabb_index);
+    assert(aabbs.num() <= invalid_aabb_index);
+    auto const aabb_count{static_cast<StaticGeometryIndex>(aabbs.num())};
 
     // Count AABB/cell membership and validate covered bounds.
     for (StaticGeometryIndex aabb_index{}; aabb_index < aabb_count; ++aabb_index) {

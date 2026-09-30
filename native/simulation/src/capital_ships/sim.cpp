@@ -71,10 +71,10 @@ void Sim::think(float const, ml::FrameScratch& scratch) {
             target = {};
         }
     }
-    ml::FrameArray<std::int32_t> indices_without_targets{&scratch};
-    auto const n_capitals{static_cast<std::int32_t>(target_ids.size())};
+    ml::FrameArray<std::uint32_t> indices_without_targets{&scratch};
+    auto const n_capitals{static_cast<std::uint32_t>(target_ids.size())};
     indices_without_targets.reserve(n_capitals);
-    for (std::int32_t index{}; index < n_capitals; ++index) {
+    for (std::uint32_t index{}; index < n_capitals; ++index) {
         if (!target_ids[index].is_valid()) {
             indices_without_targets.add(index);
         }
@@ -102,7 +102,7 @@ void Sim::resolve_damage_events() {
                                  local_indices_to_remove,
                                  entity_death_info,
                                  ledger_);
-    auto const batch_index{static_cast<std::int32_t>(deaths_.size())};
+    auto const batch_index{static_cast<std::uint32_t>(deaths_.size())};
     auto const locations{entities.view_locations()};
 
     for (auto const index : local_indices_to_remove) {
@@ -112,7 +112,7 @@ void Sim::resolve_damage_events() {
 void Sim::publish_deaths() {
     auto const deaths{entity_death_info.get_const_view()};
     auto const death_count{deaths.num()};
-    for (std::int32_t i{}; i < death_count; ++i) {
+    for (std::uint32_t i{}; i < death_count; ++i) {
         ledger_.record_death(deaths.victims[i], deaths.killers[i], deaths.reasons[i]);
     }
 }
@@ -145,14 +145,14 @@ void Sim::finish_action() {
 /* **************************************** */
 // Accessors
 /* **************************************** */
-auto Sim::get_num_instances() const noexcept -> std::int32_t {
+auto Sim::get_num_instances() const noexcept -> std::uint32_t {
     return entities.num();
 }
 auto Sim::is_valid(EntityUniqueId const id) const noexcept -> bool {
     return id.is_valid() && id.entity_type() == EntityType::CapitalShip &&
            agents_.indexes().find(id) != AgentIndices::invalid_index;
 }
-auto Sim::get_fighter_ids(std::int32_t const index) const noexcept
+auto Sim::get_fighter_ids(std::uint32_t const index) const noexcept
     -> std::span<EntityUniqueId const> {
     auto const entities{this->entities.get_const_view()};
     return get_fighter_ids(entities.fighter_id_spans()[index]);
@@ -174,13 +174,13 @@ auto Sim::get_health(EntityUniqueId const id) const noexcept -> Health {
         .get_const_view(entity_data.health_indices(), entity_data.entity_ids())
         .health(index);
 }
-auto Sim::find_first_index_on_team(Team const team) const noexcept -> std::optional<std::int32_t> {
+auto Sim::find_first_index_on_team(Team const team) const noexcept -> std::optional<std::uint32_t> {
     auto const entities{this->entities.get_const_view()};
     auto const found{std::ranges::find(entities.teams(), team)};
     if (found == entities.teams().end()) {
         return std::nullopt;
     }
-    return static_cast<std::int32_t>(found - entities.teams().begin());
+    return static_cast<std::uint32_t>(found - entities.teams().begin());
 }
 auto Sim::find_first_id_on_team(Team const team) const noexcept -> std::optional<EntityUniqueId> {
     auto const result{find_first_index_on_team(team)};
@@ -210,7 +210,7 @@ auto Sim::register_ships(SingleAllocationLevelCapitalSpawnEvents::ConstView cons
 
     auto const new_entity_ids{this->entities.get_view().entity_ids()};
 
-    for (std::int32_t i{}; i < n_to_add; ++i) {
+    for (std::uint32_t i{}; i < n_to_add; ++i) {
         auto const id{ledger_.record_spawn(
             EntityType::CapitalShip, spawn_teams[i], is_alive(spawn_healths[i]))};
         new_ids.push_back(id);
@@ -228,7 +228,7 @@ auto Sim::register_ships(SingleAllocationLevelCapitalSpawnEvents::ConstView cons
     auto const rotations{entities.view_rotations()};
     auto const teams{entities.teams()};
     auto const entity_ids{entities.entity_ids()};
-    for (std::int32_t i{}; i < n_to_add; ++i) {
+    for (std::uint32_t i{}; i < n_to_add; ++i) {
         auto const index{first_new_index + i};
         frame_changes_.push_back({.kind = EntityFrameChangeKind::Spawn,
                                   .index = index,
@@ -261,7 +261,7 @@ void Sim::spawn_ships(SingleAllocationLevelCapitalSpawnEvents::ConstView const s
     auto const spawn_data_fighter_spawn_cooldowns{spawn_data.fighter_spawn_cooldowns()};
     auto const spawn_data_teams{spawn_data.teams()};
 
-    for (std::int32_t index{}; index < n_to_add; ++index) {
+    for (std::uint32_t index{}; index < n_to_add; ++index) {
         set_vector(appended_locations, index, vector_at(spawn_data_locations, index));
         set_rotation(appended_rotations, index, rotation_at(spawn_data_rotations, index));
         appended_fighter_spawn_timers[index] = spawn_data_initial_fighter_spawn_delays[index];
@@ -274,7 +274,7 @@ void Sim::spawn_ships(SingleAllocationLevelCapitalSpawnEvents::ConstView const s
 /* **************************************** */
 // Fighter spawning
 /* **************************************** */
-auto Sim::get_fighter_spawn_slots() const noexcept -> std::int32_t {
+auto Sim::get_fighter_spawn_slots() const noexcept -> std::uint32_t {
     return config.fighter_spawn_slots;
 }
 void Sim::queue_fighter_spawns(ml::FrameScratch& scratch) {
@@ -284,7 +284,7 @@ void Sim::queue_fighter_spawns(ml::FrameScratch& scratch) {
     auto const entities{this->entities.get_view()};
 
     auto const n_capital_ships{get_num_instances()};
-    ml::FrameArray<std::int32_t> ships_ready_to_spawn_fighters_indices{&scratch};
+    ml::FrameArray<std::uint32_t> ships_ready_to_spawn_fighters_indices{&scratch};
     ships_ready_to_spawn_fighters_indices.set_num(n_capital_ships);
     ships_ready_to_spawn_fighters_indices.set_num(
         ml::kernel::collect_indices_less_equal(entities.fighter_spawn_timers().data(),
@@ -293,7 +293,8 @@ void Sim::queue_fighter_spawns(ml::FrameScratch& scratch) {
                                                ships_ready_to_spawn_fighters_indices.data()));
     auto const target_ids{entities.target_ids()};
 
-    for (auto index{ships_ready_to_spawn_fighters_indices.num() - 1}; index >= 0; --index) {
+    for (auto remaining{ships_ready_to_spawn_fighters_indices.num()}; remaining > 0; --remaining) {
+        auto const index{remaining - 1};
         if (!target_ids[ships_ready_to_spawn_fighters_indices[index]].is_valid()) {
             ships_ready_to_spawn_fighters_indices.remove_at_swap(index);
         }
@@ -304,8 +305,8 @@ void Sim::queue_fighter_spawns(ml::FrameScratch& scratch) {
 
     auto const& relative_transforms{config.fighter_spawn_slots_relative_transforms};
     fighters::FrameSpawnQueue fighter_spawn_wave{scratch};
-    assert(std::in_range<std::int32_t>(relative_transforms.size()));
-    fighter_spawn_wave.reserve(static_cast<std::int32_t>(relative_transforms.size()));
+    assert(std::in_range<std::uint32_t>(relative_transforms.size()));
+    fighter_spawn_wave.reserve(static_cast<std::uint32_t>(relative_transforms.size()));
     auto const locations{entities.view_locations()};
     auto const teams{entities.teams()};
     auto const entity_ids{entities.entity_ids()};
@@ -348,13 +349,13 @@ void Sim::refresh_fighter_ids(ml::FrameScratch& scratch) {
     auto const parents{fighters_interface.get_parent_ids()};
     auto const healths{fighters_interface.get_healths()};
     auto const capital_count{entities.num()};
-    auto const fighter_count{static_cast<std::int32_t>(ids.size())};
-    ml::FrameArray<std::int32_t> counts{&scratch};
+    auto const fighter_count{static_cast<std::uint32_t>(ids.size())};
+    ml::FrameArray<std::uint32_t> counts{&scratch};
     ml::FrameArray<std::uint32_t> owners{&scratch};
     counts.set_num(capital_count);
     owners.set_num(fighter_count);
     std::ranges::fill(owners, AgentIndices::invalid_index);
-    for (std::int32_t index{}; index < fighter_count; ++index) {
+    for (std::uint32_t index{}; index < fighter_count; ++index) {
         if (is_dead(healths.health(index))) {
             continue;
         }
@@ -370,15 +371,15 @@ void Sim::refresh_fighter_ids(ml::FrameScratch& scratch) {
     }
     auto const fighter_spans{entities.fighter_id_spans()};
 
-    std::int32_t offset{};
-    for (std::int32_t index{}; index < capital_count; ++index) {
+    std::uint32_t offset{};
+    for (std::uint32_t index{}; index < capital_count; ++index) {
         auto const count{counts[index]};
         fighter_spans[index] = {offset, count};
         counts[index] = offset;
         offset += count;
     }
     fighter_ids.resize(static_cast<std::size_t>(offset));
-    for (std::int32_t index{}; index < fighter_count; ++index) {
+    for (std::uint32_t index{}; index < fighter_count; ++index) {
         if (owners[index] != AgentIndices::invalid_index) {
             fighter_ids[counts[owners[index]]++] = ids[index];
         }
@@ -400,7 +401,7 @@ void Sim::queue_fighter_orders() {
     auto const target_ids{entities.target_ids()};
     auto const fighter_spans{entities.fighter_id_spans()};
 
-    for (std::int32_t capital_index{}; capital_index < n_capitals; ++capital_index) {
+    for (std::uint32_t capital_index{}; capital_index < n_capitals; ++capital_index) {
         auto const capital_target{target_ids[capital_index]};
         auto const span{fighter_spans[capital_index]};
         auto const end{span.end()};
@@ -473,7 +474,7 @@ void Sim::reassign_fighters_of_dying_capital() {
     auto const teams{entities.teams()};
     auto const entity_ids{entities.entity_ids()};
 
-    for (std::int32_t index{}; index < count; ++index) {
+    for (std::uint32_t index{}; index < count; ++index) {
         auto& replacement{replacements[teams[index]]};
         if (is_alive(capital_healths.health(index)) &&
             (!replacement.is_valid() || entity_ids[index] < replacement)) {
@@ -489,7 +490,7 @@ void Sim::reassign_fighters_of_dying_capital() {
         auto const replacement{replacements[teams[dying_index]]};
         for (std::size_t index{}; index < fighter_count; ++index) {
             if (parents[index] != parent ||
-                is_dead(healths.health(static_cast<std::int32_t>(index)))) {
+                is_dead(healths.health(static_cast<std::uint32_t>(index)))) {
                 continue;
             }
             fighters_interface.set_parent_id(ids[index], replacement);

@@ -37,7 +37,7 @@ void make_avoidance_choice_order(
 [[nodiscard]] auto classify_navigation_risk(float closest_distance_squared,
                                             float immediate_distance_squared,
                                             float close_distance_squared,
-                                            std::int32_t nearby_count) noexcept
+                                            std::uint32_t nearby_count) noexcept
     -> NavigationRiskTier;
 [[nodiscard]] auto update_navigation_risk(NavigationRiskTier current_tier,
                                           NavigationRiskTier observed_tier,

@@ -18,7 +18,7 @@ struct LineTracesConstView;
 struct LineTracesConstView {
     using View = LineTracesView;
     using ConstView = LineTracesConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     Vectors3fConstView starts;
     Vectors3fConstView ends;
     auto num() const noexcept -> size_type { return static_cast<size_type>(starts.num()); }
@@ -36,8 +36,7 @@ struct LineTracesConstView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> LineTracesConstView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
+        ml::native_soa::require(offset <= num() && count <= num() - offset);
         return {
             starts.slice(offset, count),
             ends.slice(offset, count),
@@ -58,13 +57,14 @@ struct LineTracesConstView {
     }
     auto left(size_type const count) const -> LineTracesConstView { return slice(0, count); }
     auto right(size_type const count) const -> LineTracesConstView {
+        ml::native_soa::require(count <= num());
         return slice(num() - count, count);
     }
 };
 struct LineTracesView {
     using View = LineTracesView;
     using ConstView = LineTracesConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     Vectors3fView starts;
     Vectors3fView ends;
     auto num() const noexcept -> size_type { return static_cast<size_type>(starts.num()); }
@@ -82,8 +82,7 @@ struct LineTracesView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> LineTracesView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
+        ml::native_soa::require(offset <= num() && count <= num() - offset);
         return {
             starts.slice(offset, count),
             ends.slice(offset, count),
@@ -104,10 +103,11 @@ struct LineTracesView {
     }
     auto left(size_type const count) const -> LineTracesView { return slice(0, count); }
     auto right(size_type const count) const -> LineTracesView {
+        ml::native_soa::require(count <= num());
         return slice(num() - count, count);
     }
     void set(size_type const index, Vector3f const new_starts, Vector3f const new_ends) const {
-        ml::native_soa::require(index >= 0 && index < num());
+        ml::native_soa::require(index < num());
         starts.set(index, new_starts);
         ends.set(index, new_ends);
     }
@@ -115,7 +115,7 @@ struct LineTracesView {
 struct LineTraces {
     using View = LineTracesView;
     using ConstView = LineTracesConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     Vectors3f starts;
     Vectors3f ends;
     auto num() const noexcept -> size_type { return static_cast<size_type>(starts.xs.size()); }
@@ -154,11 +154,11 @@ struct LineTraces {
     void remove_at_swap(size_type const index, size_type const count) {
         ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
     }
-    void apply_permutation(std::span<size_type> const indices) {
+    void apply_permutation(std::span<std::int32_t> const indices) {
         ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
-    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
         ml::native_soa::vector_storage_ops::sort(
             *this, std::forward<Compare>(compare), scratch_indices);
     }
@@ -200,9 +200,15 @@ struct LineTraces {
         return get_const_view(offset, count);
     }
     auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View { return slice(num() - count, count); }
+    auto right(size_type const count) -> View {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
+    auto right(size_type const count) const -> ConstView {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
         starts.copy_element(dst_index, other.starts, src_index);

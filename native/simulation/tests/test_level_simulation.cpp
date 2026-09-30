@@ -95,7 +95,7 @@ void expect_health_mappings(LevelSim const& simulation) {
         auto const entity_count{entities.num()};
         auto const entity_ids{entities.entity_ids()};
         auto const health_indices{healths.indices()};
-        for (std::int32_t row{}; row < entity_count; ++row) {
+        for (std::uint32_t row{}; row < entity_count; ++row) {
             auto const element{static_cast<std::size_t>(row)};
             auto const id{entity_ids[element]};
             auto const index{health_indices[element]};
@@ -297,7 +297,7 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     auto const turrets{turret_view.entities};
     auto const turret_count{turrets.num()};
     auto const turret_teams{turrets.teams()};
-    for (std::int32_t i{}; i < turret_count; ++i) {
+    for (std::uint32_t i{}; i < turret_count; ++i) {
         auto const rotated{turret_teams[i] == Team::Green};
         EXPECT_TRUE(
             health_table.contains(turret_view.healths.indices()[i], turrets.entity_ids()[i]))

@@ -39,7 +39,7 @@ class ThreadBufferLease {
     auto get() const -> ThreadBuffers&;
   private:
     SpatialQueryManager const& manager;
-    std::int32_t index;
+    std::uint32_t index;
 };
 }
 
@@ -62,7 +62,7 @@ struct SpatialQueryManager {
         return {grid.get_grid_dims(), grid.get_cell_dims()};
     }
 
-    void reserve_thread_buffers(std::int32_t count);
+    void reserve_thread_buffers(std::uint32_t count);
 
     /* **************************************** */
     // Batched line queries
@@ -104,13 +104,13 @@ struct SpatialQueryManager {
                                             Team const team,
                                             float const radius,
                                             std::span<EntityUniqueId> const out_entities) const
-        -> std::int32_t;
+        -> std::uint32_t;
     auto collect_entities_of_type_in_range(Vector3f const& origin,
                                            EntityType entity_type,
                                            float radius,
                                            EntityUniqueId ignored_entity,
                                            std::span<EntityUniqueId> out_entities) const
-        -> std::int32_t;
+        -> std::uint32_t;
     auto get_any_non_team_entity(Team const team) const -> EntityUniqueId;
     auto get_any_non_team_entity(Team const team, EntityType const entity_type) const
         -> EntityUniqueId;
@@ -143,8 +143,8 @@ struct SpatialQueryManager {
 
     using ThreadBuffers = query_manager::ThreadBuffers;
 
-    auto acquire_thread_buffer() const -> std::int32_t;
-    void release_thread_buffer(std::int32_t index) const;
+    auto acquire_thread_buffer() const -> std::uint32_t;
+    void release_thread_buffer(std::uint32_t index) const;
 
     /* **************************************** */
     // State

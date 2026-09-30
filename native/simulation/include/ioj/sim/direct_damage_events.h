@@ -17,7 +17,7 @@ struct DirectDamageEventsConstView;
 struct DirectDamageEventsConstView {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     std::span<EntityUniqueId const> damaged_entities;
     std::span<std::int32_t const> damage_amounts;
     std::span<EntityUniqueId const> instigators;
@@ -35,8 +35,7 @@ struct DirectDamageEventsConstView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> DirectDamageEventsConstView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
+        ml::native_soa::require(offset <= num() && count <= num() - offset);
         return {
             damaged_entities.subspan(static_cast<std::size_t>(offset),
                                      static_cast<std::size_t>(count)),
@@ -64,13 +63,14 @@ struct DirectDamageEventsConstView {
         return slice(0, count);
     }
     auto right(size_type const count) const -> DirectDamageEventsConstView {
+        ml::native_soa::require(count <= num());
         return slice(num() - count, count);
     }
 };
 struct DirectDamageEventsView {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     std::span<EntityUniqueId> damaged_entities;
     std::span<std::int32_t> damage_amounts;
     std::span<EntityUniqueId> instigators;
@@ -88,8 +88,7 @@ struct DirectDamageEventsView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> DirectDamageEventsView {
-        ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
-                                count <= num() - offset);
+        ml::native_soa::require(offset <= num() && count <= num() - offset);
         return {
             damaged_entities.subspan(static_cast<std::size_t>(offset),
                                      static_cast<std::size_t>(count)),
@@ -114,13 +113,14 @@ struct DirectDamageEventsView {
     }
     auto left(size_type const count) const -> DirectDamageEventsView { return slice(0, count); }
     auto right(size_type const count) const -> DirectDamageEventsView {
+        ml::native_soa::require(count <= num());
         return slice(num() - count, count);
     }
     void set(size_type const index,
              EntityUniqueId const new_damaged_entities,
              std::int32_t const new_damage_amounts,
              EntityUniqueId const new_instigators) const {
-        ml::native_soa::require(index >= 0 && index < num());
+        ml::native_soa::require(index < num());
         damaged_entities[static_cast<std::size_t>(index)] = new_damaged_entities;
         damage_amounts[static_cast<std::size_t>(index)] = new_damage_amounts;
         instigators[static_cast<std::size_t>(index)] = new_instigators;
@@ -129,7 +129,7 @@ struct DirectDamageEventsView {
 struct DirectDamageEvents {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     ml::native_soa::Vector<EntityUniqueId> damaged_entities;
     ml::native_soa::Vector<std::int32_t> damage_amounts;
     ml::native_soa::Vector<EntityUniqueId> instigators;
@@ -166,11 +166,11 @@ struct DirectDamageEvents {
     void set_num(size_type const count) {
         ml::native_soa::vector_storage_ops::set_num(*this, count);
     }
-    void apply_permutation(std::span<size_type> const indices) {
+    void apply_permutation(std::span<std::int32_t> const indices) {
         ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
-    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
         ml::native_soa::vector_storage_ops::sort(
             *this, std::forward<Compare>(compare), scratch_indices);
     }
@@ -257,9 +257,15 @@ struct DirectDamageEvents {
         return get_const_view(offset, count);
     }
     auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View { return slice(num() - count, count); }
+    auto right(size_type const count) -> View {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView { return slice(num() - count, count); }
+    auto right(size_type const count) const -> ConstView {
+        ml::native_soa::require(count <= num());
+        return slice(num() - count, count);
+    }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
         damaged_entities[static_cast<std::size_t>(dst_index)] =

@@ -9,8 +9,8 @@ namespace {
                                 std::span<HealthIndex const> const indices,
                                 std::span<EntityUniqueId const> const expected_owners
                                 [[maybe_unused]],
-                                std::int32_t const row) -> std::size_t {
-    assert(row >= 0 && static_cast<std::size_t>(row) < indices.size());
+                                std::uint32_t const row) -> std::size_t {
+    assert(static_cast<std::size_t>(row) < indices.size());
     auto const index{indices[static_cast<std::size_t>(row)]};
     assert(index.is_valid() && index.raw_value() < owners.size());
     auto const slot{static_cast<std::size_t>(index.raw_value())};
@@ -21,36 +21,36 @@ namespace {
 }
 }
 
-auto HealthConstView::health(std::int32_t const row) const -> Health {
+auto HealthConstView::health(std::uint32_t const row) const -> Health {
     return values_[checked_slot(owners_, indices_, expected_owners_, row)];
 }
-auto HealthConstView::owner(std::int32_t const row) const -> EntityUniqueId {
+auto HealthConstView::owner(std::uint32_t const row) const -> EntityUniqueId {
     return owners_[checked_slot(owners_, indices_, expected_owners_, row)];
 }
 void HealthConstView::copy_to(std::span<Health> const output) const {
     assert(output.size() == indices_.size());
     auto const count{num()};
-    for (std::int32_t row{}; row < count; ++row) {
+    for (std::uint32_t row{}; row < count; ++row) {
         output[static_cast<std::size_t>(row)] = health(row);
     }
 }
-auto HealthView::health(std::int32_t const row) const -> Health& {
+auto HealthView::health(std::uint32_t const row) const -> Health& {
     return values_[checked_slot(owners_, indices_, expected_owners_, row)];
 }
-auto HealthView::owner(std::int32_t const row) const -> EntityUniqueId {
+auto HealthView::owner(std::uint32_t const row) const -> EntityUniqueId {
     return owners_[checked_slot(owners_, indices_, expected_owners_, row)];
 }
 void HealthView::copy_from(std::span<Health const> const input) const {
     assert(input.size() == indices_.size());
     auto const count{num()};
-    for (std::int32_t row{}; row < count; ++row) {
+    for (std::uint32_t row{}; row < count; ++row) {
         health(row) = input[static_cast<std::size_t>(row)];
     }
 }
 void HealthView::copy_to(std::span<Health> const output) const {
     assert(output.size() == indices_.size());
     auto const count{num()};
-    for (std::int32_t row{}; row < count; ++row) {
+    for (std::uint32_t row{}; row < count; ++row) {
         output[static_cast<std::size_t>(row)] = health(row);
     }
 }

@@ -26,7 +26,7 @@ struct FrameMemorySummary {
     std::size_t peak_payload_bytes{};
     std::uint64_t total_padding_bytes{};
     std::uint64_t total_root_claims{};
-    std::int32_t peak_fighters{};
+    std::uint32_t peak_fighters{};
 
     void record_tick(ioj::sim::LevelSim const& simulation) {
         auto const stats{simulation.get_frame_memory_stats()};
@@ -298,7 +298,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto const total_started_at{std::chrono::steady_clock::now()};
     ioj::sim::SimTick saturation_ticks{};
     if (options.fighter_stress_cap.has_value()) {
-        auto const cap{*options.fighter_stress_cap};
+        auto const cap{static_cast<std::uint32_t>(*options.fighter_stress_cap)};
         while (simulation.get_fighters().get_num_instances() < cap &&
                saturation_ticks < saturation_timeout_ticks) {
             auto const advanced{advance_one_tick()};
@@ -356,7 +356,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         minimum_measured_fighters = std::min(minimum_measured_fighters, fighter_count);
         maximum_measured_fighters = std::max(maximum_measured_fighters, fighter_count);
         if (options.fighter_stress_cap.has_value() &&
-            fighter_count != *options.fighter_stress_cap) {
+            fighter_count != static_cast<std::uint32_t>(*options.fighter_stress_cap)) {
             return std::unexpected{"fighter population changed during measured ticks"};
         }
     }
@@ -383,7 +383,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     auto const timing_summary{summarize_tick_timings(std::move(tick_microseconds))};
     auto const fighter_tasks{simulation.get_fighters().get_tasks()};
     auto const count_task = [fighter_tasks](ioj::sim::FighterTask const task) {
-        return static_cast<std::int32_t>(std::ranges::count(fighter_tasks, task));
+        return static_cast<std::uint32_t>(std::ranges::count(fighter_tasks, task));
     };
     return BenchmarkResult{
         .level_path = options.level_path.generic_string(),

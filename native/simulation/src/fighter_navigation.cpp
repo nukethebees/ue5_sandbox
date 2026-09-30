@@ -9,6 +9,7 @@
 #include <cassert>
 #include <cmath>
 #include <limits>
+#include <utility>
 
 namespace ioj::sim::fighters {
 using ml::native_math::safe_normal;
@@ -159,7 +160,7 @@ auto make_coincident_separation_direction(EntityUniqueId const self,
 auto classify_navigation_risk(float const closest_distance_squared,
                               float const immediate_distance_squared,
                               float const close_distance_squared,
-                              std::int32_t const nearby_count) noexcept -> NavigationRiskTier {
+                              std::uint32_t const nearby_count) noexcept -> NavigationRiskTier {
     if (closest_distance_squared <= immediate_distance_squared) {
         return NavigationRiskTier::Immediate;
     }
@@ -217,8 +218,8 @@ auto observe_separation(Vector3f const fighter_location,
     std::array<float, separation_neighbour_limit> neighbour_weights;
     auto separation_observation{ml::make_vector3f(0.0f, 0.0f, 0.0f)};
     auto closest_distance_squared{no_neighbour_distance_squared};
-    auto const neighbour_count{static_cast<std::int32_t>(neighbours.size())};
-    for (std::int32_t neighbour_index{}; neighbour_index < neighbour_count; ++neighbour_index) {
+    auto const neighbour_count{static_cast<std::uint32_t>(neighbours.size())};
+    for (std::uint32_t neighbour_index{}; neighbour_index < neighbour_count; ++neighbour_index) {
         auto const element{static_cast<std::size_t>(neighbour_index)};
         auto const neighbour{neighbours[element]};
         auto const neighbour_location{neighbour.location};
@@ -242,8 +243,9 @@ auto observe_separation(Vector3f const fighter_location,
     }
 
     auto const retained_memory{previous_memory * parameters.memory_retention};
-    auto const dense_traffic{neighbour_count >= parameters.dense_traffic_neighbour_threshold &&
-                             parameters.separation_strength > safe_normal_tolerance};
+    auto const dense_traffic{
+        std::cmp_greater_equal(neighbour_count, parameters.dense_traffic_neighbour_threshold) &&
+        parameters.separation_strength > safe_normal_tolerance};
     if (dense_traffic) {
         auto const frame{make_avoidance_frame(goal_direction, parameters.float_bias)};
         std::array<Vector3f, avoidance_direction_count> candidates;
@@ -252,7 +254,7 @@ auto observe_separation(Vector3f const fighter_location,
         auto const memory_strength{std::sqrt(HMM_DotV3(retained_memory, retained_memory))};
         auto const candidate_score{[&](Vector3f const candidate) {
             float crowd_penalty{};
-            for (std::int32_t neighbour_index{}; neighbour_index < neighbour_count;
+            for (std::uint32_t neighbour_index{}; neighbour_index < neighbour_count;
                  ++neighbour_index) {
                 auto const element{static_cast<std::size_t>(neighbour_index)};
                 auto const towards_dot{
@@ -303,8 +305,8 @@ auto choose_navigation_alternative(Vector3f const fighter_location,
 
     auto chosen_choice{stop_choice};
     auto best_distance_squared{safe_progress_distance * safe_progress_distance};
-    auto const count{static_cast<std::int32_t>(choices.size())};
-    for (std::int32_t index{}; index < count; ++index) {
+    auto const count{static_cast<std::uint32_t>(choices.size())};
+    for (std::uint32_t index{}; index < count; ++index) {
         auto const element{static_cast<std::size_t>(index)};
         if (in_world[element] == 0) {
             continue;

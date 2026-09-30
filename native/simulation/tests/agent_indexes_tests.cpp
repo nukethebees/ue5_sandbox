@@ -44,20 +44,20 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
             EntityUniqueId(entity_identity_offset(EntityType::CapitalShip, 0),
                            EntityType::CapitalShip),
             EntityUniqueId(entity_identity_offset(EntityType::Fighter, 999), EntityType::Fighter)};
-        std::array<std::int32_t, ids.size()> order{};
+        std::array<std::uint32_t, ids.size()> order{};
         std::array<std::uint8_t, ids.size()> alive{};
         Vectors3f locations;
         Vectors3f velocities;
-        locations.add_defaulted(static_cast<std::int32_t>(ids.size()));
-        velocities.add_defaulted(static_cast<std::int32_t>(ids.size()));
+        locations.add_defaulted(static_cast<std::uint32_t>(ids.size()));
+        velocities.add_defaulted(static_cast<std::uint32_t>(ids.size()));
         agents.gather_targets(ids, order, {locations.get_view(), velocities.get_view(), {}, alive});
         auto const id_count{ids.size()};
         for (std::size_t i{}; i < id_count; ++i) {
             auto const expected{agents.read_alive(ids[i])};
             EXPECT_EQ(static_cast<bool>(alive[i]), expected.has_value());
-            EXPECT_FLOAT_EQ(locations[static_cast<std::int32_t>(i)].X,
+            EXPECT_FLOAT_EQ(locations[static_cast<std::uint32_t>(i)].X,
                             expected ? expected->location.X : 0.f);
-            EXPECT_FLOAT_EQ(velocities[static_cast<std::int32_t>(i)].Y,
+            EXPECT_FLOAT_EQ(velocities[static_cast<std::uint32_t>(i)].Y,
                             expected ? expected->velocity.Y : 0.f);
         }
         agents.gather_targets({}, {}, {});
@@ -71,7 +71,7 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
 
     clock.phase = SimulationPhase::Preparation;
     indexes.retire(id);
-    std::array const rows{0};
+    std::array const rows{0u};
     health_table.remove_rows(
         rows, data.health_indices(), data.entity_ids(), [](HealthMove const&) {});
     fighters.remove_at_swap(0, 1);
@@ -81,10 +81,10 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
     EXPECT_FALSE(agents.read(id));
     check_bulk();
 
-    auto const type_count{static_cast<std::int32_t>(EntityType::COUNT)};
+    auto const type_count{static_cast<std::uint32_t>(EntityType::COUNT)};
     CollisionAgentStorage owners;
     std::array<EntityUniqueId, static_cast<std::size_t>(EntityType::COUNT)> spawned{};
-    for (std::int32_t i{}; i < type_count; ++i) {
+    for (std::uint32_t i{}; i < type_count; ++i) {
         spawned[static_cast<std::size_t>(i)] = owners.spawn(static_cast<EntityType>(i),
                                                             {{static_cast<float>(i + 1), 2.f, 3.f}},
                                                             {},
@@ -93,12 +93,12 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
     }
     owners.publish();
     std::vector<EntityUniqueId> ids;
-    std::vector<std::int32_t> order(static_cast<std::size_t>(type_count * 2));
+    std::vector<std::uint32_t> order(static_cast<std::size_t>(type_count * 2));
     std::vector<std::uint8_t> alive(order.size());
     std::vector<Team> teams(order.size());
     Vectors3f locations;
     locations.add_defaulted(type_count * 2);
-    for (std::int32_t i{}; i < type_count * 2; ++i) {
+    for (std::uint32_t i{}; i < type_count * 2; ++i) {
         auto const type{static_cast<EntityType>(type_count - 1 - i % type_count)};
         ids.push_back(spawned[static_cast<std::size_t>(type)]);
     }
@@ -106,7 +106,7 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
     owners.agents.gather_targets(ids, order, {locations.get_view(), {}, teams, alive});
     EXPECT_EQ(ids, original);
     EXPECT_TRUE(std::ranges::is_sorted(order, {}, [&](auto const row) { return ids[row]; }));
-    for (std::int32_t row{}; row < type_count * 2; ++row) {
+    for (std::uint32_t row{}; row < type_count * 2; ++row) {
         auto const expected{owners.agents.read_alive(ids[row])};
         ASSERT_TRUE(expected);
         EXPECT_TRUE(alive[row]);

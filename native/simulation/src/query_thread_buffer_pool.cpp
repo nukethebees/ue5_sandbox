@@ -5,7 +5,7 @@
 #include <cstddef>
 
 namespace ioj::sim {
-auto QueryThreadBufferPool::reserve(std::int32_t const count) -> QueryThreadBufferReserveResult {
+auto QueryThreadBufferPool::reserve(std::uint32_t const count) -> QueryThreadBufferReserveResult {
     if (count <= 0) {
         return QueryThreadBufferReserveResult::invalid_count;
     }
@@ -19,7 +19,7 @@ auto QueryThreadBufferPool::reserve(std::int32_t const count) -> QueryThreadBuff
         return QueryThreadBufferReserveResult::active_queries;
     }
 
-    auto const previous_count{static_cast<std::int32_t>(buffers_.size())};
+    auto const previous_count{static_cast<std::uint32_t>(buffers_.size())};
     buffers_.resize(required_count);
     free_indices_.reserve(required_count);
     for (auto i{previous_count}; i < count; ++i) {
@@ -29,7 +29,7 @@ auto QueryThreadBufferPool::reserve(std::int32_t const count) -> QueryThreadBuff
     return QueryThreadBufferReserveResult::reserved;
 }
 
-auto QueryThreadBufferPool::try_acquire() -> std::optional<std::int32_t> {
+auto QueryThreadBufferPool::try_acquire() -> std::optional<std::uint32_t> {
     std::scoped_lock const lock{mutex_};
     if (free_indices_.empty()) {
         return std::nullopt;
@@ -41,9 +41,9 @@ auto QueryThreadBufferPool::try_acquire() -> std::optional<std::int32_t> {
     return index;
 }
 
-auto QueryThreadBufferPool::release(std::int32_t const index) -> bool {
+auto QueryThreadBufferPool::release(std::uint32_t const index) -> bool {
     std::scoped_lock const lock{mutex_};
-    auto const valid_index{index >= 0 && static_cast<std::size_t>(index) < buffers_.size()};
+    auto const valid_index{static_cast<std::size_t>(index) < buffers_.size()};
     auto const already_free{std::ranges::find(free_indices_, index) != free_indices_.end()};
     if (!valid_index || already_free || active_count_ <= 0) {
         return false;
@@ -54,8 +54,8 @@ auto QueryThreadBufferPool::release(std::int32_t const index) -> bool {
     return true;
 }
 
-auto QueryThreadBufferPool::get(std::int32_t const index) -> QueryThreadBuffers& {
-    assert(index >= 0 && static_cast<std::size_t>(index) < buffers_.size());
+auto QueryThreadBufferPool::get(std::uint32_t const index) -> QueryThreadBuffers& {
+    assert(static_cast<std::size_t>(index) < buffers_.size());
     return buffers_[static_cast<std::size_t>(index)];
 }
 } // namespace ioj::sim

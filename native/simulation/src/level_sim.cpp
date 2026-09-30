@@ -206,8 +206,7 @@ void LevelSim::configure_player(player::PlayerSpawnData const& spawn) {
 void LevelSim::initialise_spatial_queries(LevelSimInitData& data) {
     // Configure collision queries and buffers
     query_manager_.initialise(data.grid_geometry, data.entity_bounds);
-    query_manager_.reserve_thread_buffers(
-        static_cast<std::int32_t>(std::max(1u, std::thread::hardware_concurrency())));
+    query_manager_.reserve_thread_buffers(std::max(1u, std::thread::hardware_concurrency()));
 
     // Install static bounds
     query_manager_.set_static_collision(std::move(data.static_bounds));

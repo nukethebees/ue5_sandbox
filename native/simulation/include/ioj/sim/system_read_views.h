@@ -21,7 +21,7 @@ enum class EntityFrameChangeKind : std::uint8_t { Spawn, RemoveSwap };
 
 struct EntityFrameChange {
     EntityFrameChangeKind kind{};
-    std::int32_t index{};
+    std::uint32_t index{};
     Vector3f location{};
     Rotator3f rotation{};
     Team team{};
@@ -35,8 +35,8 @@ struct CapitalReadView {
     std::span<EntityFrameChange const> changes;
     std::span<CapitalDeathEvent const> deaths;
     AgentAccessor const* agents{};
-    auto get_num_instances() const -> std::int32_t { return entities.num(); }
-    auto get_fighter_ids(std::int32_t index) const -> std::span<EntityUniqueId const> {
+    auto get_num_instances() const -> std::uint32_t { return entities.num(); }
+    auto get_fighter_ids(std::uint32_t index) const -> std::span<EntityUniqueId const> {
         auto const span{entities.fighter_id_spans()[index]};
         return fighter_ids.subspan(span.offset, span.count);
     }
@@ -44,24 +44,24 @@ struct CapitalReadView {
 struct FighterReadView {
     SingleAllocationFighterEntityData::ConstView entities;
     HealthConstView healths;
-    auto get_num_instances() const -> std::int32_t { return entities.num(); }
+    auto get_num_instances() const -> std::uint32_t { return entities.num(); }
 };
 struct TurretReadView {
     SingleAllocationTurretEntityData::ConstView entities;
     HealthConstView healths;
     std::span<EntityFrameChange const> changes;
     std::span<Vector3f const> death_locations;
-    auto get_num_instances() const -> std::int32_t { return entities.num(); }
+    auto get_num_instances() const -> std::uint32_t { return entities.num(); }
 };
 struct SpinnerReadView {
     SingleAllocationSpinnerEntityData::ConstView entities;
-    auto get_num_instances() const -> std::int32_t { return entities.num(); }
+    auto get_num_instances() const -> std::uint32_t { return entities.num(); }
 };
 struct LaserReadView {
     lasers::SingleAllocationLaserEntities::ConstView entities;
     SingleAllocationLaserHitDetails::ConstView hits;
     std::span<SimTick const> hit_ticks;
     std::span<std::int32_t const> hit_ordinals;
-    auto get_num_instances() const -> std::int32_t { return entities.num(); }
+    auto get_num_instances() const -> std::uint32_t { return entities.num(); }
 };
 } // namespace ioj::sim

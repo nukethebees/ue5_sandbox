@@ -11,6 +11,6 @@ namespace ioj::sim {
 struct CapitalDeathEvent {
     Vector3f location;
 
-    std::int32_t batch_index{};
+    std::uint32_t batch_index{};
 };
 } // namespace ioj::sim

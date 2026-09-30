@@ -10,7 +10,7 @@
 
 namespace ioj::sim::collision {
 struct CollisionGridEntityStorage {
-    using CellEntryOffset = std::int32_t;
+    using CellEntryOffset = std::uint32_t;
     using CellEntryCount = std::uint16_t;
 
     /* **************************************** */
