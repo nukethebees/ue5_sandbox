@@ -499,18 +499,11 @@ pub fn execute(root: &Path, args: &[String]) -> Result<()> {
         let raw = config_dir.join("raw");
         fs::create_dir_all(&raw)?;
         println!("Running {}...", configuration.name());
-        let process = captured(
+        let process = logged(
             Command::new(&request.editor)
                 .args(request.arguments(configuration, &raw))
                 .current_dir(request.project.parent().ok_or("Project has no parent.")?),
-        )?;
-        write_text(
             &config_dir.join("unreal.log"),
-            format!(
-                "{}{}",
-                String::from_utf8_lossy(&process.stdout),
-                String::from_utf8_lossy(&process.stderr)
-            ),
         )?;
         succeeded(process)?;
         for &count in &request.counts {

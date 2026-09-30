@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use std::{
     collections::BTreeMap,
@@ -27,6 +27,22 @@ pub fn captured(command: &mut Command) -> Result<Output> {
         )
         .into()
     })
+}
+
+pub fn logged(command: &mut Command, path: &Path) -> Result<Output> {
+    let output = captured(command)?;
+
+    // Preserve diagnostics before the caller checks exit status or result artifacts.
+    write_text(
+        path,
+        format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    )?;
+
+    Ok(output)
 }
 
 pub fn succeeded(output: Output) -> Result<Output> {
@@ -85,6 +101,10 @@ pub fn write_text(path: &Path, text: impl AsRef<[u8]>) -> Result<()> {
 
 pub fn write_json(path: &Path, value: &impl Serialize) -> Result<()> {
     write_text(path, serde_json::to_string_pretty(value)? + "\n")
+}
+
+pub fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T> {
+    Ok(serde_json::from_slice(&fs::read(path)?)?)
 }
 
 pub fn json_lines(output: &str) -> Result<Vec<Value>> {
@@ -190,7 +210,7 @@ impl Args {
             .ok_or_else(|| format!("'{name}' is required.").into())
     }
     pub fn integer(&self, name: &str, fallback: u32, min: u32, max: u32) -> Result<u32> {
-        let text = self.value(name, "").to_owned();
+        let text = self.value(name, "");
         if text.is_empty() {
             return Ok(fallback);
         }
@@ -200,7 +220,7 @@ impl Args {
             .ok_or_else(|| format!("'{name}' must be an integer from {min} to {max}.").into())
     }
     pub fn float(&self, name: &str, fallback: f64, min: f64, max: f64) -> Result<f64> {
-        let text = self.value(name, "").to_owned();
+        let text = self.value(name, "");
         if text.is_empty() {
             return Ok(fallback);
         }

@@ -242,14 +242,27 @@ fn csv_and_offline_report_enforce_comparability_and_sequence() {
 #[cfg(windows)]
 #[test]
 fn subprocess_failure_preserves_exit_code_and_captures_both_streams() {
-    let output = captured(std::process::Command::new("cmd.exe").args([
-        "/d",
-        "/c",
-        "echo output&echo diagnostic 1>&2&exit /b 17",
-    ]))
+    let directory = tempfile::tempdir().unwrap();
+    let log = directory.path().join("nested/process.log");
+    let output = logged(
+        std::process::Command::new("cmd.exe").args([
+            "/d",
+            "/c",
+            "echo output&echo diagnostic 1>&2&exit /b 17",
+        ]),
+        &log,
+    )
     .unwrap();
     assert!(String::from_utf8_lossy(&output.stdout).contains("output"));
     assert!(String::from_utf8_lossy(&output.stderr).contains("diagnostic"));
+    assert_eq!(
+        fs::read_to_string(log).unwrap(),
+        format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        )
+    );
     let error = succeeded(output).unwrap_err();
     assert_eq!(error.downcast_ref::<ProcessFailure>().unwrap().0, 17);
 }

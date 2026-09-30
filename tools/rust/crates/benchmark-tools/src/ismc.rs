@@ -257,18 +257,11 @@ fn prepare_cache(context: &mut Run, source: &Source, request: &Request, side: &s
         if !map(&source.root).is_file() {
             return Err("SandboxISMC cache preparation map is missing.".into());
         }
-        let process = captured(
+        let process = logged(
             Command::new(&request.editor)
                 .args(args)
                 .current_dir(&source.root),
-        )?;
-        write_text(
             &run.path("process.log"),
-            format!(
-                "{}{}",
-                String::from_utf8_lossy(&process.stdout),
-                String::from_utf8_lossy(&process.stderr)
-            ),
         )?;
         succeeded(process)?;
         revision::verify_source(source)?;
@@ -312,18 +305,11 @@ fn measure(plan: &Plan) -> Result<Vec<Capture>> {
         }
         let result = (|| -> Result<Capture> {
             run.status("measuring")?;
-            let process = captured(
+            let process = logged(
                 Command::new(&request.editor)
                     .args(&args)
                     .current_dir(&source.root),
-            )?;
-            write_text(
                 &run.path("process.log"),
-                format!(
-                    "{}{}",
-                    String::from_utf8_lossy(&process.stdout),
-                    String::from_utf8_lossy(&process.stderr)
-                ),
             )?;
             if !run.path("result.json").is_file() {
                 return Err(format!(
@@ -333,7 +319,7 @@ fn measure(plan: &Plan) -> Result<Vec<Capture>> {
                 )
                 .into());
             }
-            let terminal: Value = serde_json::from_slice(&fs::read(run.path("result.json"))?)?;
+            let terminal: Value = read_json(&run.path("result.json"))?;
             if terminal["schemaVersion"] != 1 || terminal["runId"] != run.id() {
                 return Err("SandboxISMC result schema/run identity mismatch.".into());
             }
@@ -581,21 +567,19 @@ pub fn execute(root: &Path, args: &[String], comparison: bool) -> Result<()> {
 pub fn report(args: &[String]) -> Result<()> {
     let args = Args::parse(args, &["--run-dir"], &[])?;
     let directory = absolute(&std::env::current_dir()?, args.required("--run-dir")?)?;
-    let manifest: Value = serde_json::from_slice(&fs::read(directory.join("manifest.json"))?)?;
+    let manifest: Value = read_json(&directory.join("manifest.json"))?;
     if manifest["schemaVersion"] != 1
         || manifest["benchmark"] != "sandbox-ismc-revision-ab"
         || !["complete", "incomparable"].contains(&manifest["status"].as_str().unwrap_or(""))
     {
         return Err("Run directory is not a completed SandboxISMC revision comparison.".into());
     }
-    let plan: Plan = serde_json::from_slice(&fs::read(directory.join("measurement-plan.json"))?)?;
-    let sequence: Vec<Repetition> =
-        serde_json::from_slice(&fs::read(directory.join("sequence.json"))?)?;
+    let plan: Plan = read_json(&directory.join("measurement-plan.json"))?;
+    let sequence: Vec<Repetition> = read_json(&directory.join("sequence.json"))?;
     if sequence != plan.sequence {
         return Err("Comparison plan and sequence disagree.".into());
     }
-    let captures: Vec<Capture> =
-        serde_json::from_slice(&fs::read(directory.join("captures.json"))?)?;
+    let captures: Vec<Capture> = read_json(&directory.join("captures.json"))?;
     if !results::reports(&directory, &manifest, &plan, &captures)? {
         return Err("Comparison is incomparable.".into());
     }
