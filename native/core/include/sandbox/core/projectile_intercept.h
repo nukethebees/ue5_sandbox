@@ -53,7 +53,7 @@ inline void solve_intercept_times(float* const out_intercept_times,
     auto const target_velocities_ys{target_velocities.ys()};
     auto const target_velocities_zs{target_velocities.zs()};
 
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         auto const rx{target_positions_xs[i] - shooter_positions_xs[i]};
         auto const ry{target_positions_ys[i] - shooter_positions_ys[i]};
         auto const rz{target_positions_zs[i] - shooter_positions_zs[i]};

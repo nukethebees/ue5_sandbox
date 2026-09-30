@@ -21,7 +21,9 @@ using single_allocation_layout::ColumnLayoutStart;
 using single_allocation_layout::layout_align;
 using single_allocation_layout::LayoutCursor;
 using single_allocation_layout::LayoutPolicy;
-using single_allocation_layout::maximum_capacity;
+constexpr auto maximum_capacity(std::size_t const block_bytes) noexcept -> int32 {
+    return single_allocation_layout::maximum_capacity<int32>(block_bytes);
+}
 using single_allocation_layout::supported_leaf;
 using single_allocation_layout::try_allocation_bytes;
 using single_allocation_layout::try_round_capacity;
@@ -59,9 +61,9 @@ void default_construct_n(T* const destination, int32 const count) {
     DefaultConstructItems<T>(destination, count);
 }
 
-using soa_storage_detail::StorageState;
+using StorageState = soa_storage_detail::StorageState<int32>;
 template <bool Const>
-using CompactViewState = soa_storage_detail::CompactViewState<Const, require>;
+using CompactViewState = soa_storage_detail::CompactViewState<Const, require, int32>;
 
 inline auto rounded_capacity(int64 const required, SIZE_T const block_bytes) -> int32 {
     int32 result{};

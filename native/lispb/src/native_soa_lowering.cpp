@@ -71,9 +71,9 @@ void render_vector_storage_operations(std::ostringstream& out, SoaSchema const& 
             << ") { ml::native_soa::vector_storage_ops::" << name << "(*this" << arguments
             << "); }\n";
     }
-    out << "void apply_permutation(std::span<size_type> const indices) { "
+    out << "void apply_permutation(std::span<std::int32_t> const indices) { "
            "ml::native_soa::vector_storage_ops::apply_permutation(*this, indices); }\n"
-        << "template <typename Compare> void sort(Compare&& compare, std::span<size_type> const "
+        << "template <typename Compare> void sort(Compare&& compare, std::span<std::int32_t> const "
            "scratch_indices) { ml::native_soa::vector_storage_ops::sort("
            "*this, std::forward<Compare>(compare), scratch_indices); }\n";
 }
@@ -200,7 +200,7 @@ auto lower_native_soa(SoaSchema const& schema,
             out << "struct " << exported << view_type << " {\n"
                 << "using View = " << view << ";\n"
                 << "using ConstView = " << const_view << ";\n"
-                << "using size_type = std::int32_t;\n";
+                << "using size_type = std::uint32_t;\n";
             if (equivalent_type.has_value()) {
                 out << "using equivalent_type = " << native_spelling(equivalent_type->spelling)
                     << ";\n"
@@ -248,7 +248,7 @@ auto lower_native_soa(SoaSchema const& schema,
                    "ml::native_soa::vector_storage_ops::validate_array_sizes(*this); }\n"
                 << "auto slice(size_type const offset, size_type const count) const -> "
                 << view_type
-                << " { ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() && "
+                << " { ml::native_soa::require(offset <= num() && "
                    "count "
                    "<= num() - offset); return {\n";
             for (auto const& member : layout.members) {
@@ -277,12 +277,13 @@ auto lower_native_soa(SoaSchema const& schema,
                 << "auto left(size_type const count) const -> " << view_type
                 << " { return slice(0, count); }\n"
                 << "auto right(size_type const count) const -> " << view_type
-                << " { return slice(num() - count, count); }\n";
+                << " { ml::native_soa::require(count <= num()); return slice(num() - count, "
+                   "count); }\n";
 
             if (!immutable) {
                 out << "void set(size_type const index";
                 render_parameters(out, row_parameters);
-                out << ") const { ml::native_soa::require(index >= 0 && index < num());\n";
+                out << ") const { ml::native_soa::require(index < num());\n";
                 for (auto const& parameter : row_parameters) {
                     if (parameter.nested) {
                         out << parameter.column << ".set(index, new_" << parameter.name << ");\n";
@@ -313,7 +314,7 @@ auto lower_native_soa(SoaSchema const& schema,
     out << "struct " << exported << schema.name << " {\n"
         << "using View = " << view << ";\n"
         << "using ConstView = " << const_view << ";\n"
-        << "using size_type = std::int32_t;\n";
+        << "using size_type = std::uint32_t;\n";
     if (equivalent_type.has_value()) {
         out << "using equivalent_type = " << native_spelling(equivalent_type->spelling) << ";\n"
             << "auto operator[](size_type const index) const -> equivalent_type { return "
@@ -432,9 +433,11 @@ auto lower_native_soa(SoaSchema const& schema,
         << "auto slice(size_type const offset, size_type const count) const -> ConstView { return "
            "get_const_view(offset, count); }\n"
         << "auto left(size_type const count) -> View { return slice(0, count); }\n"
-        << "auto right(size_type const count) -> View { return slice(num() - count, count); }\n"
+        << "auto right(size_type const count) -> View { ml::native_soa::require(count <= num()); "
+           "return slice(num() - count, count); }\n"
         << "auto left(size_type const count) const -> ConstView { return slice(0, count); }\n"
-        << "auto right(size_type const count) const -> ConstView { return slice(num() - count, "
+        << "auto right(size_type const count) const -> ConstView { ml::native_soa::require(count "
+           "<= num()); return slice(num() - count, "
            "count); }\n";
     if (schema.has_operation(StorageOperation::copy_element)) {
         out << "template <typename Other> void copy_element(size_type const dst_index, Other "

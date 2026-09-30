@@ -8,15 +8,19 @@
 
 namespace ml::soa_storage_detail {
 
-template <typename T, int Dimensions, template <typename> typename Span, auto Require>
+template <typename T,
+          int Dimensions,
+          template <typename> typename Span,
+          auto Require,
+          typename Size = std::uint32_t>
 class VectorView {
     static_assert(Dimensions == 2 || Dimensions == 3);
     static_assert(std::is_arithmetic_v<T> && !std::is_volatile_v<T>);
     using Byte = std::conditional_t<std::is_const_v<T>, std::byte const, std::byte>;
   public:
-    using size_type = std::int32_t;
-    using View = VectorView<std::remove_const_t<T>, Dimensions, Span, Require>;
-    using ConstView = VectorView<std::add_const_t<T>, Dimensions, Span, Require>;
+    using size_type = Size;
+    using View = VectorView<std::remove_const_t<T>, Dimensions, Span, Require, Size>;
+    using ConstView = VectorView<std::add_const_t<T>, Dimensions, Span, Require, Size>;
 
     /* **************************************** */
     // Lifetime
@@ -33,7 +37,7 @@ class VectorView {
     }
     template <typename U>
         requires (std::is_const_v<T> && std::is_same_v<U, std::remove_const_t<T>>)
-    VectorView(VectorView<U, Dimensions, Span, Require> const& other)
+    VectorView(VectorView<U, Dimensions, Span, Require, Size> const& other)
         : data_{other.data_}
         , byte_stride_{other.byte_stride_}
         , count_{other.count_} {}
@@ -97,7 +101,7 @@ class VectorView {
         return slice(count_ - count, count);
     }
   private:
-    template <typename, int, template <typename> typename, auto>
+    template <typename, int, template <typename> typename, auto, typename>
     friend class VectorView;
     auto column(std::size_t index) const -> Span<T> {
         auto* pointer{data_ ? reinterpret_cast<T*>(data_ + index * byte_stride()) : nullptr};

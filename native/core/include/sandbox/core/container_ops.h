@@ -8,10 +8,8 @@
 namespace ml {
 template <typename T, typename Allocator>
 void remove_at_swap(std::vector<T, Allocator>& values,
-                    std::int32_t const index,
-                    std::int32_t const count) {
-    assert(index >= 0);
-    assert(count >= 0);
+                    std::uint32_t const index,
+                    std::uint32_t const count) {
 
     auto const old_size{values.size()};
     auto const index_offset{static_cast<std::size_t>(index)};

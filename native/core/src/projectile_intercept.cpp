@@ -14,7 +14,7 @@ auto dot_product(ml::Vector3f const lhs, ml::Vector3f const rhs) noexcept -> flo
     return HMM_DotV3(lhs, rhs);
 }
 
-auto at(ml::Vector3fSoAConstView const values, std::int32_t const index) noexcept -> ml::Vector3f {
+auto at(ml::Vector3fSoAConstView const values, std::uint32_t const index) noexcept -> ml::Vector3f {
     return values[index];
 }
 
@@ -22,7 +22,7 @@ auto validate_batch([[maybe_unused]] float const* const out_intercept_times,
                     ml::Vector3fSoAConstView const shooter_positions,
                     [[maybe_unused]] ml::Vector3fSoAConstView const target_positions,
                     [[maybe_unused]] ml::Vector3fSoAConstView const target_velocities) noexcept
-    -> std::int32_t {
+    -> std::uint32_t {
     auto const count{shooter_positions.num()};
     assert(count == target_positions.num());
     assert(count == target_velocities.num());
@@ -82,7 +82,7 @@ void solve_intercept_times(float* const out_intercept_times,
                            float const projectile_speed) noexcept {
     auto const count{validate_batch(
         out_intercept_times, shooter_positions, target_positions, target_velocities)};
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         out_intercept_times[i] = ml::solve_intercept_time(at(shooter_positions, i),
                                                           at(target_positions, i),
                                                           at(target_velocities, i),
@@ -103,7 +103,7 @@ void solve_intercept_times(float* const out_intercept_times,
     auto const count{validate_batch(
         out_intercept_times, shooter_positions, target_positions, target_velocities)};
 
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         auto const shooter_position{at(shooter_positions, i)};
         auto const target_position{at(target_positions, i)};
         auto const target_velocity{at(target_velocities, i)};

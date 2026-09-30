@@ -194,7 +194,9 @@ auto lower_soa_api(SoaSchema const& schema,
             .add(header_function(FunctionSpec{
                 .name = "operator[]",
                 .return_type = "auto",
-                .parameters = {FunctionParameter{"std::int32_t", "index"}},
+                .parameters = {FunctionParameter{
+                    backend == SoaBackend::standard_library ? "std::uint32_t" : "std::int32_t",
+                    "index"}},
                 .body = {raw("return " + expression + ";")},
                 .qualifiers = {.trailing_return_type = CppType{"equivalent_type"},
                                .is_const = true},

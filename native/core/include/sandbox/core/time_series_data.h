@@ -4,6 +4,7 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <type_traits>
 #include <utility>
@@ -18,7 +19,7 @@ class XYSeriesData {
     using y_type = Y;
     using time_type = x_type;
     using value_type = y_type;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
 
     [[nodiscard]] auto num() const noexcept -> size_type {
         return static_cast<size_type>(times_.size());
@@ -98,7 +99,7 @@ class XYSeriesData {
         return is_empty() ? index_none : num() - 1;
     }
 
-    inline static constexpr size_type index_none{-1};
+    inline static constexpr size_type index_none{std::numeric_limits<size_type>::max()};
   private:
     std::vector<time_type> times_;
     std::vector<value_type> values_;

@@ -2,14 +2,17 @@
 
 #include <cassert>
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <utility>
 
 namespace ml {
 // indices[new_index] is the old row index that belongs at new_index.
 // The indices are restored before returning so one permutation can be applied to every stream.
+// Keep scratch indices signed to mark visited rows with their bitwise complement.
 template <typename T>
 void apply_permutation(std::span<T> const values, std::span<std::int32_t> const indices) {
+    assert(values.size() <= static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()));
     auto const count{static_cast<std::int32_t>(values.size())};
     assert(indices.size() == values.size());
 

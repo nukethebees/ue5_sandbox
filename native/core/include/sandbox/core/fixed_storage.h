@@ -8,12 +8,11 @@
 
 namespace ml {
 // Raw fixed-capacity storage. The owner is responsible for tracking which elements are alive.
-template <typename T, std::int32_t Capacity>
-    requires (Capacity >= 0)
+template <typename T, std::uint32_t Capacity>
 class TFixedStorage {
   public:
     using value_type = T;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
 
     static constexpr size_type capacity_value{Capacity};
 
@@ -64,7 +63,7 @@ class TFixedStorage {
 
     static void check_capacity_index(size_type const index) {
         (void)index;
-        assert(index >= 0);
+
         assert(index < capacity());
     }
 

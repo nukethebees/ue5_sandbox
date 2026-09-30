@@ -12,7 +12,7 @@ namespace ml::native_soa {
 namespace {
 
 struct SyntheticSoa {
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
 
     Vector<std::int32_t> ids;
     Vector<float> values;
@@ -42,7 +42,7 @@ static_assert(!vector_storage_ops::VectorStorageSoa<MissingStorageContract>);
 void expect_aligned(SyntheticSoa const& soa) {
     soa.validate_array_sizes();
     auto const count{soa.num()};
-    for (std::int32_t index{}; index < count; ++index) {
+    for (std::uint32_t index{}; index < count; ++index) {
         auto const offset{static_cast<std::size_t>(index)};
         EXPECT_FLOAT_EQ(soa.values[offset], static_cast<float>(soa.ids[offset] * 10));
     }

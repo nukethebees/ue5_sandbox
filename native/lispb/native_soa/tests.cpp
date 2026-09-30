@@ -109,7 +109,7 @@ struct ApiSource {
     } positions;
     std::array<float, 2> value_columns{11.0f, 13.0f};
     std::array<ApiMask, 2> mask_columns{};
-    auto num() const -> std::int32_t { return 2; }
+    auto num() const -> std::uint32_t { return 2; }
     void validate() const {}
     auto values() const -> std::span<float const> { return value_columns; }
     auto masks() const -> std::span<ApiMask const> { return mask_columns; }
@@ -134,9 +134,9 @@ TEST(NativeSoa, LogicalApiAcceptsIndependentColumnsAndCompactSourcesDuringGrowth
 TEST(NativeSoa, CompactSelfCopyPreservesEveryColumn) {
     struct CopyRange {
         char const* name;
-        std::int32_t source;
-        std::int32_t destination;
-        std::int32_t count;
+        std::uint32_t source;
+        std::uint32_t destination;
+        std::uint32_t count;
         bool single_element{};
     };
     constexpr CopyRange cases[]{
@@ -149,7 +149,7 @@ TEST(NativeSoa, CompactSelfCopyPreservesEveryColumn) {
         {"identical element", 3, 3, 1, true},
         {"empty range", 2, 4, 0},
     };
-    constexpr std::int32_t row_count{8};
+    constexpr std::uint32_t row_count{8};
     for (auto const& range : cases) {
         SCOPED_TRACE(range.name);
         for (bool const sliced : {false, true}) {
@@ -157,10 +157,10 @@ TEST(NativeSoa, CompactSelfCopyPreservesEveryColumn) {
             SingleRows owner;
             owner.set_num(row_count);
             auto const view{owner.get_view()};
-            std::int32_t column_index{};
+            std::uint32_t column_index{};
             view.each_column([&](auto column) {
                 using Element = std::remove_cvref_t<decltype(column[0])>;
-                for (std::int32_t row{}; row < row_count; ++row) {
+                for (std::uint32_t row{}; row < row_count; ++row) {
                     column[row] = static_cast<Element>(column_index * 16 + row);
                 }
                 ++column_index;
@@ -181,7 +181,7 @@ TEST(NativeSoa, CompactSelfCopyPreservesEveryColumn) {
             view.each_column([&](auto const column) {
                 using Element = std::remove_cvref_t<decltype(column[0])>;
                 SCOPED_TRACE(column_index);
-                for (std::int32_t row{}; row < row_count; ++row) {
+                for (std::uint32_t row{}; row < row_count; ++row) {
                     auto const copied{row >= range.destination &&
                                       row < range.destination + range.count};
                     auto const original{copied ? range.source + row - range.destination : row};
@@ -208,7 +208,7 @@ TEST(NativeSoa, LayoutGrowthAndMoves) {
     EXPECT_EQ(owner.num(), 0);
     EXPECT_EQ(owner.capacity(), 0);
     EXPECT_EQ(owner.get_view().bytes().data(), nullptr);
-    for (std::int32_t const count : {1, 3, 17, 63, 64, 65, 127, 128, 129, 4097, 65537}) {
+    for (std::uint32_t const count : {1, 3, 17, 63, 64, 65, 127, 128, 129, 4097, 65537}) {
         auto const previous{owner.num()};
         owner.set_num(count);
         EXPECT_EQ(owner.num(), count);
@@ -222,10 +222,10 @@ TEST(NativeSoa, LayoutGrowthAndMoves) {
         EXPECT_EQ(view.aligned64().back().value, 64);
         EXPECT_EQ(view.aligned256().back().value, 256);
         EXPECT_EQ(view.view_nested().xs().back(), 0.f);
-        for (std::int32_t i{}; i < previous; ++i) {
+        for (std::uint32_t i{}; i < previous; ++i) {
             EXPECT_EQ(view.view_nested().ys()[i], static_cast<float>(i));
         }
-        for (std::int32_t i{}; i < count; ++i) {
+        for (std::uint32_t i{}; i < count; ++i) {
             view.view_nested().ys()[i] = static_cast<float>(i);
         }
         std::uintptr_t previous_end{};
@@ -293,7 +293,7 @@ TEST(NativeSoa, MatchingSchemaAndMutations) {
     });
     EXPECT_EQ(columns, single_columns);
     EXPECT_EQ(row_bytes, single_row_bytes);
-    for (std::int32_t i{}; i < baseline.num(); ++i) {
+    for (std::uint32_t i{}; i < baseline.num(); ++i) {
         a.values[i] = b.values()[i] = i;
     }
     baseline.remove_at_swap(7, 19);
@@ -309,13 +309,13 @@ TEST(NativeSoa, MatchingSchemaAndMutations) {
 }
 
 TEST(NativeSoa, VectorSwapRemovalHandlesEveryBoundaryCase) {
-    auto const check = [](std::int32_t const index,
-                          std::int32_t const count,
+    auto const check = [](std::uint32_t const index,
+                          std::uint32_t const count,
                           std::span<std::int32_t const> const expected) {
         Rows owner;
         owner.set_num(6);
         auto columns{owner.get_view()};
-        for (std::int32_t row{}; row < owner.num(); ++row) {
+        for (std::uint32_t row{}; row < owner.num(); ++row) {
             columns.values[row] = row;
             columns.positions.xs()[row] = static_cast<float>(row);
         }
@@ -324,7 +324,7 @@ TEST(NativeSoa, VectorSwapRemovalHandlesEveryBoundaryCase) {
 
         ASSERT_EQ(owner.num(), static_cast<std::int32_t>(expected.size()));
         columns = owner.get_view();
-        std::int32_t expected_index{};
+        std::uint32_t expected_index{};
         for (auto const expected_value : expected) {
             EXPECT_EQ(columns.values[expected_index], expected_value);
             EXPECT_EQ(columns.positions.xs()[expected_index], static_cast<float>(expected_value));
@@ -348,7 +348,7 @@ TEST(NativeSoa, VectorSwapRemovalHandlesEveryBoundaryCase) {
 
 TEST(NativeSoa, CheckedCapacityArithmetic) {
     using Storage = SingleRows;
-    std::int32_t result{};
+    std::uint32_t result{};
     EXPECT_FALSE(native_soa::try_round_capacity(-1, Storage::max_capacity, result));
     EXPECT_FALSE(native_soa::try_round_capacity(
         std::int64_t{Storage::max_capacity} + 1, Storage::max_capacity, result));
@@ -388,12 +388,12 @@ void check_layout_limits() {
     using namespace single_allocation_layout;
     auto const maximum{Owner::max_capacity};
     EXPECT_EQ(maximum % capacity_granularity, 0);
-    std::int32_t rounded{};
+    std::uint32_t rounded{};
     EXPECT_TRUE(try_round_capacity(maximum, maximum, rounded));
     EXPECT_EQ(rounded, maximum);
     EXPECT_FALSE(try_round_capacity(std::int64_t{maximum} + 1, maximum, rounded));
     EXPECT_FALSE(try_round_capacity(std::numeric_limits<std::int64_t>::max(), maximum, rounded));
-    for (auto const capacity : {0, 64, 128, maximum - 64, maximum}) {
+    for (auto const capacity : {0u, 64u, 128u, maximum - 64, maximum}) {
         std::size_t expected{};
         typename Owner::ConstView{}.each_column([&](auto column) {
             using T = typename decltype(column)::value_type;
@@ -453,7 +453,7 @@ TEST(NativeSoa, VectorViewContracts) {
     EXPECT_EQ(view.right(0).zs().data(), values + 68);
     EXPECT_TRUE(view.right(0).zs().empty());
     EXPECT_DEATH((View{nullptr, 256, 1}), "invalid");
-    EXPECT_DEATH((View{values, 256, -1}), "invalid");
+    EXPECT_DEATH((View{values, 256, std::numeric_limits<std::uint32_t>::max()}), "invalid");
     EXPECT_DEATH((View{values, 257, 4}), "invalid");
     EXPECT_DEATH((View{values, 24, 4}), "invalid");
     EXPECT_DEATH((View{values, std::size_t{1} << 32, 0}), "invalid");
@@ -491,7 +491,7 @@ TEST(NativeSoa, CompactViewsAndBulkAppend) {
     Owner source;
     source.set_num(129);
     auto view{source.get_view()};
-    for (std::int32_t row{}; row < source.num(); ++row) {
+    for (std::uint32_t row{}; row < source.num(); ++row) {
         view.values()[row] = row;
         view.view_positions().xs()[row] = static_cast<float>(row);
     }
@@ -543,7 +543,7 @@ TEST(NativeSoa, BulkAppendPreservesEveryAlignedLeaf) {
 struct IndependentRows {
     std::array<std::int32_t, 65> values_{};
     std::array<float, 65> xs_{}, ys_{}, zs_{};
-    auto num() const -> std::int32_t { return 65; }
+    auto num() const -> std::uint32_t { return 65; }
     void validate() const {}
     auto values() const { return std::span{values_}; }
     auto xs() const { return std::span{xs_}; }
@@ -555,7 +555,7 @@ struct IndependentRows {
 
 TEST(NativeSoa, IndependentColumnsAppendDirectly) {
     IndependentRows source;
-    for (std::int32_t row{}; row < source.num(); ++row) {
+    for (std::uint32_t row{}; row < source.num(); ++row) {
         source.values_[row] = row + 100;
         source.xs_[row] = static_cast<float>(row);
     }
@@ -580,20 +580,21 @@ TEST(NativeSoa, IndependentColumnsAppendDirectly) {
 }
 
 TEST(NativeSoa, DescendingRemovalExhaustiveSubsets) {
-    for (std::int32_t count{}; count <= 10; ++count) {
+    for (std::uint32_t count{}; count <= 10; ++count) {
         for (unsigned mask{}; mask < (1u << count); ++mask) {
             SingleRows owner;
             owner.set_num(count);
             auto view{owner.get_view()};
-            std::vector<std::int32_t> indices;
-            for (auto row{count - 1}; row >= 0; --row) {
+            std::vector<std::uint32_t> indices;
+            for (auto remaining{count}; remaining > 0; --remaining) {
+                auto const row{remaining - 1};
                 view.values()[row] = row;
                 view.view_positions().xs()[row] = static_cast<float>(row);
                 if (mask & (1u << row)) {
                     indices.push_back(row);
                 }
             }
-            auto const final_count{count - static_cast<std::int32_t>(indices.size())};
+            auto const final_count{count - static_cast<std::uint32_t>(indices.size())};
             std::vector<std::int32_t> tail;
             for (auto row{final_count}; row < count; ++row) {
                 if (!(mask & (1u << row))) {
@@ -602,14 +603,14 @@ TEST(NativeSoa, DescendingRemovalExhaustiveSubsets) {
             }
             std::vector<std::int32_t> expected;
             std::size_t next{};
-            for (std::int32_t row{}; row < final_count; ++row) {
+            for (std::uint32_t row{}; row < final_count; ++row) {
                 expected.push_back(mask & (1u << row) ? tail[next++] : row);
             }
             auto const capacity{owner.capacity()};
-            owner.remove_at_swap(std::span<std::int32_t const>{indices});
+            owner.remove_at_swap(std::span<std::uint32_t const>{indices});
             EXPECT_EQ(owner.capacity(), capacity);
             EXPECT_TRUE(std::ranges::equal(owner.get_view().values(), expected));
-            for (std::int32_t row{}; row < final_count; ++row) {
+            for (std::uint32_t row{}; row < final_count; ++row) {
                 EXPECT_EQ(owner.get_view().view_positions().xs()[row],
                           static_cast<float>(expected[row]));
             }
@@ -620,14 +621,14 @@ TEST(NativeSoa, DescendingRemovalExhaustiveSubsets) {
 TEST(NativeSoa, InvalidBulkOperationsFailBeforeMutation) {
     SingleRows owner;
     owner.set_num(3);
-    std::int32_t const ascending[]{0, 1};
-    std::int32_t const duplicate[]{1, 1};
-    std::int32_t const negative[]{-1};
-    std::int32_t const outside[]{3};
-    EXPECT_DEATH(owner.remove_at_swap(std::span<std::int32_t const>{ascending}), "invalid");
-    EXPECT_DEATH(owner.remove_at_swap(std::span<std::int32_t const>{duplicate}), "invalid");
-    EXPECT_DEATH(owner.remove_at_swap(std::span<std::int32_t const>{negative}), "invalid");
-    EXPECT_DEATH(owner.remove_at_swap(std::span<std::int32_t const>{outside}), "invalid");
+    std::uint32_t const ascending[]{0, 1};
+    std::uint32_t const duplicate[]{1, 1};
+    std::uint32_t const negative[]{std::numeric_limits<std::uint32_t>::max()};
+    std::uint32_t const outside[]{3};
+    EXPECT_DEATH(owner.remove_at_swap(std::span<std::uint32_t const>{ascending}), "invalid");
+    EXPECT_DEATH(owner.remove_at_swap(std::span<std::uint32_t const>{duplicate}), "invalid");
+    EXPECT_DEATH(owner.remove_at_swap(std::span<std::uint32_t const>{negative}), "invalid");
+    EXPECT_DEATH(owner.remove_at_swap(std::span<std::uint32_t const>{outside}), "invalid");
     auto stale{owner.get_view()};
     owner.reset();
     EXPECT_DEATH(owner.append_from(stale), "invalid");

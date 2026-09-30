@@ -164,21 +164,23 @@ constexpr auto capacity_block_bound(ColumnLayoutBase const& last) noexcept -> st
     return aligned_end + gaps * per_gap;
 }
 
-constexpr auto maximum_capacity(std::size_t const block_bytes) noexcept -> std::int32_t {
+template <typename Size = std::uint32_t>
+constexpr auto maximum_capacity(std::size_t const block_bytes) noexcept -> Size {
     if (block_bytes == 0) {
         return 0;
     }
     auto const integer_blocks{
-        static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max() / capacity_granularity)};
+        static_cast<std::size_t>(std::numeric_limits<Size>::max() / capacity_granularity)};
     auto const address_blocks{static_cast<std::size_t>(std::numeric_limits<std::ptrdiff_t>::max()) /
                               block_bytes};
     auto const blocks{integer_blocks < address_blocks ? integer_blocks : address_blocks};
-    return static_cast<std::int32_t>(blocks * capacity_granularity);
+    return static_cast<Size>(blocks * capacity_granularity);
 }
 
+template <typename Size>
 constexpr auto try_round_capacity(std::int64_t const required,
-                                  std::int32_t const maximum,
-                                  std::int32_t& result) noexcept -> bool {
+                                  Size const maximum,
+                                  Size& result) noexcept -> bool {
     if (required < 0 || required > maximum) {
         return false;
     }
@@ -187,15 +189,16 @@ constexpr auto try_round_capacity(std::int64_t const required,
     if (rounded > maximum) {
         return false;
     }
-    result = static_cast<std::int32_t>(rounded);
+    result = static_cast<Size>(rounded);
     return true;
 }
 
-constexpr auto try_allocation_bytes(std::int32_t const capacity,
+template <typename Size>
+constexpr auto try_allocation_bytes(Size const capacity,
                                     std::size_t const block_bytes,
                                     std::size_t& result) noexcept -> bool {
     if (capacity < 0 || capacity % capacity_granularity != 0 ||
-        capacity > maximum_capacity(block_bytes)) {
+        capacity > maximum_capacity<Size>(block_bytes)) {
         return false;
     }
     result = static_cast<std::size_t>(capacity / capacity_granularity) * block_bytes;

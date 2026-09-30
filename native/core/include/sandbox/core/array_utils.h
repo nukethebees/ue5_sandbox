@@ -13,8 +13,8 @@ void assign_from(T* const dst_x,
                  T const* const src_x,
                  T const* const src_y,
                  T const* const src_z,
-                 std::int32_t const count) {
-    for (std::int32_t i{}; i < count; ++i) {
+                 std::uint32_t const count) {
+    for (std::uint32_t i{}; i < count; ++i) {
         dst_x[i] = src_x[i];
         dst_y[i] = src_y[i];
         dst_z[i] = src_z[i];
@@ -22,15 +22,15 @@ void assign_from(T* const dst_x,
 }
 
 template <typename T>
-void fill(T* const values, T const value, std::int32_t const count) {
-    for (std::int32_t i{}; i < count; ++i) {
+void fill(T* const values, T const value, std::uint32_t const count) {
+    for (std::uint32_t i{}; i < count; ++i) {
         values[i] = value;
     }
 }
 
 template <typename T>
-void fill(T* const xs, T* const ys, T* const zs, T const value, std::int32_t const count) {
-    for (std::int32_t i{}; i < count; ++i) {
+void fill(T* const xs, T* const ys, T* const zs, T const value, std::uint32_t const count) {
+    for (std::uint32_t i{}; i < count; ++i) {
         xs[i] = value;
         ys[i] = value;
         zs[i] = value;
@@ -40,13 +40,12 @@ void fill(T* const xs, T* const ys, T* const zs, T const value, std::int32_t con
 template <std::floating_point T>
 auto almost_equal(T const* const lhs,
                   T const* const rhs,
-                  std::int32_t const count,
+                  std::uint32_t const count,
                   T const tolerance = static_cast<T>(1e-4)) -> bool {
     assert(lhs != nullptr);
     assert(rhs != nullptr);
-    assert(count >= 0);
 
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         if (!(std::abs(lhs[i] - rhs[i]) <= tolerance)) {
             return false;
         }
@@ -55,5 +54,5 @@ auto almost_equal(T const* const lhs,
     return true;
 }
 
-auto is_sorted_desc(std::int32_t const* values, std::int32_t count) noexcept -> bool;
+auto is_sorted_desc(std::int32_t const* values, std::uint32_t count) noexcept -> bool;
 }

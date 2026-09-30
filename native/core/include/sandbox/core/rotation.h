@@ -78,18 +78,18 @@ void rotate_towards_1d(T const* const current,
                        T const speed,
                        T const delta_time,
                        T* const out,
-                       std::int32_t const count) noexcept {
+                       std::uint32_t const count) noexcept {
     constexpr auto full_turn{AngleTraits<T>::full_turn};
     auto const max_step{speed * delta_time};
 
     if (max_step <= T{0.0}) {
-        for (std::int32_t i{}; i < count; ++i) {
+        for (std::uint32_t i{}; i < count; ++i) {
             out[i] = current[i];
         }
         return;
     }
 
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         auto const delta{
             ml::detail::shortest_signed_angle_delta<AngleTraits, T>(current[i], target[i])};
         auto const clamped_delta{std::clamp(delta, -max_step, max_step)};
@@ -111,16 +111,16 @@ void rotate_towards_1d_normalised(T const* const current,
                                   T const speed,
                                   T const delta_time,
                                   T* const out,
-                                  std::int32_t const count) noexcept {
+                                  std::uint32_t const count) noexcept {
     auto const max_step{speed * delta_time};
     if (max_step <= T{0.0}) {
-        for (std::int32_t i{}; i < count; ++i) {
+        for (std::uint32_t i{}; i < count; ++i) {
             out[i] = current[i];
         }
         return;
     }
 
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         auto const delta{ml::detail::shortest_signed_angle_delta_normalised<AngleTraits, T>(
             current[i], target[i])};
         auto const clamped_delta{std::clamp(delta, -max_step, max_step)};
@@ -134,13 +134,13 @@ void rotate_towards_1d_normalised_in_place(T* const current,
                                            T const* const target,
                                            T const speed,
                                            T const delta_time,
-                                           std::int32_t const count) noexcept {
+                                           std::uint32_t const count) noexcept {
     auto const max_step{speed * delta_time};
     if (max_step <= T{0.0}) {
         return;
     }
 
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         auto const delta{ml::detail::shortest_signed_angle_delta_normalised<AngleTraits, T>(
             current[i], target[i])};
         auto const clamped_delta{std::clamp(delta, -max_step, max_step)};
@@ -157,7 +157,7 @@ void rotate_towards_1d_degrees(T const* const current,
                                T const speed,
                                T const delta_time,
                                T* const out,
-                               std::int32_t const count) noexcept {
+                               std::uint32_t const count) noexcept {
     detail::rotate_towards_1d<DegreesAngleTraits, T>(
         current, target, speed, delta_time, out, count);
 }
@@ -168,7 +168,7 @@ void rotate_towards_1d_radians(T const* const current,
                                T const speed,
                                T const delta_time,
                                T* const out,
-                               std::int32_t const count) noexcept {
+                               std::uint32_t const count) noexcept {
     detail::rotate_towards_1d<RadiansAngleTraits, T>(
         current, target, speed, delta_time, out, count);
 }
@@ -179,7 +179,7 @@ void rotate_towards_1d_degrees_normalised(T const* const current,
                                           T const speed,
                                           T const delta_time,
                                           T* const out,
-                                          std::int32_t const count) noexcept {
+                                          std::uint32_t const count) noexcept {
     detail::rotate_towards_1d_normalised<DegreesAngleTraits, T>(
         current, target, speed, delta_time, out, count);
 }
@@ -190,7 +190,7 @@ void rotate_towards_1d_radians_normalised(T const* const current,
                                           T const speed,
                                           T const delta_time,
                                           T* const out,
-                                          std::int32_t const count) noexcept {
+                                          std::uint32_t const count) noexcept {
     detail::rotate_towards_1d_normalised<RadiansAngleTraits, T>(
         current, target, speed, delta_time, out, count);
 }
@@ -200,7 +200,7 @@ void rotate_towards_1d_degrees_normalised_in_place(T* const current,
                                                    T const* const target,
                                                    T const speed,
                                                    T const delta_time,
-                                                   std::int32_t const count) noexcept {
+                                                   std::uint32_t const count) noexcept {
     detail::rotate_towards_1d_normalised_in_place<DegreesAngleTraits, T>(
         current, target, speed, delta_time, count);
 }
@@ -210,7 +210,7 @@ void rotate_towards_1d_radians_normalised_in_place(T* const current,
                                                    T const* const target,
                                                    T const speed,
                                                    T const delta_time,
-                                                   std::int32_t const count) noexcept {
+                                                   std::uint32_t const count) noexcept {
     detail::rotate_towards_1d_normalised_in_place<RadiansAngleTraits, T>(
         current, target, speed, delta_time, count);
 }
@@ -221,8 +221,8 @@ void compute_desired_yaws_radians(T const* const start_xs,
                                   T const* const end_xs,
                                   T const* const end_ys,
                                   T* const out_yaws_radians,
-                                  std::int32_t const count) noexcept {
-    for (std::int32_t i{}; i < count; ++i) {
+                                  std::uint32_t const count) noexcept {
+    for (std::uint32_t i{}; i < count; ++i) {
         auto const dx{end_xs[i] - start_xs[i]};
         auto const dy{end_ys[i] - start_ys[i]};
         out_yaws_radians[i] = std::atan2(dy, dx);
@@ -230,17 +230,17 @@ void compute_desired_yaws_radians(T const* const start_xs,
 }
 
 extern template void rotate_towards_1d_degrees<float>(
-    float const*, float const*, float, float, float*, std::int32_t) noexcept;
+    float const*, float const*, float, float, float*, std::uint32_t) noexcept;
 extern template void rotate_towards_1d_radians<float>(
-    float const*, float const*, float, float, float*, std::int32_t) noexcept;
+    float const*, float const*, float, float, float*, std::uint32_t) noexcept;
 extern template void rotate_towards_1d_degrees_normalised<float>(
-    float const*, float const*, float, float, float*, std::int32_t) noexcept;
+    float const*, float const*, float, float, float*, std::uint32_t) noexcept;
 extern template void rotate_towards_1d_radians_normalised<float>(
-    float const*, float const*, float, float, float*, std::int32_t) noexcept;
+    float const*, float const*, float, float, float*, std::uint32_t) noexcept;
 extern template void rotate_towards_1d_degrees_normalised_in_place<float>(
-    float*, float const*, float, float, std::int32_t) noexcept;
+    float*, float const*, float, float, std::uint32_t) noexcept;
 extern template void rotate_towards_1d_radians_normalised_in_place<float>(
-    float*, float const*, float, float, std::int32_t) noexcept;
+    float*, float const*, float, float, std::uint32_t) noexcept;
 extern template void compute_desired_yaws_radians<float>(
-    float const*, float const*, float const*, float const*, float*, std::int32_t) noexcept;
+    float const*, float const*, float const*, float const*, float*, std::uint32_t) noexcept;
 }

@@ -8,20 +8,17 @@
 namespace ml::soa_storage_detail {
 
 // Indices describe the original rows in strictly descending order.
-template <typename Require, typename Copy>
-void for_each_removal_run(std::int32_t num,
-                          std::span<std::int32_t const> indices,
-                          Require require,
-                          Copy copy) {
+template <typename Size, typename Require, typename Copy>
+void for_each_removal_run(Size num, std::span<Size const> indices, Require require, Copy copy) {
     require(indices.size() <= static_cast<std::size_t>(num));
     auto previous{num};
     for (auto const index : indices) {
         require(index >= 0 && index < previous);
         previous = index;
     }
-    auto const count{static_cast<std::int32_t>(indices.size())};
+    auto const count{static_cast<Size>(indices.size())};
     auto const final_num{num - count};
-    auto hole{count - 1};
+    auto hole{static_cast<std::ptrdiff_t>(count) - 1};
     auto removed_tail{hole};
     while (removed_tail >= 0 && indices[removed_tail] < final_num) {
         --removed_tail;

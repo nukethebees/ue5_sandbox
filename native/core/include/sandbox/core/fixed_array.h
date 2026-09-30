@@ -13,12 +13,11 @@
 namespace ml {
 // Fixed-capacity, contiguous array with inline storage for up to N elements.
 // Adding beyond capacity is a programming error and triggers a check.
-template <typename T, std::int32_t N>
-    requires (N >= 0)
+template <typename T, std::uint32_t N>
 class FixedArray {
   public:
     using value_type = T;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     using iterator = value_type*;
     using const_iterator = value_type const*;
 
@@ -141,7 +140,6 @@ class FixedArray {
 
     void reserve(size_type const requested_capacity) const {
         (void)requested_capacity;
-        assert(requested_capacity >= 0);
         assert(requested_capacity <= capacity());
     }
 
@@ -179,8 +177,6 @@ class FixedArray {
     void set_num(size_type const new_size)
         requires std::is_default_constructible_v<value_type>
     {
-        assert(new_size >= 0);
-
         if (new_size < size_) {
             destroy_from(new_size);
             return;
@@ -189,7 +185,6 @@ class FixedArray {
         add_defaulted(new_size - size_);
     }
     void set_num_uninitialised(size_type const new_size) {
-        assert(new_size >= 0);
         assert(new_size <= capacity());
 
         if (new_size < size_) {
@@ -210,13 +205,11 @@ class FixedArray {
   private:
     void check_index(size_type const index) const {
         (void)index;
-        assert(index >= 0);
         assert(index < size_);
     }
 
     void check_has_sufficient_capacity(size_type const count) const {
         (void)count;
-        assert(count >= 0);
         assert(count <= capacity() - size_);
     }
 

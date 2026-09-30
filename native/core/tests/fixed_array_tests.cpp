@@ -232,7 +232,7 @@ TEST(NativeCoreFixedArray, SupportsZeroCapacityInitializersAndNativeViews) {
 
     static_assert(ml::FixedArray<std::int32_t, 4>::capacity() == 4);
     static_assert(ml::FixedArray<std::int32_t, 0>::capacity() == 0);
-    static_assert(std::is_same_v<decltype(values.num()), std::int32_t>);
+    static_assert(std::is_same_v<decltype(values.num()), std::uint32_t>);
 
     empty.reserve(0);
     EXPECT_TRUE(empty.is_empty());
@@ -324,7 +324,7 @@ TEST(NativeCoreFixedArray, DestroysRemovedElementsAndReusesStorage) {
     values.reserve(8);
     for (std::int32_t iteration{}; iteration < 64; ++iteration) {
         values.set_num(8);
-        for (std::int32_t index{}; index < values.num(); ++index) {
+        for (std::uint32_t index{}; index < values.num(); ++index) {
             values[index] = iteration + index;
         }
         values.set_num(2);

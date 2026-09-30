@@ -86,7 +86,7 @@ TEST(NativeCoreFrameArray, BorrowsStorageAndHasFixedIdentity) {
     static_assert(!std::is_default_constructible_v<Array>);
     static_assert(!std::is_copy_constructible_v<Array>);
     static_assert(!std::is_move_constructible_v<Array>);
-    static_assert(std::is_same_v<decltype(std::declval<Array const&>().num()), std::int32_t>);
+    static_assert(std::is_same_v<decltype(std::declval<Array const&>().num()), std::uint32_t>);
 
     std::array<std::byte, 1024> backing{};
     std::pmr::monotonic_buffer_resource resource{backing.data(), backing.size()};

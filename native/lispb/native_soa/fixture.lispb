@@ -14,7 +14,7 @@
     :const-view-name DualVectorConstView
     :operations (set-num)
     (member values array float)
-    (function row_count int32 :const true :body #cpp{return num();}cpp#)
+    (function row_count uint32 :const true :body #cpp{return num();}cpp#)
     (view-function first float :body #cpp{return $column(values)[0];}cpp#)
     (mutable-view-function assign void
       (parameter value float)
@@ -76,13 +76,13 @@
     (member xs array float)
     (member ys array float)
     (view-function x_at float
-      (parameter index std::int32_t)
+      (parameter index std::uint32_t)
       :body #cpp{return $column(xs)[index];}cpp#)
     (mutable-view-function shift_x void
       (parameter amount float)
       :body #cpp{auto xs = $column(xs);
 auto const count = num();
-for (std::int32_t i{}; i < count; ++i) { xs[i] += amount; }}cpp#))
+for (std::uint32_t i{}; i < count; ++i) { xs[i] += amount; }}cpp#))
   (struct ApiRows
     :view-name ApiView
     :const-view-name ApiConstView
@@ -100,7 +100,7 @@ for (std::int32_t i{}; i < count; ++i) { xs[i] += amount; }}cpp#))
       :body #cpp{auto values = $column(values);
 float result{};
 auto const count = num();
-for (std::int32_t i{}; i < count; ++i) { result += values[i]; }
+for (std::uint32_t i{}; i < count; ++i) { result += values[i]; }
 return result;}cpp#)
     (view-function first_x float :definition-in-source true
       :body #cpp{return $column(positions.xs)[0];}cpp#)

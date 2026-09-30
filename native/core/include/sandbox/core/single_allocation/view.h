@@ -25,25 +25,27 @@ constexpr auto source_data(Source const& source) noexcept {
     }
 }
 
+template <typename Size>
 struct StorageState {
     std::byte* data_{};
-    std::int32_t num_{};
-    std::int32_t capacity_{};
+    Size num_{};
+    Size capacity_{};
 };
 
 template <typename View>
 consteval auto validate_compact_view() -> bool {
-    static_assert(sizeof(View) == sizeof(StorageState),
+    static_assert(sizeof(View) == sizeof(StorageState<std::uint32_t>),
                   "Compact view must contain only a state pointer, offset, and count.");
     static_assert(std::is_trivially_copyable_v<View>,
                   "Compact view must remain trivially copyable.");
     return true;
 }
 
-template <bool Const, auto Require>
+template <bool Const, auto Require, typename Size = std::uint32_t>
 struct CompactViewState {
-    using size_type = std::int32_t;
-    using State = std::conditional_t<Const, StorageState const, StorageState>;
+    using size_type = Size;
+    using Storage = StorageState<size_type>;
+    using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
     using Element = std::conditional_t<Const, T const, T>;
 
@@ -56,7 +58,7 @@ struct CompactViewState {
     }
     CompactViewState(CompactViewState const&) = default;
     auto operator=(CompactViewState const&) -> CompactViewState& = default;
-    CompactViewState(CompactViewState<false, Require> const& other)
+    CompactViewState(CompactViewState<false, Require, Size> const& other)
         requires Const
         : state_{other.state_}
         , offset_{other.offset_}
@@ -87,7 +89,7 @@ struct CompactViewState {
         return self.slice(self.num() - count, count);
     }
   protected:
-    template <bool, auto>
+    template <bool, auto, typename>
     friend struct CompactViewState;
     auto capacity_blocks() const -> std::size_t {
         return state_ ? static_cast<std::size_t>(state_->capacity_ /

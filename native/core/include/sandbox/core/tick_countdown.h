@@ -77,7 +77,7 @@ class TickCountdownView {
 template <std::signed_integral Counter>
 class TickCountdown {
   public:
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     using counter_type = Counter;
     using View = TickCountdownView<counter_type>;
     using ConstView = TickCountdownView<counter_type const>;
@@ -86,7 +86,6 @@ class TickCountdown {
 
     TickCountdown(size_type const count, counter_type const initial_tick_value)
         : tick_value_{initial_tick_value} {
-        assert(count >= 0);
         assert(initial_tick_value >= 0);
         counters_.resize(static_cast<std::size_t>(count), tick_value_);
     }
@@ -123,13 +122,9 @@ class TickCountdown {
         cleaner_counter_ = 0;
     }
 
-    void reserve(size_type const count) {
-        assert(count >= 0);
-        counters_.reserve(static_cast<std::size_t>(count));
-    }
+    void reserve(size_type const count) { counters_.reserve(static_cast<std::size_t>(count)); }
 
     void add_zeroed(size_type const count) {
-        assert(count >= 0);
         counters_.resize(counters_.size() + static_cast<std::size_t>(count));
     }
 
@@ -141,10 +136,7 @@ class TickCountdown {
         ml::remove_at_swap(counters_, index, count);
     }
 
-    void set_num(size_type const count) {
-        assert(count >= 0);
-        counters_.resize(static_cast<std::size_t>(count));
-    }
+    void set_num(size_type const count) { counters_.resize(static_cast<std::size_t>(count)); }
 
     void copy_element(size_type const destination,
                       TickCountdown const& source,
@@ -179,7 +171,6 @@ class TickCountdown {
     void zero_counter(size_type const index) noexcept { get_view().zero_counter(to_index(index)); }
 
     void zero_last(size_type const count) noexcept {
-        assert(count >= 0);
         assert(static_cast<std::size_t>(count) <= counters_.size());
 
         auto const first{counters_.size() - static_cast<std::size_t>(count)};
@@ -201,7 +192,6 @@ class TickCountdown {
     [[nodiscard]] auto get_view() const noexcept -> ConstView { return {counters(), tick_value_}; }
   private:
     [[nodiscard]] auto to_index(size_type const index) const noexcept -> std::size_t {
-        assert(index >= 0);
         assert(static_cast<std::size_t>(index) < counters_.size());
         return static_cast<std::size_t>(index);
     }

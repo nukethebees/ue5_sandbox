@@ -84,7 +84,7 @@ inline void require(bool const condition) {
 }
 
 template <typename T>
-void copy_n(T* const destination, T const* const source, std::int32_t const count) noexcept {
+void copy_n(T* const destination, T const* const source, std::uint32_t const count) noexcept {
     if (count == 0) {
         return;
     }
@@ -92,7 +92,7 @@ void copy_n(T* const destination, T const* const source, std::int32_t const coun
 }
 
 template <typename T>
-void move_n(T* const destination, T const* const source, std::int32_t const count) noexcept {
+void move_n(T* const destination, T const* const source, std::uint32_t const count) noexcept {
     if (count == 0) {
         return;
     }
@@ -100,24 +100,24 @@ void move_n(T* const destination, T const* const source, std::int32_t const coun
 }
 
 template <typename T>
-void default_construct_n(T* const destination, std::int32_t const count) {
+void default_construct_n(T* const destination, std::uint32_t const count) {
     std::uninitialized_value_construct_n(destination, count);
 }
 
-using soa_storage_detail::StorageState;
+using StorageState = soa_storage_detail::StorageState<std::uint32_t>;
 template <bool Const>
 using CompactViewState = soa_storage_detail::CompactViewState<Const, require>;
 
 inline auto rounded_capacity(std::int64_t const required, std::size_t const block_bytes)
-    -> std::int32_t {
-    std::int32_t result{};
+    -> std::uint32_t {
+    std::uint32_t result{};
     require(try_round_capacity(required, maximum_capacity(block_bytes), result));
     return result;
 }
 
-inline auto growth_capacity(std::int32_t const required,
-                            std::int32_t const current,
-                            std::size_t const block_bytes) -> std::int32_t {
+inline auto growth_capacity(std::uint32_t const required,
+                            std::uint32_t const current,
+                            std::size_t const block_bytes) -> std::uint32_t {
     auto const maximum{maximum_capacity(block_bytes)};
     require(required > current && required <= maximum);
     auto const geometric{
@@ -129,7 +129,7 @@ inline auto growth_capacity(std::int32_t const required,
     return rounded_capacity(static_cast<std::int64_t>(bounded), block_bytes);
 }
 
-inline auto allocation_bytes(std::int32_t const capacity, std::size_t const block_bytes)
+inline auto allocation_bytes(std::uint32_t const capacity, std::size_t const block_bytes)
     -> std::size_t {
     std::size_t result{};
     require(try_allocation_bytes(capacity, block_bytes, result));
@@ -169,11 +169,11 @@ inline void free(std::byte* data, std::size_t alignment) noexcept {
 // Generated storage supplies the state and typed column operations.
 struct StorageOperations {
     template <typename Self>
-    auto num(this Self const& self) noexcept -> std::int32_t {
+    auto num(this Self const& self) noexcept -> std::uint32_t {
         return self.num_;
     }
     template <typename Self>
-    auto capacity(this Self const& self) noexcept -> std::int32_t {
+    auto capacity(this Self const& self) noexcept -> std::uint32_t {
         return self.capacity_;
     }
     template <typename Self>
@@ -186,7 +186,7 @@ struct StorageOperations {
             static_cast<std::size_t>(self.capacity_ / Self::capacity_granularity));
     }
     template <typename Self>
-    void reserve(this Self& self, std::int32_t const count) {
+    void reserve(this Self& self, std::uint32_t const count) {
         auto const requested{rounded_capacity(count, Self::capacity_block_bound)};
         if (requested > self.capacity_) {
             self.reallocate(requested);
@@ -197,10 +197,10 @@ struct StorageOperations {
         self.num_ = 0;
     }
     template <typename Self>
-    void add_uninitialised(this Self& self, std::int32_t const count) {
+    void add_uninitialised(this Self& self, std::uint32_t const count) {
         // Single-allocation leaves are restricted to implicit-lifetime types. Growth starts their
         // lifetime without initialization; every new element must be written before it is read.
-        require(count >= 0 && count <= Self::max_capacity - self.num_);
+        require(count <= Self::max_capacity - self.num_);
         auto const new_num{self.num_ + count};
         if (new_num > self.capacity_) {
             self.reallocate(growth_capacity(new_num, self.capacity_, Self::capacity_block_bound));
@@ -210,14 +210,13 @@ struct StorageOperations {
     template <typename Self, typename Source>
         requires (Self::template accepts_source<Source>)
     void copy_elements(this Self& self,
-                       std::int32_t const destination,
+                       std::uint32_t const destination,
                        Source const& source,
-                       std::int32_t const offset,
-                       std::int32_t const count) {
+                       std::uint32_t const offset,
+                       std::uint32_t const count) {
         source.validate();
-        require(destination >= 0 && destination <= self.num_ && count >= 0 &&
-                count <= self.num_ - destination && offset >= 0 && offset <= source.num() &&
-                count <= source.num() - offset);
+        require(destination <= self.num_ && count <= self.num_ - destination &&
+                offset <= source.num() && count <= source.num() - offset);
         if (count > 0) {
             self.copy_columns_from(source, offset, destination, count);
         }
@@ -225,27 +224,26 @@ struct StorageOperations {
     template <typename Self, typename Source>
         requires (Self::template accepts_source<Source>)
     void copy_element(this Self& self,
-                      std::int32_t const destination,
+                      std::uint32_t const destination,
                       Source const& source,
-                      std::int32_t const offset) {
+                      std::uint32_t const offset) {
         self.copy_elements(destination, source, offset, 1);
     }
     template <typename Self, typename Source>
         requires (Self::template accepts_source<Source>)
-    auto append_from(this Self& self, Source const& source) -> std::int32_t {
+    auto append_from(this Self& self, Source const& source) -> std::uint32_t {
         return self.append_from(source, 0, source.num());
     }
     template <typename Self, typename Source>
         requires (Self::template accepts_source<Source>)
     auto append_from(this Self& self,
                      Source const& source,
-                     std::int32_t const offset,
-                     std::int32_t const count) -> std::int32_t {
+                     std::uint32_t const offset,
+                     std::uint32_t const count) -> std::uint32_t {
         source.validate();
-        require(offset >= 0 && offset <= source.num() && count >= 0 &&
-                count <= source.num() - offset);
+        require(offset <= source.num() && count <= source.num() - offset);
         auto const first{self.num_};
-        require(count >= 0 && count <= Self::max_capacity - first);
+        require(count <= Self::max_capacity - first);
         if (count == 0) {
             return first;
         }
@@ -258,12 +256,12 @@ struct StorageOperations {
         return first;
     }
     template <typename Self>
-    void remove_at_swap(this Self& self, std::span<std::int32_t const> indices) {
+    void remove_at_swap(this Self& self, std::span<std::uint32_t const> indices) {
         self.swap_remove_indices(indices);
-        self.num_ -= static_cast<std::int32_t>(indices.size());
+        self.num_ -= static_cast<std::uint32_t>(indices.size());
     }
     template <typename Self>
-    void add_defaulted(this Self& self, std::int32_t const count) {
+    void add_defaulted(this Self& self, std::uint32_t const count) {
         auto const first{self.num_};
         self.add_uninitialised(count);
         if (count > 0) {
@@ -271,8 +269,7 @@ struct StorageOperations {
         }
     }
     template <typename Self>
-    void set_num(this Self& self, std::int32_t const count) {
-        require(count >= 0);
+    void set_num(this Self& self, std::uint32_t const count) {
         if (count > self.num_) {
             self.add_defaulted(count - self.num_);
         } else {
@@ -280,8 +277,8 @@ struct StorageOperations {
         }
     }
     template <typename Self>
-    void remove_at_swap(this Self& self, std::int32_t const index, std::int32_t const count) {
-        require(index >= 0 && index <= self.num_ && count >= 0 && count <= self.num_ - index);
+    void remove_at_swap(this Self& self, std::uint32_t const index, std::uint32_t const count) {
+        require(index <= self.num_ && count <= self.num_ - index);
         auto const tail{self.num_ - index - count};
         auto const move_count{std::min(count, tail)};
         if (move_count > 0) {

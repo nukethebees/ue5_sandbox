@@ -18,7 +18,7 @@ auto make_dialect(SoaBackend const backend) -> SingleAllocationDialect {
         return {
             .runtime_namespace = "ml::native_soa::",
             .vector_namespace = "ml::native_soa::",
-            .size_type = "std::int32_t",
+            .size_type = "std::uint32_t",
             .byte_size_type = "std::size_t",
             .alignment_argument_type = "std::uint32_t",
             .span_template = "std::span",

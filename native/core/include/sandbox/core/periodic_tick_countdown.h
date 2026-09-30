@@ -58,7 +58,7 @@ class PeriodicTickCountdownView {
 template <std::signed_integral Counter>
 class PeriodicTickCountdown {
   public:
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     using counter_type = Counter;
     using View = PeriodicTickCountdownView<counter_type>;
     using ConstView = PeriodicTickCountdownView<counter_type const>;
@@ -114,7 +114,6 @@ class PeriodicTickCountdown {
 
     template <std::integral PeriodType>
     void add_started(PeriodType const period, size_type const count) {
-        assert(count >= 0);
         assert(valid_period(period));
         auto const checked_period{static_cast<counter_type>(period)};
         auto const n{static_cast<std::size_t>(count)};
@@ -123,7 +122,6 @@ class PeriodicTickCountdown {
     }
 
     void add_zeroed(counter_type const period, size_type const count) {
-        assert(count >= 0);
         assert(period > 0);
         auto const n{static_cast<std::size_t>(count)};
         remaining_ticks_.insert(remaining_ticks_.end(), n, 0);
@@ -131,7 +129,6 @@ class PeriodicTickCountdown {
     }
 
     void initialise_last(counter_type const period, size_type const count) {
-        assert(count >= 0);
         assert(static_cast<std::size_t>(count) <= remaining_ticks_.size());
         assert(period > 0);
 
@@ -148,14 +145,12 @@ class PeriodicTickCountdown {
     }
 
     void reserve(size_type const count) {
-        assert(count >= 0);
         auto const capacity{static_cast<std::size_t>(count)};
         remaining_ticks_.reserve(capacity);
         periods_.reserve(capacity);
     }
 
     void add_uninitialised(size_type const count) {
-        assert(count >= 0);
         auto const n{static_cast<std::size_t>(count)};
         remaining_ticks_.resize(remaining_ticks_.size() + n);
         periods_.resize(periods_.size() + n);
@@ -164,7 +159,6 @@ class PeriodicTickCountdown {
     void add_defaulted(size_type const count) { add_uninitialised(count); }
 
     void set_num(size_type const count) {
-        assert(count >= 0);
         auto const n{static_cast<std::size_t>(count)};
         remaining_ticks_.resize(n);
         periods_.resize(n);
@@ -183,7 +177,6 @@ class PeriodicTickCountdown {
                        PeriodicTickCountdown const& source,
                        size_type const source_index,
                        size_type const count) {
-        assert(count >= 0);
         for (size_type offset{}; offset < count; ++offset) {
             copy_element(destination + offset, source, source_index + offset);
         }
@@ -217,7 +210,6 @@ class PeriodicTickCountdown {
     }
   private:
     [[nodiscard]] auto to_index(size_type const index) const noexcept -> std::size_t {
-        assert(index >= 0);
         assert(static_cast<std::size_t>(index) < remaining_ticks_.size());
         return static_cast<std::size_t>(index);
     }

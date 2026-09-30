@@ -12,7 +12,7 @@
 
 namespace ml::detail {
 template <std::floating_point T>
-using RotateTowardsNormalisedInPlace = void (*)(T*, T const*, T, T, std::int32_t) noexcept;
+using RotateTowardsNormalisedInPlace = void (*)(T*, T const*, T, T, std::uint32_t) noexcept;
 
 template <std::floating_point T>
 void rotate_towards_1d_normalised_in_place_adapter(

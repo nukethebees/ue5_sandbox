@@ -49,8 +49,8 @@ void add_vector3(T* out_x,
                  T const* rhs_x,
                  T const* rhs_y,
                  T const* rhs_z,
-                 std::int32_t const count) noexcept {
-    for (std::int32_t i{}; i < count; ++i) {
+                 std::uint32_t const count) noexcept {
+    for (std::uint32_t i{}; i < count; ++i) {
         out_x[i] = lhs_x[i] + rhs_x[i];
         out_y[i] = lhs_y[i] + rhs_y[i];
         out_z[i] = lhs_z[i] + rhs_z[i];
@@ -64,8 +64,8 @@ void add_vector3_in_place(T* dst_x,
                           T const* src_x,
                           T const* src_y,
                           T const* src_z,
-                          std::int32_t const count) noexcept {
-    for (std::int32_t i{}; i < count; ++i) {
+                          std::uint32_t const count) noexcept {
+    for (std::uint32_t i{}; i < count; ++i) {
         dst_x[i] += src_x[i];
         dst_y[i] += src_y[i];
         dst_z[i] += src_z[i];
@@ -80,8 +80,8 @@ void add_scaled_in_place(T* dst_x,
                          T const* src_y,
                          T const* src_z,
                          T const scale,
-                         std::int32_t const count) noexcept {
-    for (std::int32_t i{}; i < count; ++i) {
+                         std::uint32_t const count) noexcept {
+    for (std::uint32_t i{}; i < count; ++i) {
         dst_x[i] += src_x[i] * scale;
         dst_y[i] += src_y[i] * scale;
         dst_z[i] += src_z[i] * scale;
@@ -99,8 +99,8 @@ void add_scaled_product_in_place(T* dst_x,
                                  T const* b_y,
                                  T const* b_z,
                                  T const scale,
-                                 std::int32_t const count) noexcept {
-    for (std::int32_t i{}; i < count; ++i) {
+                                 std::uint32_t const count) noexcept {
+    for (std::uint32_t i{}; i < count; ++i) {
         dst_x[i] += a_x[i] * b_x[i] * scale;
         dst_y[i] += a_y[i] * b_y[i] * scale;
         dst_z[i] += a_z[i] * b_z[i] * scale;
@@ -116,8 +116,8 @@ void add_scaled_product_in_place(T* dst_x,
                                  T const* a_z,
                                  T const* b,
                                  T const scale,
-                                 std::int32_t const count) noexcept {
-    for (std::int32_t i{}; i < count; ++i) {
+                                 std::uint32_t const count) noexcept {
+    for (std::uint32_t i{}; i < count; ++i) {
         dst_x[i] += a_x[i] * b[i] * scale;
         dst_y[i] += a_y[i] * b[i] * scale;
         dst_z[i] += a_z[i] * b[i] * scale;
@@ -135,8 +135,8 @@ void subtract_scaled(T* out_x,
                      T const* b_y,
                      T const* b_z,
                      T const scale,
-                     std::int32_t const count) noexcept {
-    for (std::int32_t i{}; i < count; ++i) {
+                     std::uint32_t const count) noexcept {
+    for (std::uint32_t i{}; i < count; ++i) {
         out_x[i] = a_x[i] - b_x[i] * scale;
         out_y[i] = a_y[i] - b_y[i] * scale;
         out_z[i] = a_z[i] - b_z[i] * scale;
@@ -151,7 +151,7 @@ void subtract_scaled_in_place(T* a_x,
                               T const* b_y,
                               T const* b_z,
                               T const scale,
-                              std::int32_t const count) noexcept {
+                              std::uint32_t const count) noexcept {
     subtract_scaled(a_x, a_y, a_z, a_x, a_y, a_z, b_x, b_y, b_z, scale, count);
 }
 
@@ -163,8 +163,8 @@ void multiply_vector3(T* dst_x,
                       T const* src_y,
                       T const* src_z,
                       Scale const scale,
-                      std::int32_t const count) noexcept {
-    for (std::int32_t i{}; i < count; ++i) {
+                      std::uint32_t const count) noexcept {
+    for (std::uint32_t i{}; i < count; ++i) {
         auto const value{[&] {
             if constexpr (requires { scale[i]; }) {
                 return scale[i];
@@ -185,8 +185,8 @@ void multiply_vector3_in_place(T* x,
                                T const* scale_x,
                                T const* scale_y,
                                T const* scale_z,
-                               std::int32_t const count) noexcept {
-    for (std::int32_t i{}; i < count; ++i) {
+                               std::uint32_t const count) noexcept {
+    for (std::uint32_t i{}; i < count; ++i) {
         x[i] *= scale_x[i];
         y[i] *= scale_y[i];
         z[i] *= scale_z[i];
@@ -195,8 +195,8 @@ void multiply_vector3_in_place(T* x,
 
 template <typename T>
 void size_squared_vector(
-    T* out, T const* x, T const* y, T const* z, std::int32_t const count) noexcept {
-    for (std::int32_t i{}; i < count; ++i) {
+    T* out, T const* x, T const* y, T const* z, std::uint32_t const count) noexcept {
+    for (std::uint32_t i{}; i < count; ++i) {
         out[i] = size_squared(x[i], y[i], z[i]);
     }
 }
@@ -209,8 +209,8 @@ void distance_squared_vector(T* out,
                              T const* bx,
                              T const* by,
                              T const* bz,
-                             std::int32_t const count) noexcept {
-    for (std::int32_t i{}; i < count; ++i) {
+                             std::uint32_t const count) noexcept {
+    for (std::uint32_t i{}; i < count; ++i) {
         out[i] = distance_squared(ax[i], ay[i], az[i], bx[i], by[i], bz[i]);
     }
 }
@@ -224,9 +224,9 @@ void distance_and_squared_vector(T* out_distance,
                                  T const* bx,
                                  T const* by,
                                  T const* bz,
-                                 std::int32_t const count) noexcept {
+                                 std::uint32_t const count) noexcept {
     distance_squared_vector(out_squared, ax, ay, az, bx, by, bz, count);
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         out_distance[i] = std::sqrt(out_squared[i]);
     }
 }
@@ -239,8 +239,8 @@ void dot_product_vector(T* out,
                         T const* bx,
                         T const* by,
                         T const* bz,
-                        std::int32_t const count) noexcept {
-    for (std::int32_t i{}; i < count; ++i) {
+                        std::uint32_t const count) noexcept {
+    for (std::uint32_t i{}; i < count; ++i) {
         out[i] = dot_product(ax[i], ay[i], az[i], bx[i], by[i], bz[i]);
     }
 }
@@ -256,9 +256,9 @@ void direction_and_distance(T* out_x,
                             T const* to_x,
                             T const* to_y,
                             T const* to_z,
-                            std::int32_t const count) noexcept {
+                            std::uint32_t const count) noexcept {
     constexpr auto small_number{static_cast<T>(1.0e-8)};
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         auto const dx{to_x[i] - from_x[i]};
         auto const dy{to_y[i] - from_y[i]};
         auto const dz{to_z[i] - from_z[i]};
@@ -290,9 +290,9 @@ void to_rotations(T* pitches,
                   T const* xs,
                   T const* ys,
                   T const* zs,
-                  std::int32_t const count) noexcept {
+                  std::uint32_t const count) noexcept {
     constexpr auto radians_to_degrees{T{180} / std::numbers::pi_v<T>};
-    for (std::int32_t i{}; i < count; ++i) {
+    for (std::uint32_t i{}; i < count; ++i) {
         yaws[i] = std::atan2(ys[i], xs[i]) * radians_to_degrees;
         pitches[i] =
             std::atan2(zs[i], std::sqrt(xs[i] * xs[i] + ys[i] * ys[i])) * radians_to_degrees;

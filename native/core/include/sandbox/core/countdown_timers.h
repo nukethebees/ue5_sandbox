@@ -13,26 +13,23 @@
 namespace ml {
 class CountdownTimers {
   public:
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
 
     void tick(float const dt) noexcept { ml::tick_countdowns(remaining_times(), dt); }
 
     void reset() noexcept { remaining_times_.clear(); }
 
     void reserve(size_type const count) {
-        assert(count >= 0);
         remaining_times_.reserve(static_cast<std::size_t>(count));
     }
 
     void add_uninitialised(size_type const count) {
-        assert(count >= 0);
         remaining_times_.resize(remaining_times_.size() + static_cast<std::size_t>(count));
     }
 
     void add_defaulted(size_type const count) { add_uninitialised(count); }
 
     void set_num(size_type const count) {
-        assert(count >= 0);
         remaining_times_.resize(static_cast<std::size_t>(count));
     }
 
@@ -61,7 +58,6 @@ class CountdownTimers {
                        CountdownTimers const& source,
                        size_type const source_index,
                        size_type const count) {
-        assert(count >= 0);
         for (size_type offset{}; offset < count; ++offset) {
             copy_element(destination + offset, source, source_index + offset);
         }
@@ -126,7 +122,6 @@ class CountdownTimers {
     }
   private:
     [[nodiscard]] auto to_index(size_type const index) const noexcept -> std::size_t {
-        assert(index >= 0);
         assert(static_cast<std::size_t>(index) < remaining_times_.size());
         return static_cast<std::size_t>(index);
     }
@@ -136,7 +131,7 @@ class CountdownTimers {
 
 class PeriodicCountdownTimers {
   public:
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
 
     void tick(float const dt) noexcept { ml::tick_countdowns(remaining_times(), dt); }
 
@@ -173,7 +168,6 @@ class PeriodicCountdownTimers {
     }
 
     void add_started(float const period, size_type const count) {
-        assert(count >= 0);
         assert(period > 0.f);
         auto const n{static_cast<std::size_t>(count)};
         remaining_times_.insert(remaining_times_.end(), n, period);
@@ -192,7 +186,6 @@ class PeriodicCountdownTimers {
     }
 
     void add_zeroed(float const period, size_type const count) {
-        assert(count >= 0);
         assert(period > 0.f);
         auto const n{static_cast<std::size_t>(count)};
         remaining_times_.insert(remaining_times_.end(), n, 0.f);
@@ -215,14 +208,12 @@ class PeriodicCountdownTimers {
     }
 
     void reserve(size_type const count) {
-        assert(count >= 0);
         auto const capacity{static_cast<std::size_t>(count)};
         remaining_times_.reserve(capacity);
         periods_.reserve(capacity);
     }
 
     void add_uninitialised(size_type const count) {
-        assert(count >= 0);
         auto const n{static_cast<std::size_t>(count)};
         remaining_times_.resize(remaining_times_.size() + n);
         periods_.resize(periods_.size() + n);
@@ -231,7 +222,6 @@ class PeriodicCountdownTimers {
     void add_defaulted(size_type const count) { add_uninitialised(count); }
 
     void set_num(size_type const count) {
-        assert(count >= 0);
         auto const n{static_cast<std::size_t>(count)};
         remaining_times_.resize(n);
         periods_.resize(n);
@@ -275,7 +265,6 @@ class PeriodicCountdownTimers {
     }
   private:
     [[nodiscard]] auto to_index(size_type const index) const noexcept -> std::size_t {
-        assert(index >= 0);
         assert(static_cast<std::size_t>(index) < remaining_times_.size());
         return static_cast<std::size_t>(index);
     }

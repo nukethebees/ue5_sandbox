@@ -12,7 +12,7 @@ template <typename T>
     requires std::is_same_v<std::remove_const_t<T>, float>
 struct Vector3SoAView {
     using value_type = T;
-    using size_type = std::int32_t;
+    using size_type = std::uint32_t;
     using View = Vector3SoAView<float>;
     using ConstView = Vector3SoAView<float const>;
     using equivalent_type = Vector3f;
@@ -26,7 +26,6 @@ struct Vector3SoAView {
         , ys_{in_ys}
         , zs_{in_zs}
         , count_{in_count} {
-        assert(count_ >= 0);
         assert(count_ == 0 || (xs_ != nullptr && ys_ != nullptr && zs_ != nullptr));
     }
     Vector3SoAView(std::span<T> const in_xs,
@@ -46,7 +45,7 @@ struct Vector3SoAView {
         , count_{other.count_} {}
 
     auto operator[](size_type const index) const noexcept -> equivalent_type {
-        assert(index >= 0 && index < count_);
+        assert(index < count_);
         return make_vector3f(xs_[index], ys_[index], zs_[index]);
     }
     void set(size_type const index, equivalent_type const value) const noexcept
@@ -57,7 +56,7 @@ struct Vector3SoAView {
     void set(size_type const index, float const x, float const y, float const z) const noexcept
         requires (!std::is_const_v<T>)
     {
-        assert(index >= 0 && index < count_);
+        assert(index < count_);
         xs_[index] = x;
         ys_[index] = y;
         zs_[index] = z;
@@ -78,7 +77,6 @@ struct Vector3SoAView {
         fn(zs_view);
     }
     void validate_array_sizes() const noexcept {
-        assert(count_ >= 0);
         assert(count_ == 0 || (xs_ != nullptr && ys_ != nullptr && zs_ != nullptr));
     }
 
@@ -86,8 +84,7 @@ struct Vector3SoAView {
     auto get_const_view() const noexcept -> ConstView { return *this; }
     auto slice(size_type const offset, size_type const slice_count) const noexcept
         -> Vector3SoAView {
-        assert(offset >= 0 && slice_count >= 0 && offset <= count_ &&
-               slice_count <= count_ - offset);
+        assert(offset <= count_ && slice_count <= count_ - offset);
         return {xs_ == nullptr ? nullptr : xs_ + offset,
                 ys_ == nullptr ? nullptr : ys_ + offset,
                 zs_ == nullptr ? nullptr : zs_ + offset,
@@ -105,6 +102,7 @@ struct Vector3SoAView {
         return slice(0, slice_count);
     }
     auto right(size_type const slice_count) const noexcept -> Vector3SoAView {
+        assert(slice_count <= count_);
         return slice(count_ - slice_count, slice_count);
     }
   private:
