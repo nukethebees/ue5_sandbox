@@ -64,12 +64,11 @@ class AgentIndices {
         }
     }
 
-    [[nodiscard]] auto find(EntityUniqueId const id) const noexcept -> std::int32_t {
+    [[nodiscard]] auto find(EntityUniqueId const id) const noexcept -> std::uint32_t {
         if (!is_entity_identity_offset(id)) {
-            return -1;
+            return invalid_index;
         }
-        auto const index{local_indexes_[id.index()]};
-        return index == invalid_index ? -1 : static_cast<std::int32_t>(index);
+        return local_indexes_[id.index()];
     }
 
     [[nodiscard]] auto group(EntityType const type) const noexcept

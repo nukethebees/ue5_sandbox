@@ -17,7 +17,7 @@ void DamageQueue::prepare(AgentIndices const& indexes, ml::FrameScratch& scratch
     for (std::int32_t i{}; i < count; ++i) {
         auto const id{events_.damaged_entities[i]};
         assert(id.is_valid());
-        if (indexes.find(id) < 0) {
+        if (indexes.find(id) == AgentIndices::invalid_index) {
             continue;
         }
         if (live_count != i) {

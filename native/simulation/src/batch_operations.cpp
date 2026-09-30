@@ -40,7 +40,7 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
         auto const element{static_cast<std::size_t>(event_index)};
         auto const id{damage_events.damaged_entities[element]};
         auto const local_index{indexes.find(id)};
-        assert(local_index >= 0 && static_cast<std::size_t>(local_index) < entity_ids.size());
+        assert(local_index < entity_ids.size());
         assert(entity_ids[local_index] == id);
         if (is_dead(healths.health(local_index))) {
             continue;

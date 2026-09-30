@@ -163,7 +163,7 @@ struct Sim {
     auto get_view(std::int32_t offset, std::int32_t width) -> EntityStorage::View;
     auto get_task_view(Task task) noexcept -> TaskView;
     auto get_const_task_view(Task task) const noexcept -> ConstTaskView;
-    auto find_index(EntityUniqueId fighter) const noexcept -> std::int32_t;
+    auto find_index(EntityUniqueId fighter) const noexcept -> std::uint32_t;
     auto get_task_spans() const -> TaskSpans;
     auto get_task_span(Task task) const -> IndexSpan;
     auto get_task_counts() const -> TaskCounts;

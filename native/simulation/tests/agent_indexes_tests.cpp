@@ -130,16 +130,16 @@ TEST(AgentIndices, ResolvesOwnerRowsAndRejectsUnissuedOrWrongTypeIds) {
     EXPECT_EQ(indexes.find(fighters[0]), 0);
     EXPECT_EQ(indexes.find(fighters[1]), 1);
     EXPECT_EQ(indexes.find(capitals[0]), 0);
-    EXPECT_EQ(indexes.find({}), -1);
+    EXPECT_EQ(indexes.find({}), AgentIndices::invalid_index);
     EXPECT_EQ(indexes.find(EntityUniqueId(entity_identity_offset(EntityType::Fighter, 1),
                                           EntityType::Fighter)),
-              -1);
+              AgentIndices::invalid_index);
     EXPECT_EQ(indexes.find(EntityUniqueId(entity_identity_offset(EntityType::CapitalShip, 2),
                                           EntityType::CapitalShip)),
-              -1);
+              AgentIndices::invalid_index);
     EXPECT_EQ(indexes.find(EntityUniqueId(entity_identity_offset(EntityType::Fighter, 100),
                                           EntityType::Fighter)),
-              -1);
+              AgentIndices::invalid_index);
 }
 
 TEST(AgentIndices, RemovalAndReorderingCannotAliasOldIdentity) {
@@ -163,7 +163,7 @@ TEST(AgentIndices, RemovalAndReorderingCannotAliasOldIdentity) {
     std::array const after{survivor, newborn};
     indexes.bind(EntityType::Fighter, after);
     clock.phase = SimulationPhase::Thinking;
-    EXPECT_EQ(indexes.find(removed), -1);
+    EXPECT_EQ(indexes.find(removed), AgentIndices::invalid_index);
     EXPECT_EQ(indexes.find(survivor), 0);
     EXPECT_EQ(indexes.find(newborn), 1);
 

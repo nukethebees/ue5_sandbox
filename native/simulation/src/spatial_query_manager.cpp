@@ -217,7 +217,7 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 for (auto const id : grid.get_cell_entities({x, y, z})) {
                     auto const local_index{agents.indexes().find(id)};
-                    if (local_index < 0) {
+                    if (local_index == AgentIndices::invalid_index) {
                         continue;
                     }
 

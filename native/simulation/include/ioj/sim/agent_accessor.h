@@ -173,7 +173,7 @@ class AgentAccessor {
     [[nodiscard]] auto read_spatial(EntityUniqueId const id) const
         -> std::optional<AgentSpatialState> {
         auto const index{indexes_.find(id)};
-        if (index < 0) {
+        if (index == AgentIndices::invalid_index) {
             return std::nullopt;
         }
         switch (id.entity_type()) {
@@ -207,7 +207,7 @@ class AgentAccessor {
 
     [[nodiscard]] auto is_alive(EntityUniqueId const id) const noexcept -> bool {
         auto const index{indexes_.find(id)};
-        if (index < 0) {
+        if (index == AgentIndices::invalid_index) {
             return false;
         }
         switch (id.entity_type()) {
@@ -248,7 +248,7 @@ class AgentAccessor {
 
     [[nodiscard]] auto read(EntityUniqueId const id) const -> std::optional<AgentState> {
         auto const index{indexes_.find(id)};
-        if (index < 0) {
+        if (index == AgentIndices::invalid_index) {
             return std::nullopt;
         }
 

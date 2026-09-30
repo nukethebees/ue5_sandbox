@@ -173,7 +173,7 @@ TEST_F(FighterTargetRefresh, DeadTargetIsClearedByInitialRefreshBeforeRemoval) {
     LevelSimTestAccess::set_fighter_target(simulation, fighter, target, 5);
     single_refresh_and_plan();
     kill_target();
-    ASSERT_GE(simulation.get_agent_indexes().find(target), 0);
+    ASSERT_NE(simulation.get_agent_indexes().find(target), AgentIndices::invalid_index);
     ASSERT_FALSE(simulation.get_agent_accessor().read_alive(target));
     LevelSimTestAccess::set_fighter_target(simulation, fighter, target, 5);
     auto const claims{think()};
@@ -186,7 +186,7 @@ TEST_F(FighterTargetRefresh, MissingTargetIsClearedByInitialRefresh) {
     single_refresh_and_plan();
     kill_target();
     LevelSimTestAccess::remove_dead_fighters(simulation);
-    ASSERT_LT(simulation.get_agent_indexes().find(target), 0);
+    ASSERT_EQ(simulation.get_agent_indexes().find(target), AgentIndices::invalid_index);
     LevelSimTestAccess::set_fighter_target(simulation, fighter, target, 5);
     auto const claims{think()};
     expect_cleared_target();

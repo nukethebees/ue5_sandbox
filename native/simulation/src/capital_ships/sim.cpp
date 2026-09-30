@@ -150,7 +150,7 @@ auto Sim::get_num_instances() const noexcept -> std::int32_t {
 }
 auto Sim::is_valid(EntityUniqueId const id) const noexcept -> bool {
     return id.is_valid() && id.entity_type() == EntityType::CapitalShip &&
-           agents_.indexes().find(id) >= 0;
+           agents_.indexes().find(id) != AgentIndices::invalid_index;
 }
 auto Sim::get_fighter_ids(std::int32_t const index) const noexcept
     -> std::span<EntityUniqueId const> {
@@ -163,12 +163,12 @@ auto Sim::get_fighter_ids(IndexSpan const span) const noexcept -> std::span<Enti
 }
 auto Sim::get_team(EntityUniqueId const id) const noexcept -> Team {
     auto const index{agents_.indexes().find(id)};
-    assert(index >= 0);
+    assert(index != AgentIndices::invalid_index);
     return entities.get_const_view().teams()[index];
 }
 auto Sim::get_health(EntityUniqueId const id) const noexcept -> Health {
     auto const index{agents_.indexes().find(id)};
-    assert(index >= 0);
+    assert(index != AgentIndices::invalid_index);
     auto const entity_data{entities.get_const_view()};
     return entity_tables_.health
         .get_const_view(entity_data.health_indices(), entity_data.entity_ids())
@@ -350,10 +350,10 @@ void Sim::refresh_fighter_ids(ml::FrameScratch& scratch) {
     auto const capital_count{entities.num()};
     auto const fighter_count{static_cast<std::int32_t>(ids.size())};
     ml::FrameArray<std::int32_t> counts{&scratch};
-    ml::FrameArray<std::int32_t> owners{&scratch};
+    ml::FrameArray<std::uint32_t> owners{&scratch};
     counts.set_num(capital_count);
     owners.set_num(fighter_count);
-    std::ranges::fill(owners, -1);
+    std::ranges::fill(owners, AgentIndices::invalid_index);
     for (std::int32_t index{}; index < fighter_count; ++index) {
         if (is_dead(healths.health(index))) {
             continue;
@@ -363,7 +363,7 @@ void Sim::refresh_fighter_ids(ml::FrameScratch& scratch) {
             continue;
         }
         auto const owner{agents_.indexes().find(parent)};
-        if (owner >= 0) {
+        if (owner != AgentIndices::invalid_index) {
             owners[index] = owner;
             ++counts[owner];
         }
@@ -379,7 +379,7 @@ void Sim::refresh_fighter_ids(ml::FrameScratch& scratch) {
     }
     fighter_ids.resize(static_cast<std::size_t>(offset));
     for (std::int32_t index{}; index < fighter_count; ++index) {
-        if (owners[index] >= 0) {
+        if (owners[index] != AgentIndices::invalid_index) {
             fighter_ids[counts[owners[index]]++] = ids[index];
         }
     }
@@ -416,7 +416,7 @@ void Sim::queue_fighter_orders() {
             }
 
             auto const fighter_index{agents_.indexes().find(fighter_id)};
-            assert(fighter_index >= 0);
+            assert(fighter_index != AgentIndices::invalid_index);
             auto const target{fighter_targets[fighter_index]};
             if (!agents_.is_alive(target)) {
                 fighter_order_queue.add(fighter_id, FighterOrder{0, 1}, {}, capital_target);
@@ -436,7 +436,7 @@ void Sim::set_target_id(EntityUniqueId const ship_id, EntityUniqueId const targe
     assert(ledger_.is_valid_unique_id(target_id));
     auto const entity_index{agents_.indexes().find(ship_id)};
     auto const entities{this->entities.get_view()};
-    assert(entity_index >= 0 && entity_index < entities.num());
+    assert(entity_index < static_cast<std::uint32_t>(entities.num()));
     assert(entities.entity_ids()[entity_index] == ship_id);
     entities.target_ids()[entity_index] = target_id;
 }

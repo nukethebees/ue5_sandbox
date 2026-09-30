@@ -149,7 +149,7 @@ TEST_F(FighterMembershipRefresh, DeathInvalidatesBeforePhysicalRemoval) {
     auto const revision{simulation.get_fighters().get_membership_revision()};
     damage(fighters[0], 100);
     resolve();
-    ASSERT_GE(simulation.get_agent_indexes().find(fighters[0]), 0);
+    ASSERT_NE(simulation.get_agent_indexes().find(fighters[0]), AgentIndices::invalid_index);
     EXPECT_GT(simulation.get_fighters().get_membership_revision(), revision);
     EXPECT_GT(refresh(), 0u);
     expect_membership();

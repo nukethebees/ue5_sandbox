@@ -522,7 +522,7 @@ void Sim::resolve_damage_events() {
         auto const damaged_id{damage_events.damaged_entities[event_element]};
         assert(damaged_id.is_valid() && damaged_id.entity_type() == EntityType::Fighter);
         auto const fighter_index{agents_.indexes().find(damaged_id)};
-        assert(fighter_index >= 0 && fighter_index < data.num());
+        assert(fighter_index < static_cast<std::uint32_t>(data.num()));
         assert(entity_ids[fighter_index] == damaged_id);
         if (is_dead(healths.health(fighter_index))) {
             continue;
@@ -720,7 +720,8 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
         std::int32_t neighbour_count{};
         for (std::int32_t index{}; index < n_nearby; ++index) {
             auto const local_index{agents_.indexes().find(nearby_fighters[index])};
-            if (local_index >= 0 && is_alive(healths.health(local_index))) {
+            if (local_index != AgentIndices::invalid_index &&
+                is_alive(healths.health(local_index))) {
                 neighbours[neighbour_count++] = {entity_ids[local_index],
                                                  vector_at(locations, local_index)};
             }
@@ -1087,7 +1088,7 @@ auto Sim::get_num_instances() const noexcept -> std::int32_t {
 void Sim::set_parent_id(EntityUniqueId const fighter, EntityUniqueId const parent) {
     assert(fighter.is_valid() && fighter.entity_type() == EntityType::Fighter);
     auto const index{agents_.indexes().find(fighter)};
-    assert(index >= 0);
+    assert(index != AgentIndices::invalid_index);
     auto const data{entity_buffers.current().get_view()};
 
     if (data.parent_ids()[index] == parent) {
@@ -1107,7 +1108,7 @@ auto Sim::get_const_view(std::int32_t const offset, std::int32_t const width) co
     return entity_buffers.current().get_const_view(offset, width);
 }
 auto Sim::has_id(EntityUniqueId const fighter) const -> bool {
-    return find_index(fighter) != -1;
+    return find_index(fighter) != AgentIndices::invalid_index;
 }
 auto Sim::get_target_ids() const noexcept -> std::span<EntityUniqueId const> {
     return entity_buffers.current().get_const_view().target_ids();
@@ -1147,10 +1148,10 @@ auto Sim::get_const_task_view(Task const task) const noexcept -> ConstTaskView {
     auto const span{get_task_span(task)};
     return entity_buffers.current().get_const_view(span.offset, span.count);
 }
-auto Sim::find_index(EntityUniqueId const fighter) const noexcept -> std::int32_t {
+auto Sim::find_index(EntityUniqueId const fighter) const noexcept -> std::uint32_t {
     return fighter.is_valid() && fighter.entity_type() == EntityType::Fighter
              ? agents_.indexes().find(fighter)
-             : -1;
+             : AgentIndices::invalid_index;
 }
 auto Sim::get_task_span(Task const task) const -> IndexSpan {
     return task_spans[std::to_underlying(task)];
@@ -1683,7 +1684,8 @@ void Sim::commit_orders() {
             continue;
         }
         auto const fighter_index{agents_.indexes().find(id)};
-        if (fighter_index < 0 || is_dead(healths.health(fighter_index))) {
+        if (fighter_index == AgentIndices::invalid_index ||
+            is_dead(healths.health(fighter_index))) {
             continue;
         }
 

@@ -252,7 +252,7 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
     EXPECT_EQ(turret_view.changes[0].id, turret_view.changes[1].id);
     EXPECT_EQ(turret_view.death_locations.size(), 1);
     auto const dead_id{turret_view.changes[1].id};
-    EXPECT_EQ(simulation.get_agent_indexes().find(dead_id), -1);
+    EXPECT_EQ(simulation.get_agent_indexes().find(dead_id), AgentIndices::invalid_index);
     EXPECT_FALSE(simulation.get_agent_accessor().read(dead_id));
     EXPECT_FALSE(simulation.get_agent_accessor().read_alive(dead_id));
     EXPECT_EQ(ledger.count_alive(), 1);
@@ -266,7 +266,7 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
 
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 0);
-    EXPECT_EQ(simulation.get_agent_indexes().find(dead_id), -1);
+    EXPECT_EQ(simulation.get_agent_indexes().find(dead_id), AgentIndices::invalid_index);
     EXPECT_FALSE(simulation.get_agent_accessor().read(dead_id));
 }
 
@@ -424,7 +424,7 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         EXPECT_EQ(capital_view.changes.back().kind, EntityFrameChangeKind::RemoveSwap);
         EXPECT_EQ(capital_view.changes.back().id, victim);
         ASSERT_EQ(capital_view.deaths.size(), 1);
-        EXPECT_EQ(simulation.get_agent_indexes().find(victim), -1);
+        EXPECT_EQ(simulation.get_agent_indexes().find(victim), AgentIndices::invalid_index);
         EXPECT_EQ(simulation.get_agent_indexes().find(killer), 0);
         EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 3);
         EXPECT_EQ(simulation.get_mission_manager().get_mission_state(), MissionState::Succeeded);
@@ -437,7 +437,8 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
             auto const orphaned{std::ranges::find(fighter_parents, EntityUniqueId{})};
             ASSERT_NE(orphaned, fighter_parents.end());
             auto const orphaned_index{static_cast<std::size_t>(orphaned - fighter_parents.begin())};
-            EXPECT_GE(simulation.get_agent_indexes().find(fighter_ids[orphaned_index]), 0);
+            EXPECT_NE(simulation.get_agent_indexes().find(fighter_ids[orphaned_index]),
+                      AgentIndices::invalid_index);
         }
     }
 

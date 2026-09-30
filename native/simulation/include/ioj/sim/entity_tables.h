@@ -38,7 +38,7 @@ class EntityComponentIndexBindings {
         auto const row{indexes_.find(owner)};
         // Component compaction runs while every owning entity row is still structurally stable
         // and bound, including retained dead entities such as the player.
-        assert(row >= 0);
+        assert(row != AgentIndices::invalid_index);
         auto const element{static_cast<std::size_t>(row)};
         if (element >= binding.owners.size() || binding.owners[element] != owner) {
             assert(false);
