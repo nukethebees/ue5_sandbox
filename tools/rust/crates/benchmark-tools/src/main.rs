@@ -6,6 +6,7 @@ mod results;
 mod revision;
 mod support;
 #[cfg(test)]
+#[path = "../tests/unit/mod.rs"]
 mod tests;
 
 use support::*;

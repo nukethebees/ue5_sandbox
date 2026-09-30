@@ -308,4 +308,5 @@ fn main() {
 }
 
 #[cfg(test)]
+#[path = "../tests/unit/mod.rs"]
 mod tests;
