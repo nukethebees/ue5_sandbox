@@ -331,10 +331,6 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
 
     auto const replacement_id{simulation.get_read_view().fighters.entities.entity_ids()[0]};
     EXPECT_NE(replacement_id, original_id);
-    stale_orders.add(simulation.get_read_view().capitals.entities.entity_ids()[0],
-                     FighterOrder{1, 0},
-                     FighterTask::Standby,
-                     {});
     stale_orders.add(
         EntityUniqueId(100000, EntityType::Fighter), FighterOrder{1, 0}, FighterTask::Standby, {});
     LevelSimTestAccess::queue_fighter_orders(simulation, stale_orders);

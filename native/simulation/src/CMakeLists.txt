@@ -70,6 +70,7 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/overlap_handler.h
         ../include/ioj/sim/entity_type.h
         ../include/ioj/sim/entity_unique_id.h
+  ../include/ioj/sim/entity_unique_id_checks.h
   ../include/ioj/sim/profiling.h
   ../include/ioj/sim/query_thread_buffer_pool.h
   ../include/ioj/sim/query_thread_buffers.h

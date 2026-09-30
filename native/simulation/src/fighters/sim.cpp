@@ -5,6 +5,7 @@
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/deterministic_bias.h>
 #include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/entity_unique_id_checks.h>
 #include <ioj/sim/fighter_diagnostics.h>
 #include <ioj/sim/fighter_frame_spawn_queue.h>
 #include <ioj/sim/frame_laser_spawn_requests.h>
@@ -1632,6 +1633,8 @@ void Sim::commit_orders() {
     }
 
     auto const orders{order_queue.get_const_view()};
+    assert(check_valid_ids(orders.entity_ids, EntityType::Fighter));
+
     auto const tasks{data.tasks()};
     auto const desired_move_locations{data.view_desired_move_locations()};
     auto const locations{data.view_locations()};
@@ -1666,34 +1669,30 @@ void Sim::commit_orders() {
         }};
 
     for (std::int32_t index{}; index < n_orders; ++index) {
-        auto const order_index{static_cast<std::size_t>(index)};
-        auto const id{orders.entity_ids[order_index]};
-        if (!id.is_valid() || id.entity_type() != EntityType::Fighter) {
-            continue;
-        }
+        auto const id{orders.entity_ids[index]};
         auto const fighter_index{agents_.indexes().find(id)};
         if (fighter_index == AgentIndices::invalid_index ||
             is_dead(healths.health(fighter_index))) {
             continue;
         }
 
-        auto const element{static_cast<std::size_t>(fighter_index)};
-        auto const order{orders.orders[order_index]};
+        auto const order{orders.orders[index]};
         if (order.task()) {
-            auto const old_task{tasks[element]};
-            auto const new_task{orders.tasks[order_index]};
-            tasks[element] = new_task;
+            auto const old_task{tasks[fighter_index]};
+            auto const new_task{orders.tasks[index]};
+            tasks[fighter_index] = new_task;
             auto const initial_tier{new_task == FighterTask::Standby ? NavigationRiskTier::Clear
                                                                      : NavigationRiskTier::Nearby};
-            reset_navigation_state(element, initial_tier, get_navigation_tick_period(initial_tier));
+            reset_navigation_state(
+                fighter_index, initial_tier, get_navigation_tick_period(initial_tier));
             if (old_task != FighterTask::Attack && new_task == FighterTask::Attack) {
                 set_vector(
                     desired_move_locations, fighter_index, vector_at(locations, fighter_index));
-                attack_reposition_countdowns[element] = 0;
+                attack_reposition_countdowns[fighter_index] = 0;
             }
         }
         if (order.target()) {
-            target_ids[element] = orders.targets[order_index];
+            target_ids[fighter_index] = orders.targets[index];
         }
     }
     order_queue.reset();
