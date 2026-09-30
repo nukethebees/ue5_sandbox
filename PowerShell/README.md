@@ -20,7 +20,7 @@ disables Live Coding once if saved Editor settings exist.
 
 `cwt`/`cwb` discovery and completion use read-only Git directly, including linked worktrees.
 `Navigation.ps1` provides `croot`, `cwt`, `cwb`, `cplugin`, and `ctests`. `UnrealBuild.ps1` provides
-`cbuild`, `csetup`, `cplay`, `cprojectfiles`, `integrate-feature`, and `get-jobserver-state`.
+`cbuild`, `csetup`, `cplay`, `integrate-feature`, and `get-jobserver-state`. Generate IDE projects with `agent-task unreal project-files`.
 After the user authorizes a ready feature, invoke `integrate-feature`.
 `integrate-feature` invokes privileged `agent-task integrate`: pinned rebase, cheap Git
 sanity checks, atomic dev promotion, worktree refresh, and feature cleanup. Complete relevant

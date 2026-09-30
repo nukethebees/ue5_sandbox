@@ -20,7 +20,7 @@ operations using the same loop, unrolling, and layout rules as the intrinsic bac
 compiles that source separately for AVX2 and AVX-512; target and lane assertions prevent silent
 fallback. These backends are experimental and do not change production dispatch.
 
-Build `native-core-highway-benchmark-report` and `kernel-highway-benchmark-report` with the
-`native-benchmark` configuration for focused packing and kernel comparisons. JSON results go to
+Build `native-core-highway-benchmark-report` with the `native-benchmark` configuration for packing comparisons.
+Run `agent-task benchmark kernel-report --workload highway` for focused kernel comparisons. JSON results go to
 `.local/benchmarks/highway/`. Compare like-named intrinsic and Highway rows using median real time
 and repetition variability; unsupported Highway targets are reported as skipped.

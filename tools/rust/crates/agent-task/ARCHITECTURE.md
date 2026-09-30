@@ -4,6 +4,13 @@ AgentTask is installed outside `out`, allowing preparation to clear build output
 executable runs. Commands resolve the current worktree and launch subprocesses directly.
 Preparation and central-tool installation share recursive submodule synchronization/update.
 
+Developer operations use explicit command dispatch. CMake retains build prerequisites and writes
+`unreal-paths.json` with resolved editor, project, DDC, and staged-game paths. AgentTask consumes
+those paths and requests existing prerequisite targets; it does not replicate their dependencies.
+Standalone project generation resolves the two supported engine script layouts directly.
+Formatting and tidy policies remain in the checkout. Tidy delegates workers to LLVM's runner,
+and benchmark commands delegate to the revision-local benchmark-tools host executable.
+
 ## Git boundary
 
 Typed Clap commands construct fresh Git arguments without a shell. Pathspecs and messages

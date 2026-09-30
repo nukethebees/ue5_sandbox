@@ -163,7 +163,7 @@ If a new issue invalidates previous validation or requires additional builds/tes
 
 # Formatting
 
-* Format changed C++ files with `cmake --workflow --preset format-code` 
+* Format changed C++ files with `agent-task format --changed`
 * Do not invoke `clang-format` directly for normal repository work
 
 # UI

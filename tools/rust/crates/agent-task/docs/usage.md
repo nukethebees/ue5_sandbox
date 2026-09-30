@@ -29,13 +29,47 @@ submodule synchronization/update, configures `native`, and builds the canonical
 `install-jobserver` target, stopping on failure. It does not repeat the remaining preparation
 steps. See [developer tools](../../../../README.md) for installation locations.
 
-## Formatting and Unreal builds
+## Formatting, presets, and analysis
 
 `agent-task format [--all|--changed|--staged] [--jobs N] [--verbose]` uses the worktree's
 `.code-format.json` and `.clang-format`. The default selects all sources; changed selection
 includes staged, unstaged, and untracked sources. Staged selection rejects files with unstaged
 edits and re-stages only selected files after successful formatting. The default worker count
 is half the logical processors, capped at 16. Diagnostics use repository-relative paths.
+
+`agent-task presets [--check]` invokes the revision-local Python preset generator without
+configuring CMake. Preparation uses the same operation.
+
+Configure `win-x64-clangcl-debug-tidy`, then run:
+
+```powershell
+agent-task tidy --scope simulation --build-dir out/build/win-x64-clangcl-debug/clang-tidy
+```
+
+The default scope is `native`. Named scopes and exclusions live in `.clang-tidy-scopes.json`;
+nested `.clang-tidy` policy still applies. `--jobs N` forwards LLVM's worker count (zero means
+automatic). LLVM_ROOT/bin is exclusive when set; otherwise PATH supplies the tools. Full-native
+and LispB analysis build the existing generated-input targets first. Logs stay in the analysis tree.
+
+## Unreal operations and benchmarks
+
+`agent-task unreal project-files` uses `UE_ROOT`, or `--ue-root <engine-root>`, without a CMake
+configure. `--native-toolchain` defaults to the environment's `IOJ_NATIVE_TOOLCHAIN` or `clang-cl`.
+Pass `--build-dir <configured-tree>` instead to reuse configured engine/toolchain settings.
+
+`agent-task editor [--wait-for-debugger]` builds `editor` then launches with Live Coding disabled.
+It defaults to `out/build/debug-game`; `--build-dir` selects another configured tree.
+`agent-task run-staged` defaults to the configured Development tree and starts its staged executable
+without building or packaging. Its working directory is the staged directory.
+
+`agent-task unreal --help` lists explicit asset commands. They build `editor` and any additional
+material compilation target before invoking existing commandlets. Mesh shapes use
+`agent-task unreal generate-lab-mesh <shape>`. See the [asset commands](../../../../../docs/build-and-test.md#packaging-and-asset-maintenance).
+
+`agent-task benchmark <operation> [options]` builds `benchmark-tools-host` in the native tree
+and delegates all arguments to that revision-local tool. Workloads and reports remain in
+benchmark-tools; see [benchmark operations](../../../../../docs/benchmarks.md).
+These commands do not acquire jobs tickets; callers retain the existing coordination workflow.
 
 CMake invokes `agent-task unreal-build --build-script <path> --target <target> --platform <platform>
 --configuration <configuration> --project <path> --native-toolchain <name>` for Unreal targets.

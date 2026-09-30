@@ -1,13 +1,12 @@
 # Repository scripts
 
 `Scripts/` contains focused developer automation. It is not the primary build interface: use
-`dev.ps1` and CMake workflows for routine setup, builds, tests, and Editor work.
+agent-task for developer operations and CMake for builds and ordinary tests.
 
 ## Script groups
 
-- The focused PowerShell benchmark names are interactive façades only: they build the
-  revision-local `benchmark-tools-host` CMake target and forward their arguments. Benchmark execution,
-  validation and filesystem work live in `benchmark-tools` under `tools/rust/`.
+- `agent-task benchmark <operation>` builds and invokes revision-local `benchmark-tools`;
+  workload execution and reporting stay in that Rust tool.
 - `plot-*.py`: plotting and scientific presentation only.
 - `test_*.py` files: focused Python script validation support. Repository C++ and shader
   formatting uses centrally installed `agent-task format` from PATH with `.code-format.json` policy.

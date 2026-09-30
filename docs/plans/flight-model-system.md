@@ -625,7 +625,7 @@ Use repository-coordinated workflows and the smallest useful gate at each stage:
 ```powershell
 cmake --build --preset native --target native-simulation-tests
 ctest --preset native-simulation-tests
-cmake --workflow --preset format-code
+agent-task format --changed
 cmake --workflow --preset debug-game-unit-tests
 cmake --workflow --preset debug-game-tests
 cmake --workflow --preset tool-tests
@@ -769,7 +769,7 @@ Skater, Gunship, transitions, and Unreal command routing have their replacement 
 
 ## Final validation record
 
-- `cmake --workflow --preset format-code`: passed.
+- Historical CMake formatting check: passed.
 - `cmake --build --preset native --target native-simulation-tests`: passed.
 - `ctest --preset native-simulation-tests`: 233/233 passed.
 - `cmake --build --preset debug-game --target editor`: passed.
@@ -777,7 +777,7 @@ Skater, Gunship, transitions, and Unreal command routing have their replacement 
 - `cmake --workflow --preset debug-game-tests`: 40/40 passed.
 - `cmake --workflow --preset tool-tests`: passed; all reported C# tool projects passed (280
   tests).
-- `generate-scripted-level-assets`: passed and produced the intended input/controller assets.
+- Historical scripted-level asset generation: passed and produced the intended input/controller assets.
 
 ## Post-launch corrections
 

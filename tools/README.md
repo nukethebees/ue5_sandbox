@@ -31,8 +31,8 @@ After preparation, `agent-task install-central-tools` configures native and inst
 
 `agent-task format [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` reads formatting roots,
 extensions, and exclusions from the current checkout's `.code-format.json`. Styling stays in
-`.clang-format`. CMake formatting and Unreal builds invoke `agent-task` from PATH. Use
-`cmake --workflow --preset format-code` for changed C++ files and CMake's Unreal presets for
+`.clang-format`. Developer operations invoke `agent-task` from PATH. Use
+`agent-task format --changed` for changed C++ files and `agent-task unreal` for
 builds; `agent-task unreal-build` supplies the small build-script invocation boundary.
 
 CMake builds revision-local tools privately in each configuration's output directory:
@@ -40,7 +40,7 @@ CMake builds revision-local tools privately in each configuration's output direc
 - `game-package-tools`: exact package and asset expectations.
 - `native-binary-tools`: native object and mimalloc symbol-prefix integration.
 - `benchmark-tools`: revision-specific presets, executable locations, scenarios, and baselines.
-  PowerShell benchmark commands build `benchmark-tools-host` through CMake on demand.
+  `agent-task benchmark` builds `benchmark-tools-host` through CMake on demand.
 
 All three are Rust crates built under `out/build/<configuration>/rust-tools/release/`.
 They launch domain subprocesses directly. The caller manages jobs-board admission and cancellation;

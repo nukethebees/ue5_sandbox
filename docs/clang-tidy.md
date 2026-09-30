@@ -13,8 +13,8 @@ The `LLVM_ROOT` environment variable selects `bin/clang-cl.exe`, `bin/clang-tidy
 from one installation; native archiving and symbol audits also select that root's `llvm-lib`,
 `llvm-nm` and `llvm-readobj`. Set it before configuring; it is not a CMake cache option.
 When unset, normal PATH discovery applies. An incomplete explicit root fails lookup.
-CMake captures this selection and forwards it to child tests and `agent-task format`; standalone formatting uses the
-`LLVM_ROOT` environment variable for the matching clang-format.
+CMake captures this selection for its tests. Standalone tidy and formatting use the current
+`LLVM_ROOT` environment variable or PATH.
 
 By default, tidy uses the selected executable directly. The optional machine installation can
 contain the C++23 IOJ checks statically linked into `clang-tidy.exe`. Configure reports whether
@@ -30,25 +30,26 @@ Agents doing unrelated work must use the available tool rather than locate, clon
 Run the scope affected by your change:
 
 ```powershell
-cmake --workflow --preset clang-tidy-core
-cmake --workflow --preset clang-tidy-simulation
+cmake --preset win-x64-clangcl-debug-tidy
+agent-task tidy --scope core --build-dir out/build/win-x64-clangcl-debug/clang-tidy
+agent-task tidy --scope simulation --build-dir out/build/win-x64-clangcl-debug/clang-tidy
 ```
 
 Run multiple scopes sequentially when a change crosses subsystem boundaries. For shared-header
 changes, include consuming subsystems as appropriate; scopes select translation units by directory
 and do not automatically discover dependents or inspect Git changes.
 
-| Preset | Native directories |
+| Scope | Native directories |
 | --- | --- |
-| `clang-tidy-core` | `core`, `profiling` |
-| `clang-tidy-simulation` | `simulation`, `simulation_benchmark` |
-| `clang-tidy-layout` | `layout` |
-| `clang-tidy-lispb` | `lispb` |
-| `clang-tidy-memory` | `memory` |
-| `clang-tidy-level-authoring` | `level_authoring` |
-| `clang-tidy-s7` | `s7` |
-| `clang-tidy-image` | `image` |
-| `clang-tidy-mesh-gen` | `mesh_gen` |
+| `core` | `core`, `profiling` |
+| `simulation` | `simulation`, `simulation_benchmark` |
+| `layout` | `layout` |
+| `lispb` | `lispb` |
+| `memory` | `memory` |
+| `level-authoring` | `level_authoring` |
+| `s7` | `s7` |
+| `image` | `image` |
+| `mesh-gen` | `mesh_gen` |
 
 Shaders has no eligible C++ translation units and therefore no tidy scope.
 
@@ -57,7 +58,7 @@ selected 306 unique translation units: core 49, simulation 116, layout 26, LispB
 level authoring 5, S7 3, image 5, and mesh generation 3. Counts depend on the configured source
 set; these are selection counts, not runtime measurements.
 
-Every workflow reuses the single `win-x64-clangcl-debug-tidy` configure preset and compilation
+All scopes use the single `win-x64-clangcl-debug-tidy` configure preset and compilation
 database at `out/build/win-x64-clangcl-debug/clang-tidy`. Only source selection and the log name
 vary. This tree disables precompiled headers and C++ dependency scanning so entries can be
 analyzed independently without build-only module-map response files.
@@ -68,29 +69,22 @@ including in a fresh tree. Up-to-date generated outputs are reused on subsequent
 For a comprehensive whole-native audit:
 
 ```powershell
-cmake --workflow --preset win-x64-clangcl-debug-tidy
+agent-task tidy --scope native --build-dir out/build/win-x64-clangcl-debug/clang-tidy
 ```
 
-To rerun a scope against the configured database, use its build preset:
-
-```powershell
-cmake --build --preset clang-tidy-core
-```
-
-The underlying CMake targets are `native-clang-tidy` and `native-clang-tidy-<scope>`.
+Scope and exclusion policy lives in `.clang-tidy-scopes.json`; nested `.clang-tidy` files remain authoritative.
 Findings are not fatal and fixes are not applied automatically; inspect diagnostics before
 considering validation complete. Output is saved in the shared build tree as `clang-tidy.log`
 for full audits or `clang-tidy-<scope>.log` for scoped audits. Each run overwrites only its own log.
 
 The audit uses `run-clang-tidy`'s detected CPU count by default. Choose a different worker count
-while configuring, for example:
+on the command, for example:
 
 ```powershell
-cmake --preset win-x64-clangcl-debug-tidy -D IOJ_CLANG_TIDY_JOBS=4
-cmake --build --preset clang-tidy-core
+agent-task tidy --scope core --jobs 4 --build-dir out/build/win-x64-clangcl-debug/clang-tidy
 ```
 
-Set `IOJ_CLANG_TIDY_JOBS=0` to restore the automatic worker count.
+Use `--jobs 0` to restore the automatic worker count.
 
 The enabled checks and audit compiler arguments are defined in `native/.clang-tidy`.
 

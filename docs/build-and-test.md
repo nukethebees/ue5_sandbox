@@ -1,7 +1,7 @@
 # Build and test
 
-The root CMake project is the supported entry point for Unreal builds, editor tests, commandlets,
-and native targets. Do not invoke UBT, `RunUBT.bat`, or `Build.bat` directly.
+CMake owns native and Unreal builds and ordinary test registration. Agent-task exposes developer
+operations, including editor launches and authored-asset commandlets, and builds their CMake prerequisites.
 
 ## First-time or worktree setup
 
@@ -16,7 +16,7 @@ agent-task prepare-worktree
 The maintainer installs central tools and adds the shared tool-link directory to PATH (see
 [developer tools](../tools/README.md)). Preparation owns submodules, presets, and code generation.
 For Unreal development, `csetup` then builds the DebugGame and Development dependencies.
-CMake invokes `agent-task` from PATH for formatting and Unreal build-script invocation,
+CMake invokes `agent-task unreal-build` from PATH for Unreal build-script invocation,
 and builds revision-local Rust tools on demand. See the
 [PowerShell guide](../PowerShell/README.md) for interactive commands.
 
@@ -57,8 +57,8 @@ Heap and stack bounds, use-after-free, and stack-use-after-scope checks remain e
 While the workaround is active, `ASAN_OPTIONS=detect_stack_use_after_return=1` cannot enable the
 omitted instrumentation.
 
-Project-owned build options and compile definitions use the `IOJ_` prefix. CMake passes
-`IOJ_NATIVE_TOOLCHAIN` to `agent-task unreal-build`, project-file generation, and UAT; Unreal module rules
+Project-owned build options and compile definitions use the `IOJ_` prefix. Build and project-file commands pass
+`IOJ_NATIVE_TOOLCHAIN` to Unreal; Unreal module rules
 read that same environment variable. Set `IOJ_WITH_UNREAL=OFF` for standalone native builds.
 
 ## Development validation
@@ -83,7 +83,7 @@ Agents report missing commands instead of installing them; `--version` allows ma
 Preparation does not install missing tools.
 See the [Rust tooling instructions](../tools/rust/README.md).
 Preparation removes only the worktree-root `out` directory, synchronizes and initializes/updates
-recursive submodules, runs `python cmake/presets/generate.py`, disables Live Coding in existing
+recursive submodules, invokes the same generator as `agent-task presets`, disables Live Coding in existing
 saved Editor settings, then runs the `generate-code` CMake workflow. Each phase streams its output
 and a failure stops preparation immediately.
 It does not perform a broad project/test build. Build only the targets relevant to the task afterward.
@@ -124,16 +124,13 @@ iterator, compiler, and configuration policy.
 
 ### Native tidy scopes
 
-Use `cmake --workflow --preset clang-tidy-simulation` (or `core`, `layout`, `lispb`, `memory`,
-`level-authoring`, `s7`, `image`, `mesh-gen`) for scoped readiness. After its initial configure,
-`cmake --build --preset clang-tidy-simulation` reruns that scope without a broad build.
-Generated prerequisites remain dependencies of the relevant tidy targets. Inspect the resulting
-`clang-tidy-<scope>.log` and resolve every diagnostic; the checks themselves are unchanged.
+Configure `win-x64-clangcl-debug-tidy`, then run `agent-task tidy --scope simulation
+--build-dir out/build/win-x64-clangcl-debug/clang-tidy`. See [clang-tidy](clang-tidy.md) for the other scopes.
 
 Implementation-only changes use their owning scope. Shared headers require consumer analysis:
 follow `target_link_libraries` and actual include users, including header-only consumers. Core,
 memory, profiling, compiler defaults, or uncertain cross-cutting changes require the full
-`cmake --workflow --preset win-x64-clangcl-debug-tidy` sweep. Simulation public headers also
+`agent-task tidy --scope native --build-dir out/build/win-x64-clangcl-debug/clang-tidy` sweep. Simulation public headers also
 require level-authoring; level-authoring headers require simulation; image headers require
 mesh-gen where consumed. Expand further for actual includes, and validate Unreal adapters when
 those public interfaces cross the engine boundary. Directory ownership alone is insufficient.
@@ -208,9 +205,11 @@ target's focused native build/test loop, then rerun this gate once on the final 
 Use `cmake --workflow --preset debug-game-full-tests` only for explicitly requested broad
 validation; it also includes standalone developer-tool tests.
 
-Use `cmake --build --preset debug-game --target run-editor` to build and launch the Editor, or
-`run-editor-debug` to break at startup for an attached debugger. Regenerate Visual Studio project
-files with `cprojectfiles` after module, plugin, target, or build-rule changes.
+After configuring `debug-game`, use `agent-task editor` to build and launch the Editor, or
+`agent-task editor --wait-for-debugger`. Use `--build-dir <configured-tree>` for another configuration.
+Generate Visual Studio projects with `agent-task unreal project-files` using `UE_ROOT`, or
+`--ue-root <engine-root>`. No CMake configure is needed. To reuse configured engine/toolchain
+settings, pass `--build-dir <configured-tree>` instead.
 
 Live Coding is disabled by tracked project configuration. `agent-task prepare-worktree` disables it
 once in saved Editor settings if the file exists; Editor launches also pass an explicit INI override.
@@ -220,7 +219,7 @@ Use the generated `Sandbox` solution with `DebugGame Editor | Win64` or
 `csetup` creates the worktree dependencies required by game and editor targets, including native
 memory, image, material-generation, mesh-generation, CPU-feature, and generated-code artifacts.
 DebugGame setup can import the shared audio assets when `BEE_AUDIO_ROOT` points to the
-`sci-fi_ds_2220mb` pack. Run `cmake --workflow --preset import-game-audio` to invoke that import
+`sci-fi_ds_2220mb` pack. Run `agent-task unreal import-game-audio` to invoke that import
 separately; it succeeds without replacing assets when the source pack is unavailable.
 
 ## Packaging and asset maintenance
@@ -238,8 +237,27 @@ Use the full Shipping package path with:
 pwsh -NoProfile -File PowerShell/PackageGame.ps1
 ```
 
-The `resave-assets` workflow modifies assets, so ensure intended files are writable before running
-it.
+Launch an existing staged game with `agent-task run-staged`; use `--build-dir out/build/shipping`
+for Shipping. This does not cook or package.
+
+Explicit authoring commands build `editor` and any additional material prerequisite first:
+
+- `agent-task unreal resave-assets`
+- `agent-task unreal import-game-audio`
+- `agent-task unreal generate-scripted-level-assets`
+- `agent-task unreal generate-slate-dsl-smoke-asset`
+- `agent-task unreal generate-lab-mesh <box|cylinder|sphere|cone|hex-frame|hex-tile|honeycomb-panel|assemblies>`
+- `agent-task unreal generate-ui-glow-material`
+- `agent-task unreal generate-world-soft-target-assets`
+- `agent-task unreal generate-migrated-materials`
+- `agent-task unreal generate-celestial-analytic-material`
+- `agent-task unreal generate-space-dust-material`
+
+These default to the configured `out/build/debug-game` tree; pass `--build-dir` to select another.
+Material description compilation remains in CMake. Asset commands update authored content.
+Formatting uses `agent-task format --changed`, `--staged`, or `--all`, without configuring CMake.
+Use `agent-task presets` to regenerate presets or `agent-task presets --check` to verify them.
+The `CMake.Presets` test remains in the tool validation workflow and ordinary CMake test inventory.
 
 CTest labels separate taxonomy from integration cost: native tests carry `native` plus their
 existing unit/subsystem labels, while Unreal Automation tests retain their semantic labels.

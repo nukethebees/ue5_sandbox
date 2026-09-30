@@ -1,12 +1,11 @@
 # Benchmarks
 
-benchmark-tools intentionally tracks the checkout. Build its private host output with
-`cmake --build --preset native --target benchmark-tools-host` after configuring `native`.
-The PowerShell entry points perform that focused build automatically; there is no shared staging.
+`agent-task benchmark <operation>` builds and delegates to the checkout’s `benchmark-tools-host`
+output. Workloads, comparisons, parsing, and reports stay revision-local.
 
 Benchmarks are opt-in measurements, not ordinary test runs. Complete build and setup work first,
 then request an exclusive jobs-board ticket. Check until Ready and explicitly start it before
-invoking the repository runner or benchmark CMake target. Immediately end it when the command
+invoking the agent-task benchmark command. Immediately end it when the command
 returns, including failure. Earlier shared tickets finish first; later shared requests wait behind
 the benchmark. Do not start measurements beside an unmanaged Unreal build or Editor session.
 
@@ -17,41 +16,42 @@ Results are disposable local data unless a specific experiment says otherwise; w
 
 | Measurement | Entry point | Notes |
 | --- | --- | --- |
-| Fighter scheduling simulation | `out/build/native/rust-tools/release/benchmark-tools.exe fighter-simulation` | Default 2,000- and 4,000-fighter cases; writes JSON and summary CSV. The PowerShell name remains a façade. |
-| Generic native simulation | `out/build/native/rust-tools/release/benchmark-tools.exe native-simulation` | Rust runner around `native-simulation-benchmark` for an S7 level. |
-| Frame-memory level workload | `out/build/native/rust-tools/release/benchmark-tools.exe frame-memory-level` | Uses the batch benchmark scenario. The PowerShell name remains a façade. |
-| Revision A/B frame-memory comparison | `out/build/native/rust-tools/release/benchmark-tools.exe frame-memory-revision-ab` | Safely creates and evaluates a detached baseline worktree. |
-| Level telemetry | `out/build/native/rust-tools/release/benchmark-tools.exe level-telemetry` | Configures, builds, and runs the telemetry CTest preset. |
-| GPU starfield | `out/build/native/rust-tools/release/benchmark-tools.exe gpu-starfield` | Runs, validates, and writes versioned JSON/CSV/Markdown artifacts. |
-| SandboxISMC | `out/build/native/rust-tools/release/benchmark-tools.exe sandbox-ismc` | Builds and runs the existing PIE benchmark with owned CSV, log, trace, and conditions artifacts. |
-| SandboxISMC revision comparison | `out/build/native/rust-tools/release/benchmark-tools.exe sandbox-ismc-revision-ab` | Builds detached baseline/current candidate inputs, then measures complete interleaved repetitions. |
-| SandboxISMC offline report | `out/build/native/rust-tools/release/benchmark-tools.exe sandbox-ismc-report --run-dir <comparison-run>` | Regenerates reports from captured data, with no builds, processes or worktrees. |
-| Unreal-backed measurements | Benchmark CMake presets and commandlet targets | Presets are in `cmake/presets/*benchmarks.json`. |
+| Fighter scheduling simulation | `agent-task benchmark fighter-simulation` | Default 2,000- and 4,000-fighter cases; writes JSON and summary CSV. |
+| Generic native simulation | `agent-task benchmark native-simulation` | Rust runner around `native-simulation-benchmark` for an S7 level. |
+| Frame-memory level workload | `agent-task benchmark frame-memory-level` | Uses the batch benchmark scenario. |
+| Revision A/B frame-memory comparison | `agent-task benchmark frame-memory-revision-ab` | Safely creates and evaluates a detached baseline worktree. |
+| Level telemetry | `agent-task benchmark level-telemetry` | Builds the editor and runs telemetry automation directly; supports `--samples`. |
+| GPU starfield | `agent-task benchmark gpu-starfield` | Runs, validates, and writes versioned JSON/CSV/Markdown artifacts. |
+| SandboxISMC | `agent-task benchmark sandbox-ismc` | Builds and runs the existing PIE benchmark with owned CSV, log, trace, and conditions artifacts. |
+| SandboxISMC revision comparison | `agent-task benchmark sandbox-ismc-revision-ab` | Builds detached baseline/current candidate inputs, then measures complete interleaved repetitions. |
+| SandboxISMC offline report | `agent-task benchmark sandbox-ismc-report --run-dir <comparison-run>` | Regenerates reports from captured data without engine runs or comparison worktrees. |
+| Kernel reports | `agent-task benchmark kernel-report --workload representative` | Also `vector-layout`, `full`, and `highway`; retains Release builds and Python plots. |
+| Spark rendering | `agent-task benchmark spark` | Duration, capacity, sparks/impact, impact count, warmup are command options. |
+| Commandlet measurements | `agent-task benchmark heatmap` | Also `radar-3d`, `scatter-3d`, `volume-heatmap-3d`, and `entity-overlay`. |
 
 Run the fighter benchmark with:
 
 ```powershell
-pwsh -NoProfile -File Scripts/run-fighter-simulation-benchmark.ps1
+agent-task benchmark fighter-simulation
 ```
 
 Run the initial scaling matrix with:
 
 ```powershell
-pwsh -NoProfile -File Scripts/run-fighter-simulation-benchmark.ps1 `
-    -FighterCaps 1000,2000,4000,8000,16000
+agent-task benchmark fighter-simulation `
+    --fighter-caps 1000,2000,4000,8000,16000
 ```
 
 Run a specific S7 level through the generic level benchmark runner with:
 
 ```powershell
-.\out\build\native\rust-tools\release\benchmark-tools.exe native-simulation `
+agent-task benchmark native-simulation `
     --level .\LevelScripts\BenchmarkFleet_10.scm `
     --seconds 20
 ```
 
 Pass `--fighter-caps`, `--seconds`, `--warmup-seconds`, `--saturation-timeout-seconds`, or
-`--output-dir` to the Rust command to change the workload or destination. The PowerShell façade maps
-its established parameter names. Use `--skip-build` only after confirming the benchmark binary is current.
+`--output-dir` to the Rust command to change the workload or destination. Use `--skip-build` only after confirming the benchmark binary is current.
 
 Fighter caps must be unique positive 32-bit integers. Results are emitted in the requested cap
 order; `results.json` and `summary.csv` retain that order. The generic runner accepts
@@ -73,38 +73,59 @@ remains stable while normal fighter behaviour and collision work remain active.
 For scripts and result plotters, see the [Scripts guide](../Scripts/README.md). For coordination,
 see the [jobs-board workflow](../tools/jobserver/README.md).
 
-PowerShell remains the interactive/report façade, Rust owns benchmark orchestration, and Python
-remains for plotting or scientific analysis. Benchmark tools have no scheduling responsibilities.
+Agent-task is the developer entry point, benchmark-tools owns execution and reporting, and Python
+remains for plotting. Benchmark tools have no scheduling responsibilities.
+
+## Measurement options
+
+`spark` defaults to `--seconds 10 --capacity 50000 --sparks-per-hit 96 --impacts-per-frame 100
+--warmup-frames 60`. `level-telemetry` defaults to seven samples. Both use Development and retain
+their 1,200-second timeout. Pass `--build-dir <configured-tree>` to select an existing build,
+`--skip-build` for prepared binaries, or `--timeout-seconds` to change the limit.
+
+`heatmap`, `radar-3d`, `scatter-3d`, `volume-heatmap-3d`, and `entity-overlay` default to DebugGame.
+Heatmap accepts `--resolutions`, radar `--contact-counts`, and scatter `--point-counts`; each also
+accepts `--warmup`, `--iterations`, and `--output`. Defaults and commandlet output locations are unchanged.
+
+GPU starfield defaults to Development with output in `Saved/Benchmarks/GpuStarfield`. Its former
+matrix is `gpu-starfield --counts 100000,1000000 --resolutions 1920x1080,3840x2160
+--size-multipliers 1,4 --camera-modes stationary --timeout-seconds 3600`. The ordinary timeout is 2,400 seconds.
+
+Kernel reports accept `--repetitions`, `--min-time` (seconds), and `--skip-build`. Representative,
+vector-layout, and full workloads retain seven repetitions, 0.05 seconds per case, and
+`out/benchmarks/kernel/results.json` plus plots. Highway retains three repetitions, 0.02 seconds,
+and `.local/benchmarks/highway/kernels.json`. Build executables and run smoke/plot tests with
+`cmake --workflow --preset kernel-benchmark`; this does not run the report matrix.
 
 ## SandboxISMC experiments
 
-Build the current checkout's orchestrator with the host-tool target above. `UE_ROOT` supplies the
+The agent-task entry point builds the current checkout’s orchestrator. `UE_ROOT` supplies the
 Editor installation, or pass `--editor <Engine/Binaries/Win64/UnrealEditor-Cmd.exe>` explicitly.
 
 ```powershell
-.\out\build\native\rust-tools\release\benchmark-tools.exe sandbox-ismc `
+agent-task benchmark sandbox-ismc `
   --instances 1000 --width 1280 --height 720 --warmup-seconds 1 --seconds 2
 
-.\out\build\native\rust-tools\release\benchmark-tools.exe sandbox-ismc-revision-ab `
+agent-task benchmark sandbox-ismc-revision-ab `
   --baseline <commit-or-ref> --repetitions 2 --width 1280 --height 720 `
   --instances 40000 --mode custom --update-percent 100 --seconds 5
 
 # Prepare both binaries and retain the detached baseline without measuring.
-.\out\build\native\rust-tools\release\benchmark-tools.exe sandbox-ismc-revision-ab `
+agent-task benchmark sandbox-ismc-revision-ab `
   --baseline <commit-or-ref> --prepare-only --label "packed transform"
 
 # A short protocol/comparability smoke, using a prepared clean baseline.
-.\out\build\native\rust-tools\release\benchmark-tools.exe sandbox-ismc-revision-ab `
+agent-task benchmark sandbox-ismc-revision-ab `
   --baseline <commit-or-ref> --baseline-worktree <retained-path> --skip-build --validate-only
 
 # Re-analyse a completed experiment without Unreal or its source worktrees.
-.\out\build\native\rust-tools\release\benchmark-tools.exe sandbox-ismc-report `
+agent-task benchmark sandbox-ismc-report `
   --run-dir .local/benchmarks/sandbox-ismc-revision-ab/<run-id>
 ```
 
 Both commands retain the benchmark actor's workload generation, per-frame sampling and summary
-statistics. The existing `sandbox-ismc-benchmark` CMake/CTest workflow remains available.
-The new commands configure/build its `editor` target before launching the same automation test.
+statistics. The commands configure `development` and build its `editor` target before launching automation directly.
+`--timeout-seconds` defaults to 600 for each ISMC measurement.
 `--skip-build` uses existing binaries; for comparisons it requires `--baseline-worktree <path>`.
 It is the caller's responsibility to ensure those binaries match their recorded sources.
 

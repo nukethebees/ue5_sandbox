@@ -1,7 +1,8 @@
 # AgentTask
 
 The maintainer-installed CLI for worktree preparation, constrained feature Git operations,
-formatting, Unreal build invocation, and jobs-board coordination.
+formatting, analysis invocation, Unreal authoring/launch operations, benchmark delegation,
+and jobs-board coordination. CMake retains compilation, generated artifacts, and ordinary tests.
 
 Start a task from anywhere inside its worktree:
 
