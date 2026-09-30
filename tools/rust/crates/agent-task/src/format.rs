@@ -37,22 +37,28 @@ struct Policy {
 impl Policy {
     fn load(root: &Path) -> Result<Self, String> {
         let path = root.join(".code-format.json");
+
         let json: serde_json::Value = serde_json::from_slice(
             &fs::read(&path).map_err(|e| format!("Cannot read {}: {e}", path.display()))?,
         )
         .map_err(|e| format!("Invalid formatting policy: {e}"))?;
+
         let strings = |name: &str| -> Result<Vec<String>, String> {
             let values: Vec<String> = serde_json::from_value(json[name].clone())
                 .map_err(|e| format!("Invalid formatting policy {name}: {e}"))?;
+
             if values.iter().any(|s| s.trim().is_empty()) {
                 return Err(format!("Formatting policy {name} contains an empty value"));
             }
+
             Ok(values)
         };
+
         let roots = strings("Roots")?
             .into_iter()
             .map(PathBuf::from)
             .collect::<Vec<_>>();
+
         for path in &roots {
             if path.components().any(|c| {
                 matches!(
@@ -65,12 +71,15 @@ impl Policy {
                     path.display()
                 ));
             }
+
             workspace::contained(root, root, path.as_os_str())?;
         }
+
         let roots = roots
             .into_iter()
             .map(|p| p.components().filter(|c| *c != Component::CurDir).collect())
             .collect();
+        
         Ok(Self {
             roots,
             extensions: strings("Extensions")?,
@@ -101,6 +110,7 @@ impl Policy {
         if self.excluded(path) {
             return Ok(());
         }
+
         for entry in fs::read_dir(root.join(path))
             .map_err(|e| format!("Cannot scan {}: {e}", path.display()))?
         {
@@ -114,6 +124,7 @@ impl Policy {
                 files.insert(relative);
             }
         }
+
         Ok(())
     }
 }
@@ -140,19 +151,24 @@ fn format_file(root: &Path, executable: &Path, path: &Path) -> Result<(), String
             String::from_utf8_lossy(&output.stderr).trim()
         ));
     }
+
     let path = root.join(path);
     let contents = fs::read(&path).map_err(|e| e.to_string())?;
+
     if contents.contains(&b'\r') {
         let mut normalized = Vec::with_capacity(contents.len());
         let mut bytes = contents.iter().peekable();
+
         while let Some(&byte) = bytes.next() {
             normalized.push(if byte == b'\r' { b'\n' } else { byte });
             if byte == b'\r' && bytes.peek() == Some(&&b'\n') {
                 bytes.next();
             }
         }
+
         fs::write(path, normalized).map_err(|e| e.to_string())?;
     }
+
     Ok(())
 }
 
@@ -167,8 +183,10 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
             return Ok(code);
         }
     };
+
     workspace::check_environment()?;
     let root = workspace::root(&std::env::current_dir().map_err(|e| e.to_string())?)?;
+
     if args.staged {
         workspace::check_branch_target(
             &workspace::branch(&root)?,
@@ -176,8 +194,10 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
             &workspace::worktrees(&root)?,
         )?;
     }
+
     let policy = Policy::load(&root)?;
     let mut files = BTreeSet::new();
+
     if args.changed || args.staged {
         files.extend(git_paths(
             &root,
@@ -190,6 +210,7 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
                 &["ls-files", "--others", "--exclude-standard", "-z"],
             )?);
         }
+
         files.retain(|p| policy.candidate(&root, p));
     } else {
         for path in &policy.roots {
@@ -200,15 +221,18 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
             policy.scan(&root, path, &mut files)?;
         }
     }
+
     for path in &files {
         workspace::contained(&root, &root, path.as_os_str())?;
     }
+
     if args.staged {
         let unstaged = git_paths(&root, &["diff", "--name-only", "-z"])?;
         let conflicts = files
             .intersection(&unstaged)
             .map(|p| p.display().to_string())
             .collect::<Vec<_>>();
+
         if !conflicts.is_empty() {
             return Err(format!(
                 "Staged files also have unstaged edits; stage or commit those edits first:\n  {}",
@@ -216,10 +240,12 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
             ));
         }
     }
+
     if files.is_empty() {
         println!("No files to format.");
         return Ok(0);
     }
+
     let executable = std::env::var_os("LLVM_ROOT")
         .filter(|s| !s.is_empty())
         .map_or_else(
@@ -232,13 +258,16 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
                 })
             },
         );
+        
     let files = files.into_iter().collect::<Vec<_>>();
     let jobs = (args.jobs as usize).min(files.len());
+
     let results = std::thread::scope(|scope| {
         let workers = (0..jobs)
             .map(|worker| {
                 let (files, root, executable) = (&files, &root, &executable);
                 scope.spawn(move || {
+                    // Distribute files by stride to avoid a shared work queue.
                     (worker..files.len())
                         .step_by(jobs)
                         .map(|index| (index, format_file(root, executable, &files[index])))
@@ -246,12 +275,15 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
                 })
             })
             .collect::<Vec<_>>();
+
         workers
             .into_iter()
             .flat_map(|worker| worker.join().expect("formatter worker panicked"))
             .collect::<Vec<_>>()
     });
+
     let mut failed = false;
+
     for (index, result) in results {
         if args.verbose {
             println!("Formatting: {}", files[index].display());
@@ -261,9 +293,11 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
             failed = true;
         }
     }
+
     if failed {
         return Ok(1);
     }
+
     if args.staged {
         // Use the existing constrained Git path, including its workspace/branch checks.
         let arguments = std::iter::once(OsString::from("add"))
@@ -275,6 +309,7 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
             return Ok(code);
         }
     }
+
     println!("Successfully formatted {} files.", files.len());
     Ok(0)
 }

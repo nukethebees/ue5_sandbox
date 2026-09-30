@@ -30,6 +30,7 @@ fn file(path: &Path, description: &str) -> Result<PathBuf, String> {
             path.display()
         ));
     }
+
     std::path::absolute(path).map_err(|e| format!("Invalid {description} path: {e}"))
 }
 
@@ -44,6 +45,7 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
             return Ok(code);
         }
     };
+
     for value in [
         &args.target,
         &args.platform,
@@ -54,6 +56,7 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
             return Err("Unreal build arguments must not be empty".into());
         }
     }
+
     let script = file(&args.build_script, "build script")?;
     let project = file(&args.project, "project")?;
     let mut project_argument = OsString::from("-Project=");
@@ -75,9 +78,11 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
                 script.display()
             )
         })?;
+
     let code = status.code().unwrap_or(1);
     if !status.success() {
         eprintln!("Unreal build script exited with code {code}");
     }
+
     Ok(code)
 }

@@ -55,6 +55,7 @@ pub fn disable(settings_path: &Path) -> Result<bool, ToolError> {
 }
 
 fn decode(bytes: &[u8]) -> Result<(String, Encoding), ToolError> {
+    // Check UTF-32 first to disambiguate the shared UTF-16 prefix.
     if let Some(contents) = bytes.strip_prefix(&[0xff, 0xfe, 0x00, 0x00]) {
         return decode_utf32(contents, true).map(|contents| (contents, Encoding::Utf32Le));
     }
@@ -94,6 +95,7 @@ fn decode_utf16(bytes: &[u8], little_endian: bool) -> Result<String, ToolError> 
             }
         })
         .collect::<Vec<_>>();
+
     String::from_utf16(&code_units).map_err(|_| ToolError::InvalidEncoding("Invalid UTF-16 input."))
 }
 
@@ -110,6 +112,7 @@ fn decode_utf32(bytes: &[u8], little_endian: bool) -> Result<String, ToolError> 
             } else {
                 u32::from_be_bytes([quad[0], quad[1], quad[2], quad[3]])
             };
+
             char::from_u32(code_point).ok_or(ToolError::InvalidEncoding("Invalid UTF-32 input."))
         })
         .collect()
@@ -199,6 +202,7 @@ fn disable_in_contents(contents: &str) -> Option<String> {
             break;
         }
 
+        // Preserve each line's original terminator.
         if contents[line_end..].starts_with("\r\n") {
             updated_contents.push_str("\r\n");
             line_start = line_end + 2;
@@ -245,6 +249,8 @@ fn disable_enabled_value(line: &str) -> Option<String> {
 
     let value_start = line.len() - after_equals.len();
     let value_end = value_start + value_length;
+
+    // Replace only the value; retain surrounding whitespace and comments.
     let updated_line = format!("{}False{}", &line[..value_start], &line[value_end..]);
     (updated_line != line).then_some(updated_line)
 }
@@ -344,10 +350,13 @@ mod tests {
         let input = "[/Script/LiveCoding.LiveCodingSettings]\r\nbEnabled=True\r\nName=Ångström\r\n";
         let expected =
             "[/Script/LiveCoding.LiveCodingSettings]\r\nbEnabled=False\r\nName=Ångström\r\n";
+
         let mut bytes = vec![0xff, 0xfe];
+
         for unit in input.encode_utf16() {
             bytes.extend_from_slice(&unit.to_le_bytes());
         }
+
         fs::write(&settings_path, bytes).expect("input should be written");
 
         disable(&settings_path).expect("disable should succeed");
@@ -359,6 +368,7 @@ mod tests {
             .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
             .collect::<Vec<_>>();
         assert_eq!(
+
             String::from_utf16(&code_units).expect("output should decode"),
             expected
         );
@@ -390,10 +400,13 @@ mod tests {
         let settings_path = directory.path().join("Settings.ini");
         let input = "[/Script/LiveCoding.LiveCodingSettings]\nbEnabled=True\nName=星\n";
         let expected = "[/Script/LiveCoding.LiveCodingSettings]\nbEnabled=False\nName=星\n";
+
         let mut bytes = vec![0xff, 0xfe, 0x00, 0x00];
+
         for character in input.chars() {
             bytes.extend_from_slice(&u32::from(character).to_le_bytes());
         }
+
         fs::write(&settings_path, bytes).expect("input should be written");
 
         disable(&settings_path).expect("disable should succeed");

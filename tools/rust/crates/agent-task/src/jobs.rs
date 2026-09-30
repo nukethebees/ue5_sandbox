@@ -9,12 +9,14 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
         println!("{USAGE}");
         return Ok(0);
     }
+
     if !["request", "check", "start", "end", "cancel", "status"]
         .iter()
         .any(|name| arguments[0] == *name)
     {
         return Err(USAGE.into());
     }
+
     let local = std::env::var_os("LOCALAPPDATA").ok_or("LOCALAPPDATA is unavailable")?;
     let executable = PathBuf::from(local).join("NukeTheBees/jobserver/bin/jobserver.exe");
     let result = Command::new(&executable)
@@ -26,5 +28,6 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
                 executable.display()
             )
         })?;
+
     Ok(result.code().unwrap_or(1))
 }

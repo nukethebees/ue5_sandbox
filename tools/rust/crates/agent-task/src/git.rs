@@ -25,6 +25,7 @@ fn branch_name(root: &Path, name: &str, worktrees: &[workspace::Worktree]) -> Re
             "Branch names must not start with '-'. Use a local feature branch name.".into(),
         );
     }
+
     query(root, &["check-ref-format", &format!("refs/heads/{name}")])?;
     workspace::check_branch_target(name, root, worktrees)
 }
@@ -42,6 +43,7 @@ impl Operation {
 
     fn arguments(self, root: &Path, cwd: &Path) -> Result<Vec<OsString>, String> {
         let worktrees = workspace::worktrees(root)?;
+
         if !self.read_only() {
             let mut current = workspace::branch(root)?;
             // During rebase HEAD is detached, but recovery still updates the original branch.
@@ -60,11 +62,14 @@ impl Operation {
                     }
                 }
             }
+
             workspace::check_branch_target(&current, root, &worktrees)?;
         }
+
         let mut args: Vec<OsString> = Vec::new();
         // Only these constructed arguments reach Git; the caller's argv is never forwarded.
         let mut push = |s: &str| args.push(s.into());
+
         match self {
             Self::Status { short } => {
                 push("status");
@@ -83,6 +88,7 @@ impl Operation {
                 if a.patch {
                     push("-p");
                 }
+
                 push("--");
                 args.extend(a.paths);
             }
@@ -115,6 +121,7 @@ impl Operation {
                     push("--source");
                     args.push(revision(root, &source, "tree")?);
                 }
+
                 args.push("--".into());
                 args.extend(paths);
             }
@@ -132,6 +139,7 @@ impl Operation {
                     r.revision.as_deref().unwrap_or("HEAD"),
                     "commit",
                 )?);
+
                 args.push("--".into());
             }
             Self::Clean(c) => {
@@ -153,6 +161,7 @@ impl Operation {
                 if cached {
                     push("--cached");
                 }
+
                 push("--");
                 args.extend(paths);
             }
@@ -163,6 +172,7 @@ impl Operation {
                 workspace::contained(root, cwd, &source)?;
                 workspace::contained(root, cwd, &destination)?;
                 push("mv");
+
                 push("--");
                 args.extend([source, destination]);
             }
@@ -190,12 +200,15 @@ impl Operation {
                             query(root, &["rev-parse", "--symbolic-full-name", "@{-1}"])?;
                         name = previous.strip_prefix("refs/heads/").ok_or("Previous checkout is not a local feature branch. Use switch --detach <revision>.")?.to_owned();
                     }
+
                     branch_name(root, &name, &worktrees)?;
                     query(
                         root,
                         &["show-ref", "--verify", &format!("refs/heads/{name}")],
                     )?;
+
                     push("--no-guess");
+
                     push("--");
                     push(&name);
                 }
@@ -205,16 +218,19 @@ impl Operation {
                 if let Some(name) = b.delete.or(b.force_delete.clone()) {
                     branch_name(root, &name, &worktrees)?;
                     push(if b.force_delete.is_some() { "-D" } else { "-d" });
+
                     push("--");
                     push(&name);
                 } else if let Some(name) = b.rename {
                     branch_name(root, &name, &worktrees)?;
                     push("-m");
+
                     push("--");
                     push(&name);
                 } else if let Some(name) = b.name {
                     branch_name(root, &name, &worktrees)?;
                     push("--no-track");
+
                     push("--");
                     push(&name);
                     if let Some(start) = b.start {
@@ -299,10 +315,12 @@ impl Operation {
                         if !ignored.success() {
                             return Err("The managed worktree destination must be ignored by the repository's .local/ policy before creating a worktree. Ask the maintainer to restore that policy.".into());
                         }
+
                         push("add");
                         push("--no-track");
                         push("-b");
                         push(&branch);
+
                         push("--");
                         args.push(path.into_os_string());
                         args.push(revision(
@@ -325,13 +343,16 @@ impl Operation {
                         if registered.path != workspace::resolved(&destination)? {
                             return Err("Removal is limited to AgentTask-owned worktrees beneath this workspace's .local/worktrees/. Ask the maintainer to manage other worktrees.".into());
                         }
+
                         push("remove");
+
                         push("--");
                         args.push(destination.into_os_string());
                     }
                 }
             }
         }
+
         Ok(args)
     }
 }
@@ -346,10 +367,12 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
             return Ok(error.exit_code());
         }
     };
+
     workspace::check_environment()?;
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     let root = workspace::root(&cwd)?;
     let args = cli.operation.arguments(&root, &cwd)?;
+
     Command::new("git")
         .args(args)
         .status()

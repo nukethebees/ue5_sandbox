@@ -4,12 +4,19 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 mod format;
+
 mod git;
+
 mod git_cli;
+
 mod integrate;
+
 mod jobs;
+
 mod live_coding;
+
 mod unreal_build;
+
 mod workspace;
 
 const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  format [options]      Format sources using revision-local policy\n  unreal-build [options] Invoke the Unreal build script\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  jobs <command>         Cooperative jobs board (agent-task jobs --help)\n  git <command>          Run supported feature Git operations (agent-task git --help)\n  integrate [--keep-branch]  Privileged dev transaction; use authorized integrate-feature";
@@ -42,6 +49,7 @@ fn run(root: &Path, program: &str, arguments: &[&str]) -> Result<(), String> {
     if !status.success() {
         return Err(format!("{program} failed with {status}"));
     }
+
     Ok(())
 }
 
@@ -102,6 +110,7 @@ fn install_central_tools() -> Result<(), String> {
 
 fn main() -> ExitCode {
     let arguments = std::env::args_os().skip(1).collect::<Vec<_>>();
+
     if arguments
         .first()
         .is_some_and(|arg| arg == "format" || arg == "unreal-build")
@@ -119,6 +128,7 @@ fn main() -> ExitCode {
             }
         }
     }
+
     if arguments.first().is_some_and(|arg| arg == "jobs") {
         return match jobs::run(&arguments[1..]) {
             Ok(code) => ExitCode::from(code as u8),
@@ -128,6 +138,7 @@ fn main() -> ExitCode {
             }
         };
     }
+
     if arguments.first().is_some_and(|arg| arg == "git") {
         match git::run(&arguments[1..]) {
             Ok(code) => std::process::exit(code),
@@ -137,6 +148,7 @@ fn main() -> ExitCode {
             }
         }
     }
+
     if arguments.first().is_some_and(|arg| arg == "integrate") {
         return match integrate::run(&arguments[1..]) {
             Ok(()) => ExitCode::SUCCESS,
@@ -146,14 +158,17 @@ fn main() -> ExitCode {
             }
         };
     }
+
     if arguments.len() == 1 && arguments[0] == "--version" {
         println!("agent-task {}", env!("CARGO_PKG_VERSION"));
         return ExitCode::SUCCESS;
     }
+
     if arguments.len() == 1 && (arguments[0] == "--help" || arguments[0] == "-h") {
         println!("{USAGE}");
         return ExitCode::SUCCESS;
     }
+
     if arguments.len() != 1 {
         eprintln!("{USAGE}");
         return ExitCode::from(2);

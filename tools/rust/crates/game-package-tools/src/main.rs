@@ -12,6 +12,7 @@ const MAPS: [&str; 2] = [
     "/SpaceGame/Levels/MainMenu",
     "/SpaceGame/Levels/GameRuntime",
 ];
+
 const ASSET_DIRECTORIES: [&str; 5] = [
     "Plugins/SpaceGame/Content/UI",
     "Plugins/SpaceGame/Content/Input",
@@ -42,6 +43,7 @@ struct Request {
 
 fn files(directory: &Path, extension: &str, recursive: bool) -> Result<Vec<PathBuf>> {
     let mut result = Vec::new();
+
     for entry in
         fs::read_dir(directory).map_err(|error| format!("{}: {error}", directory.display()))?
     {
@@ -56,6 +58,7 @@ fn files(directory: &Path, extension: &str, recursive: bool) -> Result<Vec<PathB
             result.push(path);
         }
     }
+
     result.sort();
     Ok(result)
 }
@@ -75,14 +78,17 @@ fn unreal_path(project: &Path, asset: &Path) -> Result<String> {
                 asset.display()
             )
         })?;
+
     if asset.extension().is_none() {
         return Err(format!("Asset has no extension: {}", asset.display()).into());
     }
+
     let relative = asset
         .strip_prefix(content)?
         .with_extension("")
         .to_string_lossy()
         .replace('\\', "/");
+
     let root = if content
         .to_string_lossy()
         .eq_ignore_ascii_case(&project.join("Content").to_string_lossy())
@@ -106,6 +112,7 @@ fn unreal_path(project: &Path, asset: &Path) -> Result<String> {
         .to_string_lossy()
         .into_owned()
     };
+
     Ok(format!("/{root}/{relative}"))
 }
 
@@ -117,6 +124,7 @@ fn staged_path(package: &str) -> Result<String> {
             !root.trim().is_empty() && !asset.trim().is_empty() && !asset.starts_with('/')
         })
         .ok_or_else(|| format!("Invalid Unreal package path: {package}"))?;
+
     Ok(if root == "Game" {
         format!("../../../Sandbox/Content/{asset}")
     } else {
@@ -138,12 +146,14 @@ fn require_package(inventory: &str, package: &str) -> Result<()> {
             format!("Required Unreal package is missing from the containers: {package}").into(),
         );
     }
+
     Ok(())
 }
 
 fn verify_inventory(project: &Path, text: &str) -> Result<usize> {
     let inventory = text.replace('\\', "/").to_lowercase();
     let scripts = files(&project.join("LevelScripts"), "scm", true)?;
+
     for script in &scripts {
         let relative = script
             .strip_prefix(project)?
@@ -155,9 +165,11 @@ fn verify_inventory(project: &Path, text: &str) -> Result<usize> {
             );
         }
     }
+
     for package in MAPS.into_iter().chain(["/Game/UI/DA_ui_data"]) {
         require_package(&inventory, package)?;
     }
+
     for directory in ["Content", "Plugins"] {
         for map in files(&project.join(directory), "umap", true)? {
             let package = unreal_path(project, &map)?;
@@ -166,16 +178,19 @@ fn verify_inventory(project: &Path, text: &str) -> Result<usize> {
             }
         }
     }
+
     let audio = project.join("Plugins/SpaceGame/Content/Audio/Generated");
     let mut directories: Vec<_> = ASSET_DIRECTORIES.iter().map(|s| project.join(s)).collect();
     if audio.is_dir() {
         directories.push(audio);
     }
+
     for directory in directories {
         for asset in files(&directory, "uasset", true)? {
             require_package(&inventory, &unreal_path(project, &asset)?)?;
         }
     }
+
     Ok(scripts.len())
 }
 
@@ -183,6 +198,7 @@ fn require_file(path: &Path) -> Result<()> {
     if !path.is_file() {
         return Err(format!("Required package file is missing: {}", path.display()).into());
     }
+
     Ok(())
 }
 
@@ -196,6 +212,7 @@ fn run_unreal_pak(executable: &Path, args: &[OsString]) -> Result<String> {
                 executable.display()
             )
         })?;
+
     if !output.status.success() {
         return Err(format!(
             "UnrealPak failed with {}: {}",
@@ -204,6 +221,7 @@ fn run_unreal_pak(executable: &Path, args: &[OsString]) -> Result<String> {
         )
         .into());
     }
+
     Ok(format!(
         "{}\n{}",
         String::from_utf8_lossy(&output.stdout),
@@ -218,10 +236,12 @@ fn verify(
     let project = std::path::absolute(&request.project_root)?;
     let package = std::path::absolute(&request.package_root)?;
     let artifacts = std::path::absolute(&request.verification_directory)?;
+
     let binary = match request.configuration {
         Configuration::Development => "Sandbox.exe",
         Configuration::Shipping => "Sandbox-Win64-Shipping.exe",
     };
+
     for path in [
         package.join("Sandbox.exe"),
         package.join("Sandbox/Binaries/Win64").join(binary),
@@ -230,6 +250,7 @@ fn verify(
     ] {
         require_file(&path)?;
     }
+
     let pak_directory = package.join("Sandbox/Content/Paks");
     let paks = files(&pak_directory, "pak", false)?;
     if paks.is_empty() {
@@ -249,15 +270,19 @@ fn verify(
 
     fs::create_dir_all(&artifacts)?;
     let csv = artifacts.join("iostore.csv");
+
+    // Discard stale output before checking this invocation's inventory.
     if csv.exists() {
         fs::remove_file(&csv)?;
     }
+
     let mut inventory = String::new();
     for pak in paks {
         inventory.push_str(&unreal_pak(&[pak.into_os_string(), "-List".into()])?);
         inventory.push('\n');
     }
     fs::write(artifacts.join("pak-files.txt"), &inventory)?;
+
     let mut containers = OsString::from("-ListContainer=");
     containers.push(pak_directory.join("*.utoc"));
     let mut csv_argument = OsString::from("-Csv=");
@@ -265,6 +290,7 @@ fn verify(
     unreal_pak(&[containers, csv_argument])?;
     require_file(&csv)?;
     inventory.push_str(&fs::read_to_string(csv)?);
+
     verify_inventory(&project, &inventory)
 }
 

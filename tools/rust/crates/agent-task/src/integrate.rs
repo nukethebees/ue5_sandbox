@@ -10,6 +10,7 @@ fn clean(root: &Path) -> Result<(), String> {
             root.display()
         ));
     }
+
     let admin = query(root, &["rev-parse", "--absolute-git-dir"])?;
     for state in [
         "rebase-merge",
@@ -27,6 +28,7 @@ fn clean(root: &Path) -> Result<(), String> {
             ));
         }
     }
+
     Ok(())
 }
 
@@ -36,9 +38,11 @@ fn dev_worktree(root: &Path) -> Result<PathBuf, String> {
         .filter(|w| w.branch.as_deref() == Some("dev"))
         .map(|w| w.path)
         .collect();
+
     if matches.len() != 1 {
         return Err("Integration requires exactly one registered worktree on dev. Ask the maintainer to prepare it.".into());
     }
+
     Ok(matches.remove(0))
 }
 
@@ -48,9 +52,11 @@ fn run_git(root: &Path, args: &[&str]) -> Result<(), String> {
         .current_dir(root)
         .status()
         .map_err(|e| e.to_string())?;
+
     if !status.success() {
         return Err(format!("git {} failed with {status}", args[0]));
     }
+
     Ok(())
 }
 
@@ -72,18 +78,24 @@ fn compare_and_swap(root: &Path, expected: &str, commit: &str) -> Result<(), Str
 
 fn transaction(root: &Path, keep: bool) -> Result<(), String> {
     println!("Integration stage: preflight");
+
     let feature = branch(root)?;
     if feature.is_empty() || protected(&feature) || is_home_branch(&feature) {
         return Err("Integration requires a feature branch, not detached HEAD, a protected branch, or a devN home branch.".into());
     }
+
     clean(root)?;
+
     let dev = dev_worktree(root)?;
     if branch(&dev)? != "dev" {
         return Err("The integration worktree must be on dev.".into());
     }
+
     clean(&dev)?;
+
     let base = query(&dev, &["rev-parse", "refs/heads/dev"])?;
     println!("Pinned dev: {base}");
+
     println!("Integration stage: final-rebase");
     if let Err(error) = run_git(
         root,
@@ -107,7 +119,9 @@ fn transaction(root: &Path, keep: bool) -> Result<(), String> {
             "Final rebase failed and any active rebase was aborted: {error}. dev was not promoted. Resolve with agent-task git rebase dev outside the queue, validate, then requeue integrate-feature."
         ));
     }
+
     println!("Integration stage: sanity");
+
     clean(root)?;
     let tip = query(root, &["rev-parse", "HEAD"])?;
     if tip == base {
@@ -124,7 +138,9 @@ fn transaction(root: &Path, keep: bool) -> Result<(), String> {
             "Atomic promotion stopped: dev moved from {base} to {actual}. No retry; feature retained. Reinspect and requeue."
         ));
     }
+
     clean(&dev)?;
+
     let tree = query(root, &["rev-parse", &format!("{tip}^{{tree}}")])?;
     let message = format!("Merge branch '{feature}' into dev");
     let commit = query(
@@ -140,10 +156,15 @@ fn transaction(root: &Path, keep: bool) -> Result<(), String> {
             &message,
         ],
     )?;
+
     println!("Integration stage: atomic-promotion");
+
+    // Promote only if dev still matches the pinned revision.
     compare_and_swap(&dev, &base, &commit)?;
     println!("dev promoted to {commit}");
+
     println!("Integration stage: refresh and cleanup");
+
     let cleanup = || -> Result<(), String> {
         run_git(&dev, &["reset", "--hard", &commit])?;
         if let Some(home) = home_name(root) {
@@ -166,6 +187,7 @@ fn transaction(root: &Path, keep: bool) -> Result<(), String> {
         } else if !keep {
             run_git(root, &["switch", "--detach", &tip])?;
         }
+
         if !keep {
             let current = query(root, &["rev-parse", &format!("refs/heads/{feature}")])?;
             if current != tip {
@@ -173,10 +195,13 @@ fn transaction(root: &Path, keep: bool) -> Result<(), String> {
             }
             run_git(&dev, &["branch", "-d", "--", &feature])?;
         }
+
         Ok(())
     };
+
     cleanup().map_err(|e| format!("dev already contains merge {commit}, but refresh/cleanup failed: {e}. Feature retained. Ask the maintainer to inspect cleanup; do not repeat integration."))?;
     println!("Integrated {feature} into dev ({commit}).");
+
     Ok(())
 }
 
@@ -184,9 +209,11 @@ pub fn run(args: &[OsString]) -> Result<(), String> {
     if !(args.is_empty() || (args.len() == 1 && args[0] == "--keep-branch")) {
         return Err("Usage: agent-task integrate [--keep-branch]; invoke through authorized integrate-feature.".into());
     }
+
     workspace::check_environment()?;
     let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
     let root = workspace::root(&cwd)?;
+
     transaction(&root, !args.is_empty())
 }
 

@@ -15,6 +15,7 @@ pub fn query(root: &Path, args: &[&str]) -> Result<String, String> {
             String::from_utf8_lossy(&output.stderr).trim()
         ));
     }
+
     String::from_utf8(output.stdout)
         .map(|s| s.trim_end_matches(['\r', '\n']).to_owned())
         .map_err(|e| format!("Git metadata is not UTF-8: {e}"))
@@ -26,6 +27,7 @@ pub fn root(cwd: &Path) -> Result<PathBuf, String> {
 
 pub fn protected(name: &str) -> bool {
     let name = name.strip_prefix("refs/heads/").unwrap_or(name);
+
     ["dev", "main", "master"]
         .iter()
         .any(|p| name.eq_ignore_ascii_case(p))
@@ -51,6 +53,7 @@ pub struct Worktree {
 pub fn worktrees(root: &Path) -> Result<Vec<Worktree>, String> {
     let listing = query(root, &["worktree", "list", "--porcelain", "-z"])?;
     let mut result: Vec<Worktree> = Vec::new();
+
     for field in listing.split('\0') {
         if let Some(path) = field.strip_prefix("worktree ") {
             result.push(Worktree {
@@ -63,6 +66,7 @@ pub fn worktrees(root: &Path) -> Result<Vec<Worktree>, String> {
             }
         }
     }
+
     Ok(result)
 }
 
@@ -72,6 +76,7 @@ pub fn check_branch_target(name: &str, root: &Path, worktrees: &[Worktree]) -> R
             "Branch '{name}' is protected. Use a feature branch; advancing dev requires authorized integrate-feature."
         ));
     }
+
     let root = resolved(root)?;
     if let Some(owner) = worktrees
         .iter()
@@ -82,6 +87,7 @@ pub fn check_branch_target(name: &str, root: &Path, worktrees: &[Worktree]) -> R
             owner.path.display()
         ));
     }
+
     Ok(())
 }
 
@@ -96,12 +102,14 @@ pub fn managed_worktree_path(root: &Path, branch: &str) -> Result<PathBuf, Strin
             name.push_str(&format!("%{byte:02x}"));
         }
     }
+
     let relative = Path::new(".local/worktrees").join(name);
     let destination = root.join(&relative);
     let expected = root
         .canonicalize()
         .map_err(|e| e.to_string())?
         .join(relative);
+
     if resolved(&destination)? != expected {
         return Err("AgentTask worktrees must remain beneath this workspace's .local/worktrees/ without symlink or junction redirection. Ask the maintainer to fix that location.".into());
     }
@@ -139,12 +147,14 @@ pub fn check_environment() -> Result<(), String> {
             ));
         }
     }
+
     Ok(())
 }
 
 // Resolve existing ancestors too, so a linked directory cannot expand the workspace boundary.
 pub fn resolved(path: &Path) -> Result<PathBuf, String> {
     let mut result = PathBuf::new();
+
     for part in path.components() {
         match part {
             Component::ParentDir => {
@@ -161,12 +171,14 @@ pub fn resolved(path: &Path) -> Result<PathBuf, String> {
             }
         }
     }
+
     Ok(result)
 }
 
 pub fn contained(root: &Path, cwd: &Path, destination: &OsStr) -> Result<(), String> {
     let target = resolved(&cwd.join(destination))?;
     let root = root.canonicalize().map_err(|e| e.to_string())?;
+
     if !target.starts_with(&root) {
         return Err(format!(
             "Destination '{}' must be inside workspace '{}'. Use a child path; work outside this boundary requires maintainer intervention.",
@@ -174,5 +186,6 @@ pub fn contained(root: &Path, cwd: &Path, destination: &OsStr) -> Result<(), Str
             root.display()
         ));
     }
+
     Ok(())
 }
