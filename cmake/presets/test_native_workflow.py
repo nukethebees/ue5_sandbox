@@ -33,6 +33,28 @@ class NativeWorkflowTests(unittest.TestCase):
     cmake: str
     llvm_root: str
 
+    def test_tidy_registers_available_custom_check_tests(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="tidy registration ") as directory:
+            root = Path(directory)
+            for enabled in (False, True):
+                checks = "ioj-loop-condition-call\\n    ioj-no-tuple" if enabled else "modernize-use-nullptr"
+                (root / "CMakeLists.txt").write_text(
+                    'cmake_minimum_required(VERSION 3.25)\nproject(Tidy NONE)\nenable_testing()\n'
+                    'set(IOJ_ENABLE_CLANG_TIDY ON)\nset(IOJ_IS_CLANG_CL ON)\n'
+                    f'set(PROJECT_SOURCE_DIR "{self.source_dir.as_posix()}")\n'
+                    f'set(Python3_EXECUTABLE "{Path(sys.executable).as_posix()}")\n'
+                    'function(ioj_find_llvm_tool output)\n  set(${output} unused PARENT_SCOPE)\nendfunction()\n'
+                    'function(execute_process)\n'
+                    '  cmake_parse_arguments(query "" "OUTPUT_VARIABLE;RESULT_VARIABLE" "" ${ARGN})\n'
+                    f'  set(${{query_OUTPUT_VARIABLE}} "Enabled checks:\\n    {checks}\\n" PARENT_SCOPE)\n'
+                    '  set(${query_RESULT_VARIABLE} 0 PARENT_SCOPE)\nendfunction()\n'
+                    'include("${PROJECT_SOURCE_DIR}/cmake/clang_tidy/CMakeLists.txt")\n', encoding="utf-8")
+                build = root / str(enabled)
+                self.run_cmake("-S", str(root), "-B", str(build), "-G", "Ninja")
+                tests = (build / "CTestTestfile.cmake").read_text()
+                for name in ("ClangTidy.LoopConditionCall", "ClangTidy.no-tuple", "ClangTidy.SimulationPolicy"):
+                    self.assertEqual(name in tests, enabled)
+
     def test_unreal_build_invocation_uses_agent_task(self) -> None:
         with tempfile.TemporaryDirectory(prefix="sandbox unreal invocation ") as directory:
             fixture = Path(directory)
@@ -348,35 +370,6 @@ class NativeWorkflowTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     @unittest.skipUnless(shutil.which("pwsh"), "requires PowerShell")
-    def test_tidy_runner_forwards_arguments_and_exit_status(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="sandbox tidy runner ") as directory:
-            fixture = Path(directory)
-            runner = fixture / "run clang tidy.py"
-            captured = fixture / "captured.json"
-            runner.write_text(
-                "import json, pathlib, sys\n"
-                "pathlib.Path(__file__).with_name('captured.json').write_text(json.dumps(sys.argv[1:]))\n"
-                "print('runner output')\n"
-                "sys.exit(7)\n", encoding="utf-8",
-            )
-            tidy = fixture / "clang tidy.exe"
-            log = fixture / "logs" / "tidy.log"
-            result = subprocess.run([
-                "pwsh", "-NoProfile", "-File", str(self.source_dir / "cmake/clang_tidy/run_clang_tidy.ps1"),
-                "-PythonExecutable", sys.executable, "-RunClangTidyExecutable", str(runner),
-                "-ClangTidyExecutable", str(tidy), "-LogFile", str(log),
-                "-CompilationDatabase", str(fixture), "-Jobs", "2", "-SourceFilter", "simulation|benchmark",
-            ], capture_output=True, text=True)
-            self.assertEqual(result.returncode, 7, result.stdout + result.stderr)
-            self.assertEqual(json.loads(captured.read_text()), [
-                "-quiet", "-clang-tidy-binary", str(tidy),
-                "-p", str(fixture), "-j", "2", "simulation|benchmark",
-            ])
-            self.assertIn("runner output", log.read_text(encoding="utf-8-sig"))
-            runner_source = (self.source_dir / "cmake/clang_tidy/run_clang_tidy.ps1").read_text()
-            self.assertNotIn("Plugin", runner_source)
-            self.assertNotIn("-load", runner_source)
-
     def test_tidy_presets_share_one_configure_tree(self) -> None:
         validate_preset_references(self.presets)
         configure_name = "win-x64-clangcl-debug-tidy"
@@ -403,149 +396,18 @@ class NativeWorkflowTests(unittest.TestCase):
         )
         build_presets = {preset["name"]: preset for preset in self.presets["buildPresets"]}
         workflows = {preset["name"]: preset for preset in self.presets["workflowPresets"]}
-        targets = {configure_name: "native-clang-tidy"}
-        targets.update(
-            (f"clang-tidy-{scope}", f"native-clang-tidy-{scope}")
-            for scope in TIDY_SCOPES
-        )
-        self.assertEqual(
-            {name for name in build_presets if "tidy" in name}, set(targets)
-        )
-        self.assertEqual({name for name in workflows if "tidy" in name}, set(targets))
-        for name, target in targets.items():
-            with self.subTest(preset=name):
-                self.assertEqual(build_presets[name]["configurePreset"], configure_name)
-                self.assertEqual(build_presets[name]["targets"], [target])
-                self.assertEqual(
-                    workflows[name]["steps"],
-                    [
-                        {"type": "configure", "name": configure_name},
-                        {"type": "build", "name": name},
-                    ],
-                )
+        self.assertFalse(any("tidy" in name for name in build_presets))
+        self.assertFalse(any("tidy" in name for name in workflows))
 
-    def test_tidy_targets_and_source_filters(self) -> None:
-        self.check_tidy_targets_and_source_filters(has_ioj=False)
-
-    def test_tidy_detects_builtin_ioj_checks(self) -> None:
-        self.check_tidy_targets_and_source_filters(has_ioj=True)
-
-    def check_tidy_targets_and_source_filters(self, has_ioj: bool) -> None:
-        # Exercise the real CMake targets, capturing their runner arguments without
-        # requiring LLVM or configuring the native dependency graph.
-        with tempfile.TemporaryDirectory(prefix="sandbox tidy workflow ") as root:
-            fixture = Path(root)
-            build = fixture / "build with spaces"
-            (fixture / "capture.cmd").write_text(
-                f'@"{sys.executable}" "{fixture / "capture.py"}" %*\n', encoding="utf-8"
-            )
-            (fixture / "capture.py").write_text(
-                "import json, pathlib, sys\n"
-                "args = sys.argv[1:]\n"
-                "log = pathlib.Path(args[args.index('-LogFile') + 1])\n"
-                "if log.stem in ('clang-tidy', 'clang-tidy-lispb'):\n"
-                "    for name in ('generate-native-soa-fixture', 'kernel-native-generated-sources'):\n"
-                "        assert (log.parent / (name + '.stamp')).is_file(), name\n"
-                "log.with_suffix('.json').write_text(json.dumps(args), encoding='utf-8')\n",
-                encoding="utf-8",
-            )
-            (fixture / "CMakeLists.txt").write_text(
-                "cmake_minimum_required(VERSION 3.28)\n"
-                "project(TidyWorkflow NONE)\n"
-                f'set(PROJECT_SOURCE_DIR "{self.source_dir.as_posix()}")\n'
-                "set(IOJ_ENABLE_CLANG_TIDY TRUE)\n"
-                "enable_testing()\n"
-                "set(IOJ_IS_CLANG_CL TRUE)\n"
-                f'set(Python3_EXECUTABLE "{Path(sys.executable).as_posix()}")\n'
-                'set(IOJ_CLANG_TIDY_EXECUTABLE "${CMAKE_COMMAND}")\n'
-                'set(IOJ_RUN_CLANG_TIDY_EXECUTABLE "${CMAKE_COMMAND}")\n'
-                f'set(IOJ_POWERSHELL_EXECUTABLE "{fixture.as_posix()}/capture.cmd")\n'
-                "function(ioj_find_llvm_tool output name)\n"
-                '  if(output STREQUAL "IOJ_RUN_CLANG_TIDY_EXECUTABLE" AND\n'
-                '     NOT "${name};${ARGN}" STREQUAL "run-clang-tidy;run-clang-tidy.py")\n'
-                '    message(FATAL_ERROR "Tidy configuration lost a runner candidate")\n'
-                '  endif()\n'
-                '  set(${output} "${CMAKE_COMMAND}" PARENT_SCOPE)\n'
-                "endfunction()\n"
-                "function(find_package)\n"
-                '  message(FATAL_ERROR "Tidy workflow requested development packages")\n'
-                "endfunction()\n"
-                "function(execute_process)\n"
-                '  cmake_parse_arguments(query "" "OUTPUT_VARIABLE;RESULT_VARIABLE" "" ${ARGN})\n'
-                '  set(${query_OUTPUT_VARIABLE} "Enabled checks:\\n    modernize-use-nullptr\\n'
-                + ('    ioj-loop-condition-call\\n' if has_ioj else '')
-                + '" PARENT_SCOPE)\n'
-                '  set(${query_RESULT_VARIABLE} 0 PARENT_SCOPE)\n'
-                "endfunction()\n"
-                "function(add_subdirectory directory)\n"
-                '  message(FATAL_ERROR "Tidy workflow tried to build an extra target: ${directory}")\n'
-                "endfunction()\n"
-                'include("${PROJECT_SOURCE_DIR}/cmake/clang_tidy/CMakeLists.txt")\n'
-                "foreach(prerequisite IN ITEMS generate-native-soa-fixture kernel-native-generated-sources)\n"
-                '  set(output "${CMAKE_BINARY_DIR}/${prerequisite}.stamp")\n'
-                '  add_custom_command(OUTPUT "${output}"\n'
-                '    COMMAND "${CMAKE_COMMAND}" -E touch "${output}" VERBATIM)\n'
-                '  add_custom_target(${prerequisite} DEPENDS "${output}")\n'
-                "endforeach()\n"
-                "sandbox_configure_native_clang_tidy()\n"
-                "sandbox_add_native_clang_tidy_target()\n"
-                "get_property(targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)\n"
-                "foreach(target IN LISTS targets)\n"
-                '  file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/${target}.deps"\n'
-                '    CONTENT "$<TARGET_PROPERTY:${target},MANUALLY_ADDED_DEPENDENCIES>")\n'
-                "endforeach()\n",
-                encoding="utf-8",
-            )
-            configured = self.run_cmake("-S", str(fixture), "-B", str(build), "-G", "Ninja")
-            self.assertIn("built-in IOJ checks" if has_ioj else "standard checks only", configured)
-            registered_tests = (build / "CTestTestfile.cmake").read_text()
-            self.assertEqual("ClangTidy.LoopConditionCall" in registered_tests, has_ioj)
-            if has_ioj:
-                self.assertIn("tools/llvm/clang_tidy/tests/test_loop_condition_call.py", registered_tests)
-            targets = [
-                target
-                for preset in self.presets["buildPresets"]
-                if "tidy" in preset["name"]
-                for target in preset["targets"]
-            ]
-            prerequisites = {"generate-native-soa-fixture", "kernel-native-generated-sources"}
-            for target in targets:
-                dependencies = set(
-                    (build / f"{target}.deps").read_text(encoding="utf-8").split(";")
-                ) - {""}
-                with self.subTest(target=target):
-                    self.assertEqual(
-                        dependencies,
-                        prerequisites if target in ("native-clang-tidy", "native-clang-tidy-lispb") else set(),
-                    )
-
-            outputs = [build / f"{name}.stamp" for name in prerequisites]
-            self.run_cmake("--build", str(build), "--target", "native-clang-tidy-core")
-            self.assertTrue(all(not output.exists() for output in outputs))
-            for target in ("native-clang-tidy-lispb", "native-clang-tidy"):
-                with self.subTest(fresh_target=target):
-                    self.run_cmake("--build", str(build), "--target", target)
-                    self.assertTrue(all(output.is_file() for output in outputs))
-                    for output in outputs:
-                        os.utime(output, ns=(1_000_000_000, 1_000_000_000))
-                    self.run_cmake("--build", str(build), "--target", target)
-                    for output in outputs:
-                        self.assertEqual(output.stat().st_mtime_ns, 1_000_000_000)
-                        output.unlink()
-
-            self.run_cmake("--build", str(build), "--target", *targets)
-            filters: dict[str, re.Pattern[str]] = {}
-            for name in ("clang-tidy", *(f"clang-tidy-{scope}" for scope in TIDY_SCOPES)):
-                args = json.loads((build / f"{name}.json").read_text(encoding="utf-8"))
-                self.assertEqual(Path(args[args.index("-CompilationDatabase") + 1]), build)
-                self.assertEqual(args[args.index("-Jobs") + 1], "0")
-                self.assertNotIn("-Plugin", args)
-                self.assertNotIn("-load", args)
-                self.assertEqual(
-                    Path(args[args.index("-File") + 1]),
-                    self.source_dir / "cmake/clang_tidy/run_clang_tidy.ps1",
-                )
-                filters[name] = re.compile(args[args.index("-SourceFilter") + 1])
+    def test_tidy_source_policy(self) -> None:
+        policy = json.loads((self.source_dir / ".clang-tidy-scopes.json").read_text())
+        self.assertEqual({key: tuple(value) for key, value in policy["scopes"].items() if key != "native"}, TIDY_SCOPES)
+        native = re.escape((self.source_dir / "native").as_posix()).replace("/", r"[/\\]")
+        full = f"^{native}" + r"[/\\]" + policy["source_filter"]
+        filters = {"clang-tidy": re.compile(full)}
+        for scope, directories in TIDY_SCOPES.items():
+            prefix = f"^{native}" + r"[/\\](?:" + "|".join(directories) + r")[/\\]"
+            filters[f"clang-tidy-{scope}"] = re.compile(f"(?={prefix}){full}")
 
         full_filter = filters.pop("clang-tidy")
         included = {
@@ -659,6 +521,7 @@ class NativeWorkflowTests(unittest.TestCase):
                 {"type": "configure", "name": "native"},
                 {"type": "build", "name": "tool-tests"},
                 {"type": "test", "name": "tool-tests"},
+                {"type": "test", "name": "presets-check"},
             ],
         )
         self.assertEqual(
@@ -805,7 +668,6 @@ cmake_language(DEFER CALL check_simulation_policy)
                 ("native-soa-production-report", "native/lispb/native_soa/native-soa-benchmarks.exe"),
                 ("native-soa-candidate-report", "native/lispb/native_soa/native-soa-benchmarks.exe"),
                 ("native-soa-laser-hit-append-report", "native/lispb/native_soa/native-soa-benchmarks.exe"),
-                ("kernel-benchmark-report", "native/lispb/kernel/kernel-native-benchmarks.exe"),
             ):
                 commands = self.run_cmake("--build", str(build_directory), "--target", report,
                                           "--", "-t", "commands").replace("\\", "/")

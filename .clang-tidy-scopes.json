@@ -1,0 +1,15 @@
+{
+  "source_filter": "(?!third_party[/\\\\])(?!sbx_mimalloc[/\\\\])(?!s7[/\\\\]lib[/\\\\]src[/\\\\]s7_sandbox\\.cpp$)(?!lispb[/\\\\]kernel[/\\\\]tests[/\\\\]standard_anchor_tests\\.cpp$)(?!simulation[/\\\\]src[/\\\\](?:lasers|fighters)[/\\\\]phase_interface\\.cpp$)(?!.*[/\\\\][^/\\\\]*generated[^/\\\\]*[/\\\\])(?!.*[/\\\\]tests[/\\\\]compile(?:_fixture)?[/\\\\])(?!.*[/\\\\][^/\\\\]*reject[^/\\\\]*\\.cpp$).*\\.cpp$",
+  "scopes": {
+    "native": [],
+    "core": ["core", "profiling"],
+    "simulation": ["simulation", "simulation_benchmark"],
+    "layout": ["layout"],
+    "lispb": ["lispb"],
+    "memory": ["memory"],
+    "level-authoring": ["level_authoring"],
+    "s7": ["s7"],
+    "image": ["image"],
+    "mesh-gen": ["mesh_gen"]
+  }
+}

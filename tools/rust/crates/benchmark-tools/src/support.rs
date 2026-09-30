@@ -170,6 +170,10 @@ pub fn number(value: &Value, pointer: &str) -> Result<f64> {
 
 pub struct Args(BTreeMap<String, String>);
 impl Args {
+    pub fn optional(&self, name: &str) -> Option<&str> {
+        self.0.get(name).map(String::as_str)
+    }
+
     pub fn parse(args: &[String], values: &[&str], flags: &[&str]) -> Result<Self> {
         let mut parsed = BTreeMap::new();
         let mut args = args.iter();

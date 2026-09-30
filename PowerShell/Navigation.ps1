@@ -89,7 +89,6 @@ Validation and build commands:
                            Run agent-task prepare-worktree first.
   cplay [config ...]       Prepare and build one or more playable Editor configurations.
                            Config may be debug-game or development; default is debug-game, development.
-  cprojectfiles [config]   Regenerate Unreal project files without building dependencies.
                            Config may be debug-game or development; default is debug-game.
   get-jobserver-state      Show the shared jobs board.
   Loading dev.ps1 disables MSBuild node reuse in the current shell.

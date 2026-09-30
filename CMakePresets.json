@@ -8,7 +8,6 @@
   "include": [
     "cmake/presets/native.json",
     "cmake/presets/unreal.json",
-    "cmake/presets/native-benchmarks.json",
-    "cmake/presets/unreal-benchmarks.json"
+    "cmake/presets/native-benchmarks.json"
   ]
 }

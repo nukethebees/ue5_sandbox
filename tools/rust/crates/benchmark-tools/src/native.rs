@@ -283,48 +283,6 @@ pub fn validate_frame(result: &Value) -> Result<()> {
     Ok(())
 }
 
-pub fn telemetry(root: &Path, args: &[String]) -> Result<()> {
-    let parsed = Args::parse(args, &["--samples", "--output-dir"], &[])?;
-    let samples = parsed.integer("--samples", 7, 1, 100)?;
-    let output = absolute(
-        root,
-        parsed.value("--output-dir", ".local/benchmarks/level-telemetry"),
-    )?;
-    visible(
-        root,
-        "cmake",
-        &[
-            "--preset",
-            "telemetry-benchmark",
-            &format!("-DIOJ_TELEMETRY_BENCHMARK_SAMPLES={samples}"),
-        ],
-    )?;
-    visible(
-        root,
-        "cmake",
-        &["--build", "--preset", "telemetry-benchmark"],
-    )?;
-    let result = captured(
-        std::process::Command::new("ctest")
-            .args([
-                "--preset",
-                "telemetry-benchmark",
-                "--output-on-failure",
-                "--verbose",
-            ])
-            .current_dir(root),
-    )?;
-    let log = format!(
-        "{}{}",
-        String::from_utf8_lossy(&result.stdout),
-        String::from_utf8_lossy(&result.stderr)
-    );
-    write_text(&output.join("telemetry-benchmark.log"), &log)?;
-    succeeded(result)?;
-    print!("{log}");
-    Ok(())
-}
-
 #[cfg(test)]
 #[path = "../tests/native/mod.rs"]
 mod tests;

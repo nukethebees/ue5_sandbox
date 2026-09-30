@@ -52,6 +52,9 @@ struct Request {
     capture_frames: u32,
     repeats: u32,
     trim_frames: u32,
+    build_dir: Option<String>,
+    skip_build: bool,
+    timeout_seconds: u32,
 }
 impl Request {
     fn parse(root: &Path, args: &[String]) -> Result<Self> {
@@ -69,8 +72,10 @@ impl Request {
                 "--capture-frames",
                 "--repeats",
                 "--trim-frames",
+                "--build-dir",
+                "--timeout-seconds",
             ],
-            &[],
+            &["--skip-build"],
         )?;
         let mut counts = Vec::new();
         for item in args.value("--counts", "10000,100000,1000000").split(',') {
@@ -116,9 +121,16 @@ impl Request {
             }
         }
         Ok(Self {
-            editor: absolute(&std::env::current_dir()?, args.required("--editor")?)?,
-            project: absolute(&std::env::current_dir()?, args.required("--project")?)?,
-            output: absolute(root, args.required("--output")?)?,
+            editor: args
+                .optional("--editor")
+                .map(|path| absolute(root, path))
+                .transpose()?
+                .unwrap_or_default(),
+            project: absolute(root, args.value("--project", "Sandbox.uproject"))?,
+            output: absolute(
+                root,
+                args.value("--output", "Saved/Benchmarks/GpuStarfield"),
+            )?,
             counts,
             configurations: resolutions
                 .iter()
@@ -135,6 +147,9 @@ impl Request {
             capture_frames: args.integer("--capture-frames", 180, 1, i32::MAX as u32)?,
             repeats: args.integer("--repeats", 3, 1, i32::MAX as u32)?,
             trim_frames: args.integer("--trim-frames", 10, 1, i32::MAX as u32)?,
+            build_dir: args.optional("--build-dir").map(str::to_owned),
+            skip_build: args.flag("--skip-build"),
+            timeout_seconds: args.integer("--timeout-seconds", 2400, 1, 86400)?,
         })
     }
     fn arguments(&self, config: &Configuration, raw: &Path) -> Vec<String> {
@@ -483,7 +498,20 @@ fn write_outputs(
     Ok(())
 }
 pub fn execute(root: &Path, args: &[String]) -> Result<()> {
-    let request = Request::parse(root, args)?;
+    let mut request = Request::parse(root, args)?;
+    if !request.skip_build || request.editor.as_os_str().is_empty() {
+        let settings = crate::unreal::prepare(
+            root,
+            request.build_dir.as_deref(),
+            "development",
+            request.skip_build,
+        )?;
+        if request.editor.as_os_str().is_empty() {
+            request.editor = crate::unreal::path(&settings, "editor_cmd")?;
+        }
+    }
+    let deadline =
+        std::time::Instant::now() + std::time::Duration::from_secs(request.timeout_seconds.into());
     let directory = request
         .output
         .join(chrono::Local::now().format("%Y%m%d_%H%M%S").to_string());
@@ -499,13 +527,13 @@ pub fn execute(root: &Path, args: &[String]) -> Result<()> {
         let raw = config_dir.join("raw");
         fs::create_dir_all(&raw)?;
         println!("Running {}...", configuration.name());
-        let process = logged(
+        succeeded(crate::unreal::run_logged(
             Command::new(&request.editor)
                 .args(request.arguments(configuration, &raw))
                 .current_dir(request.project.parent().ok_or("Project has no parent.")?),
             &config_dir.join("unreal.log"),
-        )?;
-        succeeded(process)?;
+            deadline,
+        )?)?;
         for &count in &request.counts {
             for repeat in 1..=request.repeats {
                 for &moving in &request.camera_modes {

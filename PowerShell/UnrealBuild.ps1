@@ -44,31 +44,6 @@ function Get-WorkflowFailureMessage {
     "Full workflow output: $log_path"
 }
 
-function Write-GeneratedSourceWarning {
-    param(
-        [Parameter(Mandatory)]
-        [string]$log_path
-    )
-
-    if (-not (Test-Path -LiteralPath $log_path -PathType Leaf)) {
-        return
-    }
-
-    $updated_files = @(
-        Select-String -LiteralPath $log_path -Pattern '^(?:Updated|Wrote) (?<path>.+)$' |
-        ForEach-Object { $_.Matches[0].Groups['path'].Value } |
-        Select-Object -Unique
-    )
-    if ($updated_files.Count -eq 0) {
-        return
-    }
-
-    $message = "Generated committed source files were updated. Review and commit them:`n" +
-        ($updated_files | ForEach-Object { "  $_" } | Join-String -Separator [Environment]::NewLine)
-    Add-Content -LiteralPath $log_path -Value "`nWARNING: $message"
-    Write-Warning $message
-}
-
 function cbuild {
     param(
         [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
@@ -128,20 +103,19 @@ function csetup {
     Push-Location -LiteralPath $script:dev_project_root
     try {
         foreach ($current_configuration in $configurations) {
-            $workflow = "setup-worktree-$current_configuration"
-            Write-Host "Preparing worktree with CMake workflow '$workflow'."
-            $workflow_result = Invoke-CMakeWorkflow `
-                -Name "CMake setup workflow: $current_configuration" `
-                -Preset $workflow
-
-            if ($workflow_result.ExitCode -ne 0) {
-                throw (Get-WorkflowFailureMessage `
-                    -workflow $workflow `
-                    -exit_code $workflow_result.ExitCode `
-                    -log_path $workflow_result.LogPath)
+            & cmake --preset $current_configuration
+            if ($LASTEXITCODE -ne 0) { throw "CMake configure failed ($LASTEXITCODE)." }
+            & cmake --build --preset "generate-worktree-code-$current_configuration"
+            if ($LASTEXITCODE -ne 0) { throw "Code generation failed ($LASTEXITCODE)." }
+            & cmake --build --preset "worktree-dependencies-$current_configuration"
+            if ($LASTEXITCODE -ne 0) { throw "Dependency build failed ($LASTEXITCODE)." }
+            $build_directory = Join-Path $script:dev_project_root "out/build/$current_configuration"
+            if ($current_configuration -eq 'debug-game') {
+                & agent-task unreal import-game-audio --build-dir $build_directory
+                if ($LASTEXITCODE -ne 0) { throw "Audio import failed ($LASTEXITCODE)." }
             }
-
-            Write-GeneratedSourceWarning -log_path $workflow_result.LogPath
+            & agent-task unreal project-files --build-dir $build_directory
+            if ($LASTEXITCODE -ne 0) { throw "Project generation failed ($LASTEXITCODE)." }
         }
     } finally {
         Pop-Location
@@ -159,25 +133,6 @@ function cplay {
 
     csetup -configuration $configurations
     cbuild -configuration $configurations
-}
-
-function cprojectfiles {
-    param(
-        [ValidateSet('debug-game', 'development')]
-        [string]$configuration = 'debug-game'
-    )
-
-    Push-Location -LiteralPath $script:dev_project_root
-    try {
-        Write-Host "Regenerating Unreal project files with CMake preset '$configuration'."
-        & cmake --build --preset $configuration --target generate-project-files
-
-        if ($LASTEXITCODE -ne 0) {
-            throw "Project-file generation for preset '$configuration' exited with code $LASTEXITCODE. Run 'csetup $configuration' first if the build tree has not been configured."
-        }
-    } finally {
-        Pop-Location
-    }
 }
 
 function get-jobserver-state {

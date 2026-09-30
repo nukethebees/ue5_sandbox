@@ -201,20 +201,14 @@ fn build(root: &Path, editor: &Path) -> Result<()> {
         "cmake",
         &[
             "--preset",
-            "sandbox-ismc-benchmark",
+            "development",
             &format!("-DUE_ROOT={}", engine.display()),
         ],
     )?;
     visible(
         root,
         "cmake",
-        &[
-            "--build",
-            "--preset",
-            "sandbox-ismc-benchmark",
-            "--target",
-            "editor",
-        ],
+        &["--build", "--preset", "development", "--target", "editor"],
     )
 }
 
@@ -270,7 +264,7 @@ fn prepare_cache(context: &mut Run, source: &Source, request: &Request, side: &s
     run.finish(result)
 }
 
-fn measure(plan: &Plan) -> Result<Vec<Capture>> {
+fn measure(plan: &Plan, timeout_seconds: u32) -> Result<Vec<Capture>> {
     let request = plan
         .ismc
         .as_ref()
@@ -305,11 +299,12 @@ fn measure(plan: &Plan) -> Result<Vec<Capture>> {
         }
         let result = (|| -> Result<Capture> {
             run.status("measuring")?;
-            let process = logged(
+            let process = crate::unreal::run_logged(
                 Command::new(&request.editor)
                     .args(&args)
                     .current_dir(&source.root),
                 &run.path("process.log"),
+                std::time::Instant::now() + std::time::Duration::from_secs(timeout_seconds.into()),
             )?;
             if !run.path("result.json").is_file() {
                 return Err(format!(
@@ -370,6 +365,7 @@ pub fn execute(root: &Path, args: &[String], comparison: bool) -> Result<()> {
             "--warmup-seconds",
             "--seconds",
             "--trace",
+            "--timeout-seconds",
             "--output-dir",
             "--baseline",
             "--baseline-worktree",
@@ -385,6 +381,7 @@ pub fn execute(root: &Path, args: &[String], comparison: bool) -> Result<()> {
         ],
     )?;
     let mut settings = Request::parse(&parsed, root)?;
+    let timeout_seconds = parsed.integer("--timeout-seconds", 600, 1, 86400)?;
     let prepare = parsed.flag("--prepare-only");
     let validate = parsed.flag("--validate-only");
     if prepare && validate {
@@ -529,7 +526,7 @@ pub fn execute(root: &Path, args: &[String], comparison: bool) -> Result<()> {
             context.status("measuring")?;
             revision::verify_source(&plan.candidate)?;
             revision::verify_source(&plan.baseline)?;
-            let captures = measure(&plan)?;
+            let captures = measure(&plan, timeout_seconds)?;
             revision::verify_source(&plan.candidate)?;
             revision::verify_source(&plan.baseline)?;
             context.validate()?;

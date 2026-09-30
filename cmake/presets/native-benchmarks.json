@@ -27,30 +27,6 @@
       ]
     },
     {
-      "name": "kernel-benchmark-plots",
-      "configurePreset": "native-benchmark",
-      "targets": [
-        "kernel-native-simd-tests",
-        "kernel-benchmark-report"
-      ]
-    },
-    {
-      "name": "kernel-benchmark-plots-full",
-      "configurePreset": "native-benchmark",
-      "targets": [
-        "kernel-native-simd-tests",
-        "kernel-benchmark-report-full"
-      ]
-    },
-    {
-      "name": "kernel-vector-layout-benchmark-plots",
-      "configurePreset": "native-benchmark",
-      "targets": [
-        "kernel-native-simd-tests",
-        "kernel-vector-layout-benchmark-report"
-      ]
-    },
-    {
       "name": "native-soa",
       "configurePreset": "native-benchmark",
       "targets": [
@@ -132,57 +108,6 @@
         {
           "type": "build",
           "name": "kernel-benchmark"
-        },
-        {
-          "type": "test",
-          "name": "kernel-benchmark-tests"
-        }
-      ]
-    },
-    {
-      "name": "kernel-benchmark-plots",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "native-benchmark"
-        },
-        {
-          "type": "build",
-          "name": "kernel-benchmark-plots"
-        },
-        {
-          "type": "test",
-          "name": "kernel-benchmark-plot-tests"
-        }
-      ]
-    },
-    {
-      "name": "kernel-benchmark-plots-full",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "native-benchmark"
-        },
-        {
-          "type": "build",
-          "name": "kernel-benchmark-plots-full"
-        },
-        {
-          "type": "test",
-          "name": "kernel-benchmark-plot-tests"
-        }
-      ]
-    },
-    {
-      "name": "kernel-vector-layout-benchmark-plots",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "native-benchmark"
-        },
-        {
-          "type": "build",
-          "name": "kernel-vector-layout-benchmark-plots"
         },
         {
           "type": "test",

@@ -248,55 +248,6 @@
       ]
     },
     {
-      "name": "resave-assets",
-      "configurePreset": "debug-game",
-      "targets": [
-        "resave-assets"
-      ]
-    },
-    {
-      "name": "generate-lab-mesh-assemblies",
-      "configurePreset": "debug-game",
-      "targets": [
-        "generate-lab-mesh-assemblies"
-      ]
-    },
-    {
-      "name": "import-game-audio",
-      "configurePreset": "debug-game",
-      "targets": [
-        "import-game-audio"
-      ]
-    },
-    {
-      "name": "generate-project-files",
-      "configurePreset": "debug-game",
-      "targets": [
-        "generate-project-files"
-      ]
-    },
-    {
-      "name": "generate-project-files-development",
-      "configurePreset": "development",
-      "targets": [
-        "generate-project-files"
-      ]
-    },
-    {
-      "name": "format-code",
-      "configurePreset": "debug-game",
-      "targets": [
-        "format-code"
-      ]
-    },
-    {
-      "name": "format-all-code",
-      "configurePreset": "debug-game",
-      "targets": [
-        "format-all-code"
-      ]
-    },
-    {
       "name": "debug-game-tool-tests-build",
       "configurePreset": "debug-game",
       "targets": [
@@ -339,13 +290,6 @@
       ]
     },
     {
-      "name": "development-run-staged",
-      "configurePreset": "development",
-      "targets": [
-        "run-staged"
-      ]
-    },
-    {
       "name": "development-verify-package",
       "configurePreset": "development",
       "targets": [
@@ -364,13 +308,6 @@
       "configurePreset": "shipping",
       "targets": [
         "archive"
-      ]
-    },
-    {
-      "name": "shipping-run-staged",
-      "configurePreset": "shipping",
-      "targets": [
-        "run-staged"
       ]
     },
     {
@@ -503,56 +440,6 @@
   ],
   "workflowPresets": [
     {
-      "name": "setup-worktree-debug-game",
-      "displayName": "Prepare a worktree for DebugGame development",
-      "description": "Build DebugGame dependencies, import optional audio, and generate project files",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "debug-game"
-        },
-        {
-          "type": "build",
-          "name": "generate-worktree-code-debug-game"
-        },
-        {
-          "type": "build",
-          "name": "worktree-dependencies-debug-game"
-        },
-        {
-          "type": "build",
-          "name": "import-game-audio"
-        },
-        {
-          "type": "build",
-          "name": "generate-project-files"
-        }
-      ]
-    },
-    {
-      "name": "setup-worktree-development",
-      "displayName": "Prepare a worktree for Development",
-      "description": "Build non-Unreal Development dependencies and generate project files",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "development"
-        },
-        {
-          "type": "build",
-          "name": "generate-worktree-code-development"
-        },
-        {
-          "type": "build",
-          "name": "worktree-dependencies-development"
-        },
-        {
-          "type": "build",
-          "name": "generate-project-files-development"
-        }
-      ]
-    },
-    {
       "name": "debug",
       "steps": [
         {
@@ -679,84 +566,6 @@
         {
           "type": "build",
           "name": "test-msvc"
-        }
-      ]
-    },
-    {
-      "name": "resave-assets",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "debug-game"
-        },
-        {
-          "type": "build",
-          "name": "resave-assets"
-        }
-      ]
-    },
-    {
-      "name": "generate-lab-mesh-assemblies",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "debug-game"
-        },
-        {
-          "type": "build",
-          "name": "generate-lab-mesh-assemblies"
-        }
-      ]
-    },
-    {
-      "name": "import-game-audio",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "debug-game"
-        },
-        {
-          "type": "build",
-          "name": "import-game-audio"
-        }
-      ]
-    },
-    {
-      "name": "generate-project-files",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "debug-game"
-        },
-        {
-          "type": "build",
-          "name": "generate-project-files"
-        }
-      ]
-    },
-    {
-      "name": "format-code",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "debug-game"
-        },
-        {
-          "type": "build",
-          "name": "format-code"
-        }
-      ]
-    },
-    {
-      "name": "format-all-code",
-      "steps": [
-        {
-          "type": "configure",
-          "name": "debug-game"
-        },
-        {
-          "type": "build",
-          "name": "format-all-code"
         }
       ]
     },

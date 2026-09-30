@@ -49,11 +49,6 @@ sandbox_configure_unreal_engine_paths(source_engine "${source_engine_root}"
   UnrealEditor.exe UnrealEditor-Cmd.exe)
 sandbox_assert_equal("Source Unreal build script path" "${source_engine_BUILD_SCRIPT}"
   "${source_engine_batch_files}/RunUBT.bat")
-sandbox_assert_equal("Source Unreal project-files script path"
-  "${source_engine_GENERATE_PROJECT_FILES_SCRIPT}"
-  "${source_engine_batch_files}/GenerateProjectFiles.bat")
-sandbox_assert_equal("Source Unreal project-files arguments"
-  "${source_engine_GENERATE_PROJECT_FILES_ARGUMENTS}" "")
 
 set(installed_engine_root "${CMAKE_CURRENT_BINARY_DIR}/installed engine")
 set(installed_engine_batch_files
@@ -64,8 +59,3 @@ sandbox_configure_unreal_engine_paths(installed_engine "${installed_engine_root}
   UnrealEditor.exe UnrealEditor-Cmd.exe)
 sandbox_assert_equal("Installed Unreal build script path" "${installed_engine_BUILD_SCRIPT}"
   "${installed_engine_batch_files}/Build.bat")
-sandbox_assert_equal("Installed Unreal project-files script path"
-  "${installed_engine_GENERATE_PROJECT_FILES_SCRIPT}"
-  "${installed_engine_batch_files}/Build.bat")
-sandbox_assert_list_equal("Installed Unreal project-files arguments"
-  "${installed_engine_GENERATE_PROJECT_FILES_ARGUMENTS}" -ProjectFiles)

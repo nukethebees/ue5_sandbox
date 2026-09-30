@@ -31,17 +31,6 @@ DEFAULT_NATIVE_CONFIGURATION = "native"
 CODEGEN_CONFIGURATION = DEFAULT_NATIVE_CONFIGURATION
 BENCHMARK_CONFIGURATION = "native-benchmark"
 CLANG_TIDY_CONFIGURATION = "win-x64-clangcl-debug-tidy"
-CLANG_TIDY_SCOPES = (
-    "core",
-    "simulation",
-    "layout",
-    "lispb",
-    "memory",
-    "level-authoring",
-    "s7",
-    "image",
-    "mesh-gen",
-)
 LAYOUT_PLANNER_CONFIGURATION = "layout-planner"
 IMAGE_LAB_CONFIGURATION = "image-lab"
 
@@ -232,25 +221,18 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "targets": ["generate-code"],
         },
         {
-            "name": CLANG_TIDY_CONFIGURATION,
-            "configurePreset": CLANG_TIDY_CONFIGURATION,
-            "targets": ["native-clang-tidy"],
-        },
-        *(
-            {
-                "name": f"clang-tidy-{scope}",
-                "configurePreset": CLANG_TIDY_CONFIGURATION,
-                "targets": [f"native-clang-tidy-{scope}"],
-            }
-            for scope in CLANG_TIDY_SCOPES
-        ),
-        {
             "name": LAYOUT_PLANNER_CONFIGURATION,
             "configurePreset": "win-x64-clangcl-debug",
             "targets": ["layout-planner", "native-layout-tests", "layout-planner-ui-tests"],
         },
     ]
     document["testPresets"] = [
+        {
+            "name": "presets-check",
+            "inherits": "test-base",
+            "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
+            "filter": {"include": {"name": "^CMake\\.Presets$"}},
+        },
         {
             "name": "native-tests",
             "inherits": "test-base",
@@ -334,6 +316,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                 {"type": "configure", "name": DEFAULT_NATIVE_CONFIGURATION},
                 {"type": "build", "name": "tool-tests"},
                 {"type": "test", "name": "tool-tests"},
+                {"type": "test", "name": "presets-check"},
             ],
         },
         *(
@@ -374,23 +357,6 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                 {"type": "build", "name": "generate-code"},
             ],
         },
-        {
-            "name": CLANG_TIDY_CONFIGURATION,
-            "steps": [
-                {"type": "configure", "name": CLANG_TIDY_CONFIGURATION},
-                {"type": "build", "name": CLANG_TIDY_CONFIGURATION},
-            ],
-        },
-        *(
-            {
-                "name": f"clang-tidy-{scope}",
-                "steps": [
-                    {"type": "configure", "name": CLANG_TIDY_CONFIGURATION},
-                    {"type": "build", "name": f"clang-tidy-{scope}"},
-                ],
-            }
-            for scope in CLANG_TIDY_SCOPES
-        ),
         {
             "name": LAYOUT_PLANNER_CONFIGURATION,
             "steps": [
@@ -524,24 +490,6 @@ def make_unreal_document() -> dict[str, Any]:
             }
         )
 
-    extra_build_presets = (
-        ("resave-assets", "debug-game", "resave-assets"),
-        ("generate-lab-mesh-assemblies", "debug-game", "generate-lab-mesh-assemblies"),
-        ("import-game-audio", "debug-game", "import-game-audio"),
-        ("generate-project-files", "debug-game", "generate-project-files"),
-        ("generate-project-files-development", "development", "generate-project-files"),
-        ("format-code", "debug-game", "format-code"),
-        ("format-all-code", "debug-game", "format-all-code"),
-    )
-    build_presets.extend(
-        {
-            "name": name,
-            "configurePreset": configure_preset,
-            "targets": [target],
-        }
-        for name, configure_preset, target in extra_build_presets
-    )
-
     build_presets.append({
         "name": "debug-game-tool-tests-build", "configurePreset": "debug-game",
         "targets": ["developer-tools-build"],
@@ -553,11 +501,9 @@ def make_unreal_document() -> dict[str, Any]:
         ("development-cook-incremental", "development", "cook-incremental"),
         ("development-stage", "development", "stage"),
         ("development-archive", "development", "archive"),
-        ("development-run-staged", "development", "run-staged"),
         ("development-verify-package", "development", "verify-package"),
         ("shipping-stage", "shipping", "stage"),
         ("shipping-archive", "shipping", "archive"),
-        ("shipping-run-staged", "shipping", "run-staged"),
         ("shipping-verify-package", "shipping", "verify-package"),
     )
     build_presets.extend(
@@ -644,31 +590,7 @@ def make_unreal_document() -> dict[str, Any]:
             ]
         )
 
-    workflow_presets: list[dict[str, Any]] = [
-        {
-            "name": "setup-worktree-debug-game",
-            "displayName": "Prepare a worktree for DebugGame development",
-            "description": "Build DebugGame dependencies, import optional audio, and generate project files",
-            "steps": [
-                {"type": "configure", "name": "debug-game"},
-                {"type": "build", "name": "generate-worktree-code-debug-game"},
-                {"type": "build", "name": "worktree-dependencies-debug-game"},
-                {"type": "build", "name": "import-game-audio"},
-                {"type": "build", "name": "generate-project-files"},
-            ],
-        },
-        {
-            "name": "setup-worktree-development",
-            "displayName": "Prepare a worktree for Development",
-            "description": "Build non-Unreal Development dependencies and generate project files",
-            "steps": [
-                {"type": "configure", "name": "development"},
-                {"type": "build", "name": "generate-worktree-code-development"},
-                {"type": "build", "name": "worktree-dependencies-development"},
-                {"type": "build", "name": "generate-project-files-development"},
-            ],
-        },
-    ]
+    workflow_presets: list[dict[str, Any]] = []
     for suffix, _, _, _ in compiler_variants:
         for name, _, _, _ in unreal_configurations:
             preset_name = f"{name}{suffix}"
@@ -681,19 +603,6 @@ def make_unreal_document() -> dict[str, Any]:
                     ],
                 }
             )
-
-    for name, configure_preset, _ in extra_build_presets:
-        if name == "generate-project-files-development":
-            continue
-        workflow_presets.append(
-            {
-                "name": name,
-                "steps": [
-                    {"type": "configure", "name": configure_preset},
-                    {"type": "build", "name": name},
-                ],
-            }
-        )
 
     for suffix in ("", "-msvc"):
         for test_suffix in ("unit-tests",):
@@ -809,24 +718,6 @@ def make_native_benchmark_document() -> dict[str, Any]:
             "targets": ["kernel-native-simd-tests", "kernel-native-benchmarks"],
         },
         {
-            "name": "kernel-benchmark-plots",
-            "configurePreset": BENCHMARK_CONFIGURATION,
-            "targets": ["kernel-native-simd-tests", "kernel-benchmark-report"],
-        },
-        {
-            "name": "kernel-benchmark-plots-full",
-            "configurePreset": BENCHMARK_CONFIGURATION,
-            "targets": ["kernel-native-simd-tests", "kernel-benchmark-report-full"],
-        },
-        {
-            "name": "kernel-vector-layout-benchmark-plots",
-            "configurePreset": BENCHMARK_CONFIGURATION,
-            "targets": [
-                "kernel-native-simd-tests",
-                "kernel-vector-layout-benchmark-report",
-            ],
-        },
-        {
             "name": "native-soa",
             "configurePreset": BENCHMARK_CONFIGURATION,
             "targets": [
@@ -890,24 +781,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
         },
     ]
     document["workflowPresets"] = [
-        _workflow("kernel-benchmark", BENCHMARK_CONFIGURATION, "kernel-benchmark-tests"),
-        _workflow(
-            "kernel-benchmark-plots",
-            BENCHMARK_CONFIGURATION,
-            "kernel-benchmark-plot-tests",
-        ),
-        _workflow(
-            "kernel-benchmark-plots-full",
-            BENCHMARK_CONFIGURATION,
-            "kernel-benchmark-plot-tests",
-            build_name="kernel-benchmark-plots-full",
-        ),
-        _workflow(
-            "kernel-vector-layout-benchmark-plots",
-            BENCHMARK_CONFIGURATION,
-            "kernel-benchmark-plot-tests",
-            build_name="kernel-vector-layout-benchmark-plots",
-        ),
+        _workflow("kernel-benchmark", BENCHMARK_CONFIGURATION, "kernel-benchmark-plot-tests"),
         _workflow("native-soa", BENCHMARK_CONFIGURATION, "native-soa"),
         {
             "name": "native-simulation-benchmark",
@@ -929,14 +803,12 @@ def _workflow(
     name: str,
     configure_name: str,
     test_name: str,
-    *,
-    build_name: str | None = None,
 ) -> dict[str, Any]:
     return {
         "name": name,
         "steps": [
             {"type": "configure", "name": configure_name},
-            {"type": "build", "name": build_name or name},
+            {"type": "build", "name": name},
             {"type": "test", "name": test_name},
         ],
     }

@@ -389,23 +389,8 @@ set_tests_properties(KernelNativeBenchmarkDryRun
   PROPERTIES LABELS "native-kernel-benchmark"
 )
 
-set(KERNEL_BENCHMARK_PLOT_SCRIPT
-  "${PROJECT_SOURCE_DIR}/Scripts/plot-kernel-benchmarks.py"
-)
 set(KERNEL_BENCHMARK_PLOT_TEST
   "${PROJECT_SOURCE_DIR}/Scripts/test_plot_kernel_benchmarks.py"
-)
-set(KERNEL_BENCHMARK_SCRIPT_LOCK
-  "${PROJECT_SOURCE_DIR}/Scripts/plot-kernel-benchmarks.py.lock"
-)
-set(KERNEL_BENCHMARK_RESULTS_DIRECTORY
-  "${PROJECT_SOURCE_DIR}/out/benchmarks/kernel"
-)
-set(KERNEL_BENCHMARK_RESULTS
-  "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}/results.json"
-)
-set(KERNEL_BENCHMARK_PLOTS_DIRECTORY
-  "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}/plots"
 )
 set(KERNEL_BENCHMARK_UV_CACHE
   "${PROJECT_SOURCE_DIR}/out/uv-cache"
@@ -420,72 +405,6 @@ file(MAKE_DIRECTORY
   "${KERNEL_BENCHMARK_UV_CACHE}"
   "${KERNEL_BENCHMARK_MATPLOTLIB_CACHE}"
   "${KERNEL_BENCHMARK_TEST_TEMP}"
-)
-
-function(add_kernel_benchmark_report target_name)
-  cmake_parse_arguments(REPORT "" "FILTER;COMMENT" "" ${ARGN})
-  set(filter_argument)
-  if(REPORT_FILTER)
-    set(filter_argument "--benchmark_filter=${REPORT_FILTER}")
-  endif()
-
-  add_custom_target(${target_name}
-    COMMAND "${CMAKE_COMMAND}" -E remove_directory
-      "${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
-    COMMAND "${CMAKE_COMMAND}" -E rm -f
-      "${KERNEL_BENCHMARK_RESULTS}"
-    COMMAND "${CMAKE_COMMAND}" -E make_directory
-      "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}"
-      "${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
-    COMMAND "$<TARGET_FILE:kernel-native-benchmarks>"
-      --benchmark_repetitions=7
-      --benchmark_min_time=0.05s
-      --benchmark_enable_random_interleaving=true
-      --benchmark_display_aggregates_only=true
-      ${filter_argument}
-      "--benchmark_out=${KERNEL_BENCHMARK_RESULTS}"
-      --benchmark_out_format=json
-    COMMAND "${CMAKE_COMMAND}" -E env
-      "UV_CACHE_DIR=${KERNEL_BENCHMARK_UV_CACHE}"
-      "MPLCONFIGDIR=${KERNEL_BENCHMARK_MATPLOTLIB_CACHE}"
-      "uv" run --locked
-        "${KERNEL_BENCHMARK_PLOT_SCRIPT}"
-        "${KERNEL_BENCHMARK_RESULTS}"
-        "--output=${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
-        --format=png
-    DEPENDS
-      kernel-native-benchmarks
-      "${KERNEL_BENCHMARK_PLOT_SCRIPT}"
-      "${KERNEL_BENCHMARK_SCRIPT_LOCK}"
-    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-    COMMENT "${REPORT_COMMENT}"
-    USES_TERMINAL
-    VERBATIM
-  )
-endfunction()
-
-add_kernel_benchmark_report(kernel-benchmark-report
-  FILTER "^(add_scaled/elementwise|dot_product/relaxed)/(flat|chunked16)/[^/]+/ordinary/aligned/(4096|16384|65536|100000)/real_time$"
-  COMMENT "Benchmarking representative generated kernel workloads and plotting the results"
-)
-add_kernel_benchmark_report(kernel-vector-layout-benchmark-report
-  FILTER "^dot_product_3d/elementwise/(aos/(scalar|autovec-avx2|avx2|autovec-avx512|avx512)|(soa-flat|soa-chunked16)/(autovec-avx2|avx2|autovec-avx512|avx512))/ordinary/aligned/(4096|16384|65536|100000)/real_time$"
-  COMMENT "Benchmarking generated 3D dot products across AOS and SOA layouts"
-)
-add_kernel_benchmark_report(kernel-benchmark-report-full
-  COMMENT "Benchmarking the comprehensive generated kernel matrix and plotting the results"
-)
-
-add_custom_target(kernel-highway-benchmark-report
-  COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/highway"
-  COMMAND "$<TARGET_FILE:kernel-native-benchmarks>"
-    "--benchmark_filter=^(add_scaled/elementwise|dot_product/relaxed|dot_product_3d/elementwise)/[^/]+/[^/]+/ordinary/(aligned|unaligned)/(17|32|4096|65536)/real_time$"
-    --benchmark_repetitions=3 --benchmark_min_time=0.02s
-    --benchmark_enable_random_interleaving=true --benchmark_display_aggregates_only=true
-    "--benchmark_out=${PROJECT_SOURCE_DIR}/.local/benchmarks/highway/kernels.json"
-    --benchmark_out_format=json
-  DEPENDS kernel-native-benchmarks
-  USES_TERMINAL VERBATIM
 )
 
 add_test(

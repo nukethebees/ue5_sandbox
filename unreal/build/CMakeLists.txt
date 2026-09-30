@@ -38,28 +38,12 @@ add_dependencies(game unreal-native-dependencies check-generated-code)
 set_property(TARGET editor PROPERTY FOLDER "Sandbox/Unreal/Build")
 set_property(TARGET game PROPERTY FOLDER "Sandbox/Unreal/Build")
 
-add_unreal_editor_target(run-editor
-  EXECUTABLE "${UE_EDITOR_EXE}"
-  ARGUMENTS "${IOJ_LIVE_CODING_DISABLED_ARGUMENT}"
-  DEPENDS editor
-  COMMENT "Launching ${IOJ_UPROJECT} with Live Coding disabled"
-  FOLDER "Sandbox/Unreal/Editor"
-)
-add_unreal_editor_target(run-editor-debug
-  EXECUTABLE "${UE_EDITOR_EXE}"
-  ARGUMENTS "${IOJ_LIVE_CODING_DISABLED_ARGUMENT}" -WaitForDebugger
-  DEPENDS editor
-  COMMENT "Launching ${IOJ_UPROJECT} with Live Coding disabled and waiting for a debugger"
-  FOLDER "Sandbox/Unreal/Editor"
-)
-
 add_unreal_packaging_targets()
 foreach(sandbox_unreal_packaging_target IN ITEMS
     cook
     cook-incremental
     stage
     archive
-    run-staged
     verify-package)
   if(TARGET ${sandbox_unreal_packaging_target})
     set_property(TARGET ${sandbox_unreal_packaging_target}

@@ -20,7 +20,7 @@ function(add_unreal_target target_name unreal_target)
 endfunction()
 
 function(add_unreal_editor_target target_name)
-  cmake_parse_arguments(PARSE_ARGV 1 editor_target "UNATTENDED" "COMMENT;EXECUTABLE;FOLDER" "ARGUMENTS;DEPENDS")
+  cmake_parse_arguments(PARSE_ARGV 1 editor_target "UNATTENDED" "COMMENT;FOLDER" "ARGUMENTS;DEPENDS")
 
   if(editor_target_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR
@@ -30,9 +30,6 @@ function(add_unreal_editor_target target_name)
   if(NOT editor_target_COMMENT)
     message(FATAL_ERROR "add_unreal_editor_target(${target_name}) requires COMMENT.")
   endif()
-  if(NOT editor_target_EXECUTABLE)
-    set(editor_target_EXECUTABLE "${UE_EDITOR_CMD_EXE}")
-  endif()
 
   if(editor_target_UNATTENDED)
     if(NOT "-unattended" IN_LIST editor_target_ARGUMENTS)
@@ -41,7 +38,7 @@ function(add_unreal_editor_target target_name)
   endif()
 
   add_custom_target(${target_name}
-    COMMAND "${editor_target_EXECUTABLE}" "${IOJ_UPROJECT}"
+    COMMAND "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
       ${editor_target_ARGUMENTS}
     DEPENDS ${editor_target_DEPENDS}
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -53,64 +50,6 @@ function(add_unreal_editor_target target_name)
   if(editor_target_FOLDER)
     set_property(TARGET ${target_name} PROPERTY FOLDER "${editor_target_FOLDER}")
   endif()
-endfunction()
-
-function(add_unreal_commandlet_target target_name)
-  cmake_parse_arguments(PARSE_ARGV 1 commandlet "" "COMMANDLET;COMMENT" "")
-
-  if(commandlet_UNPARSED_ARGUMENTS)
-    message(FATAL_ERROR
-      "add_unreal_commandlet_target(${target_name}) received unexpected arguments: "
-      "${commandlet_UNPARSED_ARGUMENTS}")
-  endif()
-
-  if(NOT commandlet_COMMANDLET)
-    message(FATAL_ERROR
-      "add_unreal_commandlet_target(${target_name}) requires COMMANDLET.")
-  endif()
-
-  if(NOT commandlet_COMMENT)
-    message(FATAL_ERROR
-      "add_unreal_commandlet_target(${target_name}) requires COMMENT.")
-  endif()
-
-  add_custom_target(${target_name}
-    COMMAND "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
-      "-run=${commandlet_COMMANDLET}"
-      "-LocalDataCachePath=${IOJ_LOCAL_DDC_DIR}"
-      -ddc=NoZenLocalFallback
-      -unattended
-      -nop4
-      -nosplash
-      -nullrhi
-      -nosound
-      -stdout
-    DEPENDS editor
-    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-    COMMENT "${commandlet_COMMENT}"
-    USES_TERMINAL
-    VERBATIM
-  )
-endfunction()
-
-function(add_unreal_benchmark_commandlet_target target_name commandlet)
-  add_custom_target(${target_name}
-    COMMAND "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
-      "-run=${commandlet}"
-      ${ARGN}
-      -AllowCommandletRendering
-      -RenderOffscreen
-      -unattended
-      -nop4
-      -nosplash
-      -nosound
-      -stdout
-    DEPENDS editor
-    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-    COMMENT "Running ${commandlet}"
-    USES_TERMINAL
-    VERBATIM
-  )
 endfunction()
 
 function(add_unreal_editor_test test_name)

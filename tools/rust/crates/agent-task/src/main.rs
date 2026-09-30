@@ -5,6 +5,10 @@ use std::process::{Command, ExitCode};
 
 mod format;
 
+mod benchmark;
+
+mod unreal;
+
 mod git;
 
 mod git_cli;
@@ -15,11 +19,15 @@ mod jobs;
 
 mod live_coding;
 
+mod presets;
+
+mod tidy;
+
 mod unreal_build;
 
 mod workspace;
 
-const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  format [options]      Format sources using revision-local policy\n  unreal-build [options] Invoke the Unreal build script\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  jobs <command>         Cooperative jobs board (agent-task jobs --help)\n  git <command>          Run supported feature Git operations (agent-task git --help)\n  integrate [--keep-branch]  Privileged dev transaction; use authorized integrate-feature";
+const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  presets [--check]      Generate/check CMake presets\n  tidy [options]        Run LLVM analysis\n  unreal <operation>    Generate project files or authored assets\n  editor [options]      Build and launch the editor\n  run-staged [options]  Launch an existing staged game\n  benchmark <operation> Delegate to revision-local benchmark-tools\n  format [options]      Format sources using revision-local policy\n  unreal-build [options] Invoke the Unreal build script\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  jobs <command>         Cooperative jobs board (agent-task jobs --help)\n  git <command>          Run supported feature Git operations (agent-task git --help)\n  integrate [--keep-branch]  Privileged dev transaction; use authorized integrate-feature";
 
 fn worktree_root() -> Result<PathBuf, String> {
     let output = Command::new("git")
@@ -80,7 +88,7 @@ fn prepare_worktree() -> Result<(), String> {
     update_submodules(&root)?;
 
     println!("[3/5] Generating CMake presets");
-    run(&root, "python", &["cmake/presets/generate.py"])?;
+    presets::generate(&root, false)?;
 
     println!("[4/5] Disabling Live Coding if saved settings exist");
     if let Err(error) = live_coding::disable(
@@ -119,14 +127,30 @@ fn install_central_tools() -> Result<(), String> {
 fn main() -> ExitCode {
     let arguments = std::env::args_os().skip(1).collect::<Vec<_>>();
 
-    if arguments
-        .first()
-        .is_some_and(|arg| arg == "format" || arg == "unreal-build")
-    {
-        let result = if arguments[0] == "format" {
-            format::run(&arguments[1..])
-        } else {
-            unreal_build::run(&arguments[1..])
+    if arguments.first().is_some_and(|arg| {
+        matches!(
+            arg.to_str(),
+            Some(
+                "format"
+                    | "unreal-build"
+                    | "presets"
+                    | "tidy"
+                    | "unreal"
+                    | "editor"
+                    | "run-staged"
+                    | "benchmark"
+            )
+        )
+    }) {
+        let result = match arguments[0].to_str().unwrap() {
+            "format" => format::run(&arguments[1..]),
+            "presets" => presets::run(&arguments[1..]),
+            "tidy" => tidy::run(&arguments[1..]),
+            "unreal" => unreal::run(&arguments[1..]),
+            "editor" => unreal::editor(&arguments[1..]),
+            "run-staged" => unreal::run_staged(&arguments[1..]),
+            "benchmark" => benchmark::run(&arguments[1..]),
+            _ => unreal_build::run(&arguments[1..]),
         };
         match result {
             Ok(code) => std::process::exit(code),

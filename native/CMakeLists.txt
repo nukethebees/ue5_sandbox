@@ -82,10 +82,6 @@ if(IOJ_WITH_TRACY)
   endif()
 endif()
 
-if(IOJ_ENABLE_CLANG_TIDY)
-  sandbox_configure_native_clang_tidy()
-endif()
-
 add_subdirectory(profiling)
 add_subdirectory(sbx_mimalloc)
 add_subdirectory(lispb)
@@ -126,8 +122,4 @@ if(TARGET TracyClientUnreal)
   set_property(SOURCE profiling/src/memory.cpp APPEND PROPERTY
     COMPILE_OPTIONS "$<TARGET_PROPERTY:sandbox_native_no_rtti,INTERFACE_COMPILE_OPTIONS>"
   )
-endif()
-
-if(IOJ_ENABLE_CLANG_TIDY)
-  sandbox_add_native_clang_tidy_target()
 endif()
