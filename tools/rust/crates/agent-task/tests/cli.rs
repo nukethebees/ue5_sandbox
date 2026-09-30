@@ -184,8 +184,8 @@ fn nested_linked_worktree_cleans_only_its_root_out_and_runs_phases_in_order() {
         ["presets", "generate-code"]
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
-    for phase in 1..=6 {
-        assert!(stdout.contains(&format!("[{phase}/6]")), "{stdout}");
+    for phase in 1..=5 {
+        assert!(stdout.contains(&format!("[{phase}/5]")), "{stdout}");
     }
 }
 
@@ -222,7 +222,7 @@ fn invalid_saved_settings_warn_and_allow_code_generation() {
 }
 
 #[test]
-fn central_tool_installation_only_configures_and_installs_jobserver() {
+fn central_tool_installation_updates_submodules_and_installs_jobserver() {
     let directory = fixture();
     fs::create_dir(directory.0.join("out")).unwrap();
     fs::write(directory.0.join("out/keep.txt"), "build output").unwrap();
@@ -251,7 +251,12 @@ fn central_tool_installation_only_configures_and_installs_jobserver() {
         fs::read_to_string(directory.0.join("out/keep.txt")).unwrap(),
         "build output"
     );
-    assert!(!String::from_utf8_lossy(&output.stdout).contains("submodules"));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let sync = stdout.find("Synchronizing submodules").unwrap();
+    let update = stdout.find("Updating submodules").unwrap();
+    let configure = stdout.find("Configuring native build").unwrap();
+    let install = stdout.find("Installing canonical jobserver").unwrap();
+    assert!(sync < update && update < configure && configure < install);
 }
 
 #[test]

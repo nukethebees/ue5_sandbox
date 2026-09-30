@@ -53,10 +53,22 @@ fn run(root: &Path, program: &str, arguments: &[&str]) -> Result<(), String> {
     Ok(())
 }
 
+fn update_submodules(root: &Path) -> Result<(), String> {
+    println!("Synchronizing submodules");
+    run(root, "git", &["submodule", "sync", "--recursive"])?;
+
+    println!("Updating submodules");
+    run(
+        root,
+        "git",
+        &["submodule", "update", "--init", "--recursive"],
+    )
+}
+
 fn prepare_worktree() -> Result<(), String> {
     let root = worktree_root()?;
 
-    println!("[1/6] Clearing build output");
+    println!("[1/5] Clearing build output");
     let output = root.join("out");
     match fs::remove_dir_all(&output) {
         Ok(()) => {}
@@ -64,37 +76,33 @@ fn prepare_worktree() -> Result<(), String> {
         Err(error) => return Err(format!("Could not remove '{}': {error}", output.display())),
     }
 
-    println!("[2/6] Synchronizing submodules");
-    run(&root, "git", &["submodule", "sync", "--recursive"])?;
+    println!("[2/5] Preparing submodules");
+    update_submodules(&root)?;
 
-    println!("[3/6] Updating submodules");
-    run(
-        &root,
-        "git",
-        &["submodule", "update", "--init", "--recursive"],
-    )?;
-
-    println!("[4/6] Generating CMake presets");
+    println!("[3/5] Generating CMake presets");
     run(&root, "python", &["cmake/presets/generate.py"])?;
 
-    println!("[5/6] Disabling Live Coding if saved settings exist");
+    println!("[4/5] Disabling Live Coding if saved settings exist");
     if let Err(error) = live_coding::disable(
         &root.join("Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"),
     ) {
         eprintln!("agent-task: warning: Could not disable Live Coding in saved settings: {error}");
     }
 
-    println!("[6/6] Generating code");
+    println!("[5/5] Generating code");
     run(&root, "cmake", &["--workflow", "--preset", "generate-code"])
 }
 
 fn install_central_tools() -> Result<(), String> {
     let root = worktree_root()?;
 
-    println!("[1/2] Configuring native build (run prepare-worktree first)");
+    println!("[1/3] Preparing submodules");
+    update_submodules(&root)?;
+
+    println!("[2/3] Configuring native build (run prepare-worktree first)");
     run(&root, "cmake", &["--preset", "native"])?;
 
-    println!("[2/2] Installing canonical jobserver");
+    println!("[3/3] Installing canonical jobserver");
     run(
         &root,
         "cmake",

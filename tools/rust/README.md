@@ -28,8 +28,9 @@ The maintainer installs/updates central per-user build tools explicitly when nee
 agent-task install-central-tools
 ```
 
-Run preparation first. This command configures `native` and runs the canonical
-`install-jobserver` CMake target, stopping on failure. It does not repeat worktree preparation.
+Run preparation first. This command synchronizes and initializes/updates recursive submodules,
+configures `native`, and runs the canonical `install-jobserver` CMake target, stopping on failure.
+It does not repeat the remaining worktree preparation steps.
 Each tool lives in its own per-user bin directory; see
 [developer tools](../README.md). This is a maintainer command, never an agent preflight.
 
