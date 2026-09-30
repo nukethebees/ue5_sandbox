@@ -225,7 +225,6 @@ struct Sim {
     /* **************************************** */
     // Tasks
     /* **************************************** */
-    void set_task_unchecked(std::int32_t index, Task task) noexcept;
     void set_task(EntityUniqueId fighter, Task task) noexcept;
 
     /* **************************************** */

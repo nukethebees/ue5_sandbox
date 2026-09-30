@@ -1221,16 +1221,6 @@ void Sim::refresh_target_data(ml::FrameScratch& scratch) {
 /* **************************************** */
 // Tasks
 /* **************************************** */
-void Sim::set_task_unchecked(std::int32_t const index, Task const task) noexcept {
-    auto const data{entity_buffers.current().get_view()};
-    if (data.tasks()[index] == task) {
-        return;
-    }
-
-    data.tasks()[index] = task;
-    reset_navigation_state(
-        index, task == Task::Standby ? NavigationRiskTier::Clear : NavigationRiskTier::Nearby);
-}
 void Sim::set_task(EntityUniqueId const fighter, Task const task) noexcept {
     order_queue.add(fighter, FighterOrder{1, 0}, task, {});
 }
