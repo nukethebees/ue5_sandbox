@@ -104,7 +104,8 @@ Unreal Engine 5.8 project.
 * Do not guess. Ask questions when things are unclear.
 * Use targeted repository inspection to establish implementation facts.
 * Once enough context exists, implement rather than continuing exploration.
-* Keep README.md files concise and user-oriented. Put detailed notes in an adjacent ARCHITECTURE.md.
+* Keep README.md files concise and user-oriented. Put detailed usage instructions in local READMEs
+  or local `docs/` directories, and architecture information in local `ARCHITECTURE.md` files.
 * For contention other than jobs-board tickets, treat obvious temporary contention for shared resources as a wait condition: do not repeatedly retry across consecutive turns; sleep within the shell/tool invocation before retrying with 10s, then 30s, then 60s backoff (capped at 60s). Investigate and report the failure if persists unreasonably.
 * When replacing an experimental architecture or workflow on a feature branch, remove the superseded path
   completely unless the maintainer requests compatibility. Feature branches are the rollback
@@ -134,9 +135,12 @@ If a new issue invalidates previous validation or requires additional builds/tes
 * Prefer SOA layouts for related performance-sensitive collections.
 * Save loop bounds as const locals.
 * Log warnings/errors when null checks fail rather than returning silently.
-* Use whitespace deliberately to separate logical phases within functions and related
-  declaration or data groups. Arrange long functions so their main control flow is easy to scan,
-  while keeping tightly coupled statements together.
+* Visually separate blocks of related code with whitespace, including logical phases within
+  functions and groups of declarations or data. Arrange long functions so their main control
+  flow is easy to scan, while keeping tightly coupled statements together.
+* Add brief comments to potentially hard-to-read code using the present imperative mood
+  (for example, "Preserve the original encoding when replacing the setting."). Explain intent
+  or non-obvious constraints; do not merely restate the code.
 * In non-trivial functions, use blank lines around guard/validation blocks, setup, major state
   transitions, loops, and final publication or return steps when those phases are distinct.
 * In large classes with many member functions, group declarations and definitions by category using this banner style:
@@ -174,6 +178,9 @@ If a new issue invalidates previous validation or requires additional builds/tes
 * Do not run AddressSanitizer (ASAN) builds or tests unless the user explicitly requests them.
   ASAN is not a default validation, readiness, or integration requirement.
 * Only create tests when explicitly asked.
+* Keep all Rust test implementations, fixtures, and test helpers in each crate's `tests/`
+  directory, not inline or in files under `src/`. Unit tests that need private access may use
+  `#[cfg(test)]` and `#[path = "../tests/<module>/mod.rs"]` declarations in source modules.
 * Use CQTest/Unreal automation tests for code with engine/editor dependencies.
 * Register Unreal Automation benchmarks under the top-level `SandboxBenchmarks` category.
 * Prefer putting tests in native where possible

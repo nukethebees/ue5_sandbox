@@ -1,0 +1,82 @@
+# AgentTask usage
+
+## Installation
+
+The maintainer installs or updates AgentTask from the repository root:
+
+```powershell
+. .\dev.ps1
+install-agent-task
+```
+
+This runs package tests, installs AgentTask using the pinned Rust toolchain, and smoke-tests
+the installed executable with `--version`. Installers create symlinks in
+`%NTB_APPDATA_LOCAL%\bin`; add this directory to PATH. Windows Developer Mode or the
+**Create symbolic links** privilege is required and checked before building.
+Agents assume AgentTask is already available; they do not install it as a preflight step.
+
+## Worktree preparation and central tools
+
+Run `agent-task prepare-worktree` from anywhere inside the current worktree. It removes the
+root `out` directory, synchronizes and initializes/updates recursive submodules, regenerates
+CMake presets, disables Live Coding in existing saved Editor settings, and generates code.
+It stops on the first failure, except a saved-settings failure warns and allows generation
+to continue. Git, Python, CMake, and the repository build prerequisites must be available.
+It does not perform a broad project/test build.
+
+After preparation, the maintainer can run `agent-task install-central-tools`. This repeats
+submodule synchronization/update, configures `native`, and builds the canonical
+`install-jobserver` target, stopping on failure. It does not repeat the remaining preparation
+steps. See [developer tools](../../../../README.md) for installation locations.
+
+## Formatting and Unreal builds
+
+`agent-task format [--all|--changed|--staged] [--jobs N] [--verbose]` uses the worktree's
+`.code-format.json` and `.clang-format`. The default selects all sources; changed selection
+includes staged, unstaged, and untracked sources. Staged selection rejects files with unstaged
+edits and re-stages only selected files after successful formatting. The default worker count
+is half the logical processors, capped at 16. Diagnostics use repository-relative paths.
+
+CMake invokes `agent-task unreal-build --build-script <path> --target <target> --platform <platform>
+--configuration <configuration> --project <path> --native-toolchain <name>` for Unreal targets.
+Use the repository's [CMake workflows](../../../../../cmake/README.md) for builds.
+
+## Feature Git operations
+
+```powershell
+agent-task git add -A
+agent-task git commit -m "Implement feature"
+agent-task git rebase dev
+```
+
+Supported commands are `status`, `add`, `commit`, `restore`, `reset`, `clean`, `rm`, `mv`,
+`switch`, `branch`, `merge`, `rebase`, `cherry-pick`, `revert`, and `worktree`.
+Run `agent-task git <command> --help` for exact options. Unknown commands, options, and abbreviated
+long options are rejected. There is no checkout, remote transfer, config, plumbing, force-create,
+explicit-branch rebase, or general worktree administration interface.
+Cherry-pick and revert accept individual commits, not revision ranges.
+
+Create managed worktrees with `agent-task git worktree add -b <branch> [start-point]`; remove
+them with `agent-task git worktree remove <branch>`. AgentTask chooses a location under the
+current worktree's ignored `.local/worktrees/`. Force removal is unsupported.
+
+To park work, create a temporary feature branch and commit the WIP there; creating a branch
+alone does not preserve dirty files. Git stash is unsupported because it is repository-global.
+Use separately permitted read-only Git for inspection, such as `git diff` and `git log`.
+Report unsupported mutations; raw mutations require an explicit maintainer exception.
+
+## Integration and jobs
+
+After validation and explicit user authorization, run `integrate-feature` from `dev.ps1`.
+Use `-KeepBranch` to retain the feature branch. Integration does not build or test, and its
+cheap Git transaction needs no jobs-board ticket. A final-rebase conflict is aborted; resolve
+with `agent-task git rebase dev`, validate, and retry. Promotion or cleanup failures report
+retained state and require inspection before retrying.
+
+Use `agent-task jobs request|check|start|end|cancel|status` for manual shared/exclusive
+coordination. Tickets remain until ended or cancelled. Follow the
+[jobs-board workflow](../../../../jobserver/README.md).
+
+Only `agent-task git`, `agent-task jobs`, and ordinary preparation commands belong in
+unconditional allow rules. Never whitelist all of `agent-task`: `integrate` is privileged.
+See the [repository policy](../../../../../AGENTS.md).
