@@ -225,8 +225,8 @@ pub fn read_metrics(path: &Path, conditions: &Conditions) -> Result<Vec<Metric>>
         if row.len() != header.len() {
             return Err("SandboxISMC CSV row has incorrect column count.".into());
         }
-        let row: BTreeMap<_, _> = header.iter().zip(row.iter()).collect();
-        let value = |key: &str| row.get(&key.to_owned()).unwrap().as_str();
+        let row: BTreeMap<_, _> = header.iter().map(String::as_str).zip(&row).collect();
+        let value = |key: &str| row[key].as_str();
         let numeric = |key: &str| -> Result<f64> {
             value(key)
                 .parse::<f64>()
@@ -235,7 +235,7 @@ pub fn read_metrics(path: &Path, conditions: &Conditions) -> Result<Vec<Metric>>
                 .ok_or_else(|| format!("Invalid CSV numeric value: {key}").into())
         };
         for (key, expected) in conditions {
-            if let Some(actual) = row.get(key) {
+            if let Some(actual) = row.get(key.as_str()) {
                 let equal = if let Ok(number) = expected.parse::<f64>() {
                     (numeric(key)? - number).abs() <= 0.000501
                 } else {
@@ -246,13 +246,10 @@ pub fn read_metrics(path: &Path, conditions: &Conditions) -> Result<Vec<Metric>>
                 }
             }
         }
-        let dimensions = header
+        let dimensions = row
             .iter()
-            .zip(row_values(&header, &row))
-            .filter(|(k, _)| {
-                !["metric", "unit"].contains(&k.as_str()) && !summaries.contains(&k.as_str())
-            })
-            .map(|(k, v)| (k.clone(), v))
+            .filter(|(k, _)| !["metric", "unit"].contains(k) && !summaries.contains(k))
+            .map(|(&k, &v)| (k.to_owned(), v.clone()))
             .collect();
         metrics.push(Metric {
             identity: Identity {
@@ -273,22 +270,16 @@ pub fn read_metrics(path: &Path, conditions: &Conditions) -> Result<Vec<Metric>>
     Ok(metrics)
 }
 
-fn row_values(header: &[String], row: &BTreeMap<&String, &String>) -> Vec<String> {
-    header.iter().map(|key| (*row[key]).clone()).collect()
-}
+type MetricIndex<'a> = BTreeMap<(&'a str, &'a Conditions), &'a Metric>;
 
-type Key = (String, Conditions);
-fn index(metrics: &[Metric]) -> Result<BTreeMap<Key, &Metric>> {
+fn index(metrics: &[Metric]) -> Result<MetricIndex<'_>> {
     let mut map = BTreeMap::new();
     for metric in metrics {
         metric.summary.validate()?;
         if metric.identity.metric.trim().is_empty() || metric.identity.unit.trim().is_empty() {
             return Err("Metric name and unit are required.".into());
         }
-        let key = (
-            metric.identity.metric.clone(),
-            metric.identity.dimensions.clone(),
-        );
+        let key = (metric.identity.metric.as_str(), &metric.identity.dimensions);
         if map.insert(key, metric).is_some() {
             return Err("Duplicate metric identity.".into());
         }
@@ -304,26 +295,15 @@ pub fn compare(captures: &[Capture]) -> Result<Comparison> {
     let reference = *measured
         .first()
         .ok_or("No complete measured repetitions.")?;
-    let mut pairs: BTreeMap<u32, Vec<&Capture>> = BTreeMap::new();
+    // Reuse capture indexes across all metric comparisons.
+    let mut pairs: BTreeMap<u32, BTreeMap<&str, MetricIndex<'_>>> = BTreeMap::new();
     for &capture in &measured {
-        pairs
-            .entry(capture.repetition.repetition)
-            .or_default()
-            .push(capture);
-    }
-    for (id, pair) in &pairs {
-        if *id == 0
-            || pair.len() != 2
-            || pair
-                .iter()
-                .filter(|c| c.repetition.side == "baseline")
-                .count()
-                != 1
-            || pair
-                .iter()
-                .filter(|c| c.repetition.side == "candidate")
-                .count()
-                != 1
+        let id = capture.repetition.repetition;
+        let side = capture.repetition.side.as_str();
+        let pair = pairs.entry(id).or_default();
+        if id == 0
+            || !["baseline", "candidate"].contains(&side)
+            || pair.insert(side, index(&capture.metrics)?).is_some()
         {
             return Err(format!(
                 "Repetition {id} requires exactly one measured baseline and one candidate."
@@ -331,15 +311,26 @@ pub fn compare(captures: &[Capture]) -> Result<Comparison> {
             .into());
         }
     }
+
+    for (id, pair) in &pairs {
+        if pair.len() != 2 {
+            return Err(format!(
+                "Repetition {id} requires exactly one measured baseline and one candidate."
+            )
+            .into());
+        }
+    }
+
     let expected = index(&reference.metrics)?;
     let mut errors = BTreeSet::new();
     for capture in &measured {
-        let actual = index(&capture.metrics)?;
         for key in reference.conditions.keys().chain(capture.conditions.keys()) {
             if reference.conditions.get(key) != capture.conditions.get(key) {
                 errors.insert(format!("Comparability mismatch: {key}"));
             }
         }
+    }
+    for actual in pairs.values().flat_map(BTreeMap::values) {
         for key in expected.keys().chain(actual.keys()) {
             match (expected.get(key), actual.get(key)) {
                 (Some(a), Some(b)) if a.identity.unit != b.identity.unit => {
@@ -363,16 +354,8 @@ pub fn compare(captures: &[Capture]) -> Result<Comparison> {
     for (key, metric) in expected {
         let mut values = Vec::new();
         for (&id, pair) in &pairs {
-            let a = pair
-                .iter()
-                .find(|c| c.repetition.side == "baseline")
-                .unwrap();
-            let b = pair
-                .iter()
-                .find(|c| c.repetition.side == "candidate")
-                .unwrap();
-            let baseline = index(&a.metrics)?[&key].summary.median;
-            let candidate = index(&b.metrics)?[&key].summary.median;
+            let baseline = pair["baseline"][&key].summary.median;
+            let candidate = pair["candidate"][&key].summary.median;
             let delta = candidate - baseline;
             let delta_percent = (baseline != 0.0).then(|| 100.0 * delta / baseline);
             if !delta.is_finite() || delta_percent.is_some_and(|v| !v.is_finite()) {
