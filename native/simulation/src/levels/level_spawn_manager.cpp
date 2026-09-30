@@ -1,6 +1,7 @@
 #include "ioj/sim/levels/level_spawn_manager.h"
 
 #include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/levels/level_entity_index.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/turrets/sim.h>
 
@@ -23,7 +24,7 @@ LevelSpawnManager::LevelSpawnManager(capital_ships::Sim& capital_ships,
     , spinners_{spinners} {}
 
 void LevelSpawnManager::initialise(
-    std::int32_t const entity_count,
+    std::uint32_t const entity_count,
     SingleAllocationLevelCapitalSpawnEvents::ConstView const capital_payloads,
     SingleAllocationLevelTurretSpawnEvents::ConstView const turret_payloads) {
     capital_payloads_ = capital_payloads;
@@ -32,8 +33,8 @@ void LevelSpawnManager::initialise(
     entity_ids_.resize(static_cast<std::size_t>(entity_count));
 }
 
-void LevelSpawnManager::set_entity_id(std::int32_t const entity_index, EntityUniqueId const id) {
-    assert(entity_index >= 0 && static_cast<std::size_t>(entity_index) < entity_ids_.size());
+void LevelSpawnManager::set_entity_id(std::uint32_t const entity_index, EntityUniqueId const id) {
+    assert(static_cast<std::size_t>(entity_index) < entity_ids_.size());
     assert(id.is_valid());
     entity_ids_[entity_index] = id;
 }
@@ -108,7 +109,7 @@ void LevelSpawnManager::resolve_capital_targets(
 
     for (std::uint32_t i{}; i < count; ++i) {
         auto const target_index{target_entity_indices[i]};
-        if (target_index != -1) {
+        if (target_index != invalid_level_entity_index) {
             auto const source_id{get_id(entity_indices[i])};
             capital_ships_.set_target_id(source_id, get_id(target_index));
         }
@@ -140,8 +141,8 @@ void LevelSpawnManager::spawn_spinners(
     }
 }
 
-auto LevelSpawnManager::get_id(std::int32_t const entity_index) const -> EntityUniqueId {
-    assert(entity_index >= 0 && static_cast<std::size_t>(entity_index) < entity_ids_.size());
+auto LevelSpawnManager::get_id(std::uint32_t const entity_index) const -> EntityUniqueId {
+    assert(static_cast<std::size_t>(entity_index) < entity_ids_.size());
     auto const id{entity_ids_[entity_index]};
     assert(id.is_valid());
     return id;

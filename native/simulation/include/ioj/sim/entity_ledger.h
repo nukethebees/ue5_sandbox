@@ -19,11 +19,11 @@ class EntityLedger {
     auto get_unique_entities() const noexcept -> EntityHistory::ConstView {
         return history_.get_const_view();
     }
-    auto get_history_index(EntityUniqueId id) const noexcept -> std::int32_t {
+    auto get_history_index(EntityUniqueId id) const noexcept -> std::uint32_t {
         return ids_.history_index(id);
     }
     auto is_valid_unique_id(EntityUniqueId id) const noexcept -> bool {
-        return get_history_index(id) >= 0;
+        return get_history_index(id) != EntityIdAllocator::invalid_index;
     }
     auto get_issued_counts() const noexcept -> EntityTypeSizes const& {
         return ids_.issued_counts();
@@ -50,7 +50,7 @@ class EntityLedger {
         return statistics_.combat_telemetry();
     }
   private:
-    auto require_history_index(EntityUniqueId id) const -> std::int32_t;
+    auto require_history_index(EntityUniqueId id) const -> std::uint32_t;
     EntityHistory history_;
     EntityIdAllocator ids_;
     CombatStatistics statistics_;

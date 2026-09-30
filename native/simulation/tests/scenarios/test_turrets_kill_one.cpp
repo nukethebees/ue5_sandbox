@@ -4,6 +4,8 @@
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/turrets/sim.h>
 
+#include <limits>
+
 namespace ioj::sim {
 namespace {
 void add_worldless_turrets(LevelSimInitData& data,
@@ -79,7 +81,7 @@ void run_worldless_turret_line_of_sight_blocking(tests::SimulationFixture const&
     add_worldless_turrets(data, locations, teams, 0);
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
-    std::int32_t spawn_count_before_blocker{-1};
+    std::uint32_t spawn_count_before_blocker{std::numeric_limits<std::uint32_t>::max()};
     harness.timeline
         .at(2.0,
             [&] {

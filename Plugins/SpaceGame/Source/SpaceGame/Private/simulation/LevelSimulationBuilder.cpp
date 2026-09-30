@@ -36,9 +36,9 @@
 #include <vector>
 
 namespace ml::level_simulation_builder {
-using FProxyEntityIndexMap = TMap<AActor const*, int32>;
+using FProxyEntityIndexMap = TMap<AActor const*, uint32>;
 
-auto resolve_entity_index(FProxyEntityIndexMap const& entities, AActor const& actor) -> int32 {
+auto resolve_entity_index(FProxyEntityIndexMap const& entities, AActor const& actor) -> uint32 {
     auto const* const index{entities.Find(&actor)};
     check(index);
     return *index;
@@ -71,7 +71,7 @@ auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
     auto append_indices{[&entities](std::vector<int32>& output, auto const& actors) {
         for (auto const actor : actors) {
             if (IsValid(actor)) {
-                output.push_back(resolve_entity_index(entities, *actor));
+                output.push_back(static_cast<std::int32_t>(resolve_entity_index(entities, *actor)));
             }
         }
     }};
@@ -375,7 +375,7 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
             auto const* const proxy{build.capital_proxies[i]};
             auto const& transform{proxy->GetActorTransform()};
             events.entity_indices()[i] = allocate_entity_index(*proxy);
-            events.target_entity_indices()[i] = INDEX_NONE;
+            events.target_entity_indices()[i] = ::ioj::sim::invalid_level_entity_index;
             ::ioj::sim::set_vector(
                 events.view_locations(), i, ml::to_native(FVector3f{transform.GetLocation()}));
             ::ioj::sim::set_rotation(

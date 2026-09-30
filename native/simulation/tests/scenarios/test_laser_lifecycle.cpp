@@ -25,12 +25,17 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
     auto data{tests::make_simulation_data(config)};
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-    tests::add_capital_spawn(
-        data, Vector3f{{-4000.f, 0.f, 0.f}}, Team::Blue, -1, 60.f, 60.f, normal_target_health);
+    tests::add_capital_spawn(data,
+                             Vector3f{{-4000.f, 0.f, 0.f}},
+                             Team::Blue,
+                             invalid_level_entity_index,
+                             60.f,
+                             60.f,
+                             normal_target_health);
     tests::add_capital_spawn(data,
                              Vector3f{{4000.f, 0.f, 0.f}},
                              Team::Red,
-                             -1,
+                             invalid_level_entity_index,
                              60.f,
                              60.f,
                              scenario == LaserLifecycleScenario::SimultaneousLethalHits

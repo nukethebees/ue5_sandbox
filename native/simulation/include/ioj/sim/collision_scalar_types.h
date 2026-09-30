@@ -6,11 +6,11 @@
 #include <cstdint>
 
 namespace ioj::sim::collision {
-using StaticGeometryIndex = std::int32_t;
+using StaticGeometryIndex = std::uint32_t;
 
-using CellIndex = std::int32_t;
+using CellIndex = std::uint32_t;
 
-using GridCellCount = std::int32_t;
+using GridCellCount = std::uint32_t;
 
 using SphereInBoundsResult = std::uint8_t;
 } // namespace ioj::sim::collision

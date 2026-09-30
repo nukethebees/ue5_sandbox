@@ -36,10 +36,10 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     range_counts_.clear();
     aabb_indices_.clear();
 
-    auto const cell_count{geometry.dimensions.x * geometry.dimensions.y * geometry.dimensions.z};
+    auto const cell_count{num_cells(geometry)};
     auto const row_stride{geometry.dimensions.x};
     auto const plane_stride{row_stride * geometry.dimensions.y};
-    cell_range_indices_.assign(static_cast<std::size_t>(cell_count), -1);
+    cell_range_indices_.assign(static_cast<std::size_t>(cell_count), invalid_cell_range_index);
     std::vector<CellMembershipCount> cell_counts(static_cast<std::size_t>(cell_count));
 
     auto const aabbs{aabbs_.get_const_view()};
@@ -147,12 +147,12 @@ auto CollisionGridStaticStorage::aabbs() const noexcept -> WorldAABBs const& {
 }
 auto CollisionGridStaticStorage::aabb_indices_for_cell(CellIndex const cell_index) const noexcept
     -> std::span<AabbIndex const> {
-    if (cell_index < 0 || static_cast<std::size_t>(cell_index) >= cell_range_indices_.size()) {
+    if (static_cast<std::size_t>(cell_index) >= cell_range_indices_.size()) {
         return {};
     }
 
     auto const range_index{cell_range_indices_[static_cast<std::size_t>(cell_index)]};
-    if (range_index < 0) {
+    if (range_index == invalid_cell_range_index) {
         return {};
     }
     auto const element{static_cast<std::size_t>(range_index)};

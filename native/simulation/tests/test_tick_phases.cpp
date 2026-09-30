@@ -51,7 +51,7 @@ void schedule_turret(LevelSimInitData& data, Vector3f const location, SimTick co
 
 TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     auto data{make_world()};
-    add_capital_spawn(data, {}, Team::White, -1, 60.f, 60.f, 100);
+    add_capital_spawn(data, {}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
     schedule_turret(data, {});
 
     LevelSim simulation{std::move(data)};
@@ -89,9 +89,10 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
 TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     auto data{make_world()};
 
-    auto const first{add_capital_spawn(data, {}, Team::Green, -1, 0.f, 60.f, 100)};
-    auto const second{
-        add_capital_spawn(data, {{2000.f, 0.f, 0.f}}, Team::White, -1, 60.f, 60.f, 100)};
+    auto const first{
+        add_capital_spawn(data, {}, Team::Green, invalid_level_entity_index, 0.f, 60.f, 100)};
+    auto const second{add_capital_spawn(
+        data, {{2000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100)};
     auto const target_indices{
         data.level_events.initial_spawns.capital_spawns.get_view().target_entity_indices()};
     target_indices[0] = second;
@@ -161,7 +162,8 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
 TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
     auto data{make_world()};
     add_moving_player(data);
-    add_capital_spawn(data, {{0.f, 100.f, 0.f}}, Team::White, -1, 0.f, 60.f, 100);
+    add_capital_spawn(
+        data, {{0.f, 100.f, 0.f}}, Team::White, invalid_level_entity_index, 0.f, 60.f, 100);
 
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
@@ -181,7 +183,8 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
 
 TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
     auto data{make_world()};
-    add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::White, -1, 60.f, 60.f, 100);
+    add_capital_spawn(
+        data, {{-2000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
     schedule_turret(data, {{500.f, 100.f, 0.f}}, 2);
 
     LevelSim simulation{std::move(data)};
@@ -222,18 +225,19 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
 TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverlaps) {
     auto data{make_world()};
     data.overlap_response.damage_per_overlap_detection = 100;
-    auto const capital_index{add_capital_spawn(data, {}, Team::White, -1, 60.f, 60.f, 1000)};
+    auto const capital_index{
+        add_capital_spawn(data, {}, Team::White, invalid_level_entity_index, 60.f, 60.f, 1000)};
     schedule_turret(data, {});
     auto const turret_index{
         data.level_events.schedule.turret_spawns.get_const_view().entity_indices()[0]};
-    ASSERT_TRUE(data.level_events.schedule.add_mission_group(LevelMissionEventType::MustSurvive,
-                                                             std::array{turret_index}));
+    ASSERT_TRUE(data.level_events.schedule.add_mission_group(
+        LevelMissionEventType::MustSurvive, std::array{static_cast<std::int32_t>(turret_index)}));
 
     auto& mission{data.level_events.initialisation.mission.emplace()};
     mission.mode = levels::LevelMissionMode::SurviveTime;
     mission.time_limit_seconds = 10.f;
     mission.save_results = false;
-    mission.must_survive_entity_indices = {capital_index};
+    mission.must_survive_entity_indices = {static_cast<std::int32_t>(capital_index)};
 
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
@@ -273,7 +277,8 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
 TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndQueriesAdvanceAfterward) {
     auto data{make_world()};
     add_moving_player(data, {500.0, 0.0, 0.0});
-    add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::White, -1, 60.f, 60.f, 100);
+    add_capital_spawn(
+        data, {{-2000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
 
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
@@ -343,7 +348,8 @@ TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
 
 TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     auto data{make_world()};
-    add_capital_spawn(data, {{40.f, 0.f, 0.f}}, Team::White, -1, 60.f, 60.f, 100);
+    add_capital_spawn(
+        data, {{40.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     lasers::SingleAllocationLaserSpawnRequests shot;
@@ -365,10 +371,10 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
     for (auto const kill_tick : {1, 2}) {
         auto data{make_world()};
 
-        auto const first{
-            add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::Green, -1, 0.f, 60.f, 100)};
-        auto const second{
-            add_capital_spawn(data, {{2000.f, 0.f, 0.f}}, Team::White, -1, 0.f, 60.f, 100)};
+        auto const first{add_capital_spawn(
+            data, {{-2000.f, 0.f, 0.f}}, Team::Green, invalid_level_entity_index, 0.f, 60.f, 100)};
+        auto const second{add_capital_spawn(
+            data, {{2000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 0.f, 60.f, 100)};
         auto const target_indices{
             data.level_events.initial_spawns.capital_spawns.get_view().target_entity_indices()};
         target_indices[0] = second;
@@ -381,8 +387,8 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         mission.mode = levels::LevelMissionMode::KillEnemies;
         mission.kill_count = 1;
         mission.save_results = false;
-        mission.hero_entity_indices = {second};
-        mission.required_kill_entity_indices = {first};
+        mission.hero_entity_indices = {static_cast<std::int32_t>(second)};
+        mission.required_kill_entity_indices = {static_cast<std::int32_t>(first)};
 
         LevelSim simulation{std::move(data)};
         simulation.finish_initialisation();
@@ -445,7 +451,8 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
     // NOLINTEND(ioj-loop-view-accessor-call)
     auto data{make_world()};
     for (auto const x : {-2000.f, 0.f, 2000.f}) {
-        add_capital_spawn(data, {{x, 0.f, 0.f}}, Team::White, -1, 60.f, 60.f, 100);
+        add_capital_spawn(
+            data, {{x, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
     }
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();

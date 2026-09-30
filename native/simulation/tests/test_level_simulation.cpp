@@ -48,8 +48,10 @@ auto make_battle() -> LevelSimInitData {
     data.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.lasers.n_preallocated_instances = 16;
     data.capital_ships.fighter_spawn_slots = 0;
-    add_capital_spawn(data, {{-1000.f, 0.f, 0.f}}, Team::Green, -1, 60.f, 60.f, 100);
-    add_capital_spawn(data, {{1000.f, 0.f, 0.f}}, Team::White, -1, 60.f, 60.f, 100);
+    add_capital_spawn(
+        data, {{-1000.f, 0.f, 0.f}}, Team::Green, invalid_level_entity_index, 60.f, 60.f, 100);
+    add_capital_spawn(
+        data, {{1000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
     for (auto const type : ml::EnumTraits<EntityType>::values) {
         data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
@@ -74,8 +76,8 @@ void add_mission(LevelSimInitData& data) {
     mission.mode = levels::LevelMissionMode::KillEnemies;
     mission.kill_count = 1;
     mission.save_results = false;
-    mission.hero_entity_indices = {entities[0]};
-    mission.required_kill_entity_indices = {entities[1]};
+    mission.hero_entity_indices = {static_cast<std::int32_t>(entities[0])};
+    mission.required_kill_entity_indices = {static_cast<std::int32_t>(entities[1])};
 }
 
 void kill_enemy(LevelSim& simulation) {

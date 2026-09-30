@@ -30,10 +30,10 @@ class LevelSpawnManager {
     auto operator=(LevelSpawnManager const&) -> LevelSpawnManager& = delete;
     auto operator=(LevelSpawnManager&&) -> LevelSpawnManager& = delete;
 
-    void initialise(std::int32_t entity_count,
+    void initialise(std::uint32_t entity_count,
                     SingleAllocationLevelCapitalSpawnEvents::ConstView capital_payloads,
                     SingleAllocationLevelTurretSpawnEvents::ConstView turret_payloads);
-    void set_entity_id(std::int32_t entity_index, EntityUniqueId id);
+    void set_entity_id(std::uint32_t entity_index, EntityUniqueId id);
     void spawn_initial(SingleAllocationLevelCapitalSpawnEvents::ConstView capital_events,
                        SingleAllocationLevelTurretSpawnEvents::ConstView turret_events,
                        SingleAllocationLevelSpinnerSpawnEvents::ConstView spinner_events);
@@ -42,7 +42,7 @@ class LevelSpawnManager {
     auto get_spawned_ids() const -> std::span<EntityUniqueId const> {
         return spawned_ids_this_tick_;
     }
-    auto get_id(std::int32_t entity_index) const -> EntityUniqueId;
+    auto get_id(std::uint32_t entity_index) const -> EntityUniqueId;
     auto get_entity_ids() const noexcept -> std::span<EntityUniqueId const> { return entity_ids_; }
   private:
     void spawn_capitals(SingleAllocationLevelCapitalSpawnEvents::ConstView events);

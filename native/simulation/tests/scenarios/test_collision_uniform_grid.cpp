@@ -1420,7 +1420,7 @@ void CollisionUniformGridTraceRunner::test_deterministic_reference_sweep() {
         std::int32_t expected_hit_count{};
         for (std::int32_t i_trace{}; i_trace < trace_count; ++i_trace) {
             auto nearest_t{std::numeric_limits<float>::infinity()};
-            std::int32_t nearest_entity{-1};
+            std::uint32_t nearest_entity{std::numeric_limits<std::uint32_t>::max()};
             for (std::int32_t i_entity{}; i_entity < entity_count; ++i_entity) {
                 auto const world_centre{entity_locations[i_entity] + local_aabb_centre};
                 auto const hit_t{reference_trace_aabb(starts[i_trace],

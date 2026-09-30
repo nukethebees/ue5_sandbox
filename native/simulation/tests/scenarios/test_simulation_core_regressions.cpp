@@ -25,7 +25,8 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     if (scenario == SimulationCoreRegressionScenario::DamageLifecycle) {
         data.capital_ships.fighter_spawn_slots = 0;
         data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
-        tests::add_capital_spawn(data, {}, Team::White, -1, 60.f, 60.f, initial_health);
+        tests::add_capital_spawn(
+            data, {}, Team::White, invalid_level_entity_index, 60.f, 60.f, initial_health);
     }
 
     tests::WorldlessSimulationTest harness{std::move(data)};
@@ -124,8 +125,13 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
     data.player->health = {collision_damage_test::player_health,
                            collision_damage_test::player_health};
     data.entity_bounds.set_half_extents(EntityType::PlayerShip, {{1.f, 1.f, 1.f}});
-    tests::add_capital_spawn(
-        data, Vector3f{}, Team::White, -1, 60.f, 60.f, collision_damage_test::capital_health);
+    tests::add_capital_spawn(data,
+                             Vector3f{},
+                             Team::White,
+                             invalid_level_entity_index,
+                             60.f,
+                             60.f,
+                             collision_damage_test::capital_health);
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();

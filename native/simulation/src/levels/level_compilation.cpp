@@ -14,7 +14,7 @@ namespace ioj::sim::levels {
 namespace {
 struct EventSource {
     SimTick execution_tick{};
-    std::int32_t source_index{};
+    std::uint32_t source_index{};
 };
 
 struct MissionTickValues {
@@ -23,17 +23,17 @@ struct MissionTickValues {
     std::vector<std::int32_t> kill_target_increases{};
 };
 
-auto entity_index(LevelDefinition const& definition, std::string const& id) -> std::int32_t {
+auto entity_index(LevelDefinition const& definition, std::string const& id) -> std::uint32_t {
     auto const found{std::ranges::find(definition.entities, id, &EntitySpawnDefinition::id)};
     assert(found != definition.entities.end());
-    return static_cast<std::int32_t>(found - definition.entities.begin());
+    return static_cast<std::uint32_t>(found - definition.entities.begin());
 }
 
 void append_indices(std::vector<std::int32_t>& output,
                     LevelDefinition const& definition,
                     std::vector<std::string> const& ids) {
     for (auto const& id : ids) {
-        output.push_back(entity_index(definition, id));
+        output.push_back(static_cast<std::int32_t>(entity_index(definition, id)));
     }
 }
 
@@ -136,7 +136,7 @@ auto compile_level(LevelDefinition const& definition,
     auto& mission_initialisation{initialisation.mission.emplace()};
     mission_initialisation.level_id = definition.metadata.id;
     mission_initialisation.level_title = definition.metadata.title;
-    initialisation.entity_count = static_cast<std::int32_t>(definition.entities.size());
+    initialisation.entity_count = static_cast<std::uint32_t>(definition.entities.size());
     if (!definition.player_entity_id.empty()) {
         initialisation.player_entity_index = entity_index(definition, definition.player_entity_id);
     }
@@ -169,16 +169,16 @@ auto compile_level(LevelDefinition const& definition,
     }
 
     std::vector<EventSource> sources;
-    auto const entity_count{static_cast<std::int32_t>(definition.entities.size())};
-    auto const mission_event_count{static_cast<std::int32_t>(definition.mission_events.size())};
+    auto const entity_count{static_cast<std::uint32_t>(definition.entities.size())};
+    auto const mission_event_count{static_cast<std::uint32_t>(definition.mission_events.size())};
     sources.reserve(static_cast<std::size_t>(entity_count + mission_event_count));
-    for (std::int32_t index{}; index < entity_count; ++index) {
+    for (std::uint32_t index{}; index < entity_count; ++index) {
         auto const& entity{definition.entities[static_cast<std::size_t>(index)]};
         if (entity.archetype != "player-fighter") {
             sources.push_back({clock.duration_to_tick_period(entity.spawn_time_seconds), index});
         }
     }
-    for (std::int32_t index{}; index < mission_event_count; ++index) {
+    for (std::uint32_t index{}; index < mission_event_count; ++index) {
         auto const& event{definition.mission_events[static_cast<std::size_t>(index)]};
         if (!event.must_survive_entity_ids.empty() || !event.required_kill_entity_ids.empty() ||
             event.kill_target_increase > 0) {
@@ -188,13 +188,14 @@ auto compile_level(LevelDefinition const& definition,
     }
     std::ranges::sort(sources, [](EventSource const& left, EventSource const& right) {
         return left.execution_tick < right.execution_tick ||
-               (left.execution_tick == right.execution_tick && left.source_index < right.source_index);
+               (left.execution_tick == right.execution_tick &&
+                left.source_index < right.source_index);
     });
 
     std::int32_t capital_offset{};
     std::int32_t turret_offset{};
     MissionTickValues mission_values;
-    auto const append_entity = [&](std::int32_t const entity_index_value,
+    auto const append_entity = [&](std::uint32_t const entity_index_value,
                                    SingleAllocationLevelCapitalSpawnEvents& capital_storage,
                                    SingleAllocationLevelTurretSpawnEvents& turret_storage) {
         auto const& entity{definition.entities[static_cast<std::size_t>(entity_index_value)]};
@@ -203,7 +204,7 @@ auto compile_level(LevelDefinition const& definition,
             capital_storage.add_uninitialised(1);
             auto const capital_events{capital_storage.get_view()};
             capital_events.entity_indices()[row] = entity_index_value;
-            capital_events.target_entity_indices()[row] = -1;
+            capital_events.target_entity_indices()[row] = invalid_level_entity_index;
             set_vector(capital_events.view_locations(),
                        row,
                        ml::make_vector3f(static_cast<float>(entity.position.x),

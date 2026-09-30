@@ -80,7 +80,7 @@ auto make_player_spawn(SimulationFixture const& fixture, Transform3d transform)
     player.transform = transform;
     return player;
 }
-auto add_player_spawn(LevelSimInitData& data, player::PlayerSpawnData spawn) -> std::int32_t {
+auto add_player_spawn(LevelSimInitData& data, player::PlayerSpawnData spawn) -> std::uint32_t {
     auto& initialisation{data.level_events.initialisation};
     auto const entity_index{initialisation.entity_count++};
     initialisation.player_entity_index = entity_index;
@@ -90,10 +90,10 @@ auto add_player_spawn(LevelSimInitData& data, player::PlayerSpawnData spawn) -> 
 auto add_capital_spawn(LevelSimInitData& data,
                        Vector3f location,
                        Team team,
-                       std::int32_t target_entity_index,
+                       std::uint32_t target_entity_index,
                        float initial_spawn_delay,
                        float spawn_cooldown,
-                       std::int32_t health) -> std::int32_t {
+                       std::int32_t health) -> std::uint32_t {
     auto& storage{data.level_events.initial_spawns.capital_spawns};
     auto const row{storage.num()};
     auto const entity_index{data.level_events.initialisation.entity_count++};
@@ -113,7 +113,7 @@ auto add_turret_spawn(LevelSimInitData& data,
                       Rotator3f rotation,
                       Team team,
                       std::int32_t health,
-                      std::int32_t laser_damage) -> std::int32_t {
+                      std::int32_t laser_damage) -> std::uint32_t {
     auto& storage{data.level_events.initial_spawns.turret_spawns};
     auto const row{storage.num()};
     auto const entity_index{data.level_events.initialisation.entity_count++};
@@ -130,7 +130,7 @@ auto add_turret_spawn(LevelSimInitData& data,
 auto add_spinner_spawn(LevelSimInitData& data,
                        Vector3f location,
                        float const yaw,
-                       std::int32_t const initial_fire_point_index) -> std::int32_t {
+                       std::int32_t const initial_fire_point_index) -> std::uint32_t {
     auto& storage{data.level_events.initial_spawns.spinner_spawns};
     auto const row{storage.num()};
     auto const entity_index{data.level_events.initialisation.entity_count++};

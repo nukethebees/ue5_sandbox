@@ -62,8 +62,8 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     auto const spawns{spawn_storage.get_view()};
     spawns.entity_indices()[0] = 0;
     spawns.entity_indices()[1] = 1;
-    spawns.target_entity_indices()[0] = -1;
-    spawns.target_entity_indices()[1] = -1;
+    spawns.target_entity_indices()[0] = ::ioj::sim::invalid_level_entity_index;
+    spawns.target_entity_indices()[1] = ::ioj::sim::invalid_level_entity_index;
     spawns.teams()[0] = ::ioj::sim::Team::Green;
     spawns.teams()[1] = ::ioj::sim::Team::White;
     spawns.healths()[0] = 100;
@@ -135,8 +135,8 @@ void add_mission(::ioj::sim::LevelSimInitData& data) {
     mission.mode = ::ioj::sim::levels::LevelMissionMode::KillEnemies;
     mission.kill_count = 1;
     mission.save_results = false;
-    mission.hero_entity_indices = {entities[0]};
-    mission.required_kill_entity_indices = {entities[1]};
+    mission.hero_entity_indices = {static_cast<std::int32_t>(entities[0])};
+    mission.required_kill_entity_indices = {static_cast<std::int32_t>(entities[1])};
 }
 
 void kill_enemy(::ioj::sim::LevelSim& simulation) {

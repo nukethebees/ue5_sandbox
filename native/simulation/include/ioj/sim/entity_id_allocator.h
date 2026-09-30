@@ -5,12 +5,14 @@
 #include <sandbox/core/diagnostics.h>
 
 #include <format>
+#include <limits>
 #include <vector>
 
 namespace ioj::sim {
 class EntityIdAllocator {
   public:
-    [[nodiscard]] auto allocate(EntityType const type, std::int32_t const history_row)
+    inline static constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};
+    [[nodiscard]] auto allocate(EntityType const type, std::uint32_t const history_row)
         -> EntityUniqueId {
         if (type >= EntityType::COUNT) {
             ml::fatal_error("Cannot allocate an entity ID with an invalid type");
@@ -28,13 +30,13 @@ class EntityIdAllocator {
         return id;
     }
 
-    [[nodiscard]] auto history_index(EntityUniqueId const id) const noexcept -> std::int32_t {
+    [[nodiscard]] auto history_index(EntityUniqueId const id) const noexcept -> std::uint32_t {
         if (!is_entity_identity_offset(id)) {
-            return -1;
+            return invalid_index;
         }
         auto const type{id.entity_type()};
         auto const ordinal{id.index() - entity_identity_offsets[type]};
-        return ordinal < issued_counts_[type] ? history_rows_[type][ordinal] : -1;
+        return ordinal < issued_counts_[type] ? history_rows_[type][ordinal] : invalid_index;
     }
 
     [[nodiscard]] auto issued_counts() const noexcept -> EntityTypeSizes const& {
@@ -50,6 +52,6 @@ class EntityIdAllocator {
     }
   private:
     EntityTypeSizes issued_counts_{};
-    ml::EnumArray<EntityType, std::vector<std::int32_t>, EntityTypeSizes::size()> history_rows_;
+    ml::EnumArray<EntityType, std::vector<std::uint32_t>, EntityTypeSizes::size()> history_rows_;
 };
 }

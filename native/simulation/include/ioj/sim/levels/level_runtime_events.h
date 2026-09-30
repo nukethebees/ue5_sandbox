@@ -285,8 +285,8 @@ struct LevelCapitalSpawnEventsSingleLayout {
     using ColLayout = ml::native_soa::ColumnLayout<T>;
     inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<std::int32_t> EntityIndicesColumn{LayoutStart};
-    inline static constexpr ColLayout<std::int32_t> TargetEntityIndicesColumn{EntityIndicesColumn};
+    inline static constexpr ColLayout<std::uint32_t> EntityIndicesColumn{LayoutStart};
+    inline static constexpr ColLayout<std::uint32_t> TargetEntityIndicesColumn{EntityIndicesColumn};
     inline static constexpr ColLayout<float> LocationsXsColumn{TargetEntityIndicesColumn};
     inline static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
     inline static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
@@ -425,14 +425,14 @@ struct LevelCapitalSpawnEventsSingleViewImpl : ml::native_soa::CompactViewState<
     using Base::offset_;
     using Base::state_;
   public:
-    auto entity_indices() const -> std::span<Element<std::int32_t>> {
+    auto entity_indices() const -> std::span<Element<std::uint32_t>> {
         return {
-            this->template column_data<std::int32_t>(
+            this->template column_data<std::uint32_t>(
                 LevelCapitalSpawnEventsSingleLayout::EntityIndicesColumn.offset(capacity_blocks())),
             static_cast<std::size_t>(count_)};
     }
-    auto target_entity_indices() const -> std::span<Element<std::int32_t>> {
-        return {this->template column_data<std::int32_t>(
+    auto target_entity_indices() const -> std::span<Element<std::uint32_t>> {
+        return {this->template column_data<std::uint32_t>(
                     LevelCapitalSpawnEventsSingleLayout::TargetEntityIndicesColumn.offset(
                         capacity_blocks())),
                 static_cast<std::size_t>(count_)};
@@ -558,10 +558,10 @@ struct SingleAllocationLevelCapitalSpawnEvents
         source.validate();
         {
             ml::native_soa::source_data(source.entity_indices())
-        } -> std::convertible_to<std::int32_t const*>;
+        } -> std::convertible_to<std::uint32_t const*>;
         {
             ml::native_soa::source_data(source.target_entity_indices())
-        } -> std::convertible_to<std::int32_t const*>;
+        } -> std::convertible_to<std::uint32_t const*>;
         {
             ml::native_soa::source_data(source.view_locations().xs())
         } -> std::convertible_to<float const*>;
@@ -622,8 +622,8 @@ struct SingleAllocationLevelCapitalSpawnEvents
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<std::int32_t>* entity_indices{};
-        Element<std::int32_t>* target_entity_indices{};
+        Element<std::uint32_t>* entity_indices{};
+        Element<std::uint32_t>* target_entity_indices{};
         Element<float>* locations_xs{};
         Element<float>* locations_ys{};
         Element<float>* locations_zs{};
@@ -960,7 +960,7 @@ struct LevelTurretSpawnEventsSingleLayout {
     using ColLayout = ml::native_soa::ColumnLayout<T>;
     inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<std::int32_t> EntityIndicesColumn{LayoutStart};
+    inline static constexpr ColLayout<std::uint32_t> EntityIndicesColumn{LayoutStart};
     inline static constexpr ColLayout<float> LocationsXsColumn{EntityIndicesColumn};
     inline static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
     inline static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
@@ -1097,9 +1097,9 @@ struct LevelTurretSpawnEventsSingleViewImpl : ml::native_soa::CompactViewState<C
     using Base::offset_;
     using Base::state_;
   public:
-    auto entity_indices() const -> std::span<Element<std::int32_t>> {
+    auto entity_indices() const -> std::span<Element<std::uint32_t>> {
         return {
-            this->template column_data<std::int32_t>(
+            this->template column_data<std::uint32_t>(
                 LevelTurretSpawnEventsSingleLayout::EntityIndicesColumn.offset(capacity_blocks())),
             static_cast<std::size_t>(count_)};
     }
@@ -1216,7 +1216,7 @@ struct SingleAllocationLevelTurretSpawnEvents
         source.validate();
         {
             ml::native_soa::source_data(source.entity_indices())
-        } -> std::convertible_to<std::int32_t const*>;
+        } -> std::convertible_to<std::uint32_t const*>;
         {
             ml::native_soa::source_data(source.view_locations().xs())
         } -> std::convertible_to<float const*>;
@@ -1270,7 +1270,7 @@ struct SingleAllocationLevelTurretSpawnEvents
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<std::int32_t>* entity_indices{};
+        Element<std::uint32_t>* entity_indices{};
         Element<float>* locations_xs{};
         Element<float>* locations_ys{};
         Element<float>* locations_zs{};
@@ -1566,7 +1566,7 @@ struct LevelSpinnerSpawnEventsSingleLayout {
     using ColLayout = ml::native_soa::ColumnLayout<T>;
     inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<std::int32_t> EntityIndicesColumn{LayoutStart};
+    inline static constexpr ColLayout<std::uint32_t> EntityIndicesColumn{LayoutStart};
     inline static constexpr ColLayout<float> LocationsXsColumn{EntityIndicesColumn};
     inline static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
     inline static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
@@ -1614,9 +1614,9 @@ struct LevelSpinnerSpawnEventsSingleViewImpl : ml::native_soa::CompactViewState<
     using Base::offset_;
     using Base::state_;
   public:
-    auto entity_indices() const -> std::span<Element<std::int32_t>> {
+    auto entity_indices() const -> std::span<Element<std::uint32_t>> {
         return {
-            this->template column_data<std::int32_t>(
+            this->template column_data<std::uint32_t>(
                 LevelSpinnerSpawnEventsSingleLayout::EntityIndicesColumn.offset(capacity_blocks())),
             static_cast<std::size_t>(count_)};
     }
@@ -1718,7 +1718,7 @@ struct SingleAllocationLevelSpinnerSpawnEvents
         source.validate();
         {
             ml::native_soa::source_data(source.entity_indices())
-        } -> std::convertible_to<std::int32_t const*>;
+        } -> std::convertible_to<std::uint32_t const*>;
         {
             ml::native_soa::source_data(source.view_locations().xs())
         } -> std::convertible_to<float const*>;
@@ -1764,7 +1764,7 @@ struct SingleAllocationLevelSpinnerSpawnEvents
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<std::int32_t>* entity_indices{};
+        Element<std::uint32_t>* entity_indices{};
         Element<float>* locations_xs{};
         Element<float>* locations_ys{};
         Element<float>* locations_zs{};

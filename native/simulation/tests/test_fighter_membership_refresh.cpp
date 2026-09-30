@@ -15,9 +15,12 @@ auto make_world() -> LevelSimInitData {
     data.overlap_response.damage_per_overlap_detection = 1;
     data.participating_teams.add(Team::Green);
     data.participating_teams.add(Team::Red);
-    add_capital_spawn(data, {{-1000.f, 0.f, 0.f}}, Team::Green, -1, 60.f, 60.f, 100);
-    add_capital_spawn(data, {{-2000.f, 0.f, 0.f}}, Team::Green, -1, 60.f, 60.f, 100);
-    add_capital_spawn(data, {{2000.f, 0.f, 0.f}}, Team::Red, -1, 60.f, 60.f, 100);
+    add_capital_spawn(
+        data, {{-1000.f, 0.f, 0.f}}, Team::Green, invalid_level_entity_index, 60.f, 60.f, 100);
+    add_capital_spawn(
+        data, {{-2000.f, 0.f, 0.f}}, Team::Green, invalid_level_entity_index, 60.f, 60.f, 100);
+    add_capital_spawn(
+        data, {{2000.f, 0.f, 0.f}}, Team::Red, invalid_level_entity_index, 60.f, 60.f, 100);
     for (auto const type : ml::EnumTraits<EntityType>::values) {
         data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }

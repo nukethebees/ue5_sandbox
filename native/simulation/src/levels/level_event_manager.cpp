@@ -31,7 +31,7 @@ void LevelEventManager::initialise(CompiledLevelEvents data, EntityUniqueId cons
     spawn_manager_.initialise(initialisation_.entity_count,
                               schedule_.capital_spawns.get_const_view(),
                               schedule_.turret_spawns.get_const_view());
-    if (initialisation_.player_entity_index != -1) {
+    if (initialisation_.player_entity_index != invalid_level_entity_index) {
         spawn_manager_.set_entity_id(initialisation_.player_entity_index, player_id);
     }
     spawn_manager_.spawn_initial(data.initial_spawns.capital_spawns.get_const_view(),
@@ -102,7 +102,7 @@ void LevelEventManager::configure_mission() {
     }
 }
 
-auto LevelEventManager::get_entity_id(std::int32_t const entity_index) const -> EntityUniqueId {
+auto LevelEventManager::get_entity_id(std::uint32_t const entity_index) const -> EntityUniqueId {
     return spawn_manager_.get_id(entity_index);
 }
 

@@ -23,17 +23,20 @@ struct StaticGridBuildError {
 
     StaticGridBuildErrorCode code;
     StaticGeometryIndex aabb_index{invalid_static_geometry_index};
-    CellIndex cell_index{-1};
+    CellIndex cell_index{invalid_cell_index};
     MembershipCount count{};
 };
 
 class CollisionGridStaticStorage {
   public:
-    using CellRangeIndex = std::int32_t;
+    using CellRangeIndex = std::uint32_t;
     using AabbIndex = std::uint16_t;
     using RangeOffset = std::uint32_t;
     using RangeCount = std::uint16_t;
     using CellMembershipCount = std::uint32_t;
+
+    inline static constexpr CellRangeIndex invalid_cell_range_index{
+        std::numeric_limits<std::uint32_t>::max()};
 
     inline static constexpr AabbIndex invalid_aabb_index{std::numeric_limits<AabbIndex>::max()};
 

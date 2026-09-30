@@ -95,7 +95,8 @@ auto make_fighter_navigation_test_data(tests::SimulationFixture const& config,
         data.capital_ships.fighter_spawn_slots_relative_transforms.push_back(transform);
     }
     tests::add_capital_spawn(data, source_location, Team::Green, 1, 0.f, 60.f, 100000);
-    tests::add_capital_spawn(data, target_location, Team::Red, -1, 60.f, 60.f, 100000);
+    tests::add_capital_spawn(
+        data, target_location, Team::Red, invalid_level_entity_index, 60.f, 60.f, 100000);
     return data;
 }
 
@@ -116,8 +117,10 @@ void run_worldless_fighter_capital_obstruction(tests::SimulationFixture const& c
     data.capital_ships.fighter_spawn_slots_relative_transforms = {
         {.location = {3000.0, 7000.0, 0.0}}};
     tests::add_capital_spawn(data, source, Team::Green, 2, 0.f, 60.f, 100000);
-    tests::add_capital_spawn(data, obstacle, Team::Green, -1, 60.f, 60.f, 100000);
-    tests::add_capital_spawn(data, target, Team::Red, -1, 60.f, 60.f, 100000);
+    tests::add_capital_spawn(
+        data, obstacle, Team::Green, invalid_level_entity_index, 60.f, 60.f, 100000);
+    tests::add_capital_spawn(
+        data, target, Team::Red, invalid_level_entity_index, 60.f, 60.f, 100000);
     Rotator3f const obstacle_rotation{0.f, 35.f, 0.f};
     set_rotation(data.level_events.initial_spawns.capital_spawns.get_view().view_rotations(),
                  1,

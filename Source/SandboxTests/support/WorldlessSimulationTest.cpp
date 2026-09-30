@@ -39,7 +39,7 @@ auto make_worldless_player_spawn(USpaceGameLevelConfig const& config, FTransform
 }
 
 auto add_worldless_player_spawn(::ioj::sim::LevelSimInitData& data,
-                                ::ioj::sim::player::PlayerSpawnData spawn) -> int32 {
+                                ::ioj::sim::player::PlayerSpawnData spawn) -> uint32 {
     auto& initialisation{data.level_events.initialisation};
     auto const entity_index{initialisation.entity_count++};
     initialisation.player_entity_index = entity_index;
@@ -50,10 +50,10 @@ auto add_worldless_player_spawn(::ioj::sim::LevelSimInitData& data,
 auto add_worldless_capital_spawn(::ioj::sim::LevelSimInitData& data,
                                  FVector3f const location,
                                  ETestTeam const team,
-                                 int32 const target_entity_index,
+                                 uint32 const target_entity_index,
                                  float const initial_spawn_delay,
                                  float const spawn_cooldown,
-                                 int32 const health) -> int32 {
+                                 int32 const health) -> uint32 {
     auto& storage{data.level_events.initial_spawns.capital_spawns};
     auto const index{storage.num()};
     storage.add_defaulted(1);

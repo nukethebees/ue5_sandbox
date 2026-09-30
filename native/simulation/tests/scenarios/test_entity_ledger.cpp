@@ -26,7 +26,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
                                             static_cast<float>(team_index * 5000),
                                             4360.f),
                                      static_cast<Team>(team_index),
-                                     -1,
+                                     invalid_level_entity_index,
                                      5.f,
                                      60.f);
             ++actor_index;

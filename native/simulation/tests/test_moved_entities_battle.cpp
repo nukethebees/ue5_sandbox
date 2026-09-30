@@ -36,7 +36,7 @@ auto make_long_running_battle() -> LevelSimInitData {
     auto const first{add_capital_spawn(data,
                                        {{-10000.f, 0.f, 0.f}},
                                        Team::Green,
-                                       -1,
+                                       invalid_level_entity_index,
                                        0.f,
                                        10000.f,
                                        std::numeric_limits<std::int32_t>::max())};

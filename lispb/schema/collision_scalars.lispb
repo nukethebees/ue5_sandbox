@@ -3,27 +3,27 @@
   :backend standard-library
   :namespace ioj::sim::collision
   (integer-scalar StaticGeometryIndex
-    :signed true
+    :signed false
     :minimum 0
-    :maximum 2147483647
+    :maximum 4294967294
     :bit-width 32
-    :cpp-type @native_int32
+    :cpp-type @native_uint32
     :cpp-emission alias
-    (code Invalid :value -1 :sentinel true))
+    (code Invalid :value 4294967295 :sentinel true))
   (integer-scalar CellIndex
-    :signed true
+    :signed false
     :minimum 0
-    :maximum 2147483647
+    :maximum 4294967294
     :bit-width 32
-    :cpp-type @native_int32
+    :cpp-type @native_uint32
     :cpp-emission alias
-    (code Invalid :value -1 :sentinel true))
+    (code Invalid :value 4294967295 :sentinel true))
   (integer-scalar GridCellCount
-    :signed true
+    :signed false
     :minimum 0
-    :maximum 2147483647
+    :maximum 4294967295
     :bit-width 32
-    :cpp-type @native_int32
+    :cpp-type @native_uint32
     :cpp-emission alias)
   (integer-scalar SphereInBoundsResult
     :signed false

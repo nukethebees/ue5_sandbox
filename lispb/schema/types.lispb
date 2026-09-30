@@ -82,6 +82,12 @@
   :pass-by value
   (integer :signed true :bit-width 32))
 
+(type native_uint32
+  :spelling "std::uint32_t"
+  :header "cstdint"
+  :pass-by value
+  (integer :signed false :bit-width 32))
+
 (type native_uint64
   :spelling "std::uint64_t"
   :header "cstdint"

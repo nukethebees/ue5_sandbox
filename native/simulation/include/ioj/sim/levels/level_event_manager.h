@@ -26,7 +26,7 @@ class LevelEventManager {
     void execute_tick(SimTick tick);
     auto get_spawned_ids() const -> std::span<EntityUniqueId const>;
     void configure_mission();
-    auto get_entity_id(std::int32_t entity_index) const -> EntityUniqueId;
+    auto get_entity_id(std::uint32_t entity_index) const -> EntityUniqueId;
     auto has_future_spawns() const noexcept -> bool;
   private:
     LevelInitialisationData initialisation_{};

@@ -9,9 +9,10 @@ namespace ioj::sim {
 namespace {
 auto add_worldless_capital(LevelSimInitData& data,
                            ml::Vector3d const location,
-                           Team const team = Team::White) -> std::int32_t {
+                           Team const team = Team::White) -> std::uint32_t {
     auto const row{data.level_events.initial_spawns.capital_spawns.num()};
-    tests::add_capital_spawn(data, to_float(location), team, -1, 60.f, 60.f);
+    tests::add_capital_spawn(
+        data, to_float(location), team, invalid_level_entity_index, 60.f, 60.f);
     return row;
 }
 }
@@ -27,8 +28,8 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
         data,
         ml::Vector3d{-2000.f, 0.f, 0.f},
         scenario == Scenario::AutomaticKillTarget ? Team::Green : Team::White)};
-    std::int32_t ordinary_enemy_index{-1};
-    std::int32_t required_enemy_index{-1};
+    std::uint32_t ordinary_enemy_index{invalid_level_entity_index};
+    std::uint32_t required_enemy_index{invalid_level_entity_index};
     if (scenario == Scenario::KillEnemies || scenario == Scenario::KillEnemiesWithinTime) {
         ordinary_enemy_index = add_worldless_capital(data, ml::Vector3d{2000.f, 0.f, 0.f});
     } else if (scenario == Scenario::RequiredKillsObjective) {
@@ -103,10 +104,12 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
     auto& manager{simulation.get_mission_manager()};
     auto const& capitals{simulation.get_capital_ships()};
     auto const hero{capitals.get_id(hero_index)};
-    auto const ordinary_enemy{ordinary_enemy_index == -1 ? EntityUniqueId{}
-                                                         : capitals.get_id(ordinary_enemy_index)};
-    auto const required_enemy{required_enemy_index == -1 ? EntityUniqueId{}
-                                                         : capitals.get_id(required_enemy_index)};
+    auto const ordinary_enemy{ordinary_enemy_index == invalid_level_entity_index
+                                  ? EntityUniqueId{}
+                                  : capitals.get_id(ordinary_enemy_index)};
+    auto const required_enemy{required_enemy_index == invalid_level_entity_index
+                                  ? EntityUniqueId{}
+                                  : capitals.get_id(required_enemy_index)};
 
     harness.finish_initialisation();
 

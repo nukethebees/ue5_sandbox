@@ -60,16 +60,28 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     if (needs_player) {
         add_worldless_player_spawn(data, make_worldless_player_spawn(config));
     }
-    int32 first_capital_index{INDEX_NONE};
-    int32 second_capital_index{INDEX_NONE};
+    uint32 first_capital_index{::ioj::sim::invalid_level_entity_index};
+    uint32 second_capital_index{::ioj::sim::invalid_level_entity_index};
     if (scenario == EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD || needs_player) {
-        first_capital_index = add_worldless_capital_spawn(
-            data, FVector3f{2000.f, 0.f, 0.f}, ETestTeam::Red, INDEX_NONE, 60.f, 60.f);
+        first_capital_index = add_worldless_capital_spawn(data,
+                                                          FVector3f{2000.f, 0.f, 0.f},
+                                                          ETestTeam::Red,
+                                                          ::ioj::sim::invalid_level_entity_index,
+                                                          60.f,
+                                                          60.f);
     } else if (needs_defence) {
-        first_capital_index = add_worldless_capital_spawn(
-            data, FVector3f::ZeroVector, ETestTeam::Blue, INDEX_NONE, 60.f, 60.f);
-        second_capital_index = add_worldless_capital_spawn(
-            data, FVector3f{2000.f, 0.f, 0.f}, ETestTeam::Red, INDEX_NONE, 60.f, 60.f);
+        first_capital_index = add_worldless_capital_spawn(data,
+                                                          FVector3f::ZeroVector,
+                                                          ETestTeam::Blue,
+                                                          ::ioj::sim::invalid_level_entity_index,
+                                                          60.f,
+                                                          60.f);
+        second_capital_index = add_worldless_capital_spawn(data,
+                                                           FVector3f{2000.f, 0.f, 0.f},
+                                                           ETestTeam::Red,
+                                                           ::ioj::sim::invalid_level_entity_index,
+                                                           60.f,
+                                                           60.f);
     }
 
     auto& mission_data{data.level_events.initialisation.mission.emplace()};
@@ -88,10 +100,10 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     auto& simulation{harness.get_simulation()};
     auto& mission{simulation.get_mission_manager()};
     auto const& capitals{simulation.get_capital_ships()};
-    auto const first_capital{first_capital_index == INDEX_NONE
+    auto const first_capital{first_capital_index == ::ioj::sim::invalid_level_entity_index
                                  ? ::ioj::sim::EntityUniqueId{}
                                  : capitals.get_id(first_capital_index)};
-    auto const second_capital{second_capital_index == INDEX_NONE
+    auto const second_capital{second_capital_index == ::ioj::sim::invalid_level_entity_index
                                   ? ::ioj::sim::EntityUniqueId{}
                                   : capitals.get_id(second_capital_index)};
     harness.finish_initialisation();

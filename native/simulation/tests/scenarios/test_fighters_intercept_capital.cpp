@@ -17,7 +17,7 @@ void run_worldless_fighters_intercept_capital(tests::SimulationFixture const& co
     auto const green{tests::add_capital_spawn(data,
                                               {{-61180.f, 2170.f, 4360.f}},
                                               Team::Green,
-                                              -1,
+                                              invalid_level_entity_index,
                                               0.f,
                                               60.f,
                                               fighters_intercept_test::collision_resilient_health)};

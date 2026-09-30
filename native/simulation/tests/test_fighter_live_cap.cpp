@@ -56,7 +56,7 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
         auto const entity_index{add_capital_spawn(data,
                                                   {{capital_index * 1000.f, 0.f, 0.f}},
                                                   capital_teams[capital_index],
-                                                  -1,
+                                                  invalid_level_entity_index,
                                                   0.f,
                                                   spawn_cooldown,
                                                   100)};

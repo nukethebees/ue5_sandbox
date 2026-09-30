@@ -7,8 +7,8 @@
 namespace ioj::sim {
 void run_worldless_fighter_los_failure(tests::SimulationFixture const& config) {
     auto data{tests::make_simulation_data(config)};
-    auto const blue{
-        tests::add_capital_spawn(data, {{-39600.f, 2170.f, 4360.f}}, Team::Blue, -1, 0.f, 1000.f)};
+    auto const blue{tests::add_capital_spawn(
+        data, {{-39600.f, 2170.f, 4360.f}}, Team::Blue, invalid_level_entity_index, 0.f, 1000.f)};
     auto const red{tests::add_capital_spawn(
         data, {{50180.f, 2170.f, 4360.f}}, Team::Red, blue, 10000.f, 10000.f)};
     data.level_events.initial_spawns.capital_spawns.get_view().target_entity_indices()[0] = red;

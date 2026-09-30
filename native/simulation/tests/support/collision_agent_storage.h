@@ -79,7 +79,7 @@ struct CollisionAgentStorage {
 
     void set(EntityUniqueId id, Vector3f location, Rotator3f rotation, Health health) {
         auto const row{find_row(id)};
-        assert(row >= 0);
+        assert(row != AgentIndices::invalid_index);
         switch (id.entity_type()) {
             case EntityType::CapitalShip: {
                 auto out{capitals.get_view()};
@@ -125,7 +125,7 @@ struct CollisionAgentStorage {
     void remove(EntityUniqueId id) {
         clock.phase = SimulationPhase::Preparation;
         auto const row{find_row(id)};
-        assert(row >= 0);
+        assert(row != AgentIndices::invalid_index);
         bind_entity_indices();
         switch (id.entity_type()) {
             case EntityType::CapitalShip:
@@ -208,10 +208,11 @@ struct CollisionAgentStorage {
         entity_tables.remove_health_rows(rows, indices, ids);
     }
 
-    auto find_row(EntityUniqueId id) const -> std::int32_t {
+    auto find_row(EntityUniqueId id) const -> std::uint32_t {
         auto find = [id](std::span<EntityUniqueId const> ids) {
             auto const found{std::ranges::find(ids, id)};
-            return found == ids.end() ? -1 : static_cast<std::int32_t>(found - ids.begin());
+            return found == ids.end() ? AgentIndices::invalid_index
+                                      : static_cast<std::uint32_t>(found - ids.begin());
         };
         switch (id.entity_type()) {
             case EntityType::CapitalShip:
@@ -225,9 +226,9 @@ struct CollisionAgentStorage {
             case EntityType::PlayerShip:
                 return find(player_ids);
             case EntityType::COUNT:
-                return -1;
+                return AgentIndices::invalid_index;
         }
-        return -1;
+        return AgentIndices::invalid_index;
     }
 
     SimClock clock;

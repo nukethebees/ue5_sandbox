@@ -108,8 +108,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
         }
 
         auto const trace_cell{[&](CellIndex const cell_index) {
-            assert(cell_index >= 0 &&
-                   static_cast<std::size_t>(cell_index) < entity_storage.cell_counts.size());
+            assert(static_cast<std::size_t>(cell_index) < entity_storage.cell_counts.size());
             auto const element{static_cast<std::size_t>(cell_index)};
             auto const count{entity_storage.cell_counts[element]};
             auto const entity_count{static_cast<std::uint32_t>(count)};
@@ -415,8 +414,7 @@ void append_grid_overlaps(GridGeometry const geometry,
         for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
             auto cell_index{row_index};
             for (auto x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
-                assert(cell_index >= 0 &&
-                       static_cast<std::size_t>(cell_index) < entity_storage.cell_counts.size());
+                assert(static_cast<std::size_t>(cell_index) < entity_storage.cell_counts.size());
                 auto const element{static_cast<std::size_t>(cell_index)};
                 auto const count{entity_storage.cell_counts[element]};
                 auto const entity_count{static_cast<std::uint32_t>(count)};
