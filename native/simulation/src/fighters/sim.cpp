@@ -109,19 +109,6 @@ auto Sim::get_navigation_tick_period(NavigationRiskTier const tier) const -> std
     assert(index >= 0 && static_cast<std::size_t>(index) < navigation_tick_periods.size());
     return navigation_tick_periods[index];
 }
-void Sim::reset_navigation_state(std::int32_t const fighter_index,
-                                 NavigationRiskTier const initial_tier) {
-    auto const data{entity_buffers.current().get_view()};
-    assert(fighter_index >= 0 && fighter_index < data.num());
-    set_vector(data.view_separation_steering(), fighter_index, HMM_V3(0.f, 0.f, 0.f));
-    data.navigation_risk_tiers()[fighter_index] = static_cast<std::uint8_t>(initial_tier);
-    data.navigation_lower_risk_scan_counts()[fighter_index] = 0;
-    data.avoidance_choice_indices()[fighter_index] = direct_movement_choice;
-    data.avoidance_clear_scan_counts()[fighter_index] = 0;
-    data.navigation_update_countdowns_periods()[fighter_index] =
-        get_navigation_tick_period(initial_tier);
-    data.navigation_update_countdowns_remaining_ticks()[fighter_index] = 0;
-}
 
 /* **************************************** */
 // Configuration
@@ -1643,12 +1630,51 @@ void Sim::commit_orders() {
         return;
     }
 
+    struct NavigationState {
+        std::span<float> separation_xs;
+        std::span<float> separation_ys;
+        std::span<float> separation_zs;
+        std::span<NavigationRiskCode> risk_tiers;
+        std::span<NavigationScanCount> lower_risk_scan_counts;
+        std::span<AvoidanceChoice> avoidance_choice_indices;
+        std::span<NavigationScanCount> avoidance_clear_scan_counts;
+        std::span<std::int16_t> update_periods;
+        std::span<std::int16_t> remaining_ticks;
+
+        void reset(std::size_t const index,
+                   NavigationRiskTier const initial_tier,
+                   std::int16_t const tick_period) const {
+            assert(index < risk_tiers.size());
+
+            separation_xs[index] = 0.f;
+            separation_ys[index] = 0.f;
+            separation_zs[index] = 0.f;
+            risk_tiers[index] = static_cast<NavigationRiskCode>(initial_tier);
+            lower_risk_scan_counts[index] = 0;
+            avoidance_choice_indices[index] = direct_movement_choice;
+            avoidance_clear_scan_counts[index] = 0;
+            update_periods[index] = tick_period;
+            remaining_ticks[index] = 0;
+        }
+    };
+
     auto const orders{order_queue.get_const_view()};
     auto const tasks{data.tasks()};
     auto const desired_move_locations{data.view_desired_move_locations()};
     auto const locations{data.view_locations()};
     auto const attack_reposition_countdowns{data.attack_reposition_countdowns()};
     auto const target_ids{data.target_ids()};
+    auto const separation_steering{data.view_separation_steering()};
+    NavigationState const navigation{
+        .separation_xs = separation_steering.xs(),
+        .separation_ys = separation_steering.ys(),
+        .separation_zs = separation_steering.zs(),
+        .risk_tiers = data.navigation_risk_tiers(),
+        .lower_risk_scan_counts = data.navigation_lower_risk_scan_counts(),
+        .avoidance_choice_indices = data.avoidance_choice_indices(),
+        .avoidance_clear_scan_counts = data.avoidance_clear_scan_counts(),
+        .update_periods = data.navigation_update_countdowns_periods(),
+        .remaining_ticks = data.navigation_update_countdowns_remaining_ticks()};
 
     for (std::int32_t index{}; index < n_orders; ++index) {
         auto const order_index{static_cast<std::size_t>(index)};
@@ -1667,9 +1693,9 @@ void Sim::commit_orders() {
             auto const old_task{tasks[element]};
             auto const new_task{orders.tasks[order_index]};
             tasks[element] = new_task;
-            reset_navigation_state(fighter_index,
-                                   new_task == FighterTask::Standby ? NavigationRiskTier::Clear
-                                                                    : NavigationRiskTier::Nearby);
+            auto const initial_tier{new_task == FighterTask::Standby ? NavigationRiskTier::Clear
+                                                                     : NavigationRiskTier::Nearby};
+            navigation.reset(element, initial_tier, get_navigation_tick_period(initial_tier));
             if (old_task != FighterTask::Attack && new_task == FighterTask::Attack) {
                 set_vector(
                     desired_move_locations, fighter_index, vector_at(locations, fighter_index));

@@ -141,7 +141,6 @@ struct Sim {
     // Navigation
     /* **************************************** */
     auto get_navigation_tick_period(NavigationRiskTier tier) const -> std::int16_t;
-    void reset_navigation_state(std::int32_t fighter_index, NavigationRiskTier initial_tier);
 
     /* **************************************** */
     // Sim phases
