@@ -1,6 +1,6 @@
 #include "support/collision_agent_storage.h"
 #include <ioj/sim/agent_accessor.h>
-#include <ioj/sim/agent_indexes.h>
+#include <ioj/sim/agent_indices.h>
 #include <ioj/sim/column_math.h>
 
 #include <gtest/gtest.h>

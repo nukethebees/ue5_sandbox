@@ -1,4 +1,4 @@
-#include <ioj/sim/agent_indexes.h>
+#include <ioj/sim/agent_indices.h>
 #include <ioj/sim/batch_operations.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/damage_queue.h>

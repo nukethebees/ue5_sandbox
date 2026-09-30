@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/sim/agent_indexes.h>
+#include <ioj/sim/agent_indices.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/health_table.h>
 

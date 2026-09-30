@@ -5,7 +5,7 @@ target_sources(native-simulation PRIVATE
   damage_queue.cpp
   ../include/ioj/sim/combat_events.h
   ../include/ioj/sim/damage_queue.h
-  ../include/ioj/sim/agent_indexes.h
+  ../include/ioj/sim/agent_indices.h
   ../include/ioj/sim/agent_display_batch.h
   ../include/ioj/sim/agent_accessor.h
   ../include/ioj/sim/attack_distance_band.h

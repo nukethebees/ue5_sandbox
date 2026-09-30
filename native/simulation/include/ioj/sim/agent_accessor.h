@@ -1,6 +1,6 @@
 #pragma once
 #include <ioj/sim/agent_display_batch.h>
-#include <ioj/sim/agent_indexes.h>
+#include <ioj/sim/agent_indices.h>
 #include <ioj/sim/capital_entity_data.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/fighter_entity_data.h>
