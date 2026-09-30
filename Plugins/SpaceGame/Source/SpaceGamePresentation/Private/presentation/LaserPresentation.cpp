@@ -101,7 +101,7 @@ auto FLaserPresentation::source_colour(::ioj::sim::LaserSource const source) con
 void FLaserPresentation::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_ismc);
     auto const active{view().entities.active()};
-    auto const count{view().entities.num()};
+    auto const count{static_cast<int32>(view().entities.num())};
     auto const locations{view().entities.view_locations()};
     FBox3f position_bounds{ForceInit};
     visible_indices_.Reset();

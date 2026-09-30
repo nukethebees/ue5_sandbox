@@ -76,7 +76,7 @@ void FTestCapitalShipProxyScenario::check_proxy_healths() {
     auto const& agents{driver.orchestrator.get_level_simulation()->get_agent_accessor()};
 
     checks.are_equal(
-        2, capitals.get_num_instances(), TEXT("Two capital ships are spawned from the proxies"));
+        2u, capitals.get_num_instances(), TEXT("Two capital ships are spawned from the proxies"));
     checks.is_true(agents.is_alive(default_health_id), TEXT("Default-health proxy ID is alive"));
     checks.is_true(agents.is_alive(overridden_health_id),
                    TEXT("Overridden-health proxy ID is alive"));

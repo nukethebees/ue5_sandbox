@@ -489,7 +489,7 @@ auto ATestBatchOrchestrator::initialise_simulation(
 
         initial_turret_transforms_.Reset();
         auto const turrets{result->level_events.initial_spawns.turret_spawns.get_const_view()};
-        auto const turret_count{turrets.num()};
+        auto const turret_count{static_cast<int32>(turrets.num())};
         initial_turret_transforms_.Reserve(turret_count);
         for (int32 i{}; i < turret_count; ++i) {
             initial_turret_transforms_.Emplace(

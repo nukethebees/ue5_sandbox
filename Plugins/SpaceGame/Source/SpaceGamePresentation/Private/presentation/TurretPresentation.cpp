@@ -58,7 +58,7 @@ void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_tra
     configure_ismc();
     ismc_transforms = MoveTemp(initial_transforms);
     auto const entities{view().entities};
-    auto const count{entities.num()};
+    auto const count{static_cast<int32>(entities.num())};
     auto const locations{entities.view_locations()};
     auto const pitches{entities.view_rotations().pitches()};
     auto const yaws{entities.view_rotations().yaws()};
@@ -83,7 +83,7 @@ void FTurretPresentation::update_visual_data() {
             FTransform const transform{FRotator{ml::to_unreal(change.rotation)},
                                        FVector{ml::to_unreal(change.location)}};
             auto const index{instances->AddInstance(transform, is_world_space)};
-            check(index == change.index);
+            check(index == static_cast<int32>(change.index));
             ismc_transforms.Add(transform);
             auto const colour{colours[ml::to_unreal(change.team)]};
             TArray<float> data{colour.R, colour.G, colour.B};
@@ -181,7 +181,7 @@ void FTurretPresentation::trigger_death_effects() {
 void FTurretPresentation::validate_array_sizes() const {
     view().entities.validate();
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(view().get_num_instances()),
+        SANDBOX_NAMED_NUM(static_cast<int32>(view().get_num_instances())),
         SANDBOX_NAMED_NUM(ismc_transforms),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
@@ -192,7 +192,7 @@ void FTurretPresentation::draw_debugging_shapes() const {
 
     auto const& turret_simulation{view()};
     auto const& entities{turret_simulation.entities};
-    auto const n{turret_simulation.get_num_instances()};
+    auto const n{static_cast<int32>(turret_simulation.get_num_instances())};
     auto const text_offset{actor_config->debug_status_text_offset};
 
     auto& drawer{debug_drawer};

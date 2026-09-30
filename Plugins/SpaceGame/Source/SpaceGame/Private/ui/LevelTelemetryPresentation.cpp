@@ -15,7 +15,7 @@ auto make_graph_series(FText name,
                     .antialias = true,
                     .interpolation = EGraphSeriesInterpolation::StepAfter};
 
-    auto const sample_count{data.num()};
+    auto const sample_count{static_cast<int32>(data.num())};
     series.x.Reserve(sample_count);
     series.y.Reserve(sample_count);
     for (int32 index{}; index < sample_count; ++index) {

@@ -169,7 +169,8 @@ void write_new_payload(::ioj::sim::telemetry::SingleAllocationHistoryRows::View 
 
 auto checksum_rows(::ioj::sim::telemetry::SingleAllocationHistoryRows::ConstView rows) -> uint64 {
     uint64 result{};
-    for (int32 row{}; row < rows.num(); ++row) {
+    auto const row_count{rows.num()};
+    for (uint32 row{}; row < row_count; ++row) {
         auto mask{rows.validity_masks()[row].value()};
         while (mask != 0) {
             auto const field{static_cast<int32>(std::countr_zero(mask))};
@@ -336,7 +337,7 @@ auto benchmark_blocks(FWorkload const& workload, SIZE_T const block_bytes) -> FR
     result.append_ms = (FPlatformTime::Seconds() - started) * 1000.0;
     auto const stats{history.get_stats()};
     result.allocations = stats.retained_block_count;
-    result.growths = FMath::Max(0, stats.retained_block_count - 1);
+    result.growths = stats.retained_block_count > 0 ? stats.retained_block_count - 1 : 0;
     result.retained_blocks = stats.retained_block_count;
     result.unused_final_samples = stats.unused_samples_in_final_block;
     result.allocated_bytes = stats.total_byte_capacity;

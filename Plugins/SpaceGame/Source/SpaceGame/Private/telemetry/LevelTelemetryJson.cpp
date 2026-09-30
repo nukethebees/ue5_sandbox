@@ -61,7 +61,7 @@ template <typename Series>
 auto make_series(Series const& series) -> TSharedRef<FJsonObject> {
     TArray<TSharedPtr<FJsonValue>> ticks;
     TArray<TSharedPtr<FJsonValue>> values;
-    auto const count{series.num()};
+    auto const count{static_cast<int32>(series.num())};
     ml::reserve(count, ticks, values);
     for (int32 index{}; index < count; ++index) {
         ticks.Add(MakeShared<FJsonValueNumber>(static_cast<double>(series.time_at(index))));
@@ -391,7 +391,7 @@ auto parse_tick_series(FJsonObject const& parent,
 template <typename Series>
 auto validate_nonnegative_series(Series const& series, FString const& path)
     -> std::expected<void, FString> {
-    auto const count{series.num()};
+    auto const count{static_cast<int32>(series.num())};
     for (int32 index{}; index < count; ++index) {
         if (series.value_at(index) < 0) {
             return std::unexpected{error_at(path, TEXT("series values must be nonnegative"))};
@@ -491,7 +491,7 @@ auto validate_serialized_counts(Counts const& source, FString const& path)
 template <typename Series>
 auto validate_serialized_series(Series const& source, FString const& path)
     -> std::expected<void, FString> {
-    auto const count{source.num()};
+    auto const count{static_cast<int32>(source.num())};
     uint64 previous_tick{};
     for (int32 index{}; index < count; ++index) {
         auto const tick_path{FString::Printf(TEXT("%s.ticks[%d]"), *path, index)};

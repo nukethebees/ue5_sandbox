@@ -82,7 +82,7 @@ void FCapitalPresentation::update_visual_data() {
             FTransform const transform{FRotator{ml::to_unreal(change.rotation)},
                                        FVector{ml::to_unreal(change.location)}};
             auto const index{instances->AddInstance(transform, is_world_space)};
-            check(index == change.index);
+            check(index == static_cast<int32>(change.index));
             auto const colour{colours[ml::to_unreal(change.team)]};
             TArray<float> data{colour.R, colour.G, colour.B};
             instances->SetCustomData(index, data, false);
@@ -116,7 +116,7 @@ void FCapitalPresentation::configure_ismc() {
 
 void FCapitalPresentation::add_initial_visual_instances() {
     auto const entities{view().entities};
-    auto const n_to_add{entities.num()};
+    auto const n_to_add{static_cast<int32>(entities.num())};
     add_visual_instances(0, n_to_add);
 }
 
@@ -195,7 +195,7 @@ void FCapitalPresentation::trigger_death_effects() {
     ml::reserve(n * (n_small_explosions + 1), spawn_systems, spawn_locations, spawn_delays);
 
     float current_delay{0.f};
-    int32 previous_batch{INDEX_NONE};
+    uint32 previous_batch{MAX_uint32};
     for (auto const& death : deaths) {
         if (previous_batch != death.batch_index) {
             current_delay = 0.f;
@@ -235,7 +235,7 @@ void FCapitalPresentation::draw_debugging_shapes() const {
     auto const& capital_simulation{view()};
     auto const& entities{capital_simulation.entities};
     auto const& agents{*capital_simulation.agents};
-    auto const n{capital_simulation.get_num_instances()};
+    auto const n{static_cast<int32>(capital_simulation.get_num_instances())};
     auto const text_offset{actor_config->debug_status_text_offset};
     auto const locations{entities.view_locations()};
     auto const targets{entities.target_ids()};
@@ -259,7 +259,7 @@ void FCapitalPresentation::draw_debugging_shapes() const {
 void FCapitalPresentation::validate_array_sizes() const {
     view().entities.validate();
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(view().get_num_instances()),
+        SANDBOX_NAMED_NUM(static_cast<int32>(view().get_num_instances())),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }

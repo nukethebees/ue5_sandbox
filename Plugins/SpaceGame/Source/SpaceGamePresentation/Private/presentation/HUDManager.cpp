@@ -863,7 +863,7 @@ void FHUDManager::collect_kill_data() {
 
     auto& next_data{kill_data_buffers.next()};
     auto const& unique_entities{entity_ledger->get_unique_entities()};
-    auto const n_unique_entities{unique_entities.num()};
+    auto const n_unique_entities{static_cast<int32>(unique_entities.num())};
 
     auto const kills{unique_entities.kills()};
     auto const entity_ids{unique_entities.entity_ids()};

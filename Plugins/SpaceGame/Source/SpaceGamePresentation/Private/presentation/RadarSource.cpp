@@ -180,7 +180,7 @@ auto collect_radar_instances(std::span<::ioj::sim::AgentDisplayBatch const> cons
     for (int32 priority{0}; priority < 3; ++priority) {
         int32 output_index{};
         for (auto const& batch : batches) {
-            auto const batch_count{batch.num()};
+            auto const batch_count{static_cast<int32>(batch.num())};
             check(batch.ids.size() == static_cast<std::size_t>(batch_count));
             for (int32 index{}; index < batch_count; ++index, ++output_index) {
                 if (::ioj::sim::is_dead(batch.health(index))) {

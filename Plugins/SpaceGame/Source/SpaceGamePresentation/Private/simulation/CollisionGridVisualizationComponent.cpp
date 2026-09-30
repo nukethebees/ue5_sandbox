@@ -323,7 +323,7 @@ void UCollisionGridVisualizationComponent::update_collision_bounds(
         return;
     }
 
-    auto const entity_count{entity_aabbs.num()};
+    auto const entity_count{static_cast<int32>(entity_aabbs.num())};
     entity_bounds_.Reset();
     entity_bounds_.Reserve(entity_count);
     for (int32 i{}; i < entity_count; ++i) {
@@ -331,7 +331,7 @@ void UCollisionGridVisualizationComponent::update_collision_bounds(
                                ml::to_unreal(::ioj::sim::collision::max_point_at(entity_aabbs, i)));
     }
 
-    auto const static_count{static_aabbs.num()};
+    auto const static_count{static_cast<int32>(static_aabbs.num())};
     static_bounds_.SetNumUninitialized(static_count, EAllowShrinking::No);
     for (int32 i{}; i < static_count; ++i) {
         static_bounds_[i] = FBox3f{ml::to_unreal(::ioj::sim::collision::min_at(static_aabbs, i)),

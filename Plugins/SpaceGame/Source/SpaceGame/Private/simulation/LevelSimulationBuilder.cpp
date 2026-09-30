@@ -424,7 +424,7 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     }
 
     auto const capital_events{initial_spawns.capital_spawns.get_view()};
-    auto const capital_count{capital_events.num()};
+    auto const capital_count{static_cast<int32>(capital_events.num())};
     for (int32 i{}; i < capital_count; ++i) {
         auto const* const target{build.capital_proxies[i]->get_target_ship().Get()};
         if (IsValid(target)) {

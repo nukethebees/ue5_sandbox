@@ -315,7 +315,8 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         FEntitySnapshot snapshot;
         auto append = [&snapshot](auto const& view, ::ioj::sim::EntityType const type) {
             auto const entities{view.entities};
-            for (int32 index{}; index < entities.num(); ++index) {
+            auto const entity_count{entities.num()};
+            for (uint32 index{}; index < entity_count; ++index) {
                 snapshot.healths.push_back(view.healths.health(index));
                 snapshot.locations.push_back(
                     ::ioj::sim::vector_at(entities.view_locations(), index));
@@ -360,7 +361,8 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Both executions have matching sample counts"),
               visible_samples.num(),
               headless_samples.num());
-    for (int32 index{}; index < headless_samples.num(); ++index) {
+    auto const sample_count{headless_samples.num()};
+    for (uint32 index{}; index < sample_count; ++index) {
         auto const& a{headless_samples.value_at(index)};
         auto const& b{visible_samples.value_at(index)};
         TestTrue(TEXT("Presentation preserves health and entity lifetime"), a.healths == b.healths);
@@ -691,7 +693,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
         auto const live_count{lasers.get_num_instances()};
         auto const active{lasers.get_read_view().entities.active()};
         int32 active_count{0};
-        for (int32 index{}; index < live_count; ++index) {
+        for (uint32 index{}; index < live_count; ++index) {
             active_count += active[index] != 0;
         }
         if (!TestEqual(TEXT("Only active lasers are submitted"),

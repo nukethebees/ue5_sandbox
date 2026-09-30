@@ -66,7 +66,8 @@ auto read_summary(FString const& path) -> std::expected<FTelemetryRunSummary, FS
 template <typename Series>
 auto as_of(Series const& series, uint64 const tick) -> typename Series::value_type const* {
     auto const count{series.num()};
-    for (int32 index{count - 1}; index >= 0; --index) {
+    for (auto remaining{count}; remaining > 0; --remaining) {
+        auto const index{remaining - 1};
         if (series.time_at(index) <= tick) {
             return &series.value_at(index);
         }
@@ -205,7 +206,7 @@ auto legacy_analyze_level_telemetry_run(FLevelTelemetryReport const& record)
         TArray<uint64> ticks;
         auto collect_ticks = [&ticks](auto const& series) {
             auto const count{series.num()};
-            for (int32 index{}; index < count; ++index) {
+            for (uint32 index{}; index < count; ++index) {
                 ticks.Add(series.time_at(index));
             }
         };

@@ -81,7 +81,7 @@ void FFighterPresentation::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_ismc);
 
     auto const data{view().entities};
-    auto const count{data.num()};
+    auto const count{static_cast<int32>(data.num())};
     auto const locations{data.view_locations()};
     FBox3f position_bounds{ForceInit};
     visible_indices_.Reset();
@@ -131,7 +131,7 @@ void FFighterPresentation::draw_debug_shapes() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::draw_debug_shapes);
 
     auto const data{view().entities};
-    auto const n{data.num()};
+    auto const n{static_cast<int32>(data.num())};
     auto const locations{data.view_locations()};
     auto const targets{data.target_ids()};
     auto const target_locations{data.view_target_locations()};

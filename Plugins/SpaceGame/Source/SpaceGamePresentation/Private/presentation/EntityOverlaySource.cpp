@@ -152,7 +152,7 @@ auto select_soft_target(std::span<::ioj::sim::AgentDisplayBatch const> const bat
 
     int32 output_index{};
     for (auto const& batch : batches) {
-        auto const batch_count{batch.num()};
+        auto const batch_count{static_cast<int32>(batch.num())};
         check(batch.ids.size() == static_cast<std::size_t>(batch_count));
         for (int32 index{}; index < batch_count; ++index, ++output_index) {
             if (::ioj::sim::is_dead(batch.health(index)) ||
@@ -312,7 +312,7 @@ auto collect_entity_overlay_instances(
     output_instances.Reserve(count);
     int32 output_index{};
     for (auto const& batch : batches) {
-        auto const batch_count{batch.num()};
+        auto const batch_count{static_cast<int32>(batch.num())};
         for (int32 index{}; index < batch_count; ++index, ++output_index) {
             if (::ioj::sim::is_dead(batch.health(index))) {
                 continue;
