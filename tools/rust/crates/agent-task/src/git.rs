@@ -30,6 +30,20 @@ fn branch_name(root: &Path, name: &str, worktrees: &[workspace::Worktree]) -> Re
     workspace::check_branch_target(name, root, worktrees)
 }
 
+fn push_flags(args: &mut Vec<OsString>, flags: &[(bool, &str)]) {
+    args.extend(
+        flags
+            .iter()
+            .filter(|(enabled, _)| *enabled)
+            .map(|(_, flag)| OsString::from(flag)),
+    );
+}
+
+fn push_operands(args: &mut Vec<OsString>, operands: impl IntoIterator<Item = OsString>) {
+    args.push("--".into());
+    args.extend(operands);
+}
+
 impl Operation {
     fn read_only(&self) -> bool {
         matches!(
@@ -48,9 +62,9 @@ impl Operation {
             let mut current = workspace::branch(root)?;
             // During rebase HEAD is detached, but recovery still updates the original branch.
             if current.is_empty() {
-                let admin = query(root, &["rev-parse", "--absolute-git-dir"])?;
+                let git_dir = query(root, &["rev-parse", "--absolute-git-dir"])?;
                 for state in ["rebase-merge/head-name", "rebase-apply/head-name"] {
-                    let path = Path::new(&admin).join(state);
+                    let path = Path::new(&git_dir).join(state);
                     if path.exists() {
                         let name = std::fs::read_to_string(path).map_err(|e| e.to_string())?;
                         current = name
@@ -68,43 +82,33 @@ impl Operation {
 
         let mut args: Vec<OsString> = Vec::new();
         // Only these constructed arguments reach Git; the caller's argv is never forwarded.
-        let mut push = |s: &str| args.push(s.into());
 
         match self {
             Self::Status { short } => {
-                push("status");
-                if short {
-                    push("--short");
-                }
+                args.push("status".into());
+                push_flags(&mut args, &[(short, "--short")]);
             }
             Self::Add(a) => {
-                push("add");
-                if a.all {
-                    push("-A");
-                }
-                if a.update {
-                    push("-u");
-                }
-                if a.patch {
-                    push("-p");
-                }
+                args.push("add".into());
+                push_flags(
+                    &mut args,
+                    &[(a.all, "-A"), (a.update, "-u"), (a.patch, "-p")],
+                );
 
-                push("--");
-                args.extend(a.paths);
+                push_operands(&mut args, a.paths);
             }
             Self::Commit(c) => {
-                push("commit");
-                if c.amend {
-                    push("--amend");
-                }
-                if c.no_edit {
-                    push("--no-edit");
-                }
-                if c.allow_empty {
-                    push("--allow-empty");
-                }
+                args.push("commit".into());
+                push_flags(
+                    &mut args,
+                    &[
+                        (c.amend, "--amend"),
+                        (c.no_edit, "--no-edit"),
+                        (c.allow_empty, "--allow-empty"),
+                    ],
+                );
                 if let Some(message) = c.message {
-                    push("-m");
+                    args.push("-m".into());
                     args.push(message);
                 }
             }
@@ -113,27 +117,27 @@ impl Operation {
                 source,
                 paths,
             } => {
-                push("restore");
-                if staged {
-                    push("--staged");
-                }
+                args.push("restore".into());
+                push_flags(&mut args, &[(staged, "--staged")]);
                 if let Some(source) = source {
-                    push("--source");
+                    args.push("--source".into());
                     args.push(revision(root, &source, "tree")?);
                 }
 
-                args.push("--".into());
-                args.extend(paths);
+                push_operands(&mut args, paths);
             }
             Self::Reset(r) => {
-                push("reset");
-                push(if r.soft {
-                    "--soft"
-                } else if r.hard {
-                    "--hard"
-                } else {
-                    "--mixed"
-                });
+                args.push("reset".into());
+                args.push(
+                    (if r.soft {
+                        "--soft"
+                    } else if r.hard {
+                        "--hard"
+                    } else {
+                        "--mixed"
+                    })
+                    .into(),
+                );
                 args.push(revision(
                     root,
                     r.revision.as_deref().unwrap_or("HEAD"),
@@ -143,27 +147,19 @@ impl Operation {
                 args.push("--".into());
             }
             Self::Clean(c) => {
-                push("clean");
-                push(if c.dry_run { "-n" } else { "-f" });
-                if c.directories {
-                    push("-d");
-                }
+                args.push("clean".into());
+                args.push((if c.dry_run { "-n" } else { "-f" }).into());
+                push_flags(&mut args, &[(c.directories, "-d")]);
             }
             Self::Rm {
                 recursive,
                 cached,
                 paths,
             } => {
-                push("rm");
-                if recursive {
-                    push("-r");
-                }
-                if cached {
-                    push("--cached");
-                }
+                args.push("rm".into());
+                push_flags(&mut args, &[(recursive, "-r"), (cached, "--cached")]);
 
-                push("--");
-                args.extend(paths);
+                push_operands(&mut args, paths);
             }
             Self::Mv {
                 source,
@@ -171,23 +167,22 @@ impl Operation {
             } => {
                 workspace::contained(root, cwd, &source)?;
                 workspace::contained(root, cwd, &destination)?;
-                push("mv");
+                args.push("mv".into());
 
-                push("--");
-                args.extend([source, destination]);
+                push_operands(&mut args, [source, destination]);
             }
             Self::Switch(s) => {
-                push("switch");
+                args.push("switch".into());
                 if let Some(name) = s.create {
                     branch_name(root, &name, &worktrees)?;
-                    push("--no-track");
-                    push("-c");
-                    push(&name);
+                    args.push("--no-track".into());
+                    args.push("-c".into());
+                    args.push(name.into());
                     if let Some(start) = s.target {
                         args.push(revision(root, &start, "commit")?);
                     }
                 } else if s.detach {
-                    push("--detach");
+                    args.push("--detach".into());
                     args.push(revision(
                         root,
                         s.target.as_deref().unwrap_or("HEAD"),
@@ -207,102 +202,92 @@ impl Operation {
                         &["show-ref", "--verify", &format!("refs/heads/{name}")],
                     )?;
 
-                    push("--no-guess");
+                    args.push("--no-guess".into());
 
-                    push("--");
-                    push(&name);
+                    push_operands(&mut args, [name.into()]);
                 }
             }
             Self::Branch(b) => {
-                push("branch");
+                args.push("branch".into());
                 if let Some(name) = b.delete.or(b.force_delete.clone()) {
                     branch_name(root, &name, &worktrees)?;
-                    push(if b.force_delete.is_some() { "-D" } else { "-d" });
+                    args.push((if b.force_delete.is_some() { "-D" } else { "-d" }).into());
 
-                    push("--");
-                    push(&name);
+                    push_operands(&mut args, [name.into()]);
                 } else if let Some(name) = b.rename {
                     branch_name(root, &name, &worktrees)?;
-                    push("-m");
+                    args.push("-m".into());
 
-                    push("--");
-                    push(&name);
+                    push_operands(&mut args, [name.into()]);
                 } else if let Some(name) = b.name {
                     branch_name(root, &name, &worktrees)?;
-                    push("--no-track");
+                    args.push("--no-track".into());
 
-                    push("--");
-                    push(&name);
+                    push_operands(&mut args, [name.into()]);
                     if let Some(start) = b.start {
                         args.push(revision(root, &start, "commit")?);
                     }
                 } else {
-                    push("--list");
+                    args.push("--list".into());
                 }
             }
             Self::Merge(m) => {
-                push("merge");
-                if m.resume {
-                    push("--continue");
-                } else if m.abort {
-                    push("--abort");
-                } else {
-                    if m.no_edit {
-                        push("--no-edit");
-                    }
+                args.push("merge".into());
+                push_flags(&mut args, &[(m.resume, "--continue"), (m.abort, "--abort")]);
+                if !m.resume && !m.abort {
+                    push_flags(&mut args, &[(m.no_edit, "--no-edit")]);
                     args.push(revision(root, m.revision.as_deref().unwrap(), "commit")?);
                 }
             }
             Self::Rebase(r) => {
-                push("rebase");
-                if r.resume {
-                    push("--continue");
-                } else if r.abort {
-                    push("--abort");
-                } else if r.skip {
-                    push("--skip");
-                } else {
-                    push("--no-update-refs");
+                args.push("rebase".into());
+                push_flags(
+                    &mut args,
+                    &[
+                        (r.resume, "--continue"),
+                        (r.abort, "--abort"),
+                        (r.skip, "--skip"),
+                    ],
+                );
+                if !r.resume && !r.abort && !r.skip {
+                    args.push("--no-update-refs".into());
                     if let Some(onto) = r.onto {
-                        push("--onto");
+                        args.push("--onto".into());
                         args.push(revision(root, &onto, "commit")?);
                     }
                     args.push(revision(root, r.upstream.as_deref().unwrap(), "commit")?);
                 }
             }
             Self::CherryPick(c) => {
-                push("cherry-pick");
-                if c.resume {
-                    push("--continue");
-                } else if c.abort {
-                    push("--abort");
-                } else if c.skip {
-                    push("--skip");
-                } else {
+                args.push("cherry-pick".into());
+                push_flags(
+                    &mut args,
+                    &[
+                        (c.resume, "--continue"),
+                        (c.abort, "--abort"),
+                        (c.skip, "--skip"),
+                    ],
+                );
+                if !c.resume && !c.abort && !c.skip {
                     for commit in c.commits {
                         args.push(revision(root, &commit, "commit")?);
                     }
                 }
             }
             Self::Revert(r) => {
-                push("revert");
-                if r.resume {
-                    push("--continue");
-                } else if r.abort {
-                    push("--abort");
-                } else {
-                    if r.no_edit {
-                        push("--no-edit");
-                    }
+                args.push("revert".into());
+                push_flags(&mut args, &[(r.resume, "--continue"), (r.abort, "--abort")]);
+                if !r.resume && !r.abort {
+                    push_flags(&mut args, &[(r.no_edit, "--no-edit")]);
                     for commit in r.commits {
                         args.push(revision(root, &commit, "commit")?);
                     }
                 }
             }
             Self::Worktree { action } => {
-                push("worktree");
+                args.push("worktree".into());
                 match action {
-                    Worktree::List => push("list"),
+                    Worktree::List => args.push("list".into()),
                     Worktree::Add { branch, start } => {
                         branch_name(root, &branch, &worktrees)?;
                         let path = workspace::managed_worktree_path(root, &branch)?;
@@ -316,13 +301,12 @@ impl Operation {
                             return Err("The managed worktree destination must be ignored by the repository's .local/ policy before creating a worktree. Ask the maintainer to restore that policy.".into());
                         }
 
-                        push("add");
-                        push("--no-track");
-                        push("-b");
-                        push(&branch);
+                        args.push("add".into());
+                        args.push("--no-track".into());
+                        args.push("-b".into());
+                        args.push(branch.into());
 
-                        push("--");
-                        args.push(path.into_os_string());
+                        push_operands(&mut args, [path.into_os_string()]);
                         args.push(revision(
                             root,
                             start.as_deref().unwrap_or("HEAD"),
@@ -344,10 +328,9 @@ impl Operation {
                             return Err("Removal is limited to AgentTask-owned worktrees beneath this workspace's .local/worktrees/. Ask the maintainer to manage other worktrees.".into());
                         }
 
-                        push("remove");
+                        args.push("remove".into());
 
-                        push("--");
-                        args.push(destination.into_os_string());
+                        push_operands(&mut args, [destination.into_os_string()]);
                     }
                 }
             }
