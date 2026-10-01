@@ -1,2 +1,6 @@
 [agents]
 max_concurrent_threads_per_session = 8
+
+[windows]
+# Avoid Ninja named-pipe completion hangs in the unelevated sandbox.
+sandbox = "elevated"
