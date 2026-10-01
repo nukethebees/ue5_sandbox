@@ -95,6 +95,7 @@ void CollisionSystem::collect_overlaps_for_candidates(
     finalize_overlaps(scratch);
 }
 void CollisionSystem::finalize_overlaps(ml::FrameScratch& scratch) {
+    SANDBOX_PROFILE_SCOPE("CollisionSystem::finalize_overlaps");
     auto const entity_overlap_count{entity_entity_overlaps_.num()};
     auto const static_overlap_count{entity_static_overlaps_.num()};
     auto const sort_index_count{std::max(entity_overlap_count, static_overlap_count)};

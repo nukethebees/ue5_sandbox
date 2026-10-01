@@ -208,6 +208,8 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
 
     ml::parallel_for(
         n, [=, this, &collision_scratch](std::uint32_t const begin, std::uint32_t const end) {
+            SANDBOX_PROFILE_SCOPE("trace_job");
+
             auto const trace_count{end - begin};
             auto const trace_locations{locations.slice(begin, trace_count)};
             auto const trace_velocities{velocities.slice(begin, trace_count)};

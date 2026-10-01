@@ -268,7 +268,7 @@ void Sim::think(float const dt, ml::FrameScratch& scratch) {
     auto const aim_directions{data.view_aim_directions()};
 
     {
-        SANDBOX_PROFILE_SCOPE("fighters::Sim::awareness_scan");
+        SANDBOX_PROFILE_SCOPE("awareness_scan");
         for (std::uint32_t i{0}; i < n; ++i) {
             if (!awareness_countdowns.try_consume(i)) {
                 continue;
@@ -649,6 +649,8 @@ void Sim::update_navigation_steering(ml::FrameScratch& frame_scratch) {
     publish_navigation_telemetry();
 }
 void Sim::collect_navigation_updates(NavigationScratch& scratch) {
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::collect_navigation_updates");
+
     auto const data{entity_buffers.current().get_view()};
     std::array const active_spans{get_task_span(Task::MoveToDestination),
                                   get_task_span(Task::Attack)};
@@ -675,6 +677,8 @@ void Sim::collect_navigation_updates(NavigationScratch& scratch) {
     }
 }
 void Sim::update_separation_observations(NavigationScratch& scratch) {
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::update_separation_observations");
+
     auto const data{entity_buffers.current().get_view()};
     auto const healths{
         entity_tables_.health.get_const_view(data.health_indices(), data.entity_ids())};
@@ -763,6 +767,8 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
     }
 }
 void Sim::apply_separation_steering() {
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::apply_separation_steering");
+
     auto const data{entity_buffers.current().get_view()};
     std::array const active_spans{get_task_span(Task::MoveToDestination),
                                   get_task_span(Task::Attack)};
@@ -787,6 +793,8 @@ void Sim::scan_preferred_navigation(NavigationScratch& scratch,
                                     float const clearance,
                                     float const avoidance_lookahead_time,
                                     float const minimum_lookahead_distance) {
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::scan_preferred_navigation");
+
     auto const data{entity_buffers.current().get_view()};
     auto const count{scratch.ready_fighter_indices.num()};
     scratch.line_of_sight_starts.reserve(count);
@@ -850,6 +858,8 @@ void Sim::scan_alternative_navigation(NavigationScratch& scratch,
                                       float const clearance,
                                       float const avoidance_lookahead_time,
                                       float const minimum_lookahead_distance) {
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::scan_alternative_navigation");
+
     auto const data{entity_buffers.current().get_const_view()};
     scratch.trace_fighter_indices.clear();
     scratch.trace_choice_indices.clear();
@@ -894,6 +904,8 @@ void Sim::scan_alternative_navigation(NavigationScratch& scratch,
     execute_navigation_sweeps(scratch, clearance);
 }
 void Sim::execute_navigation_sweeps(NavigationScratch& scratch, float const clearance) {
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::execute_navigation_sweeps");
+
     auto const trace_count{scratch.line_of_sight_ends.num()};
     if (trace_count == 0) {
         return;
@@ -917,6 +929,8 @@ void Sim::execute_navigation_sweeps(NavigationScratch& scratch, float const clea
 }
 void Sim::select_navigation_alternatives(NavigationScratch& scratch,
                                          float const safe_progress_time) {
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::select_navigation_alternatives");
+
     auto const data{entity_buffers.current().get_view()};
     if (!diagnostics_enabled_) {
         diagnostic_stop_reports = 0;
@@ -988,6 +1002,8 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
     }
 }
 void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::apply_navigation_choices");
+
     auto const data{entity_buffers.current().get_view()};
     std::array const active_spans{get_task_span(Task::MoveToDestination),
                                   get_task_span(Task::Attack)};

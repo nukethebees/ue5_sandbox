@@ -324,6 +324,7 @@ void CollisionUniformGrid::append_overlaps(
     EntityUniqueId const ignored_entity,
     ml::FrameArray<EntityUniqueId>& out_entities,
     ml::FrameArray<StaticGeometryIndex>& out_static_geometry_indices) const {
+    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::append_overlaps");
 
     auto const [min_coord, max_coord]{to_cell_coord_bounds(query_bounds.min, query_bounds.max)};
     assert(is_cell_coord_in_bounds(min_coord, max_coord));
@@ -426,6 +427,8 @@ void CollisionUniformGrid::sweep_aabbs(LineTracesConstView const& centre_paths,
                                        TraceHitsView const& hits,
                                        std::span<EntityUniqueId const> const ignored_entities,
                                        TraceEntityFilter const entity_filter) const {
+    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::sweep_aabbs");
+
     assert(std::isfinite(moving_half_extent.X) && std::isfinite(moving_half_extent.Y) &&
            std::isfinite(moving_half_extent.Z));
     assert(moving_half_extent.X >= 0.f);
@@ -462,6 +465,8 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTracesConstView const traces,
                                             TraceHitsView const hits,
                                             std::span<EntityUniqueId const> const ignored_entities,
                                             Vector3f const moving_half_extent) const {
+    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::trace_aabbs_impl");
+
     traces.validate_array_sizes();
     hits.validate_array_sizes();
     assert(traces.num() == hits.num());
