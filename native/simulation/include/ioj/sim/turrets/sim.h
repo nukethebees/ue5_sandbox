@@ -96,12 +96,9 @@ struct Sim {
     /* **************************************** */
     // Searching
     /* **************************************** */
-    void perform_search(ml::FrameScratch& scratch);
+    void perform_search();
     void refresh_target_data(ml::FrameScratch& scratch);
-    void perform_search_on_slice(std::uint32_t job_index,
-                                 std::uint32_t n_turrets,
-                                 std::uint32_t turrets_per_job,
-                                 float radius);
+    void perform_search_on_slice(std::uint32_t begin, std::uint32_t end, float radius);
 
     /* **************************************** */
     // Attacking

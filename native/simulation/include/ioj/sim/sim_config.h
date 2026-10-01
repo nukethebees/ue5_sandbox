@@ -28,7 +28,6 @@ struct PlayerSimConfig {
 };
 
 struct TurretSimConfig {
-    std::int32_t search_slice_size{64};
     float detection_radius{3000.f};
     float target_refresh_frequency{5.f};
     Vector3f fire_point_offset{};

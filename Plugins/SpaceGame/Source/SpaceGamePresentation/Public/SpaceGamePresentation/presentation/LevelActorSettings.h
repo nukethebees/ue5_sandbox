@@ -98,9 +98,6 @@ struct SPACEGAMEPRESENTATION_API FLaserProjectileConfig {
     UPROPERTY(EditAnywhere, Category = "Simulation", meta = (ClampMin = "0"))
     int32 n_preallocated_instances{5000};
 
-    UPROPERTY(EditAnywhere, Category = "Simulation", meta = (ClampMin = "1"))
-    int32 collision_jobs{8};
-
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
 
@@ -284,9 +281,6 @@ struct SPACEGAMEPRESENTATION_API FFighterConfig {
 USTRUCT(BlueprintType)
 struct SPACEGAMEPRESENTATION_API FTurretConfig {
     GENERATED_BODY()
-
-    UPROPERTY(EditAnywhere, Category = "Simulation", meta = (ClampMin = "1"))
-    int32 search_slice_size{64};
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};

@@ -7,14 +7,13 @@
 
 #include <sandbox/core/frame_array.h>
 #include <sandbox/core/generated/array_math_kernels.h>
+#include <sandbox/core/parallel_for.h>
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstdint>
-#include <execution>
 #include <functional>
-#include <numeric>
 #include <span>
 #include <vector>
 
@@ -203,38 +202,23 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
     auto const entities{this->entities.get_const_view()};
     auto const locations{entities.view_locations().get_const_view()};
     auto const velocities{entities.view_velocities().get_const_view()};
-    assert(config.collision_jobs > 0);
-    auto const job_count{std::min(n, static_cast<std::uint32_t>(config.collision_jobs))};
-    auto const updates_per_slice{n / job_count + (n % job_count != 0)};
-    ml::FrameArray<std::uint32_t> jobs{&scratch};
-    jobs.set_num(job_count);
-    auto const job_indices{jobs.view()};
-    std::iota(job_indices.begin(), job_indices.end(), 0u);
     auto const active_rows{entities.active()};
     auto const lifetimes{entities.lifetimes_remaining()};
     auto const instigator_ids{entities.instigator_ids()};
 
-    std::for_each(
-        std::execution::par,
-        job_indices.begin(),
-        job_indices.end(),
-        [=, this, &collision_scratch](std::uint32_t const job_index) {
-            auto const i_start{job_index * updates_per_slice};
-            if (i_start >= n) {
-                return;
-            }
-
-            auto const trace_count{std::min(updates_per_slice, n - i_start)};
-            auto const trace_locations{locations.slice(i_start, trace_count)};
-            auto const trace_velocities{velocities.slice(i_start, trace_count)};
+    ml::parallel_for(
+        n, [=, this, &collision_scratch](std::uint32_t const begin, std::uint32_t const end) {
+            auto const trace_count{end - begin};
+            auto const trace_locations{locations.slice(begin, trace_count)};
+            auto const trace_velocities{velocities.slice(begin, trace_count)};
             auto const trace_starts{
-                collision_scratch.trace_starts.get_view().slice(i_start, trace_count)};
+                collision_scratch.trace_starts.get_view().slice(begin, trace_count)};
             auto const trace_ends{
-                collision_scratch.trace_ends.get_view().slice(i_start, trace_count)};
+                collision_scratch.trace_ends.get_view().slice(begin, trace_count)};
             for (std::uint32_t trace_index{}; trace_index < trace_count; ++trace_index) {
                 auto const start{vector_at(trace_locations, trace_index)};
                 trace_starts.set(trace_index, start);
-                auto const index{i_start + trace_index};
+                auto const index{begin + trace_index};
                 auto const step{
                     active_rows[index] != 0 ? std::min(dt, std::max(0.f, lifetimes[index])) : 0.f};
                 trace_ends.set(trace_index,
@@ -242,12 +226,12 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
             }
 
             auto const trace_starts_view{
-                collision_scratch.trace_starts.get_const_view().slice(i_start, trace_count)};
+                collision_scratch.trace_starts.get_const_view().slice(begin, trace_count)};
             auto const trace_ends_view{
-                collision_scratch.trace_ends.get_const_view().slice(i_start, trace_count)};
-            auto const hits{collision_scratch.trace_hits.get_view().slice(i_start, trace_count)};
+                collision_scratch.trace_ends.get_const_view().slice(begin, trace_count)};
+            auto const hits{collision_scratch.trace_hits.get_view().slice(begin, trace_count)};
             auto const ignored_entities{
-                std::span<EntityUniqueId const>{instigator_ids}.subspan(i_start, trace_count)};
+                std::span<EntityUniqueId const>{instigator_ids}.subspan(begin, trace_count)};
             query_manager.trace_closest_lines(
                 trace_starts_view, trace_ends_view, hits, ignored_entities);
         });

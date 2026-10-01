@@ -283,7 +283,6 @@ TEST(SimulationModelDefaults, LaserWeaponSimConfig) {
 namespace ioj::sim::model_contract {
 struct OriginalLaserSimConfig {
     std::int32_t n_preallocated_instances{5000};
-    std::int32_t collision_jobs{8};
 };
 static_assert(sizeof(LaserSimConfig) == sizeof(OriginalLaserSimConfig));
 static_assert(alignof(LaserSimConfig) == alignof(OriginalLaserSimConfig));
@@ -295,11 +294,9 @@ static_assert(std::is_aggregate_v<LaserSimConfig>);
 static_assert(std::is_trivially_default_constructible_v<LaserSimConfig> ==
               std::is_trivially_default_constructible_v<OriginalLaserSimConfig>);
 IOJ_RECORD_MEMBER_CONTRACT(LaserSimConfig, n_preallocated_instances);
-IOJ_RECORD_MEMBER_CONTRACT(LaserSimConfig, collision_jobs);
 TEST(SimulationModelDefaults, LaserSimConfig) {
     LaserSimConfig const value{};
     EXPECT_EQ(value.n_preallocated_instances, (std::int32_t{5000}));
-    EXPECT_EQ(value.collision_jobs, (std::int32_t{8}));
 }
 }
 

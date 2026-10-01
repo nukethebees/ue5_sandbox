@@ -30,7 +30,6 @@ auto make_simulation_config(FPlayerShipConfig const& source) -> ::ioj::sim::Play
 auto make_simulation_config(FLaserProjectileConfig const& source) -> ::ioj::sim::LaserSimConfig {
     ::ioj::sim::LaserSimConfig result;
     result.n_preallocated_instances = source.n_preallocated_instances;
-    result.collision_jobs = source.collision_jobs;
     return result;
 }
 
@@ -79,7 +78,6 @@ auto make_simulation_config(FFighterConfig const& source) -> ::ioj::sim::Fighter
 
 auto make_simulation_config(FTurretConfig const& source) -> ::ioj::sim::TurretSimConfig {
     ::ioj::sim::TurretSimConfig result;
-    result.search_slice_size = source.search_slice_size;
     result.detection_radius = source.detection_radius;
     result.target_refresh_frequency = source.target_refresh_frequency;
     result.fire_point_offset = ml::to_native(FVector3f{source.fire_point_offset.GetLocation()});

@@ -16,6 +16,7 @@
 #include <sandbox/core/frame_array.h>
 #include <sandbox/core/frame_memory_resource.h>
 #include <sandbox/core/loop_bounds.h>
+#include <sandbox/core/parallel_for.h>
 #include <sandbox/core/periodic_tick_countdown.h>
 #include <sandbox/core/projectile_intercept.h>
 #include <sandbox/core/tick_countdown.h>
@@ -26,10 +27,7 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
-#include <execution>
-#include <numeric>
 #include <span>
-#include <thread>
 #include <utility>
 #include <vector>
 
@@ -174,7 +172,6 @@ void Sim::handle_dead_entities() {
 void Sim::begin_play() {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::begin_play");
     profiling::plot("Sandbox/TurretCount", 0);
-    assert(config.search_slice_size > 0);
 
     auto const cooldown_tick_period{
         simulation_clock.duration_to_tick_period(config.laser.fire_cooldown)};
@@ -218,7 +215,7 @@ void Sim::refresh_target_data(ml::FrameScratch& scratch) {
 void Sim::think(float const, ml::FrameScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::think");
     refresh_target_data(scratch);
-    perform_search(scratch);
+    perform_search();
     refresh_target_data(scratch);
 }
 void Sim::generate_fire_commands(ml::FrameScratch& scratch) {
@@ -291,7 +288,7 @@ auto Sim::get_target_ids() const -> std::span<EntityUniqueId const> {
 /* **************************************** */
 // Searching
 /* **************************************** */
-void Sim::perform_search(ml::FrameScratch& scratch) {
+void Sim::perform_search() {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::perform_search");
 
     auto const n_turrets{get_num_instances()};
@@ -301,30 +298,13 @@ void Sim::perform_search(ml::FrameScratch& scratch) {
 
     auto const radius{config.detection_radius};
 
-    auto const hardware_thread_count{
-        static_cast<std::uint32_t>(std::max(1u, std::thread::hardware_concurrency()))};
-    auto const max_jobs_for_grain_size{
-        std::max(1u, n_turrets / static_cast<std::uint32_t>(config.search_slice_size))};
-    auto const n_jobs{std::min(hardware_thread_count, max_jobs_for_grain_size)};
-    auto const turrets_per_job{(n_turrets + n_jobs - 1) / n_jobs};
-
-    ml::FrameArray<std::uint32_t> jobs{&scratch};
-    jobs.set_num(n_jobs);
-    auto const job_indices{jobs.view()};
-    std::iota(job_indices.begin(), job_indices.end(), 0u);
-    std::for_each(std::execution::par,
-                  job_indices.begin(),
-                  job_indices.end(),
-                  [=, this](std::uint32_t const i) {
-                      perform_search_on_slice(i, n_turrets, turrets_per_job, radius);
-                  });
+    ml::parallel_for(n_turrets, [this, radius](std::uint32_t const begin, std::uint32_t const end) {
+        perform_search_on_slice(begin, end, radius);
+    });
 }
-void Sim::perform_search_on_slice(std::uint32_t const job_index,
-                                  std::uint32_t const n_turrets,
-                                  std::uint32_t const turrets_per_job,
+void Sim::perform_search_on_slice(std::uint32_t const begin,
+                                  std::uint32_t const end,
                                   float const radius) {
-    auto const begin{job_index * turrets_per_job};
-    auto const end{std::min(begin + turrets_per_job, n_turrets)};
     std::array<float, 128> candidate_xs;
     std::array<float, 128> candidate_ys;
     std::array<float, 128> candidate_zs;

@@ -114,13 +114,10 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
                    "laser_projectiles cull distance range is invalid");
     REQUIRE_CONFIG(laser_projectiles.n_preallocated_instances >= 0,
                    "laser_projectiles.n_preallocated_instances must not be negative");
-    REQUIRE_CONFIG(laser_projectiles.collision_jobs > 0,
-                   "laser_projectiles.collision_jobs must be positive");
     REQUIRE_CONFIG(capital_ships.mesh, "capital_ships.mesh is null");
     REQUIRE_CONFIG(fighters.mesh, "fighters.mesh is null");
     REQUIRE_CONFIG(turrets.mesh, "turrets.mesh is null");
     REQUIRE_CONFIG(tube_spinners.mesh, "tube_spinners.mesh is null");
-    REQUIRE_CONFIG(turrets.search_slice_size > 0, "turrets.search_slice_size must be positive");
     REQUIRE_CONFIG(FMath::IsFinite(fighters.fire_dot_product_threshold) &&
                        fighters.fire_dot_product_threshold >= -1.f &&
                        fighters.fire_dot_product_threshold <= 1.f,

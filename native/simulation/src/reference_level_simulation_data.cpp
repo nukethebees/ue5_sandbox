@@ -7,7 +7,6 @@ auto make_reference_level_simulation_data() -> ReferenceLevelSimulationData {
     auto& data{fixture.data};
     auto& player{fixture.player};
     data.lasers.n_preallocated_instances = 50000;
-    data.lasers.collision_jobs = 8;
     data.overlap_response.damage_per_overlap_detection = 50;
     data.fighters.max_live_fighters = 2000;
     data.fighters.fire_dot_product_threshold = 9.499999881e-01f;
@@ -35,7 +34,6 @@ auto make_reference_level_simulation_data() -> ReferenceLevelSimulationData {
     data.capital_ships.spawn_delay = 5.000000000e+00f;
     data.capital_ships.fighter_spawn_slots = 6;
     data.capital_ships.max_health = 5000;
-    data.turrets.search_slice_size = 128;
     data.turrets.detection_radius = 5.000000000e+04f;
     data.turrets.target_refresh_frequency = 5.000000000e+00f;
     data.turrets.max_health = 20;

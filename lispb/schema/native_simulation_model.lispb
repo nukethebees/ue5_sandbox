@@ -229,8 +229,7 @@
     (member max_distance float :initializer "10000.f")
     (member fire_cooldown float :initializer "0.33f"))
   (record LaserSimConfig
-    (member n_preallocated_instances std::int32_t :initializer "5000")
-    (member collision_jobs std::int32_t :initializer "8"))
+    (member n_preallocated_instances std::int32_t :initializer "5000"))
   (record OverlapResponseConfig
     (member damage_per_overlap_detection std::int32_t :initializer "50"))
   (record FighterSimConfig

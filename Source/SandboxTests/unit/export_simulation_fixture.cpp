@@ -121,7 +121,6 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
                "    auto& player{fixture.player};\n";
         ml::fixture_export::write(
             out, "data.lasers.n_preallocated_instances", data.lasers.n_preallocated_instances);
-        ml::fixture_export::write(out, "data.lasers.collision_jobs", data.lasers.collision_jobs);
         ml::fixture_export::write(out,
                                   "data.overlap_response.damage_per_overlap_detection",
                                   data.overlap_response.damage_per_overlap_detection);
@@ -186,8 +185,6 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
             out, "data.capital_ships.fighter_spawn_slots", data.capital_ships.fighter_spawn_slots);
         ml::fixture_export::write(
             out, "data.capital_ships.max_health", data.capital_ships.max_health);
-        ml::fixture_export::write(
-            out, "data.turrets.search_slice_size", data.turrets.search_slice_size);
         ml::fixture_export::write(
             out, "data.turrets.detection_radius", data.turrets.detection_radius);
         ml::fixture_export::write(

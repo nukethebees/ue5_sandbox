@@ -21,8 +21,6 @@ struct LaserWeaponSimConfig {
 
 struct LaserSimConfig {
     std::int32_t n_preallocated_instances{5000};
-
-    std::int32_t collision_jobs{8};
 };
 
 struct OverlapResponseConfig {
