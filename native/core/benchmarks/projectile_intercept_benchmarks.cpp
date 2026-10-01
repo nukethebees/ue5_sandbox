@@ -35,25 +35,12 @@ struct ProjectileBuffers {
         }
     }
 
-    auto shooters() const -> ml::Vector3fSoAConstView {
-        return {shooter_x.data(),
-                shooter_y.data(),
-                shooter_z.data(),
-                static_cast<std::int32_t>(shooter_x.size())};
-    }
+    auto shooters() const -> ml::Vector3fSoAConstView { return {shooter_x, shooter_y, shooter_z}; }
 
-    auto targets() const -> ml::Vector3fSoAConstView {
-        return {target_x.data(),
-                target_y.data(),
-                target_z.data(),
-                static_cast<std::int32_t>(target_x.size())};
-    }
+    auto targets() const -> ml::Vector3fSoAConstView { return {target_x, target_y, target_z}; }
 
     auto velocities() const -> ml::Vector3fSoAConstView {
-        return {velocity_x.data(),
-                velocity_y.data(),
-                velocity_z.data(),
-                static_cast<std::int32_t>(velocity_x.size())};
+        return {velocity_x, velocity_y, velocity_z};
     }
 
     std::vector<float> shooter_x;

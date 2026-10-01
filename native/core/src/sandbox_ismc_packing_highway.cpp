@@ -17,6 +17,8 @@
 
 HWY_BEFORE_NAMESPACE();
 
+// The macro already expands to a concatenated namespace for the selected SIMD target.
+// NOLINTNEXTLINE(modernize-concat-nested-namespaces)
 namespace IOJ_HIGHWAY_NAMESPACE {
 namespace highway_detail {
 
@@ -131,9 +133,15 @@ auto accumulate_bounds(Vec3Batch p,
     auto const z2{two * q.z};
     auto const w2{two * q.w};
 
-    auto const xx{x2 * q.x}, yy{y2 * q.y}, zz{z2 * q.z};
-    auto const xy{x2 * q.y}, xz{x2 * q.z}, yz{y2 * q.z};
-    auto const wx{w2 * q.x}, wy{w2 * q.y}, wz{w2 * q.z};
+    auto const xx{x2 * q.x};
+    auto const yy{y2 * q.y};
+    auto const zz{z2 * q.z};
+    auto const xy{x2 * q.y};
+    auto const xz{x2 * q.z};
+    auto const yz{y2 * q.z};
+    auto const wx{w2 * q.x};
+    auto const wy{w2 * q.y};
+    auto const wz{w2 * q.z};
 
     // Rows of R, including the accepted small normalization error.
     Vec3Batch const r0{one - (yy + zz), xy - wz, xz + wy};
@@ -284,15 +292,15 @@ auto pack_rotations(std::span<std::byte const> rotations,
         {{}, rotations}, {}, output, nullptr);
 }
 auto pack_transforms(TransformInput input,
-                     PackingParameters const& params,
+                     PackingParameters const& parameters,
                      std::span<PackedTransform> output,
                      TransformBounds* bounds) noexcept -> void {
     if (bounds != nullptr) {
         highway_detail::pack<PackingFields::Transforms, BoundsMode::Calculate>(
-            input, params, output, bounds);
+            input, parameters, output, bounds);
     } else {
         highway_detail::pack<PackingFields::Transforms, BoundsMode::Skip>(
-            input, params, output, nullptr);
+            input, parameters, output, nullptr);
     }
 }
 }

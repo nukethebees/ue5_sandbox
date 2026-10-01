@@ -29,13 +29,13 @@ auto pack_rotations(std::span<std::byte const> rotations,
     }
 }
 auto pack_transforms(TransformInput input,
-                     PackingParameters const& params,
+                     PackingParameters const& parameters,
                      std::span<PackedTransform> output,
                      TransformBounds* bounds) noexcept -> void {
     if (packing_dispatch::supports_highway_avx2()) {
-        highway_avx2::pack_transforms(input, params, output, bounds);
+        highway_avx2::pack_transforms(input, parameters, output, bounds);
     } else {
-        pack_transforms_scalar(input, params, output, bounds);
+        pack_transforms_scalar(input, parameters, output, bounds);
     }
 }
 }
