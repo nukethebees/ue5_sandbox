@@ -16,6 +16,7 @@ public class SandboxCore : ModuleRules
             new string[]
             {
                 "Core",
+                "NativeOneTBB",
             }
             );
 

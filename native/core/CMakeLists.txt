@@ -12,6 +12,7 @@ target_sources(native-core PRIVATE
   include/sandbox/core/diagnostics.h
   include/sandbox/core/enum_traits.h
   include/sandbox/core/packed_value.h
+  include/sandbox/core/parallel_for.h
   include/sandbox/core/countdown_timers.h
   include/sandbox/core/math_types.h
   include/sandbox/core/native_soa/storage.h
@@ -40,7 +41,7 @@ target_sources(native-core PRIVATE
   src/ui/stacked_bar_chart.cpp
 )
 target_compile_features(native-core PUBLIC cxx_std_23)
-target_link_libraries(native-core PUBLIC ioj::cxx_conformance)
+target_link_libraries(native-core PUBLIC ioj::cxx_conformance TBB::tbb)
 target_include_directories(native-core PUBLIC include)
 
 # Separate translation units keep AVX2 out of the scalar reference and prevent
@@ -84,6 +85,7 @@ if(IOJ_WITH_UNREAL)
 endif()
 
 add_executable(native-core-tests)
+ioj_stage_tbb_runtime(native-core-tests)
 
 target_sources(native-core-tests PRIVATE
   tests/generated/array_math_kernels_tests.cpp
@@ -160,6 +162,7 @@ target_link_libraries(native-core-tests PRIVATE native-core-ismc-highway-avx512)
 target_link_libraries(native-core-tests PRIVATE hwy)
 
 add_executable(native-core-benchmarks)
+ioj_stage_tbb_runtime(native-core-benchmarks)
 target_sources(native-core-benchmarks PRIVATE
   benchmarks/projectile_intercept_benchmarks.cpp
   benchmarks/vector_lerp_benchmarks.cpp

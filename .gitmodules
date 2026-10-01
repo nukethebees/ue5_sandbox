@@ -39,3 +39,7 @@
 	path = native/third_party/highway
 	url = https://github.com/google/highway.git
 	shallow = true
+[submodule "native/third_party/oneTBB"]
+	path = native/third_party/oneTBB
+	url = https://github.com/uxlfoundation/oneTBB.git
+	shallow = true

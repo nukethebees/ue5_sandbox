@@ -10,6 +10,8 @@ public class NativeLevelAuthoring : ModuleRules
 
         PublicDependencyModuleNames.AddRange(new string[]
         {
+            // Keep the simulation runtime visible across this nested external-module boundary.
+            "NativeOneTBB",
             "NativeS7",
             "NativeSimulation",
         });
