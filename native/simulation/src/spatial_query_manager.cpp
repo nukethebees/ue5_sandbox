@@ -428,6 +428,20 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
     Team const team,
     float const radius,
     std::span<EntityUniqueId> const out_entities) const -> std::uint32_t {
+    if (out_entities.empty()) {
+        return 0;
+    }
+
+    query_manager::ThreadBufferLease const buffer_lease{*this};
+    return collect_non_team_entities_in_range(
+        origin, team, radius, out_entities, buffer_lease.get());
+}
+auto SpatialQueryManager::collect_non_team_entities_in_range(
+    Vector3f const& origin,
+    Team const team,
+    float const radius,
+    std::span<EntityUniqueId> const out_entities,
+    QueryThreadBuffers& buffers) const -> std::uint32_t {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::collect_non_team_entities_in_range");
 
     if (out_entities.empty()) {
@@ -436,14 +450,13 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
 
     auto const& grid{collision_system_.uniform_grid_};
     validate_grid_for_range_query(grid, origin, radius);
-    query_manager::ThreadBufferLease const buffer_lease{*this};
     {
         SANDBOX_PROFILE_SCOPE(
             "Sandbox::SpatialQueryManager::collect_non_team_entities_in_range::loop");
         return collect_entities_in_range(
             grid,
             agents_,
-            buffer_lease.get(),
+            buffers,
             origin,
             radius,
             out_entities,

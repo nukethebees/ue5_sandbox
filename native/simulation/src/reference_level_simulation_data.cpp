@@ -67,7 +67,7 @@ auto make_reference_level_simulation_data() -> ReferenceLevelSimulationData {
     data.fighters.attack_distance_band.desired_ratio = 5.000000000e-01f;
     data.fighters.attack_distance_band.maximum_ratio = 6.000000238e-01f;
     data.fighter_fire_point_distance = 1.807294556e+03f;
-    data.frame_memory_capacity_bytes = 16777216;
+    data.frame_memory_capacity_bytes = 268435456;
     data.clock_settings.tick_rate = 6.00000000000000000e+01;
     data.clock_settings.time_scale = 1.00000000000000000e+00;
     data.clock_settings.accumulator = 0.00000000000000000e+00;

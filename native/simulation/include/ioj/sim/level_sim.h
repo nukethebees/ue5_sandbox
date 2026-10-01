@@ -60,7 +60,7 @@ struct LevelSimInitData {
     collision::GridGeometry grid_geometry{{400, 400, 5},
                                           ml::make_vector3f(5000.f, 5000.f, 20000.f)};
 
-    std::size_t frame_memory_capacity_bytes{16 * 1024 * 1024};
+    std::size_t frame_memory_capacity_bytes{256 * 1024 * 1024};
 
     float fighter_fire_point_distance{};
 

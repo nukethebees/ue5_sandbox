@@ -202,6 +202,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
     auto data{make_scheduled_battle()};
+    data.frame_memory_capacity_bytes = 16 * 1024 * 1024;
     data.turrets.target_refresh_frequency = 10.f;
     // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
     data.turrets.fire_point_offset = ml::make_vector3f(20.f, 0.f, 0.f);

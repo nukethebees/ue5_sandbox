@@ -149,7 +149,8 @@ TEST_F(FighterTargetRefresh, AwarenessSelectingSameIdUsesOneRefresh) {
     LevelSimTestAccess::set_fighter_target(simulation, fighter, target);
     auto const claims{think()};
     expect_target_state(target);
-    EXPECT_EQ(claims, single_refresh_and_plan());
+    // Account for scan indices, worker containers, and the worker's range-query stamps.
+    EXPECT_EQ(claims, single_refresh_and_plan() + 3);
     EXPECT_GT(simulation.get_fighters().get_read_view().entities.awareness_scan_countdowns()[0], 0);
 }
 

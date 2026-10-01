@@ -28,6 +28,10 @@
 #include <sandbox/core/vector_math.h>
 #include <sandbox/core/vector_normalization.h>
 
+#include <oneapi/tbb/blocked_range.h>
+#include <oneapi/tbb/parallel_for.h>
+#include <oneapi/tbb/task_arena.h>
+
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -255,7 +259,6 @@ void Sim::think(float const dt, ml::FrameScratch& scratch) {
     auto const attack_engagement_threshold_sq{attack_engagement_threshold *
                                               attack_engagement_threshold};
     auto const n{data.num()};
-    std::array<EntityUniqueId, 128> nearby_entities;
     auto const dot_threshold{config.minimum_opportunistic_intercept_deviation_dot_product};
     bool targets_changed{};
 
@@ -269,39 +272,103 @@ void Sim::think(float const dt, ml::FrameScratch& scratch) {
 
     {
         SANDBOX_PROFILE_SCOPE("awareness_scan");
-        for (std::uint32_t i{0}; i < n; ++i) {
+        ml::FrameArray<std::uint32_t> scan_indices{&scratch};
+        for (std::uint32_t i{}; i < n; ++i) {
             if (!awareness_countdowns.try_consume(i)) {
                 continue;
             }
-
-            auto const fighter_location{vector_at(locations, i)};
-            auto const target_id{target_ids[i]};
-            if (agents_.is_alive(target_id) &&
+            if (agents_.is_alive(target_ids[i]) &&
                 target_distance_sq[i] <= attack_engagement_threshold_sq) {
                 continue;
             }
 
-            auto const n_nearby_entities{spatial_query_manager.collect_non_team_entities_in_range(
-                fighter_location, teams[i], awareness_radius, nearby_entities)};
-            auto const aim_direction{vector_at(aim_directions, i)};
-            EntityUniqueId selected_target{};
-            for (std::uint32_t nearby_index{}; nearby_index < n_nearby_entities; ++nearby_index) {
-                auto const candidate{nearby_entities[nearby_index]};
-                auto const state{agents_.read_alive(candidate)};
-                if (!state) {
-                    continue;
+            if (scan_indices.is_empty()) {
+                scan_indices.reserve(n);
+            }
+            scan_indices.add(i);
+        }
+
+        if (!scan_indices.is_empty()) {
+            struct WorkerScratch {
+                explicit WorkerScratch(ml::FrameScratch& resource, std::uint32_t const entity_count)
+                    : query_buffers{&resource} {
+                    query_buffers.ensure_entity_stamp_count(entity_count);
                 }
-                auto const direction{
-                    ml::native_math::safe_normal(state->location - fighter_location, 1.e-8f)};
-                if (HMM_DotV3(aim_direction, direction) > dot_threshold) {
-                    selected_target = candidate;
-                    break;
+
+                QueryThreadBuffers query_buffers;
+                std::array<EntityUniqueId, 128> nearby_entities;
+                bool targets_changed{};
+            };
+
+            constexpr std::uint32_t grain_size{64};
+            auto const scan_count{scan_indices.num()};
+            auto const concurrency{std::min(oneapi::tbb::this_task_arena::max_concurrency(),
+                                            static_cast<int>((scan_count - 1) / grain_size + 1))};
+            oneapi::tbb::task_arena arena{concurrency};
+            arena.initialize();
+            ml::FrameArray<WorkerScratch> workers{&scratch};
+            {
+                SANDBOX_PROFILE_SCOPE("awareness_scan_setup");
+                auto const counts{agents_.entity_counts()};
+                std::uint32_t entity_count{};
+                for (auto const type : ml::EnumTraits<EntityType>::values) {
+                    entity_count += counts[type];
+                }
+                auto const worker_count{static_cast<std::uint32_t>(arena.max_concurrency())};
+                workers.reserve(worker_count);
+                for (std::uint32_t worker{}; worker < worker_count; ++worker) {
+                    workers.emplace(scratch, entity_count);
                 }
             }
 
-            if (selected_target.is_valid() && selected_target != target_id) {
-                target_ids[i] = selected_target;
-                targets_changed = true;
+            arena.execute([&] {
+                oneapi::tbb::parallel_for(
+                    oneapi::tbb::blocked_range<std::uint32_t>{0, scan_count, grain_size},
+                    [&](oneapi::tbb::blocked_range<std::uint32_t> const& range) {
+                        SANDBOX_PROFILE_SCOPE("awareness_scan_chunk");
+                        // Each arena slot exclusively owns its scratch until this callback returns.
+                        auto const worker_index{
+                            oneapi::tbb::this_task_arena::current_thread_index()};
+                        assert(worker_index >= 0);
+                        auto& worker{workers[static_cast<std::uint32_t>(worker_index)]};
+                        auto const end{range.end()};
+                        for (auto scan_index{range.begin()}; scan_index < end; ++scan_index) {
+                            auto const i{scan_indices[scan_index]};
+                            auto const fighter_location{vector_at(locations, i)};
+                            auto const target_id{target_ids[i]};
+                            auto const n_nearby_entities{
+                                spatial_query_manager.collect_non_team_entities_in_range(
+                                    fighter_location,
+                                    teams[i],
+                                    awareness_radius,
+                                    worker.nearby_entities,
+                                    worker.query_buffers)};
+                            auto const aim_direction{vector_at(aim_directions, i)};
+                            EntityUniqueId selected_target{};
+                            for (std::uint32_t nearby_index{}; nearby_index < n_nearby_entities;
+                                 ++nearby_index) {
+                                auto const candidate{worker.nearby_entities[nearby_index]};
+                                auto const state{agents_.read_alive(candidate)};
+                                if (!state) {
+                                    continue;
+                                }
+                                auto const direction{ml::native_math::safe_normal(
+                                    state->location - fighter_location, 1.e-8f)};
+                                if (HMM_DotV3(aim_direction, direction) > dot_threshold) {
+                                    selected_target = candidate;
+                                    break;
+                                }
+                            }
+
+                            if (selected_target.is_valid() && selected_target != target_id) {
+                                target_ids[i] = selected_target;
+                                worker.targets_changed = true;
+                            }
+                        }
+                    });
+            });
+            for (auto const& worker : workers) {
+                targets_changed |= worker.targets_changed;
             }
         }
     }

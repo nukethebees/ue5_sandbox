@@ -105,6 +105,12 @@ struct SpatialQueryManager {
                                             float const radius,
                                             std::span<EntityUniqueId> const out_entities) const
         -> std::uint32_t;
+    // Reuse exclusive scratch buffers across a batch of range queries.
+    auto collect_non_team_entities_in_range(Vector3f const& origin,
+                                            Team team,
+                                            float radius,
+                                            std::span<EntityUniqueId> out_entities,
+                                            QueryThreadBuffers& buffers) const -> std::uint32_t;
     auto collect_entities_of_type_in_range(Vector3f const& origin,
                                            EntityType entity_type,
                                            float radius,
