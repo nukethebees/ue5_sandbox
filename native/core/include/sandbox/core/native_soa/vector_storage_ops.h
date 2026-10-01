@@ -5,6 +5,7 @@
 #include <sandbox/core/soa_permutation.h>
 
 #include <algorithm>
+#include <cassert>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -29,10 +30,12 @@ concept VectorStorageSoa = requires(Soa& soa, Soa const& const_soa) {
 };
 
 template <typename View>
-void validate_array_sizes(View const& view) {
+void validate_array_sizes([[maybe_unused]] View const& view) {
+#ifndef NDEBUG
     auto const count{view.num()};
     view.each_column(
-        [count](auto const& column) { require(column.size() == static_cast<std::size_t>(count)); });
+        [count](auto const& column) { assert(column.size() == static_cast<std::size_t>(count)); });
+#endif
 }
 
 template <VectorStorageSoa Soa>

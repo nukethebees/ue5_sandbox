@@ -106,6 +106,25 @@ struct CollisionUniformGrid {
     void rebuild_static_grid();
 
     /* **************************************** */
+    // Tracing
+    /* **************************************** */
+    enum class TraceKind : std::uint8_t {
+        Line,
+        Sweep,
+    };
+
+    enum class IgnoredEntityMode : std::uint8_t {
+        None,
+        PerTrace,
+    };
+
+    template <TraceKind Kind, IgnoredEntityMode IgnoredMode, TraceEntityFilter EntityFilter>
+    void trace_aabbs_impl(LineTracesConstView traces,
+                          TraceHitsView hits,
+                          std::span<EntityUniqueId const> ignored_entities,
+                          Vector3f moving_half_extent) const;
+
+    /* **************************************** */
     // State
     /* **************************************** */
     AgentAccessor const& agents_;
