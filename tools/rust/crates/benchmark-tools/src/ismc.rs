@@ -552,11 +552,11 @@ pub fn execute(root: &Path, args: &[String], comparison: bool) -> Result<()> {
             operation
         }
     })();
-    if let Err(error) = &result {
-        if context.manifest["status"] != "incomparable" {
-            context.manifest["failure"] = json!(error.to_string());
-            context.status("failed")?;
-        }
+    if let Err(error) = &result
+        && context.manifest["status"] != "incomparable"
+    {
+        context.manifest["failure"] = json!(error.to_string());
+        context.status("failed")?;
     }
     result
 }

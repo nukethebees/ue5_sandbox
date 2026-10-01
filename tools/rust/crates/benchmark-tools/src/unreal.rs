@@ -75,7 +75,7 @@ fn automation_succeeded(log: &str) -> Result<()> {
         || log.contains("Test Completed. Result={Error}")
         || log.lines().any(|line| {
             line.split_once("TEST COMPLETE. EXIT CODE:")
-                .and_then(|(_, value)| value.trim_start().split_whitespace().next())
+                .and_then(|(_, value)| value.split_whitespace().next())
                 .and_then(|value| value.parse::<i32>().ok())
                 .is_some_and(|code| code != 0)
         })

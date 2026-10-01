@@ -272,15 +272,15 @@ fn read_capture(
     for line in lines {
         let row = parse_csv(line)?;
         for pair in row.windows(2) {
-            if pair[0] == "[systemresolution.resx]" {
-                if let Ok(v) = pair[1].parse() {
-                    width = v;
-                }
+            if pair[0] == "[systemresolution.resx]"
+                && let Ok(v) = pair[1].parse()
+            {
+                width = v;
             }
-            if pair[0] == "[systemresolution.resy]" {
-                if let Ok(v) = pair[1].parse() {
-                    height = v;
-                }
+            if pair[0] == "[systemresolution.resy]"
+                && let Ok(v) = pair[1].parse()
+            {
+                height = v;
             }
         }
         let numeric = |index| {

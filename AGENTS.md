@@ -91,6 +91,9 @@ Unreal Engine 5.8 project.
   benchmark-tools privately on demand.
 * For final integration, only build and test what your work has affected
 * Keep benchmarks short; Not more than 3 minutes total
+* For probe-level performance work, use `agent-task benchmark tracy-report --trace <capture.tracy>`
+  with a relevant `--filter` and steady-state time window. Compare probe distributions as well as
+  full-tick timings. Keep raw traces/exports out of agent context; see `docs/benchmarks.md`.
 * Standalone developer-tool tests are not part of the default validation path. Run
   `cmake --workflow --preset tool-tests` only when the change can affect a tool or its tests, a
   directly consumed interface/protocol/file format/configuration, shared build or tool

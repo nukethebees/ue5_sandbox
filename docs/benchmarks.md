@@ -25,6 +25,7 @@ Results are disposable local data unless a specific experiment says otherwise; w
 | SandboxISMC | `agent-task benchmark sandbox-ismc` | Builds and runs the existing PIE benchmark with owned CSV, log, trace, and conditions artifacts. |
 | SandboxISMC revision comparison | `agent-task benchmark sandbox-ismc-revision-ab` | Builds detached baseline/current candidate inputs, then measures complete interleaved repetitions. |
 | SandboxISMC offline report | `agent-task benchmark sandbox-ismc-report --run-dir <comparison-run>` | Regenerates reports from captured data without engine runs or comparison worktrees. |
+| Tracy probe report | `agent-task benchmark tracy-report --trace <capture.tracy>` | Offline Rust report with bounded output and exact per-probe percentiles. |
 | Kernel reports | `agent-task benchmark kernel-report --workload representative` | Also `vector-layout`, `full`, and `highway`; retains Release builds and Python plots. |
 | Spark rendering | `agent-task benchmark spark` | Duration, capacity, sparks/impact, impact count, warmup are command options. |
 | Commandlet measurements | `agent-task benchmark heatmap` | Also `radar-3d`, `scatter-3d`, `volume-heatmap-3d`, and `entity-overlay`. |
@@ -75,6 +76,61 @@ see the [jobs-board workflow](../tools/jobserver/README.md).
 
 Agent-task is the developer entry point, benchmark-tools owns execution and reporting, and Python
 remains for plotting. Benchmark tools have no scheduling responsibilities.
+
+## Tracy probe reports
+
+Use `tracy-report` to analyze a saved capture without opening it in the GUI or reading raw events
+into an agent's context. This is an offline Rust command in `benchmark-tools`; it does not launch
+the simulation. It requires a compatible `tracy-csvexport` installed on PATH. Captures can come
+from the Tracy GUI or `tracy-capture`.
+
+```powershell
+# Find the probes with the largest individual invocations.
+agent-task benchmark tracy-report --trace .local/benchmarks/run.tracy --sort max --top 10
+
+# Examine the subsystem being optimized, including its worst invocations.
+agent-task benchmark tracy-report --trace .local/benchmarks/run.tracy `
+    --filter awareness_scan --sort p95 --worst 3
+
+# Restrict the report to a steady-state capture interval and save compact JSON.
+agent-task benchmark tracy-report --trace .local/benchmarks/run.tracy `
+    --filter awareness_scan --from-seconds 20 --to-seconds 25 `
+    --output .local/benchmarks/awareness.json
+```
+
+The report contains count, total, mean, minimum, exact nearest-rank p50/p95/p99, maximum, and
+the worst invocation timestamps and thread identifiers. Durations and timestamps are nanoseconds.
+Probes are grouped by static zone name, source file, and source line, across threads; dynamic
+zone text is not a grouping key. `--filter` is a case-sensitive substring. `--thread` selects a
+Tracy-exported thread identifier, which is not necessarily the OS thread ID.
+
+Default durations include nested zones. `--self` subtracts nested zones on the same thread.
+For parallel work, use the enclosing phase's inclusive duration to measure elapsed latency;
+summing worker durations does not give frame time or necessarily CPU execution time. Compare
+the same workload, capture interval, and timing mode before and after a change. Infrequent work
+needs its own probe distribution; a whole-tick mean alone can hide a large improvement.
+
+Time bounds select invocations by start timestamp: `[from, to)`, relative to the capture, without
+clipping durations at the boundaries. Warm-up is not excluded automatically. Negative-duration
+unfinished invocations are skipped and counted explicitly. An unmatched filter produces an empty
+report with zero matches, not fabricated zero-duration samples.
+
+The native simulation benchmark marks its steady-state interval with `Benchmark measured ticks`.
+Report that probe first, then use its invocation's start and end as the time window for subsystem
+reports. This excludes saturation and warm-up while retaining exactly the benchmark's measured ticks.
+
+Output defaults to ten probes and three worst invocations each; `--top` and `--worst` control
+these bounds. Reports include the number of omitted probes. The command streams exporter output,
+does not save raw CSV, and retains only durations plus the bounded worst-event lists. The default
+five-million-event limit is about 40 MB of duration values plus vector capacity and metadata.
+`--max-events` changes this limit. Exceeding it or 4,096 distinct probes fails without publishing
+a partial report; narrow the name/time filters first. `--top` limits output, not processing.
+The exporter still loads the trace into its own memory. Embedded newlines in exported zone
+names/text are unsupported by this report reader.
+
+For agents, retain the `.tracy` file as a local artifact and inspect only the compact reports.
+Use a shared jobs-board ticket for expensive offline exports; reserve exclusive tickets for
+actual measurements. Do not dump an unwrapped export or a large trace into tool output.
 
 ## Measurement options
 

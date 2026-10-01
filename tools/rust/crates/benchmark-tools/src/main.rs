@@ -9,6 +9,7 @@ mod support;
 #[cfg(test)]
 #[path = "../tests/unit/mod.rs"]
 mod tests;
+mod tracy;
 mod unreal;
 
 use support::*;
@@ -16,8 +17,13 @@ use support::*;
 const USAGE: &str = "Usage: benchmark-tools <kernel-report|spark|heatmap|radar-3d|scatter-3d|volume-heatmap-3d|entity-overlay|native-simulation|fighter-simulation|frame-memory-level|frame-memory-revision-ab|level-telemetry|gpu-starfield|sandbox-ismc|sandbox-ismc-revision-ab|sandbox-ismc-report> [options]\nSee docs/benchmarks.md for workload options.";
 
 fn execute(args: &[String]) -> Result<()> {
+    if args.first().is_some_and(|arg| arg == "tracy-report") {
+        return tracy::execute(&args[1..]);
+    }
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
-        println!("{USAGE}");
+        println!(
+            "{USAGE}\n  tracy-report --trace <capture.tracy> [options]  Offline zone statistics"
+        );
         return Ok(());
     }
     let (command, args) = args

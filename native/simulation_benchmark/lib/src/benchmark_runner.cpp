@@ -341,23 +341,27 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     tick_microseconds.reserve(static_cast<std::size_t>(*requested_ticks));
 
     auto const started_at{std::chrono::steady_clock::now()};
-    for (ioj::sim::SimTick tick{}; tick < *requested_ticks; ++tick) {
-        auto const tick_started_at{std::chrono::steady_clock::now()};
-        auto const advanced{advance_one_tick()};
-        if (!advanced) {
-            return std::unexpected{advanced.error()};
-        }
-        auto const tick_finished_at{std::chrono::steady_clock::now()};
-        tick_microseconds.push_back(
-            std::chrono::duration<double, std::micro>{tick_finished_at - tick_started_at}.count());
-        frame_summary.record_tick(simulation);
+    {
+        SANDBOX_PROFILE_SCOPE("Benchmark measured ticks");
+        for (ioj::sim::SimTick tick{}; tick < *requested_ticks; ++tick) {
+            auto const tick_started_at{std::chrono::steady_clock::now()};
+            auto const advanced{advance_one_tick()};
+            if (!advanced) {
+                return std::unexpected{advanced.error()};
+            }
+            auto const tick_finished_at{std::chrono::steady_clock::now()};
+            tick_microseconds.push_back(
+                std::chrono::duration<double, std::micro>{tick_finished_at - tick_started_at}
+                    .count());
+            frame_summary.record_tick(simulation);
 
-        auto const fighter_count{simulation.get_fighters().get_num_instances()};
-        minimum_measured_fighters = std::min(minimum_measured_fighters, fighter_count);
-        maximum_measured_fighters = std::max(maximum_measured_fighters, fighter_count);
-        if (options.fighter_stress_cap.has_value() &&
-            fighter_count != static_cast<std::uint32_t>(*options.fighter_stress_cap)) {
-            return std::unexpected{"fighter population changed during measured ticks"};
+            auto const fighter_count{simulation.get_fighters().get_num_instances()};
+            minimum_measured_fighters = std::min(minimum_measured_fighters, fighter_count);
+            maximum_measured_fighters = std::max(maximum_measured_fighters, fighter_count);
+            if (options.fighter_stress_cap.has_value() &&
+                fighter_count != static_cast<std::uint32_t>(*options.fighter_stress_cap)) {
+                return std::unexpected{"fighter population changed during measured ticks"};
+            }
         }
     }
     auto const finished_at{std::chrono::steady_clock::now()};
