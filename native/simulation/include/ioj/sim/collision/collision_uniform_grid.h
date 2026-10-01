@@ -9,8 +9,6 @@
 #include <ioj/sim/line_traces.h>
 #include <ioj/sim/trace_hits.h>
 
-#include <sandbox/core/frame_array.h>
-
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -85,11 +83,19 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // Spatial queries
     /* **************************************** */
-    // Appends exact overlaps. Multi-cell participants may be appended more than once.
-    void append_overlaps(WorldAABB const& query_bounds,
-                         EntityUniqueId ignored_entity,
-                         ml::FrameArray<EntityUniqueId>& out_entities,
-                         ml::FrameArray<StaticGeometryIndex>& out_static_geometry_indices) const;
+    struct OverlapCounts {
+        std::uint32_t entities{};
+        std::uint32_t static_geometry{};
+    };
+
+    // Count multi-cell duplicates so the caller can allocate exact output spans before writing.
+    auto count_overlaps(WorldAABB const& query_bounds, EntityUniqueId ignored_entity) const
+        -> OverlapCounts;
+    // Keep the grid and entity state unchanged between counting and writing.
+    void write_overlaps(WorldAABB const& query_bounds,
+                        EntityUniqueId ignored_entity,
+                        std::span<EntityUniqueId> out_entities,
+                        std::span<StaticGeometryIndex> out_static_geometry_indices) const;
     void trace_aabbs(LineTracesConstView const& traces, TraceHitsView const& hits) const;
     void trace_aabbs(LineTracesConstView const& traces,
                      TraceHitsView const& hits,
@@ -108,6 +114,13 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // Tracing
     /* **************************************** */
+    template <bool Write>
+    auto overlaps_impl(WorldAABB const& query_bounds,
+                       EntityUniqueId ignored_entity,
+                       std::span<EntityUniqueId> out_entities,
+                       std::span<StaticGeometryIndex> out_static_geometry_indices) const
+        -> OverlapCounts;
+
     enum class TraceKind : std::uint8_t {
         Line,
         Sweep,

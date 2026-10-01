@@ -319,13 +319,30 @@ auto CollisionUniformGrid::get_entity_world_bounds() const -> EntityCellData::Co
 /* **************************************** */
 // Spatial queries
 /* **************************************** */
-void CollisionUniformGrid::append_overlaps(
+auto CollisionUniformGrid::count_overlaps(WorldAABB const& query_bounds,
+                                          EntityUniqueId const ignored_entity) const
+    -> OverlapCounts {
+    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::count_overlaps");
+    return overlaps_impl<false>(query_bounds, ignored_entity, {}, {});
+}
+void CollisionUniformGrid::write_overlaps(
+    WorldAABB const& query_bounds,
+    EntityUniqueId const ignored_entity,
+    std::span<EntityUniqueId> const out_entities,
+    std::span<StaticGeometryIndex> const out_static_geometry_indices) const {
+    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::write_overlaps");
+    [[maybe_unused]] auto const counts{overlaps_impl<true>(
+        query_bounds, ignored_entity, out_entities, out_static_geometry_indices)};
+    assert(counts.entities == out_entities.size());
+    assert(counts.static_geometry == out_static_geometry_indices.size());
+}
+template <bool Write>
+auto CollisionUniformGrid::overlaps_impl(
     collision::WorldAABB const& query_bounds,
     EntityUniqueId const ignored_entity,
-    ml::FrameArray<EntityUniqueId>& out_entities,
-    ml::FrameArray<StaticGeometryIndex>& out_static_geometry_indices) const {
-    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::append_overlaps");
-
+    std::span<EntityUniqueId> const out_entities,
+    std::span<StaticGeometryIndex> const out_static_geometry_indices) const -> OverlapCounts {
+    OverlapCounts result{};
     auto const [min_coord, max_coord]{to_cell_coord_bounds(query_bounds.min, query_bounds.max)};
     assert(is_cell_coord_in_bounds(min_coord, max_coord));
 
@@ -386,7 +403,11 @@ void CollisionUniformGrid::append_overlaps(
                                 ml::make_vector3f(entity_max_xs[aabb_offset + entity_index],
                                                   entity_max_ys[aabb_offset + entity_index],
                                                   entity_max_zs[aabb_offset + entity_index]))) {
-                            out_entities.add(id);
+                            if constexpr (Write) {
+                                assert(result.entities < out_entities.size());
+                                out_entities[result.entities] = id;
+                            }
+                            ++result.entities;
                         }
                     }
                 }
@@ -401,7 +422,11 @@ void CollisionUniformGrid::append_overlaps(
                                        ml::make_vector3f(static_max_xs[static_aabb_index],
                                                          static_max_ys[static_aabb_index],
                                                          static_max_zs[static_aabb_index]))) {
-                        out_static_geometry_indices.add(static_aabb_index);
+                        if constexpr (Write) {
+                            assert(result.static_geometry < out_static_geometry_indices.size());
+                            out_static_geometry_indices[result.static_geometry] = static_aabb_index;
+                        }
+                        ++result.static_geometry;
                     }
                 }
             }
@@ -409,6 +434,7 @@ void CollisionUniformGrid::append_overlaps(
         }
         plane_index += plane_stride;
     }
+    return result;
 }
 void CollisionUniformGrid::trace_aabbs(LineTracesConstView const& traces,
                                        TraceHitsView const& hits) const {

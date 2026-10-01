@@ -7,6 +7,9 @@
 #include <sandbox/core/frame_array.h>
 #include <sandbox/core/frame_memory_resource.h>
 
+#include <oneapi/tbb/blocked_range.h>
+#include <oneapi/tbb/parallel_for.h>
+
 #include <algorithm>
 #include <utility>
 
@@ -62,34 +65,90 @@ void CollisionSystem::collect_overlaps_for_candidates(
     entity_entity_overlaps_.reset();
     entity_static_overlaps_.reset();
 
-    ml::FrameArray<EntityUniqueId> overlapping_entities{&scratch};
-    ml::FrameArray<StaticGeometryIndex> overlapping_static_geometry_indices{&scratch};
+    if (overlap_candidates.empty()) {
+        return;
+    }
 
-    for (auto const id : overlap_candidates) {
-        auto const state{agents_.read_alive(id)};
-        if (!state) {
-            continue;
-        }
+    assert(std::in_range<std::uint32_t>(overlap_candidates.size()));
+    auto const candidate_count{static_cast<std::uint32_t>(overlap_candidates.size())};
+    ml::FrameArray<WorldAABB> bounds{&scratch};
+    ml::FrameArray<CollisionUniformGrid::OverlapCounts> counts{&scratch};
+    ml::FrameArray<CollisionUniformGrid::OverlapCounts> offsets{&scratch};
+    bounds.set_num(candidate_count);
+    counts.set_num(candidate_count);
+    offsets.set_num(candidate_count);
 
-        auto const bounds{collision::make_entity_world_bounds(
-            entity_aabbs_, id.entity_type(), state->location, to_quaternion(state->rotation))};
-
-        overlapping_entities.clear();
-        overlapping_static_geometry_indices.clear();
-        uniform_grid_.append_overlaps(
-            bounds, id, overlapping_entities, overlapping_static_geometry_indices);
-
-        for (auto const overlapping_entity : overlapping_entities) {
-            if (overlapping_entity < id) {
-                entity_entity_overlaps_.add(overlapping_entity, id);
-            } else {
-                entity_entity_overlaps_.add(id, overlapping_entity);
+    // Count first so each candidate can write into a disjoint output span without allocating.
+    constexpr std::uint32_t grain_size{64};
+    auto const range{oneapi::tbb::blocked_range<std::uint32_t>{0, candidate_count, grain_size}};
+    {
+        SANDBOX_PROFILE_SCOPE("overlap_count");
+        oneapi::tbb::parallel_for(range, [&](auto const& chunk) {
+            SANDBOX_PROFILE_SCOPE("overlap_count_chunk");
+            auto const end{chunk.end()};
+            for (auto index{chunk.begin()}; index < end; ++index) {
+                auto const id{overlap_candidates[index]};
+                auto const state{agents_.read_alive(id)};
+                if (!state) {
+                    continue;
+                }
+                bounds[index] = collision::make_entity_world_bounds(entity_aabbs_,
+                                                                    id.entity_type(),
+                                                                    state->location,
+                                                                    to_quaternion(state->rotation));
+                counts[index] = uniform_grid_.count_overlaps(bounds[index], id);
             }
-        }
+        });
+    }
 
-        for (auto const static_geometry_index : overlapping_static_geometry_indices) {
-            entity_static_overlaps_.add(id, static_geometry_index);
+    {
+        SANDBOX_PROFILE_SCOPE("overlap_output_setup");
+        std::uint64_t entity_total{};
+        std::uint64_t static_total{};
+        for (std::uint32_t index{}; index < candidate_count; ++index) {
+            offsets[index] = {static_cast<std::uint32_t>(entity_total),
+                              static_cast<std::uint32_t>(static_total)};
+            entity_total += counts[index].entities;
+            static_total += counts[index].static_geometry;
+            assert(std::in_range<std::int32_t>(entity_total));
+            assert(std::in_range<std::int32_t>(static_total));
         }
+        entity_entity_overlaps_.set_num(static_cast<std::uint32_t>(entity_total));
+        entity_static_overlaps_.set_num(static_cast<std::uint32_t>(static_total));
+    }
+
+    auto const entity_output{entity_entity_overlaps_.get_view()};
+    auto const static_output{entity_static_overlaps_.get_view()};
+    {
+        SANDBOX_PROFILE_SCOPE("overlap_fill");
+        oneapi::tbb::parallel_for(range, [&](auto const& chunk) {
+            SANDBOX_PROFILE_SCOPE("overlap_fill_chunk");
+            auto const end{chunk.end()};
+            for (auto index{chunk.begin()}; index < end; ++index) {
+                auto const count{counts[index]};
+                if (count.entities == 0 && count.static_geometry == 0) {
+                    continue;
+                }
+                auto const id{overlap_candidates[index]};
+                auto const offset{offsets[index]};
+                auto const first_entities{
+                    entity_output.first_entities.subspan(offset.entities, count.entities)};
+                auto const second_entities{
+                    entity_output.second_entities.subspan(offset.entities, count.entities)};
+                auto const static_entities{
+                    static_output.entities.subspan(offset.static_geometry, count.static_geometry)};
+                auto const static_indices{static_output.static_geometry_indices.subspan(
+                    offset.static_geometry, count.static_geometry)};
+
+                uniform_grid_.write_overlaps(bounds[index], id, first_entities, static_indices);
+                for (std::uint32_t pair{}; pair < count.entities; ++pair) {
+                    auto const other{first_entities[pair]};
+                    first_entities[pair] = std::min(id, other);
+                    second_entities[pair] = std::max(id, other);
+                }
+                std::ranges::fill(static_entities, id);
+            }
+        });
     }
 
     finalize_overlaps(scratch);

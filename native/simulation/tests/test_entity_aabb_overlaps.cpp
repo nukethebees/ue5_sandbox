@@ -12,7 +12,7 @@
 namespace ioj::sim::tests {
 
 namespace {
-constexpr std::size_t overlap_frame_memory_capacity{64 * 1024};
+constexpr std::size_t overlap_frame_memory_capacity{256 * 1024};
 
 struct OverlapFixture {
     explicit OverlapFixture(Vector3f const capital_half_extents = {{10.f, 10.f, 10.f}},
@@ -575,6 +575,29 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
         }
         EXPECT_TRUE(found_large_static) << "Moved entity retains its large-static identity";
     }
+
+    auto const expected_first{fixture.ids(entity_overlaps.first_entities)};
+    auto const expected_second{fixture.ids(entity_overlaps.second_entities)};
+    auto const expected_static_entities{fixture.ids(static_overlaps.entities)};
+    std::vector<collision::StaticGeometryIndex> const expected_static_indices{
+        static_overlaps.static_geometry_indices.begin(),
+        static_overlaps.static_geometry_indices.end()};
+    std::vector<EntityUniqueId> repeated_candidates;
+    for (std::uint32_t repeat{}; repeat < 4; ++repeat) {
+        repeated_candidates.insert(
+            repeated_candidates.end(), moved_entities.rbegin(), moved_entities.rend());
+    }
+    fixture.query_manager.reset_frame_collision_events();
+    fixture.refresh_and_detect_overlaps(repeated_candidates);
+    auto const repeated_entities{fixture.get_entity_overlaps()};
+    auto const repeated_static{fixture.get_static_overlaps()};
+    EXPECT_EQ(fixture.ids(repeated_entities.first_entities), expected_first);
+    EXPECT_EQ(fixture.ids(repeated_entities.second_entities), expected_second);
+    EXPECT_EQ(fixture.ids(repeated_static.entities), expected_static_entities);
+    EXPECT_EQ(
+        std::vector<collision::StaticGeometryIndex>(repeated_static.static_geometry_indices.begin(),
+                                                    repeated_static.static_geometry_indices.end()),
+        expected_static_indices);
 }
 
 TEST(EntityAABBOverlaps, EventsMirrorAuthoritativeResults) {
