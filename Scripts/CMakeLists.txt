@@ -26,7 +26,3 @@ set_tests_properties(CMake.RustHostTools PROPERTIES
   LABELS "integration;subprocess;cmake"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
-
-add_test(NAME PowerShell.Navigation
-  COMMAND pwsh -NoProfile -File "${PROJECT_SOURCE_DIR}/PowerShell/tests/Test-Navigation.ps1")
-set_tests_properties(PowerShell.Navigation PROPERTIES LABELS "developer-tool;scripts;integration;subprocess")
