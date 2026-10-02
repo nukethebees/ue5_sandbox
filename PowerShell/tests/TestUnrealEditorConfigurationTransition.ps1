@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$project_root = Split-Path -Parent $PSScriptRoot
+$project_root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 
 function Invoke-CMake {
     param(

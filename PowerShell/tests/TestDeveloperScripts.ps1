@@ -2,10 +2,11 @@
 param()
 
 $ErrorActionPreference = 'Stop'
-$root = Split-Path -Parent $PSScriptRoot
+$powershell_root = Split-Path -Parent $PSScriptRoot
+$root = Split-Path -Parent $powershell_root
 $scripts = @(
     (Join-Path $root 'dev.ps1')
-    (Get-ChildItem -LiteralPath $PSScriptRoot -Filter '*.ps1' -File | Select-Object -ExpandProperty FullName)
+    (Get-ChildItem -LiteralPath $powershell_root -Filter '*.ps1' -File -Recurse | Select-Object -ExpandProperty FullName)
 )
 
 $failed = $false

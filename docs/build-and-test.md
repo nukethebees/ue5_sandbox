@@ -269,7 +269,7 @@ edit or synchronize that metadata manually.
 Run the focused configuration transition regression with:
 
 ```powershell
-pwsh -NoProfile -File PowerShell/TestUnrealEditorConfigurationTransition.ps1
+pwsh -NoProfile -File PowerShell/tests/TestUnrealEditorConfigurationTransition.ps1
 ```
 
 Use the jobs-board request/check/start/end protocol with an exclusive ticket for this command.

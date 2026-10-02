@@ -37,7 +37,7 @@ standalone developer-tool validation when that scope is affected.
 The remaining scripts compose CMake workflows for packaging and project-file generation. Treat them
 as implementation details unless a documented workflow calls for one directly. In particular, use
 CMake workflows rather than calling UBT or its batch wrappers yourself.
-`TestUnrealEditorConfigurationTransition.ps1` is the focused DebugGame-to-Development-to-DebugGame
+`tests/TestUnrealEditorConfigurationTransition.ps1` is the focused DebugGame-to-Development-to-DebugGame
 module-loading regression. Use the [jobs-board protocol](../tools/jobserver/README.md) with an
 exclusive ticket for the whole sequence: request, check until Ready, start, run, end.
 The script runs ordinary CMake and CTest commands.
