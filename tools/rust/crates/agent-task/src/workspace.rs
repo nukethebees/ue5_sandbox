@@ -73,7 +73,7 @@ pub fn worktrees(root: &Path) -> Result<Vec<Worktree>, String> {
 pub fn check_branch_target(name: &str, root: &Path, worktrees: &[Worktree]) -> Result<(), String> {
     if protected(name) {
         return Err(format!(
-            "Branch '{name}' is protected. Use a feature branch; advancing dev requires authorized integrate-feature."
+            "Branch '{name}' is protected. Use a feature branch; advancing dev requires explicitly authorized agent-task integrate."
         ));
     }
 

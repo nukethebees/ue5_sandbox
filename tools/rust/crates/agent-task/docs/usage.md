@@ -5,8 +5,7 @@
 The maintainer installs or updates AgentTask from the repository root:
 
 ```powershell
-. .\dev.ps1
-install-agent-task
+pwsh -NoProfile -File PowerShell/InstallAgentTask.ps1
 ```
 
 This runs package tests, installs AgentTask using the pinned Rust toolchain, and smoke-tests
@@ -101,8 +100,8 @@ Report unsupported mutations; raw mutations require an explicit maintainer excep
 
 ## Integration and jobs
 
-After validation and explicit user authorization, run `integrate-feature` from `dev.ps1`.
-Use `-KeepBranch` to retain the feature branch. Integration does not build or test, and its
+After validation and explicit user authorization, run `agent-task integrate` from the feature worktree.
+Use `--keep-branch` to retain the feature branch. Integration does not build or test, and its
 cheap Git transaction needs no jobs-board ticket. A final-rebase conflict is aborted; resolve
 with `agent-task git rebase dev`, validate, and retry. Promotion or cleanup failures report
 retained state and require inspection before retrying.

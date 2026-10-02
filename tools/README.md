@@ -5,7 +5,7 @@ The maintainer installs stable tools explicitly under
 
 | Central tool | Installation/update | Source version |
 | --- | --- | --- |
-| agent-task | `. .\dev.ps1`, then `install-agent-task` | Cargo.toml |
+| agent-task | `pwsh -NoProfile -File PowerShell/InstallAgentTask.ps1` from the repository root | Cargo.toml |
 | jobserver | `agent-task install-central-tools` | CLI source |
 
 Installers publish literal symlinks in `%NTB_APPDATA_LOCAL%\bin` (default
@@ -46,6 +46,5 @@ All three are Rust crates built under `out/build/<configuration>/rust-tools/rele
 They launch domain subprocesses directly. The caller manages jobs-board admission and cancellation;
 the tools do not maintain process trees or scheduling state.
 
-PowerShell worktree navigation uses read-only `git worktree list --porcelain -z`.
 Other tools: [layout planner](layout_planner/README.md), [image lab](image_lab/README.md), and
 [LLVM checks](../docs/clang-tidy.md). Run focused tests for affected tools.

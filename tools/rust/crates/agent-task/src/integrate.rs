@@ -116,7 +116,7 @@ fn transaction(root: &Path, keep: bool) -> Result<(), String> {
                 format!("Final rebase failed and abort failed: {abort}. dev was not promoted; feature recovery requires attention outside the queue."))?;
         }
         return Err(format!(
-            "Final rebase failed and any active rebase was aborted: {error}. dev was not promoted. Resolve with agent-task git rebase dev outside the queue, validate, then requeue integrate-feature."
+            "Final rebase failed and any active rebase was aborted: {error}. dev was not promoted. Resolve with agent-task git rebase dev, validate, then retry agent-task integrate."
         ));
     }
 
@@ -207,7 +207,7 @@ fn transaction(root: &Path, keep: bool) -> Result<(), String> {
 
 pub fn run(args: &[OsString]) -> Result<(), String> {
     if !(args.is_empty() || (args.len() == 1 && args[0] == "--keep-branch")) {
-        return Err("Usage: agent-task integrate [--keep-branch]; invoke through authorized integrate-feature.".into());
+        return Err("Usage: agent-task integrate [--keep-branch]; explicit user authorization required.".into());
     }
 
     workspace::check_environment()?;

@@ -59,7 +59,7 @@ Unreal Engine 5.8 project.
   and your concern to the maintainer once, then wait for instructions. Without explicit maintainer
   direction, do not inspect, kill, or interfere with another agent's work, or end/cancel their ticket.
   Do not independently investigate whether their work is stale.
-* After explicit integration authorization, run `integrate-feature` from the feature worktree.
+* After explicit integration authorization, run `agent-task integrate` from the feature worktree.
 * Run light, relevant tests after implementation and expensive relevant gates once against
   the final candidate. Tooling/native work must not build Unreal without a dependency reason.
 * Integration performs a cheap final Git transaction. Complete affected builds, focused tests, and review before requesting integration authorization.
@@ -67,7 +67,7 @@ Unreal Engine 5.8 project.
   validate the resolution, then retry integration.
   Report the stopped stage, blocker, required action, and retained state.
 * `agent-task integrate` is privileged and is not part of the unconditional Git permission surface.
-  Invoke it through `integrate-feature` only after explicit user authorization.
+  Invoke it only after explicit user authorization.
 * If AgentTask is broken, report it once and follow an explicit maintainer instruction for any
   minimal alternative; do not repeatedly retry or deliberately bypass it.
 * You have permission to kill stale/hung processes that you spawned or were spawned in your worktree
@@ -82,7 +82,6 @@ Unreal Engine 5.8 project.
 # Builds
 
 * CMake is used to drive all builds, including UBT
-* Load dev.ps1 when starting a task
 * Stable tools are maintainer-installed under `%LOCALAPPDATA%\NukeTheBees\<ToolName>\bin`
   and invoked from PATH.
   Agents never auto-install/update tools or construct local fallbacks.

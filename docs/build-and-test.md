@@ -9,16 +9,15 @@ Install CMake 4.4.2 or newer and Ninja, set `UE_ROOT` to the Unreal Engine insta
 initialize the worktree:
 
 ```powershell
-. .\dev.ps1
 agent-task prepare-worktree
 ```
 
 The maintainer installs central tools and adds the shared tool-link directory to PATH (see
 [developer tools](../tools/README.md)). Preparation owns submodules, presets, and code generation.
-For Unreal development, `csetup` then builds the DebugGame and Development dependencies.
+For Unreal development, configure and build the required configuration with CMake as shown below.
 CMake invokes `agent-task unreal-build` from PATH for Unreal build-script invocation,
 and builds revision-local Rust tools on demand. See the
-[PowerShell guide](../PowerShell/README.md) for interactive commands.
+[PowerShell guide](../PowerShell/README.md) for installation and packaging scripts.
 
 Alternatively, set `UE_ROOT` in the ignored `CMakeUserPresets.json` using a local configure preset
 that inherits from `development`. CMake builds pinned native dependencies from source; no package
@@ -69,13 +68,13 @@ normal DebugGame game/native workflow for Unreal-facing or cross-cutting candida
 
 ### Clean task start
 
-Load `dev.ps1`, then begin each new task from anywhere in its Git worktree:
+Begin each new task from anywhere in its Git worktree:
 
 ```powershell
 agent-task prepare-worktree
 ```
 
-The maintainer installs/updates `agent-task` with `. .\dev.ps1` followed by `install-agent-task`
+The maintainer installs/updates `agent-task` with `pwsh -NoProfile -File PowerShell/InstallAgentTask.ps1`
 and manages PATH; agents assume it is available. On a fresh setup, run
 `agent-task prepare-worktree`, then `agent-task install-central-tools` for jobserver.
 The install command only configures native and runs the jobserver installation target.
@@ -156,14 +155,13 @@ repeated inner loop.
 
 `tool-tests` builds its prerequisites before running per-tool tests. Use it for shared/unknown
 tool infrastructure or broad tool validation. Known tools use focused builds and labels.
-PowerShell navigation queries read-only Git directly.
 Layout planner and image lab use their native workflows, jobserver its focused tests, and perf its
 benchmark validation. AgentTask uses `cargo test --package agent-task --locked` from `tools/rust`.
 
 CMake owns Rust test registration in `tools/rust/CMakeLists.txt`. Run the `cmake` infrastructure
 regressions when changing this wiring, including `CMake.RustHostTools`.
 
-After required validation and explicit user authorization, run `integrate-feature` for the
+After required validation and explicit user authorization, run `agent-task integrate` for the
 privileged AgentTask Git transaction. This cheap operation needs no jobs-board ticket. Integration
 performs pinned rebase, cheap sanity checks, atomic dev promotion, refresh and cleanup. It does
 not select or rerun build/test gates. Resolve a conflicting final rebase with
@@ -184,7 +182,7 @@ reflection or UObject lifetime, engine adapters/APIs, UI, assets, or editor beha
 cmake --workflow --preset debug-game-unit-tests
 
 # Prepare and build an Editor-ready configuration when interactive validation is needed.
-cplay debug-game
+cmake --workflow --preset debug-game
 ```
 
 `debug-game-unit-tests` includes an Editor build and is not a native inner-loop command. For a
@@ -216,11 +214,20 @@ once in saved Editor settings if the file exists; Editor launches also pass an e
 Use the generated `Sandbox` solution with `DebugGame Editor | Win64` or
 `Development Editor | Win64` for Visual Studio debugging.
 
-`csetup` creates the worktree dependencies required by game and editor targets, including native
+To prepare dependencies and IDE projects without running the full build workflow:
+
+```powershell
+cmake --preset debug-game
+cmake --build --preset generate-worktree-code-debug-game
+cmake --build --preset worktree-dependencies-debug-game
+agent-task unreal project-files --build-dir out/build/debug-game
+```
+
+Use `development` in place of `debug-game` for Development. The dependency target builds native
 memory, image, material-generation, mesh-generation, CPU-feature, and generated-code artifacts.
-DebugGame setup can import the shared audio assets when `BEE_AUDIO_ROOT` points to the
-`sci-fi_ds_2220mb` pack. Run `agent-task unreal import-game-audio` to invoke that import
-separately; it succeeds without replacing assets when the source pack is unavailable.
+To import shared audio assets, set `BEE_AUDIO_ROOT` to the `sci-fi_ds_2220mb` pack and run
+`agent-task unreal import-game-audio --build-dir out/build/debug-game`. This optional command
+builds its Editor prerequisite and succeeds without replacing assets when the source pack is unavailable.
 
 ## Packaging and asset maintenance
 

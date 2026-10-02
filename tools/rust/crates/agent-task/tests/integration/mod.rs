@@ -91,7 +91,8 @@ fn conflict_aborts_rebase_and_leaves_dev_and_feature_unchanged() {
     let dev = repo.raw(&repo.dev, &["rev-parse", "HEAD"]);
     let feature = repo.raw(&repo.feature, &["rev-parse", "HEAD"]);
     let error = transaction(&repo.feature, false).unwrap_err();
-    assert!(error.contains("outside the queue"), "{error}");
+    assert!(error.contains("Resolve with agent-task git rebase dev"), "{error}");
+    assert!(error.contains("validate, then retry agent-task integrate"), "{error}");
     assert_eq!(repo.raw(&repo.dev, &["rev-parse", "HEAD"]), dev);
     assert_eq!(repo.raw(&repo.feature, &["rev-parse", "HEAD"]), feature);
     assert_eq!(
