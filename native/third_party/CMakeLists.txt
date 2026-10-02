@@ -66,6 +66,7 @@ set(HWY_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
 set(HWY_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 set(HWY_ENABLE_LIST_TARGETS OFF CACHE BOOL "" FORCE)
 add_subdirectory(highway SYSTEM EXCLUDE_FROM_ALL)
+target_link_libraries(hwy PRIVATE ioj::asan)
 ioj_apply_native_abi(hwy)
 
 # Keep static SIMD targets isolated from baseline callers and unity builds.
