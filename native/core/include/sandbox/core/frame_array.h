@@ -1,111 +1,199 @@
 #pragma once
 
+#include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <memory_resource>
 #include <span>
+#include <stdexcept>
+#include <type_traits>
 #include <utility>
-#include <vector>
 
 namespace ml {
 // Contiguous frame-local array with fixed identity. The memory resource is borrowed and must
 // outlive the array. Views, references, and iterators are invalidated by storage reallocation.
+// Require non-throwing relocation and destruction. Construct elements normally; pass any
+// resource needed by their internal allocations explicitly to their constructors.
 template <typename T>
+    requires (std::is_nothrow_move_constructible_v<T> && std::is_nothrow_destructible_v<T>)
 class FrameArray {
   public:
     explicit FrameArray(std::pmr::memory_resource* const resource)
-        : values_{checked_resource(resource)} {}
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
 
     FrameArray(FrameArray const&) = delete;
     FrameArray(FrameArray&&) = delete;
     auto operator=(FrameArray const&) -> FrameArray& = delete;
     auto operator=(FrameArray&&) -> FrameArray& = delete;
-    ~FrameArray() = default;
+    ~FrameArray() {
+        clear();
+        deallocate(data_, capacity_);
+    }
 
     operator std::span<T>() noexcept { return view(); }
     operator std::span<T const>() const noexcept { return view(); }
 
-    auto num() const noexcept -> std::uint32_t { return to_public_size(values_.size()); }
-    auto is_empty() const noexcept -> bool { return values_.empty(); }
+    auto num() const noexcept -> std::uint32_t { return size_; }
+    auto is_empty() const noexcept -> bool { return size_ == 0; }
 
-    void reserve(std::uint32_t const count) { values_.reserve(to_storage_size(count)); }
-    void set_num(std::uint32_t const count) { values_.resize(to_storage_size(count)); }
-    void clear() noexcept { values_.clear(); }
-
-    void remove_at_swap(std::uint32_t const index) {
-        auto const storage_index{checked_index(index)};
-        if (storage_index + 1 != values_.size()) {
-            values_[storage_index] = std::move(values_.back());
+    void reserve(std::uint32_t const count) {
+        if (count <= capacity_) {
+            return;
         }
-        values_.pop_back();
+
+        auto* const new_data{allocate(count)};
+        replace_storage(new_data, count);
     }
 
-    auto add(T const& value) -> T& {
-        check_can_add();
-        return values_.emplace_back(value);
+    void set_num(std::uint32_t const count)
+        requires std::is_default_constructible_v<T>
+    {
+        if (count <= size_) {
+            destroy_from(count);
+            return;
+        }
+
+        if (count <= capacity_) {
+            std::uninitialized_value_construct_n(data_ + size_, count - size_);
+        } else {
+            auto const new_capacity{growth_capacity(count)};
+            auto* const new_data{allocate(new_capacity)};
+            try {
+                // Finish potentially throwing construction before moving existing values.
+                std::uninitialized_value_construct_n(new_data + size_, count - size_);
+            } catch (...) {
+                deallocate(new_data, new_capacity);
+                throw;
+            }
+            replace_storage(new_data, new_capacity);
+        }
+
+        size_ = count;
     }
 
-    auto add(T&& value) -> T& {
-        check_can_add();
-        return values_.emplace_back(std::move(value));
+    void clear() noexcept { destroy_from(0); }
+
+    void remove_at_swap(std::uint32_t const index)
+        requires std::is_nothrow_move_assignable_v<T>
+    {
+        assert(index < size_);
+        if (index + 1 != size_) {
+            data_[index] = std::move(data_[size_ - 1]);
+        }
+        destroy_from(size_ - 1);
     }
+
+    auto add(T const& value) -> T&
+        requires std::is_copy_constructible_v<T>
+    {
+        return emplace(value);
+    }
+
+    auto add(T&& value) -> T& { return emplace(std::move(value)); }
 
     template <typename... Args>
+        requires std::is_constructible_v<T, Args...>
     auto emplace(Args&&... args) -> T& {
-        check_can_add();
-        return values_.emplace_back(std::forward<Args>(args)...);
+        if (size_ == max_supported_size) {
+            throw std::length_error{"FrameArray size exceeds its supported range"};
+        }
+
+        if (size_ < capacity_) {
+            std::construct_at(data_ + size_, std::forward<Args>(args)...);
+        } else {
+            auto const new_capacity{growth_capacity(size_ + 1)};
+            auto* const new_data{allocate(new_capacity)};
+            try {
+                // Consume arguments before relocation invalidates references into the array.
+                std::construct_at(new_data + size_, std::forward<Args>(args)...);
+            } catch (...) {
+                deallocate(new_data, new_capacity);
+                throw;
+            }
+            replace_storage(new_data, new_capacity);
+        }
+
+        return data_[size_++];
     }
 
     auto operator[](std::uint32_t const index) noexcept -> T& {
-        return values_[checked_index(index)];
+        assert(index < size_);
+        return data_[index];
     }
     auto operator[](std::uint32_t const index) const noexcept -> T const& {
-        return values_[checked_index(index)];
+        assert(index < size_);
+        return data_[index];
     }
 
-    auto data() noexcept -> T* { return values_.data(); }
-    auto data() const noexcept -> T const* { return values_.data(); }
+    auto data() noexcept -> T* { return data_; }
+    auto data() const noexcept -> T const* { return data_; }
 
     auto view() noexcept -> std::span<T> { return {data(), static_cast<std::size_t>(num())}; }
     auto view() const noexcept -> std::span<T const> {
         return {data(), static_cast<std::size_t>(num())};
     }
 
-    auto begin() noexcept { return values_.begin(); }
-    auto begin() const noexcept { return values_.begin(); }
-    auto end() noexcept { return values_.end(); }
-    auto end() const noexcept { return values_.end(); }
+    auto begin() noexcept -> T* { return data_; }
+    auto begin() const noexcept -> T const* { return data_; }
+    auto end() noexcept -> T* { return size_ == 0 ? data_ : data_ + size_; }
+    auto end() const noexcept -> T const* { return size_ == 0 ? data_ : data_ + size_; }
   private:
-    using storage_type = std::pmr::vector<T>;
-    using storage_size_type = typename storage_type::size_type;
+    inline static constexpr auto max_supported_size{static_cast<std::uint32_t>(std::min(
+        {static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()),
+         std::numeric_limits<std::size_t>::max() / sizeof(T),
+         static_cast<std::size_t>(std::numeric_limits<std::ptrdiff_t>::max()) / sizeof(T)}))};
 
-    static constexpr storage_size_type max_supported_size{
-        static_cast<storage_size_type>(std::numeric_limits<std::uint32_t>::max())};
-
-    static auto checked_resource(std::pmr::memory_resource* const resource)
-        -> std::pmr::memory_resource* {
-        assert(resource != nullptr);
-        return resource;
+    static void check_size(std::uint32_t const count) {
+        if (count > max_supported_size) {
+            throw std::length_error{"FrameArray size exceeds its supported range"};
+        }
     }
 
-    static auto to_storage_size(std::uint32_t const count) -> storage_size_type {
-        return static_cast<storage_size_type>(count);
+    auto growth_capacity(std::uint32_t const count) const -> std::uint32_t {
+        check_size(count);
+        auto const doubled{capacity_ > max_supported_size / 2 ? max_supported_size : capacity_ * 2};
+        return std::max(count, doubled);
     }
 
-    static auto to_public_size(storage_size_type const count) noexcept -> std::uint32_t {
-        assert(count <= max_supported_size);
-        return static_cast<std::uint32_t>(count);
+    auto allocate(std::uint32_t const count) -> T* {
+        check_size(count);
+        return static_cast<T*>(
+            resource_->allocate(static_cast<std::size_t>(count) * sizeof(T), alignof(T)));
     }
 
-    auto checked_index(std::uint32_t const index) const noexcept -> storage_size_type {
-        auto const storage_index{static_cast<storage_size_type>(index)};
-        assert(storage_index < values_.size());
-        return storage_index;
+    void deallocate(T* const data, std::uint32_t const capacity) noexcept {
+        if (data != nullptr) {
+            resource_->deallocate(data, static_cast<std::size_t>(capacity) * sizeof(T), alignof(T));
+        }
     }
 
-    void check_can_add() const noexcept { assert(values_.size() < max_supported_size); }
+    void destroy_from(std::uint32_t const first) noexcept {
+        while (size_ > first) {
+            std::destroy_at(data_ + --size_);
+        }
+    }
 
-    storage_type values_;
+    void replace_storage(T* const new_data, std::uint32_t const new_capacity) noexcept {
+        auto const count{size_};
+        for (std::uint32_t index{}; index < count; ++index) {
+            std::construct_at(new_data + index, std::move(data_[index]));
+        }
+        clear();
+        deallocate(data_, capacity_);
+
+        data_ = new_data;
+        capacity_ = new_capacity;
+        size_ = count;
+    }
+
+    std::pmr::memory_resource* resource_;
+    T* data_{};
+    std::uint32_t size_{};
+    std::uint32_t capacity_{};
 };
 }
