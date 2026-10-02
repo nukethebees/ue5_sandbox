@@ -56,6 +56,23 @@ Live Coding edits preserve the saved INI file's encoding, byte-order mark, line 
 whitespace, and comments. Missing settings are left absent; decoding or writing failures warn
 without preventing code generation.
 
+## Codex process ownership (Windows)
+
+`codex start` creates a named Windows Job Object and assigns the launcher itself before
+spawning `codex.exe --no-daemon` with the standard process API. Descendants inherit job
+membership, including nested sandbox jobs. The name combines the worktree identity and
+session name. Only the Codex PID is saved under `.local/codex/`.
+
+The launcher waits in the existing console and lets Codex handle Ctrl+C. There is no daemon,
+suspended launch, session recovery, or exit-time process cleanup. The cooperative jobs board
+remains separate.
+
+`clean` requires actual membership in the named job. It enumerates members and preserves
+Codex installation executables, sandbox runners, console hosts, and the cleanup caller's
+ancestry. Console hosts do not protect their worker ancestors. Held process handles and
+membership checks scope termination to this job. Cleanup acts on one snapshot of child work.
+Externally brokered processes that do not join the job are outside its scope.
+
 ## Tests
 
 CLI integration tests live directly in `tests/`. Unit modules under `tests/<module>/mod.rs`

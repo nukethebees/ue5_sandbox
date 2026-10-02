@@ -98,6 +98,42 @@ alone does not preserve dirty files. Git stash is unsupported because it is repo
 Use separately permitted read-only Git for inspection, such as `git diff` and `git log`.
 Report unsupported mutations; raw mutations require an explicit maintainer exception.
 
+## Named Codex sessions (Windows)
+
+Launch from the worktree in an existing terminal:
+
+```powershell
+agent-task codex start dev1
+```
+
+The launcher joins a named Windows Job Object, then starts `codex --no-daemon` normally.
+Codex and its later tool processes inherit membership. It uses the existing console and
+does not open another PowerShell window. Keep running ordinary commands such as `ctest`
+and `cmake` directly; their approval prefixes are unchanged.
+
+Names contain 1-64 lowercase letters, digits, hyphens, or underscores and are scoped to
+the current worktree. The launcher accepts no additional Codex arguments.
+
+```powershell
+agent-task codex processes dev1
+agent-task codex clean dev1 --dry-run
+agent-task codex clean dev1
+```
+
+Run `clean` inside that session. It stops the job's current child work, preserving Codex,
+its runtime helpers, console hosts, and the cleanup command's ancestors. Processes outside
+the job are untouched. Finish or pause other work first; cleanup can stop background tools
+and third-party MCP servers in the session.
+
+The launcher saves Codex's PID under ignored `.local/codex/` and waits for Codex to exit.
+There is no crash recovery or automatic descendant termination on exit. Leftover processes
+require manual cleanup; a job with remaining processes prevents reuse of its session name.
+This tracks a launched CLI session, including its subagents, rather than an existing desktop
+session or individual agents within a shared session.
+
+Run `cargo test --locked -p agent-task --test codex_sessions` from `tools/rust` for the
+focused launch, isolation, and cleanup tests.
+
 ## Integration and jobs
 
 After validation and explicit user authorization, run `agent-task integrate` from the feature worktree.
@@ -110,6 +146,8 @@ Use `agent-task jobs request|check|start|end|cancel|status` for manual shared/ex
 coordination. Tickets remain until ended or cancelled. Follow the
 [jobs-board workflow](../../../../jobserver/README.md).
 
-Only `agent-task git`, `agent-task jobs`, and ordinary preparation commands belong in
-unconditional allow rules. Never whitelist all of `agent-task`: `integrate` is privileged.
+`agent-task git`, `agent-task jobs`, ordinary preparation commands, and the narrowly scoped
+`agent-task codex processes` and `agent-task codex clean` commands may have unconditional
+allow rules. Keep `codex start` outside that allowance. Never whitelist all
+of `agent-task`: `integrate` is privileged.
 See the [repository policy](../../../../../AGENTS.md).

@@ -88,3 +88,12 @@ prefix_rule(
     pattern=["pyright"], 
     decision="allow"
 )
+
+# Named Codex session inspection and membership-checked self-cleanup only.
+# Launching or stopping a complete session is not covered by this allowance.
+prefix_rule(
+    pattern=["agent-task", "codex", ["processes", "clean"]],
+    decision="allow",
+    match=["agent-task codex processes dev1", "agent-task codex clean dev1 --dry-run", "agent-task codex clean dev1"],
+    not_match=["agent-task codex start dev1", "agent-task codex stop dev1"]
+)

@@ -27,7 +27,9 @@ mod unreal_build;
 
 mod workspace;
 
-const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  presets [--check]      Generate/check CMake presets\n  tidy [options]        Run LLVM analysis\n  unreal <operation>    Generate project files or authored assets\n  editor [options]      Build and launch the editor\n  run-staged [options]  Launch an existing staged game\n  benchmark <operation> Delegate to revision-local benchmark-tools\n  format [options]      Format sources using revision-local policy\n  unreal-build [options] Invoke the Unreal build script\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  jobs <command>         Cooperative jobs board (agent-task jobs --help)\n  git <command>          Run supported feature Git operations (agent-task git --help)\n  integrate [--keep-branch]  Privileged dev transaction; explicit user authorization required";
+mod codex;
+
+const USAGE: &str = "Usage: agent-task <command>\n\nCommands:\n  presets [--check]      Generate/check CMake presets\n  tidy [options]        Run LLVM analysis\n  unreal <operation>    Generate project files or authored assets\n  editor [options]      Build and launch the editor\n  run-staged [options]  Launch an existing staged game\n  benchmark <operation> Delegate to revision-local benchmark-tools\n  format [options]      Format sources using revision-local policy\n  unreal-build [options] Invoke the Unreal build script\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  codex <command>        Launch, inspect, or clean named Codex sessions\n  jobs <command>         Cooperative jobs board (agent-task jobs --help)\n  git <command>          Run supported feature Git operations (agent-task git --help)\n  integrate [--keep-branch]  Privileged dev transaction; explicit user authorization required";
 
 fn worktree_root() -> Result<PathBuf, String> {
     let output = Command::new("git")
@@ -126,6 +128,16 @@ fn install_central_tools() -> Result<(), String> {
 
 fn main() -> ExitCode {
     let arguments = std::env::args_os().skip(1).collect::<Vec<_>>();
+
+    if arguments.first().is_some_and(|arg| arg == "codex") {
+        return match codex::run(&arguments[1..]) {
+            Ok(code) => std::process::exit(code),
+            Err(error) => {
+                eprintln!("agent-task: {error}");
+                ExitCode::FAILURE
+            }
+        };
+    }
 
     if arguments.first().is_some_and(|arg| {
         matches!(
