@@ -10,9 +10,9 @@
 namespace ml::single_allocation_layout {
 
 struct LayoutPolicy {
-    inline static constexpr std::int32_t capacity_granularity{64};
-    inline static constexpr std::size_t column_gap{192};
-    inline static constexpr std::size_t minimum_alignment{64};
+    static constexpr std::int32_t capacity_granularity{64};
+    static constexpr std::size_t column_gap{192};
+    static constexpr std::size_t minimum_alignment{64};
 };
 
 inline constexpr auto capacity_granularity{LayoutPolicy::capacity_granularity};
