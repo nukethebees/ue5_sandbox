@@ -195,6 +195,14 @@ class PlannerUi {
     void draw_properties_panel();
     void draw_variants_panel();
     void draw_comparison_panel();
+    auto draw_record_target_comparison() -> bool;
+    auto draw_packed_target_comparison() -> bool;
+    void draw_integer_scalar_variant_comparison(layout::Variant const& comparison_a,
+                                                layout::Variant const& comparison_b);
+    void draw_packed_variant_comparison(layout::Variant const& comparison_a,
+                                        layout::Variant const& comparison_b);
+    void draw_soa_variant_comparison(layout::Variant const& comparison_a,
+                                     layout::Variant const& comparison_b);
     auto draw_comparison_target_profile_picker() -> bool;
     void draw_enum_target_comparison();
     auto draw_soa_target_comparison() -> bool;
