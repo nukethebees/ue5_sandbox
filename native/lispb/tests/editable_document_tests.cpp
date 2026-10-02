@@ -6614,8 +6614,6 @@ TEST(EditableSchemaDocument, PreparesAndReloadsAdvancedSoaDuplicates) {
                                 .containers = {"ExistingSoaFixed", "CustomFixedContainer"}};
     advanced.single_allocation = "ExistingSoaSingle";
     advanced.storage = codegen::SoaStorage::both;
-    advanced.single_allocation_variants = {codegen::SingleAllocationVariant{
-        .name = "ExistingSoaPool", .allocator = codegen::TypeRef{"@existing"}}};
     auto applied{document.apply(ReplaceSoa{.declaration = source, .schema = std::move(advanced)})};
     ASSERT_TRUE(applied.has_value()) << applied.error().message;
     ASSERT_TRUE(*applied);
@@ -6634,8 +6632,6 @@ TEST(EditableSchemaDocument, PreparesAndReloadsAdvancedSoaDuplicates) {
     EXPECT_EQ(prepared->fixed->containers,
               (std::vector<std::string>{"ExistingSoa_copyFixed", "CustomFixedContainer_copy"}));
     EXPECT_EQ(prepared->single_allocation, "ExistingSoa_copySingle");
-    ASSERT_EQ(prepared->single_allocation_variants.size(), 1U);
-    EXPECT_EQ(prepared->single_allocation_variants[0].name, "ExistingSoa_copyPool");
     ASSERT_EQ(prepared->members.size(), 3U);
     EXPECT_EQ(prepared->members[2].type.name, "ExistingSoa_copyFieldMask");
     ASSERT_EQ(prepared->functions.size(), 1U);
@@ -6681,8 +6677,6 @@ TEST(EditableSchemaDocument, PreparesAndReloadsAdvancedSoaDuplicates) {
     ASSERT_TRUE(schema->fixed.has_value());
     EXPECT_EQ(schema->fixed->storage_name, "ExistingSoa_copyFixedStorage");
     EXPECT_EQ(schema->single_allocation, "ExistingSoa_copySingle");
-    ASSERT_EQ(schema->single_allocation_variants.size(), 1U);
-    EXPECT_EQ(schema->single_allocation_variants[0].name, "ExistingSoa_copyPool");
     EXPECT_EQ(schema->members[2].type.name, "ExistingSoa_copyFieldMask");
     EXPECT_TRUE(schema->members[0].mask_field);
     ASSERT_EQ(schema->functions.size(), 1U);
@@ -6999,8 +6993,6 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSingleAllocationOwners) {
         codegen::FixedSoaSchema{.storage_name = "ExistingSoaCombinedStorage", .containers = {}};
     enabled.storage = codegen::SoaStorage::both;
     enabled.single_allocation = *owner_name;
-    enabled.single_allocation_variants = {codegen::SingleAllocationVariant{
-        .name = "ExistingSoaPool", .allocator = codegen::TypeRef{"@existing"}}};
     auto applied{
         document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(enabled)})};
     ASSERT_TRUE(applied.has_value()) << applied.error().message;
@@ -7010,8 +7002,6 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSingleAllocationOwners) {
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
     ASSERT_EQ(preview->size(), 1U);
     EXPECT_NE(preview->front().updated.find("(single-allocation ExistingSoaSingle2"),
-              std::string::npos);
-    EXPECT_NE(preview->front().updated.find("(variant ExistingSoaPool @existing)"),
               std::string::npos);
     auto const fixed_position{preview->front().updated.find("(fixed ExistingSoaCombinedStorage)")};
     auto const single_position{
@@ -7031,35 +7021,6 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSingleAllocationOwners) {
     applied = document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(renamed)});
     ASSERT_TRUE(applied.has_value()) << applied.error().message;
     ASSERT_TRUE(*applied);
-    ASSERT_EQ(document.soa_schema(declaration)->single_allocation_variants.size(), 1U);
-    EXPECT_EQ(document.soa_schema(declaration)->single_allocation_variants[0].name,
-              "ExistingSoaPool");
-
-    auto duplicate_name{
-        document.unique_soa_storage_owner_name(declaration, "ExistingSoaPool_copy")};
-    ASSERT_TRUE(duplicate_name.has_value()) << duplicate_name.error().message;
-    auto variants{*document.soa_schema(declaration)};
-    auto variant_copy{variants.single_allocation_variants.front()};
-    variant_copy.name = *duplicate_name;
-    variant_copy.allocator.name = "std::uint32_t";
-    variants.single_allocation_variants.push_back(std::move(variant_copy));
-    std::swap(variants.single_allocation_variants[0], variants.single_allocation_variants[1]);
-    applied = document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(variants)});
-    ASSERT_TRUE(applied.has_value()) << applied.error().message;
-    ASSERT_TRUE(*applied);
-    EXPECT_EQ(document.soa_schema(declaration)->single_allocation_variants[0].name,
-              "ExistingSoaPool_copy");
-    EXPECT_EQ(document.soa_schema(declaration)->single_allocation_variants[0].allocator.name,
-              "std::uint32_t");
-    ASSERT_TRUE(document.undo().value());
-    ASSERT_EQ(document.soa_schema(declaration)->single_allocation_variants.size(), 1U);
-    ASSERT_TRUE(document.redo().value());
-    ASSERT_EQ(document.soa_schema(declaration)->single_allocation_variants.size(), 2U);
-    preview = document.preview_source_updates();
-    ASSERT_TRUE(preview.has_value()) << preview.error().message;
-    EXPECT_NE(preview->front().updated.find("(single-allocation ExistingSoaCompact"),
-              std::string::npos);
-    EXPECT_NE(preview->front().updated.find("; Keep the custom function note"), std::string::npos);
 
     auto saved{document.save()};
     ASSERT_TRUE(saved.has_value()) << saved.error().message;
@@ -7070,16 +7031,10 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSingleAllocationOwners) {
     ASSERT_NE(reloaded_schema, nullptr);
     EXPECT_EQ(reloaded_schema->single_allocation, "ExistingSoaCompact");
     EXPECT_EQ(reloaded_schema->storage, codegen::SoaStorage::both);
-    ASSERT_EQ(reloaded_schema->single_allocation_variants.size(), 2U);
-    EXPECT_EQ(reloaded_schema->single_allocation_variants[0].name, "ExistingSoaPool_copy");
-    EXPECT_EQ(reloaded_schema->single_allocation_variants[0].allocator.name, "std::uint32_t");
-    EXPECT_EQ(reloaded_schema->single_allocation_variants[1].name, "ExistingSoaPool");
-    EXPECT_EQ(reloaded_schema->single_allocation_variants[1].allocator.name, "@existing");
 
     auto disabled{*reloaded_schema};
     disabled.storage = codegen::SoaStorage::vector;
     disabled.single_allocation.reset();
-    disabled.single_allocation_variants.clear();
     applied = reloaded.apply(
         ReplaceSoa{.declaration = reloaded_declaration, .schema = std::move(disabled)});
     ASSERT_TRUE(applied.has_value()) << applied.error().message;
@@ -7099,138 +7054,7 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSingleAllocationOwners) {
     auto const final_declaration{
         declaration_id(final_document, "authored_soa", "ExistingSoa", "authored")};
     EXPECT_FALSE(final_document.soa_schema(final_declaration)->single_allocation.has_value());
-    EXPECT_TRUE(final_document.soa_schema(final_declaration)->single_allocation_variants.empty());
     EXPECT_TRUE(final_document.soa_schema(final_declaration)->fixed.has_value());
-}
-
-TEST(EditableSchemaDocument, PreservesSingleAllocationVariantRowsDuringEdits) {
-    TemporarySchema files;
-    files.replace_module_text(
-        R"(      (parameter count std::uint32_t :default "0")))
-  (struct NestedFlags)",
-        R"(      (parameter count std::uint32_t :default "0"))
-    ; Keep the single-allocation note.
-    (single-allocation ExistingSoaSingle
-      ; Keep the pool variant note.
-      (variant ExistingSoaPool   @existing) ; pool variant trailing note
-      ; Keep the arena variant note.
-      (variant ExistingSoaArena std::uint32_t) ; arena variant trailing note
-    ))
-  (struct NestedFlags)");
-    auto document{files.load()};
-    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
-
-    auto replacement{*document.soa_schema(declaration)};
-    replacement.single_allocation = "ExistingSoaCompact";
-    auto pool{replacement.single_allocation_variants[0]};
-    auto arena{replacement.single_allocation_variants[1]};
-    arena.allocator.name = "std::uint64_t";
-    auto pool_copy{pool};
-    pool_copy.name = "ExistingSoaPoolCopy";
-    pool_copy.allocator.name = "std::uint16_t";
-    replacement.single_allocation_variants = {arena, pool_copy, pool};
-    auto applied{
-        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
-    ASSERT_TRUE(applied.has_value()) << applied.error().message;
-    ASSERT_TRUE(*applied);
-
-    auto preview{document.preview_source_updates()};
-    ASSERT_TRUE(preview.has_value()) << preview.error().message;
-    ASSERT_EQ(preview->size(), 1U);
-    auto const& updated{preview->front().updated};
-    auto const arena_comment{updated.find("; Keep the arena variant note.")};
-    auto const arena_row{updated.find("(variant ExistingSoaArena std::uint64_t)")};
-    auto const copy_row{updated.find("(variant ExistingSoaPoolCopy std::uint16_t)")};
-    auto const pool_comment{updated.find("; Keep the pool variant note.")};
-    auto const pool_row{updated.find("(variant ExistingSoaPool   @existing)")};
-    ASSERT_NE(arena_comment, std::string::npos);
-    ASSERT_NE(arena_row, std::string::npos);
-    ASSERT_NE(copy_row, std::string::npos);
-    ASSERT_NE(pool_comment, std::string::npos);
-    ASSERT_NE(pool_row, std::string::npos);
-    EXPECT_LT(arena_comment, arena_row);
-    EXPECT_LT(arena_row, copy_row);
-    EXPECT_LT(copy_row, pool_comment);
-    EXPECT_LT(pool_comment, pool_row);
-    EXPECT_NE(updated.find("(single-allocation ExistingSoaCompact"), std::string::npos);
-    EXPECT_NE(updated.find("; Keep the single-allocation note."), std::string::npos);
-    EXPECT_NE(updated.find("; arena variant trailing note"), std::string::npos);
-    EXPECT_NE(updated.find("; pool variant trailing note"), std::string::npos);
-
-    ASSERT_TRUE(document.undo().value());
-    preview = document.preview_source_updates();
-    ASSERT_TRUE(preview.has_value()) << preview.error().message;
-    EXPECT_TRUE(preview->empty());
-    ASSERT_TRUE(document.redo().value());
-    auto saved{document.save()};
-    ASSERT_TRUE(saved.has_value()) << saved.error().message;
-
-    auto renamed_document{files.load()};
-    auto const renamed_declaration{
-        declaration_id(renamed_document, "authored_soa", "ExistingSoa", "authored")};
-    auto renamed{*renamed_document.soa_schema(renamed_declaration)};
-    renamed.single_allocation_variants[0].name = "ExistingSoaScratch";
-    applied = renamed_document.apply(
-        ReplaceSoa{.declaration = renamed_declaration, .schema = std::move(renamed)});
-    ASSERT_TRUE(applied.has_value()) << applied.error().message;
-    ASSERT_TRUE(*applied);
-
-    preview = renamed_document.preview_source_updates();
-    ASSERT_TRUE(preview.has_value()) << preview.error().message;
-    auto const& renamed_source{preview->front().updated};
-    EXPECT_NE(renamed_source.find("; Keep the arena variant note."), std::string::npos);
-    EXPECT_NE(renamed_source.find("(variant ExistingSoaScratch std::uint64_t)"), std::string::npos);
-    EXPECT_NE(renamed_source.find("; arena variant trailing note"), std::string::npos);
-    ASSERT_TRUE(renamed_document.undo().value());
-    preview = renamed_document.preview_source_updates();
-    ASSERT_TRUE(preview.has_value()) << preview.error().message;
-    EXPECT_TRUE(preview->empty());
-    ASSERT_TRUE(renamed_document.redo().value());
-    saved = renamed_document.save();
-    ASSERT_TRUE(saved.has_value()) << saved.error().message;
-
-    auto deleting_document{files.load()};
-    auto const deleting_declaration{
-        declaration_id(deleting_document, "authored_soa", "ExistingSoa", "authored")};
-    auto deleting{*deleting_document.soa_schema(deleting_declaration)};
-    std::erase_if(deleting.single_allocation_variants,
-                  [](auto const& variant) { return variant.name == "ExistingSoaPool"; });
-    applied = deleting_document.apply(
-        ReplaceSoa{.declaration = deleting_declaration, .schema = std::move(deleting)});
-    ASSERT_TRUE(applied.has_value()) << applied.error().message;
-    ASSERT_TRUE(*applied);
-
-    preview = deleting_document.preview_source_updates();
-    ASSERT_TRUE(preview.has_value()) << preview.error().message;
-    auto const& deleting_source{preview->front().updated};
-    EXPECT_EQ(deleting_source.find("; Keep the pool variant note."), std::string::npos);
-    EXPECT_EQ(deleting_source.find("; pool variant trailing note"), std::string::npos);
-    EXPECT_NE(deleting_source.find("; Keep the arena variant note."), std::string::npos);
-    EXPECT_NE(deleting_source.find("(variant ExistingSoaScratch std::uint64_t)"),
-              std::string::npos);
-    ASSERT_TRUE(deleting_document.undo().value());
-    ASSERT_TRUE(deleting_document.redo().value());
-    saved = deleting_document.save();
-    ASSERT_TRUE(saved.has_value()) << saved.error().message;
-
-    auto reloaded{files.load()};
-    auto const reloaded_declaration{
-        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
-    auto const* schema{reloaded.soa_schema(reloaded_declaration)};
-    ASSERT_NE(schema, nullptr);
-    EXPECT_EQ(schema->single_allocation, "ExistingSoaCompact");
-    ASSERT_EQ(schema->single_allocation_variants.size(), 2U);
-    EXPECT_EQ(schema->single_allocation_variants[0].name, "ExistingSoaScratch");
-    EXPECT_EQ(schema->single_allocation_variants[0].allocator.name, "std::uint64_t");
-    EXPECT_EQ(schema->single_allocation_variants[1].name, "ExistingSoaPoolCopy");
-    EXPECT_EQ(schema->single_allocation_variants[1].allocator.name, "std::uint16_t");
-    auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
-        return source.path.filename() == "modules.lispb";
-    })};
-    ASSERT_NE(module_source, reloaded.source_files().end());
-    EXPECT_NE(module_source->text.find("; Keep the single-allocation note."), std::string::npos);
-    EXPECT_NE(module_source->text.find("; Keep the arena variant note."), std::string::npos);
-    EXPECT_EQ(module_source->text.find("; Keep the pool variant note."), std::string::npos);
 }
 
 TEST(EditableSchemaDocument, SoaColumnEditPreservesOtherDeclarationMetadata) {
@@ -10269,7 +10093,6 @@ TEST(EditableSchemaDocument, CompactApiRoundTripsAndRemovedViewFunctionsStayRemo
     auto const id{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
     auto schema{*document.soa_schema(id)};
     schema.single_allocation = "CompactExisting";
-    schema.single_allocation_allocator = codegen::TypeRef{"@existing"};
     schema.using_declarations = {"Value = std::uint32_t"};
     schema.functions = {{.name = "first",
                          .return_type = codegen::TypeRef{"std::uint32_t"},
@@ -10290,11 +10113,9 @@ TEST(EditableSchemaDocument, CompactApiRoundTripsAndRemovedViewFunctionsStayRemo
     auto replacement{*loaded.soa_schema(loaded_id)};
     ASSERT_EQ(replacement.const_view_functions.size(), 1U);
     ASSERT_EQ(replacement.mutable_view_functions.size(), 1U);
-    EXPECT_EQ(replacement.single_allocation_allocator->name, "@existing");
     EXPECT_EQ(replacement.functions.front().body_lines, schema.functions.front().body_lines);
     replacement.const_view_functions.clear();
     replacement.mutable_view_functions.clear();
-    replacement.single_allocation_allocator.reset();
     ASSERT_TRUE(
         loaded.apply(ReplaceSoa{.declaration = loaded_id, .schema = replacement}).has_value());
     ASSERT_TRUE(loaded.save().has_value());
@@ -10302,7 +10123,6 @@ TEST(EditableSchemaDocument, CompactApiRoundTripsAndRemovedViewFunctionsStayRemo
     auto const cleared_id{declaration_id(cleared, "authored_soa", "ExistingSoa", "authored")};
     EXPECT_TRUE(cleared.soa_schema(cleared_id)->const_view_functions.empty());
     EXPECT_TRUE(cleared.soa_schema(cleared_id)->mutable_view_functions.empty());
-    EXPECT_FALSE(cleared.soa_schema(cleared_id)->single_allocation_allocator);
 }
 
 } // namespace

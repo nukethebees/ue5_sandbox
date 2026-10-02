@@ -84,10 +84,6 @@ void visit_declaration_type_references(Declaration& declaration, Visitor const& 
                 if constexpr (std::is_same_v<T, SoaSchema>) {
                     optional("equivalent type", schema.equivalent_type);
                     optional("array allocator", schema.array_allocator);
-                    optional("single allocation allocator", schema.single_allocation_allocator);
-                    for (auto& variant : schema.single_allocation_variants) {
-                        visit("allocator variant " + variant.name, variant.allocator);
-                    }
                     for (std::size_t index{}; index < schema.functions.size(); ++index) {
                         auto& method{schema.functions[index]};
                         auto const role{"function " + method.name + " [" + std::to_string(index) +
@@ -192,9 +188,6 @@ auto soa_generated_cpp_names(SoaSchema const& schema,
             }
         };
         collect_nested(collect_nested, schema, "");
-    }
-    for (auto const& variant : schema.single_allocation_variants) {
-        result.push_back(variant.name);
     }
     if (schema.fixed.has_value()) {
         result.push_back(schema.fixed->storage_name);

@@ -228,10 +228,10 @@ class AgentAccessor {
         return false;
     }
 
-    void bind(SingleAllocationCapitalEntityData::ConstView capitals,
-              SingleAllocationFighterEntityData::ConstView fighters,
-              SingleAllocationTurretEntityData::ConstView turrets,
-              SingleAllocationSpinnerEntityData::ConstView spinners,
+    void bind(CapitalEntityData::ConstView capitals,
+              FighterEntityData::ConstView fighters,
+              TurretEntityData::ConstView turrets,
+              SpinnerEntityData::ConstView spinners,
               PlayerAgentView player = {}) noexcept {
         capitals_ = capitals;
         fighters_ = fighters;
@@ -301,10 +301,10 @@ class AgentAccessor {
   private:
     AgentIndices& indexes_;
     HealthTable const& health_table_;
-    SingleAllocationCapitalEntityData::ConstView capitals_{};
-    SingleAllocationFighterEntityData::ConstView fighters_{};
-    SingleAllocationTurretEntityData::ConstView turrets_{};
-    SingleAllocationSpinnerEntityData::ConstView spinners_{};
+    CapitalEntityData::ConstView capitals_{};
+    FighterEntityData::ConstView fighters_{};
+    TurretEntityData::ConstView turrets_{};
+    SpinnerEntityData::ConstView spinners_{};
     PlayerAgentView player_{};
     HealthConstView capitals_healths_{};
     HealthConstView fighters_healths_{};

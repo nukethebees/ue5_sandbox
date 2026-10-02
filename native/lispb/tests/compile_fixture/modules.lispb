@@ -356,8 +356,7 @@ return result;}cpp#)
     (member keys array int32)
     (member children nested @child
       :nested-schema FChild)
-    (single-allocation SingleParents
-      (variant CountedParents @counting_allocator)))
+    (single-allocation SingleParents))
   (struct FMaskRows8
     :field-mask-name FFieldMask8
     :field-enum-name EField8

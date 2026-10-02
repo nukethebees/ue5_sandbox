@@ -29,7 +29,7 @@ struct EntityFrameChange {
 };
 
 struct CapitalReadView {
-    SingleAllocationCapitalEntityData::ConstView entities;
+    CapitalEntityData::ConstView entities;
     HealthConstView healths;
     std::span<EntityUniqueId const> fighter_ids;
     std::span<EntityFrameChange const> changes;
@@ -42,24 +42,24 @@ struct CapitalReadView {
     }
 };
 struct FighterReadView {
-    SingleAllocationFighterEntityData::ConstView entities;
+    FighterEntityData::ConstView entities;
     HealthConstView healths;
     auto get_num_instances() const -> std::uint32_t { return entities.num(); }
 };
 struct TurretReadView {
-    SingleAllocationTurretEntityData::ConstView entities;
+    TurretEntityData::ConstView entities;
     HealthConstView healths;
     std::span<EntityFrameChange const> changes;
     std::span<Vector3f const> death_locations;
     auto get_num_instances() const -> std::uint32_t { return entities.num(); }
 };
 struct SpinnerReadView {
-    SingleAllocationSpinnerEntityData::ConstView entities;
+    SpinnerEntityData::ConstView entities;
     auto get_num_instances() const -> std::uint32_t { return entities.num(); }
 };
 struct LaserReadView {
-    lasers::SingleAllocationLaserEntities::ConstView entities;
-    SingleAllocationLaserHitDetails::ConstView hits;
+    lasers::LaserEntities::ConstView entities;
+    LaserHitDetails::ConstView hits;
     std::span<SimTick const> hit_ticks;
     std::span<std::int32_t const> hit_ordinals;
     auto get_num_instances() const -> std::uint32_t { return entities.num(); }

@@ -25,9 +25,6 @@ void add_soa_names(std::set<std::string>& names, SoaSchema const& schema) {
     if (schema.single_allocation.has_value()) {
         names.insert(*schema.single_allocation);
     }
-    for (auto const& variant : schema.single_allocation_variants) {
-        names.insert(variant.name);
-    }
     if (schema.fixed.has_value()) {
         names.insert(schema.fixed->storage_name);
         names.insert(schema.fixed->containers.begin(), schema.fixed->containers.end());
@@ -110,8 +107,6 @@ auto expand_soa_allocator_variants(SoaBackend const backend,
                 variant.prefix + schema.const_view_name.value_or(schema.name + "ConstView");
             copy.storage = SoaStorage::vector;
             copy.single_allocation.reset();
-            copy.single_allocation_variants.clear();
-            copy.single_allocation_allocator.reset();
             copy.array_allocator = variant.allocator;
             for (auto& member : copy.members) {
                 if (member.kind == SoaMemberKind::nested) {

@@ -191,7 +191,7 @@ auto Sim::find_first_id_on_team(Team const team) const noexcept -> std::optional
 /* **************************************** */
 // Ship spawning
 /* **************************************** */
-auto Sim::register_ships(SingleAllocationLevelCapitalSpawnEvents::ConstView const spawn_data)
+auto Sim::register_ships(LevelCapitalSpawnEvents::ConstView const spawn_data)
     -> std::vector<EntityUniqueId> {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::register_ships");
     auto const n_to_add{spawn_data.num()};
@@ -240,7 +240,7 @@ auto Sim::register_ships(SingleAllocationLevelCapitalSpawnEvents::ConstView cons
     agents_.indexes().bind(EntityType::CapitalShip, entity_ids);
     return new_ids;
 }
-void Sim::spawn_ships(SingleAllocationLevelCapitalSpawnEvents::ConstView const spawn_data) {
+void Sim::spawn_ships(LevelCapitalSpawnEvents::ConstView const spawn_data) {
     agents_.indexes().assert_preparation_mutation_allowed();
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::spawn_ships");
     spawn_data.validate();

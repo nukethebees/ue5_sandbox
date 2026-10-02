@@ -196,8 +196,8 @@ auto compile_level(LevelDefinition const& definition,
     std::int32_t turret_offset{};
     MissionTickValues mission_values;
     auto const append_entity = [&](std::uint32_t const entity_index_value,
-                                   SingleAllocationLevelCapitalSpawnEvents& capital_storage,
-                                   SingleAllocationLevelTurretSpawnEvents& turret_storage) {
+                                   LevelCapitalSpawnEvents& capital_storage,
+                                   LevelTurretSpawnEvents& turret_storage) {
         auto const& entity{definition.entities[static_cast<std::size_t>(entity_index_value)]};
         if (entity.archetype == "capital-ship") {
             auto const row{capital_storage.num()};

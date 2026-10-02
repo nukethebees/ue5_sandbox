@@ -14,8 +14,7 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
         {.name = "Rows",
          .members = {{"ids", SoaMemberKind::array, TypeRef{"std::int32_t"}},
                      {"nested", SoaMemberKind::nested, TypeRef{"Child"}, {}, "Child"}},
-         .single_allocation = "SingleRows",
-         .single_allocation_variants = {{"CustomSingleRows", TypeRef{"CustomAllocator"}}}}};
+         .single_allocation = "SingleRows"}};
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
         .modules = {NormalModuleSchema{.settings = {.name = "native", .header = "Native.h"},
@@ -37,9 +36,7 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
     EXPECT_NE(output.find(
                   "ml::native_soa::source_data(source.view_nested().xs()) + source_first, count);"),
               std::string::npos);
-    EXPECT_NE(output.find("ml::native_soa::free(data_, allocation_alignment);"), std::string::npos);
-    EXPECT_NE(output.find("CustomAllocator::free(data_);"), std::string::npos);
-    EXPECT_EQ(output.find("CustomAllocator::free(data_, allocation_alignment)"), std::string::npos);
+    EXPECT_NE(output.find("Operations::release_storage(*this);"), std::string::npos);
     EXPECT_NE(output.find("ml::native_soa::copy_n(destination.nested_xs, source.nested_xs, num_);"),
               std::string::npos);
 }
@@ -107,35 +104,24 @@ TEST(SingleAllocationSoa, TypedColumnOperationsUseLayoutCursorAndPreserveNestedP
                           "move_count"),
               std::string::npos);
     EXPECT_NE(output.find("ml::soa_storage::LayoutCursor cursor{blocks};"), std::string::npos);
-    EXPECT_NE(output.find("pointer_at(Layout::IdsColumn, cursor.advance(Layout::IdsColumn))"),
-              std::string::npos);
-    EXPECT_NE(output.find("pointer_at(Layout::NestedValuesColumn, "
-                          "cursor.advance(Layout::NestedValuesColumn))"),
+    EXPECT_NE(output.find("cursor.column_pointer(data, Layout::IdsColumn)"), std::string::npos);
+    EXPECT_NE(output.find("cursor.column_pointer(data, Layout::NestedValuesColumn)"),
               std::string::npos);
     EXPECT_NE(
         output.find(
             "ml::soa_storage::source_data(source.view_nested().values()) + source_first, count"),
         std::string::npos);
     EXPECT_EQ(output.find("_bytes{elements_to_"), std::string::npos);
-    auto const start{output.find("void reallocate(size_type const new_capacity)")};
+    auto const start{output.find("void copy_live_columns(")};
     ASSERT_NE(start, std::string::npos);
     auto const body{output.substr(start)};
-    auto const guard{body.find("if (num_ > 0)")};
     auto const typed_copy{body.find("ml::soa_storage::copy_n(")};
     auto const copy{
         body.find("ml::soa_storage::copy_n(destination.nested_values, source.nested_values, "
                   "num_);")};
-    auto const release{body.find("MimallocStorageAllocator::free(data_);")};
-    auto const publish{body.find("data_ = new_data;")};
-    ASSERT_NE(guard, std::string::npos);
     ASSERT_NE(typed_copy, std::string::npos);
     ASSERT_NE(copy, std::string::npos);
-    ASSERT_NE(release, std::string::npos);
-    ASSERT_NE(publish, std::string::npos);
-    EXPECT_LT(guard, typed_copy);
     EXPECT_LE(typed_copy, copy);
-    EXPECT_LT(copy, release);
-    EXPECT_LT(release, publish);
 }
 
 TEST(SingleAllocationSoa, StructuralSourcesNeedNoOrdinaryView) {
@@ -162,14 +148,14 @@ TEST(SingleAllocationSoa, OverlappingCopyUsesMoveWithoutChangingAppend) {
         auto const& output{files.front().content};
         auto const append_begin{output.find("void append_columns(")};
         auto const copy_begin{output.find("void copy_columns_from(")};
-        auto const reallocate_begin{output.find("void reallocate(")};
+        auto const live_copy_begin{output.find("void copy_live_columns(")};
         ASSERT_NE(append_begin, std::string::npos);
         ASSERT_NE(copy_begin, std::string::npos);
-        ASSERT_NE(reallocate_begin, std::string::npos);
+        ASSERT_NE(live_copy_begin, std::string::npos);
         ASSERT_LT(append_begin, copy_begin);
-        ASSERT_LT(copy_begin, reallocate_begin);
+        ASSERT_LT(copy_begin, live_copy_begin);
         auto const append{output.substr(append_begin, copy_begin - append_begin)};
-        auto const copy{output.substr(copy_begin, reallocate_begin - copy_begin)};
+        auto const copy{output.substr(copy_begin, live_copy_begin - copy_begin)};
         EXPECT_NE(append.find("::copy_n("), std::string::npos);
         EXPECT_EQ(append.find("::move_n("), std::string::npos);
         EXPECT_NE(copy.find("::move_n(destination.ids"), std::string::npos);
@@ -220,17 +206,13 @@ TEST(SingleAllocationSoa, ArrayAllocatorVariantsSkipSingleOnlySchemas) {
     EXPECT_NE(output.find("struct SingleRows"), std::string::npos);
 }
 
-TEST(SingleAllocationSoa, SingleAllocatorVariantPreservesViewsAndRoutesOwnership) {
-    auto input{schemas()};
-    input.back().single_allocation_variants = {{"CustomSingle", TypeRef{"CustomAllocator"}}};
-    auto const output{render(input)};
-    EXPECT_NE(output.find("struct CustomSingle"), std::string::npos);
-    EXPECT_EQ(output.find("struct CustomSingleStorage"), std::string::npos);
-    EXPECT_NE(output.find("CustomAllocator::allocate("), std::string::npos);
-    EXPECT_NE(output.find("CustomAllocator::free(data_)"), std::string::npos);
-    EXPECT_NE(output.find("MimallocStorageAllocator::free(data_)"), std::string::npos);
-    input.back().single_allocation_variants.front().name = *input.back().single_allocation;
-    EXPECT_THROW(render(input), std::invalid_argument);
+TEST(SingleAllocationSoa, UsesRuntimePmrResourceForEveryOwner) {
+    auto const output{render(schemas())};
+    EXPECT_NE(output.find("std::pmr::get_default_resource()"), std::string::npos);
+    EXPECT_NE(output.find("std::pmr::memory_resource* resource"), std::string::npos);
+    EXPECT_NE(output.find("friend Operations;"), std::string::npos);
+    EXPECT_NE(output.find("get_memory_resource() const noexcept"), std::string::npos);
+    EXPECT_EQ(output.find("MimallocStorageAllocator"), std::string::npos);
 }
 
 TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
@@ -274,13 +256,12 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
 
 TEST(SingleAllocationSoa, OwnerBorrowingRequiresLvalues) {
     auto const output{render(schemas())};
-    EXPECT_NE(output.find("auto operator=(SingleRows&& other) noexcept -> SingleRows&"),
-              std::string::npos);
+    EXPECT_NE(output.find("auto operator=(SingleRows&& other) -> SingleRows&"), std::string::npos);
     EXPECT_NE(
         output.find("inline RowsSingleConstView::RowsSingleConstView(RowsSingleView const& other)"),
         std::string::npos);
-    EXPECT_NE(output.find("auto get_view(this Self&& self) -> ViewFor<Self>"), std::string::npos);
-    EXPECT_NE(output.find("requires std::is_lvalue_reference_v<Self>"), std::string::npos);
+    EXPECT_NE(output.find("using Operations::get_view;"), std::string::npos);
+    EXPECT_NE(output.find("using Operations::get_const_view;"), std::string::npos);
     EXPECT_EQ(output.find("get_view() && ->"), std::string::npos);
 }
 
@@ -333,9 +314,6 @@ TEST(SingleAllocationSoa, KeepsAbiChecksInTheGeneratedLayout) {
     ASSERT_NE(start, std::string::npos);
     ASSERT_NE(end, std::string::npos);
     auto const layout{output.substr(start, end - start)};
-    EXPECT_NE(
-        layout.find("static_assert(allocation_alignment <= std::numeric_limits<uint32>::max()"),
-        std::string::npos);
     EXPECT_NE(layout.find("static_assert(max_capacity >= capacity_granularity)"),
               std::string::npos);
     EXPECT_EQ(layout.find("validate_layout"), std::string::npos);
@@ -514,13 +492,6 @@ TEST(SingleAllocationSoa, RejectsIncompatibleRepresentationSettingsWithLocalDiag
         schema.storage = policy;
         check(schema, "requires a single-allocation owner");
     }
-    schema = compact;
-    schema.single_allocation.reset();
-    schema.single_allocation_allocator = TypeRef{"Allocator"};
-    check(schema, "allocators require a single-allocation owner");
-    schema.single_allocation_allocator.reset();
-    schema.single_allocation_variants = {{"Variant", TypeRef{"Allocator"}}};
-    check(schema, "allocators require a single-allocation owner");
     schema = compact;
     schema.functions = {{.name = "broken",
                          .return_type = TypeRef{"float"},

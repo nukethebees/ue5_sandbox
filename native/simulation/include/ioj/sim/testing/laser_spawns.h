@@ -4,7 +4,7 @@
 #include <ioj/sim/laser_soa.h>
 
 namespace ioj::sim::tests {
-inline void add_laser_spawn(lasers::SingleAllocationLaserSpawnRequests& requests,
+inline void add_laser_spawn(lasers::LaserSpawnRequests& requests,
                             Vector3f const location,
                             Rotator3f const rotation,
                             Vector3f const velocity,

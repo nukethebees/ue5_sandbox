@@ -44,7 +44,7 @@ class FighterMembershipRefresh : public ::testing::Test {
     }
 
     void spawn(std::uint32_t const count) {
-        SingleAllocationFighterSpawnQueue spawns;
+        FighterSpawnQueue spawns;
         spawns.add_defaulted(count);
         auto const data{spawns.get_view()};
         auto const locations{data.view_locations()};
@@ -241,7 +241,7 @@ TEST_F(FighterMembershipRefresh, MultipleMutationsNeedOneEventualRebuild) {
 }
 
 TEST_F(FighterMembershipRefresh, PendingReparentingChangesMembershipOnlyWhenCommitted) {
-    SingleAllocationFighterSpawnQueue spawns;
+    FighterSpawnQueue spawns;
     spawns.add_defaulted(1);
     auto const data{spawns.get_view()};
     set_vector(data.view_locations(), 0, {{700.f, 100.f, 0.f}});
@@ -316,7 +316,7 @@ TEST_F(FighterMembershipRefresh, CapitalRemovalWithoutOwnedFightersInvalidatesSp
 }
 
 TEST_F(FighterMembershipRefresh, CapitalRegistrationInitializesNewEmptySpan) {
-    SingleAllocationLevelCapitalSpawnEvents spawns;
+    LevelCapitalSpawnEvents spawns;
     spawns.add_defaulted(1);
     auto const data{spawns.get_view()};
     set_vector(data.view_locations(), 0, {{3000.f, 0.f, 0.f}});

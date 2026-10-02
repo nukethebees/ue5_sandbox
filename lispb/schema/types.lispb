@@ -22,7 +22,7 @@
 
 
 (type fighter_spawn_queue_const_view
-  :spelling "SingleAllocationFighterSpawnQueue::ConstView"
+  :spelling "FighterSpawnQueue::ConstView"
   :header "ioj/sim/fighter_spawn_queue.h"
   :pass-by value)
 

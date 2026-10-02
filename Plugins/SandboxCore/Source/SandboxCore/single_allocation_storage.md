@@ -10,23 +10,23 @@ Use `:storage both` when a schema also needs an ordinary generated owner (TArray
 
 ## Ownership and layout
 
-An owner stores one allocation pointer, one `int32` size and one `int32` capacity: 16 bytes on Win64. Each flattened leaf occupies a contiguous column in the allocation. Nested schemas flatten in depth-first declaration order from the resolved type graph.
+An owner stores one allocation pointer, one `int32` size, one `int32` capacity and one non-owning PMR resource pointer: 24 bytes on Win64. Each flattened leaf occupies a contiguous column in the allocation. Nested schemas flatten in depth-first declaration order from the resolved type graph.
 
-Capacity is a multiple of 64. Each column is aligned to `max(64, alignof(T))`, followed by its capacity elements and a **fixed 192-byte gap** before aligning the next column. There is no trailing gap. Stronger alignment can increase the effective gap. The allocation uses the maximum leaf alignment. This policy applies to both backends and every single-owner allocator variant, with no capacity-dependent exceptions.
+Capacity is a multiple of 64. Each column is aligned to `max(64, alignof(T))`, followed by its capacity elements and a **fixed 192-byte gap** before aligning the next column. There is no trailing gap. Stronger alignment can increase the effective gap. The allocation uses the maximum leaf alignment. This policy applies to both backends and every resource, with no capacity-dependent exceptions.
 
 Generated constexpr offset functions apply this sequential layout using `capacity / 64`; the gap never scales with that count. `layout_bytes(blocks)` returns the exact extent, including zero for empty storage. `capacity_block_bound` is a conservative arithmetic bound used to reject overflowing capacities, not the actual allocation size. Column pointers are resolved when accessing/materializing views, outside entity loops. Tests compare the generated offsets against an independent sequential reference through 256-byte alignment.
 
 Reserve rounds to the granularity. Append growth uses geometric slack before rounding. Growth allocates one new block, bulk-copies each live column, then releases the old block. Allocation-size and row-count arithmetic are checked. Owners remain move-only; reset and removal retain capacity.
 
-`max_capacity` is a schema-specific, conservative limit bounded by `int32` row counts and `PTRDIFF_MAX` allocation bytes, rounded down to 64 rows. Requests beyond it fail before allocation. Public generated layout functions accept a validated capacity-block count; callers must not pass arbitrary byte-sized integers. Column types may repeat: columns are identified by their declaration position and field path, not by type. Empty schemas are rejected by the generator. Over-alignment is supported provided the alignment fits the allocator's 32-bit argument.
+`max_capacity` is a schema-specific, conservative limit bounded by `int32` row counts and `PTRDIFF_MAX` allocation bytes, rounded down to 64 rows. Requests beyond it fail before allocation. Public generated layout functions accept a validated capacity-block count; callers must not pass arbitrary byte-sized integers. Column types may repeat: columns are identified by their declaration position and field path, not by type. Empty schemas are rejected by the generator. Over-alignment is passed directly to the PMR resource.
 
-Moving transfers the allocation without allocating and leaves the source with zero size and capacity. Move assignment first releases the destination's previous block. Reset only clears the logical size; destruction releases the retained block.
+Move construction transfers the allocation and resource without allocating and leaves the source with zero size and capacity. Move assignment retains the destination resource: equal resources transfer the allocation, while unequal resources copy the columns into destination-owned storage and leave the source empty with its capacity retained. Unequal-resource assignment can throw on allocation failure, leaving both owners unchanged. Reset only clears the logical size; destruction releases the retained block.
 
 Leaves must be non-cv, non-array object types that are trivially copyable, trivially copy constructible, trivially destructible and nothrow default constructible. Location-dependent invariants requiring relocation fixups are unsupported. Byte-array placement construction establishes the supported implicit lifetimes without initializing the allocation. Defaulted additions use the backend's normal default/value construction policy.
 
 ## Compact views
 
-`View` and `ConstView` are separate named structs, each storing an owner-state pointer, row offset and row count. Both are 16 bytes and trivially copyable. Mutable handles implicitly convert to const handles, but not the reverse. Allocator variants share view types for the same schema.
+`View` and `ConstView` are separate named structs, each storing an owner-state pointer, row offset and row count. Both are 16 bytes and trivially copyable. Mutable handles implicitly convert to const handles, but not the reverse.
 
 ```cpp
 auto rows = data.get_view();
@@ -92,21 +92,30 @@ For scattered indices this can also differ from repeatedly removing one row in d
 
 ## Allocator integration
 
-Unreal single owners default to `ml::soa_storage::MimallocStorageAllocator`. SandboxCore links a
-private static mimalloc implementation built from the repository's vendored source. Every
-externally visible mimalloc symbol is prefixed with `sbx_`, and game code reaches it only through
-the `sbx::memory` wrapper. Unreal's global allocator is unchanged and no allocator override or CRT
-redirection is enabled. This integration requires Win64 x64 and the dynamic release CRT, as
-enforced by the module rules. Restart the Editor after rebuilding SandboxCore; reloading a module
-while its private allocator still owns live storage is unsupported.
+Both backends default to `std::pmr::get_default_resource()` at construction. Pass a non-null
+resource explicitly to select a pool, arena, or mimalloc; it must outlive the owner's storage.
+`get_memory_resource()` returns that resource. Changes to the process default do not affect
+existing owners.
 
-Allocator variants select a type providing `allocate(bytes, alignment)` and `free(data)`. The
-native backend retains its standard/mimalloc configuration choices and uses the same private
-allocator library without linking Unreal.
+```cpp
+SingleEntityData ordinary;
+SingleEntityData pooled{&pool};
+SingleEntityData mimalloc{sbx::memory::mimalloc_resource()};
+```
+
+Include `<sbx/memory_resource.h>` and link `sandbox::mimalloc` for native mimalloc use.
+SandboxCore exposes the same resource to Unreal consumers. The resource uses the private,
+symbol-prefixed mimalloc library and retains its allocation profiling. It does not change the
+global allocator or install a CRT override. Unreal consumers must restart the Editor after
+rebuilding SandboxCore while its allocator may own live storage.
+
+Single-allocation allocator schema fields and named allocator variants have been removed;
+select resources when constructing the canonical generated owner. Vector-backed allocator
+policies remain separate.
 
 ## Validation and measurement
 
-The test suites cover compact view sizes and trivial copyability, mutable/const conversion, rejection of temporary-owner borrowing, vector strides and invalid slices, aligned bulk copies, self-append, empty inputs, generated layout limits, overflow, descending removal subsets and invalid indices. A generated owner with a counting allocator checks single-block allocation, growth, reset, move assignment over an owning destination, and balanced destruction without allocating at the arithmetic limit.
+The test suites cover compact view sizes and trivial copyability, mutable/const conversion, rejection of temporary-owner borrowing, vector strides and invalid slices, aligned bulk copies, self-append, empty inputs, generated layout limits, overflow, descending removal subsets and invalid indices. A generated owner with a counting PMR resource checks single-block allocation, growth, reset, move assignment over an owning destination, and balanced destruction without allocating at the arithmetic limit.
 
 Run correctness validation from the repository root:
 
@@ -121,7 +130,7 @@ cmake --build out/build/native --target check-generated-code
 SoA allocation variants (`native-soa-tests` and `native-soa-tests-mimalloc`) and its benchmark
 smoke checks; it is not a timed performance comparison. `generate-code` and
 `check-generated-code` validate committed generated output. Allocation counting uses the compile
-fixture's allocator adapter. Small schemas in `native/lispb/native_soa` cover odd-sized and
+fixture's PMR resource. Small schemas in `native/lispb/native_soa` cover odd-sized and
 32/64/256-byte-aligned leaves, repeated nested vectors, layout limits, and bulk operations. The
 native SoA suites exercise actual standard and mimalloc storage and alignment.
 

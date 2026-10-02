@@ -1,9 +1,12 @@
 #include "generated/soa_fixture.h"
 
 #include <SandboxCore/single_allocation/runtime.h>
+#include <sbx/memory.h>
+#include <sbx/memory_resource.h>
 
 #include <CQTest.h>
 
+#include <array>
 #include <cstdint>
 #include <type_traits>
 #include <utility>
@@ -11,6 +14,32 @@
 TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
 {
     using Owner = ml::soa_test_fixture::SingleRows;
+
+    TEST_METHOD(PmrResourcesControlConstructionAndMoveAssignment)
+    {
+        Owner defaults;
+        TestRunner->TestTrue(TEXT("Default construction captures the PMR default"),
+                             defaults.get_memory_resource() == std::pmr::get_default_resource());
+        std::array<std::byte, 8192> first_buffer{};
+        std::array<std::byte, 8192> second_buffer{};
+        std::pmr::monotonic_buffer_resource first{first_buffer.data(), first_buffer.size()};
+        std::pmr::monotonic_buffer_resource second{second_buffer.data(), second_buffer.size()};
+        Owner source{&first};
+        source.set_num(2);
+        source.get_view().bytes()[0] = 31;
+        source.get_view().view_nested().xs()[0] = 2.5f;
+        Owner destination{&second};
+        destination.set_num(1);
+        auto const* destination_data{destination.get_view().bytes().GetData()};
+        destination = std::move(source);
+        TestRunner->TestTrue(TEXT("Move assignment retains the destination resource and capacity"),
+                             destination.get_memory_resource() == &second &&
+                                 destination.get_view().bytes().GetData() == destination_data);
+        TestRunner->TestTrue(TEXT("Unequal-resource move copies nested columns"),
+                             destination.num() == 2 && destination.get_view().bytes()[0] == 31 &&
+                                 destination.get_view().view_nested().xs()[0] == 2.5f &&
+                                 source.num() == 0 && source.get_memory_resource() == &first);
+    }
 
     TEST_METHOD(CompactSelfCopyPreservesEveryColumn)
     {
@@ -34,7 +63,7 @@ TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
         constexpr int32 row_count{8};
         for (auto const& range : cases) {
             for (bool const sliced : {false, true}) {
-                Owner owner;
+                Owner owner{sbx::memory::mimalloc_resource()};
                 owner.set_num(row_count);
                 auto const view{owner.get_view()};
                 int32 column_index{};
@@ -82,7 +111,7 @@ TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
     TEST_METHOD(LogicalCompactApi)
     {
         using namespace ml::soa_test_fixture;
-        ApiOwner owner;
+        ApiOwner owner{sbx::memory::mimalloc_resource()};
         owner.set_num(2);
         auto view{owner.get_view()};
         view.assign_first(7.0f);
@@ -105,7 +134,7 @@ TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
         owner.copy_elements(1, owner.get_const_view(), 0, 2);
         TestRunner->TestTrue(TEXT("Compact overlapping copy preserves source rows"),
                              owner.get_const_view().values()[2] == 9.0f);
-        EquivalentOwner equivalent;
+        EquivalentOwner equivalent{sbx::memory::mimalloc_resource()};
         equivalent.set_num(1);
         equivalent.get_view().xs()[0] = 5.0f;
         TestRunner->TestTrue(TEXT("Equivalent owner API"), equivalent[0].x == 5.0f);
@@ -113,8 +142,10 @@ TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
 
     TEST_METHOD(CompactHandleFollowsGrowth)
     {
-        Owner owner;
+        Owner owner{sbx::memory::mimalloc_resource()};
         owner.set_num(3);
+        TestRunner->TestTrue(TEXT("Explicit mimalloc resource owns the allocation"),
+                             sbx::memory::owns(owner.get_view().bytes().GetData()));
         owner.get_view().bytes()[1] = 17;
         owner.get_view().view_nested().xs()[1] = 2.5f;
 
@@ -134,7 +165,7 @@ TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
 
     TEST_METHOD(CompactSelfAppendSurvivesGrowth)
     {
-        Owner owner;
+        Owner owner{sbx::memory::mimalloc_resource()};
         owner.set_num(2);
         owner.get_view().bytes()[1] = 19;
         owner.get_view().view_nested().xs()[1] = 3.5f;
@@ -163,7 +194,7 @@ TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
 
     TEST_METHOD(MoveAssignmentReplacesDestinationStorage)
     {
-        Owner destination;
+        Owner destination{sbx::memory::mimalloc_resource()};
         destination.set_num(1);
         auto const old_view{destination.get_view()};
         auto const old_data{destination.get_view().bytes().GetData()};
@@ -171,7 +202,7 @@ TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
         TestRunner->TestTrue(TEXT("Retained view initially observes destination storage"),
                              old_view.bytes().GetData() == old_data);
 
-        Owner source;
+        Owner source{sbx::memory::mimalloc_resource()};
         source.set_num(1);
         auto const source_data{source.get_view().bytes().GetData()};
         destination = std::move(source);

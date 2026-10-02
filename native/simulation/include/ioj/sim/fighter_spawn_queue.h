@@ -8,7 +8,7 @@
 
 #include "sandbox/core/native_soa/storage.h"
 
-#include <utility>
+#include <memory_resource>
 
 namespace ioj::sim {
 
@@ -47,9 +47,6 @@ struct FighterSpawnQueueSingleLayout {
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : TargetsColumn.data_end(blocks);
     }
-    static_assert(
-        allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
-        "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
     static_assert(max_capacity >= capacity_granularity);
 };
 
@@ -229,7 +226,7 @@ static_assert(ml::soa_storage_detail::validate_compact_view<FighterSpawnQueueSin
 inline FighterSpawnQueueSingleConstView::FighterSpawnQueueSingleConstView(
     FighterSpawnQueueSingleView const& other)
     : Base{other} {}
-struct SingleAllocationFighterSpawnQueue
+struct FighterSpawnQueue
     : protected ml::native_soa::StorageState
     , private ml::native_soa::StorageOperations {
     using Operations = ml::native_soa::StorageOperations;
@@ -240,12 +237,17 @@ struct SingleAllocationFighterSpawnQueue
     using Operations::capacity;
     using Operations::copy_element;
     using Operations::copy_elements;
+    using Operations::get_const_view;
+    using Operations::get_view;
     using Operations::is_empty;
+    using Operations::left;
     using Operations::num;
     using Operations::remove_at_swap;
     using Operations::reserve;
     using Operations::reset;
+    using Operations::right;
     using Operations::set_num;
+    using Operations::slice;
     using Layout = FighterSpawnQueueSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -293,24 +295,22 @@ struct SingleAllocationFighterSpawnQueue
     /* **************************************** */
     // Lifetime
     /* **************************************** */
-    SingleAllocationFighterSpawnQueue() noexcept = default;
-    ~SingleAllocationFighterSpawnQueue() { ml::native_soa::free(data_, allocation_alignment); }
-    SingleAllocationFighterSpawnQueue(SingleAllocationFighterSpawnQueue const&) = delete;
-    auto operator=(SingleAllocationFighterSpawnQueue const&)
-        -> SingleAllocationFighterSpawnQueue& = delete;
-    SingleAllocationFighterSpawnQueue(SingleAllocationFighterSpawnQueue&& other) noexcept
-        : StorageState{std::exchange(other.data_, nullptr),
-                       std::exchange(other.num_, 0),
-                       std::exchange(other.capacity_, 0)} {}
-    auto operator=(SingleAllocationFighterSpawnQueue&& other) noexcept
-        -> SingleAllocationFighterSpawnQueue& {
-        if (this != &other) {
-            ml::native_soa::free(data_, allocation_alignment);
-            data_ = std::exchange(other.data_, nullptr);
-            num_ = std::exchange(other.num_, 0);
-            capacity_ = std::exchange(other.capacity_, 0);
-        }
-        return *this;
+    FighterSpawnQueue() noexcept
+        : FighterSpawnQueue{std::pmr::get_default_resource()} {}
+    explicit FighterSpawnQueue(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        ml::native_soa::require(resource != nullptr);
+    }
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~FighterSpawnQueue() { Operations::release_storage(*this); }
+    FighterSpawnQueue(FighterSpawnQueue const&) = delete;
+    auto operator=(FighterSpawnQueue const&) -> FighterSpawnQueue& = delete;
+    FighterSpawnQueue(FighterSpawnQueue&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(FighterSpawnQueue&& other) -> FighterSpawnQueue& {
+        return Operations::move_assign(*this, other);
     }
   protected:
     template <typename Byte>
@@ -354,7 +354,8 @@ struct SingleAllocationFighterSpawnQueue
         return self.get_data() + offset;
     }
   private:
-    friend struct ml::native_soa::StorageOperations;
+    std::pmr::memory_resource* resource_{};
+    friend Operations;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -362,24 +363,15 @@ struct SingleAllocationFighterSpawnQueue
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
-            using Column = std::remove_cvref_t<decltype(column)>;
-            using Pointer = std::conditional_t<std::is_const_v<Byte>,
-                                               typename Column::const_pointer,
-                                               typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + offset));
-        };
-        return {
-            pointer_at(Layout::LocationsXsColumn, cursor.advance(Layout::LocationsXsColumn)),
-            pointer_at(Layout::LocationsYsColumn, cursor.advance(Layout::LocationsYsColumn)),
-            pointer_at(Layout::LocationsZsColumn, cursor.advance(Layout::LocationsZsColumn)),
-            pointer_at(Layout::RotationsPitchesColumn,
-                       cursor.advance(Layout::RotationsPitchesColumn)),
-            pointer_at(Layout::RotationsYawsColumn, cursor.advance(Layout::RotationsYawsColumn)),
-            pointer_at(Layout::RotationsRollsColumn, cursor.advance(Layout::RotationsRollsColumn)),
-            pointer_at(Layout::TeamsColumn, cursor.advance(Layout::TeamsColumn)),
-            pointer_at(Layout::ParentsColumn, cursor.advance(Layout::ParentsColumn)),
-            pointer_at(Layout::TargetsColumn, cursor.advance(Layout::TargetsColumn))};
+        return {cursor.column_pointer(data, Layout::LocationsXsColumn),
+                cursor.column_pointer(data, Layout::LocationsYsColumn),
+                cursor.column_pointer(data, Layout::LocationsZsColumn),
+                cursor.column_pointer(data, Layout::RotationsPitchesColumn),
+                cursor.column_pointer(data, Layout::RotationsYawsColumn),
+                cursor.column_pointer(data, Layout::RotationsRollsColumn),
+                cursor.column_pointer(data, Layout::TeamsColumn),
+                cursor.column_pointer(data, Layout::ParentsColumn),
+                cursor.column_pointer(data, Layout::TargetsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -513,75 +505,21 @@ struct SingleAllocationFighterSpawnQueue
                                ml::native_soa::source_data(source.targets()) + source_first,
                                count);
     }
-    void reallocate(size_type const new_capacity) {
-        auto* const new_data{ml::native_soa::allocate(
-            layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
-            static_cast<std::uint32_t>(allocation_alignment))};
-        if (num_ > 0) {
-            auto const old_blocks{capacity_blocks()};
-            auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-            auto const source{
-                make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-            auto const destination{make_data_unchecked(new_data, new_blocks)};
-            ml::native_soa::copy_n(destination.locations_xs, source.locations_xs, num_);
-            ml::native_soa::copy_n(destination.locations_ys, source.locations_ys, num_);
-            ml::native_soa::copy_n(destination.locations_zs, source.locations_zs, num_);
-            ml::native_soa::copy_n(destination.rotations_pitches, source.rotations_pitches, num_);
-            ml::native_soa::copy_n(destination.rotations_yaws, source.rotations_yaws, num_);
-            ml::native_soa::copy_n(destination.rotations_rolls, source.rotations_rolls, num_);
-            ml::native_soa::copy_n(destination.teams, source.teams, num_);
-            ml::native_soa::copy_n(destination.parents, source.parents, num_);
-            ml::native_soa::copy_n(destination.targets, source.targets, num_);
-        }
-        ml::native_soa::free(data_, allocation_alignment);
-        data_ = new_data;
-        capacity_ = new_capacity;
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        ml::native_soa::copy_n(destination.locations_xs, source.locations_xs, num_);
+        ml::native_soa::copy_n(destination.locations_ys, source.locations_ys, num_);
+        ml::native_soa::copy_n(destination.locations_zs, source.locations_zs, num_);
+        ml::native_soa::copy_n(destination.rotations_pitches, source.rotations_pitches, num_);
+        ml::native_soa::copy_n(destination.rotations_yaws, source.rotations_yaws, num_);
+        ml::native_soa::copy_n(destination.rotations_rolls, source.rotations_rolls, num_);
+        ml::native_soa::copy_n(destination.teams, source.teams, num_);
+        ml::native_soa::copy_n(destination.parents, source.parents, num_);
+        ml::native_soa::copy_n(destination.targets, source.targets, num_);
     }
   public:
-    template <typename Self>
-    using ViewFor =
-        std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, ConstView, View>;
-    template <typename Self>
-    auto get_view(this Self&& self) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, 0, self.num()};
-    }
-    template <typename Self>
-    auto get_view(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, offset, count};
-    }
-    template <typename Self>
-    auto slice(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return self.get_view(offset, count);
-    }
-    template <typename Self>
-    auto left(this Self&& self, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return self.get_view().left(count);
-    }
-    template <typename Self>
-    auto right(this Self&& self, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return self.get_view().right(count);
-    }
-    template <typename Self>
-    auto get_const_view(this Self&& self) -> ConstView
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, 0, self.num()};
-    }
-    template <typename Self>
-    auto get_const_view(this Self&& self, size_type offset, size_type count) -> ConstView
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, offset, count};
-    }
 };
 } // namespace ioj::sim

@@ -30,11 +30,6 @@ constexpr auto soa_storage_name(SoaStorage const storage) -> char const* {
     return "";
 }
 
-struct SingleAllocationVariant {
-    std::string name;
-    TypeRef allocator;
-};
-
 struct SoaSchema {
     std::string name;
     std::optional<std::string> view_name;
@@ -51,8 +46,6 @@ struct SoaSchema {
     std::optional<FixedSoaSchema> fixed;
     std::optional<std::string> single_allocation;
     std::optional<TypeRef> array_allocator;
-    std::vector<SingleAllocationVariant> single_allocation_variants;
-    std::optional<TypeRef> single_allocation_allocator;
     std::optional<std::string> field_mask_name;
     std::optional<std::string> field_enum_name;
     std::vector<std::string> vector_components;

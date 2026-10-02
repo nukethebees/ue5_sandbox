@@ -91,7 +91,7 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
         }
 
         auto const count{scenario == LaserLifecycleScenario::SimultaneousLethalHits ? 2 : 1};
-        lasers::SingleAllocationLaserSpawnRequests requests;
+        lasers::LaserSpawnRequests requests;
         requests.add_uninitialised(count);
         auto const locations{requests.get_view().view_locations()};
         auto const rotations{requests.get_view().view_rotations()};

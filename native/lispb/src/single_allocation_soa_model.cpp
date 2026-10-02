@@ -20,12 +20,8 @@ auto make_dialect(SoaBackend const backend) -> SingleAllocationDialect {
             .vector_namespace = "ml::native_soa::",
             .size_type = "std::uint32_t",
             .byte_size_type = "std::size_t",
-            .alignment_argument_type = "std::uint32_t",
             .span_template = "std::span",
             .span_count_requires_cast = true,
-            .default_allocate_function = "ml::native_soa::allocate",
-            .default_free_function = "ml::native_soa::free",
-            .default_free_requires_alignment = true,
             .column_iteration_function = "each_column",
             .column_application_function = "each_column",
             .dependencies = {{"single_allocation_storage",
@@ -38,10 +34,7 @@ auto make_dialect(SoaBackend const backend) -> SingleAllocationDialect {
         .vector_namespace = "ml::soa::",
         .size_type = "int32",
         .byte_size_type = "SIZE_T",
-        .alignment_argument_type = "uint32",
         .span_template = "TArrayView",
-        .default_allocate_function = "ml::soa_storage::MimallocStorageAllocator::allocate",
-        .default_free_function = "ml::soa_storage::MimallocStorageAllocator::free",
         .column_iteration_function = "apply_arrays",
         .column_application_function = "apply_arrays",
         .column_iteration_returns_result = true,
@@ -95,32 +88,7 @@ auto build_single_allocation_model(SoaSchema const& schema,
     };
     result.dependencies = result.dialect.dependencies;
 
-    auto allocator_dependencies =
-        backend == SoaBackend::standard_library
-            ? std::vector<TypeDependency>{{"single_allocation_allocator",
-                                           "sandbox/core/native_soa/storage.h",
-                                           {}}}
-            : std::vector<TypeDependency>{
-                  {"single_allocation_allocator", "SandboxCore/mimalloc_storage_allocator.h", {}}};
-    result.allocate_function =
-        CppType{result.dialect.default_allocate_function, allocator_dependencies};
-    result.free_function = CppType{result.dialect.default_free_function, allocator_dependencies};
-    result.free_requires_alignment = result.dialect.default_free_requires_alignment;
-
-    if (schema.single_allocation_allocator) {
-        auto const allocator{resolve_type(*schema.single_allocation_allocator, types)};
-        result.dependencies.insert(result.dependencies.end(),
-                                   allocator.dependencies.begin(),
-                                   allocator.dependencies.end());
-        result.allocate_function =
-            CppType{allocator.spelling + "::allocate", allocator.dependencies};
-        result.free_function = CppType{allocator.spelling + "::free", allocator.dependencies};
-        result.free_requires_alignment = false;
-    } else if (backend == SoaBackend::unreal) {
-        result.dependencies.push_back({"single_allocation_mimalloc_allocator",
-                                       "SandboxCore/mimalloc_storage_allocator.h",
-                                       {}});
-    }
+    result.dependencies.push_back({"memory_resource", "memory_resource", {}});
 
     auto const root_id{type_graph.find_declared(module_name, schema.name)};
     if (!root_id.has_value()) {

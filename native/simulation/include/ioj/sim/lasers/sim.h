@@ -22,10 +22,10 @@ namespace ioj::sim::lasers {
 class PhaseInterface;
 
 struct Sim {
-    using SingleAllocationLaserSpawnRequests = lasers::SingleAllocationLaserSpawnRequests;
-    using SingleAllocationLaserEntities = lasers::SingleAllocationLaserEntities;
-    using SpawnRequestStorage = SingleAllocationLaserSpawnRequests;
-    using EntityStorage = SingleAllocationLaserEntities;
+    using LaserSpawnRequests = lasers::LaserSpawnRequests;
+    using LaserEntities = lasers::LaserEntities;
+    using SpawnRequestStorage = LaserSpawnRequests;
+    using EntityStorage = LaserEntities;
 
     /* **************************************** */
     // Construction and access
@@ -53,7 +53,7 @@ struct Sim {
     /* **************************************** */
     void set_config(LaserSimConfig const& new_config) noexcept;
     template <typename Source>
-        requires SingleAllocationLaserSpawnRequests::accepts_source<Source>
+        requires LaserSpawnRequests::accepts_source<Source>
     void queue_laser_spawns(Source const& spawn_data) {
         pending_spawns.append_from(spawn_data);
     }

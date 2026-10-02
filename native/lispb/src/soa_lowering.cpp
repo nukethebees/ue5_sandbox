@@ -276,19 +276,10 @@ auto lower_one_soa(SoaSchema const& schema,
         NodeListBuilder source;
         header.append(std::move(lowered.header));
         source.append(std::move(lowered.source));
-        auto append = [&](SoaSchema const& item, bool const shared) {
-            auto compact{lower_single_allocation(
-                item, schemas, types, type_graph, module_name, backend, shared)};
-            header.new_lines(2).append(std::move(compact.header));
-            source.new_lines(2).append(std::move(compact.source));
-        };
-        append(schema, true);
-        for (auto const& variant : schema.single_allocation_variants) {
-            auto copy{schema};
-            copy.single_allocation = variant.name;
-            copy.single_allocation_allocator = variant.allocator;
-            append(copy, false);
-        }
+        auto compact{
+            lower_single_allocation(schema, schemas, types, type_graph, module_name, backend)};
+        header.new_lines(2).append(std::move(compact.header));
+        source.new_lines(2).append(std::move(compact.source));
         lowered = {header.build(), source.build()};
     }
     return lowered;

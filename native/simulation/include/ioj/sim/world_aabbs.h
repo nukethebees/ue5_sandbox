@@ -5,7 +5,7 @@
 
 #include "sandbox/core/native_soa/storage.h"
 
-#include <utility>
+#include <memory_resource>
 
 namespace ioj::sim::collision {
 
@@ -41,9 +41,6 @@ struct WorldAABBsColumnsSingleLayout {
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : MaxZsColumn.data_end(blocks);
     }
-    static_assert(
-        allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
-        "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
     static_assert(max_capacity >= capacity_granularity);
 };
 
@@ -149,12 +146,17 @@ struct WorldAABBs
     using Operations::capacity;
     using Operations::copy_element;
     using Operations::copy_elements;
+    using Operations::get_const_view;
+    using Operations::get_view;
     using Operations::is_empty;
+    using Operations::left;
     using Operations::num;
     using Operations::remove_at_swap;
     using Operations::reserve;
     using Operations::reset;
+    using Operations::right;
     using Operations::set_num;
+    using Operations::slice;
     using Layout = WorldAABBsColumnsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -181,22 +183,22 @@ struct WorldAABBs
     /* **************************************** */
     // Lifetime
     /* **************************************** */
-    WorldAABBs() noexcept = default;
-    ~WorldAABBs() { ml::native_soa::free(data_, allocation_alignment); }
+    WorldAABBs() noexcept
+        : WorldAABBs{std::pmr::get_default_resource()} {}
+    explicit WorldAABBs(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        ml::native_soa::require(resource != nullptr);
+    }
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~WorldAABBs() { Operations::release_storage(*this); }
     WorldAABBs(WorldAABBs const&) = delete;
     auto operator=(WorldAABBs const&) -> WorldAABBs& = delete;
     WorldAABBs(WorldAABBs&& other) noexcept
-        : StorageState{std::exchange(other.data_, nullptr),
-                       std::exchange(other.num_, 0),
-                       std::exchange(other.capacity_, 0)} {}
-    auto operator=(WorldAABBs&& other) noexcept -> WorldAABBs& {
-        if (this != &other) {
-            ml::native_soa::free(data_, allocation_alignment);
-            data_ = std::exchange(other.data_, nullptr);
-            num_ = std::exchange(other.num_, 0);
-            capacity_ = std::exchange(other.capacity_, 0);
-        }
-        return *this;
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(WorldAABBs&& other) -> WorldAABBs& {
+        return Operations::move_assign(*this, other);
     }
   protected:
     template <typename Byte>
@@ -234,7 +236,8 @@ struct WorldAABBs
         return self.get_data() + offset;
     }
   private:
-    friend struct ml::native_soa::StorageOperations;
+    std::pmr::memory_resource* resource_{};
+    friend Operations;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -242,19 +245,12 @@ struct WorldAABBs
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
-            using Column = std::remove_cvref_t<decltype(column)>;
-            using Pointer = std::conditional_t<std::is_const_v<Byte>,
-                                               typename Column::const_pointer,
-                                               typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + offset));
-        };
-        return {pointer_at(Layout::MinXsColumn, cursor.advance(Layout::MinXsColumn)),
-                pointer_at(Layout::MinYsColumn, cursor.advance(Layout::MinYsColumn)),
-                pointer_at(Layout::MinZsColumn, cursor.advance(Layout::MinZsColumn)),
-                pointer_at(Layout::MaxXsColumn, cursor.advance(Layout::MaxXsColumn)),
-                pointer_at(Layout::MaxYsColumn, cursor.advance(Layout::MaxYsColumn)),
-                pointer_at(Layout::MaxZsColumn, cursor.advance(Layout::MaxZsColumn))};
+        return {cursor.column_pointer(data, Layout::MinXsColumn),
+                cursor.column_pointer(data, Layout::MinYsColumn),
+                cursor.column_pointer(data, Layout::MinZsColumn),
+                cursor.column_pointer(data, Layout::MaxXsColumn),
+                cursor.column_pointer(data, Layout::MaxYsColumn),
+                cursor.column_pointer(data, Layout::MaxZsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -336,72 +332,18 @@ struct WorldAABBs
         ml::native_soa::move_n(
             destination.max_zs, ml::native_soa::source_data(source.max_zs()) + source_first, count);
     }
-    void reallocate(size_type const new_capacity) {
-        auto* const new_data{ml::native_soa::allocate(
-            layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
-            static_cast<std::uint32_t>(allocation_alignment))};
-        if (num_ > 0) {
-            auto const old_blocks{capacity_blocks()};
-            auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-            auto const source{
-                make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-            auto const destination{make_data_unchecked(new_data, new_blocks)};
-            ml::native_soa::copy_n(destination.min_xs, source.min_xs, num_);
-            ml::native_soa::copy_n(destination.min_ys, source.min_ys, num_);
-            ml::native_soa::copy_n(destination.min_zs, source.min_zs, num_);
-            ml::native_soa::copy_n(destination.max_xs, source.max_xs, num_);
-            ml::native_soa::copy_n(destination.max_ys, source.max_ys, num_);
-            ml::native_soa::copy_n(destination.max_zs, source.max_zs, num_);
-        }
-        ml::native_soa::free(data_, allocation_alignment);
-        data_ = new_data;
-        capacity_ = new_capacity;
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        ml::native_soa::copy_n(destination.min_xs, source.min_xs, num_);
+        ml::native_soa::copy_n(destination.min_ys, source.min_ys, num_);
+        ml::native_soa::copy_n(destination.min_zs, source.min_zs, num_);
+        ml::native_soa::copy_n(destination.max_xs, source.max_xs, num_);
+        ml::native_soa::copy_n(destination.max_ys, source.max_ys, num_);
+        ml::native_soa::copy_n(destination.max_zs, source.max_zs, num_);
     }
   public:
-    template <typename Self>
-    using ViewFor =
-        std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, ConstView, View>;
-    template <typename Self>
-    auto get_view(this Self&& self) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, 0, self.num()};
-    }
-    template <typename Self>
-    auto get_view(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, offset, count};
-    }
-    template <typename Self>
-    auto slice(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return self.get_view(offset, count);
-    }
-    template <typename Self>
-    auto left(this Self&& self, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return self.get_view().left(count);
-    }
-    template <typename Self>
-    auto right(this Self&& self, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return self.get_view().right(count);
-    }
-    template <typename Self>
-    auto get_const_view(this Self&& self) -> ConstView
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, 0, self.num()};
-    }
-    template <typename Self>
-    auto get_const_view(this Self&& self, size_type offset, size_type count) -> ConstView
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, offset, count};
-    }
 };
 } // namespace ioj::sim::collision

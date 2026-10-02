@@ -245,12 +245,8 @@ locally. Multiline lists use uniquely named source blocks so stable container co
 insertion, deletion, reorder, and one old-only/new-only direct rename; compact lists retain local
 name-only patches and otherwise canonicalize only the list value. This preserves unrelated
 declaration comments, member formatting, and opaque custom function text.
-An existing single-allocation form has a narrower boundary: its owner atom is patched in place and
-its variant region uses uniquely named owned row blocks. Stable variants retain comments and
-spacing through allocator edits, insertion, deletion, and reorder; one same-position old-only/new-
-only variant name reuses its block only when the allocator is unchanged. Ambiguous rows fall back to
-canonical row rendering, while enabling or disabling the complete form remains a localized
-canonical insertion/removal.
+An existing single-allocation form patches its owner atom in place. Enabling or disabling
+the complete form remains a localized canonical insertion/removal.
 The source boundary has a shared scalar-list path for atom and quoted-string entries. Top-level
 `:operations` atoms retain unique multiline operation blocks and comments through capability
 insertion, deletion, reorder, and one direct substitution; first add/last remove use the ordinary
@@ -307,7 +303,7 @@ participate in source-aware edits.
 SoA declaration duplication is also prepared by the shared editable document rather than by ImGui.
 Preparation is non-mutating: it copies the source schema, selects a declaration name whose implicit
 view and single-allocation helpers do not collide, derives unique explicit view, field-mask/enum,
-fixed-layout, single-allocation, and allocator-variant names, and repairs the copied mask-storage
+fixed-layout and single-allocation names, and repairs the copied mask-storage
 member's generated type reference. The UI then submits the ordinary typed `CreateSoa` command, so
 validation, history, preview, save, and reload remain on the same semantic path as simple SoAs.
 External member types, nested schemas, and allocators remain references to their original semantic
@@ -325,12 +321,7 @@ Single-allocation owner editing follows the same document-owned pattern. Name se
 the owner and its generated `Storage` identity as a pair; shared manifest validation remains
 responsible for the schema-derived layout/view names. Adding, renaming, or removing the durable
 single-allocation form patches only that owned form range, preserving surrounding comments and
-custom functions. Owner changes retain allocator variants. The inspector will not disable a form
-while variants remain, avoiding silent destructive loss before the inline variant editor handles
-their explicit removal. The variant editor stages a valid allocator reference before insertion, so
-it never needs an unresolved placeholder declaration. Variant owner names reserve their generated
-`Storage` partner, and all direct edits, duplication, deletion, and reorder operations replace the
-shared SoA schema through normal document history rather than maintaining UI-owned semantic rows.
+custom functions. Resource selection happens at C++ construction, with no allocator-variant UI.
 
 Deletion is likewise enforced by the shared editable document rather than only by the frontend.
 Every typed delete rejects a declaration with resolved reverse users before mutating the manifest,

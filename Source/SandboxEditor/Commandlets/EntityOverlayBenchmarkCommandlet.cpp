@@ -18,7 +18,7 @@
 DEFINE_LOG_CATEGORY_STATIC(LogEntityOverlayBenchmark, Log, All);
 
 namespace {
-auto make_view(::ioj::sim::SingleAllocationTurretEntityData const& entities,
+auto make_view(::ioj::sim::TurretEntityData const& entities,
                ::ioj::sim::HealthTable const& health_table)
     -> std::array<::ioj::sim::AgentDisplayBatch, 1> {
     auto const data{entities.get_const_view()};
@@ -42,7 +42,7 @@ auto make_team_colours() -> FEntityOverlayTeamColours {
 }
 
 auto write_debug_frames(FString const& output_directory) -> bool {
-    ::ioj::sim::SingleAllocationTurretEntityData entities;
+    ::ioj::sim::TurretEntityData entities;
     ::ioj::sim::HealthTable health_table;
     FVector3f const positions[]{
         {1000.0f, -600.0f, 0.0f},

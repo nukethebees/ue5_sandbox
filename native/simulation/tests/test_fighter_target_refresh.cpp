@@ -37,7 +37,7 @@ class FighterTargetRefresh : public ::testing::Test {
   protected:
     void SetUp() override {
         simulation.finish_initialisation();
-        SingleAllocationFighterSpawnQueue spawns;
+        FighterSpawnQueue spawns;
         spawns.add_defaulted(1);
         auto const spawn{spawns.get_view()};
         auto const locations{spawn.view_locations()};

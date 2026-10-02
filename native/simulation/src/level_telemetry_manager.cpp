@@ -290,7 +290,7 @@ void LevelTelemetryManager::sample_series() {
 }
 
 auto LevelTelemetryManager::append_history_row(tick_type const completed_tick)
-    -> telemetry::SingleAllocationHistoryRows::View {
+    -> telemetry::HistoryRows::View {
     auto const row_count{history_.num()};
     if (row_count > 0) {
         auto const completed_ticks{history_.last_const_view().completed_ticks()};

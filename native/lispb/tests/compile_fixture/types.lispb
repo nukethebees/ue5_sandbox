@@ -1,6 +1,3 @@
-(type counting_allocator
-  :spelling "CountingAllocator"
-  :header "Project/CountingAllocator.h")
 
 (type restricted_leaf
   :spelling "RestrictedLeaf"

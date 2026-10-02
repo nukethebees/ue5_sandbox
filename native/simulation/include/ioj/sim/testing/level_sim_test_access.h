@@ -10,8 +10,7 @@ struct LevelSimTestAccess {
     static auto player_simulation(LevelSim& simulation) -> player::Sim& {
         return simulation.player_ship_simulation_.value();
     }
-    static void queue_fighter_spawns(LevelSim& simulation,
-                                     SingleAllocationFighterSpawnQueue::ConstView spawns) {
+    static void queue_fighter_spawns(LevelSim& simulation, FighterSpawnQueue::ConstView spawns) {
         fighters::CommandInterface{simulation.fighters_simulation_}.queue_spawns(spawns);
     }
     static void reassign_pending_fighter_spawns(LevelSim& simulation,
@@ -53,14 +52,12 @@ struct LevelSimTestAccess {
         simulation.rebuild_agent_indexes();
         simulation.query_manager_.refresh_spatial_index();
     }
-    static void register_capitals(LevelSim& simulation,
-                                  SingleAllocationLevelCapitalSpawnEvents::ConstView spawns) {
+    static void register_capitals(LevelSim& simulation, LevelCapitalSpawnEvents::ConstView spawns) {
         simulation.clock_.phase = SimulationPhase::Preparation;
         simulation.capital_ships_simulation_.register_ships(spawns);
         simulation.rebuild_agent_indexes();
     }
-    static void commit_fighter_spawns(LevelSim& simulation,
-                                      SingleAllocationFighterSpawnQueue::ConstView spawns) {
+    static void commit_fighter_spawns(LevelSim& simulation, FighterSpawnQueue::ConstView spawns) {
         simulation.clock_.phase = SimulationPhase::Preparation;
         auto& fighters{simulation.fighters_simulation_};
         auto const dt{static_cast<float>(simulation.clock_.get_tick_period())};
@@ -126,7 +123,7 @@ struct LevelSimTestAccess {
         simulation.combat_events_.queue_damage(events);
     }
     static void queue_laser_spawns(LevelSim& simulation,
-                                   lasers::SingleAllocationLaserSpawnRequests::ConstView requests) {
+                                   lasers::LaserSpawnRequests::ConstView requests) {
         simulation.lasers_simulation_.queue_laser_spawns(requests);
     }
     static void begin_telemetry_run(LevelSim& simulation, LevelTelemetryRunMetadata metadata) {

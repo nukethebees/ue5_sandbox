@@ -9,7 +9,7 @@
 
 #include "sandbox/core/native_soa/storage.h"
 
-#include <utility>
+#include <memory_resource>
 
 namespace ioj::sim {
 
@@ -68,9 +68,6 @@ struct TurretEntityDataSingleLayout {
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : HealthIndicesColumn.data_end(blocks);
     }
-    static_assert(
-        allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
-        "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
     static_assert(max_capacity >= capacity_granularity);
 };
 
@@ -338,7 +335,7 @@ static_assert(ml::soa_storage_detail::validate_compact_view<TurretEntityDataSing
 inline TurretEntityDataSingleConstView::TurretEntityDataSingleConstView(
     TurretEntityDataSingleView const& other)
     : Base{other} {}
-struct SingleAllocationTurretEntityData
+struct TurretEntityData
     : protected ml::native_soa::StorageState
     , private ml::native_soa::StorageOperations {
     using Operations = ml::native_soa::StorageOperations;
@@ -349,12 +346,17 @@ struct SingleAllocationTurretEntityData
     using Operations::capacity;
     using Operations::copy_element;
     using Operations::copy_elements;
+    using Operations::get_const_view;
+    using Operations::get_view;
     using Operations::is_empty;
+    using Operations::left;
     using Operations::num;
     using Operations::remove_at_swap;
     using Operations::reserve;
     using Operations::reset;
+    using Operations::right;
     using Operations::set_num;
+    using Operations::slice;
     using Layout = TurretEntityDataSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -447,24 +449,22 @@ struct SingleAllocationTurretEntityData
     /* **************************************** */
     // Lifetime
     /* **************************************** */
-    SingleAllocationTurretEntityData() noexcept = default;
-    ~SingleAllocationTurretEntityData() { ml::native_soa::free(data_, allocation_alignment); }
-    SingleAllocationTurretEntityData(SingleAllocationTurretEntityData const&) = delete;
-    auto operator=(SingleAllocationTurretEntityData const&)
-        -> SingleAllocationTurretEntityData& = delete;
-    SingleAllocationTurretEntityData(SingleAllocationTurretEntityData&& other) noexcept
-        : StorageState{std::exchange(other.data_, nullptr),
-                       std::exchange(other.num_, 0),
-                       std::exchange(other.capacity_, 0)} {}
-    auto operator=(SingleAllocationTurretEntityData&& other) noexcept
-        -> SingleAllocationTurretEntityData& {
-        if (this != &other) {
-            ml::native_soa::free(data_, allocation_alignment);
-            data_ = std::exchange(other.data_, nullptr);
-            num_ = std::exchange(other.num_, 0);
-            capacity_ = std::exchange(other.capacity_, 0);
-        }
-        return *this;
+    TurretEntityData() noexcept
+        : TurretEntityData{std::pmr::get_default_resource()} {}
+    explicit TurretEntityData(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        ml::native_soa::require(resource != nullptr);
+    }
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~TurretEntityData() { Operations::release_storage(*this); }
+    TurretEntityData(TurretEntityData const&) = delete;
+    auto operator=(TurretEntityData const&) -> TurretEntityData& = delete;
+    TurretEntityData(TurretEntityData&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(TurretEntityData&& other) -> TurretEntityData& {
+        return Operations::move_assign(*this, other);
     }
   protected:
     template <typename Byte>
@@ -538,7 +538,8 @@ struct SingleAllocationTurretEntityData
         return self.get_data() + offset;
     }
   private:
-    friend struct ml::native_soa::StorageOperations;
+    std::pmr::memory_resource* resource_{};
+    friend Operations;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -546,50 +547,30 @@ struct SingleAllocationTurretEntityData
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
-            using Column = std::remove_cvref_t<decltype(column)>;
-            using Pointer = std::conditional_t<std::is_const_v<Byte>,
-                                               typename Column::const_pointer,
-                                               typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + offset));
-        };
-        return {
-            pointer_at(Layout::EntityIdsColumn, cursor.advance(Layout::EntityIdsColumn)),
-            pointer_at(Layout::IntegralBiasesColumn, cursor.advance(Layout::IntegralBiasesColumn)),
-            pointer_at(Layout::LocationsXsColumn, cursor.advance(Layout::LocationsXsColumn)),
-            pointer_at(Layout::LocationsYsColumn, cursor.advance(Layout::LocationsYsColumn)),
-            pointer_at(Layout::LocationsZsColumn, cursor.advance(Layout::LocationsZsColumn)),
-            pointer_at(Layout::FirePointLocationsXsColumn,
-                       cursor.advance(Layout::FirePointLocationsXsColumn)),
-            pointer_at(Layout::FirePointLocationsYsColumn,
-                       cursor.advance(Layout::FirePointLocationsYsColumn)),
-            pointer_at(Layout::FirePointLocationsZsColumn,
-                       cursor.advance(Layout::FirePointLocationsZsColumn)),
-            pointer_at(Layout::RotationsPitchesColumn,
-                       cursor.advance(Layout::RotationsPitchesColumn)),
-            pointer_at(Layout::RotationsYawsColumn, cursor.advance(Layout::RotationsYawsColumn)),
-            pointer_at(Layout::RotationsRollsColumn, cursor.advance(Layout::RotationsRollsColumn)),
-            pointer_at(Layout::TeamsColumn, cursor.advance(Layout::TeamsColumn)),
-            pointer_at(Layout::LaserCooldownsColumn, cursor.advance(Layout::LaserCooldownsColumn)),
-            pointer_at(Layout::LaserDamagesColumn, cursor.advance(Layout::LaserDamagesColumn)),
-            pointer_at(Layout::TargetRefreshCountdownsPeriodsColumn,
-                       cursor.advance(Layout::TargetRefreshCountdownsPeriodsColumn)),
-            pointer_at(Layout::TargetRefreshCountdownsRemainingTicksColumn,
-                       cursor.advance(Layout::TargetRefreshCountdownsRemainingTicksColumn)),
-            pointer_at(Layout::TargetIdsColumn, cursor.advance(Layout::TargetIdsColumn)),
-            pointer_at(Layout::TargetLocationsXsColumn,
-                       cursor.advance(Layout::TargetLocationsXsColumn)),
-            pointer_at(Layout::TargetLocationsYsColumn,
-                       cursor.advance(Layout::TargetLocationsYsColumn)),
-            pointer_at(Layout::TargetLocationsZsColumn,
-                       cursor.advance(Layout::TargetLocationsZsColumn)),
-            pointer_at(Layout::TargetVelocitiesXsColumn,
-                       cursor.advance(Layout::TargetVelocitiesXsColumn)),
-            pointer_at(Layout::TargetVelocitiesYsColumn,
-                       cursor.advance(Layout::TargetVelocitiesYsColumn)),
-            pointer_at(Layout::TargetVelocitiesZsColumn,
-                       cursor.advance(Layout::TargetVelocitiesZsColumn)),
-            pointer_at(Layout::HealthIndicesColumn, cursor.advance(Layout::HealthIndicesColumn))};
+        return {cursor.column_pointer(data, Layout::EntityIdsColumn),
+                cursor.column_pointer(data, Layout::IntegralBiasesColumn),
+                cursor.column_pointer(data, Layout::LocationsXsColumn),
+                cursor.column_pointer(data, Layout::LocationsYsColumn),
+                cursor.column_pointer(data, Layout::LocationsZsColumn),
+                cursor.column_pointer(data, Layout::FirePointLocationsXsColumn),
+                cursor.column_pointer(data, Layout::FirePointLocationsYsColumn),
+                cursor.column_pointer(data, Layout::FirePointLocationsZsColumn),
+                cursor.column_pointer(data, Layout::RotationsPitchesColumn),
+                cursor.column_pointer(data, Layout::RotationsYawsColumn),
+                cursor.column_pointer(data, Layout::RotationsRollsColumn),
+                cursor.column_pointer(data, Layout::TeamsColumn),
+                cursor.column_pointer(data, Layout::LaserCooldownsColumn),
+                cursor.column_pointer(data, Layout::LaserDamagesColumn),
+                cursor.column_pointer(data, Layout::TargetRefreshCountdownsPeriodsColumn),
+                cursor.column_pointer(data, Layout::TargetRefreshCountdownsRemainingTicksColumn),
+                cursor.column_pointer(data, Layout::TargetIdsColumn),
+                cursor.column_pointer(data, Layout::TargetLocationsXsColumn),
+                cursor.column_pointer(data, Layout::TargetLocationsYsColumn),
+                cursor.column_pointer(data, Layout::TargetLocationsZsColumn),
+                cursor.column_pointer(data, Layout::TargetVelocitiesXsColumn),
+                cursor.column_pointer(data, Layout::TargetVelocitiesYsColumn),
+                cursor.column_pointer(data, Layout::TargetVelocitiesZsColumn),
+                cursor.column_pointer(data, Layout::HealthIndicesColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -891,103 +872,43 @@ struct SingleAllocationTurretEntityData
                                ml::native_soa::source_data(source.health_indices()) + source_first,
                                count);
     }
-    void reallocate(size_type const new_capacity) {
-        auto* const new_data{ml::native_soa::allocate(
-            layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
-            static_cast<std::uint32_t>(allocation_alignment))};
-        if (num_ > 0) {
-            auto const old_blocks{capacity_blocks()};
-            auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-            auto const source{
-                make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-            auto const destination{make_data_unchecked(new_data, new_blocks)};
-            ml::native_soa::copy_n(destination.entity_ids, source.entity_ids, num_);
-            ml::native_soa::copy_n(destination.integral_biases, source.integral_biases, num_);
-            ml::native_soa::copy_n(destination.locations_xs, source.locations_xs, num_);
-            ml::native_soa::copy_n(destination.locations_ys, source.locations_ys, num_);
-            ml::native_soa::copy_n(destination.locations_zs, source.locations_zs, num_);
-            ml::native_soa::copy_n(
-                destination.fire_point_locations_xs, source.fire_point_locations_xs, num_);
-            ml::native_soa::copy_n(
-                destination.fire_point_locations_ys, source.fire_point_locations_ys, num_);
-            ml::native_soa::copy_n(
-                destination.fire_point_locations_zs, source.fire_point_locations_zs, num_);
-            ml::native_soa::copy_n(destination.rotations_pitches, source.rotations_pitches, num_);
-            ml::native_soa::copy_n(destination.rotations_yaws, source.rotations_yaws, num_);
-            ml::native_soa::copy_n(destination.rotations_rolls, source.rotations_rolls, num_);
-            ml::native_soa::copy_n(destination.teams, source.teams, num_);
-            ml::native_soa::copy_n(destination.laser_cooldowns, source.laser_cooldowns, num_);
-            ml::native_soa::copy_n(destination.laser_damages, source.laser_damages, num_);
-            ml::native_soa::copy_n(destination.target_refresh_countdowns_periods,
-                                   source.target_refresh_countdowns_periods,
-                                   num_);
-            ml::native_soa::copy_n(destination.target_refresh_countdowns_remaining_ticks,
-                                   source.target_refresh_countdowns_remaining_ticks,
-                                   num_);
-            ml::native_soa::copy_n(destination.target_ids, source.target_ids, num_);
-            ml::native_soa::copy_n(
-                destination.target_locations_xs, source.target_locations_xs, num_);
-            ml::native_soa::copy_n(
-                destination.target_locations_ys, source.target_locations_ys, num_);
-            ml::native_soa::copy_n(
-                destination.target_locations_zs, source.target_locations_zs, num_);
-            ml::native_soa::copy_n(
-                destination.target_velocities_xs, source.target_velocities_xs, num_);
-            ml::native_soa::copy_n(
-                destination.target_velocities_ys, source.target_velocities_ys, num_);
-            ml::native_soa::copy_n(
-                destination.target_velocities_zs, source.target_velocities_zs, num_);
-            ml::native_soa::copy_n(destination.health_indices, source.health_indices, num_);
-        }
-        ml::native_soa::free(data_, allocation_alignment);
-        data_ = new_data;
-        capacity_ = new_capacity;
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        ml::native_soa::copy_n(destination.entity_ids, source.entity_ids, num_);
+        ml::native_soa::copy_n(destination.integral_biases, source.integral_biases, num_);
+        ml::native_soa::copy_n(destination.locations_xs, source.locations_xs, num_);
+        ml::native_soa::copy_n(destination.locations_ys, source.locations_ys, num_);
+        ml::native_soa::copy_n(destination.locations_zs, source.locations_zs, num_);
+        ml::native_soa::copy_n(
+            destination.fire_point_locations_xs, source.fire_point_locations_xs, num_);
+        ml::native_soa::copy_n(
+            destination.fire_point_locations_ys, source.fire_point_locations_ys, num_);
+        ml::native_soa::copy_n(
+            destination.fire_point_locations_zs, source.fire_point_locations_zs, num_);
+        ml::native_soa::copy_n(destination.rotations_pitches, source.rotations_pitches, num_);
+        ml::native_soa::copy_n(destination.rotations_yaws, source.rotations_yaws, num_);
+        ml::native_soa::copy_n(destination.rotations_rolls, source.rotations_rolls, num_);
+        ml::native_soa::copy_n(destination.teams, source.teams, num_);
+        ml::native_soa::copy_n(destination.laser_cooldowns, source.laser_cooldowns, num_);
+        ml::native_soa::copy_n(destination.laser_damages, source.laser_damages, num_);
+        ml::native_soa::copy_n(destination.target_refresh_countdowns_periods,
+                               source.target_refresh_countdowns_periods,
+                               num_);
+        ml::native_soa::copy_n(destination.target_refresh_countdowns_remaining_ticks,
+                               source.target_refresh_countdowns_remaining_ticks,
+                               num_);
+        ml::native_soa::copy_n(destination.target_ids, source.target_ids, num_);
+        ml::native_soa::copy_n(destination.target_locations_xs, source.target_locations_xs, num_);
+        ml::native_soa::copy_n(destination.target_locations_ys, source.target_locations_ys, num_);
+        ml::native_soa::copy_n(destination.target_locations_zs, source.target_locations_zs, num_);
+        ml::native_soa::copy_n(destination.target_velocities_xs, source.target_velocities_xs, num_);
+        ml::native_soa::copy_n(destination.target_velocities_ys, source.target_velocities_ys, num_);
+        ml::native_soa::copy_n(destination.target_velocities_zs, source.target_velocities_zs, num_);
+        ml::native_soa::copy_n(destination.health_indices, source.health_indices, num_);
     }
   public:
-    template <typename Self>
-    using ViewFor =
-        std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, ConstView, View>;
-    template <typename Self>
-    auto get_view(this Self&& self) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, 0, self.num()};
-    }
-    template <typename Self>
-    auto get_view(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, offset, count};
-    }
-    template <typename Self>
-    auto slice(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return self.get_view(offset, count);
-    }
-    template <typename Self>
-    auto left(this Self&& self, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return self.get_view().left(count);
-    }
-    template <typename Self>
-    auto right(this Self&& self, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return self.get_view().right(count);
-    }
-    template <typename Self>
-    auto get_const_view(this Self&& self) -> ConstView
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, 0, self.num()};
-    }
-    template <typename Self>
-    auto get_const_view(this Self&& self, size_type offset, size_type count) -> ConstView
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, offset, count};
-    }
 };
 } // namespace ioj::sim

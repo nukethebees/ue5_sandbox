@@ -74,7 +74,7 @@ public class SandboxCore : ModuleRules
         }
 
         string includeDirectory = Path.Combine(repositoryRoot, "native", "sbx_mimalloc", "include");
-        PrivateIncludePaths.Add(includeDirectory);
+        PublicSystemIncludePaths.Add(includeDirectory);
         if (!Target.bGenerateProjectFiles)
         {
             string libraryPath = Path.Combine(

@@ -219,7 +219,7 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto queue_shot = [](LevelSim& level, float const location) {
-        lasers::SingleAllocationLaserSpawnRequests requests;
+        lasers::LaserSpawnRequests requests;
         tests::add_laser_spawn(requests,
                                {{location, 0.f, 0.f}},
                                {},

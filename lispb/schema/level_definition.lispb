@@ -44,7 +44,7 @@
     (member healths array @native_health)
     (member initial_fighter_spawn_delays array float)
     (member fighter_spawn_cooldowns array float)
-    (single-allocation SingleAllocationLevelCapitalSpawnEvents))
+    (single-allocation LevelCapitalSpawnEvents))
   (struct LevelTurretSpawnEvents
     :operations (all)
     (member entity_indices array uint32)
@@ -53,14 +53,14 @@
     (member teams array @native_team)
     (member healths array @native_health)
     (member laser_damages array int32)
-    (single-allocation SingleAllocationLevelTurretSpawnEvents))
+    (single-allocation LevelTurretSpawnEvents))
   (struct LevelSpinnerSpawnEvents
     :operations (all)
     (member entity_indices array uint32)
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member yaws array float)
     (member initial_fire_point_indices array int32)
-    (single-allocation SingleAllocationLevelSpinnerSpawnEvents))
+    (single-allocation LevelSpinnerSpawnEvents))
   (struct LevelMissionEventGroups
     :operations (all)
     (member types array @native_level_mission_event_type)

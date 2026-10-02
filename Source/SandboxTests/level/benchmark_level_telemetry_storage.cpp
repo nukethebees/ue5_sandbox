@@ -2,7 +2,7 @@
 #include <ioj/sim/telemetry/level_telemetry_block_history.h>
 
 #include <sandbox/core/time_series_data.h>
-#include <SandboxCore/mimalloc_storage_allocator.h>
+#include <sbx/memory_resource.h>
 
 #include <Containers/StaticArray.h>
 #include <HAL/PlatformTime.h>
@@ -142,7 +142,7 @@ struct FLegacyHistory {
     }
 };
 
-void write_new_payload(::ioj::sim::telemetry::SingleAllocationHistoryRows::View rows,
+void write_new_payload(::ioj::sim::telemetry::HistoryRows::View rows,
                        int32 const row,
                        int32 const field,
                        uint64 const value) {
@@ -167,7 +167,7 @@ void write_new_payload(::ioj::sim::telemetry::SingleAllocationHistoryRows::View 
     }
 }
 
-auto checksum_rows(::ioj::sim::telemetry::SingleAllocationHistoryRows::ConstView rows) -> uint64 {
+auto checksum_rows(::ioj::sim::telemetry::HistoryRows::ConstView rows) -> uint64 {
     uint64 result{};
     auto const row_count{rows.num()};
     for (uint32 row{}; row < row_count; ++row) {
@@ -198,7 +198,7 @@ auto checksum_rows(::ioj::sim::telemetry::SingleAllocationHistoryRows::ConstView
     return result;
 }
 
-auto new_checksum(::ioj::sim::telemetry::SingleAllocationHistoryRows const& history) -> uint64 {
+auto new_checksum(::ioj::sim::telemetry::HistoryRows const& history) -> uint64 {
     return checksum_rows(history.get_const_view());
 }
 
@@ -240,7 +240,7 @@ auto benchmark_legacy(FWorkload const& workload) -> FResult {
 }
 
 auto benchmark_new(FWorkload const& workload, SIZE_T const reserve_bytes) -> FResult {
-    ::ioj::sim::telemetry::SingleAllocationHistoryRows history;
+    ::ioj::sim::telemetry::HistoryRows history;
     FResult result;
     auto const reserve_started{FPlatformTime::Seconds()};
     history.reserve(capacity_for_bytes(reserve_bytes));
@@ -389,8 +389,7 @@ auto page_stats(std::span<T const> const values, std::size_t const capacity) -> 
     return result;
 }
 
-auto owner_page_stats(::ioj::sim::telemetry::SingleAllocationHistoryRows const& history)
-    -> FPageStats {
+auto owner_page_stats(::ioj::sim::telemetry::HistoryRows const& history) -> FPageStats {
     auto const columns{history.get_const_view()};
     FPageStats total;
     columns.each_column([&](auto const arrays) {
@@ -403,7 +402,7 @@ auto owner_page_stats(::ioj::sim::telemetry::SingleAllocationHistoryRows const& 
 }
 
 void log_column_page_stats(FAutomationTestBase& test,
-                           ::ioj::sim::telemetry::SingleAllocationHistoryRows const& history,
+                           ::ioj::sim::telemetry::HistoryRows const& history,
                            TCHAR const* phase) {
     TStaticArray<TCHAR const*, 17> const names{
         TEXT("completed_ticks"),
@@ -433,8 +432,7 @@ void log_column_page_stats(FAutomationTestBase& test,
     });
 }
 
-void populate_new(::ioj::sim::telemetry::SingleAllocationHistoryRows& history,
-                  FWorkload const& workload) {
+void populate_new(::ioj::sim::telemetry::HistoryRows& history, FWorkload const& workload) {
     for (int32 tick{1}; tick <= workload.tick_count; ++tick) {
         auto const mask{workload.mask_for_tick(tick)};
         if (mask == 0) {
@@ -540,10 +538,11 @@ void run_chunk_zero_probes(FAutomationTestBase& token) {
     TStaticArray<SIZE_T, 3> const chunk_bytes{64u << 10, 256u << 10, 1u << 20};
     TStaticArray<std::byte*, 3> allocations{};
     TStaticArray<FPageStats, 3> pages_before{};
+    auto* const resource{sbx::memory::mimalloc_resource()};
 
     for (int32 index{}; index < allocations.Num(); ++index) {
-        allocations[index] = ml::soa_storage::MimallocStorageAllocator::allocate(
-            allocation_bytes, static_cast<uint32>(Layout::allocation_alignment));
+        auto* const allocation{resource->allocate(allocation_bytes, Layout::allocation_alignment)};
+        allocations[index] = ::new (allocation) std::byte[allocation_bytes];
         pages_before[index] =
             page_stats(std::span<std::byte const>{allocations[index],
                                                   static_cast<std::size_t>(allocation_bytes)},
@@ -561,7 +560,7 @@ void run_chunk_zero_probes(FAutomationTestBase& token) {
     }
 
     for (auto* const allocation : allocations) {
-        ml::soa_storage::MimallocStorageAllocator::free(allocation);
+        resource->deallocate(allocation, allocation_bytes, Layout::allocation_alignment);
     }
 }
 
@@ -624,7 +623,7 @@ auto FLevelTelemetryStorageBenchmark::RunTest(FString const&) -> bool {
 
     // Keep the first large allocation alive so later benchmark allocations cannot cause its
     // untouched pages to become resident through allocator reuse.
-    ::ioj::sim::telemetry::SingleAllocationHistoryRows residency_probe;
+    ::ioj::sim::telemetry::HistoryRows residency_probe;
     auto const residency_reserve_started{FPlatformTime::Seconds()};
     residency_probe.reserve(capacity_for_bytes(SIZE_T{50} << 20));
     auto const residency_reserve_ms{(FPlatformTime::Seconds() - residency_reserve_started) *
@@ -673,7 +672,7 @@ auto FLevelTelemetryStorageBenchmark::RunTest(FString const&) -> bool {
                                        SIZE_T{32} << 20,
                                        SIZE_T{50} << 20,
                                        SIZE_T{64} << 20}) {
-        ::ioj::sim::telemetry::SingleAllocationHistoryRows history;
+        ::ioj::sim::telemetry::HistoryRows history;
         auto const started{FPlatformTime::Seconds()};
         history.reserve(capacity_for_bytes(reserve_bytes));
         auto const reserve_ms{(FPlatformTime::Seconds() - started) * 1000.0};

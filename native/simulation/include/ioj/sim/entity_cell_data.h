@@ -7,7 +7,7 @@
 
 #include "sandbox/core/native_soa/storage.h"
 
-#include <utility>
+#include <memory_resource>
 
 namespace ioj::sim::collision {
 
@@ -51,9 +51,6 @@ struct EntityCellDataColumnsSingleLayout {
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : EntityIdsColumn.data_end(blocks);
     }
-    static_assert(
-        allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
-        "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
     static_assert(max_capacity >= capacity_granularity);
 };
 
@@ -202,12 +199,17 @@ struct EntityCellData
     using Operations::capacity;
     using Operations::copy_element;
     using Operations::copy_elements;
+    using Operations::get_const_view;
+    using Operations::get_view;
     using Operations::is_empty;
+    using Operations::left;
     using Operations::num;
     using Operations::remove_at_swap;
     using Operations::reserve;
     using Operations::reset;
+    using Operations::right;
     using Operations::set_num;
+    using Operations::slice;
     using Layout = EntityCellDataColumnsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -255,22 +257,22 @@ struct EntityCellData
     /* **************************************** */
     // Lifetime
     /* **************************************** */
-    EntityCellData() noexcept = default;
-    ~EntityCellData() { ml::native_soa::free(data_, allocation_alignment); }
+    EntityCellData() noexcept
+        : EntityCellData{std::pmr::get_default_resource()} {}
+    explicit EntityCellData(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        ml::native_soa::require(resource != nullptr);
+    }
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~EntityCellData() { Operations::release_storage(*this); }
     EntityCellData(EntityCellData const&) = delete;
     auto operator=(EntityCellData const&) -> EntityCellData& = delete;
     EntityCellData(EntityCellData&& other) noexcept
-        : StorageState{std::exchange(other.data_, nullptr),
-                       std::exchange(other.num_, 0),
-                       std::exchange(other.capacity_, 0)} {}
-    auto operator=(EntityCellData&& other) noexcept -> EntityCellData& {
-        if (this != &other) {
-            ml::native_soa::free(data_, allocation_alignment);
-            data_ = std::exchange(other.data_, nullptr);
-            num_ = std::exchange(other.num_, 0);
-            capacity_ = std::exchange(other.capacity_, 0);
-        }
-        return *this;
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(EntityCellData&& other) -> EntityCellData& {
+        return Operations::move_assign(*this, other);
     }
   protected:
     template <typename Byte>
@@ -322,7 +324,8 @@ struct EntityCellData
         return self.get_data() + offset;
     }
   private:
-    friend struct ml::native_soa::StorageOperations;
+    std::pmr::memory_resource* resource_{};
+    friend Operations;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -330,26 +333,19 @@ struct EntityCellData
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         ml::native_soa::LayoutCursor cursor{blocks};
-        auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
-            using Column = std::remove_cvref_t<decltype(column)>;
-            using Pointer = std::conditional_t<std::is_const_v<Byte>,
-                                               typename Column::const_pointer,
-                                               typename Column::pointer>;
-            return std::launder(reinterpret_cast<Pointer>(data + offset));
-        };
-        return {pointer_at(Layout::MinPointXsColumn, cursor.advance(Layout::MinPointXsColumn)),
-                pointer_at(Layout::MinPointYsColumn, cursor.advance(Layout::MinPointYsColumn)),
-                pointer_at(Layout::MinPointZsColumn, cursor.advance(Layout::MinPointZsColumn)),
-                pointer_at(Layout::MaxPointXsColumn, cursor.advance(Layout::MaxPointXsColumn)),
-                pointer_at(Layout::MaxPointYsColumn, cursor.advance(Layout::MaxPointYsColumn)),
-                pointer_at(Layout::MaxPointZsColumn, cursor.advance(Layout::MaxPointZsColumn)),
-                pointer_at(Layout::MinCellXsColumn, cursor.advance(Layout::MinCellXsColumn)),
-                pointer_at(Layout::MinCellYsColumn, cursor.advance(Layout::MinCellYsColumn)),
-                pointer_at(Layout::MinCellZsColumn, cursor.advance(Layout::MinCellZsColumn)),
-                pointer_at(Layout::MaxCellXsColumn, cursor.advance(Layout::MaxCellXsColumn)),
-                pointer_at(Layout::MaxCellYsColumn, cursor.advance(Layout::MaxCellYsColumn)),
-                pointer_at(Layout::MaxCellZsColumn, cursor.advance(Layout::MaxCellZsColumn)),
-                pointer_at(Layout::EntityIdsColumn, cursor.advance(Layout::EntityIdsColumn))};
+        return {cursor.column_pointer(data, Layout::MinPointXsColumn),
+                cursor.column_pointer(data, Layout::MinPointYsColumn),
+                cursor.column_pointer(data, Layout::MinPointZsColumn),
+                cursor.column_pointer(data, Layout::MaxPointXsColumn),
+                cursor.column_pointer(data, Layout::MaxPointYsColumn),
+                cursor.column_pointer(data, Layout::MaxPointZsColumn),
+                cursor.column_pointer(data, Layout::MinCellXsColumn),
+                cursor.column_pointer(data, Layout::MinCellYsColumn),
+                cursor.column_pointer(data, Layout::MinCellZsColumn),
+                cursor.column_pointer(data, Layout::MaxCellXsColumn),
+                cursor.column_pointer(data, Layout::MaxCellYsColumn),
+                cursor.column_pointer(data, Layout::MaxCellZsColumn),
+                cursor.column_pointer(data, Layout::EntityIdsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -511,79 +507,25 @@ struct EntityCellData
                                ml::native_soa::source_data(source.entity_ids()) + source_first,
                                count);
     }
-    void reallocate(size_type const new_capacity) {
-        auto* const new_data{ml::native_soa::allocate(
-            layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
-            static_cast<std::uint32_t>(allocation_alignment))};
-        if (num_ > 0) {
-            auto const old_blocks{capacity_blocks()};
-            auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
-            auto const source{
-                make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
-            auto const destination{make_data_unchecked(new_data, new_blocks)};
-            ml::native_soa::copy_n(destination.min_point_xs, source.min_point_xs, num_);
-            ml::native_soa::copy_n(destination.min_point_ys, source.min_point_ys, num_);
-            ml::native_soa::copy_n(destination.min_point_zs, source.min_point_zs, num_);
-            ml::native_soa::copy_n(destination.max_point_xs, source.max_point_xs, num_);
-            ml::native_soa::copy_n(destination.max_point_ys, source.max_point_ys, num_);
-            ml::native_soa::copy_n(destination.max_point_zs, source.max_point_zs, num_);
-            ml::native_soa::copy_n(destination.min_cell_xs, source.min_cell_xs, num_);
-            ml::native_soa::copy_n(destination.min_cell_ys, source.min_cell_ys, num_);
-            ml::native_soa::copy_n(destination.min_cell_zs, source.min_cell_zs, num_);
-            ml::native_soa::copy_n(destination.max_cell_xs, source.max_cell_xs, num_);
-            ml::native_soa::copy_n(destination.max_cell_ys, source.max_cell_ys, num_);
-            ml::native_soa::copy_n(destination.max_cell_zs, source.max_cell_zs, num_);
-            ml::native_soa::copy_n(destination.entity_ids, source.entity_ids, num_);
-        }
-        ml::native_soa::free(data_, allocation_alignment);
-        data_ = new_data;
-        capacity_ = new_capacity;
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        ml::native_soa::copy_n(destination.min_point_xs, source.min_point_xs, num_);
+        ml::native_soa::copy_n(destination.min_point_ys, source.min_point_ys, num_);
+        ml::native_soa::copy_n(destination.min_point_zs, source.min_point_zs, num_);
+        ml::native_soa::copy_n(destination.max_point_xs, source.max_point_xs, num_);
+        ml::native_soa::copy_n(destination.max_point_ys, source.max_point_ys, num_);
+        ml::native_soa::copy_n(destination.max_point_zs, source.max_point_zs, num_);
+        ml::native_soa::copy_n(destination.min_cell_xs, source.min_cell_xs, num_);
+        ml::native_soa::copy_n(destination.min_cell_ys, source.min_cell_ys, num_);
+        ml::native_soa::copy_n(destination.min_cell_zs, source.min_cell_zs, num_);
+        ml::native_soa::copy_n(destination.max_cell_xs, source.max_cell_xs, num_);
+        ml::native_soa::copy_n(destination.max_cell_ys, source.max_cell_ys, num_);
+        ml::native_soa::copy_n(destination.max_cell_zs, source.max_cell_zs, num_);
+        ml::native_soa::copy_n(destination.entity_ids, source.entity_ids, num_);
     }
   public:
-    template <typename Self>
-    using ViewFor =
-        std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, ConstView, View>;
-    template <typename Self>
-    auto get_view(this Self&& self) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, 0, self.num()};
-    }
-    template <typename Self>
-    auto get_view(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, offset, count};
-    }
-    template <typename Self>
-    auto slice(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return self.get_view(offset, count);
-    }
-    template <typename Self>
-    auto left(this Self&& self, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return self.get_view().left(count);
-    }
-    template <typename Self>
-    auto right(this Self&& self, size_type count) -> ViewFor<Self>
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return self.get_view().right(count);
-    }
-    template <typename Self>
-    auto get_const_view(this Self&& self) -> ConstView
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, 0, self.num()};
-    }
-    template <typename Self>
-    auto get_const_view(this Self&& self, size_type offset, size_type count) -> ConstView
-        requires std::is_lvalue_reference_v<Self>
-    {
-        return {&self, offset, count};
-    }
 };
 } // namespace ioj::sim::collision

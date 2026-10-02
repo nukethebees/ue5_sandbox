@@ -9,7 +9,7 @@
 
 namespace ioj::sim::tests {
 TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
-    SingleAllocationFighterEntityData fighters;
+    FighterEntityData fighters;
     fighters.add_defaulted(1);
     auto data{fighters.get_view()};
     auto const id{

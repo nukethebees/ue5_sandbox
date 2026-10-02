@@ -46,7 +46,7 @@ struct FighterLevelData {
 };
 
 struct Sim {
-    using EntityStorage = SingleAllocationFighterEntityData;
+    using EntityStorage = FighterEntityData;
     using EntityBuffers = ml::MultiBuffer<EntityStorage, 2>;
     using Task = FighterTask;
     static constexpr auto n_task_types{static_cast<std::size_t>(Task::COUNT)};
@@ -198,7 +198,7 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto queue_spawns(SingleAllocationFighterSpawnQueue::ConstView new_spawns) -> std::uint32_t;
+    auto queue_spawns(FighterSpawnQueue::ConstView new_spawns) -> std::uint32_t;
     auto queue_spawns(FrameSpawnQueue const& new_spawns) -> std::uint32_t;
     auto accept_spawn_count(std::span<Team const> teams) -> std::uint32_t;
     void reassign_pending_spawns(EntityUniqueId parent, EntityUniqueId replacement);
@@ -274,7 +274,7 @@ struct Sim {
     AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
 
-    SingleAllocationFighterSpawnQueue spawn_queue;
+    FighterSpawnQueue spawn_queue;
 
     std::vector<std::uint32_t> local_indices_to_remove;
     EntityDeathInfo entity_death_info;

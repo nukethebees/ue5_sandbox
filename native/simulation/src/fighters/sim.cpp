@@ -1387,8 +1387,7 @@ auto Sim::accept_spawn_count(std::span<Team const> const teams) -> std::uint32_t
     capacity -= static_cast<std::int32_t>(accepted_count);
     return accepted_count;
 }
-auto Sim::queue_spawns(SingleAllocationFighterSpawnQueue::ConstView const new_spawns)
-    -> std::uint32_t {
+auto Sim::queue_spawns(FighterSpawnQueue::ConstView const new_spawns) -> std::uint32_t {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::queue_spawns");
     new_spawns.validate();
     auto const count{accept_spawn_count(new_spawns.teams())};

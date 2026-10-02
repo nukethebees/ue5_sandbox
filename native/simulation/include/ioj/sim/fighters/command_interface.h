@@ -18,7 +18,7 @@ class CommandInterface {
     CommandInterface(Sim& new_target)
         : fighters{new_target} {}
 
-    std::int32_t queue_spawns(SingleAllocationFighterSpawnQueue::ConstView queue) {
+    std::int32_t queue_spawns(FighterSpawnQueue::ConstView queue) {
         return fighters.queue_spawns(queue);
     }
 

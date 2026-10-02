@@ -113,9 +113,8 @@ bounded named-block region that stops before custom functions, fixed layouts, an
 forms. Stable members retain comments and token-local kind/type/property edits through structural
 changes; one same-position direct member rename retains its block only when every non-name semantic
 matches. Advanced untouched forms are semantically verified; unsupported or ambiguous edits
-retain canonical fallback. Existing single-allocation forms now patch their owner locally and
-preserve stable allocator-variant row blocks through allocator edits, insertion, deletion, reorder,
-and one unambiguous allocator-preserving direct rename; whole-form enable/disable remains canonical.
+retain canonical fallback. Existing single-allocation forms patch their owner locally; whole-form
+enable/disable remains canonical.
 Existing fixed-layout forms now patch their storage name and ordered container region locally;
 multiline/commented lists preserve stable blocks through structural edits and one unambiguous direct
 rename, while compact lists avoid whole-declaration canonicalization.
@@ -584,9 +583,7 @@ editing plus add/duplicate/delete/button-and-drag reorder through the same docum
 Mutable and const view type names
 independently switch between visible derived defaults and directly editable explicit names. Single-
 allocation output can be enabled with a collision-free owner/Storage pair, renamed inline, and
-disabled when it has no allocator variants; owner edits retain existing variants unchanged. A flat
-allocator-variant table supports staged add, direct owner/allocator edits, shared type picking,
-duplicate/delete, button reorder, and drag reorder with paired generated-name collision avoidance.
+disabled. Resources are selected at C++ construction.
 The complete storage-operation capability set is exposed as inline source-named toggles with
 enable-all/disable-all actions; changes are normalized to shared canonical order and use the same
 undoable document commands.
@@ -658,7 +655,7 @@ or source-backed declarations are implemented; capacity-derived consequences rem
 Nonmodal sibling duplication is implemented for all currently editable declaration kinds through
 their typed create commands. Standard-library SoAs use shared document-level copy preparation that
 reserves a collision-free generated namespace for explicit views, field mask/enum types, fixed
-storage/containers, single-allocation owners, and allocator variants. The copied field-mask storage
+storage/containers, and single-allocation owners. The copied field-mask storage
 member is repaired to the new generated type before the normal `CreateSoa` command validates and
 records the edit.
 Typed rename is implemented for enums, integer scalars, quantizations, varints, packed values,

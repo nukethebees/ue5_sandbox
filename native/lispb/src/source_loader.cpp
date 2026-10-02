@@ -355,18 +355,9 @@ auto parse_member(Form const& form) -> SoaMemberSchema {
     };
 }
 
-auto parse_single_allocation(Form const& form, std::vector<SingleAllocationVariant>& variants)
-    -> std::string {
+auto parse_single_allocation(Form const& form) -> std::string {
     Fields const fields{form, "single-allocation", 1};
-    fields.validate({}, {"variant"});
-    for (auto const* declaration : fields.declarations()) {
-        Fields const variant{*declaration, "variant", 2};
-        variant.validate({});
-        variants.push_back(SingleAllocationVariant{
-            text(variant.positional(0), "single-allocation variant name"),
-            parse_type_ref(variant.positional(1)),
-        });
-    }
+    fields.validate({});
     return text(fields.positional(0), "single-allocation name");
 }
 
@@ -379,7 +370,6 @@ auto parse_soa(Form const& form) -> SoaSchema {
                      "export-specifier",
                      "using-declarations",
                      "array-allocator",
-                     "single-allocation-allocator",
                      "equivalent-type",
                      "vector-components",
                      "copy-element-memberwise",
@@ -399,7 +389,6 @@ auto parse_soa(Form const& form) -> SoaSchema {
     std::vector<FunctionSchema> mutable_view_functions;
     std::optional<FixedSoaSchema> fixed;
     std::optional<std::string> single_allocation;
-    std::vector<SingleAllocationVariant> variants;
     for (auto const* declaration : fields.declarations()) {
         auto const head{declaration->head()};
         if (head == "member") {
@@ -419,7 +408,7 @@ auto parse_soa(Form const& form) -> SoaSchema {
             if (single_allocation.has_value()) {
                 fail(declaration->token.span, "duplicate 'single-allocation' declaration");
             }
-            single_allocation = parse_single_allocation(*declaration, variants);
+            single_allocation = parse_single_allocation(*declaration);
         }
     }
 
@@ -461,11 +450,6 @@ auto parse_soa(Form const& form) -> SoaSchema {
         .array_allocator = fields.optional("array-allocator")
                              ? std::optional{parse_type_ref(*fields.optional("array-allocator"))}
                              : std::nullopt,
-        .single_allocation_variants = std::move(variants),
-        .single_allocation_allocator =
-            fields.optional("single-allocation-allocator")
-                ? std::optional{parse_type_ref(*fields.optional("single-allocation-allocator"))}
-                : std::nullopt,
         .field_mask_name = optional_text(fields, "field-mask-name"),
         .field_enum_name = optional_text(fields, "field-enum-name"),
         .vector_components = text_list_or(fields, "vector-components"),

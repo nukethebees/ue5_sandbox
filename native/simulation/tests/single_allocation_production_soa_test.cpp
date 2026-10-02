@@ -21,9 +21,9 @@ namespace ioj::sim::tests {
 namespace {
 template <typename Storage>
 void expect_storage_lifecycle() {
-    static_assert(sizeof(Storage) == 16);
+    static_assert(sizeof(Storage) == 24);
     static_assert(std::is_nothrow_move_constructible_v<Storage>);
-    static_assert(std::is_nothrow_move_assignable_v<Storage>);
+    static_assert(!std::is_nothrow_move_assignable_v<Storage>);
 
     Storage source;
     source.reserve(2);
@@ -46,21 +46,21 @@ void expect_storage_lifecycle() {
 } // namespace
 
 TEST(NativeSimulation, ProductionSingleAllocationSoaLifecycle) {
-    expect_storage_lifecycle<SingleAllocationFighterEntityData>();
-    expect_storage_lifecycle<SingleAllocationTurretEntityData>();
-    expect_storage_lifecycle<lasers::SingleAllocationLaserEntities>();
-    expect_storage_lifecycle<lasers::SingleAllocationLaserSpawnRequests>();
-    expect_storage_lifecycle<SingleAllocationCapitalEntityData>();
-    expect_storage_lifecycle<SingleAllocationFighterSpawnQueue>();
-    expect_storage_lifecycle<SingleAllocationSpinnerEntityData>();
-    expect_storage_lifecycle<SingleAllocationLaserHitDetails>();
-    expect_storage_lifecycle<SingleAllocationLevelCapitalSpawnEvents>();
-    expect_storage_lifecycle<SingleAllocationLevelTurretSpawnEvents>();
-    expect_storage_lifecycle<SingleAllocationLevelSpinnerSpawnEvents>();
+    expect_storage_lifecycle<FighterEntityData>();
+    expect_storage_lifecycle<TurretEntityData>();
+    expect_storage_lifecycle<lasers::LaserEntities>();
+    expect_storage_lifecycle<lasers::LaserSpawnRequests>();
+    expect_storage_lifecycle<CapitalEntityData>();
+    expect_storage_lifecycle<FighterSpawnQueue>();
+    expect_storage_lifecycle<SpinnerEntityData>();
+    expect_storage_lifecycle<LaserHitDetails>();
+    expect_storage_lifecycle<LevelCapitalSpawnEvents>();
+    expect_storage_lifecycle<LevelTurretSpawnEvents>();
+    expect_storage_lifecycle<LevelSpinnerSpawnEvents>();
 }
 
 TEST(NativeSimulation, ProductionSingleAllocationNestedViewsAndAppend) {
-    SingleAllocationFighterEntityData fighters;
+    FighterEntityData fighters;
     fighters.add_defaulted(2);
     auto fighter_columns{fighters.get_view()};
     set_vector(fighter_columns.view_locations(), 0, HMM_V3(1.f, 2.f, 3.f));
@@ -68,13 +68,13 @@ TEST(NativeSimulation, ProductionSingleAllocationNestedViewsAndAppend) {
     fighter_columns.integral_biases()[0] = 11;
     fighter_columns.integral_biases()[1] = 22;
 
-    SingleAllocationFighterEntityData appended;
+    FighterEntityData appended;
     appended.append_from(fighters.get_const_view());
     auto const appended_columns{appended.get_const_view()};
     EXPECT_EQ(vector_at(appended_columns.view_locations(), 1).Z, 6.f) << "Nested vectors append";
     EXPECT_EQ(appended_columns.integral_biases()[1], 22u) << "Scalar columns append";
 
-    lasers::SingleAllocationLaserEntities lasers;
+    lasers::LaserEntities lasers;
     lasers.add_defaulted(2);
     auto laser_columns{lasers.get_view()};
     set_vector(laser_columns.view_locations(), 0, HMM_V3(10.f, 20.f, 30.f));
@@ -86,7 +86,7 @@ TEST(NativeSimulation, ProductionSingleAllocationNestedViewsAndAppend) {
 }
 
 TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
-    SingleAllocationSpinnerEntityData spinners;
+    SpinnerEntityData spinners;
     spinners.add_defaulted(65);
     auto spinner_columns{spinners.get_view()};
     auto const spinner_count{spinners.num()};
@@ -99,7 +99,7 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
         fire_point_indices[index] = index;
     }
 
-    SingleAllocationSpinnerEntityData appended_spinners;
+    SpinnerEntityData appended_spinners;
     appended_spinners.append_from(spinners.get_const_view());
     appended_spinners.remove_at_swap(1, 1);
     auto const appended_spinner_columns{appended_spinners.get_const_view()};
@@ -110,7 +110,7 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
     EXPECT_EQ(appended_spinner_columns.next_fire_point_indices()[1], 64)
         << "Spinner fire points follow swap removal";
 
-    SingleAllocationLaserHitDetails hits;
+    LaserHitDetails hits;
     hits.add_defaulted(65);
     auto hit_columns{hits.get_view()};
     auto const hit_count{hits.num()};
@@ -123,7 +123,7 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
         sources[index] = {Team::Blue, EntityType::Turret};
     }
 
-    SingleAllocationLaserHitDetails appended_hits;
+    LaserHitDetails appended_hits;
     appended_hits.append_from(hits.get_const_view());
     auto const appended_hit_columns{appended_hits.get_const_view()};
     EXPECT_EQ(appended_hit_columns.view_locations().xs()[64], 64.f)

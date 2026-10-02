@@ -43,13 +43,13 @@ struct CompactLaserHitFrameOutput {
                                           ioj::sim::SimTick const tick) {
         hits.append_from(new_hits);
         auto const count{new_hits.num()};
-        for (std::int32_t index{}; index < count; ++index) {
+        for (std::uint32_t index{}; index < count; ++index) {
             hit_ticks.push_back(tick);
-            hit_ordinals.push_back(index);
+            hit_ordinals.push_back(static_cast<std::int32_t>(index));
         }
     }
 
-    ioj::sim::SingleAllocationLaserHitDetails hits;
+    ioj::sim::LaserHitDetails hits;
     std::vector<ioj::sim::SimTick> hit_ticks;
     std::vector<std::int32_t> hit_ordinals;
 };
@@ -57,7 +57,7 @@ struct CompactLaserHitFrameOutput {
 void compact_laser_hit_accumulation(benchmark::State& state) {
     auto const count{static_cast<std::int32_t>(state.range(0))};
     auto const batch{static_cast<std::int32_t>(state.range(1))};
-    ioj::sim::SingleAllocationLaserHitDetails source;
+    ioj::sim::LaserHitDetails source;
     populate(source, batch);
     CompactLaserHitFrameOutput output;
     for (auto _ : state) {
@@ -71,26 +71,24 @@ void compact_laser_hit_accumulation(benchmark::State& state) {
     state.SetItemsProcessed(state.iterations() * count);
 }
 
-__declspec(noinline) void
-    fighter_narrow_kernel(ioj::sim::SingleAllocationFighterEntityData::View const view) {
+__declspec(noinline) void fighter_narrow_kernel(ioj::sim::FighterEntityData::View const view) {
     auto const locations{view.view_locations().xs()};
     auto const velocities{view.view_velocities().xs()};
     auto const health_indices{view.health_indices()};
     auto const count{view.num()};
-    for (std::int32_t index{}; index < count; ++index) {
+    for (std::uint32_t index{}; index < count; ++index) {
         locations[index] += velocities[index] + 1.f;
         health_indices[index] =
             ioj::sim::HealthIndex{static_cast<ioj::sim::HealthIndex::storage_type>(index)};
     }
 }
 
-__declspec(noinline) void
-    laser_narrow_kernel(ioj::sim::lasers::SingleAllocationLaserEntities::View const view) {
+__declspec(noinline) void laser_narrow_kernel(ioj::sim::lasers::LaserEntities::View const view) {
     auto const locations{view.view_locations().xs()};
     auto const velocities{view.view_velocities().xs()};
     auto const lifetimes{view.lifetimes_remaining()};
     auto const count{view.num()};
-    for (std::int32_t index{}; index < count; ++index) {
+    for (std::uint32_t index{}; index < count; ++index) {
         locations[index] += velocities[index] + 1.f;
         lifetimes[index] -= 0.016f;
     }
@@ -100,7 +98,7 @@ template <typename View>
 __declspec(noinline) void broad_kernel(View const view) {
     auto const count{view.num()};
     view.each_column([count](auto const column) {
-        for (std::int32_t index{}; index < count; ++index) {
+        for (std::uint32_t index{}; index < count; ++index) {
             benchmark::DoNotOptimize(column[index]);
         }
     });
@@ -145,9 +143,9 @@ void broad_iteration(benchmark::State& state) {
 }
 
 constexpr std::int32_t row_count{4096};
-using NewFighters = ioj::sim::SingleAllocationFighterEntityData;
-using NewLasers = ioj::sim::lasers::SingleAllocationLaserEntities;
-using NewSpinners = ioj::sim::SingleAllocationSpinnerEntityData;
+using NewFighters = ioj::sim::FighterEntityData;
+using NewLasers = ioj::sim::lasers::LaserEntities;
+using NewSpinners = ioj::sim::SpinnerEntityData;
 
 BENCHMARK(bulk_creation<NewFighters>)->Name("Production/Fighter/New/BulkCreation")->Arg(row_count);
 BENCHMARK(fighter_narrow_iteration<NewFighters>)

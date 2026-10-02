@@ -29,4 +29,4 @@
       :mask-field true)
     (member lasers_fired array int32
       :mask-field true)
-    (single-allocation SingleAllocationHistoryRows)))
+    (single-allocation HistoryRows)))

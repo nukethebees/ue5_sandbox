@@ -1471,11 +1471,6 @@ void validate_soa(NormalModuleSchema const& module,
                 throw std::invalid_argument{context + " fixed storage requires vector storage"};
             }
         }
-        if (!schema.single_allocation &&
-            (schema.single_allocation_allocator || !schema.single_allocation_variants.empty())) {
-            throw std::invalid_argument{
-                context + " single-allocation allocators require a single-allocation owner"};
-        }
         if (schema.array_allocator) {
             validate_type(*schema.array_allocator, types, context + " array allocator");
             if (module.soa_backend == SoaBackend::standard_library) {
@@ -1483,11 +1478,6 @@ void validate_soa(NormalModuleSchema const& module,
                                             " array-allocator selects an Unreal TArray allocator; "
                                             "native vector storage uses its runtime allocator"};
             }
-        }
-        if (schema.single_allocation_allocator) {
-            validate_type(*schema.single_allocation_allocator,
-                          types,
-                          context + " single-allocation allocator");
         }
         if (schema.layout_only && (!schema.functions.empty() || !schema.operations.empty() ||
                                    schema.view_name || schema.const_view_name)) {
@@ -1513,12 +1503,6 @@ void validate_soa(NormalModuleSchema const& module,
         }
         if (schema.single_allocation.has_value()) {
             require_identifier(*schema.single_allocation, "Single-allocation owner");
-
-            for (auto const& variant : schema.single_allocation_variants) {
-                require_identifier(variant.name, "single-allocation allocator variant");
-
-                validate_type(variant.allocator, types, "single-allocation allocator variant");
-            }
         }
         if (schema.members.empty()) {
             throw std::invalid_argument{"SOA '" + schema.name + "' must have members"};

@@ -28,7 +28,7 @@ namespace ioj::sim::turrets {
 class PhaseInterface;
 
 struct Sim {
-    using EntityStorage = SingleAllocationTurretEntityData;
+    using EntityStorage = TurretEntityData;
 
     Sim(SimClock const& clock,
         EntityLedger& ledger,
@@ -86,7 +86,7 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto register_turrets(SingleAllocationLevelTurretSpawnEvents::ConstView const spawn_data)
+    auto register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
         -> std::vector<EntityUniqueId>;
 
     /* **************************************** */

@@ -1824,14 +1824,13 @@ TEST(SourceLoader, SettingsDeviceDefaultsToShared) {
     EXPECT_EQ(module.settings_list.front().device, SettingDevice::shared);
 }
 
-TEST(SourceLoader, SingleOnlyLogicalApiAndAllocatorFieldsArePreserved) {
+TEST(SourceLoader, SingleOnlyLogicalApiIsPreserved) {
     TemporaryManifest files;
     files.write_root(R"(
 (module api :header "Api.h" :source "Api.cpp" :backend standard-library
   (struct Rows :view-name Values :const-view-name ConstValues
     :export-specifier API :using-declarations ("Value = float")
     :operations (set-num append-from) :equivalent-type ValueRow
-    :single-allocation-allocator Allocator
     (member values array float)
     (function first float :const true :body #cpp{return $column(values)[0];}cpp#)
     (function noop void :body ())
@@ -1842,16 +1841,26 @@ TEST(SourceLoader, SingleOnlyLogicalApiAndAllocatorFieldsArePreserved) {
     auto const manifest{files.load()};
     auto const& schema{schema_at<SoaSchema>(manifest, 0)};
     EXPECT_EQ(schema.selected_storage(), SoaStorage::single_allocation);
-    EXPECT_EQ(schema.single_allocation_allocator->name, "Allocator");
     ASSERT_EQ(schema.const_view_functions.size(), 1U);
     EXPECT_TRUE(schema.const_view_functions.front().is_const);
     ASSERT_EQ(schema.mutable_view_functions.size(), 1U);
     auto const output{render_modules(lower_modules(manifest)).front().content};
     EXPECT_NE(output.find("struct API Owner"), std::string::npos);
-    EXPECT_NE(output.find("Allocator::allocate"), std::string::npos);
+    EXPECT_NE(output.find("std::pmr::memory_resource* resource"), std::string::npos);
     EXPECT_NE(output.find("return this->values()[0];"), std::string::npos);
     EXPECT_EQ(output.find("struct Rows {"), std::string::npos);
     EXPECT_NE(output.find("void noop() {"), std::string::npos);
+}
+
+TEST(SourceLoader, RejectsRemovedSingleAllocationAllocatorSyntax) {
+    TemporaryManifest files;
+    for (auto const declaration : {"(struct Rows :single-allocation-allocator Allocator (member "
+                                   "ids array int) (single-allocation Owner))",
+                                   "(struct Rows (member ids array int) (single-allocation Owner "
+                                   "(variant Pool Allocator)))"}) {
+        files.write_root(std::string{"(module api :header \"Api.h\" "} + declaration + ")");
+        EXPECT_THROW(files.load(), ManifestError);
+    }
 }
 
 TEST(SourceLoader, ReadOnlyViewFunctionRejectsMutableReceiver) {

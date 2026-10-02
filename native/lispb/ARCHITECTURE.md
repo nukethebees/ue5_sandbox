@@ -206,6 +206,16 @@ It validates the source range before growing the destination, then resolves sour
 after growth. Compact self-append therefore survives reallocation. Independent sources, such as
 frame-backed producers, expose their own columns directly and validate their column lengths.
 Their storage must remain valid through destination growth.
+Each compact owner holds one non-owning `std::pmr::memory_resource*`, defaulting to
+`std::pmr::get_default_resource()` at construction. Allocation and release pass exact layout
+bytes and alignment. Move construction adopts the resource; move assignment retains the
+destination resource and copies columns when resources compare unequal. Copying stays deleted.
+Lifetime, allocation, growth, borrowing, and container operations share one `StorageOperations`
+friend in `sandbox/core/single_allocation/operations.h`. Backend aliases supply size types,
+validation, and growth policies; column operations remain generated explicitly.
+The resource must outlive the storage. Resource choice is a construction argument, not a
+schema allocator variant. Owners are 24 bytes on Win64; shared view state stays unchanged.
+
 The owner has no generated `FooStorage` intermediate. Public named mutable and const compact
 views are thin wrappers over one `FooSingleViewImpl<Const>` accessor implementation. They hold a
 stable pointer to owner state plus offset/count, resolve pointers lazily, and remain 16-byte
@@ -221,11 +231,11 @@ invalidation. Owner borrowing methods constrain explicit-object parameters to lv
 const lvalues; temporary owners cannot yield views.
 
 Per-column generated code is intentional and inspectable. Do not replace it with a universal
-storage template or variadic copy mechanism. Native and Unreal retain their distinct allocation
-and ordinary-view APIs where those differences are real. Keep generated headers checked in and
+storage template or variadic copy mechanism. Native and Unreal share runtime PMR resource selection
+and retain their distinct ordinary-view APIs. Keep generated headers checked in and
 regenerate both the compile fixture and production output after changing schema, planning, or
 emission. Focused `codegen` and `native-soa` workflows cover rejection, layout, aliasing, growth,
-view lifetime, and allocator variants; `native-tests` covers production simulation consumers.
+view lifetime, and PMR resource ownership; `native-tests` covers production simulation consumers.
 
 ### Logical API and storage policy
 
@@ -253,8 +263,6 @@ Every `SoaSchema` field has an explicit role:
 | `fixed` | B: vector | Additional fixed/container ownership using the ordinary storage abstraction; incompatible with single-only. |
 | `single_allocation` | C: single allocation | Physical owner name; required for single-allocation or both, forbidden with vector. |
 | `array_allocator` | B: vector | Unreal TArray allocation policy; rejected on single-only and by the standard-library vector backend. |
-| `single_allocation_variants` | C: single allocation | Additional owners sharing the root compact view/layout family. |
-| `single_allocation_allocator` | C: single allocation | Allocation policy for this owner; requires a single-allocation declaration. |
 | `field_mask_name`, `field_enum_name` | A: logical/API | Generated once from the logical columns, before either owner backend, including layout-only schemas. |
 | `vector_components` | A: logical | Component semantics and validation. Runtime vector-view substitution is permitted only when it preserves the entire declared view API. |
 | `storage` | D: policy decision | Explicit physical representations. Default is single-only with a single-allocation declaration, vector otherwise; never implicit both. |

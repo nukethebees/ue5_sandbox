@@ -2419,10 +2419,6 @@ auto render_soa(codegen::SoaSchema const& schema) -> std::string {
     if (schema.array_allocator) {
         output << "\n    :array-allocator " << render_type_ref(*schema.array_allocator);
     }
-    if (schema.single_allocation_allocator) {
-        output << "\n    :single-allocation-allocator "
-               << render_type_ref(*schema.single_allocation_allocator);
-    }
     if (schema.fixed.has_value()) {
         output << "\n    (fixed " << schema.fixed->storage_name;
         if (!schema.fixed->containers.empty()) {
@@ -2436,10 +2432,6 @@ auto render_soa(codegen::SoaSchema const& schema) -> std::string {
     }
     if (schema.single_allocation.has_value()) {
         output << "\n    (single-allocation " << *schema.single_allocation;
-        for (auto const& variant : schema.single_allocation_variants) {
-            output << "\n      (variant " << variant.name << ' '
-                   << render_type_ref(variant.allocator) << ')';
-        }
         output << ')';
     }
     output << ')';
@@ -2675,11 +2667,6 @@ auto render_editable_module(codegen::ModuleSchema const& schema) -> std::optiona
     }
     output << ')';
     return output.str();
-}
-
-auto render_single_allocation_variant(codegen::SingleAllocationVariant const& variant)
-    -> std::string {
-    return "(variant " + variant.name + " " + render_type_ref(variant.allocator) + ")";
 }
 
 auto render_fixed_containers(std::span<std::string const> const containers) -> std::string {
@@ -3254,9 +3241,6 @@ auto patch_source_fixed_soa(codegen::FixedSoaSchema const& schema,
 auto render_single_allocation(codegen::SoaSchema const& schema) -> std::string {
     std::ostringstream rendered;
     rendered << "(single-allocation " << *schema.single_allocation;
-    for (auto const& variant : schema.single_allocation_variants) {
-        rendered << "\n      " << render_single_allocation_variant(variant);
-    }
     rendered << ')';
     return std::move(rendered).str();
 }
@@ -3270,115 +3254,6 @@ auto patch_source_single_allocation(codegen::SoaSchema const& schema,
         return false;
     }
 
-    std::vector<Form const*> variants;
-    for (auto const& child : source.children) {
-        if (child.head() == "variant") {
-            if (child.children.size() < 3) {
-                return false;
-            }
-            variants.push_back(&child);
-        }
-    }
-
-    if (variants.empty()) {
-        if (schema.single_allocation_variants.empty()) {
-            return true;
-        }
-
-        auto rendered{std::string{}};
-        for (auto const& variant : schema.single_allocation_variants) {
-            rendered += "\n      " + render_single_allocation_variant(variant);
-        }
-        replacements.push_back({.begin = source.closing.span.offset,
-                                .end = source.closing.span.offset,
-                                .text = std::move(rendered)});
-        return true;
-    }
-
-    auto const first_variant_offset{variants.front()->token.span.offset};
-    auto variants_begin{std::size_t{}};
-    for (auto const& child : source.children) {
-        if (child.token.span.offset >= first_variant_offset) {
-            continue;
-        }
-        auto const child_end{source_form_line_end(child, original, first_variant_offset)};
-        if (!child_end.has_value()) {
-            return false;
-        }
-        variants_begin = (std::max)(variants_begin, *child_end);
-    }
-    if (variants_begin > first_variant_offset) {
-        return false;
-    }
-
-    struct SourceVariant {
-        Form const* form{};
-        std::size_t begin{};
-        std::size_t end{};
-    };
-    std::map<std::string_view, SourceVariant> source_by_name;
-    auto row_begin{variants_begin};
-    for (auto const* variant : variants) {
-        auto const row_end{source_form_line_end(*variant, original, source.closing.span.offset)};
-        if (!row_end.has_value() || row_begin > variant->token.span.offset ||
-            *row_end < variant->closing.span.offset + 1 ||
-            !source_by_name
-                 .emplace(variant->children[1].token.text,
-                          SourceVariant{.form = variant, .begin = row_begin, .end = *row_end})
-                 .second) {
-            return false;
-        }
-        row_begin = *row_end;
-    }
-
-    auto const variants_end{row_begin};
-    auto const renamed_variant{infer_single_positional_rename<codegen::SingleAllocationVariant>(
-        variants,
-        schema.single_allocation_variants,
-        [](Form const& source_variant, codegen::SingleAllocationVariant const& variant) {
-            return source_variant.children.size() >= 3 &&
-                   source_form_matches_rendered(source_variant.children[2],
-                                                render_type_ref(variant.allocator));
-        })};
-    auto rendered_variants{std::string{}};
-    auto append_row = [&](std::string row) {
-        auto const preceding_newline{
-            rendered_variants.empty() ? variants_begin > 0 && original[variants_begin - 1] == '\n'
-                                      : rendered_variants.back() == '\n'};
-        if (!preceding_newline && (row.empty() || row.front() != '\n')) {
-            rendered_variants += '\n';
-        }
-        rendered_variants += row;
-    };
-
-    for (auto const& variant : schema.single_allocation_variants) {
-        auto const renamed{renamed_variant.has_value() && renamed_variant->second == variant.name};
-        auto const found{
-            source_by_name.find(renamed ? renamed_variant->first : std::string_view{variant.name})};
-        if (found == source_by_name.end()) {
-            append_row("      " + render_single_allocation_variant(variant));
-            continue;
-        }
-
-        std::vector<SourceReplacement> variant_replacements;
-        if ((renamed &&
-             !patch_source_form(
-                 found->second.form->children[1], variant.name, original, variant_replacements)) ||
-            !patch_source_form(found->second.form->children[2],
-                               render_type_ref(variant.allocator),
-                               original,
-                               variant_replacements)) {
-            return false;
-        }
-        auto rendered{apply_source_replacements_to_range(
-            original, found->second.begin, found->second.end, std::move(variant_replacements))};
-        if (!rendered.has_value()) {
-            return false;
-        }
-        append_row(std::move(*rendered));
-    }
-    replacements.push_back(
-        {.begin = variants_begin, .end = variants_end, .text = std::move(rendered_variants)});
     return true;
 }
 
@@ -3386,7 +3261,7 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                                      std::string_view const original)
     -> std::optional<std::string> {
     if (!schema.const_view_functions.empty() || !schema.mutable_view_functions.empty() ||
-        schema.array_allocator.has_value() || schema.single_allocation_allocator.has_value()) {
+        schema.array_allocator.has_value()) {
         return std::nullopt;
     }
     auto parsed{parse_owned_source_declaration(original, "struct")};
@@ -3396,8 +3271,7 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
 
     for (auto const& child : parsed->children) {
         if (child.head() == "view-function" || child.head() == "mutable-view-function" ||
-            child.token.text == ":array-allocator" ||
-            child.token.text == ":single-allocation-allocator") {
+            child.token.text == ":array-allocator") {
             return std::nullopt;
         }
     }
@@ -4792,10 +4666,6 @@ auto EditableSchemaDocument::prepare_soa_duplicate(DeclarationId const declarati
     if (source->single_allocation.has_value()) {
         copy.single_allocation = reserve_unique_group(
             duplicate_helper_base(*source->single_allocation), {"", "Storage"});
-        for (auto& variant : copy.single_allocation_variants) {
-            variant.name =
-                reserve_unique_group(duplicate_helper_base(variant.name), {"", "Storage"});
-        }
     }
 
     return copy;

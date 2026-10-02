@@ -32,7 +32,7 @@ struct FDisplayEntityTestData {
         health_table.get_view(health_indices, entity_ids).health(row) = health;
     }
 
-    ::ioj::sim::SingleAllocationFighterEntityData motion;
+    ::ioj::sim::FighterEntityData motion;
     ::ioj::sim::HealthTable health_table;
     std::vector<::ioj::sim::HealthIndex> health_indices;
     std::vector<::ioj::sim::EntityUniqueId> entity_ids;

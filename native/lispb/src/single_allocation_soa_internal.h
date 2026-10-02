@@ -16,12 +16,8 @@ struct SingleAllocationDialect {
     std::string vector_namespace;
     std::string size_type;
     std::string byte_size_type;
-    std::string alignment_argument_type;
     std::string span_template;
     bool span_count_requires_cast{};
-    std::string default_allocate_function;
-    std::string default_free_function;
-    bool default_free_requires_alignment{};
     std::string column_iteration_function;
     std::string column_application_function;
     bool column_iteration_returns_result{};
@@ -53,9 +49,6 @@ struct SingleAllocationModel {
     std::string view_name;
     std::string const_view_name;
     std::vector<std::string> member_prefix;
-    CppType allocate_function;
-    CppType free_function;
-    bool free_requires_alignment{};
     std::vector<SingleAllocationColumn> columns;
     std::map<std::string, std::size_t> column_indices;
     std::map<std::string, CompactVectorShape> compact_vectors;

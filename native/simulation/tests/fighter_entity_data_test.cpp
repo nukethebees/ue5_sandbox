@@ -6,7 +6,7 @@
 namespace ioj::sim::tests {
 
 TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
-    using EntityData = SingleAllocationFighterEntityData;
+    using EntityData = FighterEntityData;
 
     EntityData source;
     source.add_defaulted(3);

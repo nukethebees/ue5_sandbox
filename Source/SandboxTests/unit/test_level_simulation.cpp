@@ -502,7 +502,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     damage.add(
         deaths.get_capital_ships().get_id(0), MAX_int32, deaths.get_capital_ships().get_id(1));
     ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(deaths, damage.get_const_view());
-    ::ioj::sim::lasers::SingleAllocationLaserSpawnRequests shot;
+    ::ioj::sim::lasers::LaserSpawnRequests shot;
     ::ioj::sim::tests::add_laser_spawn(
         shot,
         {700.f, 0.f, 0.f},
@@ -652,7 +652,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     expected_material_data.Reserve(tick_count * spawns_per_tick);
 
     for (int32 tick{}; tick < tick_count; ++tick) {
-        ::ioj::sim::lasers::SingleAllocationLaserSpawnRequests requests;
+        ::ioj::sim::lasers::LaserSpawnRequests requests;
         requests.add_uninitialised(spawns_per_tick);
         for (int32 spawn{}; spawn < spawns_per_tick; ++spawn) {
             auto const id{expected_material_data.Num() + 1};

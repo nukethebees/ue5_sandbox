@@ -517,7 +517,7 @@ void Sim::materialize_fire_command() {
 }
 
 void Sim::fire_lasers_from(std::span<Transform3d const> const fire_points) {
-    lasers::SingleAllocationLaserSpawnRequests new_lasers;
+    lasers::LaserSpawnRequests new_lasers;
     auto const laser_count{static_cast<std::uint32_t>(fire_points.size())};
     new_lasers.add_uninitialised(laser_count);
     auto const laser_columns{new_lasers.get_view()};

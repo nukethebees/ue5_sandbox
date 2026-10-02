@@ -54,8 +54,7 @@ auto lower_single_allocation(SoaSchema const& schema,
                              TypeRegistry const& types,
                              lispb::schema::TypeGraph const& type_graph,
                              std::string const& module_name,
-                             SoaBackend backend,
-                             bool emit_shared_types = true) -> LoweredSoa;
+                             SoaBackend backend) -> LoweredSoa;
 
 auto lower_native_soa(SoaSchema const& schema,
                       std::map<std::string, SoaSchema const*> const& schemas,

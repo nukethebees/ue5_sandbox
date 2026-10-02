@@ -657,11 +657,10 @@ discriminant/export source independently. Ordinary standard-library SoAs preserv
 member blocks through structural edits, with the editable region bounded before untouched custom
 functions and advanced forms whose semantics are proven unchanged. One same-position direct member
 rename retains its owned block when all other member semantics match. Unsupported edits remain visible as canonical
-fallbacks in preview. Existing single-allocation forms also patch the owner token locally and retain
-stable allocator-variant row blocks, comments, and spacing through allocator edits, insertion,
-deletion, reorder, and one unambiguous same-position name-only rename. Enabling or disabling the
-whole form remains a canonical localized operation. Existing fixed-layout forms likewise patch the
-storage name locally; multiline container lists retain stable commented blocks through structural
+fallbacks in preview. Existing single-allocation forms patch the owner token locally. Enabling or
+disabling the whole form remains a canonical localized operation. Resource choice belongs to C++
+construction. Existing fixed-layout forms likewise patch the storage name locally; multiline
+container lists retain stable commented blocks through structural
 edits and one unambiguous direct rename, while compact lists remain compact for unchanged or direct-
 rename edits. Existing mask-dimension properties apply the same bounded-row behavior to named
 `(index extent)` entries, including token-local extent changes and one extent-preserving direct

@@ -1,4 +1,5 @@
 #include "Generated.h"
+#include "pmr_owner_tests.h"
 #include "ScalarValues.h"
 #include "SignatureDefinitions.h"
 
@@ -226,7 +227,9 @@ struct FSettingsAccessFixture : TSettingsAccess<FSettingsAccessFixture> {
 };
 
 TEST(GeneratedSingleAllocationSoa, Ownership) {
-    using Owner = CountedParents;
+    using Owner = SingleParents;
+    pmr_test_support::AllocationState allocations;
+    pmr_test_support::CountingResource resource{allocations};
     static_assert(BorrowsOwner<Owner&> && BorrowsOwner<Owner const&>);
     static_assert(!BorrowsOwner<Owner> && !BorrowsOwner<Owner const>);
     static_assert(!BorrowsOwnerRange<Owner> && !BorrowsOwnerRange<Owner const>);
@@ -258,57 +261,62 @@ TEST(GeneratedSingleAllocationSoa, Ownership) {
     static_assert(std::same_as<decltype(std::declval<Owner const&>().get_const_view(0, 0)),
                                Owner::ConstView>);
     static_assert(std::is_nothrow_move_constructible_v<Owner>);
-    static_assert(std::is_nothrow_move_assignable_v<Owner>);
+    static_assert(!std::is_nothrow_move_assignable_v<Owner>);
     static_assert(!std::is_copy_assignable_v<Owner>);
     {
-        Owner source;
+        Owner source{&resource};
         source.reserve(0);
         source.add_defaulted(0);
-        check(CountingAllocator::allocations == 0);
+        check(allocations.allocations == 0);
         source.reserve(3);
-        check(CountingAllocator::allocations == 1 && CountingAllocator::frees == 0);
-        check(CountingAllocator::last_bytes == source.allocated_bytes());
-        check(CountingAllocator::last_alignment == Owner::allocation_alignment);
+        check(allocations.allocations == 1 && allocations.frees == 0);
+        check(allocations.last_bytes == source.allocated_bytes());
+        check(allocations.last_alignment == Owner::allocation_alignment);
         source.add_defaulted(source.capacity());
         source.get_view().keys()[0] = 42;
-        check(CountingAllocator::allocations == 1);
+        check(allocations.allocations == 1);
         source.add_defaulted(1);
-        check(CountingAllocator::allocations == 2 && CountingAllocator::frees == 1);
+        check(allocations.allocations == 2 && allocations.frees == 1);
         check(source.get_view().keys()[0] == 42);
         auto* const pointer{source.get_view().keys().GetData()};
         Owner moved{std::move(source)};
         // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
         check(source.num() == 0 && source.capacity() == 0 && source.allocated_bytes() == 0);
-        check(CountingAllocator::allocations == 2 && CountingAllocator::frees == 1);
-        Owner destination;
+        check(allocations.allocations == 2 && allocations.frees == 1);
+        Owner destination{&resource};
         destination.reserve(17);
-        check(CountingAllocator::allocations == 3);
+        check(allocations.allocations == 3);
         destination = std::move(moved);
-        check(CountingAllocator::frees == 2);
+        check(allocations.frees == 2);
         // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
         check(moved.num() == 0 && moved.capacity() == 0);
         auto& alias{destination};
         destination = std::move(alias);
-        check(CountingAllocator::frees == 2);
+        check(allocations.frees == 2);
         check(destination.get_view().keys().GetData() == pointer);
         auto const capacity{destination.capacity()};
         destination.reset();
         check(destination.num() == 0 && destination.capacity() == capacity);
-        check(CountingAllocator::frees == 2);
-        CountingAllocator::reject_allocation = true;
+        check(allocations.frees == 2);
+        allocations.reject_allocation = true;
         bool rejected{};
         try {
             destination.reserve(Owner::max_capacity);
         } catch (std::bad_alloc const&) {
             rejected = true;
         }
-        CountingAllocator::reject_allocation = false;
+        allocations.reject_allocation = false;
         check(rejected && destination.capacity() == capacity);
-        check(CountingAllocator::last_bytes ==
+        check(allocations.last_bytes ==
               Owner::layout_bytes(Owner::max_capacity / Owner::capacity_granularity));
-        check(CountingAllocator::allocations == 3 && CountingAllocator::frees == 2);
+        check(allocations.allocations == 3 && allocations.frees == 2);
     }
-    check(CountingAllocator::allocations == 3 && CountingAllocator::frees == 3);
+    check(allocations.allocations == 3 && allocations.frees == 3);
+}
+
+TEST(GeneratedSingleAllocationSoa, PmrResourcesAndMoves) {
+    pmr_test_support::verify_pmr_owner<SingleParents>(
+        [](SingleParents& owner) -> auto& { return owner.get_view().keys()[0]; });
 }
 
 TEST(GeneratedSingleAllocationSoa, BulkMutationAndAliasing) {

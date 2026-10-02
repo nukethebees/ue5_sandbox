@@ -10,7 +10,7 @@ namespace ioj::sim::lasers {
 struct FrameOutput {
     void reset();
     template <typename Source>
-        requires SingleAllocationLaserHitDetails::accepts_source<Source>
+        requires LaserHitDetails::accepts_source<Source>
     void append_hits(Source const& new_hits, SimTick const tick) {
         auto const count{new_hits.num()};
         hits.append_from(new_hits);
@@ -20,7 +20,7 @@ struct FrameOutput {
         }
     }
 
-    SingleAllocationLaserHitDetails hits;
+    LaserHitDetails hits;
     std::vector<SimTick> hit_ticks;
     std::vector<std::int32_t> hit_ordinals;
 };

@@ -238,10 +238,10 @@ struct CollisionAgentStorage {
     EntityTables entity_tables{indexes};
     HealthTable& health_table{entity_tables.health};
     AgentAccessor agents{indexes, health_table};
-    SingleAllocationCapitalEntityData capitals;
-    SingleAllocationFighterEntityData fighters;
-    SingleAllocationTurretEntityData turrets;
-    SingleAllocationSpinnerEntityData spinners;
+    CapitalEntityData capitals;
+    FighterEntityData fighters;
+    TurretEntityData turrets;
+    SpinnerEntityData spinners;
     std::vector<EntityUniqueId> player_ids;
     Transform3d player_transform;
     ml::Vector3d player_velocity{};

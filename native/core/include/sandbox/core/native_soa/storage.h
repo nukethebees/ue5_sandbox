@@ -2,6 +2,7 @@
 
 #include <sandbox/core/compact_vector_view.h>
 #include <sandbox/core/single_allocation/layout.h>
+#include <sandbox/core/single_allocation/operations.h>
 #include <sandbox/core/single_allocation/removal.h>
 #include <sandbox/core/single_allocation/view.h>
 
@@ -25,10 +26,6 @@
 
 #if NATIVE_SOA_MIMALLOC
 #include <sbx/memory.h>
-#endif
-
-#if defined(IOJ_WITH_TRACY)
-#include <sandbox/profiling/memory.h>
 #endif
 
 namespace ml::native_soa {
@@ -136,157 +133,8 @@ inline auto allocation_bytes(std::uint32_t const capacity, std::size_t const blo
     return result;
 }
 
-inline auto allocate(std::size_t const bytes, std::uint32_t const alignment) -> std::byte* {
-#if NATIVE_SOA_MIMALLOC
-    auto* const allocation{sbx::memory::allocate_aligned(bytes, alignment)};
-    if (allocation == nullptr) {
-        throw std::bad_alloc{};
-    }
-#else
-    auto* const allocation{::operator new(bytes, std::align_val_t{alignment})};
-#if defined(IOJ_WITH_TRACY)
-    ml::profiling::record_memory_allocation(
-        ml::profiling::MemoryDomain::NativeSoa, allocation, bytes);
-#endif
-#endif
-    // The byte array provides storage and starts implicit-lifetime leaf arrays without
-    // initialization.
-    return ::new (allocation) std::byte[bytes];
-}
-
-inline void free(std::byte* data, std::size_t alignment) noexcept {
-#if NATIVE_SOA_MIMALLOC
-    (void)alignment;
-    sbx::memory::free(data);
-#else
-#if defined(IOJ_WITH_TRACY)
-    ml::profiling::record_memory_free(ml::profiling::MemoryDomain::NativeSoa, data);
-#endif
-    ::operator delete(data, std::align_val_t{alignment});
-#endif
-}
-
-// Generated storage supplies the state and typed column operations.
-struct StorageOperations {
-    template <typename Self>
-    auto num(this Self const& self) noexcept -> std::uint32_t {
-        return self.num_;
-    }
-    template <typename Self>
-    auto capacity(this Self const& self) noexcept -> std::uint32_t {
-        return self.capacity_;
-    }
-    template <typename Self>
-    auto is_empty(this Self const& self) noexcept -> bool {
-        return self.num_ == 0;
-    }
-    template <typename Self>
-    auto allocated_bytes(this Self const& self) -> std::size_t {
-        return Self::layout_bytes(
-            static_cast<std::size_t>(self.capacity_ / Self::capacity_granularity));
-    }
-    template <typename Self>
-    void reserve(this Self& self, std::uint32_t const count) {
-        auto const requested{rounded_capacity(count, Self::capacity_block_bound)};
-        if (requested > self.capacity_) {
-            self.reallocate(requested);
-        }
-    }
-    template <typename Self>
-    void reset(this Self& self) noexcept {
-        self.num_ = 0;
-    }
-    template <typename Self>
-    void add_uninitialised(this Self& self, std::uint32_t const count) {
-        // Single-allocation leaves are restricted to implicit-lifetime types. Growth starts their
-        // lifetime without initialization; every new element must be written before it is read.
-        require(count <= Self::max_capacity - self.num_);
-        auto const new_num{self.num_ + count};
-        if (new_num > self.capacity_) {
-            self.reallocate(growth_capacity(new_num, self.capacity_, Self::capacity_block_bound));
-        }
-        self.num_ = new_num;
-    }
-    template <typename Self, typename Source>
-        requires (Self::template accepts_source<Source>)
-    void copy_elements(this Self& self,
-                       std::uint32_t const destination,
-                       Source const& source,
-                       std::uint32_t const offset,
-                       std::uint32_t const count) {
-        source.validate();
-        require(destination <= self.num_ && count <= self.num_ - destination &&
-                offset <= source.num() && count <= source.num() - offset);
-        if (count > 0) {
-            self.copy_columns_from(source, offset, destination, count);
-        }
-    }
-    template <typename Self, typename Source>
-        requires (Self::template accepts_source<Source>)
-    void copy_element(this Self& self,
-                      std::uint32_t const destination,
-                      Source const& source,
-                      std::uint32_t const offset) {
-        self.copy_elements(destination, source, offset, 1);
-    }
-    template <typename Self, typename Source>
-        requires (Self::template accepts_source<Source>)
-    auto append_from(this Self& self, Source const& source) -> std::uint32_t {
-        return self.append_from(source, 0, source.num());
-    }
-    template <typename Self, typename Source>
-        requires (Self::template accepts_source<Source>)
-    auto append_from(this Self& self,
-                     Source const& source,
-                     std::uint32_t const offset,
-                     std::uint32_t const count) -> std::uint32_t {
-        source.validate();
-        require(offset <= source.num() && count <= source.num() - offset);
-        auto const first{self.num_};
-        require(count <= Self::max_capacity - first);
-        if (count == 0) {
-            return first;
-        }
-        auto const new_num{first + count};
-        if (new_num > self.capacity_) {
-            self.reallocate(growth_capacity(new_num, self.capacity_, Self::capacity_block_bound));
-        }
-        self.append_columns(source, offset, first, count);
-        self.num_ = new_num;
-        return first;
-    }
-    template <typename Self>
-    void remove_at_swap(this Self& self, std::span<std::uint32_t const> indices) {
-        self.swap_remove_indices(indices);
-        self.num_ -= static_cast<std::uint32_t>(indices.size());
-    }
-    template <typename Self>
-    void add_defaulted(this Self& self, std::uint32_t const count) {
-        auto const first{self.num_};
-        self.add_uninitialised(count);
-        if (count > 0) {
-            self.default_construct_columns(first, count);
-        }
-    }
-    template <typename Self>
-    void set_num(this Self& self, std::uint32_t const count) {
-        if (count > self.num_) {
-            self.add_defaulted(count - self.num_);
-        } else {
-            self.num_ = count;
-        }
-    }
-    template <typename Self>
-    void remove_at_swap(this Self& self, std::uint32_t const index, std::uint32_t const count) {
-        require(index <= self.num_ && count <= self.num_ - index);
-        auto const tail{self.num_ - index - count};
-        auto const move_count{std::min(count, tail)};
-        if (move_count > 0) {
-            self.swap_remove_columns(index, self.num_ - move_count, move_count);
-        }
-        self.num_ -= count;
-    }
-};
+using StorageOperations = soa_storage_detail::
+    StorageOperations<std::uint32_t, require, rounded_capacity, growth_capacity>;
 
 }
 

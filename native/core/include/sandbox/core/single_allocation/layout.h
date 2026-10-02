@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
+#include <memory>
 #include <type_traits>
 
 namespace ml::single_allocation_layout {
@@ -144,6 +145,12 @@ struct LayoutCursor {
         auto const byte_offset{column.offset_after(next_offset_)};
         next_offset_ = column.next_offset_at(byte_offset, blocks_);
         return byte_offset;
+    }
+
+    template <typename Byte, typename T>
+    auto column_pointer(Byte* const data, ColumnLayout<T> const& column) noexcept {
+        using Pointer = std::conditional_t<std::is_const_v<Byte>, T const*, T*>;
+        return std::launder(reinterpret_cast<Pointer>(data + advance(column)));
     }
   private:
     std::size_t blocks_{};

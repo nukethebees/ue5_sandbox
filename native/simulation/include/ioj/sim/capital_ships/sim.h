@@ -35,7 +35,7 @@ namespace ioj::sim::capital_ships {
 class PhaseInterface;
 
 struct Sim {
-    using EntityStorage = SingleAllocationCapitalEntityData;
+    using EntityStorage = CapitalEntityData;
 
     Sim(EntityLedger& ledger,
         CombatEvents const& combat_events,
@@ -124,9 +124,9 @@ struct Sim {
     /* **************************************** */
     // Ship spawning
     /* **************************************** */
-    auto register_ships(SingleAllocationLevelCapitalSpawnEvents::ConstView spawn_data)
+    auto register_ships(LevelCapitalSpawnEvents::ConstView spawn_data)
         -> std::vector<EntityUniqueId>;
-    void spawn_ships(SingleAllocationLevelCapitalSpawnEvents::ConstView spawn_data);
+    void spawn_ships(LevelCapitalSpawnEvents::ConstView spawn_data);
 
     /* **************************************** */
     // Entity data

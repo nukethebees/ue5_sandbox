@@ -56,7 +56,7 @@ Sim::Sim(SimClock const& clock,
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Sim::register_turrets(SingleAllocationLevelTurretSpawnEvents::ConstView const spawn_data)
+auto Sim::register_turrets(LevelTurretSpawnEvents::ConstView const spawn_data)
     -> std::vector<EntityUniqueId> {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::register_turrets");
     agents_.indexes().assert_preparation_mutation_allowed();

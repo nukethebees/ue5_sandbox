@@ -23,10 +23,9 @@ LevelSpawnManager::LevelSpawnManager(capital_ships::Sim& capital_ships,
     , turrets_{turrets}
     , spinners_{spinners} {}
 
-void LevelSpawnManager::initialise(
-    std::uint32_t const entity_count,
-    SingleAllocationLevelCapitalSpawnEvents::ConstView const capital_payloads,
-    SingleAllocationLevelTurretSpawnEvents::ConstView const turret_payloads) {
+void LevelSpawnManager::initialise(std::uint32_t const entity_count,
+                                   LevelCapitalSpawnEvents::ConstView const capital_payloads,
+                                   LevelTurretSpawnEvents::ConstView const turret_payloads) {
     capital_payloads_ = capital_payloads;
     turret_payloads_ = turret_payloads;
     entity_ids_.clear();
@@ -39,10 +38,9 @@ void LevelSpawnManager::set_entity_id(std::uint32_t const entity_index, EntityUn
     entity_ids_[entity_index] = id;
 }
 
-void LevelSpawnManager::spawn_initial(
-    SingleAllocationLevelCapitalSpawnEvents::ConstView const capital_events,
-    SingleAllocationLevelTurretSpawnEvents::ConstView const turret_events,
-    SingleAllocationLevelSpinnerSpawnEvents::ConstView const spinner_events) {
+void LevelSpawnManager::spawn_initial(LevelCapitalSpawnEvents::ConstView const capital_events,
+                                      LevelTurretSpawnEvents::ConstView const turret_events,
+                                      LevelSpinnerSpawnEvents::ConstView const spinner_events) {
     if (capital_events.num() > 0) {
         spawn_capitals(capital_events);
     }
@@ -89,8 +87,7 @@ void LevelSpawnManager::spawn(LevelSpawnGroupsConstView const groups) {
     }
 }
 
-void LevelSpawnManager::spawn_capitals(
-    SingleAllocationLevelCapitalSpawnEvents::ConstView const events) {
+void LevelSpawnManager::spawn_capitals(LevelCapitalSpawnEvents::ConstView const events) {
     auto const count{events.num()};
     auto const ids{capital_ships_.register_ships(events)};
     spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
@@ -101,8 +98,7 @@ void LevelSpawnManager::spawn_capitals(
     }
 }
 
-void LevelSpawnManager::resolve_capital_targets(
-    SingleAllocationLevelCapitalSpawnEvents::ConstView const events) {
+void LevelSpawnManager::resolve_capital_targets(LevelCapitalSpawnEvents::ConstView const events) {
     auto const count{events.num()};
     auto const entity_indices{events.entity_indices()};
     auto const target_entity_indices{events.target_entity_indices()};
@@ -116,8 +112,7 @@ void LevelSpawnManager::resolve_capital_targets(
     }
 }
 
-void LevelSpawnManager::spawn_turrets(
-    SingleAllocationLevelTurretSpawnEvents::ConstView const events) {
+void LevelSpawnManager::spawn_turrets(LevelTurretSpawnEvents::ConstView const events) {
     auto const ids{turrets_.register_turrets(events)};
     spawned_ids_this_tick_.insert(spawned_ids_this_tick_.end(), ids.begin(), ids.end());
     auto const count{events.num()};
@@ -128,8 +123,7 @@ void LevelSpawnManager::spawn_turrets(
     }
 }
 
-void LevelSpawnManager::spawn_spinners(
-    SingleAllocationLevelSpinnerSpawnEvents::ConstView const events) {
+void LevelSpawnManager::spawn_spinners(LevelSpinnerSpawnEvents::ConstView const events) {
     auto const locations{events.view_locations()};
     auto const ids{
         spinners_.spawn_instances(locations, events.yaws(), events.initial_fire_point_indices())};

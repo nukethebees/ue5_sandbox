@@ -25,7 +25,7 @@ namespace ioj::sim::spinners {
 class PhaseInterface;
 
 struct Sim {
-    using EntityStorage = SingleAllocationSpinnerEntityData;
+    using EntityStorage = SpinnerEntityData;
 
     Sim(SimClock const& clock, EntityLedger& ledger, lasers::Sim& laser_simulation) noexcept;
     Sim(Sim const&) = delete;

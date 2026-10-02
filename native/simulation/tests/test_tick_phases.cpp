@@ -190,7 +190,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
 
-    lasers::SingleAllocationLaserSpawnRequests shot{};
+    lasers::LaserSpawnRequests shot{};
     tests::add_laser_spawn(shot,
                            {{290.f, 100.f, 0.f}},
                            {},
@@ -286,7 +286,7 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndQueriesAdvanceAfterw
     auto const& laser_sim{simulation.get_lasers()};
     simulation.get_player_ship_commands()->set_right_input(1.f);
 
-    lasers::SingleAllocationLaserSpawnRequests shot{};
+    lasers::LaserSpawnRequests shot{};
     tests::add_laser_spawn(shot,
                            {{290.f, 100.f, 0.f}},
                            {},
@@ -352,7 +352,7 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
         data, {{40.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
-    lasers::SingleAllocationLaserSpawnRequests shot;
+    lasers::LaserSpawnRequests shot;
     tests::add_laser_spawn(
         shot, {}, {}, {}, 25, 1000.f, 50.f, {}, {Team::Green, EntityType::PlayerShip});
     LevelSimTestAccess::queue_laser_spawns(simulation, shot.get_const_view());
