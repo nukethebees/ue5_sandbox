@@ -7,6 +7,7 @@ target_sources(native-simulation-tests PRIVATE
   flight_model_config_tests.cpp
   scalar_response_tests.cpp
   test_tick_phases.cpp
+  test_thinking_phase_invariants.cpp
   test_level_simulation.cpp
   test_player_flight_models.cpp
   test_overlap_handler.cpp

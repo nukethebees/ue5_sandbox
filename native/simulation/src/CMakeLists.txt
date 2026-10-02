@@ -124,6 +124,7 @@ target_sources(native-simulation PRIVATE
   laser_frame_output.cpp
   level_event_types.cpp
   level_sim.cpp
+  level_sim_invariants.cpp
   level_telemetry_manager.cpp
   mission_manager.cpp
   overlap_handler.cpp

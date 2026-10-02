@@ -28,6 +28,7 @@
 
 #include <sandbox/core/frame_memory_resource.h>
 
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -166,6 +167,28 @@ struct LevelSim {
     void begin_subsystems();
     void initialise_events(CompiledLevelEvents events);
     void rebuild_agent_indexes();
+
+#ifndef NDEBUG
+    /* **************************************** */
+    // Phase invariants
+    /* **************************************** */
+    struct ThinkingEntityState {
+        EntityUniqueId id;
+        std::uint32_t row{};
+        HealthIndex health_index;
+        Health health{};
+        Team team{};
+        std::array<double, 3> location{};
+        std::array<double, 4> orientation{};
+
+        auto operator==(ThinkingEntityState const&) const -> bool = default;
+    };
+
+    auto check_phase_invariants(std::span<ThinkingEntityState const> state) const -> bool;
+    auto capture_thinking_phase_state() const -> std::vector<ThinkingEntityState>;
+    auto check_thinking_entry_invariants(std::span<ThinkingEntityState const> state) const -> bool;
+    auto check_thinking_phase_invariants(std::span<ThinkingEntityState const> state) const -> bool;
+#endif
 
     /* **************************************** */
     // Telemetry

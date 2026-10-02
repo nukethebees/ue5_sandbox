@@ -376,6 +376,11 @@ void LevelSim::advance(time_type const dt) {
             query_manager::ScratchScope query_scratch{query_manager_, scratch};
             clock_.phase = SimulationPhase::Thinking;
 
+#ifndef NDEBUG
+            auto const thinking_state{capture_thinking_phase_state()};
+            assert(check_phase_invariants(thinking_state));
+#endif
+
             // Run decision phases
             turrets_phase_.think(tick_period, scratch);
             capital_ships_phase_.think(tick_period, scratch);
@@ -392,6 +397,8 @@ void LevelSim::advance(time_type const dt) {
             fighters_phase_.generate_fire_commands(scratch);
             turrets_phase_.generate_fire_commands(scratch);
             spinners_phase_.generate_fire_commands();
+
+            assert(check_phase_invariants(thinking_state));
         }
 
         /* -------------------------------------------------------------------------------- */

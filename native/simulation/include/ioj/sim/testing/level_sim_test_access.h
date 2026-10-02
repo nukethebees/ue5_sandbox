@@ -7,6 +7,29 @@
 namespace ioj::sim {
 
 struct LevelSimTestAccess {
+#ifndef NDEBUG
+    static auto capture_thinking_phase_state(LevelSim& simulation) {
+        simulation.clock_.phase = SimulationPhase::Thinking;
+        return simulation.capture_thinking_phase_state();
+    }
+    static auto check_thinking_entry_invariants(
+        LevelSim const& simulation, std::span<LevelSim::ThinkingEntityState const> state) -> bool {
+        return simulation.check_thinking_entry_invariants(state);
+    }
+    static auto check_thinking_phase_invariants(
+        LevelSim const& simulation, std::span<LevelSim::ThinkingEntityState const> state) -> bool {
+        return simulation.check_phase_invariants(state);
+    }
+    static auto capital_entities(LevelSim& simulation) -> CapitalEntityData::View {
+        return simulation.capital_ships_simulation_.entities.get_view();
+    }
+    static void set_capital_health(LevelSim& simulation, std::uint32_t row, Health health) {
+        auto const data{capital_entities(simulation)};
+        simulation.entity_tables_.health.get_view(data.health_indices(), data.entity_ids())
+            .health(row) = health;
+    }
+#endif
+
     static auto player_simulation(LevelSim& simulation) -> player::Sim& {
         return simulation.player_ship_simulation_.value();
     }
