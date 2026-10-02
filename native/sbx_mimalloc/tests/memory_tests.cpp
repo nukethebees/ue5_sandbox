@@ -1,4 +1,5 @@
 #include <sbx/memory.h>
+#include <sbx/memory_resource.h>
 
 #include <array>
 #include <atomic>
@@ -9,6 +10,30 @@
 #include <thread>
 
 namespace {
+auto pmr_resource_obeys_allocation_contract() -> bool {
+    auto* const resource{sbx::memory::mimalloc_resource()};
+    if (resource != sbx::memory::mimalloc_resource() || !resource->is_equal(*resource) ||
+        resource->is_equal(*std::pmr::new_delete_resource())) {
+        return false;
+    }
+    for (auto const alignment : {std::size_t{1}, std::size_t{64}, std::size_t{256}}) {
+        auto* const allocation{resource->allocate(1024, alignment)};
+        auto const valid{sbx::memory::owns(allocation) &&
+                         reinterpret_cast<std::uintptr_t>(allocation) % alignment == 0};
+        resource->deallocate(allocation, 1024, alignment);
+        if (!valid) {
+            return false;
+        }
+    }
+    try {
+        auto* const allocation{resource->allocate(std::numeric_limits<std::size_t>::max(), 64)};
+        resource->deallocate(allocation, std::numeric_limits<std::size_t>::max(), 64);
+    } catch (std::bad_alloc const&) {
+        return true;
+    }
+    return false;
+}
+
 auto allocations_are_aligned_and_owned() -> bool {
     for (auto const alignment : {std::size_t{16}, std::size_t{64}, std::size_t{256}}) {
         auto* const allocation{sbx::memory::allocate_aligned(1024, alignment)};
@@ -97,6 +122,9 @@ auto independent_worker_threads_succeed() -> bool {
 }
 
 auto main() -> int {
+    if (!pmr_resource_obeys_allocation_contract()) {
+        return 6;
+    }
     if (!allocations_are_aligned_and_owned()) {
         return 1;
     }

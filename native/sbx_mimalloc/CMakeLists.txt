@@ -83,6 +83,7 @@ add_library(sandbox::mimalloc ALIAS sbx-mimalloc)
 set_target_properties(sbx-mimalloc PROPERTIES UNITY_BUILD OFF)
 target_sources(sbx-mimalloc PRIVATE
   src/memory.cpp
+  src/memory_resource.cpp
   $<TARGET_OBJECTS:sbx-mimalloc-implementation>
 )
 target_include_directories(sbx-mimalloc
