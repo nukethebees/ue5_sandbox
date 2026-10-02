@@ -181,19 +181,14 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
     auto [min_coord,
           max_coord]{grid.to_cell_coord_bounds(origin - radius_extent, origin + radius_extent)};
     auto const dimensions{grid.get_grid_dims()};
-    auto const max_grid_coord{
-        collision::CellCoord{dimensions.x - 1, dimensions.y - 1, dimensions.z - 1}};
+    auto const max_grid_coord{dimensions - 1};
     if (max_coord.x < 0 || max_coord.y < 0 || max_coord.z < 0 || min_coord.x > max_grid_coord.x ||
         min_coord.y > max_grid_coord.y || min_coord.z > max_grid_coord.z) {
         return 0;
     }
 
-    min_coord.x = std::max(min_coord.x, 0);
-    min_coord.y = std::max(min_coord.y, 0);
-    min_coord.z = std::max(min_coord.z, 0);
-    max_coord.x = std::min(max_coord.x, max_grid_coord.x);
-    max_coord.y = std::min(max_coord.y, max_grid_coord.y);
-    max_coord.z = std::min(max_coord.z, max_grid_coord.z);
+    min_coord = min_coord.component_max({});
+    max_coord = max_coord.component_min(max_grid_coord);
 
     auto& entity_stamps{buffers.range_query_entity_stamps};
     auto const counts{agents.entity_counts()};
