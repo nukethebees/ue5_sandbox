@@ -12,6 +12,7 @@ target_sources(native-simulation-tests PRIVATE
   test_overlap_handler.cpp
   test_attack_distance_band.cpp
   test_entity_aabb_overlaps.cpp
+  test_unique_cell_membership.cpp
   test_fighter_live_cap.cpp
   test_fighter_target_refresh.cpp
   test_fighter_membership_refresh.cpp

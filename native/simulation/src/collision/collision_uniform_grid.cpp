@@ -321,6 +321,34 @@ auto CollisionUniformGrid::get_entity_world_bounds() const -> EntityCellData::Co
 /* **************************************** */
 // Spatial queries
 /* **************************************** */
+void CollisionUniformGrid::collect_unique_entities_in_cells(
+    std::span<CellCoord const> const cells, ml::FrameArray<EntityUniqueId>& out_entities) const {
+    SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::collect_unique_entities_in_cells");
+    out_entities.clear();
+
+    std::uint64_t membership_count{};
+    for (auto const cell : cells) {
+        membership_count += get_cell_entities(cell).size();
+    }
+    if (membership_count == 0) {
+        return;
+    }
+    if (!std::in_range<std::uint32_t>(membership_count)) {
+        throw std::length_error{"Cell membership exceeds the frame array size limit"};
+    }
+
+    // Reserve once because released frame allocations cannot be reused within the epoch.
+    out_entities.reserve(static_cast<std::uint32_t>(membership_count));
+    for (auto const cell : cells) {
+        for (auto const id : get_cell_entities(cell)) {
+            out_entities.add(id);
+        }
+    }
+
+    std::ranges::sort(out_entities.view());
+    auto const duplicates{std::ranges::unique(out_entities.view())};
+    out_entities.set_num(out_entities.num() - static_cast<std::uint32_t>(duplicates.size()));
+}
 auto CollisionUniformGrid::count_overlaps(WorldAABB const& query_bounds,
                                           EntityUniqueId const ignored_entity) const
     -> OverlapCounts {

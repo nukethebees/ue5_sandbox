@@ -111,6 +111,10 @@ struct SpatialQueryManager {
     /* **************************************** */
     // Scalar and entity queries
     /* **************************************** */
+    // Return unique membership from the last grid rebuild, ordered by entity ID.
+    void collect_unique_entities_in_cells(std::span<collision::CellCoord const> cells,
+                                          ml::FrameArray<EntityUniqueId>& out_entities) const;
+
     auto has_clear_line(Vector3f start_location,
                         Vector3f end_location,
                         EntityUniqueId ignored_entity = {}) const -> bool;

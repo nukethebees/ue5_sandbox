@@ -9,6 +9,8 @@
 #include <ioj/sim/line_trace_batch.h>
 #include <ioj/sim/trace_hits.h>
 
+#include <sandbox/core/frame_array.h>
+
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -83,6 +85,11 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // Spatial queries
     /* **************************************** */
+    // Replace output with unique grid members in ascending ID order. Cells must be in bounds;
+    // repeated cells are allowed. Membership reflects the last grid rebuild, not current health.
+    void collect_unique_entities_in_cells(std::span<CellCoord const> cells,
+                                          ml::FrameArray<EntityUniqueId>& out_entities) const;
+
     struct OverlapCounts {
         std::uint32_t entities{};
         std::uint32_t static_geometry{};

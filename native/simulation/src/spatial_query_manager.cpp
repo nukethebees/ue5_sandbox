@@ -425,6 +425,11 @@ void SpatialQueryManager::sweep_closest_aabbs(
 /* **************************************** */
 // Scalar and entity queries
 /* **************************************** */
+void SpatialQueryManager::collect_unique_entities_in_cells(
+    std::span<collision::CellCoord const> const cells,
+    ml::FrameArray<EntityUniqueId>& out_entities) const {
+    collision_system_.uniform_grid_.collect_unique_entities_in_cells(cells, out_entities);
+}
 auto SpatialQueryManager::has_clear_line(Vector3f const start_location,
                                          Vector3f const end_location,
                                          EntityUniqueId const ignored_entity) const -> bool {
