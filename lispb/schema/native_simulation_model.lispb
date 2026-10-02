@@ -187,6 +187,44 @@
     (member x int :initializer "")
     (member y int :initializer "")
     (member z int :initializer "")
+    (function operator+ CellCoord :const true :noexcept true :constexpr true :nodiscard true
+      :body ("return {x + other.x, y + other.y, z + other.z};")
+      (parameter other CellCoord))
+    (function operator- CellCoord :const true :noexcept true :constexpr true :nodiscard true
+      :body ("return {x - other.x, y - other.y, z - other.z};")
+      (parameter other CellCoord))
+    (function operator+= (type-ref CellCoord :suffix "&") :noexcept true :constexpr true
+      :body ("x += other.x;" "y += other.y;" "z += other.z;" "return *this;")
+      (parameter other CellCoord))
+    (function operator-= (type-ref CellCoord :suffix "&") :noexcept true :constexpr true
+      :body ("x -= other.x;" "y -= other.y;" "z -= other.z;" "return *this;")
+      (parameter other CellCoord))
+    (function operator+ CellCoord :const true :noexcept true :constexpr true :nodiscard true
+      :body ("return {x + offset, y + offset, z + offset};")
+      (parameter offset int))
+    (function operator- CellCoord :const true :noexcept true :constexpr true :nodiscard true
+      :body ("return {x - offset, y - offset, z - offset};")
+      (parameter offset int))
+    (function operator+= (type-ref CellCoord :suffix "&") :noexcept true :constexpr true
+      :body ("x += offset;" "y += offset;" "z += offset;" "return *this;")
+      (parameter offset int))
+    (function operator-= (type-ref CellCoord :suffix "&") :noexcept true :constexpr true
+      :body ("x -= offset;" "y -= offset;" "z -= offset;" "return *this;")
+      (parameter offset int))
+    (function component_min CellCoord :const true :noexcept true :constexpr true :nodiscard true
+      :body ("return {x < other.x ? x : other.x,"
+             "        y < other.y ? y : other.y,"
+             "        z < other.z ? z : other.z};")
+      (parameter other CellCoord))
+    (function component_max CellCoord :const true :noexcept true :constexpr true :nodiscard true
+      :body ("return {x > other.x ? x : other.x,"
+             "        y > other.y ? y : other.y,"
+             "        z > other.z ? z : other.z};")
+      (parameter other CellCoord))
+    (function clamped CellCoord :const true :noexcept true :constexpr true :nodiscard true
+      :body ("return component_max(minimum).component_min(maximum);")
+      (parameter minimum CellCoord)
+      (parameter maximum CellCoord))
     (function operator[] (type-ref int :suffix "&") :noexcept true
       (parameter index std::size_t))
     (function operator[] int :const true :noexcept true

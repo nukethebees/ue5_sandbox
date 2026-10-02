@@ -1087,7 +1087,9 @@ void validate_record(RecordSchema const& record, TypeRegistry const& types) {
     std::set<std::string> signatures;
     for (auto const& function : record.functions) {
         auto const context{"Record '" + record.name + "' function '" + function.name + "'"};
-        if (function.name != "operator[]") {
+        if (function.name != "operator[]" && function.name != "operator+" &&
+            function.name != "operator-" && function.name != "operator+=" &&
+            function.name != "operator-=") {
             require_identifier(function.name, context);
         }
         if (function.name == record.name ||
