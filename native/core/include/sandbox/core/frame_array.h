@@ -143,7 +143,7 @@ class FrameArray {
     auto end() noexcept -> T* { return size_ == 0 ? data_ : data_ + size_; }
     auto end() const noexcept -> T const* { return size_ == 0 ? data_ : data_ + size_; }
   private:
-    inline static constexpr auto max_supported_size{static_cast<std::uint32_t>(std::min(
+    static constexpr auto max_supported_size{static_cast<std::uint32_t>(std::min(
         {static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()),
          std::numeric_limits<std::size_t>::max() / sizeof(T),
          static_cast<std::size_t>(std::numeric_limits<std::ptrdiff_t>::max()) / sizeof(T)}))};
