@@ -289,11 +289,7 @@ auto GridTraversal::create(GridGeometry const geometry,
     }
 
     auto clamp_cell = [geometry](Vec3f const point) {
-        auto result{to_cell_coord(geometry, point)};
-        result.x = std::clamp(result.x, 0, geometry.dimensions.x - 1);
-        result.y = std::clamp(result.y, 0, geometry.dimensions.y - 1);
-        result.z = std::clamp(result.z, 0, geometry.dimensions.z - 1);
-        return result;
+        return to_cell_coord(geometry, point).clamped({}, geometry.dimensions - 1);
     };
 
     result.current_cell_ = clamp_cell(clipped_start);

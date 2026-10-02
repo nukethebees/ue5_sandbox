@@ -501,8 +501,7 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTracesConstView const traces,
     }
 
     auto const geometry{geometry_};
-    auto const max_cell_coord{
-        CellCoord{geometry.dimensions.x - 1, geometry.dimensions.y - 1, geometry.dimensions.z - 1}};
+    auto const max_cell_coord{geometry.dimensions - 1};
     auto const static_aabbs{static_storage_.aabbs().get_const_view()};
     auto const entity_aabbs{entity_storage_.aabbs.get_const_view()};
     auto const static_min_xs{static_aabbs.min_xs()};
@@ -669,17 +668,8 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTracesConstView const traces,
                 }
             }};
             auto const get_padded_cell_range{[&](CellCoord const centre_cell) {
-                auto min_cell{CellCoord{centre_cell.x - cell_padding.x,
-                                        centre_cell.y - cell_padding.y,
-                                        centre_cell.z - cell_padding.z}};
-                auto max_cell{CellCoord{centre_cell.x + cell_padding.x,
-                                        centre_cell.y + cell_padding.y,
-                                        centre_cell.z + cell_padding.z}};
-                for (std::int32_t axis{}; axis < 3; ++axis) {
-                    min_cell[axis] = std::max(min_cell[axis], 0);
-                    max_cell[axis] = std::min(max_cell[axis], max_cell_coord[axis]);
-                }
-                return CellCoordBounds{min_cell, max_cell};
+                return CellCoordBounds{(centre_cell - cell_padding).component_max({}),
+                                       (centre_cell + cell_padding).component_min(max_cell_coord)};
             }};
 
             auto [previous_min_cell, previous_max_cell]{get_padded_cell_range(current_cell)};
