@@ -29,7 +29,8 @@ class CollisionSystem {
     /* **************************************** */
     // Construction and setup
     /* **************************************** */
-    explicit CollisionSystem(AgentAccessor const& agents) noexcept;
+    explicit CollisionSystem(AgentAccessor const& agents,
+                             std::pmr::memory_resource* resource) noexcept;
     CollisionSystem(CollisionSystem const&) = delete;
     CollisionSystem(CollisionSystem&&) = delete;
     auto operator=(CollisionSystem const&) -> CollisionSystem& = delete;
@@ -50,8 +51,12 @@ class CollisionSystem {
     auto detect_overlaps(std::span<EntityUniqueId const> overlap_candidates,
                          ml::FrameScratch& scratch) -> DetectedOverlapsView;
     void collect_overlaps_for_candidates(std::span<EntityUniqueId const> overlap_candidates,
+                                         EntityEntityOverlaps& entity_overlaps,
+                                         EntityStaticOverlaps& static_overlaps,
                                          ml::FrameScratch& scratch);
-    void finalize_overlaps(ml::FrameScratch& scratch);
+    void finalize_overlaps(EntityEntityOverlaps& entity_overlaps,
+                           EntityStaticOverlaps& static_overlaps,
+                           ml::FrameScratch& scratch);
 
     /* **************************************** */
     // Events and bounds
@@ -70,9 +75,6 @@ class CollisionSystem {
     CollisionUniformGrid uniform_grid_;
 
     EntityAABBs entity_aabbs_{};
-    EntityEntityOverlaps entity_entity_overlaps_;
-    EntityStaticOverlaps entity_static_overlaps_;
-
     AABBOverlapEventStorage overlap_event_storage_;
 };
 }

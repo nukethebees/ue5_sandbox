@@ -132,14 +132,15 @@ TEST(NativeSimulation, LevelSimFrameMemoryUsesAndReturnsGameMemoryBlock) {
         auto const stats{memory.get_stats()};
         EXPECT_EQ(stats.live_block_count, 1);
         EXPECT_EQ(stats.live_block_bytes, frame_capacity);
-        EXPECT_EQ(stats.claimed_bytes, frame_capacity);
+        EXPECT_GT(stats.claimed_bytes, frame_capacity)
+            << "Query pool bookkeeping also uses persistent game memory";
         EXPECT_EQ(simulation.get_frame_memory_stats().capacity_bytes, frame_capacity);
     }
 
     auto const released{memory.get_stats()};
     EXPECT_EQ(released.live_block_count, 0);
     EXPECT_EQ(released.live_block_bytes, 0u);
-    EXPECT_EQ(released.reusable_range_count, 1);
+    EXPECT_GE(released.reusable_range_count, 1);
 
     auto reused{memory.acquire_block(frame_capacity, ml::FrameMemoryResource::backing_alignment)};
     EXPECT_EQ(reused.data(), backing_address);

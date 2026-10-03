@@ -91,7 +91,7 @@ LevelSim::LevelSim(LevelSimInitData data)
                                                       ml::FrameMemoryResource::backing_alignment)}
     , frame_memory_{std::span<std::byte>{frame_memory_block_.data(),
                                          frame_memory_block_.size_bytes()}}
-    , query_manager_{agent_accessor_}
+    , query_manager_{agent_accessor_, &game_memory_->memory_resource()}
     , overlap_handler_{combat_events_, agent_accessor_, data.overlap_response}
     , lasers_simulation_{clock_, combat_events_, query_manager_}
     , lasers_phase_{lasers_simulation_}
@@ -373,6 +373,7 @@ void LevelSim::advance(time_type const dt) {
             auto& scratch{scratch_scope.scratch()};
 
             SANDBOX_PROFILE_SCOPE("Thinking");
+            query_manager::ScratchScope query_scratch{query_manager_, scratch};
             clock_.phase = SimulationPhase::Thinking;
 
             // Run decision phases
@@ -403,6 +404,7 @@ void LevelSim::advance(time_type const dt) {
             // Simulate projectiles
             {
                 ml::FrameScratchScope scratch_scope{frame_memory_};
+                query_manager::ScratchScope query_scratch{query_manager_, scratch_scope.scratch()};
                 lasers_phase_.simulate(tick_period, scratch_scope.scratch());
             }
 

@@ -11,12 +11,10 @@
     (member ys array float)
     (member zs array float))
   (struct LineTraces
-    :storage vector
-    :operations (reserve set-num add-uninitialised add-defaulted remove-at-swap copy-element)
+    :operations (all)
     (member starts nested @native_vectors_3f :nested-schema Vectors3f)
     (member ends nested @native_vectors_3f :nested-schema Vectors3f)
-    (function reset void :noexcept true
-      :body ("ml::native_soa::vector_storage_ops::reset(*this);"))))
+    (single-allocation LineTraces)))
 
 (module native_trace_hits
   :header "native/simulation/include/ioj/sim/trace_hits.h"
@@ -32,11 +30,9 @@
     (member ys array float)
     (member zs array float))
   (struct TraceHits
-    :storage vector
-    :operations (reserve set-num add-uninitialised add-defaulted remove-at-swap copy-element)
+    :operations (all)
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member entities array @native_unique_id)
     (member static_geometry_indices array @native_static_geometry_index)
     (member hits array @native_trace_hit)
-    (function reset void :noexcept true
-      :body ("ml::native_soa::vector_storage_ops::reset(*this);"))))
+    (single-allocation TraceHits)))

@@ -6,7 +6,7 @@
 #include <ioj/sim/collision_grid_static_storage.h>
 #include <ioj/sim/collision_types.h>
 #include <ioj/sim/entity_world_bounds.h>
-#include <ioj/sim/line_traces.h>
+#include <ioj/sim/line_trace_batch.h>
 #include <ioj/sim/trace_hits.h>
 
 #include <cassert>
@@ -96,13 +96,13 @@ struct CollisionUniformGrid {
                         EntityUniqueId ignored_entity,
                         std::span<EntityUniqueId> out_entities,
                         std::span<StaticGeometryIndex> out_static_geometry_indices) const;
-    void trace_aabbs(LineTracesConstView const& traces, TraceHitsView const& hits) const;
-    void trace_aabbs(LineTracesConstView const& traces,
-                     TraceHitsView const& hits,
+    void trace_aabbs(LineTraceBatch const& traces, TraceHits::View const& hits) const;
+    void trace_aabbs(LineTraceBatch const& traces,
+                     TraceHits::View const& hits,
                      std::span<EntityUniqueId const> ignored_entities) const;
-    void sweep_aabbs(LineTracesConstView const& centre_paths,
+    void sweep_aabbs(LineTraceBatch const& centre_paths,
                      Vector3f moving_half_extent,
-                     TraceHitsView const& hits,
+                     TraceHits::View const& hits,
                      std::span<EntityUniqueId const> ignored_entities = {},
                      TraceEntityFilter entity_filter = TraceEntityFilter::None) const;
   private:
@@ -132,8 +132,8 @@ struct CollisionUniformGrid {
     };
 
     template <TraceKind Kind, IgnoredEntityMode IgnoredMode, TraceEntityFilter EntityFilter>
-    void trace_aabbs_impl(LineTracesConstView traces,
-                          TraceHitsView hits,
+    void trace_aabbs_impl(LineTraceBatch traces,
+                          TraceHits::View hits,
                           std::span<EntityUniqueId const> ignored_entities,
                           Vector3f moving_half_extent) const;
 

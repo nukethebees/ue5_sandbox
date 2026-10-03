@@ -6,492 +6,569 @@
 #include "ioj/sim/collision_types.h"
 #include "ioj/sim/entity_unique_id.h"
 
-#include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/native_soa/vector_storage_ops.h"
 
-#include <utility>
+#include <memory_resource>
 
 namespace ioj::sim::collision {
-struct EntityEntityOverlapsView;
-struct EntityEntityOverlapsConstView;
-struct EntityEntityOverlapsConstView {
-    using View = EntityEntityOverlapsView;
-    using ConstView = EntityEntityOverlapsConstView;
+
+struct EntityEntityOverlapsSingleView;
+struct EntityEntityOverlapsSingleConstView;
+struct EntityEntityOverlapsSingleLayout {
     using size_type = std::uint32_t;
-    std::span<EntityUniqueId const> first_entities;
-    std::span<EntityUniqueId const> second_entities;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(first_entities.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(first_entities);
-        fn(second_entities);
+    using byte_size_type = std::size_t;
+
+    inline static constexpr size_type capacity_granularity{
+        ml::native_soa::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    inline static constexpr ColLayout<EntityUniqueId> FirstEntitiesColumn{LayoutStart};
+    inline static constexpr ColLayout<EntityUniqueId> SecondEntitiesColumn{FirstEntitiesColumn};
+
+    inline static constexpr byte_size_type allocation_alignment{
+        SecondEntitiesColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::native_soa::capacity_block_bound(SecondEntitiesColumn)};
+    inline static constexpr size_type max_capacity{
+        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : SecondEntitiesColumn.data_end(blocks);
     }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const
-        -> EntityEntityOverlapsConstView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
-        return {
-            first_entities.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-            second_entities.subspan(static_cast<std::size_t>(offset),
-                                    static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> EntityEntityOverlapsConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> EntityEntityOverlapsConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            first_entities,
-            second_entities,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> EntityEntityOverlapsConstView {
-        return slice(0, count);
-    }
-    auto right(size_type const count) const -> EntityEntityOverlapsConstView {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-};
-struct EntityEntityOverlapsView {
-    using View = EntityEntityOverlapsView;
-    using ConstView = EntityEntityOverlapsConstView;
-    using size_type = std::uint32_t;
-    std::span<EntityUniqueId> first_entities;
-    std::span<EntityUniqueId> second_entities;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(first_entities.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(first_entities);
-        fn(second_entities);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> EntityEntityOverlapsView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
-        return {
-            first_entities.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-            second_entities.subspan(static_cast<std::size_t>(offset),
-                                    static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> EntityEntityOverlapsView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> EntityEntityOverlapsView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            first_entities,
-            second_entities,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> EntityEntityOverlapsView { return slice(0, count); }
-    auto right(size_type const count) const -> EntityEntityOverlapsView {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
-             EntityUniqueId const new_first_entities,
-             EntityUniqueId const new_second_entities) const {
-        ml::native_soa::require(index < num());
-        first_entities[static_cast<std::size_t>(index)] = new_first_entities;
-        second_entities[static_cast<std::size_t>(index)] = new_second_entities;
-    }
-};
-struct EntityEntityOverlaps {
-    using View = EntityEntityOverlapsView;
-    using ConstView = EntityEntityOverlapsConstView;
-    using size_type = std::uint32_t;
-    ml::native_soa::Vector<EntityUniqueId> first_entities;
-    ml::native_soa::Vector<EntityUniqueId> second_entities;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(first_entities.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(first_entities);
-        fn(second_entities);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(first_entities);
-        fn(second_entities);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reset() { ml::native_soa::vector_storage_ops::reset(*this); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             EntityUniqueId const new_first_entities,
-             EntityUniqueId const new_second_entities) {
-        get_view().set(index, new_first_entities, new_second_entities);
-    }
-    auto add(EntityUniqueId const new_first_entities, EntityUniqueId const new_second_entities)
-        -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            first_entities.emplace_back(new_first_entities);
-            second_entities.emplace_back(new_second_entities);
-        });
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
-        }
-        {
-            auto const address{ml::address_cast(source.first_entities.data())};
-            auto const begin{ml::address_cast(first_entities.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + first_entities.size() * sizeof(EntityUniqueId));
-        }
-        {
-            auto const address{ml::address_cast(source.second_entities.data())};
-            auto const begin{ml::address_cast(second_entities.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + second_entities.size() * sizeof(EntityUniqueId));
-        }
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            first_entities.insert(first_entities.end(),
-                                  source.first_entities.data(),
-                                  source.first_entities.data() + count);
-            second_entities.insert(second_entities.end(),
-                                   source.second_entities.data(),
-                                   source.second_entities.data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            first_entities,
-            second_entities,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            first_entities,
-            second_entities,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        first_entities[static_cast<std::size_t>(dst_index)] =
-            other.first_entities[static_cast<std::size_t>(src_index)];
-        second_entities[static_cast<std::size_t>(dst_index)] =
-            other.second_entities[static_cast<std::size_t>(src_index)];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
-    }
+    static_assert(max_capacity >= capacity_granularity);
 };
 
-struct EntityStaticOverlapsView;
-struct EntityStaticOverlapsConstView;
-struct EntityStaticOverlapsConstView {
-    using View = EntityStaticOverlapsView;
-    using ConstView = EntityStaticOverlapsConstView;
-    using size_type = std::uint32_t;
-    std::span<EntityUniqueId const> entities;
-    std::span<ioj::sim::collision::StaticGeometryIndex const> static_geometry_indices;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entities.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entities);
-        fn(static_geometry_indices);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const
-        -> EntityStaticOverlapsConstView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
+template <bool Const>
+struct EntityEntityOverlapsSingleViewImpl : ml::native_soa::CompactViewState<Const> {
+    using Base = ml::native_soa::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = EntityEntityOverlapsSingleView;
+    using ConstView = EntityEntityOverlapsSingleConstView;
+    EntityEntityOverlapsSingleViewImpl() = default;
+    template <bool Enabled = Const>
+    EntityEntityOverlapsSingleViewImpl(EntityEntityOverlapsSingleViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::offset_;
+    using Base::state_;
+  public:
+    auto first_entities() const -> std::span<Element<EntityUniqueId>> {
         return {
-            entities.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            static_geometry_indices.subspan(static_cast<std::size_t>(offset),
-                                            static_cast<std::size_t>(count)),
-        };
+            this->template column_data<EntityUniqueId>(
+                EntityEntityOverlapsSingleLayout::FirstEntitiesColumn.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
     }
-    auto get_view() const -> EntityStaticOverlapsConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> EntityStaticOverlapsConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
+    auto second_entities() const -> std::span<Element<EntityUniqueId>> {
         return {
-            entities,
-            static_geometry_indices,
-        };
+            this->template column_data<EntityUniqueId>(
+                EntityEntityOverlapsSingleLayout::SecondEntitiesColumn.offset(capacity_blocks())),
+            static_cast<std::size_t>(count_)};
     }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> EntityStaticOverlapsConstView {
-        return slice(0, count);
-    }
-    auto right(size_type const count) const -> EntityStaticOverlapsConstView {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(first_entities());
+        func(second_entities());
     }
 };
-struct EntityStaticOverlapsView {
-    using View = EntityStaticOverlapsView;
-    using ConstView = EntityStaticOverlapsConstView;
-    using size_type = std::uint32_t;
-    std::span<EntityUniqueId> entities;
-    std::span<ioj::sim::collision::StaticGeometryIndex> static_geometry_indices;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entities.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entities);
-        fn(static_geometry_indices);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> EntityStaticOverlapsView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
-        return {
-            entities.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            static_geometry_indices.subspan(static_cast<std::size_t>(offset),
-                                            static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> EntityStaticOverlapsView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> EntityStaticOverlapsView {
+struct EntityEntityOverlapsSingleConstView : EntityEntityOverlapsSingleViewImpl<true> {
+    using Base = EntityEntityOverlapsSingleViewImpl<true>;
+    using Base::Base;
+    using View = EntityEntityOverlapsSingleView;
+    using ConstView = EntityEntityOverlapsSingleConstView;
+    EntityEntityOverlapsSingleConstView() = default;
+    EntityEntityOverlapsSingleConstView(EntityEntityOverlapsSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto get_const_view() const -> ConstView {
-        return {
-            entities,
-            static_geometry_indices,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> EntityStaticOverlapsView { return slice(0, count); }
-    auto right(size_type const count) const -> EntityStaticOverlapsView {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
-             EntityUniqueId const new_entities,
-             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices) const {
-        ml::native_soa::require(index < num());
-        entities[static_cast<std::size_t>(index)] = new_entities;
-        static_geometry_indices[static_cast<std::size_t>(index)] = new_static_geometry_indices;
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<EntityEntityOverlapsSingleConstView>());
+struct EntityEntityOverlapsSingleView : EntityEntityOverlapsSingleViewImpl<false> {
+    using Base = EntityEntityOverlapsSingleViewImpl<false>;
+    using Base::Base;
+    using View = EntityEntityOverlapsSingleView;
+    using ConstView = EntityEntityOverlapsSingleConstView;
+    EntityEntityOverlapsSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
     }
 };
-struct EntityStaticOverlaps {
-    using View = EntityStaticOverlapsView;
-    using ConstView = EntityStaticOverlapsConstView;
-    using size_type = std::uint32_t;
-    ml::native_soa::Vector<EntityUniqueId> entities;
-    ml::native_soa::Vector<ioj::sim::collision::StaticGeometryIndex> static_geometry_indices;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entities.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(entities);
-        fn(static_geometry_indices);
+static_assert(ml::soa_storage_detail::validate_compact_view<EntityEntityOverlapsSingleView>());
+inline EntityEntityOverlapsSingleConstView::EntityEntityOverlapsSingleConstView(
+    EntityEntityOverlapsSingleView const& other)
+    : Base{other} {}
+struct EntityEntityOverlaps
+    : protected ml::native_soa::StorageState
+    , private ml::native_soa::StorageOperations {
+    using Operations = ml::native_soa::StorageOperations;
+    using Operations::add_defaulted;
+    using Operations::add_uninitialised;
+    using Operations::allocated_bytes;
+    using Operations::append_from;
+    using Operations::capacity;
+    using Operations::copy_element;
+    using Operations::copy_elements;
+    using Operations::get_const_view;
+    using Operations::get_view;
+    using Operations::is_empty;
+    using Operations::left;
+    using Operations::num;
+    using Operations::remove_at_swap;
+    using Operations::reserve;
+    using Operations::reset;
+    using Operations::right;
+    using Operations::set_num;
+    using Operations::slice;
+    using Layout = EntityEntityOverlapsSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
     }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entities);
-        fn(static_geometry_indices);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reset() { ml::native_soa::vector_storage_ops::reset(*this); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             EntityUniqueId const new_entities,
-             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices) {
-        get_view().set(index, new_entities, new_static_geometry_indices);
-    }
-    auto add(EntityUniqueId const new_entities,
-             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices)
-        -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            entities.emplace_back(new_entities);
-            static_geometry_indices.emplace_back(new_static_geometry_indices);
-        });
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
-        }
+    using View = EntityEntityOverlapsSingleView;
+    using ConstView = EntityEntityOverlapsSingleConstView;
+    template <typename Source>
+    inline static constexpr bool accepts_source = requires(Source const& source) {
+        { source.num() } -> std::convertible_to<size_type>;
+        source.validate();
         {
-            auto const address{ml::address_cast(source.entities.data())};
-            auto const begin{ml::address_cast(entities.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + entities.size() * sizeof(EntityUniqueId));
-        }
+            ml::native_soa::source_data(source.first_entities())
+        } -> std::convertible_to<EntityUniqueId const*>;
         {
-            auto const address{ml::address_cast(source.static_geometry_indices.data())};
-            auto const begin{ml::address_cast(static_geometry_indices.data())};
-            ml::native_soa::require(
-                address < begin ||
-                address >= begin + static_geometry_indices.size() *
-                                       sizeof(ioj::sim::collision::StaticGeometryIndex));
+            ml::native_soa::source_data(source.second_entities())
+        } -> std::convertible_to<EntityUniqueId const*>;
+    };
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    EntityEntityOverlaps() noexcept
+        : EntityEntityOverlaps{std::pmr::get_default_resource()} {}
+    explicit EntityEntityOverlaps(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        ml::native_soa::require(resource != nullptr);
+    }
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~EntityEntityOverlaps() { Operations::release_storage(*this); }
+    EntityEntityOverlaps(EntityEntityOverlaps const&) = delete;
+    auto operator=(EntityEntityOverlaps const&) -> EntityEntityOverlaps& = delete;
+    EntityEntityOverlaps(EntityEntityOverlaps&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(EntityEntityOverlaps&& other) -> EntityEntityOverlaps& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<EntityUniqueId>* first_entities{};
+        Element<EntityUniqueId>* second_entities{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (first_entities == nullptr) {
+                return {};
+            }
+            return {first_entities + offset, second_entities + offset};
         }
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            entities.insert(entities.end(), source.entities.data(), source.entities.data() + count);
-            static_geometry_indices.insert(static_geometry_indices.end(),
-                                           source.static_geometry_indices.data(),
-                                           source.static_geometry_indices.data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            entities,
-            static_geometry_indices,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            entities,
-            static_geometry_indices,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        entities[static_cast<std::size_t>(dst_index)] =
-            other.entities[static_cast<std::size_t>(src_index)];
-        static_geometry_indices[static_cast<std::size_t>(dst_index)] =
-            other.static_geometry_indices[static_cast<std::size_t>(src_index)];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
         }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
     }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    std::pmr::memory_resource* resource_{};
+    friend Operations;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ml::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::FirstEntitiesColumn),
+                cursor.column_pointer(data, Layout::SecondEntitiesColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        ml::native_soa::default_construct_n(columns.first_entities, count);
+        ml::native_soa::default_construct_n(columns.second_entities, count);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        ml::native_soa::copy_n(
+            columns.first_entities + index, columns.first_entities + source, move_count);
+        ml::native_soa::copy_n(
+            columns.second_entities + index, columns.second_entities + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_,
+            indices,
+            ml::native_soa::require,
+            [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count) {
+        auto const destination{get_data(first)};
+        ml::native_soa::copy_n(destination.first_entities,
+                               ml::native_soa::source_data(source.first_entities()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.second_entities,
+                               ml::native_soa::source_data(source.second_entities()) + source_first,
+                               count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count) {
+        auto const destination{get_data(first)};
+        ml::native_soa::move_n(destination.first_entities,
+                               ml::native_soa::source_data(source.first_entities()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.second_entities,
+                               ml::native_soa::source_data(source.second_entities()) + source_first,
+                               count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        ml::native_soa::copy_n(destination.first_entities, source.first_entities, num_);
+        ml::native_soa::copy_n(destination.second_entities, source.second_entities, num_);
+    }
+  public:
 };
 
+struct EntityStaticOverlapsSingleView;
+struct EntityStaticOverlapsSingleConstView;
+struct EntityStaticOverlapsSingleLayout {
+    using size_type = std::uint32_t;
+    using byte_size_type = std::size_t;
+
+    inline static constexpr size_type capacity_granularity{
+        ml::native_soa::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    inline static constexpr ColLayout<EntityUniqueId> EntitiesColumn{LayoutStart};
+    inline static constexpr ColLayout<ioj::sim::collision::StaticGeometryIndex>
+        StaticGeometryIndicesColumn{EntitiesColumn};
+
+    inline static constexpr byte_size_type allocation_alignment{
+        StaticGeometryIndicesColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::native_soa::capacity_block_bound(StaticGeometryIndicesColumn)};
+    inline static constexpr size_type max_capacity{
+        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : StaticGeometryIndicesColumn.data_end(blocks);
+    }
+    static_assert(max_capacity >= capacity_granularity);
+};
+
+template <bool Const>
+struct EntityStaticOverlapsSingleViewImpl : ml::native_soa::CompactViewState<Const> {
+    using Base = ml::native_soa::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = EntityStaticOverlapsSingleView;
+    using ConstView = EntityStaticOverlapsSingleConstView;
+    EntityStaticOverlapsSingleViewImpl() = default;
+    template <bool Enabled = Const>
+    EntityStaticOverlapsSingleViewImpl(EntityStaticOverlapsSingleViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::offset_;
+    using Base::state_;
+  public:
+    auto entities() const -> std::span<Element<EntityUniqueId>> {
+        return {this->template column_data<EntityUniqueId>(
+                    EntityStaticOverlapsSingleLayout::EntitiesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto static_geometry_indices() const
+        -> std::span<Element<ioj::sim::collision::StaticGeometryIndex>> {
+        return {this->template column_data<ioj::sim::collision::StaticGeometryIndex>(
+                    EntityStaticOverlapsSingleLayout::StaticGeometryIndicesColumn.offset(
+                        capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(entities());
+        func(static_geometry_indices());
+    }
+};
+struct EntityStaticOverlapsSingleConstView : EntityStaticOverlapsSingleViewImpl<true> {
+    using Base = EntityStaticOverlapsSingleViewImpl<true>;
+    using Base::Base;
+    using View = EntityStaticOverlapsSingleView;
+    using ConstView = EntityStaticOverlapsSingleConstView;
+    EntityStaticOverlapsSingleConstView() = default;
+    EntityStaticOverlapsSingleConstView(EntityStaticOverlapsSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<EntityStaticOverlapsSingleConstView>());
+struct EntityStaticOverlapsSingleView : EntityStaticOverlapsSingleViewImpl<false> {
+    using Base = EntityStaticOverlapsSingleViewImpl<false>;
+    using Base::Base;
+    using View = EntityStaticOverlapsSingleView;
+    using ConstView = EntityStaticOverlapsSingleConstView;
+    EntityStaticOverlapsSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<EntityStaticOverlapsSingleView>());
+inline EntityStaticOverlapsSingleConstView::EntityStaticOverlapsSingleConstView(
+    EntityStaticOverlapsSingleView const& other)
+    : Base{other} {}
+struct EntityStaticOverlaps
+    : protected ml::native_soa::StorageState
+    , private ml::native_soa::StorageOperations {
+    using Operations = ml::native_soa::StorageOperations;
+    using Operations::add_defaulted;
+    using Operations::add_uninitialised;
+    using Operations::allocated_bytes;
+    using Operations::append_from;
+    using Operations::capacity;
+    using Operations::copy_element;
+    using Operations::copy_elements;
+    using Operations::get_const_view;
+    using Operations::get_view;
+    using Operations::is_empty;
+    using Operations::left;
+    using Operations::num;
+    using Operations::remove_at_swap;
+    using Operations::reserve;
+    using Operations::reset;
+    using Operations::right;
+    using Operations::set_num;
+    using Operations::slice;
+    using Layout = EntityStaticOverlapsSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+    using View = EntityStaticOverlapsSingleView;
+    using ConstView = EntityStaticOverlapsSingleConstView;
+    template <typename Source>
+    inline static constexpr bool accepts_source = requires(Source const& source) {
+        { source.num() } -> std::convertible_to<size_type>;
+        source.validate();
+        {
+            ml::native_soa::source_data(source.entities())
+        } -> std::convertible_to<EntityUniqueId const*>;
+        {
+            ml::native_soa::source_data(source.static_geometry_indices())
+        } -> std::convertible_to<ioj::sim::collision::StaticGeometryIndex const*>;
+    };
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    EntityStaticOverlaps() noexcept
+        : EntityStaticOverlaps{std::pmr::get_default_resource()} {}
+    explicit EntityStaticOverlaps(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        ml::native_soa::require(resource != nullptr);
+    }
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~EntityStaticOverlaps() { Operations::release_storage(*this); }
+    EntityStaticOverlaps(EntityStaticOverlaps const&) = delete;
+    auto operator=(EntityStaticOverlaps const&) -> EntityStaticOverlaps& = delete;
+    EntityStaticOverlaps(EntityStaticOverlaps&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(EntityStaticOverlaps&& other) -> EntityStaticOverlaps& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<EntityUniqueId>* entities{};
+        Element<ioj::sim::collision::StaticGeometryIndex>* static_geometry_indices{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (entities == nullptr) {
+                return {};
+            }
+            return {entities + offset, static_geometry_indices + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    std::pmr::memory_resource* resource_{};
+    friend Operations;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ml::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::EntitiesColumn),
+                cursor.column_pointer(data, Layout::StaticGeometryIndicesColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        ml::native_soa::default_construct_n(columns.entities, count);
+        ml::native_soa::default_construct_n(columns.static_geometry_indices, count);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        ml::native_soa::copy_n(columns.entities + index, columns.entities + source, move_count);
+        ml::native_soa::copy_n(columns.static_geometry_indices + index,
+                               columns.static_geometry_indices + source,
+                               move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_,
+            indices,
+            ml::native_soa::require,
+            [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count) {
+        auto const destination{get_data(first)};
+        ml::native_soa::copy_n(destination.entities,
+                               ml::native_soa::source_data(source.entities()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.static_geometry_indices,
+                               ml::native_soa::source_data(source.static_geometry_indices()) +
+                                   source_first,
+                               count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count) {
+        auto const destination{get_data(first)};
+        ml::native_soa::move_n(destination.entities,
+                               ml::native_soa::source_data(source.entities()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.static_geometry_indices,
+                               ml::native_soa::source_data(source.static_geometry_indices()) +
+                                   source_first,
+                               count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        ml::native_soa::copy_n(destination.entities, source.entities, num_);
+        ml::native_soa::copy_n(
+            destination.static_geometry_indices, source.static_geometry_indices, num_);
+    }
+  public:
+};
 } // namespace ioj::sim::collision

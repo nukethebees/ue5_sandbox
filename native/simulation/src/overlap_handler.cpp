@@ -16,22 +16,25 @@ OverlapHandler::OverlapHandler(CombatEvents& events,
 }
 
 void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps) {
-    overlaps.entity_entity_overlaps.validate_array_sizes();
-    overlaps.entity_static_overlaps.validate_array_sizes();
+    overlaps.entity_entity_overlaps.validate();
+    overlaps.entity_static_overlaps.validate();
 
     damage_events_.reset();
     damage_events_.reserve(overlaps.entity_entity_overlaps.num() * 2 +
                            overlaps.entity_static_overlaps.num());
 
     auto const entity_pair_count{overlaps.entity_entity_overlaps.num()};
+    auto const first_entities{overlaps.entity_entity_overlaps.first_entities()};
+    auto const second_entities{overlaps.entity_entity_overlaps.second_entities()};
     for (std::uint32_t index{}; index < entity_pair_count; ++index) {
-        append_damage(overlaps.entity_entity_overlaps.first_entities[index]);
-        append_damage(overlaps.entity_entity_overlaps.second_entities[index]);
+        append_damage(first_entities[index]);
+        append_damage(second_entities[index]);
     }
 
     auto const static_overlap_count{overlaps.entity_static_overlaps.num()};
+    auto const static_entities{overlaps.entity_static_overlaps.entities()};
     for (std::uint32_t index{}; index < static_overlap_count; ++index) {
-        append_damage(overlaps.entity_static_overlaps.entities[index]);
+        append_damage(static_entities[index]);
     }
 
     if (!damage_events_.is_empty()) {

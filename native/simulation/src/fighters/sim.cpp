@@ -9,13 +9,13 @@
 #include <ioj/sim/fighter_diagnostics.h>
 #include <ioj/sim/fighter_frame_spawn_queue.h>
 #include <ioj/sim/frame_laser_spawn_requests.h>
-#include <ioj/sim/frame_trace_hits.h>
 #include <ioj/sim/frame_vectors3f.h>
 #include <ioj/sim/laser_source.h>
 #include <ioj/sim/lasers/frame_scratch.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/rotator_math.h>
 #include <ioj/sim/spatial_query_manager.h>
+#include <ioj/sim/trace_hits.h>
 #include <ioj/sim/vector_operations.h>
 
 #include <sandbox/core/countdown.h>
@@ -898,11 +898,12 @@ void Sim::scan_preferred_navigation(NavigationScratch& scratch,
     auto const n_direct_traces{scratch.trace_fighter_indices.num()};
     if (n_direct_traces > 0) {
         execute_navigation_sweeps(scratch, clearance);
+        auto const hit_flags{scratch.trace_hits.get_const_view().hits()};
 
         for (std::uint32_t index{}; index < n_direct_traces; ++index) {
             auto const fighter_index{scratch.trace_fighter_indices[index]};
             auto const element{static_cast<std::size_t>(fighter_index)};
-            if (scratch.line_of_sight_results[index] == 0 || scratch.trace_hits.hits[index] != 0) {
+            if (scratch.line_of_sight_results[index] == 0 || hit_flags[index] != 0) {
                 scratch.blocked_fighter_indices.add(fighter_index);
                 clear_scan_counts[element] = 0;
                 continue;
@@ -933,7 +934,7 @@ void Sim::scan_alternative_navigation(NavigationScratch& scratch,
     scratch.line_of_sight_starts.clear();
     scratch.line_of_sight_ends.clear();
     scratch.line_of_sight_results.clear();
-    scratch.trace_hits.clear();
+    scratch.trace_hits.reset();
 
     auto const count{scratch.blocked_fighter_indices.num() * n_avoidance_choices};
     scratch.line_of_sight_starts.reserve(count);
@@ -1006,8 +1007,13 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
     auto const locations{data.view_locations()};
     auto const speeds{data.speeds()};
     auto const choices{data.avoidance_choice_indices()};
-    auto const hits{scratch.trace_hits.hits.view()};
-    auto const hit_locations{scratch.trace_hits.locations.get_const_view()};
+    auto const trace_results{scratch.trace_hits.get_const_view()};
+    auto const hits{trace_results.hits()};
+    auto const hit_entities{trace_results.entities()};
+    auto const hit_static_indices{trace_results.static_geometry_indices()};
+    auto const hit_location_columns{trace_results.view_locations()};
+    Vectors3fConstView const hit_locations{
+        hit_location_columns.xs(), hit_location_columns.ys(), hit_location_columns.zs()};
     auto const trace_ends{scratch.line_of_sight_ends.get_const_view()};
     auto const entity_ids{data.entity_ids()};
     auto const destinations{data.view_desired_move_locations()};
@@ -1052,18 +1058,17 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
                 risk_tiers[fighter_index]));
             for (std::uint32_t trace_index{candidate_begin}; trace_index < candidate_end;
                  ++trace_index) {
-                ml::log_error(
-                    std::format("[FighterStop] choice={} end={} inWorld={} hit={} "
-                                "blockerId={} staticIndex={} hitDistance={:.2f}",
-                                scratch.trace_choice_indices[trace_index],
-                                diagnostic_detail::vector_string(trace_ends[trace_index]),
-                                scratch.line_of_sight_results[trace_index],
-                                scratch.trace_hits.hits[trace_index],
-                                scratch.trace_hits.entities[trace_index].raw_value(),
-                                scratch.trace_hits.static_geometry_indices[trace_index],
-                                scratch.trace_hits.hits[trace_index]
-                                    ? HMM_LenV3(fighter_location - hit_locations[trace_index])
-                                    : -1.f));
+                ml::log_error(std::format(
+                    "[FighterStop] choice={} end={} inWorld={} hit={} "
+                    "blockerId={} staticIndex={} hitDistance={:.2f}",
+                    scratch.trace_choice_indices[trace_index],
+                    diagnostic_detail::vector_string(trace_ends[trace_index]),
+                    scratch.line_of_sight_results[trace_index],
+                    hits[trace_index],
+                    hit_entities[trace_index].raw_value(),
+                    hit_static_indices[trace_index],
+                    hits[trace_index] ? HMM_LenV3(fighter_location - hit_locations[trace_index])
+                                      : -1.f));
             }
         }
     }

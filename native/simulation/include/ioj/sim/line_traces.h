@@ -4,226 +4,521 @@
 #pragma once
 
 #include "ioj/sim/vector_types.h"
-#include "ioj/sim/vectors3f.h"
 
-#include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/native_soa/vector_storage_ops.h"
 
-#include <utility>
+#include <memory_resource>
 
 namespace ioj::sim {
-struct LineTracesView;
-struct LineTracesConstView;
-struct LineTracesConstView {
-    using View = LineTracesView;
-    using ConstView = LineTracesConstView;
+
+struct LineTracesSingleView;
+struct LineTracesSingleConstView;
+struct LineTracesSingleLayout {
     using size_type = std::uint32_t;
-    Vectors3fConstView starts;
-    Vectors3fConstView ends;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(starts.num()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(starts.xs());
-        fn(starts.ys());
-        fn(starts.zs());
-        fn(ends.xs());
-        fn(ends.ys());
-        fn(ends.zs());
+    using byte_size_type = std::size_t;
+
+    inline static constexpr size_type capacity_granularity{
+        ml::native_soa::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    inline static constexpr ColLayout<float> StartsXsColumn{LayoutStart};
+    inline static constexpr ColLayout<float> StartsYsColumn{StartsXsColumn};
+    inline static constexpr ColLayout<float> StartsZsColumn{StartsYsColumn};
+    inline static constexpr ColLayout<float> EndsXsColumn{StartsZsColumn};
+    inline static constexpr ColLayout<float> EndsYsColumn{EndsXsColumn};
+    inline static constexpr ColLayout<float> EndsZsColumn{EndsYsColumn};
+
+    inline static constexpr byte_size_type allocation_alignment{EndsZsColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::native_soa::capacity_block_bound(EndsZsColumn)};
+    inline static constexpr size_type max_capacity{
+        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : EndsZsColumn.data_end(blocks);
     }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> LineTracesConstView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
-        return {
-            starts.slice(offset, count),
-            ends.slice(offset, count),
-        };
-    }
-    auto get_view() const -> LineTracesConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> LineTracesConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            starts.get_const_view(),
-            ends.get_const_view(),
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> LineTracesConstView { return slice(0, count); }
-    auto right(size_type const count) const -> LineTracesConstView {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-};
-struct LineTracesView {
-    using View = LineTracesView;
-    using ConstView = LineTracesConstView;
-    using size_type = std::uint32_t;
-    Vectors3fView starts;
-    Vectors3fView ends;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(starts.num()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(starts.xs());
-        fn(starts.ys());
-        fn(starts.zs());
-        fn(ends.xs());
-        fn(ends.ys());
-        fn(ends.zs());
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> LineTracesView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
-        return {
-            starts.slice(offset, count),
-            ends.slice(offset, count),
-        };
-    }
-    auto get_view() const -> LineTracesView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> LineTracesView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            starts.get_const_view(),
-            ends.get_const_view(),
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> LineTracesView { return slice(0, count); }
-    auto right(size_type const count) const -> LineTracesView {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-    void set(size_type const index, Vector3f const new_starts, Vector3f const new_ends) const {
-        ml::native_soa::require(index < num());
-        starts.set(index, new_starts);
-        ends.set(index, new_ends);
-    }
-};
-struct LineTraces {
-    using View = LineTracesView;
-    using ConstView = LineTracesConstView;
-    using size_type = std::uint32_t;
-    Vectors3f starts;
-    Vectors3f ends;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(starts.xs.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(starts.xs);
-        fn(starts.ys);
-        fn(starts.zs);
-        fn(ends.xs);
-        fn(ends.ys);
-        fn(ends.zs);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(starts.xs);
-        fn(starts.ys);
-        fn(starts.zs);
-        fn(ends.xs);
-        fn(ends.ys);
-        fn(ends.zs);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index, Vector3f const new_starts, Vector3f const new_ends) {
-        get_view().set(index, new_starts, new_ends);
-    }
-    auto add(Vector3f const new_starts, Vector3f const new_ends) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            starts.add(new_starts);
-            ends.add(new_ends);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            starts.get_view(),
-            ends.get_view(),
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            starts.get_view(),
-            ends.get_view(),
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        starts.copy_element(dst_index, other.starts, src_index);
-        ends.copy_element(dst_index, other.ends, src_index);
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
-    }
-    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
+    static_assert(max_capacity >= capacity_granularity);
 };
 
+struct LineTracesSingleView_starts;
+struct LineTracesSingleConstView_starts;
+template <bool Const>
+struct LineTracesSingleView_startsImpl : ml::native_soa::CompactViewState<Const> {
+    using Base = ml::native_soa::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = LineTracesSingleView_starts;
+    using ConstView = LineTracesSingleConstView_starts;
+    LineTracesSingleView_startsImpl() = default;
+    template <bool Enabled = Const>
+    LineTracesSingleView_startsImpl(LineTracesSingleView_startsImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::offset_;
+    using Base::state_;
+  public:
+    auto xs() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    LineTracesSingleLayout::StartsXsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto ys() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    LineTracesSingleLayout::StartsYsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto zs() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    LineTracesSingleLayout::StartsZsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(xs());
+        func(ys());
+        func(zs());
+    }
+};
+struct LineTracesSingleConstView_starts : LineTracesSingleView_startsImpl<true> {
+    using Base = LineTracesSingleView_startsImpl<true>;
+    using Base::Base;
+    using View = LineTracesSingleView_starts;
+    using ConstView = LineTracesSingleConstView_starts;
+    LineTracesSingleConstView_starts() = default;
+    LineTracesSingleConstView_starts(LineTracesSingleView_starts const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return HMM_V3(xs()[index], ys()[index], zs()[index]);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<LineTracesSingleConstView_starts>());
+struct LineTracesSingleView_starts : LineTracesSingleView_startsImpl<false> {
+    using Base = LineTracesSingleView_startsImpl<false>;
+    using Base::Base;
+    using View = LineTracesSingleView_starts;
+    using ConstView = LineTracesSingleConstView_starts;
+    LineTracesSingleView_starts() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return HMM_V3(xs()[index], ys()[index], zs()[index]);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<LineTracesSingleView_starts>());
+inline LineTracesSingleConstView_starts::LineTracesSingleConstView_starts(
+    LineTracesSingleView_starts const& other)
+    : Base{other} {}
+struct LineTracesSingleView_ends;
+struct LineTracesSingleConstView_ends;
+template <bool Const>
+struct LineTracesSingleView_endsImpl : ml::native_soa::CompactViewState<Const> {
+    using Base = ml::native_soa::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = LineTracesSingleView_ends;
+    using ConstView = LineTracesSingleConstView_ends;
+    LineTracesSingleView_endsImpl() = default;
+    template <bool Enabled = Const>
+    LineTracesSingleView_endsImpl(LineTracesSingleView_endsImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::offset_;
+    using Base::state_;
+  public:
+    auto xs() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    LineTracesSingleLayout::EndsXsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto ys() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    LineTracesSingleLayout::EndsYsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto zs() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    LineTracesSingleLayout::EndsZsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(xs());
+        func(ys());
+        func(zs());
+    }
+};
+struct LineTracesSingleConstView_ends : LineTracesSingleView_endsImpl<true> {
+    using Base = LineTracesSingleView_endsImpl<true>;
+    using Base::Base;
+    using View = LineTracesSingleView_ends;
+    using ConstView = LineTracesSingleConstView_ends;
+    LineTracesSingleConstView_ends() = default;
+    LineTracesSingleConstView_ends(LineTracesSingleView_ends const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return HMM_V3(xs()[index], ys()[index], zs()[index]);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<LineTracesSingleConstView_ends>());
+struct LineTracesSingleView_ends : LineTracesSingleView_endsImpl<false> {
+    using Base = LineTracesSingleView_endsImpl<false>;
+    using Base::Base;
+    using View = LineTracesSingleView_ends;
+    using ConstView = LineTracesSingleConstView_ends;
+    LineTracesSingleView_ends() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return HMM_V3(xs()[index], ys()[index], zs()[index]);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<LineTracesSingleView_ends>());
+inline LineTracesSingleConstView_ends::LineTracesSingleConstView_ends(
+    LineTracesSingleView_ends const& other)
+    : Base{other} {}
+template <bool Const>
+struct LineTracesSingleViewImpl : ml::native_soa::CompactViewState<Const> {
+    using Base = ml::native_soa::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = LineTracesSingleView;
+    using ConstView = LineTracesSingleConstView;
+    LineTracesSingleViewImpl() = default;
+    template <bool Enabled = Const>
+    LineTracesSingleViewImpl(LineTracesSingleViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::offset_;
+    using Base::state_;
+  public:
+    auto view_starts() const -> std::
+        conditional_t<Const, LineTracesSingleConstView_starts, LineTracesSingleView_starts> {
+        return {state_, offset_, count_};
+    }
+    auto view_ends() const
+        -> std::conditional_t<Const, LineTracesSingleConstView_ends, LineTracesSingleView_ends> {
+        return {state_, offset_, count_};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(view_starts().xs());
+        func(view_starts().ys());
+        func(view_starts().zs());
+        func(view_ends().xs());
+        func(view_ends().ys());
+        func(view_ends().zs());
+    }
+};
+struct LineTracesSingleConstView : LineTracesSingleViewImpl<true> {
+    using Base = LineTracesSingleViewImpl<true>;
+    using Base::Base;
+    using View = LineTracesSingleView;
+    using ConstView = LineTracesSingleConstView;
+    LineTracesSingleConstView() = default;
+    LineTracesSingleConstView(LineTracesSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<LineTracesSingleConstView>());
+struct LineTracesSingleView : LineTracesSingleViewImpl<false> {
+    using Base = LineTracesSingleViewImpl<false>;
+    using Base::Base;
+    using View = LineTracesSingleView;
+    using ConstView = LineTracesSingleConstView;
+    LineTracesSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<LineTracesSingleView>());
+inline LineTracesSingleConstView::LineTracesSingleConstView(LineTracesSingleView const& other)
+    : Base{other} {}
+struct LineTraces
+    : protected ml::native_soa::StorageState
+    , private ml::native_soa::StorageOperations {
+    using Operations = ml::native_soa::StorageOperations;
+    using Operations::add_defaulted;
+    using Operations::add_uninitialised;
+    using Operations::allocated_bytes;
+    using Operations::append_from;
+    using Operations::capacity;
+    using Operations::copy_element;
+    using Operations::copy_elements;
+    using Operations::get_const_view;
+    using Operations::get_view;
+    using Operations::is_empty;
+    using Operations::left;
+    using Operations::num;
+    using Operations::remove_at_swap;
+    using Operations::reserve;
+    using Operations::reset;
+    using Operations::right;
+    using Operations::set_num;
+    using Operations::slice;
+    using Layout = LineTracesSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+    using View = LineTracesSingleView;
+    using ConstView = LineTracesSingleConstView;
+    template <typename Source>
+    inline static constexpr bool accepts_source = requires(Source const& source) {
+        { source.num() } -> std::convertible_to<size_type>;
+        source.validate();
+        {
+            ml::native_soa::source_data(source.view_starts().xs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_starts().ys())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_starts().zs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_ends().xs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_ends().ys())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_ends().zs())
+        } -> std::convertible_to<float const*>;
+    };
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    LineTraces() noexcept
+        : LineTraces{std::pmr::get_default_resource()} {}
+    explicit LineTraces(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        ml::native_soa::require(resource != nullptr);
+    }
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~LineTraces() { Operations::release_storage(*this); }
+    LineTraces(LineTraces const&) = delete;
+    auto operator=(LineTraces const&) -> LineTraces& = delete;
+    LineTraces(LineTraces&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(LineTraces&& other) -> LineTraces& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<float>* starts_xs{};
+        Element<float>* starts_ys{};
+        Element<float>* starts_zs{};
+        Element<float>* ends_xs{};
+        Element<float>* ends_ys{};
+        Element<float>* ends_zs{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (starts_xs == nullptr) {
+                return {};
+            }
+            return {starts_xs + offset,
+                    starts_ys + offset,
+                    starts_zs + offset,
+                    ends_xs + offset,
+                    ends_ys + offset,
+                    ends_zs + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    std::pmr::memory_resource* resource_{};
+    friend Operations;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ml::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::StartsXsColumn),
+                cursor.column_pointer(data, Layout::StartsYsColumn),
+                cursor.column_pointer(data, Layout::StartsZsColumn),
+                cursor.column_pointer(data, Layout::EndsXsColumn),
+                cursor.column_pointer(data, Layout::EndsYsColumn),
+                cursor.column_pointer(data, Layout::EndsZsColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        ml::native_soa::default_construct_n(columns.starts_xs, count);
+        ml::native_soa::default_construct_n(columns.starts_ys, count);
+        ml::native_soa::default_construct_n(columns.starts_zs, count);
+        ml::native_soa::default_construct_n(columns.ends_xs, count);
+        ml::native_soa::default_construct_n(columns.ends_ys, count);
+        ml::native_soa::default_construct_n(columns.ends_zs, count);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        ml::native_soa::copy_n(columns.starts_xs + index, columns.starts_xs + source, move_count);
+        ml::native_soa::copy_n(columns.starts_ys + index, columns.starts_ys + source, move_count);
+        ml::native_soa::copy_n(columns.starts_zs + index, columns.starts_zs + source, move_count);
+        ml::native_soa::copy_n(columns.ends_xs + index, columns.ends_xs + source, move_count);
+        ml::native_soa::copy_n(columns.ends_ys + index, columns.ends_ys + source, move_count);
+        ml::native_soa::copy_n(columns.ends_zs + index, columns.ends_zs + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_,
+            indices,
+            ml::native_soa::require,
+            [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count) {
+        auto const destination{get_data(first)};
+        ml::native_soa::copy_n(destination.starts_xs,
+                               ml::native_soa::source_data(source.view_starts().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::copy_n(destination.starts_ys,
+                               ml::native_soa::source_data(source.view_starts().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::copy_n(destination.starts_zs,
+                               ml::native_soa::source_data(source.view_starts().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::copy_n(destination.ends_xs,
+                               ml::native_soa::source_data(source.view_ends().xs()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.ends_ys,
+                               ml::native_soa::source_data(source.view_ends().ys()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.ends_zs,
+                               ml::native_soa::source_data(source.view_ends().zs()) + source_first,
+                               count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count) {
+        auto const destination{get_data(first)};
+        ml::native_soa::move_n(destination.starts_xs,
+                               ml::native_soa::source_data(source.view_starts().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.starts_ys,
+                               ml::native_soa::source_data(source.view_starts().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.starts_zs,
+                               ml::native_soa::source_data(source.view_starts().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.ends_xs,
+                               ml::native_soa::source_data(source.view_ends().xs()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.ends_ys,
+                               ml::native_soa::source_data(source.view_ends().ys()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.ends_zs,
+                               ml::native_soa::source_data(source.view_ends().zs()) + source_first,
+                               count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        ml::native_soa::copy_n(destination.starts_xs, source.starts_xs, num_);
+        ml::native_soa::copy_n(destination.starts_ys, source.starts_ys, num_);
+        ml::native_soa::copy_n(destination.starts_zs, source.starts_zs, num_);
+        ml::native_soa::copy_n(destination.ends_xs, source.ends_xs, num_);
+        ml::native_soa::copy_n(destination.ends_ys, source.ends_ys, num_);
+        ml::native_soa::copy_n(destination.ends_zs, source.ends_zs, num_);
+    }
+  public:
+};
 } // namespace ioj::sim

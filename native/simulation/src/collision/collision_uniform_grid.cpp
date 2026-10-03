@@ -2,8 +2,10 @@
 
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/collision_grid.h>
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_cell_data_operations.h>
 #include <ioj/sim/health.h>
+#include <ioj/sim/line_trace_batch.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/rotator_math.h>
 #include <ioj/sim/trace_hits.h>
@@ -436,21 +438,21 @@ auto CollisionUniformGrid::overlaps_impl(
     }
     return result;
 }
-void CollisionUniformGrid::trace_aabbs(LineTracesConstView const& traces,
-                                       TraceHitsView const& hits) const {
+void CollisionUniformGrid::trace_aabbs(LineTraceBatch const& traces,
+                                       TraceHits::View const& hits) const {
     trace_aabbs_impl<TraceKind::Line, IgnoredEntityMode::None, TraceEntityFilter::None>(
         traces, hits, {}, {});
 }
 void CollisionUniformGrid::trace_aabbs(
-    LineTracesConstView const& traces,
-    TraceHitsView const& hits,
+    LineTraceBatch const& traces,
+    TraceHits::View const& hits,
     std::span<EntityUniqueId const> const ignored_entities) const {
     trace_aabbs_impl<TraceKind::Line, IgnoredEntityMode::PerTrace, TraceEntityFilter::None>(
         traces, hits, ignored_entities, {});
 }
-void CollisionUniformGrid::sweep_aabbs(LineTracesConstView const& centre_paths,
+void CollisionUniformGrid::sweep_aabbs(LineTraceBatch const& centre_paths,
                                        Vector3f const moving_half_extent,
-                                       TraceHitsView const& hits,
+                                       TraceHits::View const& hits,
                                        std::span<EntityUniqueId const> const ignored_entities,
                                        TraceEntityFilter const entity_filter) const {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::sweep_aabbs");
@@ -487,14 +489,14 @@ void CollisionUniformGrid::sweep_aabbs(LineTracesConstView const& centre_paths,
 template <CollisionUniformGrid::TraceKind Kind,
           CollisionUniformGrid::IgnoredEntityMode IgnoredMode,
           TraceEntityFilter EntityFilter>
-void CollisionUniformGrid::trace_aabbs_impl(LineTracesConstView const traces,
-                                            TraceHitsView const hits,
+void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
+                                            TraceHits::View const hits,
                                             std::span<EntityUniqueId const> const ignored_entities,
                                             Vector3f const moving_half_extent) const {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::trace_aabbs_impl");
 
-    traces.validate_array_sizes();
-    hits.validate_array_sizes();
+    traces.validate();
+    hits.validate();
     assert(traces.num() == hits.num());
     if constexpr (IgnoredMode == IgnoredEntityMode::PerTrace) {
         assert(ignored_entities.size() == static_cast<std::size_t>(traces.num()));
@@ -526,12 +528,16 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTracesConstView const traces,
         };
     }
 
+    auto const hit_locations{hits.view_locations()};
+    auto const hit_flags{hits.hits()};
+    auto const hit_entities{hits.entities()};
+    auto const hit_static_indices{hits.static_geometry_indices()};
     auto const trace_count{traces.num()};
     for (std::uint32_t trace_index{}; trace_index < trace_count; ++trace_index) {
         auto const output_index{static_cast<std::size_t>(trace_index)};
-        hits.hits[output_index] = TraceHit{};
-        hits.entities[output_index] = EntityUniqueId{};
-        hits.static_geometry_indices[output_index] = invalid_static_geometry_index;
+        hit_flags[output_index] = TraceHit{};
+        hit_entities[output_index] = EntityUniqueId{};
+        hit_static_indices[output_index] = invalid_static_geometry_index;
 
         auto const start{traces.starts[trace_index]};
         auto const end{traces.ends[trace_index]};
@@ -721,11 +727,11 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTracesConstView const traces,
         }
 
         if (std::isfinite(nearest_t)) {
-            hits.set(trace_index,
-                     start + delta * nearest_t,
-                     nearest_entity,
-                     nearest_static_index,
-                     TraceHit{1});
+            auto const location{start + delta * nearest_t};
+            set_vector(hit_locations, trace_index, location);
+            hit_entities[trace_index] = nearest_entity;
+            hit_static_indices[trace_index] = nearest_static_index;
+            hit_flags[trace_index] = TraceHit{1};
         }
     }
 }

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ioj/sim/frame_trace_hits.h"
 #include "ioj/sim/frame_vectors3f.h"
+#include "ioj/sim/trace_hits.h"
 
 #include <cstdint>
 namespace ioj::sim::lasers {
@@ -18,6 +18,6 @@ struct FrameCollisionScratch {
 
     FrameVectors3f trace_starts;
     FrameVectors3f trace_ends;
-    FrameTraceHits trace_hits;
+    TraceHits trace_hits;
 };
 } // namespace ioj::sim::lasers

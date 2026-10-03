@@ -57,25 +57,30 @@ TEST(CollisionGrid, ValidatesDimensionsCellSizeAndCellCount) {
 
 TEST(NativeSoa, SwapRemovalKeepsTraceHitColumnsAligned) {
     TraceHits hits;
+    // NOLINTBEGIN(ioj-loop-view-accessor-call) -- Refresh columns after each owner resize.
     for (std::int32_t index{}; index < 6; ++index) {
-        hits.add(Vector3f{{static_cast<float>(index),
-                           static_cast<float>(index + 10),
-                           static_cast<float>(index + 20)}},
-                 EntityUniqueId::from_raw(static_cast<std::uint32_t>(index + 100)),
-                 index + 200,
-                 static_cast<std::uint8_t>(index + 1));
+        hits.add_defaulted(1);
+        auto const columns{hits.get_view()};
+        columns.view_locations().xs()[index] = static_cast<float>(index);
+        columns.view_locations().ys()[index] = static_cast<float>(index + 10);
+        columns.view_locations().zs()[index] = static_cast<float>(index + 20);
+        columns.entities()[index] =
+            EntityUniqueId::from_raw(static_cast<std::uint32_t>(index + 100));
+        columns.static_geometry_indices()[index] = index + 200;
+        columns.hits()[index] = static_cast<std::uint8_t>(index + 1);
     }
+    // NOLINTEND(ioj-loop-view-accessor-call)
 
     hits.remove_at_swap(2, 3);
 
     ASSERT_EQ(hits.num(), 3);
     auto const columns{hits.get_const_view()};
-    EXPECT_EQ(columns.locations.xs()[0], 0.0f);
-    EXPECT_EQ(columns.locations.xs()[1], 1.0f);
-    EXPECT_EQ(columns.locations.xs()[2], 5.0f);
-    EXPECT_EQ(columns.entities[2], EntityUniqueId::from_raw(105));
-    EXPECT_EQ(columns.static_geometry_indices[2], 205);
-    EXPECT_EQ(columns.hits[2], 6);
+    EXPECT_EQ(columns.view_locations().xs()[0], 0.0f);
+    EXPECT_EQ(columns.view_locations().xs()[1], 1.0f);
+    EXPECT_EQ(columns.view_locations().xs()[2], 5.0f);
+    EXPECT_EQ(columns.entities()[2], EntityUniqueId::from_raw(105));
+    EXPECT_EQ(columns.static_geometry_indices()[2], 205);
+    EXPECT_EQ(columns.hits()[2], 6);
 }
 
 TEST(CollisionGrid, CalculatesDimensionsFromWorldAndCellSizes) {

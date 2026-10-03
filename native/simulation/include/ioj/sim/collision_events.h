@@ -41,13 +41,19 @@ struct AABBOverlapEventsView {
 /* **************************************** */
 class AABBOverlapEventStorage {
   public:
+    explicit AABBOverlapEventStorage(
+        std::pmr::memory_resource* resource = std::pmr::get_default_resource())
+        : entity_entity_overlaps_{resource}
+        , entity_static_overlaps_{resource}
+        , batches_{resource} {}
+
     void reset() noexcept;
-    void append_batch(EntityEntityOverlapsConstView entity_entity_overlaps,
-                      EntityStaticOverlapsConstView entity_static_overlaps);
+    void append_batch(EntityEntityOverlaps::ConstView entity_entity_overlaps,
+                      EntityStaticOverlaps::ConstView entity_static_overlaps);
     [[nodiscard]] auto get_view() const noexcept -> AABBOverlapEventsView;
   private:
     EntityEntityOverlaps entity_entity_overlaps_;
     EntityStaticOverlaps entity_static_overlaps_;
-    std::vector<AABBOverlapEventBatch> batches_;
+    std::pmr::vector<AABBOverlapEventBatch> batches_;
 };
 } // namespace ioj::sim::collision

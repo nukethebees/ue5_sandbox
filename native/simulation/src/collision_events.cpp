@@ -29,8 +29,8 @@ void AABBOverlapEventStorage::reset() noexcept {
     batches_.clear();
 }
 void AABBOverlapEventStorage::append_batch(
-    collision::EntityEntityOverlapsConstView const entity_entity_overlaps,
-    collision::EntityStaticOverlapsConstView const entity_static_overlaps) {
+    collision::EntityEntityOverlaps::ConstView const entity_entity_overlaps,
+    collision::EntityStaticOverlaps::ConstView const entity_static_overlaps) {
     auto const entity_entity_offset{entity_entity_overlaps_.num()};
     auto const entity_static_offset{entity_static_overlaps_.num()};
     entity_entity_overlaps_.append_from(entity_entity_overlaps);

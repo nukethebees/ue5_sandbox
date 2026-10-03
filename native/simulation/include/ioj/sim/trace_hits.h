@@ -7,266 +7,458 @@
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/query_result_types.h"
 #include "ioj/sim/vector_types.h"
-#include "ioj/sim/vectors3f.h"
 #include <ioj/sim/line_trace_result.h>
 
-#include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/native_soa/vector_storage_ops.h"
 
-#include <utility>
+#include <memory_resource>
 
 namespace ioj::sim {
-struct TraceHitsView;
-struct TraceHitsConstView;
-struct TraceHitsConstView {
-    using View = TraceHitsView;
-    using ConstView = TraceHitsConstView;
+
+struct TraceHitsSingleView;
+struct TraceHitsSingleConstView;
+struct TraceHitsSingleLayout {
     using size_type = std::uint32_t;
-    Vectors3fConstView locations;
-    std::span<EntityUniqueId const> entities;
-    std::span<ioj::sim::collision::StaticGeometryIndex const> static_geometry_indices;
-    std::span<ioj::sim::TraceHit const> hits;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(locations.xs());
-        fn(locations.ys());
-        fn(locations.zs());
-        fn(entities);
-        fn(static_geometry_indices);
-        fn(hits);
+    using byte_size_type = std::size_t;
+
+    inline static constexpr size_type capacity_granularity{
+        ml::native_soa::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    inline static constexpr ColLayout<float> LocationsXsColumn{LayoutStart};
+    inline static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
+    inline static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
+    inline static constexpr ColLayout<EntityUniqueId> EntitiesColumn{LocationsZsColumn};
+    inline static constexpr ColLayout<ioj::sim::collision::StaticGeometryIndex>
+        StaticGeometryIndicesColumn{EntitiesColumn};
+    inline static constexpr ColLayout<ioj::sim::TraceHit> HitsColumn{StaticGeometryIndicesColumn};
+
+    inline static constexpr byte_size_type allocation_alignment{HitsColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::native_soa::capacity_block_bound(HitsColumn)};
+    inline static constexpr size_type max_capacity{
+        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : HitsColumn.data_end(blocks);
     }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> TraceHitsConstView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
-        return {
-            locations.slice(offset, count),
-            entities.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            static_geometry_indices.subspan(static_cast<std::size_t>(offset),
-                                            static_cast<std::size_t>(count)),
-            hits.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> TraceHitsConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> TraceHitsConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            locations.get_const_view(),
-            entities,
-            static_geometry_indices,
-            hits,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> TraceHitsConstView { return slice(0, count); }
-    auto right(size_type const count) const -> TraceHitsConstView {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-};
-struct TraceHitsView {
-    using View = TraceHitsView;
-    using ConstView = TraceHitsConstView;
-    using size_type = std::uint32_t;
-    Vectors3fView locations;
-    std::span<EntityUniqueId> entities;
-    std::span<ioj::sim::collision::StaticGeometryIndex> static_geometry_indices;
-    std::span<ioj::sim::TraceHit> hits;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.num()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(locations.xs());
-        fn(locations.ys());
-        fn(locations.zs());
-        fn(entities);
-        fn(static_geometry_indices);
-        fn(hits);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> TraceHitsView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
-        return {
-            locations.slice(offset, count),
-            entities.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            static_geometry_indices.subspan(static_cast<std::size_t>(offset),
-                                            static_cast<std::size_t>(count)),
-            hits.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> TraceHitsView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> TraceHitsView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            locations.get_const_view(),
-            entities,
-            static_geometry_indices,
-            hits,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> TraceHitsView { return slice(0, count); }
-    auto right(size_type const count) const -> TraceHitsView {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
-             Vector3f const new_locations,
-             EntityUniqueId const new_entities,
-             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices,
-             ioj::sim::TraceHit const new_hits) const {
-        ml::native_soa::require(index < num());
-        locations.set(index, new_locations);
-        entities[static_cast<std::size_t>(index)] = new_entities;
-        static_geometry_indices[static_cast<std::size_t>(index)] = new_static_geometry_indices;
-        hits[static_cast<std::size_t>(index)] = new_hits;
-    }
-};
-struct TraceHits {
-    using View = TraceHitsView;
-    using ConstView = TraceHitsConstView;
-    using size_type = std::uint32_t;
-    Vectors3f locations;
-    ml::native_soa::Vector<EntityUniqueId> entities;
-    ml::native_soa::Vector<ioj::sim::collision::StaticGeometryIndex> static_geometry_indices;
-    ml::native_soa::Vector<ioj::sim::TraceHit> hits;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(locations.xs.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
-        fn(entities);
-        fn(static_geometry_indices);
-        fn(hits);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(locations.xs);
-        fn(locations.ys);
-        fn(locations.zs);
-        fn(entities);
-        fn(static_geometry_indices);
-        fn(hits);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             Vector3f const new_locations,
-             EntityUniqueId const new_entities,
-             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices,
-             ioj::sim::TraceHit const new_hits) {
-        get_view().set(index, new_locations, new_entities, new_static_geometry_indices, new_hits);
-    }
-    auto add(Vector3f const new_locations,
-             EntityUniqueId const new_entities,
-             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices,
-             ioj::sim::TraceHit const new_hits) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            locations.add(new_locations);
-            entities.emplace_back(new_entities);
-            static_geometry_indices.emplace_back(new_static_geometry_indices);
-            hits.emplace_back(new_hits);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            locations.get_view(),
-            entities,
-            static_geometry_indices,
-            hits,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            locations.get_view(),
-            entities,
-            static_geometry_indices,
-            hits,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        ml::native_soa::require(count <= num());
-        return slice(num() - count, count);
-    }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        locations.copy_element(dst_index, other.locations, src_index);
-        entities[static_cast<std::size_t>(dst_index)] =
-            other.entities[static_cast<std::size_t>(src_index)];
-        static_geometry_indices[static_cast<std::size_t>(dst_index)] =
-            other.static_geometry_indices[static_cast<std::size_t>(src_index)];
-        hits[static_cast<std::size_t>(dst_index)] = other.hits[static_cast<std::size_t>(src_index)];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
-    }
-    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
+    static_assert(max_capacity >= capacity_granularity);
 };
 
+struct TraceHitsSingleView_locations;
+struct TraceHitsSingleConstView_locations;
+template <bool Const>
+struct TraceHitsSingleView_locationsImpl : ml::native_soa::CompactViewState<Const> {
+    using Base = ml::native_soa::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = TraceHitsSingleView_locations;
+    using ConstView = TraceHitsSingleConstView_locations;
+    TraceHitsSingleView_locationsImpl() = default;
+    template <bool Enabled = Const>
+    TraceHitsSingleView_locationsImpl(TraceHitsSingleView_locationsImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::offset_;
+    using Base::state_;
+  public:
+    auto xs() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    TraceHitsSingleLayout::LocationsXsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto ys() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    TraceHitsSingleLayout::LocationsYsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto zs() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    TraceHitsSingleLayout::LocationsZsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(xs());
+        func(ys());
+        func(zs());
+    }
+};
+struct TraceHitsSingleConstView_locations : TraceHitsSingleView_locationsImpl<true> {
+    using Base = TraceHitsSingleView_locationsImpl<true>;
+    using Base::Base;
+    using View = TraceHitsSingleView_locations;
+    using ConstView = TraceHitsSingleConstView_locations;
+    TraceHitsSingleConstView_locations() = default;
+    TraceHitsSingleConstView_locations(TraceHitsSingleView_locations const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return HMM_V3(xs()[index], ys()[index], zs()[index]);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<TraceHitsSingleConstView_locations>());
+struct TraceHitsSingleView_locations : TraceHitsSingleView_locationsImpl<false> {
+    using Base = TraceHitsSingleView_locationsImpl<false>;
+    using Base::Base;
+    using View = TraceHitsSingleView_locations;
+    using ConstView = TraceHitsSingleConstView_locations;
+    TraceHitsSingleView_locations() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    using equivalent_type = Vector3f;
+    auto operator[](std::uint32_t index) const -> equivalent_type {
+        return HMM_V3(xs()[index], ys()[index], zs()[index]);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<TraceHitsSingleView_locations>());
+inline TraceHitsSingleConstView_locations::TraceHitsSingleConstView_locations(
+    TraceHitsSingleView_locations const& other)
+    : Base{other} {}
+template <bool Const>
+struct TraceHitsSingleViewImpl : ml::native_soa::CompactViewState<Const> {
+    using Base = ml::native_soa::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = TraceHitsSingleView;
+    using ConstView = TraceHitsSingleConstView;
+    TraceHitsSingleViewImpl() = default;
+    template <bool Enabled = Const>
+    TraceHitsSingleViewImpl(TraceHitsSingleViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::offset_;
+    using Base::state_;
+  public:
+    auto view_locations() const -> std::
+        conditional_t<Const, TraceHitsSingleConstView_locations, TraceHitsSingleView_locations> {
+        return {state_, offset_, count_};
+    }
+    auto entities() const -> std::span<Element<EntityUniqueId>> {
+        return {this->template column_data<EntityUniqueId>(
+                    TraceHitsSingleLayout::EntitiesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto static_geometry_indices() const
+        -> std::span<Element<ioj::sim::collision::StaticGeometryIndex>> {
+        return {this->template column_data<ioj::sim::collision::StaticGeometryIndex>(
+                    TraceHitsSingleLayout::StaticGeometryIndicesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto hits() const -> std::span<Element<ioj::sim::TraceHit>> {
+        return {this->template column_data<ioj::sim::TraceHit>(
+                    TraceHitsSingleLayout::HitsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(view_locations().xs());
+        func(view_locations().ys());
+        func(view_locations().zs());
+        func(entities());
+        func(static_geometry_indices());
+        func(hits());
+    }
+};
+struct TraceHitsSingleConstView : TraceHitsSingleViewImpl<true> {
+    using Base = TraceHitsSingleViewImpl<true>;
+    using Base::Base;
+    using View = TraceHitsSingleView;
+    using ConstView = TraceHitsSingleConstView;
+    TraceHitsSingleConstView() = default;
+    TraceHitsSingleConstView(TraceHitsSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<TraceHitsSingleConstView>());
+struct TraceHitsSingleView : TraceHitsSingleViewImpl<false> {
+    using Base = TraceHitsSingleViewImpl<false>;
+    using Base::Base;
+    using View = TraceHitsSingleView;
+    using ConstView = TraceHitsSingleConstView;
+    TraceHitsSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<TraceHitsSingleView>());
+inline TraceHitsSingleConstView::TraceHitsSingleConstView(TraceHitsSingleView const& other)
+    : Base{other} {}
+struct TraceHits
+    : protected ml::native_soa::StorageState
+    , private ml::native_soa::StorageOperations {
+    using Operations = ml::native_soa::StorageOperations;
+    using Operations::add_defaulted;
+    using Operations::add_uninitialised;
+    using Operations::allocated_bytes;
+    using Operations::append_from;
+    using Operations::capacity;
+    using Operations::copy_element;
+    using Operations::copy_elements;
+    using Operations::get_const_view;
+    using Operations::get_view;
+    using Operations::is_empty;
+    using Operations::left;
+    using Operations::num;
+    using Operations::remove_at_swap;
+    using Operations::reserve;
+    using Operations::reset;
+    using Operations::right;
+    using Operations::set_num;
+    using Operations::slice;
+    using Layout = TraceHitsSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+    using View = TraceHitsSingleView;
+    using ConstView = TraceHitsSingleConstView;
+    template <typename Source>
+    inline static constexpr bool accepts_source = requires(Source const& source) {
+        { source.num() } -> std::convertible_to<size_type>;
+        source.validate();
+        {
+            ml::native_soa::source_data(source.view_locations().xs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_locations().ys())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.view_locations().zs())
+        } -> std::convertible_to<float const*>;
+        {
+            ml::native_soa::source_data(source.entities())
+        } -> std::convertible_to<EntityUniqueId const*>;
+        {
+            ml::native_soa::source_data(source.static_geometry_indices())
+        } -> std::convertible_to<ioj::sim::collision::StaticGeometryIndex const*>;
+        {
+            ml::native_soa::source_data(source.hits())
+        } -> std::convertible_to<ioj::sim::TraceHit const*>;
+    };
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    TraceHits() noexcept
+        : TraceHits{std::pmr::get_default_resource()} {}
+    explicit TraceHits(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        ml::native_soa::require(resource != nullptr);
+    }
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~TraceHits() { Operations::release_storage(*this); }
+    TraceHits(TraceHits const&) = delete;
+    auto operator=(TraceHits const&) -> TraceHits& = delete;
+    TraceHits(TraceHits&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(TraceHits&& other) -> TraceHits& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<float>* locations_xs{};
+        Element<float>* locations_ys{};
+        Element<float>* locations_zs{};
+        Element<EntityUniqueId>* entities{};
+        Element<ioj::sim::collision::StaticGeometryIndex>* static_geometry_indices{};
+        Element<ioj::sim::TraceHit>* hits{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (locations_xs == nullptr) {
+                return {};
+            }
+            return {locations_xs + offset,
+                    locations_ys + offset,
+                    locations_zs + offset,
+                    entities + offset,
+                    static_geometry_indices + offset,
+                    hits + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    std::pmr::memory_resource* resource_{};
+    friend Operations;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ml::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::LocationsXsColumn),
+                cursor.column_pointer(data, Layout::LocationsYsColumn),
+                cursor.column_pointer(data, Layout::LocationsZsColumn),
+                cursor.column_pointer(data, Layout::EntitiesColumn),
+                cursor.column_pointer(data, Layout::StaticGeometryIndicesColumn),
+                cursor.column_pointer(data, Layout::HitsColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        ml::native_soa::default_construct_n(columns.locations_xs, count);
+        ml::native_soa::default_construct_n(columns.locations_ys, count);
+        ml::native_soa::default_construct_n(columns.locations_zs, count);
+        ml::native_soa::default_construct_n(columns.entities, count);
+        ml::native_soa::default_construct_n(columns.static_geometry_indices, count);
+        ml::native_soa::default_construct_n(columns.hits, count);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        ml::native_soa::copy_n(
+            columns.locations_xs + index, columns.locations_xs + source, move_count);
+        ml::native_soa::copy_n(
+            columns.locations_ys + index, columns.locations_ys + source, move_count);
+        ml::native_soa::copy_n(
+            columns.locations_zs + index, columns.locations_zs + source, move_count);
+        ml::native_soa::copy_n(columns.entities + index, columns.entities + source, move_count);
+        ml::native_soa::copy_n(columns.static_geometry_indices + index,
+                               columns.static_geometry_indices + source,
+                               move_count);
+        ml::native_soa::copy_n(columns.hits + index, columns.hits + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_,
+            indices,
+            ml::native_soa::require,
+            [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count) {
+        auto const destination{get_data(first)};
+        ml::native_soa::copy_n(destination.locations_xs,
+                               ml::native_soa::source_data(source.view_locations().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::copy_n(destination.locations_ys,
+                               ml::native_soa::source_data(source.view_locations().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::copy_n(destination.locations_zs,
+                               ml::native_soa::source_data(source.view_locations().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::copy_n(destination.entities,
+                               ml::native_soa::source_data(source.entities()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.static_geometry_indices,
+                               ml::native_soa::source_data(source.static_geometry_indices()) +
+                                   source_first,
+                               count);
+        ml::native_soa::copy_n(
+            destination.hits, ml::native_soa::source_data(source.hits()) + source_first, count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count) {
+        auto const destination{get_data(first)};
+        ml::native_soa::move_n(destination.locations_xs,
+                               ml::native_soa::source_data(source.view_locations().xs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.locations_ys,
+                               ml::native_soa::source_data(source.view_locations().ys()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.locations_zs,
+                               ml::native_soa::source_data(source.view_locations().zs()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.entities,
+                               ml::native_soa::source_data(source.entities()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.static_geometry_indices,
+                               ml::native_soa::source_data(source.static_geometry_indices()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(
+            destination.hits, ml::native_soa::source_data(source.hits()) + source_first, count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        ml::native_soa::copy_n(destination.locations_xs, source.locations_xs, num_);
+        ml::native_soa::copy_n(destination.locations_ys, source.locations_ys, num_);
+        ml::native_soa::copy_n(destination.locations_zs, source.locations_zs, num_);
+        ml::native_soa::copy_n(destination.entities, source.entities, num_);
+        ml::native_soa::copy_n(
+            destination.static_geometry_indices, source.static_geometry_indices, num_);
+        ml::native_soa::copy_n(destination.hits, source.hits, num_);
+    }
+  public:
+};
 } // namespace ioj::sim

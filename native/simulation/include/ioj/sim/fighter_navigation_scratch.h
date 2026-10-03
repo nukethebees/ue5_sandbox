@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ioj/sim/collision_grid.h"
-#include "ioj/sim/frame_trace_hits.h"
 #include "ioj/sim/frame_vectors3f.h"
+#include "ioj/sim/trace_hits.h"
 
 #include "sandbox/core/frame_array.h"
 #include "sandbox/core/frame_memory_resource.h"
@@ -16,7 +16,7 @@ struct NavigationScratch {
         , line_of_sight_starts{scratch}
         , line_of_sight_ends{scratch}
         , line_of_sight_results{&scratch}
-        , trace_hits{scratch}
+        , trace_hits{&scratch}
         , blocked_fighter_indices{&scratch}
         , trace_fighter_indices{&scratch}
         , trace_choice_indices{&scratch}
@@ -26,7 +26,7 @@ struct NavigationScratch {
     FrameVectors3f line_of_sight_starts;
     FrameVectors3f line_of_sight_ends;
     ml::FrameArray<collision::SphereInBoundsResult> line_of_sight_results;
-    FrameTraceHits trace_hits;
+    TraceHits trace_hits;
     ml::FrameArray<std::uint32_t> blocked_fighter_indices;
     ml::FrameArray<std::uint32_t> trace_fighter_indices;
     ml::FrameArray<std::int8_t> trace_choice_indices;

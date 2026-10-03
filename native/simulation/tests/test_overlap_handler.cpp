@@ -13,10 +13,28 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
     owners.publish();
 
     collision::EntityEntityOverlaps entity_overlaps;
-    entity_overlaps.add(capital, fighter);
-    entity_overlaps.add(fighter, turret);
+    {
+        auto const index{entity_overlaps.num()};
+        entity_overlaps.add_defaulted(1);
+        auto const columns{entity_overlaps.get_view()};
+        columns.first_entities()[index] = capital;
+        columns.second_entities()[index] = fighter;
+    }
+    {
+        auto const index{entity_overlaps.num()};
+        entity_overlaps.add_defaulted(1);
+        auto const columns{entity_overlaps.get_view()};
+        columns.first_entities()[index] = fighter;
+        columns.second_entities()[index] = turret;
+    }
     collision::EntityStaticOverlaps static_overlaps;
-    static_overlaps.add(fighter, 7);
+    {
+        auto const index{static_overlaps.num()};
+        static_overlaps.add_defaulted(1);
+        auto const columns{static_overlaps.get_view()};
+        columns.entities()[index] = fighter;
+        columns.static_geometry_indices()[index] = 7;
+    }
 
     OverlapHandler handler{
         owners.combat_events, owners.agents, {.damage_per_overlap_detection = 37}};
@@ -55,9 +73,27 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndRetiredRecipients) {
     owners.publish();
 
     collision::EntityEntityOverlaps first_pairs;
-    first_pairs.add(fighter, spinner);
-    first_pairs.add(fighter, doomed);
-    first_pairs.add(fighter, EntityUniqueId{});
+    {
+        auto const index{first_pairs.num()};
+        first_pairs.add_defaulted(1);
+        auto const columns{first_pairs.get_view()};
+        columns.first_entities()[index] = fighter;
+        columns.second_entities()[index] = spinner;
+    }
+    {
+        auto const index{first_pairs.num()};
+        first_pairs.add_defaulted(1);
+        auto const columns{first_pairs.get_view()};
+        columns.first_entities()[index] = fighter;
+        columns.second_entities()[index] = doomed;
+    }
+    {
+        auto const index{first_pairs.num()};
+        first_pairs.add_defaulted(1);
+        auto const columns{first_pairs.get_view()};
+        columns.first_entities()[index] = fighter;
+        columns.second_entities()[index] = EntityUniqueId{};
+    }
     OverlapHandler handler{owners.combat_events, owners.agents, {}};
     handler.handle({first_pairs.get_const_view(), {}});
 
@@ -72,7 +108,13 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndRetiredRecipients) {
     auto const replacement{owners.spawn(EntityType::Turret)};
     owners.publish();
     collision::EntityEntityOverlaps retired_pair;
-    retired_pair.add(fighter, doomed);
+    {
+        auto const index{retired_pair.num()};
+        retired_pair.add_defaulted(1);
+        auto const columns{retired_pair.get_view()};
+        columns.first_entities()[index] = fighter;
+        columns.second_entities()[index] = doomed;
+    }
     handler.handle({retired_pair.get_const_view(), {}});
     auto const second_damage{owners.combat_events.all_events().get_const_view()};
     EXPECT_EQ(second_damage.num(), 1) << "Retired endpoint is skipped independently";

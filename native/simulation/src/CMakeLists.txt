@@ -46,7 +46,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/frame_hit_details.h
   ../include/ioj/sim/frame_laser_spawn_requests.h
   ../include/ioj/sim/frame_rotators3f.h
-  ../include/ioj/sim/frame_trace_hits.h
   ../include/ioj/sim/frame_vectors3f.h
   ../include/ioj/sim/entity_tables.h
   ../include/ioj/sim/health_table.h
@@ -64,6 +63,7 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/level_telemetry_manager.h
   ../include/ioj/sim/level_telemetry_run_data.h
   ../include/ioj/sim/level_telemetry_snapshot.h
+  ../include/ioj/sim/line_trace_batch.h
   ../include/ioj/sim/line_traces.h
   ../include/ioj/sim/mission_manager.h
   ../include/ioj/sim/navigation_telemetry.h
@@ -119,7 +119,6 @@ target_sources(native-simulation PRIVATE
   frame_hit_details.cpp
   frame_laser_spawn_requests.cpp
   frame_rotators3f.cpp
-  frame_trace_hits.cpp
   frame_vectors3f.cpp
   health_table.cpp
   laser_frame_output.cpp

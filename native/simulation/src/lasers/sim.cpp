@@ -242,8 +242,11 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
     FrameHitDetails hit_details{scratch};
     FrameDirectDamageEvents collision_damage_events{scratch};
     auto const trace_hits{collision_scratch.trace_hits.get_const_view()};
+    auto const hit_flags{trace_hits.hits()};
+    auto const hit_entities{trace_hits.entities()};
+    auto const hit_locations{trace_hits.view_locations()};
     auto const hit_count{static_cast<std::uint32_t>(
-        std::ranges::count_if(trace_hits.hits, [](auto const hit) { return hit != 0; }))};
+        std::ranges::count_if(hit_flags, [](auto const hit) { return hit != 0; }))};
     to_remove.reserve(hit_count);
     collision_damage_events.reserve(hit_count);
     hit_details.reserve(hit_count);
@@ -253,12 +256,12 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
     constexpr float safe_normal_tolerance{1.e-8f};
     for (std::uint32_t entity_index{}; entity_index < n; ++entity_index) {
         auto const element{static_cast<std::size_t>(entity_index)};
-        if (active_rows[element] == 0 || trace_hits.hits[element] == 0) {
+        if (active_rows[element] == 0 || hit_flags[element] == 0) {
             continue;
         }
 
         to_remove.add(entity_index);
-        auto const damaged_entity{trace_hits.entities[element]};
+        auto const damaged_entity{hit_entities[element]};
         if (damaged_entity.is_valid()) {
             auto const instigator{instigator_ids[element]};
             collision_damage_events.add(damaged_entity, damages[element], instigator);
@@ -269,7 +272,7 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
         auto const emission_direction{length_squared < safe_normal_tolerance
                                           ? HMM_V3(0.f, 0.f, -1.f)
                                           : velocity * (-1.f / std::sqrt(length_squared))};
-        hit_details.add(trace_hits.locations[entity_index], emission_direction, sources[element]);
+        hit_details.add(hit_locations[entity_index], emission_direction, sources[element]);
     }
     std::ranges::sort(to_remove.view(), std::greater{});
     combat_events.queue_damage(collision_damage_events.get_const_view());

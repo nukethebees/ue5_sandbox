@@ -20,13 +20,32 @@ auto QueryThreadBufferPool::reserve(std::uint32_t const count) -> QueryThreadBuf
     }
 
     auto const previous_count{static_cast<std::uint32_t>(buffers_.size())};
-    buffers_.resize(required_count);
+    buffers_.reserve(required_count);
     free_indices_.reserve(required_count);
     for (auto i{previous_count}; i < count; ++i) {
+        buffers_.emplace_back(buffer_resource_);
         free_indices_.push_back(i);
     }
 
     return QueryThreadBufferReserveResult::reserved;
+}
+
+auto QueryThreadBufferPool::set_buffer_resource(std::pmr::memory_resource* const resource) -> bool {
+    assert(resource != nullptr);
+    std::scoped_lock const lock{mutex_};
+    if (active_count_ != 0) {
+        return false;
+    }
+
+    // Destroy retained storage before changing allocators; PMR move assignment retains its
+    // allocator.
+    auto const count{buffers_.size()};
+    buffers_.clear();
+    buffer_resource_ = resource;
+    for (std::size_t i{}; i < count; ++i) {
+        buffers_.emplace_back(resource);
+    }
+    return true;
 }
 
 auto QueryThreadBufferPool::try_acquire() -> std::optional<std::uint32_t> {

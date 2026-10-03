@@ -1,11 +1,14 @@
 #include "ioj/sim/spatial_query_manager.h"
 
 #include <ioj/sim/agent_accessor.h>
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_world_bounds.h>
+#include <ioj/sim/line_trace_batch.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/rotator_math.h>
 
 #include <sandbox/core/diagnostics.h>
+#include <sandbox/core/frame_memory_resource.h>
 
 #include <algorithm>
 #include <array>
@@ -72,57 +75,61 @@ auto trace_impl(ioj::sim::SpatialQueryManager const& manager,
     ioj::sim::query_manager::ThreadBufferLease const buffer_lease{manager};
     auto& buffers{buffer_lease.get()};
     auto& traces{buffers.line_traces};
-    auto& hits{buffers.trace_hits};
-    hits.set_num(count);
+    buffers.trace_hits.set_num(count);
+    auto const hits{buffers.trace_hits.get_view()};
+    auto const hit_flags{hits.hits()};
+    auto const hit_entities{hits.entities()};
 
     auto const trace_view{[&] {
         if constexpr (Mode == QueryMode::TargetLineOfSight || Mode == QueryMode::ClosestHit) {
             traces.set_num(count);
+            auto const trace_columns{traces.get_view()};
+            auto const starts{trace_columns.view_starts()};
+            auto const ends{trace_columns.view_ends()};
             for (std::uint32_t i{}; i < count; ++i) {
-                if constexpr (Mode == QueryMode::TargetLineOfSight) {
-                    traces.set(i, request.scalar_start, request.end_locations[i]);
-                } else {
-                    traces.set(i, request.scalar_start, request.scalar_end);
-                }
+                ioj::sim::set_vector(starts, i, request.scalar_start);
+                auto const end{Mode == QueryMode::TargetLineOfSight ? request.end_locations[i]
+                                                                    : request.scalar_end};
+                ioj::sim::set_vector(ends, i, end);
             }
-            return traces.get_const_view();
+            return ioj::sim::LineTraceBatch{traces.get_const_view()};
         } else {
-            return ioj::sim::LineTracesConstView{request.start_locations, request.end_locations};
+            return ioj::sim::LineTraceBatch{request.start_locations, request.end_locations};
         }
     }()};
 
     if constexpr (Mode == QueryMode::ClosestHit) {
-        uniform_grid.trace_aabbs(trace_view, hits.get_view(), request.ignored_entities);
+        uniform_grid.trace_aabbs(trace_view, hits, request.ignored_entities);
     } else if constexpr (Mode == QueryMode::ClearLine) {
         if (request.ignored_entities.empty()) {
-            uniform_grid.trace_aabbs(trace_view, hits.get_view());
+            uniform_grid.trace_aabbs(trace_view, hits);
         } else {
-            uniform_grid.trace_aabbs(trace_view, hits.get_view(), request.ignored_entities);
+            uniform_grid.trace_aabbs(trace_view, hits, request.ignored_entities);
         }
     } else {
-        uniform_grid.trace_aabbs(trace_view, hits.get_view());
+        uniform_grid.trace_aabbs(trace_view, hits);
     }
 
     if constexpr (Mode == QueryMode::ClosestHit) {
         return {
-            .location = hits.locations[0],
-            .entity = hits.entities[0],
-            .static_geometry_index = hits.static_geometry_indices[0],
-            .hit = hits.hits[0] != 0,
+            .location = hits.view_locations()[0],
+            .entity = hit_entities[0],
+            .static_geometry_index = hits.static_geometry_indices()[0],
+            .hit = hit_flags[0] != 0,
         };
     } else {
         if constexpr (Mode == QueryMode::HitEntity) {
             for (std::uint32_t i{}; i < count; ++i) {
-                request.out_entity_ids[i] = hits.entities[i];
+                request.out_entity_ids[i] = hit_entities[i];
             }
         } else if constexpr (Mode == QueryMode::ClearLine) {
             for (std::uint32_t i{}; i < count; ++i) {
-                request.out_flags[i] = static_cast<ioj::sim::LineQueryResult>(hits.hits[i] == 0);
+                request.out_flags[i] = static_cast<ioj::sim::LineQueryResult>(hit_flags[i] == 0);
             }
         } else if constexpr (Mode == QueryMode::TargetLineOfSight) {
             for (std::uint32_t i{}; i < count; ++i) {
                 request.out_flags[i] = static_cast<ioj::sim::LineQueryResult>(
-                    hits.hits[i] == 0 || hits.entities[i] == request.targets[i]);
+                    hit_flags[i] == 0 || hit_entities[i] == request.targets[i]);
             }
         }
 
@@ -159,6 +166,21 @@ ThreadBufferLease::~ThreadBufferLease() {
 
 auto ThreadBufferLease::get() const -> ThreadBuffers& {
     return manager.thread_buffer_pool_.get(index);
+}
+
+ScratchScope::ScratchScope(SpatialQueryManager& manager, ml::FrameScratch& scratch)
+    : manager_{manager} {
+    if (manager_.scratch_active_ || !manager_.thread_buffer_pool_.set_buffer_resource(&scratch)) {
+        ml::fatal_error("Cannot bind query scratch with an active scope or leased buffers");
+    }
+    manager_.scratch_active_ = true;
+}
+ScratchScope::~ScratchScope() {
+    auto& pool{manager_.thread_buffer_pool_};
+    if (!pool.set_buffer_resource(pool.get_buffer_memory_resource())) {
+        ml::fatal_error("Query scratch scope ended with leased buffers");
+    }
+    manager_.scratch_active_ = false;
 }
 }
 
@@ -296,9 +318,12 @@ void SpatialQueryManager::release_thread_buffer(std::uint32_t const index) const
 /* **************************************** */
 // Construction and setup
 /* **************************************** */
-SpatialQueryManager::SpatialQueryManager(AgentAccessor const& agents)
+SpatialQueryManager::SpatialQueryManager(AgentAccessor const& agents,
+                                         std::pmr::memory_resource* resource,
+                                         std::pmr::memory_resource* query_resource)
     : agents_{agents}
-    , collision_system_{agents} {}
+    , thread_buffer_pool_{resource, query_resource}
+    , collision_system_{agents, resource} {}
 
 void SpatialQueryManager::initialise(collision::GridGeometry const grid_geometry,
                                      collision::EntityAABBs const& entity_bounds) {
@@ -358,7 +383,7 @@ void SpatialQueryManager::have_clear_lines(
 void SpatialQueryManager::trace_closest_lines(
     Vectors3fConstView const start_locations,
     Vectors3fConstView const end_locations,
-    TraceHitsView const out_hits,
+    TraceHits::View const out_hits,
     std::span<EntityUniqueId const> const ignored_entities) const {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::trace_closest_lines");
 
@@ -367,7 +392,7 @@ void SpatialQueryManager::trace_closest_lines(
     assert(out_hits.num() == count);
     assert(ignored_entities.empty() || ignored_entities.size() == static_cast<std::size_t>(count));
 
-    auto const traces{LineTracesConstView{start_locations, end_locations}};
+    auto const traces{LineTraceBatch{start_locations, end_locations}};
     auto const& uniform_grid{collision_system_.uniform_grid_};
     if (ignored_entities.empty()) {
         uniform_grid.trace_aabbs(traces, out_hits);
@@ -380,7 +405,7 @@ void SpatialQueryManager::sweep_closest_aabbs(
     Vectors3fConstView const start_locations,
     Vectors3fConstView const end_locations,
     Vector3f const moving_half_extent,
-    TraceHitsView const out_hits,
+    TraceHits::View const out_hits,
     std::span<EntityUniqueId const> const ignored_entities,
     collision::TraceEntityFilter const entity_filter) const {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::sweep_closest_aabbs");
@@ -390,7 +415,7 @@ void SpatialQueryManager::sweep_closest_aabbs(
     assert(out_hits.num() == count);
     assert(ignored_entities.empty() || ignored_entities.size() == static_cast<std::size_t>(count));
 
-    collision_system_.uniform_grid_.sweep_aabbs(LineTracesConstView{start_locations, end_locations},
+    collision_system_.uniform_grid_.sweep_aabbs(LineTraceBatch{start_locations, end_locations},
                                                 moving_half_extent,
                                                 out_hits,
                                                 ignored_entities,

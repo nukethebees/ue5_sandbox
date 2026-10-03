@@ -47,6 +47,7 @@ target_sources(native-simulation-tests PRIVATE
   model_declaration_contracts.cpp
   ship_health_tests.cpp
   spatial_tests.cpp
+  query_scratch_tests.cpp
   step_response_tests.cpp
   vectors3f_tests.cpp
 )

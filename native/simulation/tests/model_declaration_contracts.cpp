@@ -1246,26 +1246,8 @@ static_assert(HealthIndex{}.raw_value() == 0xffffffffU);
 static_assert(HealthIndex{4}.raw_value() == 4);
 static_assert(std::is_same_v<Vector3f, HMM_Vec3>);
 static_assert(std::is_same_v<Quaternion4f, HMM_Quat>);
-struct OriginalLineTraces {
-    Vectors3f starts;
-    Vectors3f ends;
-};
-struct OriginalTraceHits {
-    Vectors3f locations;
-    ml::native_soa::Vector<EntityUniqueId> entities;
-    ml::native_soa::Vector<collision::StaticGeometryIndex> static_geometry_indices;
-    ml::native_soa::Vector<TraceHit> hits;
-};
-static_assert(sizeof(LineTraces) == sizeof(OriginalLineTraces));
-static_assert(alignof(LineTraces) == alignof(OriginalLineTraces));
-static_assert(sizeof(TraceHits) == sizeof(OriginalTraceHits));
-static_assert(alignof(TraceHits) == alignof(OriginalTraceHits));
-IOJ_RECORD_MEMBER_CONTRACT(LineTraces, starts);
-IOJ_RECORD_MEMBER_CONTRACT(LineTraces, ends);
-IOJ_RECORD_MEMBER_CONTRACT(TraceHits, locations);
-IOJ_RECORD_MEMBER_CONTRACT(TraceHits, entities);
-IOJ_RECORD_MEMBER_CONTRACT(TraceHits, static_geometry_indices);
-IOJ_RECORD_MEMBER_CONTRACT(TraceHits, hits);
+static_assert(!std::is_copy_constructible_v<LineTraces>);
+static_assert(!std::is_copy_constructible_v<TraceHits>);
 static_assert(noexcept(std::declval<LineTraces&>().reset()));
 static_assert(noexcept(std::declval<TraceHits&>().reset()));
 TEST(SimulationModelDefaults, RotationInputDelay) {

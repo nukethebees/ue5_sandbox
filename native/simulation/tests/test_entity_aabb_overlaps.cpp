@@ -1,6 +1,7 @@
 #include "support/collision_agent_storage.h"
 #include "support/simulation_test_support.h"
 #include <ioj/sim/column_math.h>
+#include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/testing/spatial_query_manager_test_access.h>
 
@@ -12,7 +13,7 @@
 namespace ioj::sim::tests {
 
 namespace {
-constexpr std::size_t overlap_frame_memory_capacity{256 * 1024};
+constexpr std::size_t overlap_frame_memory_capacity{4 * 1024 * 1024};
 
 struct OverlapFixture {
     explicit OverlapFixture(Vector3f const capital_half_extents = {{10.f, 10.f, 10.f}},
@@ -32,7 +33,15 @@ struct OverlapFixture {
         query_manager.refresh_spatial_index();
         {
             ml::FrameScratchScope scratch_scope{frame_memory};
-            query_manager.detect_overlaps(overlap_candidates, scratch_scope.scratch());
+            try {
+                query_manager.detect_overlaps(overlap_candidates, scratch_scope.scratch());
+            } catch (std::bad_alloc const&) {
+                auto const stats{frame_memory.get_stats()};
+                ADD_FAILURE() << "Frame overflow count: " << stats.overflow_count
+                              << ", requested: " << stats.last_failure.requested_bytes
+                              << ", claimed: " << stats.last_failure.claimed_bytes;
+                throw;
+            }
         }
 
         auto const stats{frame_memory.get_stats()};
@@ -104,9 +113,12 @@ struct OverlapFixture {
     }
 
     CollisionAgentStorage owners;
-    alignas(ml::FrameMemoryResource::backing_alignment)
-        std::array<std::byte, overlap_frame_memory_capacity> frame_memory_backing{};
-    ml::FrameMemoryResource frame_memory{frame_memory_backing};
+    // Include raw duplicate overlap pairs as well as sorting scratch in the frame budget.
+    GameMemory game_memory{{.root_capacity_bytes = overlap_frame_memory_capacity}};
+    GameMemoryBlock frame_memory_backing{game_memory.acquire_block(
+        overlap_frame_memory_capacity, ml::FrameMemoryResource::backing_alignment)};
+    ml::FrameMemoryResource frame_memory{
+        std::span<std::byte>{frame_memory_backing.data(), frame_memory_backing.size_bytes()}};
     SpatialQueryManager query_manager;
     collision::EntityAABBs entity_bounds;
 };
@@ -118,9 +130,10 @@ void check_single_pair(collision::EntityEntityOverlaps::ConstView const overlaps
     if (overlaps.num() == 1) {
         auto const first{lhs < rhs ? lhs : rhs};
         auto const second{lhs < rhs ? rhs : lhs};
-        EXPECT_TRUE(overlaps.first_entities[0] == first && overlaps.second_entities[0] == second)
+        EXPECT_TRUE(overlaps.first_entities()[0] == first &&
+                    overlaps.second_entities()[0] == second)
             << "Overlap pair is canonical";
-        EXPECT_TRUE(overlaps.first_entities[0] < overlaps.second_entities[0])
+        EXPECT_TRUE(overlaps.first_entities()[0] < overlaps.second_entities()[0])
             << "First overlap ID sorts before second";
     }
 }
@@ -130,8 +143,8 @@ void check_single_static_overlap(collision::EntityStaticOverlaps::ConstView cons
                                  collision::StaticGeometryIndex const static_geometry_index) {
     EXPECT_EQ(overlaps.num(), 1) << "Exactly one static overlap is reported";
     if (overlaps.num() == 1) {
-        EXPECT_TRUE(overlaps.entities[0] == entity &&
-                    overlaps.static_geometry_indices[0] == static_geometry_index)
+        EXPECT_TRUE(overlaps.entities()[0] == entity &&
+                    overlaps.static_geometry_indices()[0] == static_geometry_index)
             << "Static overlap identity is correct";
     }
 }
@@ -384,9 +397,10 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsMultipleStaticAABBs) {
     auto const overlaps{fixture.get_static_overlaps()};
     EXPECT_EQ(overlaps.num(), 2) << "Both static overlaps are reported";
     if (overlaps.num() == 2) {
-        EXPECT_TRUE(
-            overlaps.entities[0] == moved && overlaps.static_geometry_indices[0] == first_static &&
-            overlaps.entities[1] == moved && overlaps.static_geometry_indices[1] == second_static)
+        EXPECT_TRUE(overlaps.entities()[0] == moved &&
+                    overlaps.static_geometry_indices()[0] == first_static &&
+                    overlaps.entities()[1] == moved &&
+                    overlaps.static_geometry_indices()[1] == second_static)
             << "Static overlaps are sorted by geometry index";
     }
 }
@@ -454,9 +468,10 @@ TEST(EntityAABBOverlaps, MultipleMovedEntitiesProduceDistinctStaticRecords) {
     auto const overlaps{fixture.get_static_overlaps()};
     EXPECT_EQ(overlaps.num(), 2) << "Each moved entity has its own static overlap";
     if (overlaps.num() == 2) {
-        EXPECT_TRUE(
-            overlaps.entities[0] == first && overlaps.static_geometry_indices[0] == static_index &&
-            overlaps.entities[1] == second && overlaps.static_geometry_indices[1] == static_index)
+        EXPECT_TRUE(overlaps.entities()[0] == first &&
+                    overlaps.static_geometry_indices()[0] == static_index &&
+                    overlaps.entities()[1] == second &&
+                    overlaps.static_geometry_indices()[1] == static_index)
             << "Static overlap records retain both identities";
     }
 }
@@ -527,17 +542,19 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     auto const entity_overlaps{fixture.get_entity_overlaps()};
     EXPECT_TRUE(entity_overlaps.num() >= entity_count) << "Large query produces dynamic overlaps";
     auto const entity_overlap_count{entity_overlaps.num()};
+    auto const first_entities{entity_overlaps.first_entities()};
+    auto const second_entities{entity_overlaps.second_entities()};
     for (std::uint32_t index{}; index < entity_overlap_count; ++index) {
-        EXPECT_TRUE(fixture.owners.agents.is_alive(entity_overlaps.first_entities[index]) &&
-                    fixture.owners.agents.is_alive(entity_overlaps.second_entities[index]))
+        EXPECT_TRUE(fixture.owners.agents.is_alive(first_entities[index]) &&
+                    fixture.owners.agents.is_alive(second_entities[index]))
             << "Dynamic overlap handles remain valid";
-        EXPECT_TRUE(entity_overlaps.first_entities[index] < entity_overlaps.second_entities[index])
+        EXPECT_TRUE(first_entities[index] < second_entities[index])
             << "Dynamic overlap is canonical";
         if (index > 0) {
-            auto const previous_first{entity_overlaps.first_entities[index - 1]};
-            auto const previous_second{entity_overlaps.second_entities[index - 1]};
-            auto const current_first{entity_overlaps.first_entities[index]};
-            auto const current_second{entity_overlaps.second_entities[index]};
+            auto const previous_first{first_entities[index - 1]};
+            auto const previous_second{second_entities[index - 1]};
+            auto const current_first{first_entities[index]};
+            auto const current_second{second_entities[index]};
             EXPECT_TRUE(previous_first < current_first ||
                         (previous_first == current_first && previous_second < current_second))
                 << "Dynamic overlaps are sorted and unique";
@@ -549,18 +566,19 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
         << "Every moved entity overlaps the large static AABB";
     auto const static_overlap_count{static_overlaps.num()};
     auto const static_geometry_count{fixture.query_manager.get_static_collision_bounds().num()};
+    auto const static_entities{static_overlaps.entities()};
+    auto const static_indices{static_overlaps.static_geometry_indices()};
     for (std::uint32_t index{}; index < static_overlap_count; ++index) {
-        EXPECT_TRUE(fixture.owners.agents.is_alive(static_overlaps.entities[index]))
+        EXPECT_TRUE(fixture.owners.agents.is_alive(static_entities[index]))
             << "Static overlap entity remains valid";
-        EXPECT_TRUE(static_overlaps.static_geometry_indices[index] >= 0 &&
-                    static_cast<std::uint32_t>(static_overlaps.static_geometry_indices[index]) <
-                        static_geometry_count)
+        EXPECT_TRUE(static_indices[index] >= 0 &&
+                    static_cast<std::uint32_t>(static_indices[index]) < static_geometry_count)
             << "Static overlap index remains valid";
         if (index > 0) {
-            auto const previous_entity{static_overlaps.entities[index - 1]};
-            auto const previous_static{static_overlaps.static_geometry_indices[index - 1]};
-            auto const current_entity{static_overlaps.entities[index]};
-            auto const current_static{static_overlaps.static_geometry_indices[index]};
+            auto const previous_entity{static_entities[index - 1]};
+            auto const previous_static{static_indices[index - 1]};
+            auto const current_entity{static_entities[index]};
+            auto const current_static{static_indices[index]};
             EXPECT_TRUE(previous_entity < current_entity ||
                         (previous_entity == current_entity && previous_static < current_static))
                 << "Static overlaps are sorted and unique";
@@ -569,19 +587,18 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     for (auto const moved : moved_entities) {
         bool found_large_static{};
         for (std::uint32_t index{}; index < static_overlap_count; ++index) {
-            found_large_static = found_large_static ||
-                                 (static_overlaps.entities[index] == moved &&
-                                  static_overlaps.static_geometry_indices[index] == large_static);
+            found_large_static = found_large_static || (static_entities[index] == moved &&
+                                                        static_indices[index] == large_static);
         }
         EXPECT_TRUE(found_large_static) << "Moved entity retains its large-static identity";
     }
 
-    auto const expected_first{fixture.ids(entity_overlaps.first_entities)};
-    auto const expected_second{fixture.ids(entity_overlaps.second_entities)};
-    auto const expected_static_entities{fixture.ids(static_overlaps.entities)};
+    auto const expected_first{fixture.ids(entity_overlaps.first_entities())};
+    auto const expected_second{fixture.ids(entity_overlaps.second_entities())};
+    auto const expected_static_entities{fixture.ids(static_overlaps.entities())};
     std::vector<collision::StaticGeometryIndex> const expected_static_indices{
-        static_overlaps.static_geometry_indices.begin(),
-        static_overlaps.static_geometry_indices.end()};
+        static_overlaps.static_geometry_indices().begin(),
+        static_overlaps.static_geometry_indices().end()};
     std::vector<EntityUniqueId> repeated_candidates;
     for (std::uint32_t repeat{}; repeat < 4; ++repeat) {
         repeated_candidates.insert(
@@ -591,13 +608,13 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     fixture.refresh_and_detect_overlaps(repeated_candidates);
     auto const repeated_entities{fixture.get_entity_overlaps()};
     auto const repeated_static{fixture.get_static_overlaps()};
-    EXPECT_EQ(fixture.ids(repeated_entities.first_entities), expected_first);
-    EXPECT_EQ(fixture.ids(repeated_entities.second_entities), expected_second);
-    EXPECT_EQ(fixture.ids(repeated_static.entities), expected_static_entities);
-    EXPECT_EQ(
-        std::vector<collision::StaticGeometryIndex>(repeated_static.static_geometry_indices.begin(),
-                                                    repeated_static.static_geometry_indices.end()),
-        expected_static_indices);
+    EXPECT_EQ(fixture.ids(repeated_entities.first_entities()), expected_first);
+    EXPECT_EQ(fixture.ids(repeated_entities.second_entities()), expected_second);
+    EXPECT_EQ(fixture.ids(repeated_static.entities()), expected_static_entities);
+    EXPECT_EQ(std::vector<collision::StaticGeometryIndex>(
+                  repeated_static.static_geometry_indices().begin(),
+                  repeated_static.static_geometry_indices().end()),
+              expected_static_indices);
 }
 
 TEST(EntityAABBOverlaps, EventsMirrorAuthoritativeResults) {
@@ -667,8 +684,8 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
     auto const first_events{fixture.query_manager.get_aabb_overlap_events()};
     check_single_pair(first_events.entity_entity_overlaps, moved, stationary);
     check_single_static_overlap(first_events.entity_static_overlaps, moved, static_index);
-    auto const* const entity_storage{first_events.entity_entity_overlaps.first_entities.data()};
-    auto const* const static_storage{first_events.entity_static_overlaps.entities.data()};
+    auto const* const entity_storage{first_events.entity_entity_overlaps.first_entities().data()};
+    auto const* const static_storage{first_events.entity_static_overlaps.entities().data()};
 
     fixture.query_manager.reset_frame_collision_events();
 
@@ -677,18 +694,18 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
     EXPECT_EQ(reset_events.entity_static_overlaps.num(), 0) << "Frame reset clears static events";
     EXPECT_EQ(static_cast<std::int32_t>(reset_events.batches.size()), 0)
         << "Frame reset clears event batches";
-    EXPECT_TRUE(reset_events.entity_entity_overlaps.first_entities.data() == entity_storage)
+    EXPECT_TRUE(reset_events.entity_entity_overlaps.first_entities().data() == entity_storage)
         << "Dynamic event storage is retained across reset";
-    EXPECT_TRUE(reset_events.entity_static_overlaps.entities.data() == static_storage)
+    EXPECT_TRUE(reset_events.entity_static_overlaps.entities().data() == static_storage)
         << "Static event storage is retained across reset";
 
     fixture.refresh_and_detect_overlaps(fixture.ids(handles));
     auto const recaptured_events{fixture.query_manager.get_aabb_overlap_events()};
     check_single_pair(recaptured_events.entity_entity_overlaps, moved, stationary);
     check_single_static_overlap(recaptured_events.entity_static_overlaps, moved, static_index);
-    EXPECT_TRUE(recaptured_events.entity_entity_overlaps.first_entities.data() == entity_storage)
+    EXPECT_TRUE(recaptured_events.entity_entity_overlaps.first_entities().data() == entity_storage)
         << "Dynamic event storage is reused after recapture";
-    EXPECT_TRUE(recaptured_events.entity_static_overlaps.entities.data() == static_storage)
+    EXPECT_TRUE(recaptured_events.entity_static_overlaps.entities().data() == static_storage)
         << "Static event storage is reused after recapture";
 
     fixture.refresh_and_detect_overlaps(fixture.ids(handles));

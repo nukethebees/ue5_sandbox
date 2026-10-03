@@ -11,7 +11,9 @@ namespace ioj::sim {
 struct QueryThreadBuffers {
     explicit QueryThreadBuffers(
         std::pmr::memory_resource* resource = std::pmr::get_default_resource())
-        : range_query_entity_stamps{resource} {}
+        : line_traces{resource}
+        , trace_hits{resource}
+        , range_query_entity_stamps{resource} {}
 
     void ensure_entity_stamp_count(std::uint32_t entity_count);
     [[nodiscard]] auto advance_range_query_stamp() noexcept -> std::uint32_t;

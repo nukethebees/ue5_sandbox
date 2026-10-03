@@ -5,8 +5,10 @@
   (struct EntityEntityOverlaps
     :operations (all)
     (member first_entities array @native_unique_id)
-    (member second_entities array @native_unique_id))
+    (member second_entities array @native_unique_id)
+    (single-allocation EntityEntityOverlaps))
   (struct EntityStaticOverlaps
     :operations (all)
     (member entities array @native_unique_id)
-    (member static_geometry_indices array @native_static_geometry_index)))
+    (member static_geometry_indices array @native_static_geometry_index)
+    (single-allocation EntityStaticOverlaps)))
