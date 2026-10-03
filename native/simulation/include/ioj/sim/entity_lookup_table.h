@@ -5,6 +5,8 @@
 #include <ioj/sim/health.h>
 #include <ioj/sim/sim_clock.h>
 
+#include <sandbox/core/range_fits.h>
+
 #include <algorithm>
 #include <cassert>
 #include <memory_resource>
@@ -34,8 +36,10 @@ class EntityLookupTable {
                       Health const maximum = 1) {
         assert(teams.empty() || teams.size() == ids.size());
         assert(healths.empty() || healths.size() == ids.size());
-        assert(
-            EntityInstanceHandle::index_range_fits(0, static_cast<EntityFrameIndex>(ids.size())));
+        assert(ml::range_fits<std::size_t>(0,
+                                           ids.size(),
+                                           EntityInstanceHandle::index_minimum,
+                                           EntityInstanceHandle::index_maximum));
         auto const count{ids.size()};
         [[maybe_unused]] auto const handle_count{handles_.size()};
         for (EntityFrameIndex row{}; row < count; ++row) {

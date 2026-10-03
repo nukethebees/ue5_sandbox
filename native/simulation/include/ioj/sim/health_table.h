@@ -4,6 +4,7 @@
 #include <ioj/sim/entity_instance_handle.h>
 #include <ioj/sim/health.h>
 
+#include <sandbox/core/range_fits.h>
 #include <sandbox/core/soa_permutation.h>
 
 #include <algorithm>
@@ -97,7 +98,10 @@ class HealthTable {
     void initialise_rows(EntityFrameIndex const first,
                          std::span<Health const> const initial_values) {
         [[maybe_unused]] auto const count{static_cast<EntityFrameIndex>(initial_values.size())};
-        assert(EntityInstanceHandle::index_range_fits(first, count));
+        assert(ml::range_fits(first,
+                              count,
+                              EntityInstanceHandle::index_minimum,
+                              EntityInstanceHandle::index_maximum));
         assert(first + count <= health_storage::capacities[Type]);
         constexpr auto base{health_storage::offsets[Type]};
         std::ranges::copy(initial_values, values_.begin() + base + first);
@@ -107,7 +111,10 @@ class HealthTable {
     void initialise_rows(EntityFrameIndex const first,
                          EntityFrameIndex const count,
                          Health const initial_value) {
-        assert(EntityInstanceHandle::index_range_fits(first, count));
+        assert(ml::range_fits(first,
+                              count,
+                              EntityInstanceHandle::index_minimum,
+                              EntityInstanceHandle::index_maximum));
         assert(first + count <= health_storage::capacities[Type]);
         constexpr auto base{health_storage::offsets[Type]};
         std::fill_n(values_.begin() + base + first, count, initial_value);

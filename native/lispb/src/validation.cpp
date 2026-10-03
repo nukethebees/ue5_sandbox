@@ -1023,7 +1023,9 @@ void validate_packed_value(PackedValueSchema const& value,
         }
         if (field->kind == PackedFieldKind::enumeration) {
             names.push_back(field->name + "_underlying_type");
-        } else if (field->kind == PackedFieldKind::signed_integer) {
+        } else if (field->kind == PackedFieldKind::signed_integer ||
+                   (field->kind == PackedFieldKind::unsigned_integer &&
+                    field_type.spelling != "bool")) {
             names.push_back(field->name + "_minimum");
             names.push_back(field->name + "_maximum");
         }

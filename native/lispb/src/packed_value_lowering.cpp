@@ -337,9 +337,14 @@ void append_semantic_range_assertion(std::string& output,
     }
 
     auto const field_alias{packed_field_type_alias(field)};
-    output += "        assert((" + value_name +
-              " >= " + integer_cast_literal(field_alias, *field.minimum_value) + " && " +
-              value_name + " <= " + integer_cast_literal(field_alias, *field.maximum_value) + ")";
+    auto const minimum{field.kind == PackedFieldKind::unsigned_integer
+                           ? field.name + "_minimum"
+                           : integer_cast_literal(field_alias, *field.minimum_value)};
+    auto const maximum{field.kind == PackedFieldKind::unsigned_integer
+                           ? field.name + "_maximum"
+                           : integer_cast_literal(field_alias, *field.maximum_value)};
+    output += "        assert((" + value_name + " >= " + minimum + " && " + value_name +
+              " <= " + maximum + ")";
     for (auto const& code : field.named_codes) {
         if (code.sentinel) {
             output += " || " + value_name + " == " + field.name + "_" + code.name;
@@ -387,9 +392,8 @@ void append_field_validation(std::string& output,
     if (field.kind == PackedFieldKind::signed_integer) {
         output += "        assert(" + value_name + " >= " + field.name + "_minimum && " +
                   value_name + " <= " + field.name + "_maximum);\n";
-    } else {
-        output += "        assert(" + value_name + " <= static_cast<" + field_alias + ">(" +
-                  field.name + "_field::value_mask));\n";
+    } else if (!field.minimum_value.has_value()) {
+        output += "        assert(" + value_name + " <= " + field.name + "_maximum);\n";
     }
     append_semantic_range_assertion(output, field, value_name);
 }
@@ -593,6 +597,20 @@ auto packed_value_text(PackedValueSchema const& source_schema,
                           std::to_string(sign_magnitude - 1) + ")};\n";
             }
         }
+        if (field->kind == PackedFieldKind::unsigned_integer && field_type.spelling != "bool") {
+            output += "    inline static constexpr " + field_alias + " " + field->name +
+                      "_minimum{" +
+                      (field->minimum_value.has_value()
+                           ? integer_cast_literal(field_alias, *field->minimum_value)
+                           : "0") +
+                      "};\n";
+            output +=
+                "    inline static constexpr " + field_alias + " " + field->name + "_maximum{" +
+                (field->maximum_value.has_value() && field->maximum_value->magnitude != value_mask
+                     ? integer_cast_literal(field_alias, *field->maximum_value)
+                     : "static_cast<" + field_alias + ">(" + field->name + "_field::value_mask)") +
+                "};\n";
+        }
         for (auto const& code : field->named_codes) {
             output += "    inline static constexpr " + field_alias + " " + field->name + "_" +
                       code.name + "{" + integer_cast_literal(field_alias, code.value) + "};\n";
@@ -669,10 +687,14 @@ auto packed_value_text(PackedValueSchema const& source_schema,
              field.kind == PackedFieldKind::signed_integer) &&
             field.minimum_value.has_value()) {
             auto const field_alias{packed_field_type_alias(field)};
-            auto check{"(" + field.name +
-                       "() >= " + integer_cast_literal(field_alias, *field.minimum_value) + " && " +
-                       field.name +
-                       "() <= " + integer_cast_literal(field_alias, *field.maximum_value) + ")"};
+            auto const minimum{field.kind == PackedFieldKind::unsigned_integer
+                                   ? field.name + "_minimum"
+                                   : integer_cast_literal(field_alias, *field.minimum_value)};
+            auto const maximum{field.kind == PackedFieldKind::unsigned_integer
+                                   ? field.name + "_maximum"
+                                   : integer_cast_literal(field_alias, *field.maximum_value)};
+            auto check{"(" + field.name + "() >= " + minimum + " && " + field.name +
+                       "() <= " + maximum + ")"};
             for (auto const& code : field.named_codes) {
                 if (code.sentinel) {
                     check += " || " + field.name + "() == " + field.name + "_" + code.name;
@@ -791,23 +813,13 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         }
 
         if (field.range_helper) {
+            dependencies.push_back(
+                TypeDependency{"ml::range_fits", "sandbox/core/range_fits.h", {}});
             output += "\n    [[nodiscard]] static constexpr auto " + field.name + "_range_fits(" +
                       field_alias + " const first, " + field_alias +
                       " const count) noexcept -> bool {\n";
-            output += "        return count == 0 ||\n";
-            if (field.minimum_value.has_value()) {
-                output +=
-                    "               (first >= " +
-                    integer_cast_literal(field_alias, *field.minimum_value) +
-                    " && first <= " + integer_cast_literal(field_alias, *field.maximum_value) +
-                    " &&\n";
-                output += "                count - 1 <= " +
-                          integer_cast_literal(field_alias, *field.maximum_value) + " - first);\n";
-            } else {
-                output += "               (first <= " + field.name +
-                          "_field::value_mask && count - 1 <= " + field.name +
-                          "_field::value_mask - first);\n";
-            }
+            output += "        return ml::range_fits(first, count, " + field.name + "_minimum, " +
+                      field.name + "_maximum);\n";
             output += "    }\n";
         }
     }

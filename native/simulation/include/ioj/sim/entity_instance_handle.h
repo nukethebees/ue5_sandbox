@@ -25,6 +25,9 @@ struct EntityInstanceHandle {
     // index
     using index_type = std::uint32_t;
     using index_field = ml::PackedField<storage_type, index_type, 0, 18>;
+    inline static constexpr index_type index_minimum{static_cast<index_type>(0)};
+    inline static constexpr index_type index_maximum{
+        static_cast<index_type>(index_field::value_mask)};
 
     // team
     using team_type = ioj::sim::Team;
@@ -35,6 +38,10 @@ struct EntityInstanceHandle {
     // health_state
     using health_state_type = std::uint8_t;
     using health_state_field = ml::PackedField<storage_type, health_state_type, 21, 2>;
+    inline static constexpr health_state_type health_state_minimum{
+        static_cast<health_state_type>(0)};
+    inline static constexpr health_state_type health_state_maximum{
+        static_cast<health_state_type>(health_state_field::value_mask)};
 
     inline static constexpr storage_type invalid_value{storage_type{0xffffffff}};
 
@@ -51,14 +58,10 @@ struct EntityInstanceHandle {
     explicit constexpr EntityInstanceHandle(index_type const index_value,
                                             team_type const team_value,
                                             health_state_type const health_state_value) noexcept {
-        assert(index_value <= static_cast<index_type>(index_field::value_mask));
-        assert((index_value >= static_cast<index_type>(0) &&
-                index_value <= static_cast<index_type>(262143)));
+        assert((index_value >= index_minimum && index_value <= index_maximum));
         assert(static_cast<std::size_t>(team_value) < ml::enum_count<team_type>());
-        assert(health_state_value <=
-               static_cast<health_state_type>(health_state_field::value_mask));
-        assert((health_state_value >= static_cast<health_state_type>(0) &&
-                health_state_value <= static_cast<health_state_type>(3)));
+        assert((health_state_value >= health_state_minimum &&
+                health_state_value <= health_state_maximum));
         value_ = static_cast<storage_type>(ml::packed_pack<index_field>(index_value) |
                                            ml::packed_pack<team_field>(team_value) |
                                            ml::packed_pack<health_state_field>(health_state_value));
@@ -66,11 +69,9 @@ struct EntityInstanceHandle {
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
         return value_ != invalid_value &&
-               ((index() >= static_cast<index_type>(0) &&
-                 index() <= static_cast<index_type>(262143))) &&
+               ((index() >= index_minimum && index() <= index_maximum)) &&
                static_cast<std::size_t>(team()) < ml::enum_count<team_type>() &&
-               ((health_state() >= static_cast<health_state_type>(0) &&
-                 health_state() <= static_cast<health_state_type>(3)));
+               ((health_state() >= health_state_minimum && health_state() <= health_state_maximum));
     }
 
     [[nodiscard]] constexpr auto operator<=>(EntityInstanceHandle const&) const noexcept = default;
@@ -80,16 +81,8 @@ struct EntityInstanceHandle {
     }
 
     constexpr void set_index(index_type const value) noexcept {
-        assert(value <= static_cast<index_type>(index_field::value_mask));
-        assert((value >= static_cast<index_type>(0) && value <= static_cast<index_type>(262143)));
+        assert((value >= index_minimum && value <= index_maximum));
         value_ = ml::packed_insert<index_field>(value_, value);
-    }
-
-    [[nodiscard]] static constexpr auto index_range_fits(index_type const first,
-                                                         index_type const count) noexcept -> bool {
-        return count == 0 ||
-               (first >= static_cast<index_type>(0) && first <= static_cast<index_type>(262143) &&
-                count - 1 <= static_cast<index_type>(262143) - first);
     }
 
     [[nodiscard]] constexpr auto team() const noexcept -> team_type {
@@ -106,9 +99,7 @@ struct EntityInstanceHandle {
     }
 
     constexpr void set_health_state(health_state_type const value) noexcept {
-        assert(value <= static_cast<health_state_type>(health_state_field::value_mask));
-        assert((value >= static_cast<health_state_type>(0) &&
-                value <= static_cast<health_state_type>(3)));
+        assert((value >= health_state_minimum && value <= health_state_maximum));
         value_ = ml::packed_insert<health_state_field>(value_, value);
     }
   private:

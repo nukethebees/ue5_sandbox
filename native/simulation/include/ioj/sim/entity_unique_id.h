@@ -21,6 +21,9 @@ struct EntityUniqueId {
     // index
     using index_type = std::uint32_t;
     using index_field = ml::PackedField<storage_type, index_type, 0, 24>;
+    inline static constexpr index_type index_minimum{0};
+    inline static constexpr index_type index_maximum{
+        static_cast<index_type>(index_field::value_mask)};
 
     // entity_type
     using entity_type_type = ioj::sim::EntityType;
@@ -42,7 +45,7 @@ struct EntityUniqueId {
 
     explicit constexpr EntityUniqueId(index_type const index_value,
                                       entity_type_type const entity_type_value) noexcept {
-        assert(index_value <= static_cast<index_type>(index_field::value_mask));
+        assert(index_value <= index_maximum);
         assert(static_cast<std::size_t>(entity_type_value) < ml::enum_count<entity_type_type>());
         value_ = static_cast<storage_type>(ml::packed_pack<index_field>(index_value) |
                                            ml::packed_pack<entity_type_field>(entity_type_value));
@@ -57,12 +60,6 @@ struct EntityUniqueId {
 
     [[nodiscard]] constexpr auto index() const noexcept -> index_type {
         return ml::packed_extract<index_field>(value_);
-    }
-
-    [[nodiscard]] static constexpr auto index_range_fits(index_type const first,
-                                                         index_type const count) noexcept -> bool {
-        return count == 0 ||
-               (first <= index_field::value_mask && count - 1 <= index_field::value_mask - first);
     }
 
     [[nodiscard]] constexpr auto entity_type() const noexcept -> entity_type_type {

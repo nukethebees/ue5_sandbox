@@ -291,9 +291,6 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
     EXPECT_EQ(header.find("entity_index_mask"), std::string::npos);
     EXPECT_NE(header.find("operator<=>(FighterState const&) const noexcept = default"),
               std::string::npos);
-    EXPECT_NE(header.find("assert(entity_index_value <= static_cast<entity_index_type>("
-                          "entity_index_field::value_mask));"),
-              std::string::npos);
     EXPECT_NE(header.find("auto const raw{static_cast<storage_type>("), std::string::npos);
     EXPECT_NE(header.find("assert(raw != invalid_value);"), std::string::npos);
     EXPECT_EQ(header.find("try_set_entity_index"), std::string::npos);
@@ -302,10 +299,16 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
               std::string::npos);
     EXPECT_NE(header.find("invalid_value{storage_type{0x7fffffff}}"), std::string::npos);
     EXPECT_NE(header.find("entity_index_range_fits"), std::string::npos);
-    EXPECT_NE(header.find("entity_index_value >= static_cast<entity_index_type>(10)"),
+    EXPECT_NE(header.find("entity_index_minimum{static_cast<entity_index_type>(10)}"),
               std::string::npos);
-    EXPECT_NE(header.find("entity_index_value <= static_cast<entity_index_type>(1000000)"),
+    EXPECT_NE(header.find("entity_index_maximum{static_cast<entity_index_type>(1000000)}"),
               std::string::npos);
+    EXPECT_NE(header.find("entity_index_value >= entity_index_minimum && entity_index_value <= "
+                          "entity_index_maximum"),
+              std::string::npos);
+    EXPECT_NE(
+        header.find("ml::range_fits(first, count, entity_index_minimum, entity_index_maximum)"),
+        std::string::npos);
     EXPECT_NE(header.find("entity_index_Player{static_cast<entity_index_type>(42)}"),
               std::string::npos);
     EXPECT_NE(header.find("entity_index_Invalid{static_cast<entity_index_type>(16777215)}"),
@@ -551,8 +554,8 @@ TEST(PackedValue, LowersSharedIntegerScalarDomainForPackedPlacement) {
               std::string::npos);
     EXPECT_NE(header.find("entity_index_Unknown{static_cast<entity_index_type>(4095)}"),
               std::string::npos);
-    EXPECT_NE(header.find("value >= static_cast<entity_index_type>(0)"), std::string::npos);
-    EXPECT_NE(header.find("value <= static_cast<entity_index_type>(1000)"), std::string::npos);
+    EXPECT_NE(header.find("value >= entity_index_minimum"), std::string::npos);
+    EXPECT_NE(header.find("value <= entity_index_maximum"), std::string::npos);
     EXPECT_NE(header.find("value == entity_index_Unknown"), std::string::npos);
     EXPECT_NE(header.find("entity_index() == entity_index_Unknown"), std::string::npos);
     EXPECT_EQ(header.find("using entity_index_type = project::Health;"), std::string::npos);
@@ -1010,6 +1013,10 @@ TEST(PackedValue, RejectsDescriptorAndRawFactoryNameCollisions) {
     field(schema, 1).name = "entity_index_field";
     EXPECT_THROW(lower(module), std::invalid_argument);
     field(schema, 1).name = "from_raw";
+    EXPECT_THROW(lower(module), std::invalid_argument);
+    field(schema, 1).name = "entity_index_minimum";
+    EXPECT_THROW(lower(module), std::invalid_argument);
+    field(schema, 1).name = "entity_index_maximum";
     EXPECT_THROW(lower(module), std::invalid_argument);
 }
 

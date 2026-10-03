@@ -11,7 +11,7 @@
     :cpp-type std::uint8_t :cpp-emission alias)
   (packed-value EntityInstanceHandle
     :storage std::uint32_t :invalid-value 0xffffffff :mutable true
-    (field index ioj::sim::EntityFrameIndex :bits 18 :range-helper true)
+    (field index ioj::sim::EntityFrameIndex :bits 18)
     (field team @native_team :bits 3 :kind enum)
     (field health_state ioj::sim::QuantisedHealth :bits 2)
     (reserved future :bits 9)))

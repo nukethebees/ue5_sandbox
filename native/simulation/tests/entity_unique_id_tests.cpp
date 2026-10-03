@@ -1,5 +1,7 @@
 #include <ioj/sim/entity_types.h>
 
+#include <sandbox/core/range_fits.h>
+
 #include <gtest/gtest.h>
 
 #include <array>
@@ -121,11 +123,13 @@ TEST(EntityUniqueId, AssertsWhenConstructionViolatesThePackedDomain) {
 }
 
 TEST(EntityUniqueId, AllocationRangeDetectsExhaustionWithoutWrapping) {
-    EXPECT_TRUE(EntityUniqueId::index_range_fits(0, 0));
-    EXPECT_TRUE(EntityUniqueId::index_range_fits(0, EntityUniqueId::index_field::value_mask + 1));
-    EXPECT_TRUE(EntityUniqueId::index_range_fits(EntityUniqueId::index_field::value_mask, 1));
-    EXPECT_FALSE(EntityUniqueId::index_range_fits(EntityUniqueId::index_field::value_mask, 2));
-    EXPECT_FALSE(EntityUniqueId::index_range_fits(EntityUniqueId::index_field::value_mask + 1, 1));
+    constexpr auto minimum{EntityUniqueId::index_minimum};
+    constexpr auto maximum{EntityUniqueId::index_maximum};
+    EXPECT_TRUE(ml::range_fits(0u, 0u, minimum, maximum));
+    EXPECT_TRUE(ml::range_fits(0u, maximum + 1, minimum, maximum));
+    EXPECT_TRUE(ml::range_fits(maximum, 1u, minimum, maximum));
+    EXPECT_FALSE(ml::range_fits(maximum, 2u, minimum, maximum));
+    EXPECT_FALSE(ml::range_fits(maximum + 1, 1u, minimum, maximum));
 }
 } // namespace
 } // namespace ioj::sim::tests
