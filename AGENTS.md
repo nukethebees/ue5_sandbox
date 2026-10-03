@@ -11,25 +11,25 @@ Unreal Engine 5.8 project.
 
 # Feature Workflow
 
-* Use `agent-task git` for mutating Git operations. It intentionally supports a limited whitelist of git commands (documented by `agent-task git --help` and each subcommand's `--help`) that agents are free to use within their worktree. For unsupported commands, fall back on requesting permission to use git directly from the maintainer.
+* Use `coj git` for mutating Git operations. It intentionally supports a limited whitelist of git commands (documented by `coj git --help` and each subcommand's `--help`) that agents are free to use within their worktree. For unsupported commands, fall back on requesting permission to use git directly from the maintainer.
 * Git stash is intentionally unsupported because it is repository-global. Use branches instead of stashing.
 * `dev`, `main`, and `master` are protected regardless of ASCII case. Read them freely, but do not
   mutate them or switch an agent worktree onto them through the ordinary Git path.
 * The worktree containing the current CWD is the workspace boundary. Do not access or modify
   another worktree outside that boundary. Git owns index/ref locking and operation state.
   Never mutate or attach to a branch checked out by another worktree; it may be a revision input.
-  AgentTask-created worktrees live only under this workspace's ignored `.local/worktrees/` and
-  are created/removed by branch name through `agent-task git worktree`.
-* AgentTask is a cooperative guardrail, not a hostile-process security sandbox. Do not bypass it
+  coj-created worktrees live only under this workspace's ignored `.local/worktrees/` and
+  are created/removed by branch name through `coj git worktree`.
+* coj is a cooperative guardrail, not a hostile-process security sandbox. Do not bypass it
   with raw mutating Git, direct `.git` edits, environment overrides, aliases, alternate Git
   executables, shell tricks, or other workarounds. Explicitly permitted read-only raw Git is fine.
   If blocked, report the reason; operations requiring an exception need maintainer intervention.
 * `dev` is the integration branch
-* Begin a new task with `agent-task prepare-worktree` from anywhere in the current Git worktree. It clears
+* Begin a new task with `coj prepare-worktree` from anywhere in the current Git worktree. It clears
   that worktree's `out`, initializes/updates submodules, regenerates presets and code, and disables
   Live Coding once if saved Editor settings exist.
   It does not perform a broad project/test build; build only the targets needed for the task afterward.
-  The maintainer installs/updates `agent-task` and manages PATH; agents invoke it by name from PATH. If it cannot be found or launched, halt and report the problem so the maintainer can fix it; do not use an absolute-path fallback or install it automatically.
+  The maintainer installs/updates `coj` and manages PATH; agents invoke it by name from PATH. If it cannot be found or launched, halt and report the problem so the maintainer can fix it; do not use an absolute-path fallback or install it automatically.
 * After worktree preparation, build only affected targets and execute relevant CTest labels.
   Use `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"` for the
   fast loop. Include the applicable expensive categories once for final validation.
@@ -47,11 +47,11 @@ Unreal Engine 5.8 project.
   * Fix with focused checks then report ready
   * Only build and run what is needed.
 * Use stock Codex and the cooperative [jobs board](tools/jobserver/README.md). Cheap work needs no
-  ticket. Before heavyweight builds/tests, run `agent-task jobs request shared "operation"`;
+  ticket. Before heavyweight builds/tests, run `coj jobs request shared "operation"`;
   use `exclusive` for benchmarks or work requiring a quiet machine. Check the returned ID with
-  `agent-task jobs check <id>` until Ready. Call `jobs start <id>` immediately before the ordinary
+  `coj jobs check <id>` until Ready. Call `jobs start <id>` immediately before the ordinary
   command and `jobs end <id>` immediately when it returns, including failures. Cancel unused
-  queued/ready tickets with `jobs cancel <id>`. These are all `agent-task jobs` commands.
+  queued/ready tickets with `jobs cancel <id>`. These are all `coj jobs` commands.
   Inspect `jobs status`; never jump a queued exclusive ticket.
   This is voluntary coordination: tools do not enforce it. Follow the protocol and report missing tools.
 * For jobs-board contention, wait generously: 10+ minutes between checks of your own ticket is
@@ -59,16 +59,16 @@ Unreal Engine 5.8 project.
   and your concern to the maintainer once, then wait for instructions. Without explicit maintainer
   direction, do not inspect, kill, or interfere with another agent's work, or end/cancel their ticket.
   Do not independently investigate whether their work is stale.
-* After explicit integration authorization, run `agent-task integrate` from the feature worktree.
+* After explicit integration authorization, run `coj integrate` from the feature worktree.
 * Run light, relevant tests after implementation and expensive relevant gates once against
   the final candidate. Tooling/native work must not build Unreal without a dependency reason.
 * Integration performs a cheap final Git transaction. Complete affected builds, focused tests, and review before requesting integration authorization.
-* A final-rebase conflict is aborted. Resolve with `agent-task git rebase dev` before integration,
+* A final-rebase conflict is aborted. Resolve with `coj git rebase dev` before integration,
   validate the resolution, then retry integration.
   Report the stopped stage, blocker, required action, and retained state.
-* `agent-task integrate` is privileged and is not part of the unconditional Git permission surface.
+* `coj integrate` is privileged and is not part of the unconditional Git permission surface.
   Invoke it only after explicit user authorization.
-* If AgentTask is broken, report it once and follow an explicit maintainer instruction for any
+* If coj is broken, report it once and follow an explicit maintainer instruction for any
   minimal alternative; do not repeatedly retry or deliberately bypass it.
 * You have permission to kill stale/hung processes that you spawned or were spawned in your worktree
 * Use one simple shell command per tool invocation for routine agent work. Do not combine commands with `;`, `&&`, `||`, pipelines, or script blocks, even when each command is individually approved or cheap.
@@ -93,12 +93,12 @@ Unreal Engine 5.8 project.
   the agent sandbox; do not grant access to the user profile to resolve temporary-path failures.
 * For final integration, only build and test what your work has affected
 * Keep benchmarks short; Not more than 3 minutes total
-* For native simulation and fighter revision comparisons, use `agent-task benchmark compare
+* For native simulation and fighter revision comparisons, use `coj benchmark compare
   --baseline <ref> [--candidate <ref>]` rather than ad-hoc worktree or analysis scripts.
   This command manages its own detached inputs under this workspace's `.local/benchmarks/wt/`.
   Omit `--candidate` to include local edits. Use `--prepare-only` under a shared ticket, then
   the printed worktree paths with `--skip-build` under an exclusive ticket; see `docs/benchmarks.md`.
-* For probe-level performance work, use `agent-task benchmark tracy-report --trace <capture.tracy>`
+* For probe-level performance work, use `coj benchmark tracy-report --trace <capture.tracy>`
   with a relevant `--filter` and steady-state time window. Compare probe distributions as well as
   full-tick timings. Keep raw traces/exports out of agent context; see `docs/benchmarks.md`.
 * Standalone developer-tool tests are not part of the default validation path. Run
@@ -173,7 +173,7 @@ If a new issue invalidates previous validation or requires additional builds/tes
 
 # Formatting
 
-* Format changed C++ files with `agent-task format --changed`
+* Format changed C++ files with `coj format --changed`
 * Do not invoke `clang-format` directly for normal repository work
 
 # UI

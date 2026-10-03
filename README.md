@@ -9,14 +9,14 @@ test, and measure them.
 Set `UE_ROOT` to a usable Unreal Engine installation, then prepare the worktree:
 
 ```powershell
-agent-task prepare-worktree
+coj prepare-worktree
 ```
 
-The maintainer runs `pwsh -NoProfile -File PowerShell/InstallAgentTask.ps1` and manages PATH;
-agents begin new tasks with `agent-task prepare-worktree`.
+The maintainer runs `pwsh -NoProfile -File PowerShell/InstallCoj.ps1` and manages PATH;
+agents begin new tasks with `coj prepare-worktree`.
 This clears the worktree's build output, initializes/updates submodules, and regenerates presets
 and code. It does not run a broad project/test build; build only the task's relevant targets afterward.
-Install shared per-user build tools with `agent-task install-central-tools` when needed.
+Install shared per-user build tools with `coj install-central-tools` when needed.
 Use `cmake --workflow --preset debug-game` to build the Editor and
 `debug-game-unit-tests` only for explicit Unreal-enabled integration validation.
 Native presets set `IOJ_WITH_UNREAL=OFF`.
@@ -29,7 +29,7 @@ For complete setup, build, testing, debugging, and packaging instructions, see
 | Area | Purpose | Guide |
 | --- | --- | --- |
 | `cmake/` | CMake wrapper, presets, and Unreal orchestration | [CMake guide](cmake/README.md) |
-| `PowerShell/` | AgentTask installation, packaging, and script checks | [PowerShell guide](PowerShell/README.md) |
+| `PowerShell/` | coj installation, packaging, and script checks | [PowerShell guide](PowerShell/README.md) |
 | `native/` | Standalone C++ libraries, tools, simulations, and tests | [Native guide](native/README.md) |
 | `Codegen/` and `lispb/` | Generated C++/Slate/material outputs and their inputs | [Code generation guide](Codegen/README.md) |
 | `Source/` | Project Unreal modules and their adapters/tests | [Source map](Source/README.md) |

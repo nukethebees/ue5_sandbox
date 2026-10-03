@@ -1,6 +1,6 @@
 # Benchmarks
 
-Use `agent-task benchmark <operation>` to run a workload or compare revisions. Keep results in
+Use `coj benchmark <operation>` to run a workload or compare revisions. Keep results in
 `.local/benchmarks/` and measurement campaigns under three minutes.
 
 ## Before measuring
@@ -17,16 +17,16 @@ builds and measures in one invocation needs an exclusive ticket for that invocat
 
 ```powershell
 # Measure the standard 2,000- and 4,000-fighter cases.
-agent-task benchmark fighter-simulation
+coj benchmark fighter-simulation
 
 # Choose populations and measurement duration.
-agent-task benchmark fighter-simulation --fighter-caps 1000,2000,4000 --seconds 10
+coj benchmark fighter-simulation --fighter-caps 1000,2000,4000 --seconds 10
 
 # Run an S7 level for 20 simulated seconds.
-agent-task benchmark native-simulation --level LevelScripts/BenchmarkFleet_10.scm --seconds 20
+coj benchmark native-simulation --level LevelScripts/BenchmarkFleet_10.scm --seconds 20
 
 # Measure the batch scenario's frame-memory use.
-agent-task benchmark frame-memory-level --seconds 20
+coj benchmark frame-memory-level --seconds 20
 ```
 
 The fighter runner defaults to a five-second warmup and ten-second measurement. Adjust
@@ -37,7 +37,7 @@ Find fighter results in the printed directory: `summary.csv` for timings and `re
 for full results. Set `--output-dir` to choose the destination. Native simulation and frame-memory
 commands print their JSON results.
 
-For a frame-memory revision comparison, run `agent-task benchmark frame-memory-revision-ab
+For a frame-memory revision comparison, run `coj benchmark frame-memory-revision-ab
 --baseline <ref>` under an exclusive ticket. Set `--iterations` and `--warmup-iterations` to
 control complete runs; read `raw-results.csv` and `paired-results.csv` in the printed directory.
 
@@ -46,13 +46,13 @@ control complete runs; read `raw-results.csv` and `paired-results.csv` in the pr
 First prepare both inputs under a shared ticket:
 
 ```powershell
-agent-task benchmark compare --baseline <before> --candidate <after> --prepare-only
+coj benchmark compare --baseline <before> --candidate <after> --prepare-only
 ```
 
 Then obtain an exclusive ticket and measure using the paths printed by preparation:
 
 ```powershell
-agent-task benchmark compare --baseline <before> --candidate <after> --skip-build `
+coj benchmark compare --baseline <before> --candidate <after> --skip-build `
     --baseline-worktree <printed-baseline> --candidate-worktree <printed-candidate>
 ```
 
@@ -86,7 +86,7 @@ the commit diff. Dirty tracked edits also appear in `candidate-working-tree.diff
 
 For a combined build-and-measure invocation, omit the preparation and reuse options.
 `--keep-worktrees` retains newly created inputs for inspection. Run
-`agent-task benchmark compare --help` for all options.
+`coj benchmark compare --help` for all options.
 
 ## Tracy probe reports
 
@@ -95,11 +95,11 @@ the saved capture without launching the simulation:
 
 ```powershell
 # Locate the measured interval, excluding saturation and warmup.
-agent-task benchmark tracy-report --trace .local/benchmarks/run.tracy `
+coj benchmark tracy-report --trace .local/benchmarks/run.tracy `
     --filter "Benchmark measured ticks"
 
 # Substitute that interval's start/end times and the subsystem being optimized.
-agent-task benchmark tracy-report --trace .local/benchmarks/run.tracy `
+coj benchmark tracy-report --trace .local/benchmarks/run.tracy `
     --filter awareness_scan --from-seconds 20 --to-seconds 25 `
     --sort p95 --worst 3 --output .local/benchmarks/awareness.json
 ```
@@ -124,7 +124,7 @@ cmake --workflow --preset kernel-benchmark
 Then run a report under an exclusive ticket:
 
 ```powershell
-agent-task benchmark kernel-report --workload representative --skip-build
+coj benchmark kernel-report --workload representative --skip-build
 ```
 
 Choose `representative`, `vector-layout`, `full`, or `highway`. Adjust `--repetitions` and

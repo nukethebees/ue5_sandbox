@@ -31,8 +31,8 @@ Run the scope affected by your change:
 
 ```powershell
 cmake --preset win-x64-clangcl-debug-tidy
-agent-task tidy --scope core --build-dir out/build/win-x64-clangcl-debug/clang-tidy
-agent-task tidy --scope simulation --build-dir out/build/win-x64-clangcl-debug/clang-tidy
+coj tidy --scope core --build-dir out/build/win-x64-clangcl-debug/clang-tidy
+coj tidy --scope simulation --build-dir out/build/win-x64-clangcl-debug/clang-tidy
 ```
 
 Run multiple scopes sequentially when a change crosses subsystem boundaries. For shared-header
@@ -69,7 +69,7 @@ including in a fresh tree. Up-to-date generated outputs are reused on subsequent
 For a comprehensive whole-native audit:
 
 ```powershell
-agent-task tidy --scope native --build-dir out/build/win-x64-clangcl-debug/clang-tidy
+coj tidy --scope native --build-dir out/build/win-x64-clangcl-debug/clang-tidy
 ```
 
 Scope and exclusion policy lives in `.clang-tidy-scopes.json`; nested `.clang-tidy` files remain authoritative.
@@ -81,7 +81,7 @@ The audit uses `run-clang-tidy`'s detected CPU count by default. Choose a differ
 on the command, for example:
 
 ```powershell
-agent-task tidy --scope core --jobs 4 --build-dir out/build/win-x64-clangcl-debug/clang-tidy
+coj tidy --scope core --jobs 4 --build-dir out/build/win-x64-clangcl-debug/clang-tidy
 ```
 
 Use `--jobs 0` to restore the automatic worker count.

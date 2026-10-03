@@ -2,15 +2,21 @@
 
 Run these scripts directly from the repository root; no shell setup is required.
 
-## Install AgentTask
+## Install coj
+
+Before upgrading from AgentTask, finish the active tickets and shut down the empty board with
+the existing client. Install coj, then run `coj install-central-tools` to update
+the daemon. The protocol must match; there is no compatibility client. Installation removes
+the retired default `agent-task.exe` and `jobserver.exe` binaries and their matching PATH links.
+Remove any custom old installation separately.
 
 The maintainer tests and installs the Rust CLI with:
 
 ```powershell
-pwsh -NoProfile -File PowerShell/InstallAgentTask.ps1
+pwsh -NoProfile -File PowerShell/InstallCoj.ps1
 ```
 
-Set `IOJ_ROOT` before installing. `-InstallRoot` overrides the default `%IOJ_ROOT%\tools\agent-task` destination;
+Set `IOJ_ROOT` before installing. `-InstallRoot` overrides the default `%IOJ_ROOT%\tools\coj` destination;
 `-LinkDirectory` overrides the shared tool-link directory. The script checks symlink support,
 runs package tests, installs with the pinned Rust toolchain, smoke-tests the executable, and
 publishes its tool link. See [developer tools](../tools/README.md) for PATH setup.
@@ -21,9 +27,9 @@ Agents assume the CLI is installed and report missing tools to the maintainer.
 Use `-SkipTests` to retry installation after tests have already passed, for example after
 fixing a file-access error. Installation and the executable smoke check still run.
 
-Use `agent-task prepare-worktree` to begin tasks and `agent-task git` for feature Git operations.
-After validation and explicit user authorization, run `agent-task integrate`; use
-`--keep-branch` to retain the feature branch. See [AgentTask usage](../tools/rust/crates/agent-task/docs/usage.md).
+Use `coj prepare-worktree` to begin tasks and `coj git` for feature Git operations.
+After validation and explicit user authorization, run `coj integrate`; use
+`--keep-branch` to retain the feature branch. See [coj usage](../tools/rust/crates/coj/docs/usage.md).
 
 ## Packaging and checks
 

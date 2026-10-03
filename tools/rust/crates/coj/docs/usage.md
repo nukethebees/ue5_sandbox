@@ -1,56 +1,59 @@
-# AgentTask usage
+# coj usage
 
 ## Installation
 
-The maintainer installs or updates AgentTask from the repository root:
+The maintainer installs or updates coj from the repository root:
 
 ```powershell
-pwsh -NoProfile -File PowerShell/InstallAgentTask.ps1
+pwsh -NoProfile -File PowerShell/InstallCoj.ps1
 ```
 
-This runs package tests, installs AgentTask using the pinned Rust toolchain, and smoke-tests
+This runs package tests, installs coj using the pinned Rust toolchain, and smoke-tests
 the installed executable with `--version`. Installers create symlinks in
 `%IOJ_ROOT%\tools\bin`; set `IOJ_ROOT` and add this directory to PATH. Windows Developer Mode or the
 **Create symbolic links** privilege is required and checked before building.
-Agents assume AgentTask is already available; they do not install it as a preflight step.
+Agents assume coj is already available; they do not install it as a preflight step.
 
 Pass `-SkipTests` to retry installation without repeating package tests that already passed:
 
 ```powershell
-pwsh -NoProfile -File PowerShell/InstallAgentTask.ps1 -SkipTests
+pwsh -NoProfile -File PowerShell/InstallCoj.ps1 -SkipTests
 ```
 
 The install, executable `--version` check, and tool-link publication still run.
 
+For the AgentTask migration, stop the empty jobs board with the existing client before updating.
+See the [installation guide](../../../../../PowerShell/README.md) for retiring the old binaries.
+
 ## Worktree preparation and central tools
 
-Run `agent-task prepare-worktree` from anywhere inside the current worktree. It removes the
+Run `coj prepare-worktree` from anywhere inside the current worktree. It removes the
 root `out` directory, synchronizes and initializes/updates recursive submodules, regenerates
 CMake presets, disables Live Coding in existing saved Editor settings, and generates code.
 It stops on the first failure, except a saved-settings failure warns and allows generation
 to continue. Git, Python, CMake, and the repository build prerequisites must be available.
 It does not perform a broad project/test build.
 
-After preparation, the maintainer can run `agent-task install-central-tools`. This repeats
+After preparation, the maintainer can run `coj install-central-tools`. This repeats
 submodule synchronization/update, configures `native`, and builds the canonical
 `install-jobserver` target, stopping on failure. It does not repeat the remaining preparation
 steps. See [developer tools](../../../../README.md) for installation locations.
 
 ## Formatting, presets, and analysis
 
-`agent-task format [--all|--changed|--staged] [--jobs N] [--verbose]` uses the worktree's
+`coj format [--all|--changed|--staged] [--jobs N] [--verbose]` uses the worktree's
 `.code-format.json` and `.clang-format`. The default selects all sources; changed selection
 includes staged, unstaged, and untracked sources. Staged selection rejects files with unstaged
 edits and re-stages only selected files after successful formatting. The default worker count
 is half the logical processors, capped at 16. Diagnostics use repository-relative paths.
 
-`agent-task presets [--check]` invokes the revision-local Python preset generator without
+`coj presets [--check]` invokes the revision-local Python preset generator without
 configuring CMake. Preparation uses the same operation.
 
 Configure `win-x64-clangcl-debug-tidy`, then run:
 
 ```powershell
-agent-task tidy --scope simulation --build-dir out/build/win-x64-clangcl-debug/clang-tidy
+coj tidy --scope simulation --build-dir out/build/win-x64-clangcl-debug/clang-tidy
 ```
 
 The default scope is `native`. Named scopes and exclusions live in `.clang-tidy-scopes.json`;
@@ -60,45 +63,45 @@ and LispB analysis build the existing generated-input targets first. Logs stay i
 
 ## Unreal operations and benchmarks
 
-`agent-task unreal project-files` uses `UE_ROOT`, or `--ue-root <engine-root>`, without a CMake
+`coj unreal project-files` uses `UE_ROOT`, or `--ue-root <engine-root>`, without a CMake
 configure. `--native-toolchain` defaults to the environment's `IOJ_NATIVE_TOOLCHAIN` or `clang-cl`.
 Pass `--build-dir <configured-tree>` instead to reuse configured engine/toolchain settings.
 
-`agent-task editor [--wait-for-debugger]` builds `editor` then launches with Live Coding disabled.
+`coj editor [--wait-for-debugger]` builds `editor` then launches with Live Coding disabled.
 It defaults to `out/build/debug-game`; `--build-dir` selects another configured tree.
-`agent-task run-staged` defaults to the configured Development tree and starts its staged executable
+`coj run-staged` defaults to the configured Development tree and starts its staged executable
 without building or packaging. Its working directory is the staged directory.
 
-`agent-task unreal --help` lists explicit asset commands. They build `editor` and any additional
+`coj unreal --help` lists explicit asset commands. They build `editor` and any additional
 material compilation target before invoking existing commandlets. Mesh shapes use
-`agent-task unreal generate-lab-mesh <shape>`. See the [asset commands](../../../../../docs/build-and-test.md#packaging-and-asset-maintenance).
+`coj unreal generate-lab-mesh <shape>`. See the [asset commands](../../../../../docs/build-and-test.md#packaging-and-asset-maintenance).
 
-`agent-task benchmark <operation> [options]` builds `benchmark-tools-host` in the native tree
+`coj benchmark <operation> [options]` builds `benchmark-tools-host` in the native tree
 and delegates all arguments to that revision-local tool. Workloads and reports remain in
 benchmark-tools; see [benchmark operations](../../../../../docs/benchmarks.md).
 These commands do not acquire jobs tickets; callers retain the existing coordination workflow.
 
-CMake invokes `agent-task unreal-build --build-script <path> --target <target> --platform <platform>
+CMake invokes `coj unreal-build --build-script <path> --target <target> --platform <platform>
 --configuration <configuration> --project <path> --native-toolchain <name>` for Unreal targets.
 Use the repository's [CMake workflows](../../../../../cmake/README.md) for builds.
 
 ## Feature Git operations
 
 ```powershell
-agent-task git add -A
-agent-task git commit -m "Implement feature"
-agent-task git rebase dev
+coj git add -A
+coj git commit -m "Implement feature"
+coj git rebase dev
 ```
 
 Supported commands are `status`, `add`, `commit`, `restore`, `reset`, `clean`, `rm`, `mv`,
 `switch`, `branch`, `merge`, `rebase`, `cherry-pick`, `revert`, and `worktree`.
-Run `agent-task git <command> --help` for exact options. Unknown commands, options, and abbreviated
+Run `coj git <command> --help` for exact options. Unknown commands, options, and abbreviated
 long options are rejected. There is no checkout, remote transfer, config, plumbing, force-create,
 explicit-branch rebase, or general worktree administration interface.
 Cherry-pick and revert accept individual commits, not revision ranges.
 
-Create managed worktrees with `agent-task git worktree add -b <branch> [start-point]`; remove
-them with `agent-task git worktree remove <branch>`. AgentTask chooses a location under the
+Create managed worktrees with `coj git worktree add -b <branch> [start-point]`; remove
+them with `coj git worktree remove <branch>`. coj chooses a location under the
 current worktree's ignored `.local/worktrees/`. Force removal is unsupported.
 
 To park work, create a temporary feature branch and commit the WIP there; creating a branch
@@ -111,7 +114,7 @@ Report unsupported mutations; raw mutations require an explicit maintainer excep
 Launch from the worktree in an existing terminal:
 
 ```powershell
-agent-task codex start dev1
+coj codex start dev1
 ```
 
 The launcher joins a named Windows Job Object, then starts `codex --no-daemon` normally.
@@ -126,9 +129,9 @@ Names contain 1-64 lowercase letters, digits, hyphens, or underscores and are sc
 the current worktree. The launcher accepts no additional Codex arguments.
 
 ```powershell
-agent-task codex processes dev1
-agent-task codex clean dev1 --dry-run
-agent-task codex clean dev1
+coj codex processes dev1
+coj codex clean dev1 --dry-run
+coj codex clean dev1
 ```
 
 Run `clean` inside that session. It stops the job's current child work, preserving Codex,
@@ -142,25 +145,27 @@ require manual cleanup; a job with remaining processes prevents reuse of its ses
 This tracks a launched CLI session, including its subagents, rather than an existing desktop
 session or individual agents within a shared session.
 
-After building the `tool-tests` preset, run `ctest --test-dir out/build/native -L '^agent-task$'`
-for AgentTask tests with the configured temporary directory. For a focused direct run,
-`cargo test --locked -p agent-task --test codex_sessions` from `tools/rust` reads `IOJ_ROOT`
+After building the `tool-tests` preset, run `ctest --test-dir out/build/native -L '^coj$'`
+for coj tests with the configured temporary directory. For a focused direct run,
+`cargo test --locked -p coj --test codex_sessions` from `tools/rust` reads `IOJ_ROOT`
 through the shared test-support crate; no `TMP`/`TEMP` override is needed.
 
 ## Integration and jobs
 
-After validation and explicit user authorization, run `agent-task integrate` from the feature worktree.
+After validation and explicit user authorization, run `coj integrate` from the feature worktree.
 Use `--keep-branch` to retain the feature branch. Integration does not build or test, and its
 cheap Git transaction needs no jobs-board ticket. A final-rebase conflict is aborted; resolve
-with `agent-task git rebase dev`, validate, and retry. Promotion or cleanup failures report
+with `coj git rebase dev`, validate, and retry. Promotion or cleanup failures report
 retained state and require inspection before retrying.
 
-Use `agent-task jobs request|check|start|end|cancel|status` for manual shared/exclusive
-coordination. Tickets remain until ended or cancelled. Follow the
+Use `coj jobs` for manual shared/exclusive coordination. Tickets carry the current session
+name and worktree, and remain until ended, cancelled, or explicitly cleared. Maintainers can
+clear one ID or an owner with `coj jobs clear <id>` or `coj jobs clear --owner <name>`;
+add `--worktree <path>` to limit owner clearing. No board command affects processes. Follow the
 [jobs-board workflow](../../../../jobserver/README.md).
 
-`agent-task git`, `agent-task jobs`, ordinary preparation commands, and the narrowly scoped
-`agent-task codex processes` and `agent-task codex clean` commands may have unconditional
+`coj git`, `coj jobs`, ordinary preparation commands, and the narrowly scoped
+`coj codex processes` and `coj codex clean` commands may have unconditional
 allow rules. Keep `codex start` outside that allowance. Never whitelist all
-of `agent-task`: `integrate` is privileged.
+of `coj`: `integrate` is privileged.
 See the [repository policy](../../../../../AGENTS.md).

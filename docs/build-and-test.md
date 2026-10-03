@@ -1,6 +1,6 @@
 # Build and test
 
-CMake owns native and Unreal builds and ordinary test registration. Agent-task exposes developer
+CMake owns native and Unreal builds and ordinary test registration. coj exposes developer
 operations, including editor launches and authored-asset commandlets, and builds their CMake prerequisites.
 
 ## First-time or worktree setup
@@ -9,13 +9,13 @@ Install CMake 4.4.2 or newer and Ninja, set `UE_ROOT` to the Unreal Engine insta
 initialize the worktree:
 
 ```powershell
-agent-task prepare-worktree
+coj prepare-worktree
 ```
 
 The maintainer installs central tools and adds the shared tool-link directory to PATH (see
 [developer tools](../tools/README.md)). Preparation owns submodules, presets, and code generation.
 For Unreal development, configure and build the required configuration with CMake as shown below.
-CMake invokes `agent-task unreal-build` from PATH for Unreal build-script invocation,
+CMake invokes `coj unreal-build` from PATH for Unreal build-script invocation,
 and builds revision-local Rust tools on demand. See the
 [PowerShell guide](../PowerShell/README.md) for installation and packaging scripts.
 
@@ -71,18 +71,18 @@ normal DebugGame game/native workflow for Unreal-facing or cross-cutting candida
 Begin each new task from anywhere in its Git worktree:
 
 ```powershell
-agent-task prepare-worktree
+coj prepare-worktree
 ```
 
-The maintainer installs/updates `agent-task` with `pwsh -NoProfile -File PowerShell/InstallAgentTask.ps1`
+The maintainer installs/updates `coj` with `pwsh -NoProfile -File PowerShell/InstallCoj.ps1`
 and manages PATH; agents assume it is available. On a fresh setup, run
-`agent-task prepare-worktree`, then `agent-task install-central-tools` for jobserver.
+`coj prepare-worktree`, then `coj install-central-tools` for jobserver.
 The install command only configures native and runs the jobserver installation target.
 Agents report missing commands instead of installing them; `--version` allows manual diagnosis.
 Preparation does not install missing tools.
 See the [Rust tooling instructions](../tools/rust/README.md).
 Preparation removes only the worktree-root `out` directory, synchronizes and initializes/updates
-recursive submodules, invokes the same generator as `agent-task presets`, disables Live Coding in existing
+recursive submodules, invokes the same generator as `coj presets`, disables Live Coding in existing
 saved Editor settings, then runs the `generate-code` CMake workflow. Each phase streams its output
 and a failure stops preparation immediately.
 It does not perform a broad project/test build. Build only the targets relevant to the task afterward.
@@ -123,13 +123,13 @@ iterator, compiler, and configuration policy.
 
 ### Native tidy scopes
 
-Configure `win-x64-clangcl-debug-tidy`, then run `agent-task tidy --scope simulation
+Configure `win-x64-clangcl-debug-tidy`, then run `coj tidy --scope simulation
 --build-dir out/build/win-x64-clangcl-debug/clang-tidy`. See [clang-tidy](clang-tidy.md) for the other scopes.
 
 Implementation-only changes use their owning scope. Shared headers require consumer analysis:
 follow `target_link_libraries` and actual include users, including header-only consumers. Core,
 memory, profiling, compiler defaults, or uncertain cross-cutting changes require the full
-`agent-task tidy --scope native --build-dir out/build/win-x64-clangcl-debug/clang-tidy` sweep. Simulation public headers also
+`coj tidy --scope native --build-dir out/build/win-x64-clangcl-debug/clang-tidy` sweep. Simulation public headers also
 require level-authoring; level-authoring headers require simulation; image headers require
 mesh-gen where consumed. Expand further for actual includes, and validate Unreal adapters when
 those public interfaces cross the engine boundary. Directory ownership alone is insufficient.
@@ -156,16 +156,16 @@ repeated inner loop.
 `tool-tests` builds its prerequisites before running per-tool tests. Use it for shared/unknown
 tool infrastructure or broad tool validation. Known tools use focused builds and labels.
 Layout planner and image lab use their native workflows, jobserver its focused tests, and perf its
-benchmark validation. AgentTask uses `cargo test --package agent-task --locked` from `tools/rust`.
+benchmark validation. coj uses `cargo test --package coj --locked` from `tools/rust`.
 
 CMake owns Rust test registration in `tools/rust/CMakeLists.txt`. Run the `cmake` infrastructure
 regressions when changing this wiring, including `CMake.RustHostTools`.
 
-After required validation and explicit user authorization, run `agent-task integrate` for the
-privileged AgentTask Git transaction. This cheap operation needs no jobs-board ticket. Integration
+After required validation and explicit user authorization, run `coj integrate` for the
+privileged coj Git transaction. This cheap operation needs no jobs-board ticket. Integration
 performs pinned rebase, cheap sanity checks, atomic dev promotion, refresh and cleanup. It does
 not select or rerun build/test gates. Resolve a conflicting final rebase with
-`agent-task git rebase dev`, validate, and retry.
+`coj git rebase dev`, validate, and retry.
 Validate shared tool build and registration changes with the CMake infrastructure checks.
 Python validation covers repository-owned Python under `Scripts` and `cmake` with Ruff and Pyright.
 
@@ -203,13 +203,13 @@ target's focused native build/test loop, then rerun this gate once on the final 
 Use `cmake --workflow --preset debug-game-full-tests` only for explicitly requested broad
 validation; it also includes standalone developer-tool tests.
 
-After configuring `debug-game`, use `agent-task editor` to build and launch the Editor, or
-`agent-task editor --wait-for-debugger`. Use `--build-dir <configured-tree>` for another configuration.
-Generate Visual Studio projects with `agent-task unreal project-files` using `UE_ROOT`, or
+After configuring `debug-game`, use `coj editor` to build and launch the Editor, or
+`coj editor --wait-for-debugger`. Use `--build-dir <configured-tree>` for another configuration.
+Generate Visual Studio projects with `coj unreal project-files` using `UE_ROOT`, or
 `--ue-root <engine-root>`. No CMake configure is needed. To reuse configured engine/toolchain
 settings, pass `--build-dir <configured-tree>` instead.
 
-Live Coding is disabled by tracked project configuration. `agent-task prepare-worktree` disables it
+Live Coding is disabled by tracked project configuration. `coj prepare-worktree` disables it
 once in saved Editor settings if the file exists; Editor launches also pass an explicit INI override.
 Use the generated `Sandbox` solution with `DebugGame Editor | Win64` or
 `Development Editor | Win64` for Visual Studio debugging.
@@ -220,13 +220,13 @@ To prepare dependencies and IDE projects without running the full build workflow
 cmake --preset debug-game
 cmake --build --preset generate-worktree-code-debug-game
 cmake --build --preset worktree-dependencies-debug-game
-agent-task unreal project-files --build-dir out/build/debug-game
+coj unreal project-files --build-dir out/build/debug-game
 ```
 
 Use `development` in place of `debug-game` for Development. The dependency target builds native
 memory, image, material-generation, mesh-generation, CPU-feature, and generated-code artifacts.
 To import shared audio assets, set `BEE_AUDIO_ROOT` to the `sci-fi_ds_2220mb` pack and run
-`agent-task unreal import-game-audio --build-dir out/build/debug-game`. This optional command
+`coj unreal import-game-audio --build-dir out/build/debug-game`. This optional command
 builds its Editor prerequisite and succeeds without replacing assets when the source pack is unavailable.
 
 ## Packaging and asset maintenance
@@ -244,26 +244,26 @@ Use the full Shipping package path with:
 pwsh -NoProfile -File PowerShell/PackageGame.ps1
 ```
 
-Launch an existing staged game with `agent-task run-staged`; use `--build-dir out/build/shipping`
+Launch an existing staged game with `coj run-staged`; use `--build-dir out/build/shipping`
 for Shipping. This does not cook or package.
 
 Explicit authoring commands build `editor` and any additional material prerequisite first:
 
-- `agent-task unreal resave-assets`
-- `agent-task unreal import-game-audio`
-- `agent-task unreal generate-scripted-level-assets`
-- `agent-task unreal generate-slate-dsl-smoke-asset`
-- `agent-task unreal generate-lab-mesh <box|cylinder|sphere|cone|hex-frame|hex-tile|honeycomb-panel|assemblies>`
-- `agent-task unreal generate-ui-glow-material`
-- `agent-task unreal generate-world-soft-target-assets`
-- `agent-task unreal generate-migrated-materials`
-- `agent-task unreal generate-celestial-analytic-material`
-- `agent-task unreal generate-space-dust-material`
+- `coj unreal resave-assets`
+- `coj unreal import-game-audio`
+- `coj unreal generate-scripted-level-assets`
+- `coj unreal generate-slate-dsl-smoke-asset`
+- `coj unreal generate-lab-mesh <box|cylinder|sphere|cone|hex-frame|hex-tile|honeycomb-panel|assemblies>`
+- `coj unreal generate-ui-glow-material`
+- `coj unreal generate-world-soft-target-assets`
+- `coj unreal generate-migrated-materials`
+- `coj unreal generate-celestial-analytic-material`
+- `coj unreal generate-space-dust-material`
 
 These default to the configured `out/build/debug-game` tree; pass `--build-dir` to select another.
 Material description compilation remains in CMake. Asset commands update authored content.
-Formatting uses `agent-task format --changed`, `--staged`, or `--all`, without configuring CMake.
-Use `agent-task presets` to regenerate presets or `agent-task presets --check` to verify them.
+Formatting uses `coj format --changed`, `--staged`, or `--all`, without configuring CMake.
+Use `coj presets` to regenerate presets or `coj presets --check` to verify them.
 The `CMake.Presets` test remains in the tool validation workflow and ordinary CMake test inventory.
 
 CTest labels separate taxonomy from integration cost: native tests carry `native` plus their
@@ -285,7 +285,7 @@ DebugGame, Development, then DebugGame again without asserting any particular Bu
 
 ## Coordination
 
-Use stock Codex and `agent-task jobs`. Cheap inspections need no ticket. Request a shared ticket
+Use stock Codex and `coj jobs`. Cheap inspections need no ticket. Request a shared ticket
 for heavyweight builds/tests, or an exclusive ticket for benchmarks and commands that modify
 shared Unreal engine output. Check until Ready, start immediately before the ordinary command,
 and end immediately when it returns, including failure. Tools and CMake do not schedule themselves.

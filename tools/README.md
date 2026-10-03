@@ -7,8 +7,8 @@ The maintainer installs stable tools explicitly under
 
 | Central tool | Installation/update | Source version |
 | --- | --- | --- |
-| agent-task | `pwsh -NoProfile -File PowerShell/InstallAgentTask.ps1` from the repository root | Cargo.toml |
-| jobserver | `agent-task install-central-tools` | CLI source |
+| coj | `pwsh -NoProfile -File PowerShell/InstallCoj.ps1` from the repository root | Cargo.toml |
+| jobserverd | `coj install-central-tools` | Protocol header |
 
 Installers publish literal symlinks in `%IOJ_ROOT%\tools\bin`.
 Add only that directory to PATH. Enable Windows Developer Mode before installing,
@@ -17,7 +17,7 @@ link creation before building or updating tools and refuse to overwrite unrelate
 The two installers share only `install/ToolLinks.ps1`: destination selection, symlink preflight,
 and collision-safe publication. Revision-local Rust tools use the workspace's pinned Rust toolchain.
 
-`agent-task jobs` accesses the per-user jobs board. Its installer shuts down an empty board,
+`coj jobs` accesses the per-user jobs board. Its installer shuts down an empty board,
 copies the binaries, registers the logon task, and verifies startup. See [jobserver](jobserver/README.md).
 When migrating an existing installation, the installer also recognizes the daemon at the
 registered task's old path. It refuses to shut down a board with outstanding tickets.
@@ -30,30 +30,30 @@ Windows CTest runs set `TMP` and `TEMP` to `%IOJ_ROOT%\tmp\<worktree-name>`, cre
 This applies to presets and direct `ctest --test-dir` calls. CTest reads `IOJ_ROOT` at run time;
 the worktree name comes from the configured source directory. Agent sandboxes must allow writes
 to the worktree's temp directory.
-The AgentTask installer and `agent-task codex start <name>` use the same directory, so
+The coj installer and `coj codex start <name>` use the same directory, so
 Cargo and other child tools inherit the location automatically. Tests clean up their own fixtures.
 Rust tests also support direct Cargo runs: their shared test-support crate reads `IOJ_ROOT`
 and derives the worktree from the current directory without relying on `TMP` or `TEMP`.
 
-`agent-task prepare-worktree` clears output, updates submodules,
+`coj prepare-worktree` clears output, updates submodules,
 generates presets, disables Live Coding in existing
 `Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini`, and generates code.
 Missing settings are left absent. Preparation never installs tools or performs a broad build.
-See the [Rust guide](rust/README.md) for AgentTask installation and feature Git operations.
-After preparation, `agent-task install-central-tools` configures native and installs jobserver.
+See the [Rust guide](rust/README.md) for coj installation and feature Git operations.
+After preparation, `coj install-central-tools` configures native and installs jobserver.
 
-`agent-task format [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` reads formatting roots,
+`coj format [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` reads formatting roots,
 extensions, and exclusions from the current checkout's `.code-format.json`. Styling stays in
-`.clang-format`. Developer operations invoke `agent-task` from PATH. Use
-`agent-task format --changed` for changed C++ files and `agent-task unreal` for
-builds; `agent-task unreal-build` supplies the small build-script invocation boundary.
+`.clang-format`. Developer operations invoke `coj` from PATH. Use
+`coj format --changed` for changed C++ files and `coj unreal` for
+builds; `coj unreal-build` supplies the small build-script invocation boundary.
 
 CMake builds revision-local tools privately in each configuration's output directory:
 
 - `game-package-tools`: exact package and asset expectations.
 - `native-binary-tools`: native object and mimalloc symbol-prefix integration.
 - `benchmark-tools`: revision-specific presets, executable locations, scenarios, and baselines.
-  `agent-task benchmark` builds `benchmark-tools-host` through CMake on demand.
+  `coj benchmark` builds `benchmark-tools-host` through CMake on demand.
 
 All three are Rust crates built under `out/build/<configuration>/rust-tools/release/`.
 They launch domain subprocesses directly. The caller manages jobs-board admission and cancellation;

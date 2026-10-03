@@ -1,11 +1,11 @@
-# AgentTask architecture
+# coj architecture
 
-AgentTask is installed outside `out`, allowing preparation to clear build output while the
+coj is installed outside `out`, allowing preparation to clear build output while the
 executable runs. Commands resolve the current worktree and launch subprocesses directly.
 Preparation and central-tool installation share recursive submodule synchronization/update.
 
 Developer operations use explicit command dispatch. CMake retains build prerequisites and writes
-`unreal-paths.json` with resolved editor, project, DDC, and staged-game paths. AgentTask consumes
+`unreal-paths.json` with resolved editor, project, DDC, and staged-game paths. coj consumes
 those paths and requests existing prerequisite targets; it does not replicate their dependencies.
 Standalone project generation resolves the two supported engine script layouts directly.
 Formatting and tidy policies remain in the checkout. Tidy delegates workers to LLVM's runner,
@@ -15,7 +15,7 @@ and benchmark commands delegate to the revision-local benchmark-tools host execu
 
 Typed Clap commands construct fresh Git arguments without a shell. Pathspecs and messages
 retain literal values, and Git inherits terminal streams. Git owns locks and recovery state;
-AgentTask provides cooperative workflow guardrails, not a hostile-process security boundary.
+coj provides cooperative workflow guardrails, not a hostile-process security boundary.
 
 Local `dev`, `main`, `master`, and branches checked out by other registered worktrees may
 be revision inputs but cannot be mutation or switch targets. Protected names ignore ASCII case;
@@ -45,8 +45,9 @@ state. Validation belongs to the caller and is not repeated during integration.
 
 ## Subprocesses and settings
 
-The jobs adapter forwards commands to the installed jobserver without a shell. The jobs board
-does not supervise or reap descendants; admission and cancellation belong to the outer workflow.
+The jobs commands use the linked `jobserver-client` Rust crate to exchange framed JSON with
+`jobserverd`. There is no separate client executable. The CLI attaches owner/worktree metadata;
+the daemon only stores tickets, schedules admission, and applies explicit board changes.
 
 The Unreal adapter validates build-script/project paths, sets `IOJ_NATIVE_TOOLCHAIN`, and
 forwards Unreal's exit code. Windows batch scripts use the command processor, with MSBuild
@@ -65,7 +66,9 @@ session name. Only the Codex PID is saved under `.local/codex/`.
 
 The launcher waits in the existing console and lets Codex handle Ctrl+C. There is no daemon,
 suspended launch, session recovery, or exit-time process cleanup. The cooperative jobs board
-remains separate.
+remains separate. The launcher supplies `COJ_CODEX_NAME` and `COJ_CODEX_WORKTREE` to descendants
+so jobs requests in that worktree carry the session name. Board ownership is descriptive;
+process cleanup still verifies Windows Job Object membership.
 
 `clean` requires actual membership in the named job. It enumerates members and preserves
 Codex installation executables, sandbox runners, console hosts, and the cleanup caller's

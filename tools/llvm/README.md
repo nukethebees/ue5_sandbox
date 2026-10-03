@@ -91,5 +91,5 @@ Get-ChildItem tools/llvm/clang_tidy/tests/test_*.py | ForEach-Object {
 }
 ```
 
-Run the semantic tests before installation, then configure and run `agent-task tidy --scope simulation --build-dir out/build/win-x64-clangcl-debug/clang-tidy` against
+Run the semantic tests before installation, then configure and run `coj tidy --scope simulation --build-dir out/build/win-x64-clangcl-debug/clang-tidy` against
 the updated `LLVM_ROOT`. See [project tidy workflows](../../docs/clang-tidy.md) for scope selection.

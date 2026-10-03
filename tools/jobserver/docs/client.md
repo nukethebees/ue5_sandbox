@@ -1,68 +1,71 @@
-# Jobserver client
+# Jobs-board client
 
-`jobserver` coordinates heavyweight work through a per-user jobs board. It does not launch
-commands. `agent-task jobs` forwards the six ticket commands to the installed client.
+`coj jobs` is the single command interface. The client is a Rust crate linked into
+coj; only `jobserverd` runs separately.
 
 ## Ticket workflow
 
 Cheap work needs no ticket. Request `shared` for heavyweight builds/tests, or `exclusive`
-for benchmarks and other work that needs a quiet machine.
+for benchmarks and work needing a quiet machine.
 
 ```powershell
-agent-task jobs request shared "build tools"
-# Substitute the returned ticket ID below.
-agent-task jobs check 41
-# Check periodically until Ready. Immediately before running the command:
-agent-task jobs start 41
+coj jobs request shared "build tools"
+# Substitute the returned ID. Check periodically until Ready.
+coj jobs check 41
+# Immediately before running work:
+coj jobs start 41
 cmake --build --preset native --target benchmark-tools-host
 # Immediately after the command returns, including failure:
-agent-task jobs end 41
+coj jobs end 41
 ```
 
-Requests return immediately as Queued or Ready. Ready reserves your place; it does not mean
-work has started. Shared tickets may run together. Exclusive tickets wait for earlier work
-and block later shared tickets. Never jump a queued exclusive ticket.
+Ready reserves a place; it does not mean work has started. Shared tickets may run together.
+Exclusive tickets wait for earlier work and block later shared tickets.
 
-| Command | Purpose |
+| Command after `coj jobs` | Purpose |
 | --- | --- |
-| `request <shared\|exclusive> <description>` | Create a ticket describing the planned work. |
-| `check <id>` | Read a ticket's current state. |
-| `start <id>` | Mark a Ready ticket Running immediately before starting work. |
-| `end <id>` | Complete a Running ticket after the command returns, including failure. |
+| `request <shared\|exclusive> <description> [--owner NAME]` | Create a ticket with owner/worktree metadata. |
+| `check <id>` | Read an active ticket. |
+| `start <id>` | Mark a Ready ticket Running. |
+| `end <id>` | Remove a Running ticket after its command returns. |
 | `cancel <id>` | Remove an unused Queued or Ready ticket. |
-| `status` | List active tickets. |
+| `clear <id>` | Manually remove a ticket in any state. |
+| `clear --owner NAME [--worktree PATH]` | Manually remove matching tickets in any state. |
+| `status` | List active tickets, including owners and worktrees. |
+| `ping` | Check daemon connectivity. |
+| `shutdown` | Stop the daemon only when the board is empty. |
 
-Use `jobserver <command> --help` for arguments and options, or `jobserver --help-all` for
-all command help. Help and `--version` work without a running daemon.
+Use `coj jobs <command> --help` for arguments. Help and `coj --version` do not contact
+the daemon. Invalid syntax reports an error and makes no board changes.
 
-## Output and scripting
+## Ownership and manual cleanup
+
+Tickets inherit the name supplied to `coj codex start <name>` in the same worktree.
+Without a named session, the owner defaults to the worktree directory name (current directory
+outside Git). `request --owner NAME` selects an explicit owner.
+
+Status displays the owner and normalized full worktree path. Owner names are labels, not
+credentials or process identifiers. The same name can exist in multiple worktrees.
 
 ```powershell
-jobserver status
-jobserver status --json
-jobserver --json check 41
-agent-task jobs status --json
+coj jobs status
+coj jobs clear 85
+coj jobs clear --owner dev5
+coj jobs clear --owner dev5 --worktree .
 ```
 
-Successful responses go to stdout. `--json` selects JSON output and may appear before or
-after a direct `jobserver` command; with `agent-task jobs`, put the command first as shown.
-Errors use stderr and a nonzero exit code. Successful commands, help, and version output
-return zero. `--json` does not change help, version, or error output.
+Owner clearing spans all worktrees unless limited by `--worktree`. Clearing reports the
+removed tickets and releases their places on the board. It never stops processes or checks
+whether work is still running. Process cleanup remains with `coj codex clean <name>`.
 
-Text status groups tickets as Running, Ready, then Queued, preserving FIFO order within
-each group. JSON status preserves global FIFO order. Completed and cancelled tickets are
-removed from the board.
+Agents must not clear another owner's tickets without explicit maintainer direction.
+If a ticket appears stuck, report its ID once and wait for instructions.
 
-## Ticket lifetime and responsibility
+## Output and lifetime
 
-Tickets survive client disconnection and have no expiry, process tracking, automatic
-completion, or crash recovery. Forgotten tickets can block the board indefinitely. Command
-completion means control returned to the caller, which must call `end`; lingering descendants
-and rare measurement overlap are accepted limitations.
+Add `--json` before or after the jobs subcommand for machine-readable successful replies.
+Errors go to stderr with a nonzero exit code. Text status orders Running, Ready, then Queued;
+JSON status preserves global FIFO order. Ended, cancelled, and cleared tickets disappear.
 
-Any local caller running as the same user can manage a ticket by ID; the board does not track
-ticket ownership. If another agent's ticket appears stuck, report its ID and your concern to
-the maintainer once, then wait for instructions. Do not investigate or clean it up without
-explicit maintainer direction.
-
-See the [server guide](server.md) for installation, administration, and restart behaviour.
+Tickets have no expiry, process tracking, automatic completion, or crash recovery. Restarting
+the daemon loses the board. See the [server guide](server.md) for installation and administration.

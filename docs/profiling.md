@@ -38,13 +38,13 @@ the benchmark exits, save the capture from the Tracy Profiler to a `.tracy` file
 not save one automatically. Store local captures beneath `.local/benchmarks/` and do not commit
 them.
 
-`agent-task benchmark native-simulation` do not currently expose
+`coj benchmark native-simulation` do not currently expose
 `--wait-for-profiler`. They are appropriate for unprofiled measurements; use the
 executable above when a reliable Tracy capture is required.
 
 ## SandboxISMC Insights captures
 
-Use `agent-task benchmark sandbox-ismc` or `sandbox-ismc-revision-ab` for owned Insights captures.
+Use `coj benchmark sandbox-ismc` or `sandbox-ismc-revision-ab` for owned Insights captures.
 Each process writes `capture.utrace` alongside `metrics.csv`, `result.json`, and `unreal.log` in
 its allocated run directory. Trace capture defaults on; `--trace 0` disables it consistently for
 both revisions. A requested but absent trace fails the run. The manifest records its exact path,

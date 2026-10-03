@@ -625,7 +625,7 @@ Use repository-coordinated workflows and the smallest useful gate at each stage:
 ```powershell
 cmake --build --preset native --target native-simulation-tests
 ctest --preset native-simulation-tests
-agent-task format --changed
+coj format --changed
 cmake --workflow --preset debug-game-unit-tests
 cmake --workflow --preset debug-game-tests
 cmake --workflow --preset tool-tests

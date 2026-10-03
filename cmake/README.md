@@ -10,8 +10,8 @@ for Unreal compilation; use CMake workflows and build presets instead of invokin
 - `unreal.json` defines Unreal configurations and test workflows.
 - `CMakeUserPresets.json` is ignored and is the place for machine-specific values such as `UE_ROOT`.
 
-Regenerate preset files with `agent-task presets`; verify them without writing with
-`agent-task presets --check`. `agent-task prepare-worktree` performs regeneration as part of worktree
+Regenerate preset files with `coj presets`; verify them without writing with
+`coj presets --check`. `coj prepare-worktree` performs regeneration as part of worktree
 setup.
 
 `LLVM_ROOT` is an environment variable, not a project cache option. Set it before configuring
@@ -25,7 +25,7 @@ for the supported workflows, [Benchmarks](../docs/benchmarks.md) for exclusive m
 [Profiling](../docs/profiling.md) for native level benchmark capture.
 
 Unreal target registration is owned beside the Unreal integration: `unreal/build/` defines the
-editor, game, packaging, and generated-input targets. Agent-task owns editor/staged-game launching,
+editor, game, packaging, and generated-input targets. coj owns editor/staged-game launching,
 project-file generation, formatting, analysis invocation, and explicit asset operations. Reusable Unreal target and test helpers
 remain in `cmake/unreal.cmake`.
 
@@ -38,7 +38,7 @@ engine-tool paths, and package-artifact paths.
 native compilation, `ctest --preset native-simulation-tests` or `native-core-tests` for focused
 tests, and `cmake --workflow --preset native-tests` for the full native suite. The detailed native
 preset matrix remains available for explicit compiler, configuration, unity, and ASan choices.
-Begin a new task with `agent-task prepare-worktree` to clear the worktree's `out`, initialize/update
+Begin a new task with `coj prepare-worktree` to clear the worktree's `out`, initialize/update
 submodules, and regenerate presets and code. It does not perform a broad project/test build;
 build only the task's relevant targets afterward. See the
 [Rust tooling instructions](../tools/rust/README.md) for installation.

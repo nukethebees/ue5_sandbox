@@ -94,7 +94,7 @@ cmake --build --preset debug-game --target editor
 The canonical benchmark target is:
 
 ```powershell
-agent-task benchmark heatmap
+coj benchmark heatmap
 ```
 
 That target initially encountered a recursive Ninja prerequisite-build stall. After the editor

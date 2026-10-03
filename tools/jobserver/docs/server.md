@@ -5,10 +5,14 @@ requests sequentially. It never executes or monitors the work described by a tic
 
 ## Installation and startup
 
-The maintainer installs AgentTask and runs `agent-task install-central-tools` to install
+The maintainer installs coj and runs `coj install-central-tools` to install
 jobserver under `%IOJ_ROOT%\tools\jobserver\bin` and register the
 `NukeTheBeesJobserver` logon task. Agents report missing tools to the maintainer rather than
 installing or updating them.
+
+For a protocol upgrade, shut down the empty board using its existing matching client before
+replacing either component. Install coj, then update the daemon. The installer
+removes the retired standalone client executable and its matching PATH link; no shim remains.
 
 Start an installed, stopped board with:
 
@@ -20,10 +24,10 @@ Start-ScheduledTask -TaskName NukeTheBeesJobserver
 
 | Command | Purpose |
 | --- | --- |
-| `jobserver --version` | Show the client version without contacting the daemon. |
-| `jobserver ping` | Check daemon connectivity; a successful text reply is `pong`. |
-| `jobserver status` | Inspect active tickets before maintenance. |
-| `jobserver shutdown` | Stop the daemon only when the board is empty. |
+| `coj --version` | Show the client version without contacting the daemon. |
+| `coj jobs ping` | Check daemon connectivity; a successful text reply is `pong`. |
+| `coj jobs status` | Inspect active tickets before maintenance. |
+| `coj jobs shutdown` | Stop the daemon only when the board is empty. |
 
 Shutdown refuses while any Queued, Ready, or Running ticket remains. Coordinate with callers
 before maintenance; do not complete or cancel another agent's ticket without explicit
@@ -38,7 +42,7 @@ The Windows backend uses named pipes restricted to the current user and rejects 
 connections. Ticket IDs are not ownership credentials: any local same-user caller can manage
 them.
 
-Windows is the only implemented transport and executable platform. Shared protocol, board,
+Windows is the only implemented transport platform. Protocol, board,
 and CLI code are separate from the Windows backend; see the [architecture](../ARCHITECTURE.md)
 for source responsibilities and the platform boundary.
 

@@ -7,7 +7,7 @@ for jobs-board coordination. Set `UE_ROOT` to your Editor installation. SandboxI
 ## Run SandboxISMC
 
 ```powershell
-agent-task benchmark sandbox-ismc `
+coj benchmark sandbox-ismc `
     --instances 1000 --width 1280 --height 720 --warmup-seconds 1 --seconds 2
 ```
 
@@ -19,14 +19,14 @@ prepared binary. `--timeout-seconds` defaults to 600 per measurement.
 Prepare under a shared ticket:
 
 ```powershell
-agent-task benchmark sandbox-ismc-revision-ab `
+coj benchmark sandbox-ismc-revision-ab `
     --baseline <commit> --prepare-only --label "packed transform"
 ```
 
 End that ticket, obtain an exclusive ticket, and use the printed baseline path:
 
 ```powershell
-agent-task benchmark sandbox-ismc-revision-ab `
+coj benchmark sandbox-ismc-revision-ab `
     --baseline <commit> --baseline-worktree <printed-path> --skip-build `
     --repetitions 2 --instances 40000 --mode custom --update-percent 100 --seconds 5
 ```
@@ -75,7 +75,7 @@ Open `comparison.md` in the printed comparison directory, or use `comparison.csv
 Regenerate a completed comparison without running Unreal or retaining its source worktrees:
 
 ```powershell
-agent-task benchmark sandbox-ismc-report `
+coj benchmark sandbox-ismc-report `
     --run-dir .local/benchmarks/sandbox-ismc-revision-ab/<run-id>
 ```
 
@@ -83,14 +83,14 @@ agent-task benchmark sandbox-ismc-report `
 
 | Workload | Example | Adjustments |
 | --- | --- | --- |
-| Level telemetry | `agent-task benchmark level-telemetry --samples 7` | Development; default timeout 1,200 seconds. |
-| Spark rendering | `agent-task benchmark spark --seconds 10` | Defaults: `--capacity 50000 --sparks-per-hit 96 --impacts-per-frame 100 --warmup-frames 60`. Development; timeout 1,200 seconds. |
-| GPU starfield | `agent-task benchmark gpu-starfield --counts 100000,1000000 --resolutions 1920x1080,3840x2160` | Development; default timeout 2,400 seconds. Add `--size-multipliers 1,4 --camera-modes stationary` for the size matrix. |
-| Heatmap | `agent-task benchmark heatmap` | Set `--resolutions`. |
-| Radar | `agent-task benchmark radar-3d` | Set `--contact-counts`. |
-| Scatter | `agent-task benchmark scatter-3d` | Set `--point-counts`. |
-| Volume heatmap | `agent-task benchmark volume-heatmap-3d` | Use `--warmup`, `--iterations`, and `--output`. |
-| Entity overlay | `agent-task benchmark entity-overlay` | Use `--warmup`, `--iterations`, and `--output`. |
+| Level telemetry | `coj benchmark level-telemetry --samples 7` | Development; default timeout 1,200 seconds. |
+| Spark rendering | `coj benchmark spark --seconds 10` | Defaults: `--capacity 50000 --sparks-per-hit 96 --impacts-per-frame 100 --warmup-frames 60`. Development; timeout 1,200 seconds. |
+| GPU starfield | `coj benchmark gpu-starfield --counts 100000,1000000 --resolutions 1920x1080,3840x2160` | Development; default timeout 2,400 seconds. Add `--size-multipliers 1,4 --camera-modes stationary` for the size matrix. |
+| Heatmap | `coj benchmark heatmap` | Set `--resolutions`. |
+| Radar | `coj benchmark radar-3d` | Set `--contact-counts`. |
+| Scatter | `coj benchmark scatter-3d` | Set `--point-counts`. |
+| Volume heatmap | `coj benchmark volume-heatmap-3d` | Use `--warmup`, `--iterations`, and `--output`. |
+| Entity overlay | `coj benchmark entity-overlay` | Use `--warmup`, `--iterations`, and `--output`. |
 
 Spark and level telemetry accept `--build-dir` for an existing configured tree, `--skip-build`
 for prepared binaries, and `--timeout-seconds`. GPU starfield writes to

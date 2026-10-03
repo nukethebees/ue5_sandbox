@@ -1,4 +1,4 @@
-# AgentTask
+# coj
 
 The maintainer-installed CLI for worktree preparation, constrained feature Git operations,
 formatting, analysis invocation, Unreal authoring/launch operations, benchmark delegation,
@@ -8,7 +8,7 @@ generated artifacts, and ordinary tests.
 Start a task from anywhere inside its worktree:
 
 ```powershell
-agent-task prepare-worktree
+coj prepare-worktree
 ```
 
 This clears `out`, updates submodules, regenerates presets and code, and disables Live Coding
@@ -21,8 +21,8 @@ in existing saved settings. Build and test the affected targets afterward.
 For local development, run these from `tools/rust`:
 
 ```powershell
-cargo build --release --package agent-task --locked
-cargo test --package agent-task --locked
+cargo build --release --package coj --locked
+cargo test --package coj --locked
 ```
 
 Tests use temporary Git repositories and small fixtures; they do not build the game or clear

@@ -5,7 +5,7 @@ For commands and workflows, see [Benchmarks](../../../../../docs/benchmarks.md) 
 
 ## Responsibilities
 
-`agent-task benchmark` builds the invoking checkout's `benchmark-tools-host` target and delegates
+`coj benchmark` builds the invoking checkout's `benchmark-tools-host` target and delegates
 arguments to that executable. Workload orchestration, parsing, comparisons, and reports are
 revision-local Rust code; Python remains responsible for kernel plots. The tools do not acquire
 jobs-board tickets or resource leases. Callers coordinate builds and measurements.
