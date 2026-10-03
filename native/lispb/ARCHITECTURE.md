@@ -190,7 +190,7 @@ copyability, and default construction remain compiler-checked.
 
 The generated `FooSingleLayout` is metadata, not an owner base. Its chained `ColumnLayout<T>`
 constants determine random-access offsets, exact allocation size, and alignment. All layouts and
-`CompactViewState` use the library-owned `LayoutPolicy` (64 rows/block, 192-byte inter-column gap,
+view helpers use the library-owned `LayoutPolicy` (64 rows/block, 192-byte inter-column gap,
 64-byte minimum alignment). A small `LayoutCursor` materializes typed column pointers in one
 linear pass using the same placement primitives as random-access offsets; independent chained
 `Column.offset(blocks)` calls would be correct but make large production layouts expensive to
@@ -211,15 +211,19 @@ Each compact owner holds one non-owning `std::pmr::memory_resource*`, defaulting
 bytes and alignment. Move construction adopts the resource; move assignment retains the
 destination resource and copies columns when resources compare unequal. Copying stays deleted.
 Lifetime, allocation, growth, borrowing, and container operations share one `StorageOperations`
-friend in `sandbox/core/single_allocation/operations.h`. Backend aliases supply size types,
-validation, and growth policies; column operations remain generated explicitly.
+friend in `sandbox/core/single_allocation/operations.h`. Backend aliases supply size types
+and growth policies; column operations remain generated explicitly. Runtime preconditions use
+standard assertions, which disappear when `NDEBUG` is defined; helpers take no validation callback.
 The resource must outlive the storage. Resource choice is a construction argument, not a
 schema allocator variant. Owners are 24 bytes on Win64; shared view state stays unchanged.
 
 The owner has no generated `FooStorage` intermediate. Public named mutable and const compact
 views are thin wrappers over one `FooSingleViewImpl<Const>` accessor implementation. They hold a
 stable pointer to owner state plus offset/count, resolve pointers lazily, and remain 16-byte
-trivially copyable handles, checked with the shared `validate_compact_view` contract. Non-vector
+trivially copyable handles, checked with the shared `validate_compact_view` contract. Each generated
+implementation declares its own private state pointer, offset, and count. Shared free functions
+receive these values for range validation, slicing, and column-pointer calculations; they need no
+friend access. Mutable and const specializations are friends only for view conversion. Non-vector
 nested views share the same owner state and range. Column iteration calls individual accessors;
 there is no schema-wide `columns()` conversion. A retained compact handle survives allocation growth while the owner
 stays in place and its range remains valid; materialized spans and vector views do not. Moving an
@@ -251,7 +255,7 @@ Every `SoaSchema` field has an explicit role:
 | `name` | A: logical | Stable schema identity, independent of the owner name. |
 | `members` | A: logical | Ordered logical columns, nesting, relationships and mask annotations. |
 | `view_name`, `const_view_name` | D: naming decision | Name the sole compact pair for single-only; name vector views with vector or both. Compact names with both remain `NameSingleView` / `NameSingleConstView`. Layout-only has no standalone pair to name. |
-| `operations` | A: API | Selects public storage mutations independently for each requested owner. |
+| `operations` | B: vector | Selects public vector-owner mutations. Compact-owner mutations are constrained by the owner's state and column operations. |
 | `export_specifier` | A: API | Applies to the schema's public owner and named mutable/const views. |
 | `functions` | A: API | Owner functions, emitted on every requested owner, including allocator variants. |
 | `const_view_functions` | A: API | Read-only functions on both mutable and const views. |
@@ -283,13 +287,26 @@ requires such bodies to compile against both receivers. LispB does not guess how
 identifiers, containers, macros, or local variables should be rewritten. Custom nested view APIs
 use generated state-relative compact views rather than losing functions through a vector alias.
 
-`:operations` selects `reset`, `reserve`, `set-num`, `add-uninitialised`, `add-defaulted`,
+For vector owners, `:operations` selects `reset`, `reserve`, `set-num`, `add-uninitialised`, `add-defaulted`,
 `remove-at-swap`, `copy-element` (including `copy_elements`) and `append-from`. An omitted or
 empty list exposes none of these. Construction, move/destruction, borrowing, size/capacity,
 iteration and direct column access remain intrinsic. Ordinary owners also retain their existing
 row `set`/`add` and permutation helpers, which are distinct from these bulk operations. Compact
-owners privately inherit runtime implementations and expose only selected operations; internal
-dependencies such as `set_num` growing defaulted rows do not expose additional public mutations.
+owners publicly inherit runtime operations constrained by named concepts in
+`soa_storage_detail`. A friend `StorageRequirements` helper evaluates private-member requirements
+without exposing storage access. The owner's state and typed column helpers determine which
+operations are available; there are no generated
+operation-selection flags or public `using` lists. Mutations reject const owners, copy/append
+require matching `soa_schema` tags, and borrowing rejects temporary owners. Each logical SoA
+forward-declares a schema tag shared by its compact owner and mutable/const views, including nested views
+of that logical schema. Independent producers explicitly adopt the destination's tag and implement
+its column interface. A shared source concept checks the tag, size and validation operations;
+the generator no longer repeats per-column source constraints. Tags need only type identity, so
+shared nested schemas can repeat their forward declarations across generated headers. Compact
+column type spelling uses the enclosing namespace when it can retain unambiguous lookup;
+foreign names and names hidden by generated or schema-defined members remain qualified.
+Allocation and
+lifetime helpers remain private or protected in the implementation.
 Compact copy accepts the same structural sources as append and supports overlapping row ranges.
 It uses a separate per-column `move_n` path (`memmove` / `FMemory::Memmove`), while append and
 allocation growth retain non-overlapping `copy_n` (`memcpy` / `FMemory::Memcpy`).

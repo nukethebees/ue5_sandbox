@@ -16,7 +16,7 @@ Capacity is a multiple of 64. Each column is aligned to `max(64, alignof(T))`, f
 
 Generated constexpr offset functions apply this sequential layout using `capacity / 64`; the gap never scales with that count. `layout_bytes(blocks)` returns the exact extent, including zero for empty storage. `capacity_block_bound` is a conservative arithmetic bound used to reject overflowing capacities, not the actual allocation size. Column pointers are resolved when accessing/materializing views, outside entity loops. Tests compare the generated offsets against an independent sequential reference through 256-byte alignment.
 
-Reserve rounds to the granularity. Append growth uses geometric slack before rounding. Growth allocates one new block, bulk-copies each live column, then releases the old block. Allocation-size and row-count arithmetic are checked. Owners remain move-only; reset and removal retain capacity.
+Reserve rounds to the granularity. Append growth uses geometric slack before rounding. Growth allocates one new block, bulk-copies each live column, then releases the old block. Allocation-size and row-count preconditions use standard assertions, disabled by `NDEBUG`. Owners remain move-only; reset and removal retain capacity.
 
 `max_capacity` is a schema-specific, conservative limit bounded by `int32` row counts and `PTRDIFF_MAX` allocation bytes, rounded down to 64 rows. Requests beyond it fail before allocation. Public generated layout functions accept a validated capacity-block count; callers must not pass arbitrary byte-sized integers. Column types may repeat: columns are identified by their declaration position and field path, not by type. Empty schemas are rejected by the generator. Over-alignment is passed directly to the PMR resource.
 
@@ -47,7 +47,7 @@ Each vector view is 16 bytes: a first-component pointer, a 32-bit byte stride, a
 
 For example, `view_locations()` and `view_velocities()` both return `ml::soa::Vector3View<float>`. Resolve `xs()`, `ys()` and `zs()` outside hot loops. Other nested shapes receive generated compact views rooted in the parent's owner state, so they can survive growth under the same range contract as the parent view.
 
-Mutable vector views remain writable when the view object itself is const, like an ordinary span; const-view aliases expose only const elements. Constructor and slice range checks use the backend's normal failure mechanism. Direct construction requires sufficiently large, equally spaced component arrays and a byte stride that preserves element alignment and fits in uint32.
+Mutable vector views remain writable when the view object itself is const, like an ordinary span; const-view aliases expose only const elements. Constructor and slice range checks use standard assertions, disabled by `NDEBUG`. Direct construction requires sufficiently large, equally spaced component arrays and a byte stride that preserves element alignment and fits in uint32.
 
 Algorithms normally take compact views by value and extract only the spans they use. Generated `each_column` / `apply_arrays` access the flattened leaves directly. The shared `validate_compact_view` contract checks size and trivial copyability with separate diagnostics.
 
@@ -65,8 +65,10 @@ destination.add_defaulted(count);
 
 `append_from` accepts a compact view or an independent-column source exposing `num()`, `validate()`,
 scalar span accessors and nested `view_<member>()` accessors. It returns the first inserted row index.
-The generated `accepts_source` constraint checks the required leaf types. Independent producers
-validate their own column lengths and must keep their storage alive through the call.
+Sources must declare the same `soa_schema` tag as the destination. Generated compact owners and
+views carry their logical schema tag; independent producers opt in with
+`using soa_schema = Destination::soa_schema;` and implement that schema's column accessors.
+Independent producers validate their own column lengths and keep their storage alive through the call.
 
 Append checks the source range and final size, grows at most once, resolves source accessors after
 growth, bulk-copies each leaf and publishes size once. Whole and sliced compact self-append need no

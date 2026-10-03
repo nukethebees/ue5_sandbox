@@ -5,10 +5,10 @@
 
 #include "ioj/sim/rotator_types.h"
 
-#include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/native_soa/vector_storage_ops.h"
 
+#include <cassert>
 #include <utility>
 
 namespace ioj::sim {
@@ -39,7 +39,7 @@ struct Rotators3fConstView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> Rotators3fConstView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
+        assert(offset <= num() && count <= num() - offset);
         return {
             pitches.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             yaws.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -62,7 +62,7 @@ struct Rotators3fConstView {
     }
     auto left(size_type const count) const -> Rotators3fConstView { return slice(0, count); }
     auto right(size_type const count) const -> Rotators3fConstView {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
 };
@@ -91,7 +91,7 @@ struct Rotators3fView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> Rotators3fView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
+        assert(offset <= num() && count <= num() - offset);
         return {
             pitches.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             yaws.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -114,14 +114,14 @@ struct Rotators3fView {
     }
     auto left(size_type const count) const -> Rotators3fView { return slice(0, count); }
     auto right(size_type const count) const -> Rotators3fView {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
     void set(size_type const index,
              float const new_pitches,
              float const new_yaws,
              float const new_rolls) const {
-        ml::native_soa::require(index < num());
+        assert(index < num());
         pitches[static_cast<std::size_t>(index)] = new_pitches;
         yaws[static_cast<std::size_t>(index)] = new_yaws;
         rolls[static_cast<std::size_t>(index)] = new_rolls;
@@ -199,29 +199,14 @@ struct Rotators3f {
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
-        ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
+        assert(count <= std::numeric_limits<size_type>::max() - num());
         source.validate_array_sizes();
         if (count == 0) {
             return;
         }
-        {
-            auto const address{ml::address_cast(source.pitches.data())};
-            auto const begin{ml::address_cast(pitches.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + pitches.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.yaws.data())};
-            auto const begin{ml::address_cast(yaws.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + yaws.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.rolls.data())};
-            auto const begin{ml::address_cast(rolls.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + rolls.size() * sizeof(float));
-        }
+        assert(ml::native_soa::is_external_source(pitches, source.pitches));
+        assert(ml::native_soa::is_external_source(yaws, source.yaws));
+        assert(ml::native_soa::is_external_source(rolls, source.rolls));
         ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
             pitches.insert(pitches.end(), source.pitches.data(), source.pitches.data() + count);
             yaws.insert(yaws.end(), source.yaws.data(), source.yaws.data() + count);
@@ -260,21 +245,21 @@ struct Rotators3f {
     }
     auto left(size_type const count) -> View { return slice(0, count); }
     auto right(size_type const count) -> View {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
     auto left(size_type const count) const -> ConstView { return slice(0, count); }
     auto right(size_type const count) const -> ConstView {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        pitches[static_cast<std::size_t>(dst_index)] =
-            other.pitches[static_cast<std::size_t>(src_index)];
-        yaws[static_cast<std::size_t>(dst_index)] = other.yaws[static_cast<std::size_t>(src_index)];
-        rolls[static_cast<std::size_t>(dst_index)] =
-            other.rolls[static_cast<std::size_t>(src_index)];
+        auto const destination_index{static_cast<std::size_t>(dst_index)};
+        auto const source_index{static_cast<std::size_t>(src_index)};
+        pitches[destination_index] = other.pitches[source_index];
+        yaws[destination_index] = other.yaws[source_index];
+        rolls[destination_index] = other.rolls[source_index];
     }
     template <typename Other>
     void copy_elements(size_type const dst_index,

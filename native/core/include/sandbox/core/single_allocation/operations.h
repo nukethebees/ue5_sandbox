@@ -1,6 +1,9 @@
 #pragma once
 
+#include <sandbox/core/single_allocation/concepts.h>
+
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <memory_resource>
 #include <new>
@@ -11,8 +14,10 @@
 namespace ml::soa_storage_detail {
 
 // Generated owners supply state and explicit typed column operations.
-template <typename Size, auto Require, auto RoundedCapacity, auto GrowthCapacity>
+template <typename Size, auto RoundedCapacity, auto GrowthCapacity>
 struct StorageOperations {
+    friend StorageRequirements;
+  protected:
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -59,6 +64,7 @@ struct StorageOperations {
     /* **************************************** */
     // Allocation
     /* **************************************** */
+  private:
     template <typename Owner>
     static auto allocate_storage(Owner& owner, Size const capacity) -> std::byte* {
         auto const bytes{Owner::layout_bytes(
@@ -69,6 +75,7 @@ struct StorageOperations {
     }
 
     template <typename Self>
+        requires ReallocatableStorage<Self, Size>
     void reallocate(this Self& self, Size const new_capacity) {
         auto* const new_data{allocate_storage(self, new_capacity)};
         if (self.num_ > 0) {
@@ -82,24 +89,30 @@ struct StorageOperations {
     /* **************************************** */
     // Capacity and mutations
     /* **************************************** */
+  public:
     template <typename Self>
+        requires SizedStorage<Self, Size>
     auto num(this Self const& self) noexcept -> Size {
         return self.num_;
     }
     template <typename Self>
+        requires CapacityStorage<Self, Size>
     auto capacity(this Self const& self) noexcept -> Size {
         return self.capacity_;
     }
     template <typename Self>
+        requires SizedStorage<Self, Size>
     auto is_empty(this Self const& self) noexcept -> bool {
         return self.num_ == 0;
     }
     template <typename Self>
+        requires MeasurableStorage<Self>
     auto allocated_bytes(this Self const& self) -> std::size_t {
         return Self::layout_bytes(
             static_cast<std::size_t>(self.capacity_ / Self::capacity_granularity));
     }
     template <typename Self>
+        requires ReservableStorage<Self, Size>
     void reserve(this Self& self, Size const count) {
         auto const requested{RoundedCapacity(count, Self::capacity_block_bound)};
         if (requested > self.capacity_) {
@@ -107,12 +120,14 @@ struct StorageOperations {
         }
     }
     template <typename Self>
+        requires ResettableStorage<Self, Size>
     void reset(this Self& self) noexcept {
         self.num_ = 0;
     }
     template <typename Self>
+        requires GrowableStorage<Self, Size>
     void add_uninitialised(this Self& self, Size const count) {
-        Require(count >= 0 && count <= Self::max_capacity - self.num_);
+        assert(count >= 0 && count <= Self::max_capacity - self.num_);
         auto const new_num{self.num_ + count};
         if (new_num > self.capacity_) {
             self.reallocate(GrowthCapacity(new_num, self.capacity_, Self::capacity_block_bound));
@@ -120,22 +135,22 @@ struct StorageOperations {
         self.num_ = new_num;
     }
     template <typename Self, typename Source>
-        requires (Self::template accepts_source<Source>)
+        requires CopyableStorage<Self, Source, Size>
     void copy_elements(this Self& self,
                        Size const destination,
                        Source const& source,
                        Size const offset,
                        Size const count) {
         source.validate();
-        Require(destination >= 0 && destination <= self.num_ && count >= 0 &&
-                count <= self.num_ - destination && offset >= 0 && offset <= source.num() &&
-                count <= source.num() - offset);
+        assert(destination >= 0 && destination <= self.num_ && count >= 0 &&
+               count <= self.num_ - destination && offset >= 0 && offset <= source.num() &&
+               count <= source.num() - offset);
         if (count > 0) {
             self.copy_columns_from(source, offset, destination, count);
         }
     }
     template <typename Self, typename Source>
-        requires (Self::template accepts_source<Source>)
+        requires CopyableTo<Source, Self, Size>
     void copy_element(this Self& self,
                       Size const destination,
                       Source const& source,
@@ -143,19 +158,19 @@ struct StorageOperations {
         self.copy_elements(destination, source, offset, 1);
     }
     template <typename Self, typename Source>
-        requires (Self::template accepts_source<Source>)
+        requires AppendableStorage<Self, Source, Size>
     auto append_from(this Self& self, Source const& source) -> Size {
         return self.append_from(source, 0, source.num());
     }
     template <typename Self, typename Source>
-        requires (Self::template accepts_source<Source>)
+        requires AppendableStorage<Self, Source, Size>
     auto append_from(this Self& self, Source const& source, Size const offset, Size const count)
         -> Size {
         source.validate();
-        Require(offset >= 0 && offset <= source.num() && count >= 0 &&
-                count <= source.num() - offset);
+        assert(offset >= 0 && offset <= source.num() && count >= 0 &&
+               count <= source.num() - offset);
         auto const first{self.num_};
-        Require(count >= 0 && count <= Self::max_capacity - first);
+        assert(count >= 0 && count <= Self::max_capacity - first);
         if (count == 0) {
             return first;
         }
@@ -168,11 +183,13 @@ struct StorageOperations {
         return first;
     }
     template <typename Self>
+        requires IndexRemovableStorage<Self, Size>
     void remove_at_swap(this Self& self, std::span<Size const> indices) {
         self.swap_remove_indices(indices);
         self.num_ -= static_cast<Size>(indices.size());
     }
     template <typename Self>
+        requires DefaultableStorage<Self, Size>
     void add_defaulted(this Self& self, Size const count) {
         auto const first{self.num_};
         self.add_uninitialised(count);
@@ -181,8 +198,9 @@ struct StorageOperations {
         }
     }
     template <typename Self>
+        requires ResizableStorage<Self, Size>
     void set_num(this Self& self, Size const count) {
-        Require(count >= 0);
+        assert(count >= 0);
         if (count > self.num_) {
             self.add_defaulted(count - self.num_);
         } else {
@@ -190,8 +208,9 @@ struct StorageOperations {
         }
     }
     template <typename Self>
+        requires RangeRemovableStorage<Self, Size>
     void remove_at_swap(this Self& self, Size const index, Size const count) {
-        Require(index >= 0 && index <= self.num_ && count >= 0 && count <= self.num_ - index);
+        assert(index >= 0 && index <= self.num_ && count >= 0 && count <= self.num_ - index);
         auto const tail{self.num_ - index - count};
         auto const move_count{std::min(count, tail)};
         if (move_count > 0) {
@@ -204,42 +223,37 @@ struct StorageOperations {
     // Borrowing
     /* **************************************** */
     template <typename Self>
-        requires std::is_lvalue_reference_v<Self>
+        requires SliceableStorage<Self, Size>
     auto get_view(this Self&& self) {
         return self.get_view(0, self.num_);
     }
     template <typename Self>
-        requires std::is_lvalue_reference_v<Self>
+        requires BorrowableStorage<Self, Size>
     auto get_view(this Self&& self, Size offset, Size count) {
-        using Owner = std::remove_cvref_t<Self>;
-        using View = std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>,
-                                        typename Owner::ConstView,
-                                        typename Owner::View>;
-        return View{&self, offset, count};
+        return StorageView<Self>{&self, offset, count};
     }
     template <typename Self>
-        requires std::is_lvalue_reference_v<Self>
+        requires ConstSliceableStorage<Self, Size>
     auto get_const_view(this Self&& self) {
         return self.get_const_view(0, self.num_);
     }
     template <typename Self>
-        requires std::is_lvalue_reference_v<Self>
+        requires ConstBorrowableStorage<Self, Size>
     auto get_const_view(this Self&& self, Size offset, Size count) {
-        using View = typename std::remove_cvref_t<Self>::ConstView;
-        return View{&self, offset, count};
+        return StorageConstView<Self>{&self, offset, count};
     }
     template <typename Self>
-        requires std::is_lvalue_reference_v<Self>
+        requires SliceableStorage<Self, Size>
     auto slice(this Self&& self, Size offset, Size count) {
         return self.get_view(offset, count);
     }
     template <typename Self>
-        requires std::is_lvalue_reference_v<Self>
+        requires LeftBorrowableStorage<Self, Size>
     auto left(this Self&& self, Size count) {
         return self.get_view().left(count);
     }
     template <typename Self>
-        requires std::is_lvalue_reference_v<Self>
+        requires RightBorrowableStorage<Self, Size>
     auto right(this Self&& self, Size count) {
         return self.get_view().right(count);
     }

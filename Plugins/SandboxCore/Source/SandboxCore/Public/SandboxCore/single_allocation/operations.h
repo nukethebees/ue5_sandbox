@@ -6,6 +6,6 @@
 namespace ml::soa_storage {
 
 using StorageOperations =
-    soa_storage_detail::StorageOperations<int32, require, rounded_capacity, growth_capacity>;
+    soa_storage_detail::StorageOperations<int32, rounded_capacity, growth_capacity>;
 
 }

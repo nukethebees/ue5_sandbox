@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -11,7 +12,6 @@ namespace ml::soa_storage_detail {
 template <typename T,
           int Dimensions,
           template <typename> typename Span,
-          auto Require,
           typename Size = std::uint32_t>
 class VectorView {
     static_assert(Dimensions == 2 || Dimensions == 3);
@@ -19,8 +19,8 @@ class VectorView {
     using Byte = std::conditional_t<std::is_const_v<T>, std::byte const, std::byte>;
   public:
     using size_type = Size;
-    using View = VectorView<std::remove_const_t<T>, Dimensions, Span, Require, Size>;
-    using ConstView = VectorView<std::add_const_t<T>, Dimensions, Span, Require, Size>;
+    using View = VectorView<std::remove_const_t<T>, Dimensions, Span, Size>;
+    using ConstView = VectorView<std::add_const_t<T>, Dimensions, Span, Size>;
 
     /* **************************************** */
     // Lifetime
@@ -29,15 +29,15 @@ class VectorView {
     VectorView(T* first, std::size_t byte_stride, size_type count)
         : data_{reinterpret_cast<Byte*>(first)}
         , count_{count} {
-        Require(count >= 0 && (first != nullptr || count == 0));
-        Require(byte_stride % alignof(T) == 0 &&
-                byte_stride <= std::numeric_limits<std::uint32_t>::max());
-        Require(byte_stride >= static_cast<std::size_t>(count) * sizeof(T));
+        assert(count >= 0 && (first != nullptr || count == 0));
+        assert(byte_stride % alignof(T) == 0 &&
+               byte_stride <= std::numeric_limits<std::uint32_t>::max());
+        assert(byte_stride >= static_cast<std::size_t>(count) * sizeof(T));
         byte_stride_ = static_cast<std::uint32_t>(byte_stride);
     }
     template <typename U>
         requires (std::is_const_v<T> && std::is_same_v<U, std::remove_const_t<T>>)
-    VectorView(VectorView<U, Dimensions, Span, Require, Size> const& other)
+    VectorView(VectorView<U, Dimensions, Span, Size> const& other)
         : data_{other.data_}
         , byte_stride_{other.byte_stride_}
         , count_{other.count_} {}
@@ -81,7 +81,7 @@ class VectorView {
     auto get_view() const -> VectorView { return *this; }
     auto get_const_view() const -> ConstView { return *this; }
     auto slice(size_type offset, size_type count) const -> VectorView {
-        Require(offset >= 0 && offset <= count_ && count >= 0 && count <= count_ - offset);
+        assert(offset >= 0 && offset <= count_ && count >= 0 && count <= count_ - offset);
         auto result{*this};
         if (result.data_) {
             result.data_ += static_cast<std::size_t>(offset) * sizeof(T);
@@ -97,11 +97,11 @@ class VectorView {
     }
     auto left(size_type count) const -> VectorView { return slice(0, count); }
     auto right(size_type count) const -> VectorView {
-        Require(count >= 0 && count <= count_);
+        assert(count >= 0 && count <= count_);
         return slice(count_ - count, count);
     }
   private:
-    template <typename, int, template <typename> typename, auto, typename>
+    template <typename, int, template <typename> typename, typename>
     friend class VectorView;
     auto column(std::size_t index) const -> Span<T> {
         auto* pointer{data_ ? reinterpret_cast<T*>(data_ + index * byte_stride()) : nullptr};

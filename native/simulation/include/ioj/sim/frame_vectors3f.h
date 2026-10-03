@@ -6,6 +6,8 @@
 #include "sandbox/core/frame_array.h"
 #include "sandbox/core/frame_memory_resource.h"
 
+#include <cassert>
+
 namespace ioj::sim {
 struct FrameVectors3f {
     using size_type = std::uint32_t;
@@ -37,9 +39,9 @@ struct FrameVectors3f {
     auto zs() -> std::span<float> { return zs_.view(); }
     auto zs() const -> std::span<float const> { return zs_.view(); }
     void validate() const {
-        ml::native_soa::require(xs_.num() == num());
-        ml::native_soa::require(ys_.num() == num());
-        ml::native_soa::require(zs_.num() == num());
+        assert(xs_.num() == num());
+        assert(ys_.num() == num());
+        assert(zs_.num() == num());
     }
   private:
     ml::FrameArray<float> xs_;

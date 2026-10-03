@@ -22,6 +22,7 @@
 #include "Templates/MemoryOps.h"
 #include "Templates/UnrealTemplate.h"
 
+#include <cassert>
 #include <cstdint>
 #include <memory>
 #include <memory_resource>
@@ -36,6 +37,10 @@ struct ApiPair {
 
     float y;
 };
+
+struct ApiCoordinatesSchema;
+
+struct ApiRowsSchema;
 
 enum class ApiField : uint8 {
     Values = 0,
@@ -116,36 +121,60 @@ struct ApiRowsSingleLayout {
 struct ApiView_positions;
 struct ApiConstView_positions;
 template <bool Const>
-struct ApiView_positionsImpl : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using Base::Base;
-    using Base::validate;
-    using size_type = typename Base::size_type;
+struct ApiView_positionsImpl {
+    using soa_schema = ApiCoordinatesSchema;
+    using size_type = int32;
+    using Storage = ml::soa_storage::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
-    using Element = typename Base::template Element<T>;
+    using Element = std::conditional_t<Const, T const, T>;
     using View = ApiView_positions;
     using ConstView = ApiConstView_positions;
     ApiView_positionsImpl() = default;
+    ApiView_positionsImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {
+        validate();
+    }
     template <bool Enabled = Const>
     ApiView_positionsImpl(ApiView_positionsImpl<false> const& other)
         requires Enabled
-        : Base{other} {}
-  protected:
-    using Base::capacity_blocks;
-    using Base::column_data;
-    using Base::column_data_unchecked;
-    using Base::count_;
-    using Base::offset_;
-    using Base::state_;
-  public:
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        return ml::soa_storage_detail::slice_view<decltype(self)>(
+            self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
     auto xs() const -> TArrayView<Element<float>> {
-        return {this->template column_data<float>(
-                    ApiRowsSingleLayout::PositionsXsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<float>(
+                    state_,
+                    offset_,
+                    count_,
+                    ApiRowsSingleLayout::PositionsXsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 count_};
     }
     auto ys() const -> TArrayView<Element<float>> {
-        return {this->template column_data<float>(
-                    ApiRowsSingleLayout::PositionsYsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<float>(
+                    state_,
+                    offset_,
+                    count_,
+                    ApiRowsSingleLayout::PositionsYsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 count_};
     }
     template <typename Func>
@@ -154,6 +183,12 @@ struct ApiView_positionsImpl : ml::soa_storage::CompactViewState<Const> {
         auto column_1{ys()};
         return std::forward<Func>(func)(column_0, column_1);
     }
+  private:
+    template <bool>
+    friend struct ApiView_positionsImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
 };
 struct ApiConstView_positions : ApiView_positionsImpl<true> {
     using Base = ApiView_positionsImpl<true>;
@@ -200,36 +235,60 @@ static_assert(ml::soa_storage_detail::validate_compact_view<ApiView_positions>()
 inline ApiConstView_positions::ApiConstView_positions(ApiView_positions const& other)
     : Base{other} {}
 template <bool Const>
-struct ApiViewImpl : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using Base::Base;
-    using Base::validate;
-    using size_type = typename Base::size_type;
+struct ApiViewImpl {
+    using soa_schema = ApiRowsSchema;
+    using size_type = int32;
+    using Storage = ml::soa_storage::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
-    using Element = typename Base::template Element<T>;
+    using Element = std::conditional_t<Const, T const, T>;
     using View = ApiView;
     using ConstView = ApiConstView;
     ApiViewImpl() = default;
+    ApiViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {
+        validate();
+    }
     template <bool Enabled = Const>
     ApiViewImpl(ApiViewImpl<false> const& other)
         requires Enabled
-        : Base{other} {}
-  protected:
-    using Base::capacity_blocks;
-    using Base::column_data;
-    using Base::column_data_unchecked;
-    using Base::count_;
-    using Base::offset_;
-    using Base::state_;
-  public:
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        return ml::soa_storage_detail::slice_view<decltype(self)>(
+            self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
     auto values() const -> TArrayView<Element<float>> {
-        return {this->template column_data<float>(
-                    ApiRowsSingleLayout::ValuesColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<float>(
+                    state_,
+                    offset_,
+                    count_,
+                    ApiRowsSingleLayout::ValuesColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 count_};
     }
     auto masks() const -> TArrayView<Element<ApiMask>> {
-        return {this->template column_data<ApiMask>(
-                    ApiRowsSingleLayout::MasksColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<ApiMask>(
+                    state_,
+                    offset_,
+                    count_,
+                    ApiRowsSingleLayout::MasksColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 count_};
     }
     auto view_positions() const
@@ -244,6 +303,12 @@ struct ApiViewImpl : ml::soa_storage::CompactViewState<Const> {
         auto column_3{view_positions().ys()};
         return std::forward<Func>(func)(column_0, column_1, column_2, column_3);
     }
+  private:
+    template <bool>
+    friend struct ApiViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
 };
 struct COMPILE_FIXTURE_API ApiConstView : ApiViewImpl<true> {
     using Base = ApiViewImpl<true>;
@@ -282,22 +347,9 @@ inline ApiConstView::ApiConstView(ApiView const& other)
     : Base{other} {}
 struct COMPILE_FIXTURE_API ApiOwner
     : protected ml::soa_storage::StorageState
-    , private ml::soa_storage::StorageOperations {
+    , ml::soa_storage::StorageOperations {
+    using soa_schema = ApiRowsSchema;
     using Operations = ml::soa_storage::StorageOperations;
-    using Operations::allocated_bytes;
-    using Operations::append_from;
-    using Operations::capacity;
-    using Operations::copy_element;
-    using Operations::copy_elements;
-    using Operations::get_const_view;
-    using Operations::get_view;
-    using Operations::is_empty;
-    using Operations::left;
-    using Operations::num;
-    using Operations::reserve;
-    using Operations::right;
-    using Operations::set_num;
-    using Operations::slice;
     using Layout = ApiRowsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -310,19 +362,6 @@ struct COMPILE_FIXTURE_API ApiOwner
     }
     using View = ApiView;
     using ConstView = ApiConstView;
-    template <typename Source>
-    inline static constexpr bool accepts_source = requires(Source const& source) {
-        { source.num() } -> std::convertible_to<size_type>;
-        source.validate();
-        { ml::soa_storage::source_data(source.values()) } -> std::convertible_to<float const*>;
-        { ml::soa_storage::source_data(source.masks()) } -> std::convertible_to<ApiMask const*>;
-        {
-            ml::soa_storage::source_data(source.view_positions().xs())
-        } -> std::convertible_to<float const*>;
-        {
-            ml::soa_storage::source_data(source.view_positions().ys())
-        } -> std::convertible_to<float const*>;
-    };
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -330,7 +369,7 @@ struct COMPILE_FIXTURE_API ApiOwner
         : ApiOwner{std::pmr::get_default_resource()} {}
     explicit ApiOwner(std::pmr::memory_resource* resource) noexcept
         : resource_{resource} {
-        ml::soa_storage::require(resource != nullptr);
+        assert(resource != nullptr);
     }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~ApiOwner() { Operations::release_storage(*this); }
@@ -372,6 +411,7 @@ struct COMPILE_FIXTURE_API ApiOwner
   private:
     std::pmr::memory_resource* resource_{};
     friend Operations;
+    friend ::ml::soa_storage_detail::StorageRequirements;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -417,10 +457,7 @@ struct COMPILE_FIXTURE_API ApiOwner
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
         ml::soa_storage_detail::for_each_removal_run(
-            num_,
-            indices,
-            ml::soa_storage::require,
-            [&](size_type index, size_type source, size_type count) {
+            num_, indices, [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
     }
@@ -428,7 +465,9 @@ struct COMPILE_FIXTURE_API ApiOwner
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
-                        size_type count) {
+                        size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
+    {
         auto const destination{get_data(first)};
         ml::soa_storage::copy_n(destination.values,
                                 ml::soa_storage::source_data(source.values()) + source_first,
@@ -448,7 +487,9 @@ struct COMPILE_FIXTURE_API ApiOwner
     void copy_columns_from(Columns const& source,
                            size_type source_first,
                            size_type first,
-                           size_type count) {
+                           size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
+    {
         auto const destination{get_data(first)};
         ml::soa_storage::move_n(destination.values,
                                 ml::soa_storage::source_data(source.values()) + source_first,
@@ -487,6 +528,8 @@ struct COMPILE_FIXTURE_API ApiOwner
     Value total() const;
 };
 
+struct EquivalentRowsSchema;
+
 struct EquivalentRowsSingleView;
 struct EquivalentRowsSingleConstView;
 struct EquivalentRowsSingleLayout {
@@ -519,36 +562,60 @@ struct EquivalentRowsSingleLayout {
 };
 
 template <bool Const>
-struct EquivalentRowsSingleViewImpl : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using Base::Base;
-    using Base::validate;
-    using size_type = typename Base::size_type;
+struct EquivalentRowsSingleViewImpl {
+    using soa_schema = EquivalentRowsSchema;
+    using size_type = int32;
+    using Storage = ml::soa_storage::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
-    using Element = typename Base::template Element<T>;
+    using Element = std::conditional_t<Const, T const, T>;
     using View = EquivalentRowsSingleView;
     using ConstView = EquivalentRowsSingleConstView;
     EquivalentRowsSingleViewImpl() = default;
+    EquivalentRowsSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {
+        validate();
+    }
     template <bool Enabled = Const>
     EquivalentRowsSingleViewImpl(EquivalentRowsSingleViewImpl<false> const& other)
         requires Enabled
-        : Base{other} {}
-  protected:
-    using Base::capacity_blocks;
-    using Base::column_data;
-    using Base::column_data_unchecked;
-    using Base::count_;
-    using Base::offset_;
-    using Base::state_;
-  public:
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        return ml::soa_storage_detail::slice_view<decltype(self)>(
+            self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
     auto xs() const -> TArrayView<Element<float>> {
-        return {this->template column_data<float>(
-                    EquivalentRowsSingleLayout::XsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<float>(
+                    state_,
+                    offset_,
+                    count_,
+                    EquivalentRowsSingleLayout::XsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 count_};
     }
     auto ys() const -> TArrayView<Element<float>> {
-        return {this->template column_data<float>(
-                    EquivalentRowsSingleLayout::YsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<float>(
+                    state_,
+                    offset_,
+                    count_,
+                    EquivalentRowsSingleLayout::YsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 count_};
     }
     template <typename Func>
@@ -557,6 +624,12 @@ struct EquivalentRowsSingleViewImpl : ml::soa_storage::CompactViewState<Const> {
         auto column_1{ys()};
         return std::forward<Func>(func)(column_0, column_1);
     }
+  private:
+    template <bool>
+    friend struct EquivalentRowsSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
 };
 struct EquivalentRowsSingleConstView : EquivalentRowsSingleViewImpl<true> {
     using Base = EquivalentRowsSingleViewImpl<true>;
@@ -596,18 +669,9 @@ inline EquivalentRowsSingleConstView::EquivalentRowsSingleConstView(
     : Base{other} {}
 struct EquivalentOwner
     : protected ml::soa_storage::StorageState
-    , private ml::soa_storage::StorageOperations {
+    , ml::soa_storage::StorageOperations {
+    using soa_schema = EquivalentRowsSchema;
     using Operations = ml::soa_storage::StorageOperations;
-    using Operations::allocated_bytes;
-    using Operations::capacity;
-    using Operations::get_const_view;
-    using Operations::get_view;
-    using Operations::is_empty;
-    using Operations::left;
-    using Operations::num;
-    using Operations::right;
-    using Operations::set_num;
-    using Operations::slice;
     using Layout = EquivalentRowsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -620,13 +684,6 @@ struct EquivalentOwner
     }
     using View = EquivalentRowsSingleView;
     using ConstView = EquivalentRowsSingleConstView;
-    template <typename Source>
-    inline static constexpr bool accepts_source = requires(Source const& source) {
-        { source.num() } -> std::convertible_to<size_type>;
-        source.validate();
-        { ml::soa_storage::source_data(source.xs()) } -> std::convertible_to<float const*>;
-        { ml::soa_storage::source_data(source.ys()) } -> std::convertible_to<float const*>;
-    };
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -634,7 +691,7 @@ struct EquivalentOwner
         : EquivalentOwner{std::pmr::get_default_resource()} {}
     explicit EquivalentOwner(std::pmr::memory_resource* resource) noexcept
         : resource_{resource} {
-        ml::soa_storage::require(resource != nullptr);
+        assert(resource != nullptr);
     }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~EquivalentOwner() { Operations::release_storage(*this); }
@@ -676,6 +733,7 @@ struct EquivalentOwner
   private:
     std::pmr::memory_resource* resource_{};
     friend Operations;
+    friend ::ml::soa_storage_detail::StorageRequirements;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -713,10 +771,7 @@ struct EquivalentOwner
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
         ml::soa_storage_detail::for_each_removal_run(
-            num_,
-            indices,
-            ml::soa_storage::require,
-            [&](size_type index, size_type source, size_type count) {
+            num_, indices, [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
     }
@@ -724,11 +779,26 @@ struct EquivalentOwner
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
-                        size_type count) {
+                        size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
+    {
         auto const destination{get_data(first)};
         ml::soa_storage::copy_n(
             destination.xs, ml::soa_storage::source_data(source.xs()) + source_first, count);
         ml::soa_storage::copy_n(
+            destination.ys, ml::soa_storage::source_data(source.ys()) + source_first, count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
+    {
+        auto const destination{get_data(first)};
+        ml::soa_storage::move_n(
+            destination.xs, ml::soa_storage::source_data(source.xs()) + source_first, count);
+        ml::soa_storage::move_n(
             destination.ys, ml::soa_storage::source_data(source.ys()) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
@@ -747,6 +817,8 @@ struct EquivalentOwner
 struct ApiReference {
     codegen_compile_fixture::ApiOwner* owner;
 };
+
+struct FRowsSchema;
 
 struct FRowsView;
 struct FRowsConstView;
@@ -948,6 +1020,8 @@ struct FRows {
     TArray<float> weights;
 };
 
+struct FChildSchema;
+
 struct FChildView;
 struct FChildConstView;
 
@@ -1094,6 +1168,8 @@ struct FChild {
 
     TArray<int32> values;
 };
+
+struct FParentsSchema;
 
 struct FParentsView;
 struct FParentsConstView;
@@ -1273,31 +1349,51 @@ struct FParentsSingleLayout {
 struct FParentsSingleView_children;
 struct FParentsSingleConstView_children;
 template <bool Const>
-struct FParentsSingleView_childrenImpl : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using Base::Base;
-    using Base::validate;
-    using size_type = typename Base::size_type;
+struct FParentsSingleView_childrenImpl {
+    using soa_schema = FChildSchema;
+    using size_type = int32;
+    using Storage = ml::soa_storage::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
-    using Element = typename Base::template Element<T>;
+    using Element = std::conditional_t<Const, T const, T>;
     using View = FParentsSingleView_children;
     using ConstView = FParentsSingleConstView_children;
     FParentsSingleView_childrenImpl() = default;
+    FParentsSingleView_childrenImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {
+        validate();
+    }
     template <bool Enabled = Const>
     FParentsSingleView_childrenImpl(FParentsSingleView_childrenImpl<false> const& other)
         requires Enabled
-        : Base{other} {}
-  protected:
-    using Base::capacity_blocks;
-    using Base::column_data;
-    using Base::column_data_unchecked;
-    using Base::count_;
-    using Base::offset_;
-    using Base::state_;
-  public:
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        return ml::soa_storage_detail::slice_view<decltype(self)>(
+            self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
     auto values() const -> TArrayView<Element<int32>> {
-        return {this->template column_data<int32>(
-                    FParentsSingleLayout::ChildrenValuesColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<int32>(
+                    state_,
+                    offset_,
+                    count_,
+                    FParentsSingleLayout::ChildrenValuesColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 count_};
     }
     template <typename Func>
@@ -1305,6 +1401,12 @@ struct FParentsSingleView_childrenImpl : ml::soa_storage::CompactViewState<Const
         auto column_0{values()};
         return std::forward<Func>(func)(column_0);
     }
+  private:
+    template <bool>
+    friend struct FParentsSingleView_childrenImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
 };
 struct FParentsSingleConstView_children : FParentsSingleView_childrenImpl<true> {
     using Base = FParentsSingleView_childrenImpl<true>;
@@ -1335,31 +1437,51 @@ inline FParentsSingleConstView_children::FParentsSingleConstView_children(
     FParentsSingleView_children const& other)
     : Base{other} {}
 template <bool Const>
-struct FParentsSingleViewImpl : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using Base::Base;
-    using Base::validate;
-    using size_type = typename Base::size_type;
+struct FParentsSingleViewImpl {
+    using soa_schema = FParentsSchema;
+    using size_type = int32;
+    using Storage = ml::soa_storage::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
-    using Element = typename Base::template Element<T>;
+    using Element = std::conditional_t<Const, T const, T>;
     using View = FParentsSingleView;
     using ConstView = FParentsSingleConstView;
     FParentsSingleViewImpl() = default;
+    FParentsSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {
+        validate();
+    }
     template <bool Enabled = Const>
     FParentsSingleViewImpl(FParentsSingleViewImpl<false> const& other)
         requires Enabled
-        : Base{other} {}
-  protected:
-    using Base::capacity_blocks;
-    using Base::column_data;
-    using Base::column_data_unchecked;
-    using Base::count_;
-    using Base::offset_;
-    using Base::state_;
-  public:
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        return ml::soa_storage_detail::slice_view<decltype(self)>(
+            self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
     auto keys() const -> TArrayView<Element<int32>> {
-        return {this->template column_data<int32>(
-                    FParentsSingleLayout::KeysColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<int32>(
+                    state_,
+                    offset_,
+                    count_,
+                    FParentsSingleLayout::KeysColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 count_};
     }
     auto view_children() const -> std::
@@ -1372,6 +1494,12 @@ struct FParentsSingleViewImpl : ml::soa_storage::CompactViewState<Const> {
         auto column_1{view_children().values()};
         return std::forward<Func>(func)(column_0, column_1);
     }
+  private:
+    template <bool>
+    friend struct FParentsSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
 };
 struct FParentsSingleConstView : FParentsSingleViewImpl<true> {
     using Base = FParentsSingleViewImpl<true>;
@@ -1402,26 +1530,9 @@ inline FParentsSingleConstView::FParentsSingleConstView(FParentsSingleView const
     : Base{other} {}
 struct SingleParents
     : protected ml::soa_storage::StorageState
-    , private ml::soa_storage::StorageOperations {
+    , ml::soa_storage::StorageOperations {
+    using soa_schema = FParentsSchema;
     using Operations = ml::soa_storage::StorageOperations;
-    using Operations::add_defaulted;
-    using Operations::add_uninitialised;
-    using Operations::allocated_bytes;
-    using Operations::append_from;
-    using Operations::capacity;
-    using Operations::copy_element;
-    using Operations::copy_elements;
-    using Operations::get_const_view;
-    using Operations::get_view;
-    using Operations::is_empty;
-    using Operations::left;
-    using Operations::num;
-    using Operations::remove_at_swap;
-    using Operations::reserve;
-    using Operations::reset;
-    using Operations::right;
-    using Operations::set_num;
-    using Operations::slice;
     using Layout = FParentsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -1434,15 +1545,6 @@ struct SingleParents
     }
     using View = FParentsSingleView;
     using ConstView = FParentsSingleConstView;
-    template <typename Source>
-    inline static constexpr bool accepts_source = requires(Source const& source) {
-        { source.num() } -> std::convertible_to<size_type>;
-        source.validate();
-        { ml::soa_storage::source_data(source.keys()) } -> std::convertible_to<int32 const*>;
-        {
-            ml::soa_storage::source_data(source.view_children().values())
-        } -> std::convertible_to<int32 const*>;
-    };
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -1450,7 +1552,7 @@ struct SingleParents
         : SingleParents{std::pmr::get_default_resource()} {}
     explicit SingleParents(std::pmr::memory_resource* resource) noexcept
         : resource_{resource} {
-        ml::soa_storage::require(resource != nullptr);
+        assert(resource != nullptr);
     }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~SingleParents() { Operations::release_storage(*this); }
@@ -1492,6 +1594,7 @@ struct SingleParents
   private:
     std::pmr::memory_resource* resource_{};
     friend Operations;
+    friend ::ml::soa_storage_detail::StorageRequirements;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -1530,10 +1633,7 @@ struct SingleParents
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
         ml::soa_storage_detail::for_each_removal_run(
-            num_,
-            indices,
-            ml::soa_storage::require,
-            [&](size_type index, size_type source, size_type count) {
+            num_, indices, [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
     }
@@ -1541,7 +1641,9 @@ struct SingleParents
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
-                        size_type count) {
+                        size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleParents, size_type>
+    {
         auto const destination{get_data(first)};
         ml::soa_storage::copy_n(
             destination.keys, ml::soa_storage::source_data(source.keys()) + source_first, count);
@@ -1554,7 +1656,9 @@ struct SingleParents
     void copy_columns_from(Columns const& source,
                            size_type source_first,
                            size_type first,
-                           size_type count) {
+                           size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleParents, size_type>
+    {
         auto const destination{get_data(first)};
         ml::soa_storage::move_n(
             destination.keys, ml::soa_storage::source_data(source.keys()) + source_first, count);
@@ -1573,6 +1677,8 @@ struct SingleParents
     }
   public:
 };
+
+struct FMaskRows8Schema;
 
 enum class EField8 : uint8 {
     Values = 0,
@@ -1735,6 +1841,8 @@ struct FMaskRows8 {
     TArray<FFieldMask8> masks;
     TArray<int32> values;
 };
+
+struct FMaskRows9Schema;
 
 enum class EField9 : uint8 {
     Values = 0,
@@ -1912,6 +2020,8 @@ struct FMaskRows9 {
     TArray<int32> tail;
 };
 
+struct FMaskRows16Schema;
+
 enum class EField16 : uint8 {
     Values = 0,
     Count = static_cast<uint8>(Values) + (16),
@@ -2073,6 +2183,8 @@ struct FMaskRows16 {
     TArray<FFieldMask16> masks;
     TArray<int32> values;
 };
+
+struct FMaskRows17Schema;
 
 enum class EField17 : uint8 {
     Values = 0,
@@ -2236,6 +2348,8 @@ struct FMaskRows17 {
     TArray<int32> values;
 };
 
+struct FMaskRows32Schema;
+
 enum class EField32 : uint8 {
     Values = 0,
     Count = static_cast<uint8>(Values) + (32),
@@ -2397,6 +2511,8 @@ struct FMaskRows32 {
     TArray<FFieldMask32> masks;
     TArray<int32> values;
 };
+
+struct FMaskRows33Schema;
 
 enum class EField33 : uint8 {
     Values = 0,
@@ -2560,6 +2676,8 @@ struct FMaskRows33 {
     TArray<int32> values;
 };
 
+struct RestrictionRowsSchema;
+
 struct RestrictionRowsSingleView;
 struct RestrictionRowsSingleConstView;
 struct RestrictionRowsSingleLayout {
@@ -2592,31 +2710,51 @@ struct RestrictionRowsSingleLayout {
 };
 
 template <bool Const>
-struct RestrictionRowsSingleViewImpl : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using Base::Base;
-    using Base::validate;
-    using size_type = typename Base::size_type;
+struct RestrictionRowsSingleViewImpl {
+    using soa_schema = RestrictionRowsSchema;
+    using size_type = int32;
+    using Storage = ml::soa_storage::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
-    using Element = typename Base::template Element<T>;
+    using Element = std::conditional_t<Const, T const, T>;
     using View = RestrictionRowsSingleView;
     using ConstView = RestrictionRowsSingleConstView;
     RestrictionRowsSingleViewImpl() = default;
+    RestrictionRowsSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {
+        validate();
+    }
     template <bool Enabled = Const>
     RestrictionRowsSingleViewImpl(RestrictionRowsSingleViewImpl<false> const& other)
         requires Enabled
-        : Base{other} {}
-  protected:
-    using Base::capacity_blocks;
-    using Base::column_data;
-    using Base::column_data_unchecked;
-    using Base::count_;
-    using Base::offset_;
-    using Base::state_;
-  public:
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        return ml::soa_storage_detail::slice_view<decltype(self)>(
+            self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
     auto restricted() const -> TArrayView<Element<RestrictedLeaf>> {
-        return {this->template column_data<RestrictedLeaf>(
-                    RestrictionRowsSingleLayout::RestrictedColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<RestrictedLeaf>(
+                    state_,
+                    offset_,
+                    count_,
+                    RestrictionRowsSingleLayout::RestrictedColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 count_};
     }
     template <typename Func>
@@ -2624,6 +2762,12 @@ struct RestrictionRowsSingleViewImpl : ml::soa_storage::CompactViewState<Const> 
         auto column_0{restricted()};
         return std::forward<Func>(func)(column_0);
     }
+  private:
+    template <bool>
+    friend struct RestrictionRowsSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
 };
 struct RestrictionRowsSingleConstView : RestrictionRowsSingleViewImpl<true> {
     using Base = RestrictionRowsSingleViewImpl<true>;
@@ -2655,17 +2799,9 @@ inline RestrictionRowsSingleConstView::RestrictionRowsSingleConstView(
     : Base{other} {}
 struct SingleRestrictionRows
     : protected ml::soa_storage::StorageState
-    , private ml::soa_storage::StorageOperations {
+    , ml::soa_storage::StorageOperations {
+    using soa_schema = RestrictionRowsSchema;
     using Operations = ml::soa_storage::StorageOperations;
-    using Operations::allocated_bytes;
-    using Operations::capacity;
-    using Operations::get_const_view;
-    using Operations::get_view;
-    using Operations::is_empty;
-    using Operations::left;
-    using Operations::num;
-    using Operations::right;
-    using Operations::slice;
     using Layout = RestrictionRowsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -2678,14 +2814,6 @@ struct SingleRestrictionRows
     }
     using View = RestrictionRowsSingleView;
     using ConstView = RestrictionRowsSingleConstView;
-    template <typename Source>
-    inline static constexpr bool accepts_source = requires(Source const& source) {
-        { source.num() } -> std::convertible_to<size_type>;
-        source.validate();
-        {
-            ml::soa_storage::source_data(source.restricted())
-        } -> std::convertible_to<RestrictedLeaf const*>;
-    };
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -2693,7 +2821,7 @@ struct SingleRestrictionRows
         : SingleRestrictionRows{std::pmr::get_default_resource()} {}
     explicit SingleRestrictionRows(std::pmr::memory_resource* resource) noexcept
         : resource_{resource} {
-        ml::soa_storage::require(resource != nullptr);
+        assert(resource != nullptr);
     }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~SingleRestrictionRows() { Operations::release_storage(*this); }
@@ -2734,6 +2862,7 @@ struct SingleRestrictionRows
   private:
     std::pmr::memory_resource* resource_{};
     friend Operations;
+    friend ::ml::soa_storage_detail::StorageRequirements;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -2769,10 +2898,7 @@ struct SingleRestrictionRows
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
         ml::soa_storage_detail::for_each_removal_run(
-            num_,
-            indices,
-            ml::soa_storage::require,
-            [&](size_type index, size_type source, size_type count) {
+            num_, indices, [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
     }
@@ -2780,9 +2906,23 @@ struct SingleRestrictionRows
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
-                        size_type count) {
+                        size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleRestrictionRows, size_type>
+    {
         auto const destination{get_data(first)};
         ml::soa_storage::copy_n(destination.restricted,
+                                ml::soa_storage::source_data(source.restricted()) + source_first,
+                                count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleRestrictionRows, size_type>
+    {
+        auto const destination{get_data(first)};
+        ml::soa_storage::move_n(destination.restricted,
                                 ml::soa_storage::source_data(source.restricted()) + source_first,
                                 count);
     }
@@ -2795,6 +2935,8 @@ struct SingleRestrictionRows
     }
   public:
 };
+
+struct FFixedChildSchema;
 
 struct FFixedChildView;
 struct FFixedChildConstView;
@@ -2955,6 +3097,8 @@ struct TFixedChildStorage {
 
     ml::TFixedStorage<FTracked, Capacity> tracked_;
 };
+
+struct FFixedRowsSchema;
 
 struct FFixedRowsView;
 struct FFixedRowsConstView;

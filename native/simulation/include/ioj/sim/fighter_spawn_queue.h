@@ -8,9 +8,15 @@
 
 #include "sandbox/core/native_soa/storage.h"
 
+#include <cassert>
 #include <memory_resource>
 
 namespace ioj::sim {
+struct Vectors3fSchema;
+
+struct Rotators3fSchema;
+
+struct FighterSpawnQueueSchema;
 
 struct FighterSpawnQueueSingleView;
 struct FighterSpawnQueueSingleConstView;
@@ -32,7 +38,7 @@ struct FighterSpawnQueueSingleLayout {
     inline static constexpr ColLayout<float> RotationsPitchesColumn{LocationsZsColumn};
     inline static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
     inline static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
-    inline static constexpr ColLayout<ioj::sim::Team> TeamsColumn{RotationsRollsColumn};
+    inline static constexpr ColLayout<Team> TeamsColumn{RotationsRollsColumn};
     inline static constexpr ColLayout<EntityUniqueId> ParentsColumn{TeamsColumn};
     inline static constexpr ColLayout<EntityUniqueId> TargetsColumn{ParentsColumn};
 
@@ -53,43 +59,70 @@ struct FighterSpawnQueueSingleLayout {
 struct FighterSpawnQueueSingleView_rotations;
 struct FighterSpawnQueueSingleConstView_rotations;
 template <bool Const>
-struct FighterSpawnQueueSingleView_rotationsImpl : ml::native_soa::CompactViewState<Const> {
-    using Base = ml::native_soa::CompactViewState<Const>;
-    using Base::Base;
-    using Base::validate;
-    using size_type = typename Base::size_type;
+struct FighterSpawnQueueSingleView_rotationsImpl {
+    using soa_schema = Rotators3fSchema;
+    using size_type = std::uint32_t;
+    using Storage = ml::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
-    using Element = typename Base::template Element<T>;
+    using Element = std::conditional_t<Const, T const, T>;
     using View = FighterSpawnQueueSingleView_rotations;
     using ConstView = FighterSpawnQueueSingleConstView_rotations;
     FighterSpawnQueueSingleView_rotationsImpl() = default;
+    FighterSpawnQueueSingleView_rotationsImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {
+        validate();
+    }
     template <bool Enabled = Const>
     FighterSpawnQueueSingleView_rotationsImpl(
         FighterSpawnQueueSingleView_rotationsImpl<false> const& other)
         requires Enabled
-        : Base{other} {}
-  protected:
-    using Base::capacity_blocks;
-    using Base::column_data;
-    using Base::column_data_unchecked;
-    using Base::count_;
-    using Base::offset_;
-    using Base::state_;
-  public:
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        return ml::soa_storage_detail::slice_view<decltype(self)>(
+            self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
     auto pitches() const -> std::span<Element<float>> {
-        return {
-            this->template column_data<float>(
-                FighterSpawnQueueSingleLayout::RotationsPitchesColumn.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
+        return {ml::soa_storage_detail::view_column_data<float>(
+                    state_,
+                    offset_,
+                    count_,
+                    FighterSpawnQueueSingleLayout::RotationsPitchesColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto yaws() const -> std::span<Element<float>> {
-        return {this->template column_data<float>(
-                    FighterSpawnQueueSingleLayout::RotationsYawsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<float>(
+                    state_,
+                    offset_,
+                    count_,
+                    FighterSpawnQueueSingleLayout::RotationsYawsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto rolls() const -> std::span<Element<float>> {
-        return {this->template column_data<float>(
-                    FighterSpawnQueueSingleLayout::RotationsRollsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<float>(
+                    state_,
+                    offset_,
+                    count_,
+                    FighterSpawnQueueSingleLayout::RotationsRollsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>
@@ -98,6 +131,12 @@ struct FighterSpawnQueueSingleView_rotationsImpl : ml::native_soa::CompactViewSt
         func(yaws());
         func(rolls());
     }
+  private:
+    template <bool>
+    friend struct FighterSpawnQueueSingleView_rotationsImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
 };
 struct FighterSpawnQueueSingleConstView_rotations
     : FighterSpawnQueueSingleView_rotationsImpl<true> {
@@ -131,28 +170,44 @@ inline FighterSpawnQueueSingleConstView_rotations::FighterSpawnQueueSingleConstV
     FighterSpawnQueueSingleView_rotations const& other)
     : Base{other} {}
 template <bool Const>
-struct FighterSpawnQueueSingleViewImpl : ml::native_soa::CompactViewState<Const> {
-    using Base = ml::native_soa::CompactViewState<Const>;
-    using Base::Base;
-    using Base::validate;
-    using size_type = typename Base::size_type;
+struct FighterSpawnQueueSingleViewImpl {
+    using soa_schema = FighterSpawnQueueSchema;
+    using size_type = std::uint32_t;
+    using Storage = ml::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
-    using Element = typename Base::template Element<T>;
+    using Element = std::conditional_t<Const, T const, T>;
     using View = FighterSpawnQueueSingleView;
     using ConstView = FighterSpawnQueueSingleConstView;
     FighterSpawnQueueSingleViewImpl() = default;
+    FighterSpawnQueueSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {
+        validate();
+    }
     template <bool Enabled = Const>
     FighterSpawnQueueSingleViewImpl(FighterSpawnQueueSingleViewImpl<false> const& other)
         requires Enabled
-        : Base{other} {}
-  protected:
-    using Base::capacity_blocks;
-    using Base::column_data;
-    using Base::column_data_unchecked;
-    using Base::count_;
-    using Base::offset_;
-    using Base::state_;
-  public:
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        return ml::soa_storage_detail::slice_view<decltype(self)>(
+            self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
     auto view_locations() const -> std::conditional_t<Const,
                                                       ml::native_soa::Vector3ConstView<float>,
                                                       ml::native_soa::Vector3View<float>> {
@@ -160,29 +215,43 @@ struct FighterSpawnQueueSingleViewImpl : ml::native_soa::CompactViewState<Const>
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{capacity_blocks()};
+        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
         auto const first{FighterSpawnQueueSingleLayout::LocationsXsColumn.offset(blocks)};
         auto const stride{FighterSpawnQueueSingleLayout::LocationsYsColumn.offset(blocks) - first};
-        return {this->template column_data_unchecked<float>(first), stride, count_};
+        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
+                stride,
+                count_};
     }
     auto view_rotations() const -> std::conditional_t<Const,
                                                       FighterSpawnQueueSingleConstView_rotations,
                                                       FighterSpawnQueueSingleView_rotations> {
         return {state_, offset_, count_};
     }
-    auto teams() const -> std::span<Element<ioj::sim::Team>> {
-        return {this->template column_data<ioj::sim::Team>(
-                    FighterSpawnQueueSingleLayout::TeamsColumn.offset(capacity_blocks())),
+    auto teams() const -> std::span<Element<Team>> {
+        return {ml::soa_storage_detail::view_column_data<Team>(
+                    state_,
+                    offset_,
+                    count_,
+                    FighterSpawnQueueSingleLayout::TeamsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto parents() const -> std::span<Element<EntityUniqueId>> {
-        return {this->template column_data<EntityUniqueId>(
-                    FighterSpawnQueueSingleLayout::ParentsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<EntityUniqueId>(
+                    state_,
+                    offset_,
+                    count_,
+                    FighterSpawnQueueSingleLayout::ParentsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto targets() const -> std::span<Element<EntityUniqueId>> {
-        return {this->template column_data<EntityUniqueId>(
-                    FighterSpawnQueueSingleLayout::TargetsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<EntityUniqueId>(
+                    state_,
+                    offset_,
+                    count_,
+                    FighterSpawnQueueSingleLayout::TargetsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>
@@ -197,6 +266,12 @@ struct FighterSpawnQueueSingleViewImpl : ml::native_soa::CompactViewState<Const>
         func(parents());
         func(targets());
     }
+  private:
+    template <bool>
+    friend struct FighterSpawnQueueSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
 };
 struct FighterSpawnQueueSingleConstView : FighterSpawnQueueSingleViewImpl<true> {
     using Base = FighterSpawnQueueSingleViewImpl<true>;
@@ -228,26 +303,9 @@ inline FighterSpawnQueueSingleConstView::FighterSpawnQueueSingleConstView(
     : Base{other} {}
 struct FighterSpawnQueue
     : protected ml::native_soa::StorageState
-    , private ml::native_soa::StorageOperations {
+    , ml::native_soa::StorageOperations {
+    using soa_schema = FighterSpawnQueueSchema;
     using Operations = ml::native_soa::StorageOperations;
-    using Operations::add_defaulted;
-    using Operations::add_uninitialised;
-    using Operations::allocated_bytes;
-    using Operations::append_from;
-    using Operations::capacity;
-    using Operations::copy_element;
-    using Operations::copy_elements;
-    using Operations::get_const_view;
-    using Operations::get_view;
-    using Operations::is_empty;
-    using Operations::left;
-    using Operations::num;
-    using Operations::remove_at_swap;
-    using Operations::reserve;
-    using Operations::reset;
-    using Operations::right;
-    using Operations::set_num;
-    using Operations::slice;
     using Layout = FighterSpawnQueueSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -260,38 +318,6 @@ struct FighterSpawnQueue
     }
     using View = FighterSpawnQueueSingleView;
     using ConstView = FighterSpawnQueueSingleConstView;
-    template <typename Source>
-    inline static constexpr bool accepts_source = requires(Source const& source) {
-        { source.num() } -> std::convertible_to<size_type>;
-        source.validate();
-        {
-            ml::native_soa::source_data(source.view_locations().xs())
-        } -> std::convertible_to<float const*>;
-        {
-            ml::native_soa::source_data(source.view_locations().ys())
-        } -> std::convertible_to<float const*>;
-        {
-            ml::native_soa::source_data(source.view_locations().zs())
-        } -> std::convertible_to<float const*>;
-        {
-            ml::native_soa::source_data(source.view_rotations().pitches())
-        } -> std::convertible_to<float const*>;
-        {
-            ml::native_soa::source_data(source.view_rotations().yaws())
-        } -> std::convertible_to<float const*>;
-        {
-            ml::native_soa::source_data(source.view_rotations().rolls())
-        } -> std::convertible_to<float const*>;
-        {
-            ml::native_soa::source_data(source.teams())
-        } -> std::convertible_to<ioj::sim::Team const*>;
-        {
-            ml::native_soa::source_data(source.parents())
-        } -> std::convertible_to<EntityUniqueId const*>;
-        {
-            ml::native_soa::source_data(source.targets())
-        } -> std::convertible_to<EntityUniqueId const*>;
-    };
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -299,7 +325,7 @@ struct FighterSpawnQueue
         : FighterSpawnQueue{std::pmr::get_default_resource()} {}
     explicit FighterSpawnQueue(std::pmr::memory_resource* resource) noexcept
         : resource_{resource} {
-        ml::native_soa::require(resource != nullptr);
+        assert(resource != nullptr);
     }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~FighterSpawnQueue() { Operations::release_storage(*this); }
@@ -323,7 +349,7 @@ struct FighterSpawnQueue
         Element<float>* rotations_pitches{};
         Element<float>* rotations_yaws{};
         Element<float>* rotations_rolls{};
-        Element<ioj::sim::Team>* teams{};
+        Element<Team>* teams{};
         Element<EntityUniqueId>* parents{};
         Element<EntityUniqueId>* targets{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
@@ -356,6 +382,7 @@ struct FighterSpawnQueue
   private:
     std::pmr::memory_resource* resource_{};
     friend Operations;
+    friend ::ml::soa_storage_detail::StorageRequirements;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -420,10 +447,7 @@ struct FighterSpawnQueue
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
         ml::soa_storage_detail::for_each_removal_run(
-            num_,
-            indices,
-            ml::native_soa::require,
-            [&](size_type index, size_type source, size_type count) {
+            num_, indices, [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
     }
@@ -431,7 +455,9 @@ struct FighterSpawnQueue
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
-                        size_type count) {
+                        size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, FighterSpawnQueue, size_type>
+    {
         auto const destination{get_data(first)};
         ml::native_soa::copy_n(destination.locations_xs,
                                ml::native_soa::source_data(source.view_locations().xs()) +
@@ -470,7 +496,9 @@ struct FighterSpawnQueue
     void copy_columns_from(Columns const& source,
                            size_type source_first,
                            size_type first,
-                           size_type count) {
+                           size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, FighterSpawnQueue, size_type>
+    {
         auto const destination{get_data(first)};
         ml::native_soa::move_n(destination.locations_xs,
                                ml::native_soa::source_data(source.view_locations().xs()) +

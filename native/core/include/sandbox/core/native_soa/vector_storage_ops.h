@@ -58,7 +58,7 @@ template <VectorStorageSoa Soa>
 void add_uninitialised(Soa& soa, std::uint32_t const count) {
     // The API name matches Unreal SoAs; std::vector::resize value-initializes new elements.
     auto const old_num{soa.num()};
-    require(count <= std::numeric_limits<std::uint32_t>::max() - old_num);
+    assert(count <= std::numeric_limits<std::uint32_t>::max() - old_num);
     set_num(soa, old_num + count);
 }
 
@@ -71,7 +71,7 @@ template <VectorStorageSoa Soa, typename Append>
 auto append_rows(Soa& soa, std::uint32_t const count, Append&& append) -> std::uint32_t {
     soa.validate_array_sizes();
     auto const first{soa.num()};
-    require(count <= std::numeric_limits<std::uint32_t>::max() - first);
+    assert(count <= std::numeric_limits<std::uint32_t>::max() - first);
     if (count == 0) {
         return first;
     }
@@ -90,22 +90,22 @@ auto append_rows(Soa& soa, std::uint32_t const count, Append&& append) -> std::u
     }
 
     soa.validate_array_sizes();
-    require(soa.num() == new_num);
+    assert(soa.num() == new_num);
     return first;
 }
 
 template <VectorStorageSoa Soa>
 void remove_at_swap(Soa& soa, std::uint32_t const index, std::uint32_t const count) {
     soa.validate_array_sizes();
-    auto const old_num{soa.num()};
-    require(index <= old_num && count <= old_num - index);
+    [[maybe_unused]] auto const old_num{soa.num()};
+    assert(index <= old_num && count <= old_num - index);
     soa.each_column([index, count](auto& column) { ml::remove_at_swap(column, index, count); });
 }
 
 template <VectorStorageSoa Soa>
 void apply_permutation(Soa& soa, std::span<std::int32_t> const indices) {
     soa.validate_array_sizes();
-    require(indices.size() == static_cast<std::size_t>(soa.num()));
+    assert(indices.size() == static_cast<std::size_t>(soa.num()));
     soa.each_column([indices](auto& column) { ml::apply_permutation(std::span{column}, indices); });
 }
 
@@ -113,8 +113,8 @@ template <VectorStorageSoa Soa, typename Compare>
 void sort(Soa& soa, Compare&& compare, std::span<std::int32_t> const scratch_indices) {
     soa.validate_array_sizes();
     auto const count{soa.num()};
-    require(scratch_indices.size() == static_cast<std::size_t>(count));
-    require(count <= static_cast<std::uint32_t>(std::numeric_limits<std::int32_t>::max()));
+    assert(scratch_indices.size() == static_cast<std::size_t>(count));
+    assert(count <= static_cast<std::uint32_t>(std::numeric_limits<std::int32_t>::max()));
     for (std::uint32_t i{}; i < count; ++i) {
         scratch_indices[i] = static_cast<std::int32_t>(i);
     }

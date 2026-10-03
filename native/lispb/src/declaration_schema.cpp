@@ -145,11 +145,12 @@ void visit_declaration_type_references(Declaration& declaration, Visitor const& 
 auto soa_generated_cpp_names(SoaSchema const& schema,
                              NormalModuleSchema const& module,
                              bool const includes_allocator_variants) -> std::vector<std::string> {
-    std::vector<std::string> result;
+    std::vector<std::string> result{schema.name + "Schema"};
     if (schema.emits_vector_storage()) {
-        result = {schema.name,
-                  schema.view_name.value_or(schema.name + "View"),
-                  schema.const_view_name.value_or(schema.name + "ConstView")};
+        result.insert(result.end(),
+                      {schema.name,
+                       schema.view_name.value_or(schema.name + "View"),
+                       schema.const_view_name.value_or(schema.name + "ConstView")});
     }
     if (schema.field_mask_name.has_value()) {
         result.push_back(*schema.field_mask_name);
@@ -197,6 +198,7 @@ auto soa_generated_cpp_names(SoaSchema const& schema,
     if (includes_allocator_variants && schema.emits_vector_storage()) {
         for (auto const& allocator : module.soa_array_allocators) {
             result.push_back(allocator.prefix + schema.name);
+            result.push_back(allocator.prefix + schema.name + "Schema");
             result.push_back(allocator.prefix + schema.view_name.value_or(schema.name + "View"));
             result.push_back(allocator.prefix +
                              schema.const_view_name.value_or(schema.name + "ConstView"));

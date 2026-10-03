@@ -5,11 +5,11 @@
 
 #include "ioj/sim/vector_types.h"
 
-#include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/native_soa/vector_storage_ops.h"
 #include "sandbox/core/vector_soa_view.h"
 
+#include <cassert>
 #include <utility>
 
 namespace ioj::sim {
@@ -79,29 +79,14 @@ struct Vectors3f {
     auto add(equivalent_type const value) -> size_type { return add(value.X, value.Y, value.Z); }
     void append_from(ConstView source) {
         auto const count{source.num()};
-        ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
+        assert(count <= std::numeric_limits<size_type>::max() - num());
         source.validate_array_sizes();
         if (count == 0) {
             return;
         }
-        {
-            auto const address{ml::address_cast(source.xs().data())};
-            auto const begin{ml::address_cast(xs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + xs.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.ys().data())};
-            auto const begin{ml::address_cast(ys.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + ys.size() * sizeof(float));
-        }
-        {
-            auto const address{ml::address_cast(source.zs().data())};
-            auto const begin{ml::address_cast(zs.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + zs.size() * sizeof(float));
-        }
+        assert(ml::native_soa::is_external_source(xs, source.xs()));
+        assert(ml::native_soa::is_external_source(ys, source.ys()));
+        assert(ml::native_soa::is_external_source(zs, source.zs()));
         ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
             xs.insert(xs.end(), source.xs().data(), source.xs().data() + count);
             ys.insert(ys.end(), source.ys().data(), source.ys().data() + count);
@@ -142,19 +127,21 @@ struct Vectors3f {
     }
     auto left(size_type const count) -> View { return slice(0, count); }
     auto right(size_type const count) -> View {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
     auto left(size_type const count) const -> ConstView { return slice(0, count); }
     auto right(size_type const count) const -> ConstView {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        xs[static_cast<std::size_t>(dst_index)] = other.xs[static_cast<std::size_t>(src_index)];
-        ys[static_cast<std::size_t>(dst_index)] = other.ys[static_cast<std::size_t>(src_index)];
-        zs[static_cast<std::size_t>(dst_index)] = other.zs[static_cast<std::size_t>(src_index)];
+        auto const destination_index{static_cast<std::size_t>(dst_index)};
+        auto const source_index{static_cast<std::size_t>(src_index)};
+        xs[destination_index] = other.xs[source_index];
+        ys[destination_index] = other.ys[source_index];
+        zs[destination_index] = other.zs[source_index];
     }
     template <typename Other>
     void copy_elements(size_type const dst_index,

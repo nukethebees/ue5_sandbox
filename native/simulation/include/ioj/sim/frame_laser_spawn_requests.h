@@ -9,10 +9,13 @@
 #include "sandbox/core/frame_array.h"
 #include "sandbox/core/frame_memory_resource.h"
 
+#include <cassert>
 #include <cstdint>
 
 namespace ioj::sim::lasers {
 struct FrameSpawnRequests {
+    using soa_schema = LaserSpawnRequests::soa_schema;
+
     explicit FrameSpawnRequests(ml::FrameScratch& scratch);
 
     FrameSpawnRequests(FrameSpawnRequests const&) = delete;
@@ -58,14 +61,14 @@ struct FrameSpawnRequests {
         locations_.validate();
         rotations_.validate();
         base_velocities_.validate();
-        ml::native_soa::require(locations_.num() == num());
-        ml::native_soa::require(rotations_.num() == num());
-        ml::native_soa::require(base_velocities_.num() == num());
-        ml::native_soa::require(damages_.num() == num());
-        ml::native_soa::require(speeds_.num() == num());
-        ml::native_soa::require(max_distances_.num() == num());
-        ml::native_soa::require(instigator_ids_.num() == num());
-        ml::native_soa::require(sources_.num() == num());
+        assert(locations_.num() == num());
+        assert(rotations_.num() == num());
+        assert(base_velocities_.num() == num());
+        assert(damages_.num() == num());
+        assert(speeds_.num() == num());
+        assert(max_distances_.num() == num());
+        assert(instigator_ids_.num() == num());
+        assert(sources_.num() == num());
     }
   private:
     FrameVectors3f locations_;

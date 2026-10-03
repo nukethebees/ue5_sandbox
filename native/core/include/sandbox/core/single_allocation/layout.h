@@ -1,8 +1,8 @@
 #pragma once
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 #include <limits>
 #include <memory>
 #include <type_traits>
@@ -24,10 +24,8 @@ inline constexpr bool supported_leaf =
     std::is_trivially_destructible_v<T> && std::is_nothrow_default_constructible_v<T>;
 
 constexpr auto layout_align(std::size_t const bytes, std::size_t const alignment) -> std::size_t {
-    if (alignment == 0 || (alignment & (alignment - 1)) != 0 ||
-        bytes > std::numeric_limits<std::size_t>::max() - (alignment - 1)) {
-        std::abort();
-    }
+    assert(alignment != 0 && (alignment & (alignment - 1)) == 0);
+    assert(bytes <= std::numeric_limits<std::size_t>::max() - (alignment - 1));
     return (bytes + alignment - 1) & ~(alignment - 1);
 }
 
@@ -99,9 +97,7 @@ struct ColumnLayoutBase {
                                             std::size_t const granularity,
                                             std::size_t const element_size) noexcept
         -> std::size_t {
-        if (element_size > (std::numeric_limits<std::size_t>::max() - offset) / granularity) {
-            std::abort();
-        }
+        assert(element_size <= (std::numeric_limits<std::size_t>::max() - offset) / granularity);
         return offset + granularity * element_size;
     }
 
@@ -165,9 +161,7 @@ constexpr auto capacity_block_bound(ColumnLayoutBase const& last) noexcept -> st
     auto const aligned_end{layout_align(last.block_end, alignment)};
     auto const per_gap{last.column_gap + alignment - 1};
     auto const gaps{last.column_count - 1};
-    if (gaps > (std::numeric_limits<std::size_t>::max() - aligned_end) / per_gap) {
-        std::abort();
-    }
+    assert(gaps <= (std::numeric_limits<std::size_t>::max() - aligned_end) / per_gap);
     return aligned_end + gaps * per_gap;
 }
 

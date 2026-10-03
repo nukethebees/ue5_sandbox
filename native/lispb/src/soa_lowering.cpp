@@ -318,6 +318,11 @@ auto lower_soa_declaration(SoaSchema const& schema,
     auto const& item{*by_name.at(wanted)};
     auto lowered{
         lower_one_soa(item, by_name, module.soa_backend, types, type_graph, module.settings.name)};
+    NodeListBuilder header;
+    header.add(ForwardDeclaration{item.name + "Schema"})
+        .new_lines(2)
+        .append(std::move(lowered.header));
+    lowered.header = header.build();
     return {.header = std::move(lowered.header),
             .source = std::move(lowered.source),
             .format_generated = module.soa_backend == SoaBackend::standard_library ||

@@ -382,9 +382,10 @@ TEST(GeneratedSingleAllocationSoa, NestedViewsFollowReallocation) {
 
 TEST(GeneratedSingleAllocationSoa, AppendsIndependentSourceColumns) {
     struct Source {
+        using soa_schema = SingleParents::soa_schema;
         std::array<int32, 3> keys_{10, 11, 12};
         std::array<int32, 3> values_{20, 21, 22};
-        auto num() const -> int32 { return 3; }
+        [[maybe_unused]] auto num() const -> int32 { return 3; }
         void validate() const {}
         auto keys() const { return std::span{keys_}; }
         auto values() const { return std::span{values_}; }
@@ -581,8 +582,10 @@ TEST(GeneratedPackedValue, ConstructorsDistinguishFieldValuesFromRawStorage) {
     static_assert(SignedWide{std::numeric_limits<std::int64_t>::min()}.delta() ==
                   std::numeric_limits<std::int64_t>::min());
     static_assert(CheckedValue{42, DomainState::One}.serial() == 42);
+#ifndef NDEBUG
     EXPECT_DEATH(static_cast<void>(PackedSingle{std::uint8_t{16}}), "");
     EXPECT_DEATH(static_cast<void>(SignedDelta{-65'537}), "");
+#endif
 }
 
 TEST(GeneratedPackedValue, CombinesAndExtractsFields) {

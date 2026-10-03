@@ -6,6 +6,7 @@
 #include "sandbox/core/frame_array.h"
 #include "sandbox/core/frame_memory_resource.h"
 
+#include <cassert>
 #include <cstdint>
 
 namespace ioj::sim {
@@ -35,9 +36,9 @@ struct FrameRotators3f {
     auto rolls() -> std::span<float> { return rolls_.view(); }
     auto rolls() const -> std::span<float const> { return rolls_.view(); }
     void validate() const {
-        ml::native_soa::require(pitches_.num() == num());
-        ml::native_soa::require(yaws_.num() == num());
-        ml::native_soa::require(rolls_.num() == num());
+        assert(pitches_.num() == num());
+        assert(yaws_.num() == num());
+        assert(rolls_.num() == num());
     }
   private:
     ml::FrameArray<float> pitches_;

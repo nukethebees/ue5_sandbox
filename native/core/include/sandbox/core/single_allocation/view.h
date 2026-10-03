@@ -2,7 +2,7 @@
 
 #include <sandbox/core/single_allocation/layout.h>
 
-#include <concepts>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -41,76 +41,46 @@ consteval auto validate_compact_view() -> bool {
     return true;
 }
 
-template <bool Const, auto Require, typename Size = std::uint32_t>
-struct CompactViewState {
-    using size_type = Size;
-    using Storage = StorageState<size_type>;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
+template <typename Size>
+void validate_view([[maybe_unused]] StorageState<Size> const* state,
+                   [[maybe_unused]] Size offset,
+                   [[maybe_unused]] Size count) {
+    assert(offset >= 0 && count >= 0);
+    assert(state ? offset <= state->num_ && count <= state->num_ - offset
+                 : offset == 0 && count == 0);
+}
 
-    CompactViewState() = default;
-    CompactViewState(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {
-        validate();
-    }
-    CompactViewState(CompactViewState const&) = default;
-    auto operator=(CompactViewState const&) -> CompactViewState& = default;
-    CompactViewState(CompactViewState<false, Require, Size> const& other)
-        requires Const
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
+template <typename Self, typename State, typename Size>
+auto slice_view(State* state, Size view_offset, Size view_count, Size offset, Size count)
+    -> std::remove_cvref_t<Self> {
+    using View = std::remove_cvref_t<Self>;
+    validate_view(state, view_offset, view_count);
+    assert(offset >= 0 && offset <= view_count && count >= 0 && count <= view_count - offset);
+    return View{state, view_offset + offset, count};
+}
 
-    void validate() const {
-        Require(offset_ >= 0 && count_ >= 0);
-        Require(state_ ? offset_ <= state_->num_ && count_ <= state_->num_ - offset_
-                       : offset_ == 0 && count_ == 0);
+template <typename Size>
+auto view_capacity_blocks(StorageState<Size> const* state) -> std::size_t {
+    return state ? static_cast<std::size_t>(state->capacity_ /
+                                            single_allocation_layout::capacity_granularity)
+                 : 0;
+}
+
+template <typename T, typename State, typename Size>
+auto view_column_data_unchecked(State* state, Size offset, std::size_t byte_offset)
+    -> std::conditional_t<std::is_const_v<State>, T const, T>* {
+    using Element = std::conditional_t<std::is_const_v<State>, T const, T>;
+    return std::launder(reinterpret_cast<Element*>(state->data_ + byte_offset)) + offset;
+}
+
+template <typename T, typename State, typename Size>
+auto view_column_data(State* state, Size offset, Size count, std::size_t byte_offset)
+    -> std::conditional_t<std::is_const_v<State>, T const, T>* {
+    validate_view(state, offset, count);
+    if (!state || !state->data_) {
+        return nullptr;
     }
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        self.validate();
-        auto const& base{static_cast<CompactViewState const&>(self)};
-        Require(offset >= 0 && offset <= base.count_ && count >= 0 &&
-                count <= base.count_ - offset);
-        using Self = std::remove_cvref_t<decltype(self)>;
-        return Self{base.state_, base.offset_ + offset, count};
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        Require(count >= 0 && count <= self.num());
-        return self.slice(self.num() - count, count);
-    }
-  protected:
-    template <bool, auto, typename>
-    friend struct CompactViewState;
-    auto capacity_blocks() const -> std::size_t {
-        return state_ ? static_cast<std::size_t>(state_->capacity_ /
-                                                 single_allocation_layout::capacity_granularity)
-                      : 0;
-    }
-    template <typename T>
-    auto column_data(std::size_t byte_offset) const -> Element<T>* {
-        validate();
-        if (!state_ || !state_->data_) {
-            return nullptr;
-        }
-        return column_data_unchecked<T>(byte_offset);
-    }
-    template <typename T>
-    auto column_data_unchecked(std::size_t byte_offset) const -> Element<T>* {
-        return std::launder(reinterpret_cast<Element<T>*>(state_->data_ + byte_offset)) + offset_;
-    }
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
-};
+    return view_column_data_unchecked<T>(state, offset, byte_offset);
+}
 
 }

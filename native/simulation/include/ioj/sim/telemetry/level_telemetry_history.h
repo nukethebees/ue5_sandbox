@@ -8,11 +8,14 @@
 
 #include "sandbox/core/native_soa/storage.h"
 
+#include <cassert>
 #include <cstdint>
 #include <memory_resource>
 #include <type_traits>
 
 namespace ioj::sim::telemetry {
+struct HistoryRowsSchema;
+
 enum class HistoryField : std::uint8_t {
     ActiveEntities = 0,
     ActiveEntitiesByType = static_cast<std::uint8_t>(ActiveEntities) + 1,
@@ -98,10 +101,10 @@ struct HistoryRowsSingleLayout {
     inline static constexpr ColLayout<SimTick> CompletedTicksColumn{LayoutStart};
     inline static constexpr ColLayout<HistoryFieldMask> ValidityMasksColumn{CompletedTicksColumn};
     inline static constexpr ColLayout<std::int32_t> ActiveEntitiesColumn{ValidityMasksColumn};
-    inline static constexpr ColLayout<ioj::sim::telemetry::EntityTypeCounts>
-        ActiveEntitiesByTypeColumn{ActiveEntitiesColumn};
-    inline static constexpr ColLayout<ioj::sim::telemetry::EntityCounts>
-        ActiveEntitiesByTeamAndTypeColumn{ActiveEntitiesByTypeColumn};
+    inline static constexpr ColLayout<EntityTypeCounts> ActiveEntitiesByTypeColumn{
+        ActiveEntitiesColumn};
+    inline static constexpr ColLayout<EntityCounts> ActiveEntitiesByTeamAndTypeColumn{
+        ActiveEntitiesByTypeColumn};
     inline static constexpr ColLayout<std::int32_t> SpawnedEntitiesColumn{
         ActiveEntitiesByTeamAndTypeColumn};
     inline static constexpr ColLayout<std::int32_t> DestroyedEntitiesColumn{SpawnedEntitiesColumn};
@@ -125,79 +128,132 @@ struct HistoryRowsSingleLayout {
 };
 
 template <bool Const>
-struct HistoryRowsSingleViewImpl : ml::native_soa::CompactViewState<Const> {
-    using Base = ml::native_soa::CompactViewState<Const>;
-    using Base::Base;
-    using Base::validate;
-    using size_type = typename Base::size_type;
+struct HistoryRowsSingleViewImpl {
+    using soa_schema = HistoryRowsSchema;
+    using size_type = std::uint32_t;
+    using Storage = ml::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
-    using Element = typename Base::template Element<T>;
+    using Element = std::conditional_t<Const, T const, T>;
     using View = HistoryRowsSingleView;
     using ConstView = HistoryRowsSingleConstView;
     HistoryRowsSingleViewImpl() = default;
+    HistoryRowsSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {
+        validate();
+    }
     template <bool Enabled = Const>
     HistoryRowsSingleViewImpl(HistoryRowsSingleViewImpl<false> const& other)
         requires Enabled
-        : Base{other} {}
-  protected:
-    using Base::capacity_blocks;
-    using Base::column_data;
-    using Base::column_data_unchecked;
-    using Base::count_;
-    using Base::offset_;
-    using Base::state_;
-  public:
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        return ml::soa_storage_detail::slice_view<decltype(self)>(
+            self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
     auto completed_ticks() const -> std::span<Element<SimTick>> {
-        return {this->template column_data<SimTick>(
-                    HistoryRowsSingleLayout::CompletedTicksColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<SimTick>(
+                    state_,
+                    offset_,
+                    count_,
+                    HistoryRowsSingleLayout::CompletedTicksColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto validity_masks() const -> std::span<Element<HistoryFieldMask>> {
-        return {this->template column_data<HistoryFieldMask>(
-                    HistoryRowsSingleLayout::ValidityMasksColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<HistoryFieldMask>(
+                    state_,
+                    offset_,
+                    count_,
+                    HistoryRowsSingleLayout::ValidityMasksColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto active_entities() const -> std::span<Element<std::int32_t>> {
-        return {this->template column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::ActiveEntitiesColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<std::int32_t>(
+                    state_,
+                    offset_,
+                    count_,
+                    HistoryRowsSingleLayout::ActiveEntitiesColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
-    auto active_entities_by_type() const
-        -> std::span<Element<ioj::sim::telemetry::EntityTypeCounts>> {
-        return {this->template column_data<ioj::sim::telemetry::EntityTypeCounts>(
-                    HistoryRowsSingleLayout::ActiveEntitiesByTypeColumn.offset(capacity_blocks())),
+    auto active_entities_by_type() const -> std::span<Element<EntityTypeCounts>> {
+        return {ml::soa_storage_detail::view_column_data<EntityTypeCounts>(
+                    state_,
+                    offset_,
+                    count_,
+                    HistoryRowsSingleLayout::ActiveEntitiesByTypeColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
-    auto active_entities_by_team_and_type() const
-        -> std::span<Element<ioj::sim::telemetry::EntityCounts>> {
-        return {this->template column_data<ioj::sim::telemetry::EntityCounts>(
+    auto active_entities_by_team_and_type() const -> std::span<Element<EntityCounts>> {
+        return {ml::soa_storage_detail::view_column_data<EntityCounts>(
+                    state_,
+                    offset_,
+                    count_,
                     HistoryRowsSingleLayout::ActiveEntitiesByTeamAndTypeColumn.offset(
-                        capacity_blocks())),
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto spawned_entities() const -> std::span<Element<std::int32_t>> {
-        return {this->template column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::SpawnedEntitiesColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<std::int32_t>(
+                    state_,
+                    offset_,
+                    count_,
+                    HistoryRowsSingleLayout::SpawnedEntitiesColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto destroyed_entities() const -> std::span<Element<std::int32_t>> {
-        return {this->template column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::DestroyedEntitiesColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<std::int32_t>(
+                    state_,
+                    offset_,
+                    count_,
+                    HistoryRowsSingleLayout::DestroyedEntitiesColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto kills() const -> std::span<Element<std::int32_t>> {
-        return {this->template column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::KillsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<std::int32_t>(
+                    state_,
+                    offset_,
+                    count_,
+                    HistoryRowsSingleLayout::KillsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto active_lasers() const -> std::span<Element<std::int32_t>> {
-        return {this->template column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::ActiveLasersColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<std::int32_t>(
+                    state_,
+                    offset_,
+                    count_,
+                    HistoryRowsSingleLayout::ActiveLasersColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto lasers_fired() const -> std::span<Element<std::int32_t>> {
-        return {this->template column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::LasersFiredColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<std::int32_t>(
+                    state_,
+                    offset_,
+                    count_,
+                    HistoryRowsSingleLayout::LasersFiredColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>
@@ -213,6 +269,12 @@ struct HistoryRowsSingleViewImpl : ml::native_soa::CompactViewState<Const> {
         func(active_lasers());
         func(lasers_fired());
     }
+  private:
+    template <bool>
+    friend struct HistoryRowsSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
 };
 struct HistoryRowsSingleConstView : HistoryRowsSingleViewImpl<true> {
     using Base = HistoryRowsSingleViewImpl<true>;
@@ -243,26 +305,9 @@ inline HistoryRowsSingleConstView::HistoryRowsSingleConstView(HistoryRowsSingleV
     : Base{other} {}
 struct HistoryRows
     : protected ml::native_soa::StorageState
-    , private ml::native_soa::StorageOperations {
+    , ml::native_soa::StorageOperations {
+    using soa_schema = HistoryRowsSchema;
     using Operations = ml::native_soa::StorageOperations;
-    using Operations::add_defaulted;
-    using Operations::add_uninitialised;
-    using Operations::allocated_bytes;
-    using Operations::append_from;
-    using Operations::capacity;
-    using Operations::copy_element;
-    using Operations::copy_elements;
-    using Operations::get_const_view;
-    using Operations::get_view;
-    using Operations::is_empty;
-    using Operations::left;
-    using Operations::num;
-    using Operations::remove_at_swap;
-    using Operations::reserve;
-    using Operations::reset;
-    using Operations::right;
-    using Operations::set_num;
-    using Operations::slice;
     using Layout = HistoryRowsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -275,39 +320,6 @@ struct HistoryRows
     }
     using View = HistoryRowsSingleView;
     using ConstView = HistoryRowsSingleConstView;
-    template <typename Source>
-    inline static constexpr bool accepts_source = requires(Source const& source) {
-        { source.num() } -> std::convertible_to<size_type>;
-        source.validate();
-        {
-            ml::native_soa::source_data(source.completed_ticks())
-        } -> std::convertible_to<SimTick const*>;
-        {
-            ml::native_soa::source_data(source.validity_masks())
-        } -> std::convertible_to<HistoryFieldMask const*>;
-        {
-            ml::native_soa::source_data(source.active_entities())
-        } -> std::convertible_to<std::int32_t const*>;
-        {
-            ml::native_soa::source_data(source.active_entities_by_type())
-        } -> std::convertible_to<ioj::sim::telemetry::EntityTypeCounts const*>;
-        {
-            ml::native_soa::source_data(source.active_entities_by_team_and_type())
-        } -> std::convertible_to<ioj::sim::telemetry::EntityCounts const*>;
-        {
-            ml::native_soa::source_data(source.spawned_entities())
-        } -> std::convertible_to<std::int32_t const*>;
-        {
-            ml::native_soa::source_data(source.destroyed_entities())
-        } -> std::convertible_to<std::int32_t const*>;
-        { ml::native_soa::source_data(source.kills()) } -> std::convertible_to<std::int32_t const*>;
-        {
-            ml::native_soa::source_data(source.active_lasers())
-        } -> std::convertible_to<std::int32_t const*>;
-        {
-            ml::native_soa::source_data(source.lasers_fired())
-        } -> std::convertible_to<std::int32_t const*>;
-    };
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -315,7 +327,7 @@ struct HistoryRows
         : HistoryRows{std::pmr::get_default_resource()} {}
     explicit HistoryRows(std::pmr::memory_resource* resource) noexcept
         : resource_{resource} {
-        ml::native_soa::require(resource != nullptr);
+        assert(resource != nullptr);
     }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~HistoryRows() { Operations::release_storage(*this); }
@@ -336,8 +348,8 @@ struct HistoryRows
         Element<SimTick>* completed_ticks{};
         Element<HistoryFieldMask>* validity_masks{};
         Element<std::int32_t>* active_entities{};
-        Element<ioj::sim::telemetry::EntityTypeCounts>* active_entities_by_type{};
-        Element<ioj::sim::telemetry::EntityCounts>* active_entities_by_team_and_type{};
+        Element<EntityTypeCounts>* active_entities_by_type{};
+        Element<EntityCounts>* active_entities_by_team_and_type{};
         Element<std::int32_t>* spawned_entities{};
         Element<std::int32_t>* destroyed_entities{};
         Element<std::int32_t>* kills{};
@@ -374,6 +386,7 @@ struct HistoryRows
   private:
     std::pmr::memory_resource* resource_{};
     friend Operations;
+    friend ::ml::soa_storage_detail::StorageRequirements;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -446,10 +459,7 @@ struct HistoryRows
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
         ml::soa_storage_detail::for_each_removal_run(
-            num_,
-            indices,
-            ml::native_soa::require,
-            [&](size_type index, size_type source, size_type count) {
+            num_, indices, [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
     }
@@ -457,7 +467,9 @@ struct HistoryRows
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
-                        size_type count) {
+                        size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, HistoryRows, size_type>
+    {
         auto const destination{get_data(first)};
         ml::native_soa::copy_n(destination.completed_ticks,
                                ml::native_soa::source_data(source.completed_ticks()) + source_first,
@@ -497,7 +509,9 @@ struct HistoryRows
     void copy_columns_from(Columns const& source,
                            size_type source_first,
                            size_type first,
-                           size_type count) {
+                           size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, HistoryRows, size_type>
+    {
         auto const destination{get_data(first)};
         ml::native_soa::move_n(destination.completed_ticks,
                                ml::native_soa::source_data(source.completed_ticks()) + source_first,

@@ -15,6 +15,8 @@
 #include <utility>
 
 namespace ml::sandbox_ismc {
+struct InstanceDataSchema;
+
 struct InstanceDataView;
 struct InstanceDataConstView;
 

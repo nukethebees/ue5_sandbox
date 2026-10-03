@@ -8,10 +8,13 @@
 #include "sandbox/core/frame_array.h"
 #include "sandbox/core/frame_memory_resource.h"
 
+#include <cassert>
 #include <cstdint>
 
 namespace ioj::sim::lasers {
 struct FrameHitDetails {
+    using soa_schema = LaserHitDetails::soa_schema;
+
     explicit FrameHitDetails(ml::FrameScratch& scratch);
 
     FrameHitDetails(FrameHitDetails const&) = delete;
@@ -33,9 +36,9 @@ struct FrameHitDetails {
     void validate() const {
         locations_.validate();
         emission_directions_.validate();
-        ml::native_soa::require(locations_.num() == num());
-        ml::native_soa::require(emission_directions_.num() == num());
-        ml::native_soa::require(sources_.num() == num());
+        assert(locations_.num() == num());
+        assert(emission_directions_.num() == num());
+        assert(sources_.num() == num());
     }
   private:
     FrameVectors3f locations_;

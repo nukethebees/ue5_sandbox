@@ -4593,7 +4593,7 @@ auto EditableSchemaDocument::prepare_soa_duplicate(DeclarationId const declarati
 
     auto copy{*source};
     auto schema_name_available = [&](std::string const& candidate) {
-        if (occupied.contains(candidate)) {
+        if (occupied.contains(candidate) || occupied.contains(candidate + "Schema")) {
             return false;
         }
         if (!source->view_name.has_value() && occupied.contains(candidate + "View")) {
@@ -4620,6 +4620,7 @@ auto EditableSchemaDocument::prepare_soa_duplicate(DeclarationId const declarati
         }
         copy.name = std::move(candidate);
         occupied.insert(copy.name);
+        occupied.insert(copy.name + "Schema");
         if (!source->view_name.has_value()) {
             occupied.insert(copy.name + "View");
         }

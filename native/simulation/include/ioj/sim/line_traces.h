@@ -7,9 +7,13 @@
 
 #include "sandbox/core/native_soa/storage.h"
 
+#include <cassert>
 #include <memory_resource>
 
 namespace ioj::sim {
+struct Vectors3fSchema;
+
+struct LineTracesSchema;
 
 struct LineTracesSingleView;
 struct LineTracesSingleConstView;
@@ -49,41 +53,69 @@ struct LineTracesSingleLayout {
 struct LineTracesSingleView_starts;
 struct LineTracesSingleConstView_starts;
 template <bool Const>
-struct LineTracesSingleView_startsImpl : ml::native_soa::CompactViewState<Const> {
-    using Base = ml::native_soa::CompactViewState<Const>;
-    using Base::Base;
-    using Base::validate;
-    using size_type = typename Base::size_type;
+struct LineTracesSingleView_startsImpl {
+    using soa_schema = Vectors3fSchema;
+    using size_type = std::uint32_t;
+    using Storage = ml::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
-    using Element = typename Base::template Element<T>;
+    using Element = std::conditional_t<Const, T const, T>;
     using View = LineTracesSingleView_starts;
     using ConstView = LineTracesSingleConstView_starts;
     LineTracesSingleView_startsImpl() = default;
+    LineTracesSingleView_startsImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {
+        validate();
+    }
     template <bool Enabled = Const>
     LineTracesSingleView_startsImpl(LineTracesSingleView_startsImpl<false> const& other)
         requires Enabled
-        : Base{other} {}
-  protected:
-    using Base::capacity_blocks;
-    using Base::column_data;
-    using Base::column_data_unchecked;
-    using Base::count_;
-    using Base::offset_;
-    using Base::state_;
-  public:
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        return ml::soa_storage_detail::slice_view<decltype(self)>(
+            self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
     auto xs() const -> std::span<Element<float>> {
-        return {this->template column_data<float>(
-                    LineTracesSingleLayout::StartsXsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<float>(
+                    state_,
+                    offset_,
+                    count_,
+                    LineTracesSingleLayout::StartsXsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto ys() const -> std::span<Element<float>> {
-        return {this->template column_data<float>(
-                    LineTracesSingleLayout::StartsYsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<float>(
+                    state_,
+                    offset_,
+                    count_,
+                    LineTracesSingleLayout::StartsYsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto zs() const -> std::span<Element<float>> {
-        return {this->template column_data<float>(
-                    LineTracesSingleLayout::StartsZsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<float>(
+                    state_,
+                    offset_,
+                    count_,
+                    LineTracesSingleLayout::StartsZsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>
@@ -92,6 +124,12 @@ struct LineTracesSingleView_startsImpl : ml::native_soa::CompactViewState<Const>
         func(ys());
         func(zs());
     }
+  private:
+    template <bool>
+    friend struct LineTracesSingleView_startsImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
 };
 struct LineTracesSingleConstView_starts : LineTracesSingleView_startsImpl<true> {
     using Base = LineTracesSingleView_startsImpl<true>;
@@ -132,41 +170,69 @@ inline LineTracesSingleConstView_starts::LineTracesSingleConstView_starts(
 struct LineTracesSingleView_ends;
 struct LineTracesSingleConstView_ends;
 template <bool Const>
-struct LineTracesSingleView_endsImpl : ml::native_soa::CompactViewState<Const> {
-    using Base = ml::native_soa::CompactViewState<Const>;
-    using Base::Base;
-    using Base::validate;
-    using size_type = typename Base::size_type;
+struct LineTracesSingleView_endsImpl {
+    using soa_schema = Vectors3fSchema;
+    using size_type = std::uint32_t;
+    using Storage = ml::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
-    using Element = typename Base::template Element<T>;
+    using Element = std::conditional_t<Const, T const, T>;
     using View = LineTracesSingleView_ends;
     using ConstView = LineTracesSingleConstView_ends;
     LineTracesSingleView_endsImpl() = default;
+    LineTracesSingleView_endsImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {
+        validate();
+    }
     template <bool Enabled = Const>
     LineTracesSingleView_endsImpl(LineTracesSingleView_endsImpl<false> const& other)
         requires Enabled
-        : Base{other} {}
-  protected:
-    using Base::capacity_blocks;
-    using Base::column_data;
-    using Base::column_data_unchecked;
-    using Base::count_;
-    using Base::offset_;
-    using Base::state_;
-  public:
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        return ml::soa_storage_detail::slice_view<decltype(self)>(
+            self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
     auto xs() const -> std::span<Element<float>> {
-        return {this->template column_data<float>(
-                    LineTracesSingleLayout::EndsXsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<float>(
+                    state_,
+                    offset_,
+                    count_,
+                    LineTracesSingleLayout::EndsXsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto ys() const -> std::span<Element<float>> {
-        return {this->template column_data<float>(
-                    LineTracesSingleLayout::EndsYsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<float>(
+                    state_,
+                    offset_,
+                    count_,
+                    LineTracesSingleLayout::EndsYsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto zs() const -> std::span<Element<float>> {
-        return {this->template column_data<float>(
-                    LineTracesSingleLayout::EndsZsColumn.offset(capacity_blocks())),
+        return {ml::soa_storage_detail::view_column_data<float>(
+                    state_,
+                    offset_,
+                    count_,
+                    LineTracesSingleLayout::EndsZsColumn.offset(
+                        ml::soa_storage_detail::view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>
@@ -175,6 +241,12 @@ struct LineTracesSingleView_endsImpl : ml::native_soa::CompactViewState<Const> {
         func(ys());
         func(zs());
     }
+  private:
+    template <bool>
+    friend struct LineTracesSingleView_endsImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
 };
 struct LineTracesSingleConstView_ends : LineTracesSingleView_endsImpl<true> {
     using Base = LineTracesSingleView_endsImpl<true>;
@@ -213,28 +285,44 @@ inline LineTracesSingleConstView_ends::LineTracesSingleConstView_ends(
     LineTracesSingleView_ends const& other)
     : Base{other} {}
 template <bool Const>
-struct LineTracesSingleViewImpl : ml::native_soa::CompactViewState<Const> {
-    using Base = ml::native_soa::CompactViewState<Const>;
-    using Base::Base;
-    using Base::validate;
-    using size_type = typename Base::size_type;
+struct LineTracesSingleViewImpl {
+    using soa_schema = LineTracesSchema;
+    using size_type = std::uint32_t;
+    using Storage = ml::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
-    using Element = typename Base::template Element<T>;
+    using Element = std::conditional_t<Const, T const, T>;
     using View = LineTracesSingleView;
     using ConstView = LineTracesSingleConstView;
     LineTracesSingleViewImpl() = default;
+    LineTracesSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {
+        validate();
+    }
     template <bool Enabled = Const>
     LineTracesSingleViewImpl(LineTracesSingleViewImpl<false> const& other)
         requires Enabled
-        : Base{other} {}
-  protected:
-    using Base::capacity_blocks;
-    using Base::column_data;
-    using Base::column_data_unchecked;
-    using Base::count_;
-    using Base::offset_;
-    using Base::state_;
-  public:
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        return ml::soa_storage_detail::slice_view<decltype(self)>(
+            self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
     auto view_starts() const -> std::
         conditional_t<Const, LineTracesSingleConstView_starts, LineTracesSingleView_starts> {
         return {state_, offset_, count_};
@@ -252,6 +340,12 @@ struct LineTracesSingleViewImpl : ml::native_soa::CompactViewState<Const> {
         func(view_ends().ys());
         func(view_ends().zs());
     }
+  private:
+    template <bool>
+    friend struct LineTracesSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
 };
 struct LineTracesSingleConstView : LineTracesSingleViewImpl<true> {
     using Base = LineTracesSingleViewImpl<true>;
@@ -282,26 +376,9 @@ inline LineTracesSingleConstView::LineTracesSingleConstView(LineTracesSingleView
     : Base{other} {}
 struct LineTraces
     : protected ml::native_soa::StorageState
-    , private ml::native_soa::StorageOperations {
+    , ml::native_soa::StorageOperations {
+    using soa_schema = LineTracesSchema;
     using Operations = ml::native_soa::StorageOperations;
-    using Operations::add_defaulted;
-    using Operations::add_uninitialised;
-    using Operations::allocated_bytes;
-    using Operations::append_from;
-    using Operations::capacity;
-    using Operations::copy_element;
-    using Operations::copy_elements;
-    using Operations::get_const_view;
-    using Operations::get_view;
-    using Operations::is_empty;
-    using Operations::left;
-    using Operations::num;
-    using Operations::remove_at_swap;
-    using Operations::reserve;
-    using Operations::reset;
-    using Operations::right;
-    using Operations::set_num;
-    using Operations::slice;
     using Layout = LineTracesSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
@@ -314,29 +391,6 @@ struct LineTraces
     }
     using View = LineTracesSingleView;
     using ConstView = LineTracesSingleConstView;
-    template <typename Source>
-    inline static constexpr bool accepts_source = requires(Source const& source) {
-        { source.num() } -> std::convertible_to<size_type>;
-        source.validate();
-        {
-            ml::native_soa::source_data(source.view_starts().xs())
-        } -> std::convertible_to<float const*>;
-        {
-            ml::native_soa::source_data(source.view_starts().ys())
-        } -> std::convertible_to<float const*>;
-        {
-            ml::native_soa::source_data(source.view_starts().zs())
-        } -> std::convertible_to<float const*>;
-        {
-            ml::native_soa::source_data(source.view_ends().xs())
-        } -> std::convertible_to<float const*>;
-        {
-            ml::native_soa::source_data(source.view_ends().ys())
-        } -> std::convertible_to<float const*>;
-        {
-            ml::native_soa::source_data(source.view_ends().zs())
-        } -> std::convertible_to<float const*>;
-    };
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -344,7 +398,7 @@ struct LineTraces
         : LineTraces{std::pmr::get_default_resource()} {}
     explicit LineTraces(std::pmr::memory_resource* resource) noexcept
         : resource_{resource} {
-        ml::native_soa::require(resource != nullptr);
+        assert(resource != nullptr);
     }
     auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
     ~LineTraces() { Operations::release_storage(*this); }
@@ -395,6 +449,7 @@ struct LineTraces
   private:
     std::pmr::memory_resource* resource_{};
     friend Operations;
+    friend ::ml::soa_storage_detail::StorageRequirements;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -444,10 +499,7 @@ struct LineTraces
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
         ml::soa_storage_detail::for_each_removal_run(
-            num_,
-            indices,
-            ml::native_soa::require,
-            [&](size_type index, size_type source, size_type count) {
+            num_, indices, [&](size_type index, size_type source, size_type count) {
                 copy_columns(columns, index, source, count);
             });
     }
@@ -455,7 +507,9 @@ struct LineTraces
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
-                        size_type count) {
+                        size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, LineTraces, size_type>
+    {
         auto const destination{get_data(first)};
         ml::native_soa::copy_n(destination.starts_xs,
                                ml::native_soa::source_data(source.view_starts().xs()) +
@@ -483,7 +537,9 @@ struct LineTraces
     void copy_columns_from(Columns const& source,
                            size_type source_first,
                            size_type first,
-                           size_type count) {
+                           size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, LineTraces, size_type>
+    {
         auto const destination{get_data(first)};
         ml::native_soa::move_n(destination.starts_xs,
                                ml::native_soa::source_data(source.view_starts().xs()) +

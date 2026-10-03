@@ -164,6 +164,7 @@ auto is_generated_storage_member_name(std::string_view const value) -> bool {
         "right",
         "slice",
         "sort",
+        "soa_schema",
         "validate_array_sizes",
     };
     return names.contains(value);
@@ -1672,8 +1673,7 @@ void validate_soa(NormalModuleSchema const& module,
                 if (!accessors.insert(accessor).second) {
                     throw std::invalid_argument{"Duplicate compact view accessor: " + accessor};
                 }
-                if (member.name == "validate" || member.name == "column_data" ||
-                    member.name == "column_data_unchecked" || member.name == "capacity_blocks") {
+                if (member.name == "validate" || member.name == "capacity_blocks") {
                     throw std::invalid_argument{"Member collides with compact view API: " +
                                                 member.name};
                 }

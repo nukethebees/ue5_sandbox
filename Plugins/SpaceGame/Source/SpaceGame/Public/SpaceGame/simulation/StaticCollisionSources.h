@@ -13,6 +13,8 @@
 #include <utility>
 
 namespace ml::ioj {
+struct FStaticCollisionSourcesSchema;
+
 struct FStaticCollisionSourcesView;
 struct FStaticCollisionSourcesConstView;
 

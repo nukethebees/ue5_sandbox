@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sandbox/core/address_cast.h>
 #include <sandbox/core/compact_vector_view.h>
 #include <sandbox/core/single_allocation/layout.h>
 #include <sandbox/core/single_allocation/operations.h>
@@ -7,10 +8,9 @@
 #include <sandbox/core/single_allocation/view.h>
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <limits>
 #include <memory>
@@ -69,15 +69,12 @@ using single_allocation_layout::supported_leaf;
 using single_allocation_layout::try_allocation_bytes;
 using single_allocation_layout::try_round_capacity;
 using soa_storage_detail::source_data;
-[[noreturn]] inline void invalid_size() {
-    std::fputs("Native SoA: invalid size, range or allocation overflow.\n", stderr);
-    std::abort();
-}
 
-inline void require(bool const condition) {
-    if (!condition) {
-        invalid_size();
-    }
+template <typename Destination, typename Source>
+auto is_external_source(Destination const& destination, Source const& source) -> bool {
+    auto const address{ml::address_cast(source.data())};
+    auto const begin{ml::address_cast(destination.data())};
+    return address < begin || address >= begin + destination.size() * sizeof(*destination.data());
 }
 
 template <typename T>
@@ -102,21 +99,21 @@ void default_construct_n(T* const destination, std::uint32_t const count) {
 }
 
 using StorageState = soa_storage_detail::StorageState<std::uint32_t>;
-template <bool Const>
-using CompactViewState = soa_storage_detail::CompactViewState<Const, require>;
 
-inline auto rounded_capacity(std::int64_t const required, std::size_t const block_bytes)
-    -> std::uint32_t {
-    std::uint32_t result{};
-    require(try_round_capacity(required, maximum_capacity(block_bytes), result));
-    return result;
+inline auto rounded_capacity(std::int64_t const required,
+                             [[maybe_unused]] std::size_t const block_bytes) -> std::uint32_t {
+    assert(required >= 0 && required <= maximum_capacity(block_bytes));
+    auto const rounded{((required + capacity_granularity - 1) / capacity_granularity) *
+                       capacity_granularity};
+    assert(rounded <= maximum_capacity(block_bytes));
+    return static_cast<std::uint32_t>(rounded);
 }
 
 inline auto growth_capacity(std::uint32_t const required,
                             std::uint32_t const current,
                             std::size_t const block_bytes) -> std::uint32_t {
     auto const maximum{maximum_capacity(block_bytes)};
-    require(required > current && required <= maximum);
+    assert(required > current && required <= maximum);
     auto const geometric{
         std::max(static_cast<std::size_t>(required),
                  static_cast<std::size_t>(current) + static_cast<std::size_t>(current) / 2)};
@@ -128,23 +125,23 @@ inline auto growth_capacity(std::uint32_t const required,
 
 inline auto allocation_bytes(std::uint32_t const capacity, std::size_t const block_bytes)
     -> std::size_t {
-    std::size_t result{};
-    require(try_allocation_bytes(capacity, block_bytes, result));
-    return result;
+    assert(capacity >= 0 && capacity % capacity_granularity == 0 &&
+           capacity <= maximum_capacity(block_bytes));
+    return static_cast<std::size_t>(capacity / capacity_granularity) * block_bytes;
 }
 
-using StorageOperations = soa_storage_detail::
-    StorageOperations<std::uint32_t, require, rounded_capacity, growth_capacity>;
+using StorageOperations =
+    soa_storage_detail::StorageOperations<std::uint32_t, rounded_capacity, growth_capacity>;
 
 }
 
 namespace ml::native_soa {
 template <typename T>
-using Vector2View = soa_storage_detail::VectorView<T, 2, std::span, require>;
+using Vector2View = soa_storage_detail::VectorView<T, 2, std::span>;
 template <typename T>
 using Vector2ConstView = Vector2View<T const>;
 template <typename T>
-using Vector3View = soa_storage_detail::VectorView<T, 3, std::span, require>;
+using Vector3View = soa_storage_detail::VectorView<T, 3, std::span>;
 template <typename T>
 using Vector3ConstView = Vector3View<T const>;
 }

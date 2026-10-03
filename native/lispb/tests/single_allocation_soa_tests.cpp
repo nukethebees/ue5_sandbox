@@ -13,20 +13,33 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
         {.name = "Child", .members = {{"xs", SoaMemberKind::array, TypeRef{"float"}}}},
         {.name = "Rows",
          .members = {{"ids", SoaMemberKind::array, TypeRef{"std::int32_t"}},
-                     {"nested", SoaMemberKind::nested, TypeRef{"Child"}, {}, "Child"}},
+                     {"nested", SoaMemberKind::nested, TypeRef{"Child"}, {}, "Child"},
+                     {"local_types", SoaMemberKind::array, TypeRef{"example::Token"}},
+                     {"nested_types", SoaMemberKind::array, TypeRef{"example::sub::Token"}},
+                     {"foreign_types", SoaMemberKind::array, TypeRef{"other::Token"}},
+                     {"shadowed_types", SoaMemberKind::array, TypeRef{"example::Layout"}}},
          .single_allocation = "SingleRows"}};
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
-        .modules = {NormalModuleSchema{.settings = {.name = "native", .header = "Native.h"},
-                                       .declarations = {std::make_move_iterator(structs.begin()),
-                                                        std::make_move_iterator(structs.end())},
-                                       .soa_backend = SoaBackend::standard_library}}}))};
+        .modules = {NormalModuleSchema{
+            .settings = {.name = "native", .header = "Native.h", .namespace_name = "example"},
+            .declarations = {std::make_move_iterator(structs.begin()),
+                             std::make_move_iterator(structs.end())},
+            .soa_backend = SoaBackend::standard_library}}}))};
     auto const& output{files.front().content};
     EXPECT_EQ(output.find("struct RowsView"), std::string::npos);
     EXPECT_EQ(output.find("struct RowsConstView"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<std::int32_t> IdsColumn"), std::string::npos);
     EXPECT_NE(output.find("auto ids() const"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<float> NestedXsColumn{IdsColumn}"), std::string::npos);
+    EXPECT_NE(output.find("ColLayout<Token> LocalTypesColumn"), std::string::npos);
+    EXPECT_NE(output.find("ColLayout<sub::Token> NestedTypesColumn"), std::string::npos);
+    EXPECT_NE(output.find("ColLayout<other::Token> ForeignTypesColumn"), std::string::npos);
+    EXPECT_NE(output.find("ColLayout<example::Layout> ShadowedTypesColumn"), std::string::npos);
+    EXPECT_EQ(output.find("using Base::count_;"), std::string::npos);
+    EXPECT_EQ(output.find("this->count_"), std::string::npos);
+    EXPECT_EQ(output.find("CompactViewState"), std::string::npos);
+    EXPECT_NE(output.find("State* state_{};"), std::string::npos);
     EXPECT_NE(output.find("ml::native_soa::copy_n(destination.nested_xs"), std::string::npos);
     EXPECT_EQ(output.find("TArray"), std::string::npos);
     EXPECT_EQ(output.find("FMemory"), std::string::npos);
@@ -124,9 +137,10 @@ TEST(SingleAllocationSoa, TypedColumnOperationsUseLayoutCursorAndPreserveNestedP
     EXPECT_LE(typed_copy, copy);
 }
 
-TEST(SingleAllocationSoa, StructuralSourcesNeedNoOrdinaryView) {
+TEST(SingleAllocationSoa, SchemaTaggedSourcesNeedNoOrdinaryView) {
     auto const output{render(schemas())};
-    EXPECT_NE(output.find("accepts_source = requires(Source const& source)"), std::string::npos);
+    EXPECT_NE(output.find("SoaSourceFor<Columns, SingleRows, size_type>"), std::string::npos);
+    EXPECT_NE(output.find("using soa_schema = RowsSchema;"), std::string::npos);
     EXPECT_NE(output.find("source.view_nested().wide()"), std::string::npos);
     EXPECT_EQ(output.find("SchemaConstView"), std::string::npos);
     EXPECT_EQ(output.find("ordinary_source_aliases_storage"), std::string::npos);
@@ -162,7 +176,7 @@ TEST(SingleAllocationSoa, OverlappingCopyUsesMoveWithoutChangingAppend) {
         EXPECT_NE(copy.find("::move_n(destination.nested_wide"), std::string::npos);
         EXPECT_EQ(copy.find("::copy_n("), std::string::npos);
     }
-    EXPECT_EQ(render(schemas()).find("void copy_columns_from("), std::string::npos);
+    EXPECT_NE(render(schemas()).find("void copy_columns_from("), std::string::npos);
 }
 
 TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {
@@ -228,7 +242,7 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
     EXPECT_NE(output.find("struct RowsSingleView_nested"), std::string::npos);
     EXPECT_NE(output.find("validate_compact_view<RowsSingleView>()"), std::string::npos);
     EXPECT_NE(output.find("validate_compact_view<RowsSingleConstView>()"), std::string::npos);
-    EXPECT_NE(output.find("column_data<Aligned256>"), std::string::npos);
+    EXPECT_NE(output.find("view_column_data<Aligned256>"), std::string::npos);
     EXPECT_EQ(output.find("auto columns() const"), std::string::npos);
     EXPECT_NE(output.find("for_each_removal_run(num_, indices"), std::string::npos);
     EXPECT_NE(output.find("ml::soa_storage::source_data(source.view_nested().wide())"),
@@ -260,8 +274,8 @@ TEST(SingleAllocationSoa, OwnerBorrowingRequiresLvalues) {
     EXPECT_NE(
         output.find("inline RowsSingleConstView::RowsSingleConstView(RowsSingleView const& other)"),
         std::string::npos);
-    EXPECT_NE(output.find("using Operations::get_view;"), std::string::npos);
-    EXPECT_NE(output.find("using Operations::get_const_view;"), std::string::npos);
+    EXPECT_EQ(output.find("using Operations::"), std::string::npos);
+    EXPECT_EQ(output.find("private ml::soa_storage::StorageOperations"), std::string::npos);
     EXPECT_EQ(output.find("get_view() && ->"), std::string::npos);
 }
 
@@ -447,8 +461,8 @@ TEST(SingleAllocationSoa, CommonApiIsEmittedForEveryRequestedRepresentation) {
             if (policy != SoaStorage::vector) {
                 EXPECT_NE(header.find("struct ROWS_API CompactRows"), std::string::npos);
                 EXPECT_NE(source.find("CompactRows::external_first() const"), std::string::npos);
-                EXPECT_NE(header.find("using Operations::set_num;"), std::string::npos);
-                EXPECT_EQ(header.find("using Operations::reserve;"), std::string::npos);
+                EXPECT_EQ(header.find("using Operations::"), std::string::npos);
+                EXPECT_NE(header.find("void copy_columns_from("), std::string::npos);
             }
             if (policy == SoaStorage::single_allocation) {
                 EXPECT_EQ(header.find("struct LogicalRows {"), std::string::npos);

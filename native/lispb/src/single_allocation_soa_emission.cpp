@@ -63,7 +63,7 @@ auto storage_lifetime_nodes(SingleAllocationModel const& model) -> Nodes {
         .name = model.owner_name,
         .return_type = "explicit",
         .parameters = {FunctionParameter{"std::pmr::memory_resource*", "resource"}},
-        .body = {raw(model.dialect.runtime_namespace + "require(resource != nullptr);")},
+        .body = {raw("assert(resource != nullptr);")},
         .qualifiers = {.is_noexcept = true},
         .member_initializers = {{"resource_", "resource"}},
     }};
@@ -222,7 +222,7 @@ auto column_pointer_nodes(SingleAllocationModel const& model) -> Nodes {
     }};
 
     NodeListBuilder result;
-    result.add(raw("friend Operations;"))
+    result.add(raw("friend Operations;\nfriend ::ml::soa_storage_detail::StorageRequirements;"))
         .new_lines(1)
         .append(section_header("Column pointers"))
         .new_lines(1)
@@ -291,9 +291,8 @@ auto column_copying_nodes(SingleAllocationModel const& model) -> Nodes {
         .parameters = {FunctionParameter{"std::span<size_type const>", "indices"}},
         .body = {VariableDeclarationStmt{"auto const", "columns", call(named("get_data"))},
                  ExpressionStmt{
-                     RawExpr{"ml::soa_storage_detail::for_each_removal_run(num_, indices, " +
-                             model.dialect.runtime_namespace +
-                             "require, [&](size_type index, size_type source, size_type count) { "
+                     RawExpr{"ml::soa_storage_detail::for_each_removal_run(num_, indices, "
+                             "[&](size_type index, size_type source, size_type count) { "
                              "copy_columns(columns, index, source, count); })"}}},
     })};
     return adjacent({std::move(swap_remove), std::move(copy), std::move(remove_indices)});
@@ -320,6 +319,8 @@ auto source_copy_node(SingleAllocationModel const& model, bool const overlapping
                        FunctionParameter{"size_type", "count"}},
         .body = body.build(),
         .template_parameters = "typename Columns",
+        .requires_clause =
+            "ml::soa_storage_detail::SoaSourceFor<Columns, " + model.owner_name + ", size_type>",
     });
 }
 
@@ -372,39 +373,108 @@ auto nested_model(SingleAllocationModel const& model, SoaMemberSchema const& mem
 
 auto compact_view_node(SingleAllocationModel const& model) -> Node {
     auto const name{model.view_name + "Impl"};
-    auto const base{model.dialect.runtime_namespace + "CompactViewState<Const>"};
     NodeListBuilder children;
-    children
-        .append(adjacent({UsingDeclaration{"Base", CppType{base}},
-                          raw("using Base::Base;"),
-                          raw("using Base::validate;\n"
-                              "using size_type = typename Base::size_type;\n"
-                              "template <typename T>\n"
-                              "using Element = typename Base::template Element<T>;"),
-                          UsingDeclaration{"View", CppType{model.view_name}},
-                          UsingDeclaration{"ConstView", CppType{model.const_view_name}},
-                          declaration(FunctionSpec{
-                              .name = name,
-                              .qualifiers = {.disposition = FunctionDisposition::defaulted},
-                          }),
-                          inline_function(FunctionSpec{
-                              .name = name,
-                              .parameters = {FunctionParameter{name + "<false> const&", "other"}},
-                              .template_parameters = "bool Enabled = Const",
-                              .requires_clause = "Enabled",
-                              .member_initializers = {{"Base", "other"}},
-                          })}))
-        .new_lines(1)
-        .add(AccessSpecifier{"protected"})
-        .new_lines(1)
-        .add(raw("using Base::state_;\n"
-                 "using Base::count_;\n"
-                 "using Base::offset_;\n"
-                 "using Base::capacity_blocks;\n"
-                 "using Base::column_data;\n"
-                 "using Base::column_data_unchecked;"))
-        .new_lines(1)
-        .add(AccessSpecifier{"public"});
+    children.append(adjacent(
+        {UsingDeclaration{"soa_schema", CppType{model.schema->name + "Schema"}},
+         UsingDeclaration{"size_type", CppType{model.dialect.size_type}},
+         UsingDeclaration{"Storage", CppType{model.dialect.runtime_namespace + "StorageState"}},
+         raw("using State = std::conditional_t<Const, Storage const, Storage>;\n"
+             "template <typename T>\n"
+             "using Element = std::conditional_t<Const, T const, T>;"),
+         UsingDeclaration{"View", CppType{model.view_name}},
+         UsingDeclaration{"ConstView", CppType{model.const_view_name}},
+         declaration(FunctionSpec{
+             .name = name,
+             .qualifiers = {.disposition = FunctionDisposition::defaulted},
+         }),
+         inline_function(FunctionSpec{
+             .name = name,
+             .parameters = {FunctionParameter{"State*", "state"},
+                            FunctionParameter{"size_type", "offset"},
+                            FunctionParameter{"size_type", "count"}},
+             .body = {ExpressionStmt{call(named("validate"))}},
+             .member_initializers =
+                 {{"state_", "state"}, {"offset_", "offset"}, {"count_", "count"}},
+         }),
+         inline_function(FunctionSpec{
+             .name = name,
+             .parameters = {FunctionParameter{name + "<false> const&", "other"}},
+             .template_parameters = "bool Enabled = Const",
+             .requires_clause = "Enabled",
+             .member_initializers = {{"state_", "other.state_"},
+                                     {"offset_", "other.offset_"},
+                                     {"count_", "other.count_"}},
+         })}));
+
+    children.new_lines(1).append(adjacent({
+        compact_function(FunctionSpec{
+            .name = "validate",
+            .return_type = "void",
+            .body = {ExpressionStmt{call(named("ml::soa_storage_detail::validate_view"),
+                                         {named("state_"), named("offset_"), named("count_")})}},
+            .qualifiers = {.is_const = true},
+        }),
+        compact_function(FunctionSpec{
+            .name = "num",
+            .return_type = "auto",
+            .body = {ReturnStmt{named("count_")}},
+            .qualifiers = {.trailing_return_type = CppType{"size_type"},
+                           .is_const = true,
+                           .is_noexcept = true},
+        }),
+        compact_function(FunctionSpec{
+            .name = "is_empty",
+            .return_type = "auto",
+            .body = {ReturnStmt{binary(BinaryOperator::equal, named("count_"), literal("0"))}},
+            .qualifiers =
+                {.trailing_return_type = CppType{"bool"}, .is_const = true, .is_noexcept = true},
+        }),
+        compact_function(FunctionSpec{
+            .name = "get_view",
+            .return_type = "auto",
+            .parameters = {FunctionParameter{"this auto const&", "self"}},
+            .body = {ReturnStmt{named("self")}},
+        }),
+        compact_function(FunctionSpec{
+            .name = "get_view",
+            .return_type = "auto",
+            .parameters = {FunctionParameter{"this auto const&", "self"},
+                           FunctionParameter{"size_type", "offset"},
+                           FunctionParameter{"size_type", "count"}},
+            .body = {ReturnStmt{call(named("self.slice"), {named("offset"), named("count")})}},
+        }),
+        inline_function(FunctionSpec{
+            .name = "slice",
+            .return_type = "auto",
+            .parameters = {FunctionParameter{"this auto const&", "self"},
+                           FunctionParameter{"size_type", "offset"},
+                           FunctionParameter{"size_type", "count"}},
+            .body = {ReturnStmt{call(named("ml::soa_storage_detail::slice_view<decltype(self)>"),
+                                     {named("self.state_"),
+                                      named("self.offset_"),
+                                      named("self.count_"),
+                                      named("offset"),
+                                      named("count")})}},
+        }),
+        compact_function(FunctionSpec{
+            .name = "left",
+            .return_type = "auto",
+            .parameters = {FunctionParameter{"this auto const&", "self"},
+                           FunctionParameter{"size_type", "count"}},
+            .body = {ReturnStmt{call(named("self.slice"), {literal("0"), named("count")})}},
+        }),
+        inline_function(FunctionSpec{
+            .name = "right",
+            .return_type = "auto",
+            .parameters = {FunctionParameter{"this auto const&", "self"},
+                           FunctionParameter{"size_type", "count"}},
+            .body = {raw("assert(count >= 0 && count <= self.count_);"),
+                     ReturnStmt{call(
+                         named("self.slice"),
+                         {binary(BinaryOperator::subtract, named("self.count_"), named("count")),
+                          named("count")})}},
+        }),
+    }));
 
     for (auto const& member : model.schema->members) {
         auto path{model.member_prefix};
@@ -447,7 +517,10 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
                                              pointer_member_access(named("state_"), "data_"))),
                                 Block{{ReturnStmt{init_list({})}}}},
                          VariableDeclarationStmt{
-                             "auto const", "blocks", call(named("capacity_blocks"))},
+                             "auto const",
+                             "blocks",
+                             call(named("ml::soa_storage_detail::view_capacity_blocks"),
+                                  {named("state_")})},
                          VariableDeclarationStmt{
                              "auto const",
                              "first",
@@ -464,11 +537,12 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
                                                        "offset"),
                                          {named("blocks")}),
                                     named("first"))},
-                         ReturnStmt{init_list({call(named("this->template column_data_unchecked<" +
-                                                          vector->element_type + ">"),
-                                                    {named("first")}),
-                                               named("stride"),
-                                               named("count_")})}},
+                         ReturnStmt{init_list(
+                             {call(named("ml::soa_storage_detail::view_column_data_unchecked<" +
+                                         vector->element_type + ">"),
+                                   {named("state_"), named("offset_"), named("first")}),
+                              named("stride"),
+                              named("count_")})}},
                 .qualifiers = {.trailing_return_type = CppType{vector_type}, .is_const = true},
             }));
         } else {
@@ -477,12 +551,17 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
                 .name = member.name,
                 .return_type = "auto",
                 .body = {ReturnStmt{init_list(
-                    {call(named("this->template column_data<" + column.type.spelling + ">",
+                    {call(named("ml::soa_storage_detail::view_column_data<" + column.type.spelling +
+                                    ">",
                                 column.type.dependencies),
-                          {call(member_access(
+                          {named("state_"),
+                           named("offset_"),
+                           named("count_"),
+                           call(member_access(
                                     named(model.layout_name + "::" + column.layout_identifier),
                                     "offset"),
-                                {call(named("capacity_blocks"))})}),
+                                {call(named("ml::soa_storage_detail::view_capacity_blocks"),
+                                      {named("state_")})})}),
                      model.dialect.span_count(named("count_"))})}},
                 .qualifiers = {.trailing_return_type =
                                    CppType{model.dialect.span_template + "<Element<" +
@@ -533,10 +612,15 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
                        .is_const = true},
         .template_parameters = "typename Func",
     }));
-    return Struct{.name = name,
-                  .children = children.build(),
-                  .bases = {CppType{base}},
-                  .template_parameters = "bool Const"};
+    children.new_lines(1)
+        .add(AccessSpecifier{"private"})
+        .new_lines(1)
+        .add(raw("template <bool>\nfriend struct " + name + ";"))
+        .new_lines(1)
+        .append(adjacent({Member{"State*", "state_", RawExpr{""}},
+                          Member{"size_type", "offset_", RawExpr{""}},
+                          Member{"size_type", "count_", RawExpr{""}}}));
+    return Struct{.name = name, .children = children.build(), .template_parameters = "bool Const"};
 }
 
 auto view_validation_nodes(std::string const& name) -> Nodes {
@@ -630,27 +714,10 @@ auto emit_single_allocation_layout(SingleAllocationModel const& model) -> Nodes 
 
 auto storage_implementation_nodes(SingleAllocationModel const& model) -> Nodes {
     auto copying{column_copying_nodes(model)};
-    std::string source_contract{
-        "template <typename Source>\n"
-        "inline static constexpr bool accepts_source = requires(Source const& source) {\n"
-        "    { source.num() } -> std::convertible_to<size_type>;\n"
-        "    source.validate();\n"};
-    for (auto const& column : model.columns) {
-        auto const accessor{logical_column_access(*model.schema,
-                                                  column.member_path,
-                                                  SoaRepresentation::compact,
-                                                  "source",
-                                                  model.schemas)};
-        source_contract += "    { " + model.dialect.runtime_namespace + "source_data(" + accessor +
-                           ") } -> std::convertible_to<" + column.type.spelling + " const*>;\n";
-    }
-    source_contract += "};";
     NodeListBuilder children;
     children
         .append(adjacent({UsingDeclaration{"View", CppType{model.view_name}},
                           UsingDeclaration{"ConstView", CppType{model.const_view_name}}}))
-        .new_lines(1)
-        .add(raw(std::move(source_contract)))
         .new_lines(1)
         .append(storage_lifetime_nodes(model))
         .new_lines(1)
@@ -670,11 +737,11 @@ auto storage_implementation_nodes(SingleAllocationModel const& model) -> Nodes {
         .new_lines(1)
         .append(std::move(copying))
         .new_lines(1)
-        .add(source_copy_node(model, false));
-    if (model.schema->has_operation(StorageOperation::copy_element)) {
-        children.new_lines(1).add(source_copy_node(model, true));
-    }
-    children.new_lines(1).add(live_column_copy_node(model));
+        .add(source_copy_node(model, false))
+        .new_lines(1)
+        .add(source_copy_node(model, true))
+        .new_lines(1)
+        .add(live_column_copy_node(model));
 
     return children.build();
 }
@@ -764,49 +831,9 @@ auto emit_single_allocation_container(SingleAllocationModel const& model, NodeLi
     -> Node {
     NodeListBuilder children;
     auto const operations{model.dialect.runtime_namespace + "StorageOperations"};
+    children.add(UsingDeclaration{"soa_schema", CppType{model.schema->name + "Schema"}})
+        .new_lines(1);
     children.add(raw("using Operations = " + operations + ";")).new_lines(1);
-    for (auto const* name : {"num",
-                             "capacity",
-                             "is_empty",
-                             "allocated_bytes",
-                             "get_view",
-                             "get_const_view",
-                             "slice",
-                             "left",
-                             "right"}) {
-        children.add(raw(std::string{"using Operations::"} + name + ";")).new_lines(1);
-    }
-    for (auto const operation : model.schema->operations) {
-        std::string name;
-        switch (operation) {
-            case StorageOperation::reset:
-                name = "reset";
-                break;
-            case StorageOperation::reserve:
-                name = "reserve";
-                break;
-            case StorageOperation::add_uninitialised:
-                name = "add_uninitialised";
-                break;
-            case StorageOperation::add_defaulted:
-                name = "add_defaulted";
-                break;
-            case StorageOperation::remove_at_swap:
-                name = "remove_at_swap";
-                break;
-            case StorageOperation::set_num:
-                name = "set_num";
-                break;
-            case StorageOperation::copy_element:
-                children.add(raw("using Operations::copy_elements;")).new_lines(1);
-                name = "copy_element";
-                break;
-            case StorageOperation::append_from:
-                name = "append_from";
-                break;
-        }
-        children.add(raw("using Operations::" + name + ";")).new_lines(1);
-    }
     children
         .add(raw("using Layout = " + model.layout_name +
                  ";\n"
@@ -841,7 +868,7 @@ auto emit_single_allocation_container(SingleAllocationModel const& model, NodeLi
         .name = model.owner_name,
         .children = children.build(),
         .bases = {CppType{"protected " + model.dialect.runtime_namespace + "StorageState"},
-                  CppType{"private " + operations}},
+                  CppType{operations}},
         .export_specifier = model.schema->export_specifier,
         .dependencies = model.dependencies,
     };

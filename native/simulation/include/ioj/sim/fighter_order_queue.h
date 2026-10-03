@@ -6,13 +6,15 @@
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/fighter_types.h"
 
-#include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/native_soa/vector_storage_ops.h"
 
+#include <cassert>
 #include <utility>
 
 namespace ioj::sim {
+struct FighterOrderQueueSchema;
+
 struct FighterOrderQueueView;
 struct FighterOrderQueueConstView;
 struct FighterOrderQueueConstView {
@@ -36,7 +38,7 @@ struct FighterOrderQueueConstView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> FighterOrderQueueConstView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
+        assert(offset <= num() && count <= num() - offset);
         return {
             entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             orders.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -62,7 +64,7 @@ struct FighterOrderQueueConstView {
     }
     auto left(size_type const count) const -> FighterOrderQueueConstView { return slice(0, count); }
     auto right(size_type const count) const -> FighterOrderQueueConstView {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
 };
@@ -87,7 +89,7 @@ struct FighterOrderQueueView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> FighterOrderQueueView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
+        assert(offset <= num() && count <= num() - offset);
         return {
             entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             orders.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -112,7 +114,7 @@ struct FighterOrderQueueView {
     }
     auto left(size_type const count) const -> FighterOrderQueueView { return slice(0, count); }
     auto right(size_type const count) const -> FighterOrderQueueView {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
     void set(size_type const index,
@@ -120,7 +122,7 @@ struct FighterOrderQueueView {
              FighterOrder const new_orders,
              FighterTask const new_tasks,
              EntityUniqueId const new_targets) const {
-        ml::native_soa::require(index < num());
+        assert(index < num());
         entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
         orders[static_cast<std::size_t>(index)] = new_orders;
         tasks[static_cast<std::size_t>(index)] = new_tasks;
@@ -196,35 +198,15 @@ struct FighterOrderQueue {
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
-        ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
+        assert(count <= std::numeric_limits<size_type>::max() - num());
         source.validate_array_sizes();
         if (count == 0) {
             return;
         }
-        {
-            auto const address{ml::address_cast(source.entity_ids.data())};
-            auto const begin{ml::address_cast(entity_ids.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + entity_ids.size() * sizeof(EntityUniqueId));
-        }
-        {
-            auto const address{ml::address_cast(source.orders.data())};
-            auto const begin{ml::address_cast(orders.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + orders.size() * sizeof(FighterOrder));
-        }
-        {
-            auto const address{ml::address_cast(source.tasks.data())};
-            auto const begin{ml::address_cast(tasks.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + tasks.size() * sizeof(FighterTask));
-        }
-        {
-            auto const address{ml::address_cast(source.targets.data())};
-            auto const begin{ml::address_cast(targets.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + targets.size() * sizeof(EntityUniqueId));
-        }
+        assert(ml::native_soa::is_external_source(entity_ids, source.entity_ids));
+        assert(ml::native_soa::is_external_source(orders, source.orders));
+        assert(ml::native_soa::is_external_source(tasks, source.tasks));
+        assert(ml::native_soa::is_external_source(targets, source.targets));
         ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
             entity_ids.insert(
                 entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
@@ -267,24 +249,22 @@ struct FighterOrderQueue {
     }
     auto left(size_type const count) -> View { return slice(0, count); }
     auto right(size_type const count) -> View {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
     auto left(size_type const count) const -> ConstView { return slice(0, count); }
     auto right(size_type const count) const -> ConstView {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        entity_ids[static_cast<std::size_t>(dst_index)] =
-            other.entity_ids[static_cast<std::size_t>(src_index)];
-        orders[static_cast<std::size_t>(dst_index)] =
-            other.orders[static_cast<std::size_t>(src_index)];
-        tasks[static_cast<std::size_t>(dst_index)] =
-            other.tasks[static_cast<std::size_t>(src_index)];
-        targets[static_cast<std::size_t>(dst_index)] =
-            other.targets[static_cast<std::size_t>(src_index)];
+        auto const destination_index{static_cast<std::size_t>(dst_index)};
+        auto const source_index{static_cast<std::size_t>(src_index)};
+        entity_ids[destination_index] = other.entity_ids[source_index];
+        orders[destination_index] = other.orders[source_index];
+        tasks[destination_index] = other.tasks[source_index];
+        targets[destination_index] = other.targets[source_index];
     }
     template <typename Other>
     void copy_elements(size_type const dst_index,

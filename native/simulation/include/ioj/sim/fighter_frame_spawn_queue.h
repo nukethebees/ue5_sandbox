@@ -7,8 +7,12 @@
 #include "sandbox/core/frame_array.h"
 #include "sandbox/core/frame_memory_resource.h"
 
+#include <cassert>
+
 namespace ioj::sim::fighters {
 struct FrameSpawnQueue {
+    using soa_schema = FighterSpawnQueue::soa_schema;
+
     explicit FrameSpawnQueue(ml::FrameScratch& scratch);
     void reserve(std::uint32_t count);
     void clear();
@@ -32,11 +36,11 @@ struct FrameSpawnQueue {
     void validate() const {
         locations_.validate();
         rotations_.validate();
-        ml::native_soa::require(locations_.num() == num());
-        ml::native_soa::require(rotations_.num() == num());
-        ml::native_soa::require(teams_.num() == num());
-        ml::native_soa::require(parents_.num() == num());
-        ml::native_soa::require(targets_.num() == num());
+        assert(locations_.num() == num());
+        assert(rotations_.num() == num());
+        assert(teams_.num() == num());
+        assert(parents_.num() == num());
+        assert(targets_.num() == num());
     }
   private:
     FrameVectors3f locations_;

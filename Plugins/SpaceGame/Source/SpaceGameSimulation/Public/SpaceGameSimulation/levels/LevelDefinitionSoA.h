@@ -19,6 +19,8 @@
 #include <utility>
 
 namespace ml {
+struct FLevelEntityTableSchema;
+
 struct FLevelEntityTableView;
 struct FLevelEntityTableConstView;
 

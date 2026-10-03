@@ -3,6 +3,8 @@
 #include "ioj/sim/laser_hit_details.h"
 #include "ioj/sim/sim_tick.h"
 
+#include <sandbox/core/single_allocation/concepts.h>
+
 #include <cstdint>
 #include <vector>
 
@@ -10,7 +12,7 @@ namespace ioj::sim::lasers {
 struct FrameOutput {
     void reset();
     template <typename Source>
-        requires LaserHitDetails::accepts_source<Source>
+        requires ml::soa_storage_detail::AppendableTo<Source, LaserHitDetails>
     void append_hits(Source const& new_hits, SimTick const tick) {
         auto const count{new_hits.num()};
         hits.append_from(new_hits);

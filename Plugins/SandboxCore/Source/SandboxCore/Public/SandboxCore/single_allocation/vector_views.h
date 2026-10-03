@@ -8,11 +8,11 @@
 namespace ml::soa {
 
 template <typename T>
-using Vector2View = soa_storage_detail::VectorView<T, 2, TArrayView, soa_storage::require, int32>;
+using Vector2View = soa_storage_detail::VectorView<T, 2, TArrayView, int32>;
 template <typename T>
 using Vector2ConstView = Vector2View<T const>;
 template <typename T>
-using Vector3View = soa_storage_detail::VectorView<T, 3, TArrayView, soa_storage::require, int32>;
+using Vector3View = soa_storage_detail::VectorView<T, 3, TArrayView, int32>;
 template <typename T>
 using Vector3ConstView = Vector3View<T const>;
 

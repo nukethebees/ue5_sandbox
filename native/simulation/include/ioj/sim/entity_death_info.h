@@ -6,13 +6,15 @@
 #include "ioj/sim/entity_life_state.h"
 #include "ioj/sim/entity_unique_id.h"
 
-#include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/native_soa/vector_storage_ops.h"
 
+#include <cassert>
 #include <utility>
 
 namespace ioj::sim {
+struct EntityDeathInfoSchema;
+
 struct EntityDeathInfoView;
 struct EntityDeathInfoConstView;
 struct EntityDeathInfoConstView {
@@ -34,7 +36,7 @@ struct EntityDeathInfoConstView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> EntityDeathInfoConstView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
+        assert(offset <= num() && count <= num() - offset);
         return {
             reasons.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             victims.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -57,7 +59,7 @@ struct EntityDeathInfoConstView {
     }
     auto left(size_type const count) const -> EntityDeathInfoConstView { return slice(0, count); }
     auto right(size_type const count) const -> EntityDeathInfoConstView {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
 };
@@ -80,7 +82,7 @@ struct EntityDeathInfoView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> EntityDeathInfoView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
+        assert(offset <= num() && count <= num() - offset);
         return {
             reasons.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
             victims.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
@@ -103,14 +105,14 @@ struct EntityDeathInfoView {
     }
     auto left(size_type const count) const -> EntityDeathInfoView { return slice(0, count); }
     auto right(size_type const count) const -> EntityDeathInfoView {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
     void set(size_type const index,
              DeathReason const new_reasons,
              EntityUniqueId const new_victims,
              EntityUniqueId const new_killers) const {
-        ml::native_soa::require(index < num());
+        assert(index < num());
         reasons[static_cast<std::size_t>(index)] = new_reasons;
         victims[static_cast<std::size_t>(index)] = new_victims;
         killers[static_cast<std::size_t>(index)] = new_killers;
@@ -179,29 +181,14 @@ struct EntityDeathInfo {
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
-        ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
+        assert(count <= std::numeric_limits<size_type>::max() - num());
         source.validate_array_sizes();
         if (count == 0) {
             return;
         }
-        {
-            auto const address{ml::address_cast(source.reasons.data())};
-            auto const begin{ml::address_cast(reasons.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + reasons.size() * sizeof(DeathReason));
-        }
-        {
-            auto const address{ml::address_cast(source.victims.data())};
-            auto const begin{ml::address_cast(victims.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + victims.size() * sizeof(EntityUniqueId));
-        }
-        {
-            auto const address{ml::address_cast(source.killers.data())};
-            auto const begin{ml::address_cast(killers.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + killers.size() * sizeof(EntityUniqueId));
-        }
+        assert(ml::native_soa::is_external_source(reasons, source.reasons));
+        assert(ml::native_soa::is_external_source(victims, source.victims));
+        assert(ml::native_soa::is_external_source(killers, source.killers));
         ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
             reasons.insert(reasons.end(), source.reasons.data(), source.reasons.data() + count);
             victims.insert(victims.end(), source.victims.data(), source.victims.data() + count);
@@ -240,22 +227,21 @@ struct EntityDeathInfo {
     }
     auto left(size_type const count) -> View { return slice(0, count); }
     auto right(size_type const count) -> View {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
     auto left(size_type const count) const -> ConstView { return slice(0, count); }
     auto right(size_type const count) const -> ConstView {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        reasons[static_cast<std::size_t>(dst_index)] =
-            other.reasons[static_cast<std::size_t>(src_index)];
-        victims[static_cast<std::size_t>(dst_index)] =
-            other.victims[static_cast<std::size_t>(src_index)];
-        killers[static_cast<std::size_t>(dst_index)] =
-            other.killers[static_cast<std::size_t>(src_index)];
+        auto const destination_index{static_cast<std::size_t>(dst_index)};
+        auto const source_index{static_cast<std::size_t>(src_index)};
+        reasons[destination_index] = other.reasons[source_index];
+        victims[destination_index] = other.victims[source_index];
+        killers[destination_index] = other.killers[source_index];
     }
     template <typename Other>
     void copy_elements(size_type const dst_index,

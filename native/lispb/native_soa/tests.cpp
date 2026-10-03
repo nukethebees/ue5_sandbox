@@ -52,7 +52,7 @@ TEST(NativeSoa, ResourceAlignmentAndFailurePreserveAllColumns) {
     EXPECT_EQ(state.allocations, state.frees);
 }
 
-TEST(NativeSoa, ResourceMovesDoNotDependOnPublicMutationSelection) {
+TEST(NativeSoa, ResourceMovesPreserveLogicalApiOwners) {
     pmr_test_support::AllocationState first_state;
     pmr_test_support::AllocationState second_state;
     pmr_test_support::CountingResource first{first_state};
@@ -85,12 +85,57 @@ template <typename T>
 concept CanAddUninitialised = requires(T& value) { value.add_uninitialised(1); };
 template <typename T>
 concept CanAssignFirst = requires(T value) { value.assign_first(1.0f); };
-static_assert(!CanReset<ApiOwner>);
-static_assert(!CanAddUninitialised<ApiOwner>);
+template <typename T>
+concept CanReserve = requires(T& value) { value.reserve(1); };
+template <typename T>
+concept CanSetNum = requires(T& value) { value.set_num(1); };
+template <typename T, typename Source>
+concept CanCopy =
+    requires(T& value, Source const& source) { value.copy_elements(0, source, 0, 1); };
+template <typename T, typename Source>
+concept CanAppend = requires(T& value, Source const& source) { value.append_from(source); };
+template <typename T>
+concept CanReallocate = requires(T& value) { value.reallocate(1); };
+template <typename T>
+concept CanReleaseStorage = requires(T& value) { value.release_storage(value); };
+template <typename T>
+concept CanBorrow = requires(T&& value) { std::forward<T>(value).get_view(); };
+struct MissingStorage : native_soa::StorageOperations {};
+
+static_assert(CanReset<ApiOwner>);
+static_assert(CanAddUninitialised<ApiOwner>);
+static_assert(CanReserve<ApiOwner>);
+static_assert(CanSetNum<ApiOwner>);
+static_assert(!CanReset<ApiOwner const>);
+static_assert(!CanAddUninitialised<ApiOwner const>);
+static_assert(!CanReserve<ApiOwner const>);
+static_assert(!CanSetNum<ApiOwner const>);
+static_assert(!CanReset<MissingStorage>);
+static_assert(!CanReserve<MissingStorage>);
+static_assert(!CanSetNum<MissingStorage>);
+static_assert(CanCopy<ApiOwner, ApiConstView>);
+static_assert(CanAppend<ApiOwner, ApiConstView>);
+static_assert(!CanCopy<ApiOwner const, ApiConstView>);
+static_assert(!CanAppend<ApiOwner const, ApiConstView>);
+static_assert(!CanCopy<ApiOwner, int>);
+static_assert(!CanAppend<ApiOwner, int>);
+static_assert(soa_storage_detail::SameSoaSchema<ApiOwner, ApiConstView>);
+static_assert(!soa_storage_detail::SameSoaSchema<ApiOwner, SingleRows>);
+static_assert(!soa_storage_detail::SameSoaSchema<ApiOwner, MissingStorage>);
+static_assert(!CanAppend<ApiOwner, ApiOwner>);
+static_assert(!CanCopy<ApiOwner, SingleRows::ConstView>);
+static_assert(!CanAppend<ApiOwner, SingleRows::ConstView>);
+static_assert(!CanReallocate<ApiOwner>);
+static_assert(!CanReleaseStorage<ApiOwner>);
+static_assert(CanBorrow<ApiOwner&>);
+static_assert(CanBorrow<ApiOwner const&>);
+static_assert(!CanBorrow<ApiOwner>);
+static_assert(!CanBorrow<ApiOwner const>);
+static_assert(!CanBorrow<MissingStorage&>);
 static_assert(CanAssignFirst<ApiView>);
 static_assert(!CanAssignFirst<ApiConstView>);
 static_assert(!CanReset<DualApiRows>);
-static_assert(!CanReset<DualCompactRows>);
+static_assert(CanReset<DualCompactRows>);
 static_assert(soa_storage_detail::validate_compact_view<ApiView>());
 static_assert(soa_storage_detail::validate_compact_view<ApiConstView>());
 static_assert(std::is_same_v<ApiOwner::Value, ApiConstView::Value>);
@@ -153,7 +198,7 @@ TEST(NativeSoa, LogicalApiSurvivesCompactOnlyStorageAndNestedLayouts) {
     EXPECT_EQ(equivalent.get_const_view()[0].y, 8.0f);
 }
 
-TEST(NativeSoa, BothStorageImplementationsShareLogicalFunctionsAndOperationSelection) {
+TEST(NativeSoa, BothStorageImplementationsShareLogicalFunctions) {
     auto verify = [](auto owner) {
         owner.set_num(1);
         owner.get_view().assign(4.0f);
@@ -165,6 +210,7 @@ TEST(NativeSoa, BothStorageImplementationsShareLogicalFunctionsAndOperationSelec
 }
 
 struct ApiSource {
+    using soa_schema = ApiOwner::soa_schema;
     struct Positions {
         std::array<float, 2> x{2.0f, 4.0f};
         std::array<float, 2> y{3.0f, 5.0f};
@@ -474,9 +520,11 @@ void check_layout_limits() {
         EXPECT_LE(expected, blocks * Owner::capacity_block_bound);
     }
     Owner owner{test_resource()};
-    EXPECT_DEATH(owner.reserve(-1), "invalid");
-    EXPECT_DEATH(owner.reserve(maximum + 1), "invalid");
-    EXPECT_DEATH(owner.add_uninitialised(maximum + 1), "invalid");
+#ifndef NDEBUG
+    EXPECT_DEATH(owner.reserve(-1), "");
+    EXPECT_DEATH(owner.reserve(maximum + 1), "");
+    EXPECT_DEATH(owner.add_uninitialised(maximum + 1), "");
+#endif
     EXPECT_EQ(owner.capacity(), 0);
 }
 
@@ -488,9 +536,11 @@ TEST(NativeSoa, GeneratedLayoutLimits) {
         native_soa::try_allocation_bytes(64, std::numeric_limits<std::size_t>::max(), bytes));
     EXPECT_EQ(bytes, 17);
     EXPECT_FALSE(native_soa::try_allocation_bytes(65, 256, bytes));
+#ifndef NDEBUG
     EXPECT_DEATH(native_soa::layout_align(std::numeric_limits<std::size_t>::max(), 64), "");
     EXPECT_DEATH(native_soa::layout_align(64, 3), "");
     EXPECT_DEATH(native_soa::layout_align(64, 0), "");
+#endif
 }
 
 TEST(NativeSoa, VectorViewContracts) {
@@ -516,18 +566,20 @@ TEST(NativeSoa, VectorViewContracts) {
     EXPECT_EQ(view.xs().begin() + 4, view.xs().end());
     EXPECT_EQ(view.right(0).zs().data(), values + 68);
     EXPECT_TRUE(view.right(0).zs().empty());
-    EXPECT_DEATH((View{nullptr, 256, 1}), "invalid");
-    EXPECT_DEATH((View{values, 256, std::numeric_limits<std::uint32_t>::max()}), "invalid");
-    EXPECT_DEATH((View{values, 257, 4}), "invalid");
-    EXPECT_DEATH((View{values, 24, 4}), "invalid");
-    EXPECT_DEATH((View{values, std::size_t{1} << 32, 0}), "invalid");
-    EXPECT_DEATH(view.slice(-1, 1), "invalid");
-    EXPECT_DEATH(view.slice(0, -1), "invalid");
-    EXPECT_DEATH(view.slice(4, 1), "invalid");
-    EXPECT_DEATH(view.slice(5, 0), "invalid");
-    EXPECT_DEATH(view.left(5), "invalid");
-    EXPECT_DEATH(view.right(-1), "invalid");
-    EXPECT_DEATH(view.right(5), "invalid");
+#ifndef NDEBUG
+    EXPECT_DEATH((View{nullptr, 256, 1}), "");
+    EXPECT_DEATH((View{values, 256, std::numeric_limits<std::uint32_t>::max()}), "");
+    EXPECT_DEATH((View{values, 257, 4}), "");
+    EXPECT_DEATH((View{values, 24, 4}), "");
+    EXPECT_DEATH((View{values, std::size_t{1} << 32, 0}), "");
+    EXPECT_DEATH(view.slice(-1, 1), "");
+    EXPECT_DEATH(view.slice(0, -1), "");
+    EXPECT_DEATH(view.slice(4, 1), "");
+    EXPECT_DEATH(view.slice(5, 0), "");
+    EXPECT_DEATH(view.left(5), "");
+    EXPECT_DEATH(view.right(-1), "");
+    EXPECT_DEATH(view.right(5), "");
+#endif
 }
 
 TEST(NativeSoa, CompactViewsAndBulkAppend) {
@@ -605,6 +657,7 @@ TEST(NativeSoa, BulkAppendPreservesEveryAlignedLeaf) {
 }
 
 struct IndependentRows {
+    using soa_schema = SingleRows::soa_schema;
     std::array<std::int32_t, 65> values_{};
     std::array<float, 65> xs_{}, ys_{}, zs_{};
     auto num() const -> std::uint32_t { return 65; }
@@ -639,8 +692,10 @@ TEST(NativeSoa, IndependentColumnsAppendDirectly) {
     EXPECT_EQ(destination.num(), 32);
     EXPECT_EQ(destination.get_const_view().values()[0], 101);
     EXPECT_EQ(destination.get_const_view().values()[31], 132);
-    EXPECT_DEATH(destination.append_from(source, -1, 1), "invalid");
-    EXPECT_DEATH(destination.append_from(source, 64, 2), "invalid");
+#ifndef NDEBUG
+    EXPECT_DEATH(destination.append_from(source, -1, 1), "");
+    EXPECT_DEATH(destination.append_from(source, 64, 2), "");
+#endif
 }
 
 TEST(NativeSoa, DescendingRemovalExhaustiveSubsets) {
@@ -683,24 +738,28 @@ TEST(NativeSoa, DescendingRemovalExhaustiveSubsets) {
 }
 
 TEST(NativeSoa, InvalidBulkOperationsFailBeforeMutation) {
+#ifdef NDEBUG
+    GTEST_SKIP() << "Invalid preconditions are checked only with assertions enabled.";
+#else
     SingleRows owner{test_resource()};
     owner.set_num(3);
     std::uint32_t const ascending[]{0, 1};
     std::uint32_t const duplicate[]{1, 1};
     std::uint32_t const negative[]{std::numeric_limits<std::uint32_t>::max()};
     std::uint32_t const outside[]{3};
-    EXPECT_DEATH(owner.remove_at_swap(std::span<std::uint32_t const>{ascending}), "invalid");
-    EXPECT_DEATH(owner.remove_at_swap(std::span<std::uint32_t const>{duplicate}), "invalid");
-    EXPECT_DEATH(owner.remove_at_swap(std::span<std::uint32_t const>{negative}), "invalid");
-    EXPECT_DEATH(owner.remove_at_swap(std::span<std::uint32_t const>{outside}), "invalid");
+    EXPECT_DEATH(owner.remove_at_swap(std::span<std::uint32_t const>{ascending}), "");
+    EXPECT_DEATH(owner.remove_at_swap(std::span<std::uint32_t const>{duplicate}), "");
+    EXPECT_DEATH(owner.remove_at_swap(std::span<std::uint32_t const>{negative}), "");
+    EXPECT_DEATH(owner.remove_at_swap(std::span<std::uint32_t const>{outside}), "");
     auto stale{owner.get_view()};
     owner.reset();
-    EXPECT_DEATH(owner.append_from(stale), "invalid");
+    EXPECT_DEATH(owner.append_from(stale), "");
     EXPECT_EQ(owner.num(), 0);
     owner.set_num(1);
     soa_storage_detail::StorageState huge_state{
         nullptr, SingleRows::max_capacity, SingleRows::max_capacity};
     SingleRows::ConstView huge{&huge_state, 0, SingleRows::max_capacity};
-    EXPECT_DEATH(owner.append_from(huge), "invalid");
+    EXPECT_DEATH(owner.append_from(huge), "");
+#endif
 }
 }

@@ -7,6 +7,7 @@
 #include <ioj/sim/system_read_views.h>
 
 #include <sandbox/core/frame_memory_resource.h>
+#include <sandbox/core/single_allocation/concepts.h>
 
 #include <cstdint>
 #include <span>
@@ -53,7 +54,7 @@ struct Sim {
     /* **************************************** */
     void set_config(LaserSimConfig const& new_config) noexcept;
     template <typename Source>
-        requires LaserSpawnRequests::accepts_source<Source>
+        requires ml::soa_storage_detail::AppendableTo<Source, LaserSpawnRequests>
     void queue_laser_spawns(Source const& spawn_data) {
         pending_spawns.append_from(spawn_data);
     }

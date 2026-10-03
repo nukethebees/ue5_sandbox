@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -8,14 +9,16 @@
 namespace ml::soa_storage_detail {
 
 // Indices describe the original rows in strictly descending order.
-template <typename Size, typename Require, typename Copy>
-void for_each_removal_run(Size num, std::span<Size const> indices, Require require, Copy copy) {
-    require(indices.size() <= static_cast<std::size_t>(num));
+template <typename Size, typename Copy>
+void for_each_removal_run(Size num, std::span<Size const> indices, Copy copy) {
+    assert(indices.size() <= static_cast<std::size_t>(num));
+#ifndef NDEBUG
     auto previous{num};
     for (auto const index : indices) {
-        require(index >= 0 && index < previous);
+        assert(index >= 0 && index < previous);
         previous = index;
     }
+#endif
     auto const count{static_cast<Size>(indices.size())};
     auto const final_num{num - count};
     auto hole{static_cast<std::ptrdiff_t>(count) - 1};

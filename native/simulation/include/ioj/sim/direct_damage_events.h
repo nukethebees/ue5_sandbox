@@ -5,13 +5,15 @@
 
 #include "ioj/sim/entity_unique_id.h"
 
-#include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/native_soa/vector_storage_ops.h"
 
+#include <cassert>
 #include <utility>
 
 namespace ioj::sim {
+struct DirectDamageEventsSchema;
+
 struct DirectDamageEventsView;
 struct DirectDamageEventsConstView;
 struct DirectDamageEventsConstView {
@@ -35,7 +37,7 @@ struct DirectDamageEventsConstView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> DirectDamageEventsConstView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
+        assert(offset <= num() && count <= num() - offset);
         return {
             damaged_entities.subspan(static_cast<std::size_t>(offset),
                                      static_cast<std::size_t>(count)),
@@ -63,7 +65,7 @@ struct DirectDamageEventsConstView {
         return slice(0, count);
     }
     auto right(size_type const count) const -> DirectDamageEventsConstView {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
 };
@@ -88,7 +90,7 @@ struct DirectDamageEventsView {
         ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
     }
     auto slice(size_type const offset, size_type const count) const -> DirectDamageEventsView {
-        ml::native_soa::require(offset <= num() && count <= num() - offset);
+        assert(offset <= num() && count <= num() - offset);
         return {
             damaged_entities.subspan(static_cast<std::size_t>(offset),
                                      static_cast<std::size_t>(count)),
@@ -113,14 +115,14 @@ struct DirectDamageEventsView {
     }
     auto left(size_type const count) const -> DirectDamageEventsView { return slice(0, count); }
     auto right(size_type const count) const -> DirectDamageEventsView {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
     void set(size_type const index,
              EntityUniqueId const new_damaged_entities,
              std::int32_t const new_damage_amounts,
              EntityUniqueId const new_instigators) const {
-        ml::native_soa::require(index < num());
+        assert(index < num());
         damaged_entities[static_cast<std::size_t>(index)] = new_damaged_entities;
         damage_amounts[static_cast<std::size_t>(index)] = new_damage_amounts;
         instigators[static_cast<std::size_t>(index)] = new_instigators;
@@ -191,30 +193,14 @@ struct DirectDamageEvents {
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
-        ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
+        assert(count <= std::numeric_limits<size_type>::max() - num());
         source.validate_array_sizes();
         if (count == 0) {
             return;
         }
-        {
-            auto const address{ml::address_cast(source.damaged_entities.data())};
-            auto const begin{ml::address_cast(damaged_entities.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >=
-                                        begin + damaged_entities.size() * sizeof(EntityUniqueId));
-        }
-        {
-            auto const address{ml::address_cast(source.damage_amounts.data())};
-            auto const begin{ml::address_cast(damage_amounts.data())};
-            ml::native_soa::require(address < begin || address >= begin + damage_amounts.size() *
-                                                                              sizeof(std::int32_t));
-        }
-        {
-            auto const address{ml::address_cast(source.instigators.data())};
-            auto const begin{ml::address_cast(instigators.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + instigators.size() * sizeof(EntityUniqueId));
-        }
+        assert(ml::native_soa::is_external_source(damaged_entities, source.damaged_entities));
+        assert(ml::native_soa::is_external_source(damage_amounts, source.damage_amounts));
+        assert(ml::native_soa::is_external_source(instigators, source.instigators));
         ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
             damaged_entities.insert(damaged_entities.end(),
                                     source.damaged_entities.data(),
@@ -258,22 +244,21 @@ struct DirectDamageEvents {
     }
     auto left(size_type const count) -> View { return slice(0, count); }
     auto right(size_type const count) -> View {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
     auto left(size_type const count) const -> ConstView { return slice(0, count); }
     auto right(size_type const count) const -> ConstView {
-        ml::native_soa::require(count <= num());
+        assert(count <= num());
         return slice(num() - count, count);
     }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        damaged_entities[static_cast<std::size_t>(dst_index)] =
-            other.damaged_entities[static_cast<std::size_t>(src_index)];
-        damage_amounts[static_cast<std::size_t>(dst_index)] =
-            other.damage_amounts[static_cast<std::size_t>(src_index)];
-        instigators[static_cast<std::size_t>(dst_index)] =
-            other.instigators[static_cast<std::size_t>(src_index)];
+        auto const destination_index{static_cast<std::size_t>(dst_index)};
+        auto const source_index{static_cast<std::size_t>(src_index)};
+        damaged_entities[destination_index] = other.damaged_entities[source_index];
+        damage_amounts[destination_index] = other.damage_amounts[source_index];
+        instigators[destination_index] = other.instigators[source_index];
     }
     template <typename Other>
     void copy_elements(size_type const dst_index,

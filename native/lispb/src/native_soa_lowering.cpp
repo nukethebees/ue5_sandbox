@@ -109,10 +109,10 @@ auto lower_native_soa(SoaSchema const& schema,
     auto const const_view{schema.const_view_name.value_or(schema.name + "ConstView")};
     auto const vector3f_schema{uses_native_vector_view(schema, types)};
     std::vector<TypeDependency> dependencies{
-        {"address_cast", "sandbox/core/address_cast.h", {}},
         {"native_storage", "sandbox/core/native_soa/storage.h", {}},
         {"native_vector_storage_ops", "sandbox/core/native_soa/vector_storage_ops.h", {}},
         {"std::forward", "utility", {}},
+        {"assert", "cassert", {}},
     };
     if (vector3f_schema) {
         dependencies.push_back({"vector_soa_view", "sandbox/core/vector_soa_view.h", {}});
@@ -248,7 +248,7 @@ auto lower_native_soa(SoaSchema const& schema,
                    "ml::native_soa::vector_storage_ops::validate_array_sizes(*this); }\n"
                 << "auto slice(size_type const offset, size_type const count) const -> "
                 << view_type
-                << " { ml::native_soa::require(offset <= num() && "
+                << " { assert(offset <= num() && "
                    "count "
                    "<= num() - offset); return {\n";
             for (auto const& member : layout.members) {
@@ -277,13 +277,13 @@ auto lower_native_soa(SoaSchema const& schema,
                 << "auto left(size_type const count) const -> " << view_type
                 << " { return slice(0, count); }\n"
                 << "auto right(size_type const count) const -> " << view_type
-                << " { ml::native_soa::require(count <= num()); return slice(num() - count, "
+                << " { assert(count <= num()); return slice(num() - count, "
                    "count); }\n";
 
             if (!immutable) {
                 out << "void set(size_type const index";
                 render_parameters(out, row_parameters);
-                out << ") const { ml::native_soa::require(index < num());\n";
+                out << ") const { assert(index < num());\n";
                 for (auto const& parameter : row_parameters) {
                     if (parameter.nested) {
                         out << parameter.column << ".set(index, new_" << parameter.name << ");\n";
@@ -380,15 +380,12 @@ auto lower_native_soa(SoaSchema const& schema,
 
     if (schema.has_operation(StorageOperation::append_from)) {
         out << "void append_from(ConstView source) { auto const count{source.num()};\n"
-            << "ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());\n"
+            << "assert(count <= std::numeric_limits<size_type>::max() - num());\n"
             << "source.validate_array_sizes(); if (count == 0) { return; }\n";
         for (auto const& leaf : layout.leaves) {
             auto const column{join(leaf.path, ".")};
-            out << "{ auto const address{ml::address_cast(" << view_leaf_data(leaf, "source.")
-                << ")}; auto const begin{ml::address_cast(" << column
-                << ".data())}; ml::native_soa::require(address < begin || address >= begin + "
-                << column << ".size() * sizeof(" << native_spelling(leaf.type.spelling)
-                << ")); }\n";
+            out << "assert(ml::native_soa::is_external_source(" << column << ", "
+                << view_leaf(leaf, "source.") << "));\n";
         }
         out << "ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {\n";
         for (auto const& leaf : layout.leaves) {
@@ -433,20 +430,27 @@ auto lower_native_soa(SoaSchema const& schema,
         << "auto slice(size_type const offset, size_type const count) const -> ConstView { return "
            "get_const_view(offset, count); }\n"
         << "auto left(size_type const count) -> View { return slice(0, count); }\n"
-        << "auto right(size_type const count) -> View { ml::native_soa::require(count <= num()); "
+        << "auto right(size_type const count) -> View { assert(count <= num()); "
            "return slice(num() - count, count); }\n"
         << "auto left(size_type const count) const -> ConstView { return slice(0, count); }\n"
-        << "auto right(size_type const count) const -> ConstView { ml::native_soa::require(count "
+        << "auto right(size_type const count) const -> ConstView { assert(count "
            "<= num()); return slice(num() - count, "
            "count); }\n";
     if (schema.has_operation(StorageOperation::copy_element)) {
         out << "template <typename Other> void copy_element(size_type const dst_index, Other "
                "const& "
                "other, size_type const src_index) {\n";
+        if (schema.copy_element_memberwise ||
+            std::ranges::any_of(layout.members, [](auto const& member) {
+                return member.schema->kind == SoaMemberKind::array;
+            })) {
+            out << "auto const destination_index{static_cast<std::size_t>(dst_index)};\n"
+                << "auto const source_index{static_cast<std::size_t>(src_index)};\n";
+        }
         for (auto const& member : layout.members) {
             if (schema.copy_element_memberwise || member.schema->kind == SoaMemberKind::array) {
-                out << member.schema->name << "[static_cast<std::size_t>(dst_index)] = other."
-                    << member.schema->name << "[static_cast<std::size_t>(src_index)];\n";
+                out << member.schema->name << "[destination_index] = other." << member.schema->name
+                    << "[source_index];\n";
             } else {
                 out << member.schema->name << ".copy_element(dst_index, other."
                     << member.schema->name << ", src_index);\n";
