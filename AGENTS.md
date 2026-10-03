@@ -93,6 +93,11 @@ Unreal Engine 5.8 project.
   the agent sandbox; do not grant access to the user profile to resolve temporary-path failures.
 * For final integration, only build and test what your work has affected
 * Keep benchmarks short; Not more than 3 minutes total
+* For native simulation and fighter revision comparisons, use `agent-task benchmark compare
+  --baseline <ref> [--candidate <ref>]` rather than ad-hoc worktree or analysis scripts.
+  This command manages its own detached inputs under this workspace's `.local/benchmarks/wt/`.
+  Omit `--candidate` to include local edits. Use `--prepare-only` under a shared ticket, then
+  the printed worktree paths with `--skip-build` under an exclusive ticket; see `docs/benchmarks.md`.
 * For probe-level performance work, use `agent-task benchmark tracy-report --trace <capture.tracy>`
   with a relevant `--filter` and steady-state time window. Compare probe distributions as well as
   full-tick timings. Keep raw traces/exports out of agent context; see `docs/benchmarks.md`.
