@@ -1,5 +1,6 @@
 #include "support/simulation_test_support.h"
 #include <ioj/sim/column_math.h>
+#include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 
 #include <sandbox/core/vector_normalization.h>
@@ -73,8 +74,8 @@ class FighterTargetRefresh : public ::testing::Test {
 
     void expect_target_state(EntityUniqueId const expected) {
         auto const entities{simulation.get_fighters().get_read_view().entities};
-        auto const index{simulation.get_agent_indexes().find(fighter)};
-        auto const state{simulation.get_agent_accessor().read_alive(expected)};
+        auto const index{observe_entity_row(simulation, fighter)};
+        auto const state{observe_live_entity(simulation, expected)};
         ASSERT_TRUE(state);
         EXPECT_EQ(entities.target_ids()[index], expected);
         expect_vector(vector_at(entities.view_target_locations(), index), state->location);
@@ -111,7 +112,7 @@ class FighterTargetRefresh : public ::testing::Test {
 
     void expect_cleared_target() {
         auto const entities{simulation.get_fighters().get_read_view().entities};
-        auto const index{simulation.get_agent_indexes().find(fighter)};
+        auto const index{observe_entity_row(simulation, fighter)};
         EXPECT_FALSE(entities.target_ids()[index].is_valid());
         expect_vector(vector_at(entities.view_target_locations(), index), {});
         expect_vector(vector_at(entities.view_target_velocities(), index), {});
@@ -200,8 +201,8 @@ TEST_F(FighterTargetRefresh, DeadTargetIsClearedByInitialRefreshBeforeRemoval) {
     LevelSimTestAccess::set_fighter_target(simulation, fighter, target, 5);
     single_refresh_and_plan();
     kill_target();
-    ASSERT_NE(simulation.get_agent_indexes().find(target), AgentIndices::invalid_index);
-    ASSERT_FALSE(simulation.get_agent_accessor().read_alive(target));
+    ASSERT_NE(observe_entity_row(simulation, target), EntityInstanceHandle::invalid_value);
+    ASSERT_FALSE(observe_live_entity(simulation, target));
     LevelSimTestAccess::set_fighter_target(simulation, fighter, target, 5);
     auto const claims{think()};
     expect_cleared_target();
@@ -213,7 +214,7 @@ TEST_F(FighterTargetRefresh, MissingTargetIsClearedByInitialRefresh) {
     single_refresh_and_plan();
     kill_target();
     LevelSimTestAccess::remove_dead_fighters(simulation);
-    ASSERT_EQ(simulation.get_agent_indexes().find(target), AgentIndices::invalid_index);
+    ASSERT_EQ(observe_entity_row(simulation, target), EntityInstanceHandle::invalid_value);
     LevelSimTestAccess::set_fighter_target(simulation, fighter, target, 5);
     auto const claims{think()};
     expect_cleared_target();
@@ -221,8 +222,7 @@ TEST_F(FighterTargetRefresh, MissingTargetIsClearedByInitialRefresh) {
 }
 
 TEST_F(FighterTargetRefresh, MissingTargetCanBeReacquiredInSameThinkingPhase) {
-    auto const missing{
-        EntityUniqueId{entity_identity_offset(EntityType::Fighter, 999), EntityType::Fighter}};
+    auto const missing{EntityUniqueId{999, EntityType::Fighter}};
     LevelSimTestAccess::set_fighter_target(simulation, fighter, missing);
     auto const claims{think()};
     expect_target_state(target);

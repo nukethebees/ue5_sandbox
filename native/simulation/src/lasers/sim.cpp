@@ -49,7 +49,7 @@ void Sim::commit_spawns() {
 }
 
 void Sim::cleanup_entities() {
-    assert(simulation_clock.phase == SimulationPhase::ResolutionCommit);
+    assert(simulation_clock.phase() == SimulationPhase::ResolutionCommit);
     std::ranges::sort(pending_removals_, std::greater{});
     auto const duplicate{std::ranges::unique(pending_removals_)};
     pending_removals_.erase(duplicate.begin(), duplicate.end());

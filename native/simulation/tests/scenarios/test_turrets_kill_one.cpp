@@ -2,6 +2,7 @@
 
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/turrets/sim.h>
 
 #include <limits>
@@ -120,11 +121,9 @@ void run_worldless_turret_search_requires_line_of_sight(tests::SimulationFixture
     }
     EXPECT_TRUE(targets[0].is_valid()) << "Blue turret selects a visible target";
     if (targets[0].is_valid()) {
-        EXPECT_LE(
-            HMM_LenV3(
-                Vector3f{{1000.f, 1000.f, 0.f}} -
-                harness.get_simulation().get_agent_accessor().read_alive(targets[0])->location),
-            1.f)
+        EXPECT_LE(HMM_LenV3(Vector3f{{1000.f, 1000.f, 0.f}} -
+                            observe_live_entity(harness.get_simulation(), targets[0])->location),
+                  1.f)
             << "Blue turret skips the blocked enemy";
     }
 }

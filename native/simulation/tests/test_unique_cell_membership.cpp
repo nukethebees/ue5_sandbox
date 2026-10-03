@@ -1,5 +1,6 @@
 #include "support/collision_agent_storage.h"
 #include <ioj/sim/spatial_query_manager.h>
+#include <ioj/sim/testing/entity_observations.h>
 
 #include <sandbox/core/frame_memory_resource.h>
 
@@ -24,7 +25,7 @@ class UniqueCellMembership : public ::testing::Test {
     }
 
     CollisionAgentStorage owners;
-    SpatialQueryManager queries{owners.agents};
+    SpatialQueryManager queries{owners.entity_tables};
     collision::EntityAABBs bounds;
     alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024> backing{};
     ml::FrameMemoryResource memory{backing};

@@ -37,8 +37,8 @@ void PhaseInterface::commit_spawns() {
     simulation.commit_spawns();
 }
 
-void PhaseInterface::resolve_damage_events() {
-    simulation.resolve_damage_events();
+void PhaseInterface::resolve_damage_events(ml::FrameScratchResource& scratch_resource) {
+    simulation.resolve_damage_events(scratch_resource);
 }
 
 void PhaseInterface::publish_deaths() {

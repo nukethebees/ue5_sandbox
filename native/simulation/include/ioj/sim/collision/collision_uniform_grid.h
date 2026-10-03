@@ -18,7 +18,7 @@
 #include <string>
 
 namespace ioj::sim {
-class AgentAccessor;
+struct EntityTables;
 }
 
 namespace ioj::sim::collision {
@@ -27,7 +27,7 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // Construction and lifecycle
     /* **************************************** */
-    explicit CollisionUniformGrid(AgentAccessor const& agents) noexcept;
+    explicit CollisionUniformGrid(EntityTables const& agents) noexcept;
     CollisionUniformGrid(CollisionUniformGrid const&) = delete;
     CollisionUniformGrid(CollisionUniformGrid&&) = delete;
     auto operator=(CollisionUniformGrid const&) -> CollisionUniformGrid& = delete;
@@ -151,7 +151,7 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // State
     /* **************************************** */
-    AgentAccessor const& agents_;
+    EntityTables const& entity_tables_;
     GridGeometry geometry_{};
     CollisionGridEntityStorage entity_storage_;
     CollisionGridStaticStorage static_storage_;

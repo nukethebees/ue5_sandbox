@@ -3,15 +3,18 @@
 
 #pragma once
 
+#include <cstdint>
+
 namespace ioj::sim {
-enum class SimulationPhase : int {
-    Initialisation,
-    Preparation,
+enum class SimulationPhase : std::uint8_t {
+    StableSetup,
     Thinking,
     Action,
     Resolution,
+    Initialisation,
+    Preparation,
     ResolutionCommit,
-    Idle,
+    BetweenTicks,
 };
 
 } // namespace ioj::sim

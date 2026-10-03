@@ -24,7 +24,7 @@ class PhaseInterface {
 
     void commit_spawns();
 
-    void resolve_damage_events();
+    void resolve_damage_events(ml::FrameScratchResource& scratch_resource);
 
     void publish_deaths();
 

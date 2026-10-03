@@ -1,6 +1,7 @@
 #pragma once
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/entity_tables.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_clock.h>
@@ -27,7 +28,10 @@ class PhaseInterface;
 struct Sim {
     using EntityStorage = SpinnerEntityData;
 
-    Sim(SimClock const& clock, EntityLedger& ledger, lasers::Sim& laser_simulation) noexcept;
+    Sim(SimClock const& clock,
+        EntityLedger& ledger,
+        EntityTables& entity_tables,
+        lasers::Sim& laser_simulation) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -53,6 +57,7 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void begin_play();
+    void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(float dt);
     void apply_movement(ml::FrameScratchResource& scratch_resource);
@@ -130,6 +135,7 @@ struct Sim {
     std::int16_t cooldown_cleaner_{};
     SimClock const& simulation_clock;
     EntityLedger& ledger_;
+    EntityTables& entity_tables_;
     lasers::Sim& laser_simulation;
     EntityStorage entities{};
 };

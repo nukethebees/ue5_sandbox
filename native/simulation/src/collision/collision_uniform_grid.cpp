@@ -1,9 +1,9 @@
 #include "ioj/sim/collision/collision_uniform_grid.h"
 
-#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/collision_grid.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_cell_data_operations.h>
+#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/health.h>
 #include <ioj/sim/line_trace_batch.h>
 #include <ioj/sim/profiling.h>
@@ -25,8 +25,8 @@ namespace ioj::sim::collision {
 /* **************************************** */
 // Construction and lifecycle
 /* **************************************** */
-CollisionUniformGrid::CollisionUniformGrid(AgentAccessor const& agents) noexcept
-    : agents_{agents} {}
+CollisionUniformGrid::CollisionUniformGrid(EntityTables const& agents) noexcept
+    : entity_tables_{agents} {}
 void CollisionUniformGrid::reset() {
     geometry_ = {};
 
@@ -179,7 +179,8 @@ void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& ent
     {
         SANDBOX_PROFILE_SCOPE("gather and count entities");
 
-        agents_.for_each_alive_spatial(
+        visit_live_entities(
+            entity_tables_,
             [&](EntityUniqueId const id, Vector3f const location, Rotator3f const rotation, Team) {
                 auto const entity_type{id.entity_type()};
                 auto const bounds{collision::make_entity_world_bounds(
@@ -323,10 +324,15 @@ auto CollisionUniformGrid::get_entity_world_bounds() const -> EntityCellData::Co
 }
 #ifndef NDEBUG
 auto CollisionUniformGrid::check_live_entity_membership() const -> bool {
+    std::vector<EntityUniqueId> live_ids;
+    visit_live_entities(entity_tables_, [&](EntityUniqueId const id, Vector3f, Rotator3f, Team) {
+        live_ids.push_back(id);
+    });
+    std::ranges::sort(live_ids);
+
     // Check the cell entries consumed by queries, not just the rebuild's entity list.
     for (auto const id : entity_storage_.entities) {
-        auto const state{agents_.read_spatial(id)};
-        if (!state || !is_alive(state->health)) {
+        if (!std::ranges::binary_search(live_ids, id)) {
             ml::log_error(
                 std::format("Collision grid cell membership contains missing or dead entity {}",
                             id.raw_value()));
@@ -443,7 +449,7 @@ auto CollisionUniformGrid::overlaps_impl(
                          ++entity_index) {
                         auto const entity{entities[static_cast<std::size_t>(entity_index)]};
                         auto const id{entity};
-                        if (id == ignored_entity || !agents_.is_alive(id)) {
+                        if (id == ignored_entity) {
                             continue;
                         }
 
@@ -624,9 +630,6 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
                 for (std::uint32_t entity_index{}; entity_index < entity_count; ++entity_index) {
                     auto const entity{entities[static_cast<std::size_t>(entity_index)]};
                     auto const id{entity};
-                    if (!agents_.is_alive(id)) {
-                        continue;
-                    }
                     if constexpr (IgnoredMode == IgnoredEntityMode::PerTrace) {
                         if (id == ignored_entity) {
                             continue;

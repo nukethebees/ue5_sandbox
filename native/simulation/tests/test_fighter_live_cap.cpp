@@ -3,6 +3,7 @@
 #include <ioj/sim/fighter_types.h>
 #include <ioj/sim/health.h>
 #include <ioj/sim/level_sim.h>
+#include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 
 #include <algorithm>
@@ -207,7 +208,7 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
     std::vector<EntityUniqueId> white_fighters;
     auto const fighter_teams{fighter_simulation.get_teams()};
     for (auto const fighter : fighter_simulation.get_entity_ids()) {
-        auto const index{simulation.get_agent_indexes().find(fighter)};
+        auto const index{observe_entity_row(simulation, fighter)};
         if (fighter_teams[index] == Team::White) {
             white_fighters.push_back(fighter);
         }
@@ -221,9 +222,10 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
     EXPECT_TRUE(!capital_simulation.find_first_index_on_team(Team::White).has_value())
         << "Final capital is removed";
     for (auto const fighter : white_fighters) {
-        auto const index{simulation.get_agent_indexes().find(fighter)};
-        EXPECT_NE(index, AgentIndices::invalid_index) << "Orphaned fighter remains registered";
-        if (index == AgentIndices::invalid_index) {
+        auto const index{observe_entity_row(simulation, fighter)};
+        EXPECT_NE(index, EntityInstanceHandle::invalid_value)
+            << "Orphaned fighter remains registered";
+        if (index == EntityInstanceHandle::invalid_value) {
             continue;
         }
         EXPECT_EQ(fighter_simulation.get_teams()[index], Team::White)
@@ -239,15 +241,15 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
     }
 
     auto const tracked_fighter{white_fighters.front()};
-    auto const tracked_index{simulation.get_agent_indexes().find(tracked_fighter)};
+    auto const tracked_index{observe_entity_row(simulation, tracked_fighter)};
     auto const before_location{vector_at(fighter_simulation.get_locations(), tracked_index)};
     for (std::int32_t tick{}; tick < 10; ++tick) {
         simulation.advance(simulation.get_clock().get_tick_period());
     }
-    auto const after_index{simulation.get_agent_indexes().find(tracked_fighter)};
-    EXPECT_NE(after_index, AgentIndices::invalid_index)
+    auto const after_index{observe_entity_row(simulation, tracked_fighter)};
+    EXPECT_NE(after_index, EntityInstanceHandle::invalid_value)
         << "Orphaned fighter remains live while simulating";
-    if (after_index != AgentIndices::invalid_index) {
+    if (after_index != EntityInstanceHandle::invalid_value) {
         EXPECT_TRUE(location_changed(before_location,
                                      vector_at(fighter_simulation.get_locations(), after_index)))
             << "Orphaned fighter continues moving";
@@ -255,7 +257,7 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
 
     queue_damage(simulation, tracked_fighter, 100000);
     simulation.advance(simulation.get_clock().get_tick_period());
-    EXPECT_EQ(simulation.get_agent_indexes().find(tracked_fighter), AgentIndices::invalid_index)
+    EXPECT_EQ(observe_entity_row(simulation, tracked_fighter), EntityInstanceHandle::invalid_value)
         << "Orphaned fighter dies through normal damage resolution";
     EXPECT_EQ(count_team(simulation, Team::White), 1)
         << "Other orphaned fighters remain live after one is destroyed";
@@ -287,7 +289,7 @@ TEST(FighterLiveCap, PendingLaunchSurvivesFinalCapitalDeathUnowned) {
         << "Pending fighter is admitted after its final parent dies";
     auto const fighter_teams{fighter_simulation.get_teams()};
     for (auto const fighter : fighter_simulation.get_entity_ids()) {
-        auto const index{simulation.get_agent_indexes().find(fighter)};
+        auto const index{observe_entity_row(simulation, fighter)};
         if (fighter_teams[index] != Team::White) {
             continue;
         }
@@ -317,8 +319,8 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0)
         << "Dead fighter is removed at the end of Resolution";
-    EXPECT_EQ(simulation.get_agent_indexes().find(original_id), AgentIndices::invalid_index);
-    EXPECT_FALSE(simulation.get_agent_accessor().read(original_id));
+    EXPECT_EQ(observe_entity_row(simulation, original_id), EntityInstanceHandle::invalid_value);
+    EXPECT_FALSE(observe_entity(simulation, original_id));
     EXPECT_TRUE(simulation.get_capital_ships().get_fighter_ids(0).empty());
     FighterOrderQueue stale_orders;
     stale_orders.add(original_id, FighterOrder{1, 0}, FighterTask::Standby, {});

@@ -3,6 +3,7 @@
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/player/sim.h>
+#include <ioj/sim/testing/entity_observations.h>
 
 namespace ioj::sim {
 namespace {
@@ -72,7 +73,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     ml::TimeSeriesData<DamageSample> samples;
     harness.on_end_tick = [&](LevelSim& level) {
         auto const& telemetry{level.get_level_telemetry_manager().get_active_entity_count_data()};
-        auto const state{level.get_agent_accessor().read(damaged_handle)};
+        auto const state{observe_entity(level, damaged_handle)};
         samples.add(harness.get_time(),
                     DamageSample{
                         .capital_count = level.get_capital_ships().get_num_instances(),
@@ -103,8 +104,7 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     EXPECT_EQ(0, lethal.ledger_alive_count) << "Ledger death commits in the same tick";
     EXPECT_EQ(0, lethal.telemetry_active_count) << "Telemetry observes committed death before hook";
     EXPECT_EQ(0, lethal.health) << "Owner retains terminal health for the dead handle";
-    EXPECT_TRUE(!harness.get_simulation().get_agent_accessor().is_alive(damaged_handle))
-        << "Killed ID is dead";
+    EXPECT_TRUE(!entity_is_alive(harness.get_simulation(), damaged_handle)) << "Killed ID is dead";
     EXPECT_EQ(0, harness.get_ledger().count_kills()) << "Unattributed death does not create a kill";
 }
 
@@ -145,14 +145,14 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
     ml::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim& level) {
         auto const events{level.get_spatial_query_manager().get_aabb_overlap_events()};
-        auto const capital{level.get_agent_accessor().read(capital_id)};
+        auto const capital{observe_entity(level, capital_id)};
         samples.add(harness.get_time(),
                     Sample{
                         .player_health = player->get_health().health,
                         .capital_health = capital ? capital->health : 0,
                         .dynamic_overlap_count = events.entity_entity_overlaps.num(),
                         .kill_count = harness.get_ledger().count_kills(),
-                        .player_alive = level.get_agent_accessor().is_alive(player_id),
+                        .player_alive = entity_is_alive(level, player_id),
                     });
     };
     harness.timeline.finish_after(collision_damage_test::duration);
@@ -185,7 +185,7 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
         << "Second overlap damages the capital";
     EXPECT_EQ(0, third.capital_health) << "Third overlap kills the capital";
     EXPECT_TRUE(third.player_alive) << "Player survives the third overlap tick";
-    EXPECT_TRUE(!harness.get_simulation().get_agent_accessor().is_alive(capital_id))
+    EXPECT_TRUE(!entity_is_alive(harness.get_simulation(), capital_id))
         << "Capital death commits in the third overlap tick";
     EXPECT_EQ(0, third.kill_count) << "Collision death grants no combat kill";
     EXPECT_TRUE(harness.get_ledger()

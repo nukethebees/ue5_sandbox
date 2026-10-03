@@ -14,14 +14,16 @@
   :header-include "ioj/sim/simulation_phase.h"
   :backend standard-library
   :namespace ioj::sim
-  (enum SimulationPhase int
-    (value Initialisation)
-    (value Preparation)
+  (enum SimulationPhase @native_uint8
+    ; Keep lookup-valid phases before Initialisation, the exclusive lookup boundary.
+    (value StableSetup)
     (value Thinking)
     (value Action)
     (value Resolution)
+    (value Initialisation)
+    (value Preparation)
     (value ResolutionCommit)
-    (value Idle)))
+    (value BetweenTicks)))
 
 (module native_collision_trace_entity_filter
   :header "native/simulation/include/ioj/sim/collision/trace_entity_filter.h"
@@ -479,15 +481,7 @@
     (function start std::uint32_t :const true :noexcept true :constexpr true :nodiscard true :body ("return offset;"))
     (function end std::uint32_t :const true :noexcept true :constexpr true :nodiscard true :body ("return offset + count;"))))
 
-(module native_health_move
-  :header "native/simulation/include/ioj/sim/health_move.h"
-  :header-include "ioj/sim/health_move.h"
-  :backend standard-library
-  :namespace ioj::sim
-  (record HealthMove
-    (member owner @native_unique_id :initializer "")
-    (member old_index @native_health_index :initializer "")
-    (member new_index @native_health_index :initializer "")))
+
 
 (module native_line_trace_result
   :header "native/simulation/include/ioj/sim/line_trace_result.h"

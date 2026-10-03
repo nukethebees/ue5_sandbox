@@ -8,7 +8,6 @@
 #include <ioj/sim/collision/world_aabb.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/fighters/navigation_records.h>
-#include <ioj/sim/health_move.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/laser_source.h>
 #include <ioj/sim/level_telemetry_current_state.h>
@@ -1080,26 +1079,6 @@ TEST(SimulationModelDefaults, IndexSpan) {
 }
 
 namespace ioj::sim::model_contract {
-struct OriginalHealthMove {
-    EntityUniqueId owner{};
-    HealthIndex old_index{};
-    HealthIndex new_index{};
-};
-static_assert(sizeof(HealthMove) == sizeof(OriginalHealthMove));
-static_assert(alignof(HealthMove) == alignof(OriginalHealthMove));
-static_assert(std::is_standard_layout_v<HealthMove> ==
-              std::is_standard_layout_v<OriginalHealthMove>);
-static_assert(std::is_trivially_copyable_v<HealthMove> ==
-              std::is_trivially_copyable_v<OriginalHealthMove>);
-static_assert(std::is_aggregate_v<HealthMove>);
-static_assert(std::is_trivially_default_constructible_v<HealthMove> ==
-              std::is_trivially_default_constructible_v<OriginalHealthMove>);
-IOJ_RECORD_MEMBER_CONTRACT(HealthMove, owner);
-IOJ_RECORD_MEMBER_CONTRACT(HealthMove, old_index);
-IOJ_RECORD_MEMBER_CONTRACT(HealthMove, new_index);
-}
-
-namespace ioj::sim::model_contract {
 struct OriginalLineTraceResult {
     Vector3f location{};
     EntityUniqueId entity;
@@ -1237,13 +1216,7 @@ TEST(SimulationModelDefaults, LevelTelemetryCurrentState) {
 }
 
 namespace ioj::sim::model_contract {
-static_assert(std::is_same_v<std::underlying_type_t<SimulationPhase>, int>);
-static_assert(sizeof(HealthIndex) == 4 && alignof(HealthIndex) == alignof(std::uint32_t));
-static_assert(!std::is_convertible_v<std::uint32_t, HealthIndex>);
-static_assert(!std::is_aggregate_v<HealthIndex>);
-static_assert(!HealthIndex{}.is_valid());
-static_assert(HealthIndex{}.raw_value() == 0xffffffffU);
-static_assert(HealthIndex{4}.raw_value() == 4);
+static_assert(std::is_same_v<std::underlying_type_t<SimulationPhase>, std::uint8_t>);
 static_assert(std::is_same_v<Vector3f, HMM_Vec3>);
 static_assert(std::is_same_v<Quaternion4f, HMM_Quat>);
 static_assert(!std::is_copy_constructible_v<LineTraces>);
@@ -1268,14 +1241,15 @@ static_assert(static_cast<std::uint8_t>(OrchestratorState::Stopped) == 3);
 }
 
 namespace ioj::sim::model_contract {
-static_assert(std::is_same_v<std::underlying_type_t<SimulationPhase>, int>);
-static_assert(static_cast<int>(SimulationPhase::Initialisation) == 0);
-static_assert(static_cast<int>(SimulationPhase::Preparation) == 1);
-static_assert(static_cast<int>(SimulationPhase::Thinking) == 2);
-static_assert(static_cast<int>(SimulationPhase::Action) == 3);
-static_assert(static_cast<int>(SimulationPhase::Resolution) == 4);
-static_assert(static_cast<int>(SimulationPhase::ResolutionCommit) == 5);
-static_assert(static_cast<int>(SimulationPhase::Idle) == 6);
+static_assert(std::is_same_v<std::underlying_type_t<SimulationPhase>, std::uint8_t>);
+static_assert(static_cast<int>(SimulationPhase::StableSetup) == 0);
+static_assert(static_cast<int>(SimulationPhase::Preparation) == 5);
+static_assert(static_cast<int>(SimulationPhase::Thinking) == 1);
+static_assert(static_cast<int>(SimulationPhase::Action) == 2);
+static_assert(static_cast<int>(SimulationPhase::Resolution) == 3);
+static_assert(static_cast<int>(SimulationPhase::Initialisation) == 4);
+static_assert(static_cast<int>(SimulationPhase::ResolutionCommit) == 6);
+static_assert(static_cast<int>(SimulationPhase::BetweenTicks) == 7);
 }
 
 namespace ioj::sim::collision::model_contract {

@@ -1,6 +1,6 @@
 #pragma once
-#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/entity_death_info.h>
+#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/fighter_entity_data.h>
 #include <ioj/sim/fighter_navigation.h>
@@ -59,7 +59,6 @@ struct Sim {
         EntityLedger& ledger,
         CombatEvents const& combat_events,
         EntityTables& entity_tables,
-        AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& laser_simulation) noexcept;
     Sim(Sim const&) = delete;
@@ -72,9 +71,8 @@ struct Sim {
     /* **************************************** */
     auto get_read_view() const -> FighterReadView {
         auto const entities{entity_buffers.current().get_const_view()};
-        return {
-            entities,
-            entity_tables_.health.get_const_view(entities.health_indices(), entities.entity_ids())};
+        return {entities,
+                entity_tables_.health.get_const_view<EntityType::Fighter>(entities.num())};
     }
     void set_config(FighterSimConfig const& new_config, FighterLevelData level_data) noexcept;
     void set_diagnostics_enabled(bool enabled) noexcept { diagnostics_enabled_ = enabled; }
@@ -98,9 +96,8 @@ struct Sim {
         return entity_buffers.current().get_const_view().parent_ids();
     }
     auto get_healths() const -> HealthConstView {
-        auto const entities{entity_buffers.current().get_const_view()};
-        return entity_tables_.health.get_const_view(entities.health_indices(),
-                                                    entities.entity_ids());
+        return entity_tables_.health.get_const_view<EntityType::Fighter>(
+            entity_buffers.current().num());
     }
     void set_parent_id(EntityUniqueId fighter, EntityUniqueId parent);
     auto get_locations() const {
@@ -147,12 +144,13 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void begin_play();
+    void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(float dt, ml::FrameScratchResource& scratch_resource);
     void plan_movement(float dt, ml::FrameScratchResource& scratch_resource);
     void apply_movement(ml::FrameScratchResource& scratch_resource);
     void generate_fire_commands(ml::FrameScratchResource& scratch_resource);
-    void resolve_damage_events();
+    void resolve_damage_events(ml::FrameScratchResource& scratch_resource);
     void publish_deaths();
     void remove_components();
     void remove_entities();
@@ -271,7 +269,7 @@ struct Sim {
     EntityLedger& ledger_;
     CombatEvents const& combat_events_;
     EntityTables& entity_tables_;
-    AgentAccessor const& agents_;
+    std::vector<std::int32_t> layout_order_;
     SpatialQueryManager const& spatial_query_manager;
 
     FighterSpawnQueue spawn_queue;

@@ -1,7 +1,7 @@
 #include "support/simulation_test_support.h"
-#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/sim_clock.h>
@@ -49,17 +49,15 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     SimClock clock;
     EntityLedger ledger;
     CombatEvents combat_events{ledger};
-    AgentIndices indexes{clock};
-    HealthTable health_table;
-    AgentAccessor agents{indexes, health_table};
-    SpatialQueryManager queries{agents};
+    EntityTables tables{clock};
+    SpatialQueryManager queries{tables};
     GameMemory game_memory{{.root_capacity_bytes = 2 * 1024 * 1024}};
     auto frame_block{
         game_memory.acquire_block(1024 * 1024, ml::FrameMemoryResource::backing_alignment)};
     ml::FrameMemoryResource frame_memory{
         std::span<std::byte>{frame_block.data(), frame_block.size_bytes()}};
     lasers::Sim lasers{clock, combat_events, queries};
-    spinners::Sim simulation{clock, ledger, lasers};
+    spinners::Sim simulation{clock, ledger, tables, lasers};
     auto& entity_storage{Access::entities(simulation)};
     Access::set_cooldown(simulation, 23);
 

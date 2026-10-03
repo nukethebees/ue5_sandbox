@@ -1,297 +1,138 @@
-#include <ioj/sim/entity_identity_layout.h>
 #include <ioj/sim/entity_tables.h>
-#include <ioj/sim/health_table.h>
+#include <ioj/sim/testing/sim_clock_test_access.h>
 
 #include <gtest/gtest.h>
 
-#include <algorithm>
 #include <array>
+#include <vector>
 
 namespace ioj::sim::tests {
-namespace {
-auto make_id(EntityType const type, std::uint32_t const index) -> EntityUniqueId {
-    return EntityUniqueId(entity_identity_offset(type, index), type);
+TEST(HealthTable, SeparatesFixedTypeRangesAndCopiesBulkValues) {
+    HealthTable health;
+    std::array const fighters{EntityUniqueId{0, EntityType::Fighter},
+                              EntityUniqueId{1, EntityType::Fighter}};
+    std::array const capitals{EntityUniqueId{0, EntityType::CapitalShip}};
+    health.initialise_rows<EntityType::Fighter>(0, std::array<Health, 2>{10, 20});
+    health.initialise_rows<EntityType::CapitalShip>(0, capitals.size(), 900);
+    auto const fighter_health{health.get_view<EntityType::Fighter>(fighters.size())};
+    fighter_health.copy_from(std::array<Health, 2>{30, 40});
+    std::array<Health, 2> copied;
+    health.get_const_view<EntityType::Fighter>(fighters.size()).copy_to(copied);
+    EXPECT_EQ(copied, (std::array<Health, 2>{30, 40}));
+    EXPECT_EQ(health.get_const_view<EntityType::CapitalShip>(capitals.size()).health(0), 900);
 }
 
-template <std::size_t Size>
-void apply_move(std::array<EntityUniqueId, Size> const& owners,
-                std::array<HealthIndex, Size>& indices,
-                HealthMove const& move) {
-    auto const found{std::ranges::find(owners, move.owner)};
-    ASSERT_NE(found, owners.end());
-    indices[static_cast<std::size_t>(found - owners.begin())] = move.new_index;
-}
-}
-
-TEST(HealthTable, AllocatesCrossTypeRowsAndExposesBulkViews) {
-    HealthTable table;
-    std::array const owners{
-        make_id(EntityType::Fighter, 0),
-        make_id(EntityType::CapitalShip, 0),
-        make_id(EntityType::Turret, 0),
-        make_id(EntityType::PlayerShip, 0),
-    };
-    std::array<Health, owners.size()> const values{100, 2000, 300, 400};
-    std::array<HealthIndex, owners.size()> indices{};
-
-    table.add(owners, values, indices);
-
-    auto healths{table.get_view(indices, owners)};
-    ASSERT_EQ(healths.num(), static_cast<std::uint32_t>(owners.size()));
-    auto const health_count{healths.num()};
-    for (std::uint32_t row{}; row < health_count; ++row) {
-        EXPECT_EQ(healths.health(row), values[static_cast<std::size_t>(row)]);
-        EXPECT_EQ(healths.owner(row), owners[static_cast<std::size_t>(row)]);
-        EXPECT_TRUE(table.contains(indices[static_cast<std::size_t>(row)],
-                                   owners[static_cast<std::size_t>(row)]));
-    }
-
-    std::array<Health, owners.size()> replacement{99, 1999, 299, 399};
-    healths.copy_from(replacement);
-    std::array<Health, owners.size()> copied{};
-    table.get_const_view(indices, owners).copy_to(copied);
-    EXPECT_EQ(copied, replacement);
-}
-
-TEST(HealthTable, DenseRemovalMovesFinalRowAndRepairsMapping) {
-    HealthTable table;
-    std::array const owners{
-        make_id(EntityType::Fighter, 0),
-        make_id(EntityType::Fighter, 1),
-        make_id(EntityType::CapitalShip, 0),
-        make_id(EntityType::Turret, 0),
-    };
-    std::array<Health, owners.size()> const values{10, 20, 30, 40};
-    std::array<HealthIndex, owners.size()> indices{};
-    table.add(owners, values, indices);
-
-    std::array const removed_rows{1u};
-    table.remove_rows(removed_rows, indices, owners, [&](HealthMove const& move) {
-        apply_move(owners, indices, move);
-    });
-
-    EXPECT_EQ(table.num_slots(), 3);
-    EXPECT_EQ(table.get_owner(HealthIndex{0}), owners[0]);
-    EXPECT_EQ(table.get_owner(HealthIndex{1}), owners[3]);
-    EXPECT_EQ(table.get_owner(HealthIndex{2}), owners[2]);
-    EXPECT_EQ(table.get_health(indices[3], owners[3]), values[3]);
-    EXPECT_FALSE(table.contains(indices[1], owners[1]));
-    EXPECT_EQ(indices[3], HealthIndex{1});
-
-    auto const replacement_owner{make_id(EntityType::CapitalShip, 1)};
-    HealthIndex replacement_index;
-    table.add(std::span<EntityUniqueId const>{&replacement_owner, 1},
-              500,
-              std::span<HealthIndex>{&replacement_index, 1});
-    EXPECT_EQ(replacement_index, HealthIndex{3});
-    EXPECT_EQ(table.num_slots(), 4);
-}
-
-TEST(HealthTable, LastRowRemovalShrinksWithoutFixup) {
-    HealthTable table;
-    std::array const owners{make_id(EntityType::Fighter, 0), make_id(EntityType::Turret, 0)};
-    std::array<HealthIndex, owners.size()> indices{};
-    table.add(owners, 100, indices);
-
-    std::array const rows{1u};
-    std::uint32_t move_count{};
-    table.remove_rows(rows, indices, owners, [&](HealthMove const&) { ++move_count; });
-
-    EXPECT_EQ(move_count, 0);
-    EXPECT_EQ(table.num_slots(), 1);
-    EXPECT_TRUE(table.contains(indices[0], owners[0]));
-    EXPECT_FALSE(table.contains(indices[1], owners[1]));
-}
-
-TEST(HealthTable, MultipleDenseRemovalsRepairEverySurvivor) {
-    HealthTable table;
-    std::array const owners{
-        make_id(EntityType::Fighter, 0),
-        make_id(EntityType::Fighter, 1),
-        make_id(EntityType::Fighter, 2),
-        make_id(EntityType::Fighter, 3),
-        make_id(EntityType::Fighter, 4),
-    };
-    std::array<Health, owners.size()> const values{10, 20, 30, 40, 50};
-    std::array<HealthIndex, owners.size()> indices{};
-    table.add(owners, values, indices);
-
-    std::array const rows{3u, 1u};
-    table.remove_rows(
-        rows, indices, owners, [&](HealthMove const& move) { apply_move(owners, indices, move); });
-
-    EXPECT_EQ(table.num_slots(), 3);
-    EXPECT_EQ(table.get_owner(HealthIndex{0}), owners[0]);
-    EXPECT_EQ(table.get_owner(HealthIndex{1}), owners[4]);
-    EXPECT_EQ(table.get_owner(HealthIndex{2}), owners[2]);
-    EXPECT_EQ(table.get_health(indices[0], owners[0]), values[0]);
-    EXPECT_EQ(table.get_health(indices[2], owners[2]), values[2]);
-    EXPECT_EQ(table.get_health(indices[4], owners[4]), values[4]);
-    EXPECT_FALSE(table.contains(indices[1], owners[1]));
-    EXPECT_FALSE(table.contains(indices[3], owners[3]));
-}
-
-TEST(HealthTable, DenseBatchRemovalHandlesBoundaryAndBatchShapes) {
-    auto run_case = [](std::span<std::uint32_t const> const removed_rows) {
-        HealthTable table;
-        std::array const owners{
-            make_id(EntityType::Fighter, 0),
-            make_id(EntityType::Fighter, 1),
-            make_id(EntityType::Fighter, 2),
-            make_id(EntityType::Fighter, 3),
-            make_id(EntityType::Fighter, 4),
-            make_id(EntityType::Fighter, 5),
-        };
-        std::array<Health, owners.size()> const values{10, 20, 30, 40, 50, 60};
-        std::array<HealthIndex, owners.size()> indices{};
-        table.add(owners, values, indices);
-
-        table.remove_rows(removed_rows, indices, owners, [&](HealthMove const& move) {
-            apply_move(owners, indices, move);
-        });
-
-        EXPECT_EQ(table.num_slots(),
-                  static_cast<std::uint32_t>(owners.size() - removed_rows.size()));
-        auto const owner_count{owners.size()};
-        for (std::size_t row{}; row < owner_count; ++row) {
-            auto const removed{std::ranges::find(removed_rows, static_cast<std::uint32_t>(row)) !=
-                               removed_rows.end()};
-            EXPECT_EQ(table.contains(indices[row], owners[row]), !removed);
-            if (!removed) {
-                EXPECT_EQ(table.get_health(indices[row], owners[row]), values[row]);
-            }
+TEST(HealthTable, MirrorsOwnerSwapRemovalForBoundaryAndBatchShapes) {
+    auto run_case = [](std::span<std::uint32_t const> removals) {
+        HealthTable health;
+        std::vector<EntityUniqueId> owners;
+        std::array<Health, 6> values{10, 20, 30, 40, 50, 60};
+        auto const value_count{values.size()};
+        for (std::uint32_t row{}; row < value_count; ++row) {
+            owners.emplace_back(row, EntityType::Fighter);
+        }
+        health.initialise_rows<EntityType::Fighter>(0, values);
+        health.remove_rows<EntityType::Fighter>(owners.size(), removals);
+        for (auto row : removals) {
+            owners[row] = owners.back();
+            owners.pop_back();
+        }
+        auto const view{health.get_const_view<EntityType::Fighter>(owners.size())};
+        ASSERT_EQ(view.num(), owners.size());
+        auto const count{view.num()};
+        for (std::uint32_t row{}; row < count; ++row) {
+            EXPECT_EQ(view.health(row), values[owners[row].index()]);
         }
     };
-
     run_case({});
     run_case(std::array{0u});
     run_case(std::array{2u});
     run_case(std::array{5u});
     run_case(std::array{3u, 2u});
     run_case(std::array{5u, 3u, 1u});
-    run_case(std::array{5u, 4u, 3u, 2u, 0u});
     run_case(std::array{5u, 4u, 3u, 2u, 1u, 0u});
 }
 
-TEST(HealthTable, MovedRowCanAlsoBeRemovedLaterInBatch) {
-    HealthTable table;
-    std::array const owners{
-        make_id(EntityType::Fighter, 0),
-        make_id(EntityType::Fighter, 1),
-        make_id(EntityType::Fighter, 2),
-        make_id(EntityType::Fighter, 3),
-    };
-    std::array<HealthIndex, owners.size()> indices{};
-    std::array const table_order{owners[0], owners[2], owners[3], owners[1]};
-    std::array<HealthIndex, owners.size()> table_indices{};
-    table.add(table_order, std::array<Health, owners.size()>{10, 30, 40, 20}, table_indices);
-    indices = {table_indices[0], table_indices[3], table_indices[1], table_indices[2]};
+TEST(HealthTable, WritesHealthDirectlyThroughBorrowedViews) {
+    HealthTable health;
+    health.initialise_rows<EntityType::Fighter>(0, 2, 100);
+    auto const view{health.get_view<EntityType::Fighter>(2)};
+    auto const read{health.get_const_view<EntityType::Fighter>(2)};
 
-    std::array const removed_rows{3u, 1u};
-    table.remove_rows(removed_rows, indices, owners, [&](HealthMove const& move) {
-        apply_move(owners, indices, move);
-    });
+    view.set_health(0, 100);
+    view.set_health(1, 80);
+    EXPECT_EQ(read.health(0), 100);
+    EXPECT_EQ(read.health(1), 80);
 
-    EXPECT_EQ(table.num_slots(), 2);
-    EXPECT_TRUE(table.contains(indices[0], owners[0]));
-    EXPECT_TRUE(table.contains(indices[2], owners[2]));
-    EXPECT_FALSE(table.contains(indices[1], owners[1]));
-    EXPECT_FALSE(table.contains(indices[3], owners[3]));
+    view.set_health(1, 60);
+    EXPECT_EQ(read.health(1), 60);
 }
 
-TEST(EntityTables, DenseRemovalRepairsCrossTypeMapping) {
+TEST(EntityTables, RebuildsHandlesAfterOwnerReorderingAndMaximumHealthChanges) {
     SimClock clock;
-    AgentIndices indexes{clock};
-    EntityTables tables{indexes};
-    std::array const owners{
-        make_id(EntityType::Fighter, 0),
-        make_id(EntityType::Fighter, 1),
-        make_id(EntityType::Turret, 0),
-    };
-    std::array<HealthIndex, owners.size()> indices{};
-    tables.health.add(owners, std::array<Health, owners.size()>{10, 20, 30}, indices);
+    EntityTables tables{clock};
+    std::array const ids{EntityUniqueId{2, EntityType::Fighter},
+                         EntityUniqueId{6, EntityType::Fighter}};
+    std::array const teams{Team::Blue, Team::Red};
+    tables.health.initialise_rows<EntityType::Fighter>(0, std::array<Health, 2>{50, 100});
+    tables.publish<EntityType::Fighter>(ids, teams, 100);
+    auto& lookup{tables.lookups.for_type(EntityType::Fighter)};
+    std::array<EntityInstanceHandle, 2> handles;
+    lookup.resolve(ids, handles);
+    EXPECT_EQ(handles[0].health_state(), 1u);
+    EXPECT_EQ(handles[1].health_state(), 3u);
 
-    indexes.bind(EntityType::Fighter, std::span{owners}.first<2>());
-    indexes.bind(EntityType::Turret, std::span{owners}.last<1>());
-    tables.bind_health_indices(
-        EntityType::Fighter, std::span{owners}.first<2>(), std::span{indices}.first<2>());
-    tables.bind_health_indices(
-        EntityType::Turret, std::span{owners}.last<1>(), std::span{indices}.last<1>());
+    tables.health.get_view<EntityType::Fighter>(ids.size()).set_health(1, 25);
+    lookup.resolve(ids, handles);
+    EXPECT_EQ(handles[1].health_state(), 3u);
 
-    std::array const removed_rows{0u};
-    tables.remove_health_rows(
-        removed_rows, std::span{indices}.first<2>(), std::span{owners}.first<2>());
+    std::array<std::int32_t, 2> order{1, 0};
+    tables.health.apply_permutation<EntityType::Fighter>(order);
+    tables.publish<EntityType::Fighter>(
+        std::array{ids[1], ids[0]}, std::array{teams[1], teams[0]}, 100);
+    lookup.resolve(ids, handles);
+    EXPECT_EQ(handles[0].index(), 1u);
+    EXPECT_EQ(handles[0].health_state(), 1u);
+    EXPECT_EQ(handles[1].index(), 0u);
+    EXPECT_EQ(handles[1].health_state(), 0u);
+    EXPECT_EQ(handles[1].team(), Team::Red);
 
-    EXPECT_EQ(indices[2], HealthIndex{0});
-    EXPECT_TRUE(tables.health.contains(indices[2], owners[2]));
-    EXPECT_EQ(tables.health.get_health(indices[2], owners[2]), 30);
+    // Rebuild metadata even when the stored health values have not changed.
+    tables.publish<EntityType::Fighter>(
+        std::array{ids[1], ids[0]}, std::array{teams[1], teams[0]}, 50);
+    lookup.resolve(ids, handles);
+    EXPECT_EQ(handles[0].health_state(), 3u);
+    EXPECT_EQ(handles[1].health_state(), 1u);
 }
 
-TEST(EntityTables, MultipleDenseRemovalsRepairSameTypeMappings) {
+TEST(EntityTables, KeepsRetiredIdsInvalidAndOtherTypeHealthUnchanged) {
     SimClock clock;
-    AgentIndices indexes{clock};
-    EntityTables tables{indexes};
-    std::array const owners{
-        make_id(EntityType::Fighter, 0),
-        make_id(EntityType::Fighter, 1),
-        make_id(EntityType::Fighter, 2),
-        make_id(EntityType::Fighter, 3),
-        make_id(EntityType::Fighter, 4),
-    };
-    std::array<HealthIndex, owners.size()> indices{};
-    tables.health.add(owners, std::array<Health, owners.size()>{10, 20, 30, 40, 50}, indices);
-
-    indexes.bind(EntityType::Fighter, owners);
-    tables.bind_health_indices(EntityType::Fighter, owners, indices);
-
-    std::array const removed_rows{4u, 1u, 0u};
-    tables.remove_health_rows(removed_rows, indices, owners);
-
-    EXPECT_EQ(tables.health.num_slots(), 2);
-    EXPECT_EQ(indices[2], HealthIndex{0});
-    EXPECT_EQ(indices[3], HealthIndex{1});
-    EXPECT_EQ(tables.health.get_health(indices[2], owners[2]), 30);
-    EXPECT_EQ(tables.health.get_health(indices[3], owners[3]), 40);
+    EntityTables tables{clock};
+    std::array const ids{EntityUniqueId{0, EntityType::Fighter},
+                         EntityUniqueId{1, EntityType::Fighter}};
+    std::array const player{EntityUniqueId{0, EntityType::PlayerShip}};
+    tables.health.initialise_rows<EntityType::Fighter>(0, ids.size(), 100);
+    tables.health.initialise_rows<EntityType::PlayerShip>(0, player.size(), 75);
+    tables.publish<EntityType::Fighter>(ids, {}, 100);
+    tables.health.get_view<EntityType::Fighter>(ids.size()).set_health(0, 0);
+    tables.publish<EntityType::Fighter>(ids, {}, 100);
+    EXPECT_FALSE(tables.lookups.for_type(EntityType::Fighter).entries()[0].is_valid());
+    tables.lookups.for_type(EntityType::Fighter).retire(std::span{ids}.first(1));
+    tables.health.remove_rows<EntityType::Fighter>(ids.size(), std::array{0u});
+    tables.publish<EntityType::Fighter>(std::span{ids}.last(1), {}, 100);
+    EXPECT_EQ(tables.health.get_const_view<EntityType::PlayerShip>(player.size()).health(0), 75);
+    EXPECT_FALSE(tables.lookups.for_type(EntityType::Fighter).entries()[0].is_valid());
+    EXPECT_EQ(tables.lookups.for_type(EntityType::Fighter).entries()[1].index(), 0u);
 }
 
-TEST(EntityTables, RetainedPlayerUsesTheSameReverseMappingContract) {
-    SimClock clock;
-    AgentIndices indexes{clock};
-    EntityTables tables{indexes};
-    std::array const owners{
-        make_id(EntityType::Fighter, 0),
-        make_id(EntityType::PlayerShip, 0),
-    };
-    std::array<HealthIndex, owners.size()> indices{};
-    tables.health.add(owners, std::array<Health, owners.size()>{10, 0}, indices);
-
-    indexes.bind(EntityType::Fighter, std::span{owners}.first<1>());
-    indexes.bind(EntityType::PlayerShip, std::span{owners}.last<1>());
-    tables.bind_health_indices(
-        EntityType::Fighter, std::span{owners}.first<1>(), std::span{indices}.first<1>());
-    tables.bind_health_indices(
-        EntityType::PlayerShip, std::span{owners}.last<1>(), std::span{indices}.last<1>());
-
-    std::array const removed_rows{0u};
-    tables.remove_health_rows(
-        removed_rows, std::span{indices}.first<1>(), std::span{owners}.first<1>());
-
-    EXPECT_EQ(indices[1], HealthIndex{0});
-    EXPECT_TRUE(tables.health.contains(indices[1], owners[1]));
-    EXPECT_EQ(tables.health.get_health(indices[1], owners[1]), 0);
+TEST(EntityTables, QuantisesQuarterBoundariesAndClampsOverheal) {
+    EXPECT_EQ(quantise_health(1, 100), 0u);
+    EXPECT_EQ(quantise_health(25, 100), 0u);
+    EXPECT_EQ(quantise_health(26, 100), 1u);
+    EXPECT_EQ(quantise_health(50, 100), 1u);
+    EXPECT_EQ(quantise_health(51, 100), 2u);
+    EXPECT_EQ(quantise_health(75, 100), 2u);
+    EXPECT_EQ(quantise_health(76, 100), 3u);
+    EXPECT_EQ(quantise_health(150, 100), 3u);
 }
-
-TEST(HealthTable, OwnerValidatedViewRejectsMismatchedMapping) {
-    HealthTable table;
-    std::array const owners{make_id(EntityType::Fighter, 0), make_id(EntityType::Fighter, 1)};
-    std::array<HealthIndex, owners.size()> indices{};
-    table.add(owners, 100, indices);
-
-    std::array const mismatched_owners{owners[1], owners[0]};
-    EXPECT_DEATH_IF_SUPPORTED(static_cast<void>(table.get_const_view(indices, mismatched_owners)),
-                              "contains");
-    EXPECT_DEATH_IF_SUPPORTED(static_cast<void>(table.get_health(indices[0], owners[1])),
-                              "contains");
-}
-
 } // namespace ioj::sim::tests

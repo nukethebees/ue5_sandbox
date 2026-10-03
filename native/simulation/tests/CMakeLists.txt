@@ -1,8 +1,9 @@
 add_native_simulation_test(native-simulation-tests)
 target_sources(native-simulation-tests PRIVATE
-  agent_indexes_tests.cpp
+  entity_lookup_tables_tests.cpp
   entity_ledger_tests.cpp
   entity_unique_id_tests.cpp
+  entity_instance_handle_tests.cpp
   enum_tests.cpp
   flight_model_config_tests.cpp
   scalar_response_tests.cpp

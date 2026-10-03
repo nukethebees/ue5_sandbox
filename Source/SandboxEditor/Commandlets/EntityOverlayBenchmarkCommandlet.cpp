@@ -26,7 +26,7 @@ auto make_view(::ioj::sim::TurretEntityData const& entities,
               data.entity_ids(),
               data.view_locations(),
               {},
-              health_table.get_const_view(data.health_indices(), data.entity_ids()),
+              health_table.get_const_view<::ioj::sim::EntityType::Turret>(data.num()),
               data.teams()}}};
 }
 
@@ -65,15 +65,13 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     entities.add_defaulted(count);
     for (int32 index{0}; index < count; ++index) {
         entities.get_view().entity_ids()[index] = ::ioj::sim::EntityUniqueId(
-            ::ioj::sim::entity_identity_offset(::ioj::sim::EntityType::Turret, index),
-            ::ioj::sim::EntityType::Turret);
+            static_cast<std::uint32_t>(index), ::ioj::sim::EntityType::Turret);
         ::ioj::sim::set_vector(
             entities.get_view().view_locations(), index, ml::to_native(positions[index]));
         entities.get_view().teams()[index] =
             static_cast<::ioj::sim::Team>(index % static_cast<int32>(::ioj::sim::Team::COUNT));
     }
-    health_table.add(
-        entities.get_view().entity_ids(), health, entities.get_view().health_indices());
+    health_table.initialise_rows<::ioj::sim::EntityType::Turret>(0, health);
 
     FMatrix44f projection{FMatrix44f::Identity};
     FMemory::Memzero(projection.M, sizeof(projection.M));

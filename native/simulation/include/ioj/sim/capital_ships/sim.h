@@ -1,7 +1,7 @@
 #pragma once
-#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/capital_entity_data.h>
 #include <ioj/sim/entity_death_info.h>
+#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/fighter_order_queue.h>
@@ -40,7 +40,6 @@ struct Sim {
     Sim(EntityLedger& ledger,
         CombatEvents const& combat_events,
         EntityTables& entity_tables,
-        AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
         fighters::Sim& fighters);
     Sim(Sim const&) = delete;
@@ -54,12 +53,10 @@ struct Sim {
     auto get_read_view() const -> CapitalReadView {
         auto const entity_data{entities.get_const_view()};
         return {entity_data,
-                entity_tables_.health.get_const_view(entity_data.health_indices(),
-                                                     entity_data.entity_ids()),
+                entity_tables_.health.get_const_view<EntityType::CapitalShip>(entity_data.num()),
                 get_fighter_ids(),
                 frame_changes_,
-                deaths_,
-                &agents_};
+                deaths_};
     }
     void reset_frame_output() {
         frame_changes_.clear();
@@ -112,6 +109,7 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void begin_play();
+    void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(float dt, ml::FrameScratchResource& scratch_resource);
     void resolve_damage_events();
@@ -141,7 +139,7 @@ struct Sim {
     /* **************************************** */
     // Orders
     /* **************************************** */
-    void queue_fighter_orders();
+    void queue_fighter_orders(ml::FrameScratchResource& scratch_resource);
 
     /* **************************************** */
     // Targets
@@ -169,7 +167,6 @@ struct Sim {
     EntityLedger& ledger_;
     CombatEvents const& combat_events_;
     EntityTables& entity_tables_;
-    AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
 
     EntityStorage entities{};

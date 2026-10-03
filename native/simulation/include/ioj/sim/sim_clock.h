@@ -4,6 +4,8 @@
 #include <ioj/sim/sim_time.h>
 #include <ioj/sim/simulation_phase.h>
 
+#include <utility>
+
 namespace ioj::sim {
 
 struct SimClock {
@@ -34,13 +36,49 @@ struct SimClock {
 
     FixedTickLoop tick_loop{};
     tick_type completed_ticks{};
-    SimulationPhase phase{SimulationPhase::Initialisation};
+    [[nodiscard]] auto phase() const noexcept -> SimulationPhase { return phase_; }
+
+    [[nodiscard]] static constexpr auto permits_transition(SimulationPhase const from,
+                                                           SimulationPhase const to) noexcept
+        -> bool {
+        switch (from) {
+            case SimulationPhase::Initialisation:
+                return to == SimulationPhase::StableSetup;
+            case SimulationPhase::StableSetup:
+                return to == SimulationPhase::BetweenTicks;
+            case SimulationPhase::BetweenTicks:
+                return to == SimulationPhase::Preparation;
+            case SimulationPhase::Preparation:
+                return to == SimulationPhase::Thinking;
+            case SimulationPhase::Thinking:
+                return to == SimulationPhase::Action;
+            case SimulationPhase::Action:
+                return to == SimulationPhase::Resolution;
+            case SimulationPhase::Resolution:
+                return to == SimulationPhase::ResolutionCommit;
+            case SimulationPhase::ResolutionCommit:
+                return to == SimulationPhase::BetweenTicks;
+        }
+        return false;
+    }
+
+    void transition_to(SimulationPhase const next) noexcept {
+        assert(permits_transition(phase_, next));
+        phase_ = next;
+    }
 
     auto permits_structural_mutation() const noexcept -> bool {
-        return permits_preparation_mutation() || phase == SimulationPhase::ResolutionCommit;
+        return permits_preparation_mutation() || phase_ == SimulationPhase::ResolutionCommit;
+    }
+    [[nodiscard]] auto permits_lookup() const noexcept -> bool {
+        // Keep lookup-valid phases below the generated boundary.
+        return std::to_underlying(phase_) < std::to_underlying(SimulationPhase::Initialisation);
     }
     auto permits_preparation_mutation() const noexcept -> bool {
-        return phase == SimulationPhase::Initialisation || phase == SimulationPhase::Preparation;
+        return phase_ == SimulationPhase::Initialisation || phase_ == SimulationPhase::Preparation;
     }
+  private:
+    friend struct SimClockTestAccess;
+    SimulationPhase phase_{SimulationPhase::Initialisation};
 };
 } // namespace ioj::sim

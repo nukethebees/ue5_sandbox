@@ -26,9 +26,13 @@ namespace ioj::sim::spinners {
 void Sim::set_config(SpinnerSimConfig const& new_config) noexcept {
     config = new_config;
 }
-Sim::Sim(SimClock const& clock, EntityLedger& ledger, lasers::Sim& in_laser_simulation) noexcept
+Sim::Sim(SimClock const& clock,
+         EntityLedger& ledger,
+         EntityTables& entity_tables,
+         lasers::Sim& in_laser_simulation) noexcept
     : simulation_clock{clock}
     , ledger_{ledger}
+    , entity_tables_{entity_tables}
     , laser_simulation{in_laser_simulation} {}
 
 /* **************************************** */
@@ -43,11 +47,16 @@ void Sim::begin_play() {
     cooldown_restart_ticks_ = static_cast<std::int16_t>(cooldown_tick_period);
     cooldown_cleaner_ = 0;
 }
+void Sim::update_entity_lookup_table() {
+    entity_tables_.sources.spinners = &entities;
+    entity_tables_.publish<EntityType::TubeSpinner>(entities.get_const_view().entity_ids(), {}, 1);
+}
 void Sim::prepare_tick(float const) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::prepare_tick");
 
     ml::tick_countdowns<std::int16_t>(
         entities.get_view().laser_cooldowns(), cooldown_cleaner_, 16384);
+    update_entity_lookup_table();
 }
 void Sim::think(float const dt) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::think");

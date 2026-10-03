@@ -24,7 +24,7 @@ class EntityIdAllocator {
                             static_cast<unsigned>(type),
                             count));
         }
-        auto const id{EntityUniqueId(entity_identity_offset(type, count), type)};
+        auto const id{EntityUniqueId(count, type)};
         history_rows_[type].push_back(history_row);
         ++count;
         return id;
@@ -35,7 +35,7 @@ class EntityIdAllocator {
             return invalid_index;
         }
         auto const type{id.entity_type()};
-        auto const ordinal{id.index() - entity_identity_offsets[type]};
+        auto const ordinal{id.index()};
         return ordinal < issued_counts_[type] ? history_rows_[type][ordinal] : invalid_index;
     }
 

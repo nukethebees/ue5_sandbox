@@ -2,6 +2,7 @@
 
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/testing/entity_observations.h>
 
 namespace ioj::sim {
 void run_worldless_capital_command_fighters(tests::SimulationFixture const& config) {
@@ -43,8 +44,7 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
                 EXPECT_TRUE(second_target.is_valid() && second_target != first_target)
                     << "Capital retargets after its first target dies";
                 for (auto const fighter_id : capitals.get_fighter_ids(0)) {
-                    auto const index{
-                        harness.get_simulation().get_agent_accessor().indexes().find(fighter_id)};
+                    auto const index{observe_entity_row(harness.get_simulation(), fighter_id)};
                     EXPECT_EQ(second_target, fighters.get_target_ids()[index])
                         << "Fighter follows the replacement capital target";
                 }

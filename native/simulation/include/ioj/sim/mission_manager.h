@@ -17,7 +17,7 @@
 
 namespace ioj::sim {
 class EntityLedger;
-class AgentAccessor;
+struct EntityTables;
 struct LevelMissionEventGroupsConstView;
 
 struct LevelMissionResult {
@@ -40,7 +40,7 @@ struct MissionManager {
     /* **************************************** */
     MissionManager(SimClock const& clock,
                    EntityLedger const& entity_ledger,
-                   AgentAccessor const& agents);
+                   EntityTables const& agents);
     MissionManager(MissionManager const&) = delete;
     MissionManager(MissionManager&&) = delete;
     auto operator=(MissionManager const&) -> MissionManager& = delete;
@@ -166,7 +166,10 @@ struct MissionManager {
     /* **************************************** */
     std::optional<LevelMissionResult> pending_result_;
     EntityLedger const& entity_ledger;
-    AgentAccessor const& agents_;
+    void gather_objective_health(std::span<EntityUniqueId const> ids);
+    std::vector<std::uint32_t> query_order_;
+    std::vector<Health> query_health_;
+    EntityTables const& entity_tables_;
 
     std::vector<EntityUniqueId> hero_entity_ids{};
     std::vector<EntityUniqueId> entity_ids_that_must_survive{};

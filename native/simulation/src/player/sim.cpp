@@ -69,9 +69,7 @@ void Sim::configure(PlayerSpawnData const& spawn) noexcept {
     max_health_ = spawn.health.max_health;
     unique_entity_id = ledger_.record_spawn(EntityType::PlayerShip, team, spawn.health.is_alive());
     auto const initial_health{spawn.health.health};
-    health_table_.add(std::span<EntityUniqueId const>{&unique_entity_id, 1},
-                      std::span<Health const>{&initial_health, 1},
-                      std::span<HealthIndex>{&health_index_, 1});
+    health_table_.initialise_rows<EntityType::PlayerShip>(0, 1, initial_health);
 }
 void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
     config = new_config;
@@ -80,12 +78,13 @@ void Sim::set_config(PlayerSimConfig const& new_config) noexcept {
 Sim::Sim(SimClock const& clock,
          EntityLedger& ledger,
          CombatEvents const& combat_events,
-         HealthTable& health_table,
+         EntityTables& entity_tables,
          SpatialQueryManager const& in_spatial_query_manager,
          lasers::Sim& in_lasers)
     : ledger_{ledger}
     , combat_events_{combat_events}
-    , health_table_{health_table}
+    , entity_tables_{entity_tables}
+    , health_table_{entity_tables.health}
     , spatial_query_manager{in_spatial_query_manager}
     , lasers{in_lasers}
     , simulation_clock{clock} {}
@@ -108,6 +107,11 @@ void Sim::begin_play() {
     planned_state_ = state_;
 }
 
+void Sim::update_entity_lookup_table() {
+    entity_tables_.sources.player = {
+        &state_.physical.transform, &state_.physical.velocity, &team, unique_entity_id};
+    entity_tables_.publish<EntityType::PlayerShip>({&unique_entity_id, 1}, {&team, 1}, max_health_);
+}
 void Sim::prepare_tick(float const dt) {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::prepare_tick");
 
@@ -123,6 +127,7 @@ void Sim::prepare_tick(float const dt) {
             speed_sample_ticks_remaining = speed_sample_tick_period;
         }
     }
+    update_entity_lookup_table();
 }
 
 void Sim::think(float const dt) {
@@ -152,8 +157,8 @@ void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::resolve_damage_events");
 
     auto const damage_events{combat_events_.events_for(EntityType::PlayerShip)};
-    auto const original_health{health_table_.get_health(health_index_, unique_entity_id)};
-    auto& health{health_ref()};
+    auto const original_health{health_table_.get_const_view<EntityType::PlayerShip>(1).health(0)};
+    auto health{health_table_.get_const_view<EntityType::PlayerShip>(1).health(0)};
     EntityUniqueId killer{};
     auto const damage_count{damage_events.num()};
     for (std::uint32_t event_index{}; event_index < damage_count; ++event_index) {
@@ -176,6 +181,8 @@ void Sim::resolve_damage_events() {
             killer = damage_events.instigators[element];
         }
     }
+
+    health_table_.get_view<EntityType::PlayerShip>(1).set_health(0, health);
 
     if (sim::is_alive(original_health) && is_dead(health)) {
         die(killer);
@@ -555,17 +562,18 @@ void Sim::add_health(Health const added_health) {
     if (!is_alive()) {
         return;
     }
-    set_health(health_table_.get_health(health_index_, unique_entity_id) + added_health);
+    set_health(health_table_.get_const_view<EntityType::PlayerShip>(1).health(0) + added_health);
 }
 
 void Sim::set_health(Health const new_health, EntityUniqueId const killer) {
-    auto& health{health_ref()};
+    auto health{health_table_.get_const_view<EntityType::PlayerShip>(1).health(0)};
     if (new_health == health || !sim::is_alive(health)) {
         return;
     }
 
     auto const was_alive{sim::is_alive(health)};
     health = std::min(new_health, max_health_);
+    health_table_.get_view<EntityType::PlayerShip>(1).set_health(0, health);
 
     if (was_alive && !sim::is_alive(health)) {
         die(killer);
@@ -573,19 +581,12 @@ void Sim::set_health(Health const new_health, EntityUniqueId const killer) {
 }
 
 auto Sim::get_health() const -> ShipHealth {
-    return {health_table_.get_health(health_index_, unique_entity_id), max_health_};
+    return {health_table_.get_const_view<EntityType::PlayerShip>(1).health(0), max_health_};
 }
 
 auto Sim::is_alive() const -> bool {
-    return health_index_.is_valid() &&
-           sim::is_alive(health_table_.get_health(health_index_, unique_entity_id));
-}
-
-auto Sim::health_ref() -> Health& {
-    return health_table_
-        .get_view(std::span<HealthIndex const>{&health_index_, 1},
-                  std::span<EntityUniqueId const>{&unique_entity_id, 1})
-        .health(0);
+    return unique_entity_id.is_valid() &&
+           sim::is_alive(health_table_.get_const_view<EntityType::PlayerShip>(1).health(0));
 }
 
 void Sim::die(EntityUniqueId const killer) {

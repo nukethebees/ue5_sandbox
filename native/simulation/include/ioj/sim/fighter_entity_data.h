@@ -6,7 +6,6 @@
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/fighter_navigation_types.h"
 #include "ioj/sim/fighter_types.h"
-#include "ioj/sim/health_index.h"
 #include "ioj/sim/team.h"
 
 #include "sandbox/core/native_soa/storage.h"
@@ -72,8 +71,7 @@ struct FighterEntityDataSingleLayout {
     inline static constexpr ColLayout<float> MoveDistancesColumn{VelocitiesZsColumn};
     inline static constexpr ColLayout<float> SpeedsColumn{MoveDistancesColumn};
     inline static constexpr ColLayout<Team> TeamsColumn{SpeedsColumn};
-    inline static constexpr ColLayout<HealthIndex> HealthIndicesColumn{TeamsColumn};
-    inline static constexpr ColLayout<EntityUniqueId> ParentIdsColumn{HealthIndicesColumn};
+    inline static constexpr ColLayout<EntityUniqueId> ParentIdsColumn{TeamsColumn};
     inline static constexpr ColLayout<std::int8_t> AwarenessScanCountdownsColumn{ParentIdsColumn};
     inline static constexpr ColLayout<std::int16_t> NavigationUpdateCountdownsRemainingTicksColumn{
         AwarenessScanCountdownsColumn};
@@ -330,15 +328,6 @@ struct FighterEntityDataSingleViewImpl {
                 state_, offset_, count_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
             static_cast<std::size_t>(count_)};
     }
-    auto health_indices() const -> std::span<Element<HealthIndex>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<HealthIndex>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::HealthIndicesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
     auto parent_ids() const -> std::span<Element<EntityUniqueId>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<EntityUniqueId>(
@@ -568,7 +557,6 @@ struct FighterEntityDataSingleViewImpl {
         func(move_distances());
         func(speeds());
         func(teams());
-        func(health_indices());
         func(parent_ids());
         func(awareness_scan_countdowns());
         func(navigation_update_countdowns_remaining_ticks());
@@ -702,7 +690,6 @@ struct FighterEntityData
         Element<float>* move_distances{};
         Element<float>* speeds{};
         Element<Team>* teams{};
-        Element<HealthIndex>* health_indices{};
         Element<EntityUniqueId>* parent_ids{};
         Element<std::int8_t>* awareness_scan_countdowns{};
         Element<std::int16_t>* navigation_update_countdowns_remaining_ticks{};
@@ -762,7 +749,6 @@ struct FighterEntityData
                     move_distances + offset,
                     speeds + offset,
                     teams + offset,
-                    health_indices + offset,
                     parent_ids + offset,
                     awareness_scan_countdowns + offset,
                     navigation_update_countdowns_remaining_ticks + offset,
@@ -843,7 +829,6 @@ struct FighterEntityData
                 cursor.column_pointer(data, Layout::MoveDistancesColumn),
                 cursor.column_pointer(data, Layout::SpeedsColumn),
                 cursor.column_pointer(data, Layout::TeamsColumn),
-                cursor.column_pointer(data, Layout::HealthIndicesColumn),
                 cursor.column_pointer(data, Layout::ParentIdsColumn),
                 cursor.column_pointer(data, Layout::AwarenessScanCountdownsColumn),
                 cursor.column_pointer(data, Layout::NavigationUpdateCountdownsRemainingTicksColumn),
@@ -909,7 +894,6 @@ struct FighterEntityData
         ml::native_soa::default_construct_n(columns.move_distances, count);
         ml::native_soa::default_construct_n(columns.speeds, count);
         ml::native_soa::default_construct_n(columns.teams, count);
-        ml::native_soa::default_construct_n(columns.health_indices, count);
         ml::native_soa::default_construct_n(columns.parent_ids, count);
         ml::native_soa::default_construct_n(columns.awareness_scan_countdowns, count);
         ml::native_soa::default_construct_n(columns.navigation_update_countdowns_remaining_ticks,
@@ -1012,8 +996,6 @@ struct FighterEntityData
             columns.move_distances + index, columns.move_distances + source, move_count);
         ml::native_soa::copy_n(columns.speeds + index, columns.speeds + source, move_count);
         ml::native_soa::copy_n(columns.teams + index, columns.teams + source, move_count);
-        ml::native_soa::copy_n(
-            columns.health_indices + index, columns.health_indices + source, move_count);
         ml::native_soa::copy_n(columns.parent_ids + index, columns.parent_ids + source, move_count);
         ml::native_soa::copy_n(columns.awareness_scan_countdowns + index,
                                columns.awareness_scan_countdowns + source,
@@ -1204,9 +1186,6 @@ struct FighterEntityData
             destination.speeds, ml::native_soa::source_data(source.speeds()) + source_first, count);
         ml::native_soa::copy_n(
             destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
-        ml::native_soa::copy_n(destination.health_indices,
-                               ml::native_soa::source_data(source.health_indices()) + source_first,
-                               count);
         ml::native_soa::copy_n(destination.parent_ids,
                                ml::native_soa::source_data(source.parent_ids()) + source_first,
                                count);
@@ -1427,9 +1406,6 @@ struct FighterEntityData
             destination.speeds, ml::native_soa::source_data(source.speeds()) + source_first, count);
         ml::native_soa::move_n(
             destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
-        ml::native_soa::move_n(destination.health_indices,
-                               ml::native_soa::source_data(source.health_indices()) + source_first,
-                               count);
         ml::native_soa::move_n(destination.parent_ids,
                                ml::native_soa::source_data(source.parent_ids()) + source_first,
                                count);
@@ -1582,7 +1558,6 @@ struct FighterEntityData
         ml::native_soa::copy_n(destination.move_distances, source.move_distances, num_);
         ml::native_soa::copy_n(destination.speeds, source.speeds, num_);
         ml::native_soa::copy_n(destination.teams, source.teams, num_);
-        ml::native_soa::copy_n(destination.health_indices, source.health_indices, num_);
         ml::native_soa::copy_n(destination.parent_ids, source.parent_ids, num_);
         ml::native_soa::copy_n(
             destination.awareness_scan_countdowns, source.awareness_scan_countdowns, num_);

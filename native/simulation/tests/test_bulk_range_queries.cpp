@@ -1,6 +1,7 @@
 #include "support/collision_agent_storage.h"
 #include <ioj/sim/frame_range_query_results.h>
 #include <ioj/sim/spatial_query_manager.h>
+#include <ioj/sim/testing/entity_observations.h>
 
 #include <sandbox/core/frame_memory_resource.h>
 #include <sandbox/core/vector_normalization.h>
@@ -62,7 +63,7 @@ class BulkRangeQueries : public ::testing::Test {
             for (auto match{range.offset}; match < end; ++match) {
                 auto const id{output.entities[match]};
                 actual.push_back(id);
-                auto const state{owners.agents.read_spatial(id)};
+                auto const state{observe_entity(owners.entity_tables, id)};
                 ASSERT_TRUE(state);
                 auto const delta{state->location - locations[index]};
                 EXPECT_FLOAT_EQ(output.distances[match], HMM_LenV3(delta));
@@ -80,7 +81,7 @@ class BulkRangeQueries : public ::testing::Test {
     }
 
     CollisionAgentStorage owners;
-    SpatialQueryManager queries{owners.agents};
+    SpatialQueryManager queries{owners.entity_tables};
     collision::EntityAABBs bounds;
     alignas(
         ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 1024 * 1024> backing{};

@@ -4,7 +4,6 @@
 #pragma once
 
 #include "ioj/sim/entity_unique_id.h"
-#include "ioj/sim/health_index.h"
 #include "ioj/sim/index_span.h"
 #include "ioj/sim/team.h"
 
@@ -45,8 +44,7 @@ struct CapitalEntityDataSingleLayout {
     inline static constexpr ColLayout<float> FighterSpawnTimersColumn{RotationsRollsColumn};
     inline static constexpr ColLayout<float> FighterSpawnCooldownsColumn{FighterSpawnTimersColumn};
     inline static constexpr ColLayout<Team> TeamsColumn{FighterSpawnCooldownsColumn};
-    inline static constexpr ColLayout<HealthIndex> HealthIndicesColumn{TeamsColumn};
-    inline static constexpr ColLayout<IndexSpan> FighterIdSpansColumn{HealthIndicesColumn};
+    inline static constexpr ColLayout<IndexSpan> FighterIdSpansColumn{TeamsColumn};
     inline static constexpr ColLayout<EntityUniqueId> TargetIdsColumn{FighterIdSpansColumn};
 
     inline static constexpr byte_size_type allocation_alignment{
@@ -173,15 +171,6 @@ struct CapitalEntityDataSingleViewImpl {
                 state_, offset_, count_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
             static_cast<std::size_t>(count_)};
     }
-    auto health_indices() const -> std::span<Element<HealthIndex>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<HealthIndex>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::HealthIndicesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
     auto fighter_id_spans() const -> std::span<Element<IndexSpan>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<IndexSpan>(
@@ -212,7 +201,6 @@ struct CapitalEntityDataSingleViewImpl {
         func(fighter_spawn_timers());
         func(fighter_spawn_cooldowns());
         func(teams());
-        func(health_indices());
         func(fighter_id_spans());
         func(target_ids());
     }
@@ -303,7 +291,6 @@ struct CapitalEntityData
         Element<float>* fighter_spawn_timers{};
         Element<float>* fighter_spawn_cooldowns{};
         Element<Team>* teams{};
-        Element<HealthIndex>* health_indices{};
         Element<IndexSpan>* fighter_id_spans{};
         Element<EntityUniqueId>* target_ids{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
@@ -320,7 +307,6 @@ struct CapitalEntityData
                     fighter_spawn_timers + offset,
                     fighter_spawn_cooldowns + offset,
                     teams + offset,
-                    health_indices + offset,
                     fighter_id_spans + offset,
                     target_ids + offset};
         }
@@ -358,7 +344,6 @@ struct CapitalEntityData
                 cursor.column_pointer(data, Layout::FighterSpawnTimersColumn),
                 cursor.column_pointer(data, Layout::FighterSpawnCooldownsColumn),
                 cursor.column_pointer(data, Layout::TeamsColumn),
-                cursor.column_pointer(data, Layout::HealthIndicesColumn),
                 cursor.column_pointer(data, Layout::FighterIdSpansColumn),
                 cursor.column_pointer(data, Layout::TargetIdsColumn)};
     }
@@ -381,7 +366,6 @@ struct CapitalEntityData
         ml::native_soa::default_construct_n(columns.fighter_spawn_timers, count);
         ml::native_soa::default_construct_n(columns.fighter_spawn_cooldowns, count);
         ml::native_soa::default_construct_n(columns.teams, count);
-        ml::native_soa::default_construct_n(columns.health_indices, count);
         ml::native_soa::default_construct_n(columns.fighter_id_spans, count);
         ml::native_soa::default_construct_n(columns.target_ids, count);
     }
@@ -414,8 +398,6 @@ struct CapitalEntityData
                                columns.fighter_spawn_cooldowns + source,
                                move_count);
         ml::native_soa::copy_n(columns.teams + index, columns.teams + source, move_count);
-        ml::native_soa::copy_n(
-            columns.health_indices + index, columns.health_indices + source, move_count);
         ml::native_soa::copy_n(
             columns.fighter_id_spans + index, columns.fighter_id_spans + source, move_count);
         ml::native_soa::copy_n(columns.target_ids + index, columns.target_ids + source, move_count);
@@ -472,9 +454,6 @@ struct CapitalEntityData
                                count);
         ml::native_soa::copy_n(
             destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
-        ml::native_soa::copy_n(destination.health_indices,
-                               ml::native_soa::source_data(source.health_indices()) + source_first,
-                               count);
         ml::native_soa::copy_n(destination.fighter_id_spans,
                                ml::native_soa::source_data(source.fighter_id_spans()) +
                                    source_first,
@@ -528,9 +507,6 @@ struct CapitalEntityData
                                count);
         ml::native_soa::move_n(
             destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
-        ml::native_soa::move_n(destination.health_indices,
-                               ml::native_soa::source_data(source.health_indices()) + source_first,
-                               count);
         ml::native_soa::move_n(destination.fighter_id_spans,
                                ml::native_soa::source_data(source.fighter_id_spans()) +
                                    source_first,
@@ -555,7 +531,6 @@ struct CapitalEntityData
         ml::native_soa::copy_n(
             destination.fighter_spawn_cooldowns, source.fighter_spawn_cooldowns, num_);
         ml::native_soa::copy_n(destination.teams, source.teams, num_);
-        ml::native_soa::copy_n(destination.health_indices, source.health_indices, num_);
         ml::native_soa::copy_n(destination.fighter_id_spans, source.fighter_id_spans, num_);
         ml::native_soa::copy_n(destination.target_ids, source.target_ids, num_);
     }

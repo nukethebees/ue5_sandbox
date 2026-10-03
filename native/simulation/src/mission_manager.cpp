@@ -1,7 +1,7 @@
 #include "ioj/sim/mission_manager.h"
 
-#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/levels/level_runtime_events.h>
 #include <ioj/sim/profiling.h>
 
@@ -78,9 +78,9 @@ void MissionManager::begin_play() {
 
 MissionManager::MissionManager(SimClock const& clock,
                                EntityLedger const& in_entity_ledger,
-                               AgentAccessor const& agents)
+                               EntityTables const& agents)
     : entity_ledger{in_entity_ledger}
-    , agents_{agents}
+    , entity_tables_{agents}
     , simulation_clock{clock} {}
 
 /* **************************************** */
@@ -419,40 +419,45 @@ void MissionManager::update_mission_kills() {
 /* **************************************** */
 // Objective health tracking
 /* **************************************** */
+void MissionManager::gather_objective_health(std::span<EntityUniqueId const> const ids) {
+    auto const count{ids.size()};
+    query_order_.resize(count);
+    query_health_.resize(count);
+    gather_entities(entity_tables_, ids, query_order_, {.healths = query_health_});
+}
 void MissionManager::prepare_objectives() {
     auto initialise_pending = [&](auto const& ids, auto& healths) {
-        auto const count{ids.size()};
-        for (auto index{healths.size()}; index < count; ++index) {
-            auto const state{agents_.read_spatial(ids[index])};
-            healths.emplace_back(state ? state->health : Health{});
+        auto const first{healths.size()};
+        auto const pending{std::span<EntityUniqueId const>{ids}.subspan(first)};
+        gather_objective_health(pending);
+        for (auto const health : query_health_) {
+            healths.emplace_back(health);
         }
     };
     initialise_pending(entity_ids_that_must_survive, entity_health_that_must_survive);
     initialise_pending(entity_ids_required_to_kill, entity_health_required_to_kill);
 }
 void MissionManager::update_entity_health_that_must_survive() {
-    assert(entity_health_that_must_survive.size() == entity_ids_that_must_survive.size());
-    auto const count{entity_ids_that_must_survive.size()};
-    for (std::size_t i{}; i < count; ++i) {
-        auto const state{agents_.read_spatial(entity_ids_that_must_survive[i])};
-        entity_health_that_must_survive[i].health = state ? state->health : Health{};
+    gather_objective_health(entity_ids_that_must_survive);
+    auto const count{query_health_.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        entity_health_that_must_survive[index].health = query_health_[index];
     }
 }
 auto MissionManager::entities_that_must_survive_are_alive() const -> bool {
-    return std::ranges::all_of(entity_ids_that_must_survive,
-                               [&](auto const id) { return agents_.is_alive(id); });
+    return std::ranges::all_of(entity_health_that_must_survive,
+                               [](auto const health) { return health.is_alive(); });
 }
 void MissionManager::update_entity_health_required_to_kill() {
-    assert(entity_health_required_to_kill.size() == entity_ids_required_to_kill.size());
-    auto const count{entity_ids_required_to_kill.size()};
-    for (std::size_t i{}; i < count; ++i) {
-        auto const state{agents_.read_spatial(entity_ids_required_to_kill[i])};
-        entity_health_required_to_kill[i].health = state ? state->health : Health{};
+    gather_objective_health(entity_ids_required_to_kill);
+    auto const count{query_health_.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        entity_health_required_to_kill[index].health = query_health_[index];
     }
 }
 auto MissionManager::entities_required_to_kill_are_dead() const -> bool {
-    return std::ranges::none_of(entity_ids_required_to_kill,
-                                [&](auto const id) { return agents_.is_alive(id); });
+    return std::ranges::none_of(entity_health_required_to_kill,
+                                [](auto const health) { return health.is_alive(); });
 }
 
 /* **************************************** */

@@ -1,6 +1,6 @@
 #include "ioj/sim/collision/collision_system.h"
 
-#include <ioj/sim/agent_accessor.h>
+#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/rotator_math.h>
 
@@ -19,9 +19,9 @@ namespace ioj::sim::collision {
 /* **************************************** */
 // Construction and setup
 /* **************************************** */
-CollisionSystem::CollisionSystem(AgentAccessor const& agents,
+CollisionSystem::CollisionSystem(EntityTables const& agents,
                                  std::pmr::memory_resource* resource) noexcept
-    : agents_{agents}
+    : entity_tables_{agents}
     , uniform_grid_{agents}
     , overlap_event_storage_{resource} {}
 void CollisionSystem::initialise(GridGeometry const grid_geometry,
@@ -86,6 +86,22 @@ void CollisionSystem::collect_overlaps_for_candidates(
     counts.set_num(candidate_count);
     offsets.set_num(candidate_count);
 
+    FrameVectors3f locations{scratch_resource};
+    ml::FrameArray<Rotator3f> rotations{&scratch_resource};
+    ml::FrameArray<std::uint8_t> alive{&scratch_resource};
+    ml::FrameArray<std::uint32_t> order{&scratch_resource};
+    locations.set_num(candidate_count);
+    rotations.set_num(candidate_count);
+    alive.set_num(candidate_count);
+    order.set_num(candidate_count);
+
+    // Resolve candidate geometry before distributing collision work.
+    gather_entities(entity_tables_,
+                    overlap_candidates,
+                    order,
+                    {.locations = locations.get_view(), .alive = alive, .rotations = rotations});
+    auto const candidate_locations{locations.get_const_view()};
+
     // Count first so each candidate can write into a disjoint output span without allocating.
     constexpr std::uint32_t grain_size{64};
     auto const range{oneapi::tbb::blocked_range<std::uint32_t>{0, candidate_count, grain_size}};
@@ -96,14 +112,14 @@ void CollisionSystem::collect_overlaps_for_candidates(
             auto const end{chunk.end()};
             for (auto index{chunk.begin()}; index < end; ++index) {
                 auto const id{overlap_candidates[index]};
-                auto const state{agents_.read_alive(id)};
-                if (!state) {
+                if (!alive[index]) {
                     continue;
                 }
-                bounds[index] = collision::make_entity_world_bounds(entity_aabbs_,
-                                                                    id.entity_type(),
-                                                                    state->location,
-                                                                    to_quaternion(state->rotation));
+                bounds[index] =
+                    collision::make_entity_world_bounds(entity_aabbs_,
+                                                        id.entity_type(),
+                                                        candidate_locations[index],
+                                                        to_quaternion(rotations[index]));
                 counts[index] = uniform_grid_.count_overlaps(bounds[index], id);
             }
         });

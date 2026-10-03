@@ -14,7 +14,7 @@
 #include <utility>
 
 namespace ioj::sim {
-class AgentAccessor;
+struct EntityTables;
 struct FrameRangeQueryResults;
 struct SpatialQueryManager;
 struct SpatialQueryManagerTestAccess;
@@ -66,7 +66,7 @@ struct SpatialQueryManager {
     /* **************************************** */
     // Keep persistent bookkeeping separate from concurrently allocated query contents.
     explicit SpatialQueryManager(
-        AgentAccessor const& agents,
+        EntityTables const& agents,
         std::pmr::memory_resource* resource = std::pmr::get_default_resource(),
         std::pmr::memory_resource* query_resource = std::pmr::get_default_resource());
     SpatialQueryManager(SpatialQueryManager const&) = delete;
@@ -192,7 +192,7 @@ struct SpatialQueryManager {
     /* **************************************** */
     // State
     /* **************************************** */
-    AgentAccessor const& agents_;
+    EntityTables const& entity_tables_;
 
     mutable QueryThreadBufferPool thread_buffer_pool_;
     bool scratch_active_{};

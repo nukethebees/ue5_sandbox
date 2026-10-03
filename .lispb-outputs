@@ -55,7 +55,6 @@ native/simulation/include/ioj/sim/fighter_spawn_queue.h
 native/simulation/include/ioj/sim/fighters/command_interface.h
 native/simulation/include/ioj/sim/fighters/navigation_records.h
 native/simulation/include/ioj/sim/fighters/phase_interface.h
-native/simulation/include/ioj/sim/health_move.h
 native/simulation/include/ioj/sim/health_type.h
 native/simulation/include/ioj/sim/index_span.h
 native/simulation/include/ioj/sim/laser_hit_details.h

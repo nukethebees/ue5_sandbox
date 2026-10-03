@@ -18,7 +18,7 @@ class CombatEvents {
     void record_shots(std::span<EntityUniqueId const> instigators) {
         ledger_.record_shots(instigators);
     }
-    void prepare(AgentIndices const& indexes, ml::FrameScratchResource& scratch_resource) {
+    void prepare(EntityLookupTables const& indexes, ml::FrameScratchResource& scratch_resource) {
         damage_.prepare(indexes, scratch_resource);
     }
     auto events_for(EntityType type) const -> DirectDamageEventsConstView {

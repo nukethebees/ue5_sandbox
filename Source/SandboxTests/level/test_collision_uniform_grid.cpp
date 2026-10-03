@@ -1,5 +1,5 @@
-#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/collision/collision_uniform_grid.h>
+#include <ioj/sim/entity_tables.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestCollisionActor.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
@@ -52,10 +52,8 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
             ASandboxTestOmittedCollisionActor::StaticClass());
 
         ::ioj::sim::SimClock clock;
-        ::ioj::sim::AgentIndices indexes{clock};
-        ::ioj::sim::HealthTable health_table;
-        ::ioj::sim::AgentAccessor agents{indexes, health_table};
-        ::ioj::sim::collision::CollisionUniformGrid grid{agents};
+        ::ioj::sim::EntityTables tables{clock};
+        ::ioj::sim::collision::CollisionUniformGrid grid{tables};
         auto const configured_dims{config.calculate_grid_dimensions()};
         auto const grid_geometry{::ioj::sim::collision::GridGeometry{
             {configured_dims.X, configured_dims.Y, configured_dims.Z},

@@ -25,22 +25,19 @@ auto LevelSim::capture_thinking_phase_state() const -> std::vector<ThinkingEntit
     state.reserve(static_cast<std::size_t>(capitals.num()) + fighters.num() + turrets.num() +
                   spinners.num() + player_ship_simulation_.has_value());
 
-    auto const append_ships{[&](auto const entities, EntityType const type, auto orientation_at) {
+    auto const append_ships{[&]<EntityType Type>(auto const entities, auto orientation_at) {
         auto const ids{entities.entity_ids()};
-        auto const health_indices{entities.health_indices()};
+        auto const healths{entity_tables_.health.get_const_view<Type>(entities.num())};
         auto const teams{entities.teams()};
         auto const locations{entities.view_locations()};
         auto const count{entities.num()};
         for (std::uint32_t row{}; row < count; ++row) {
             auto const id{ids[row]};
-            assert(id.entity_type() == type);
-            assert(agent_indexes_.find(id) == row);
-            assert(entity_tables_.health.contains(health_indices[row], id));
-            auto const location{vector_at(locations, row)};
+            assert(id.entity_type() == Type);
+            auto const location{locations[row]};
             state.push_back({id,
                              row,
-                             health_indices[row],
-                             entity_tables_.health.get_health(health_indices[row], id),
+                             healths.health(row),
                              teams[row],
                              {location.X, location.Y, location.Z},
                              orientation_at(row)});
@@ -48,26 +45,23 @@ auto LevelSim::capture_thinking_phase_state() const -> std::vector<ThinkingEntit
     }};
 
     auto const capital_rotations{capitals.view_rotations()};
-    append_ships(capitals, EntityType::CapitalShip, [capital_rotations](std::uint32_t const row) {
-        return std::array<double, 4>{capital_rotations.pitches()[row],
-                                     capital_rotations.yaws()[row],
-                                     capital_rotations.rolls()[row],
-                                     0.0};
-    });
+    append_ships.operator()<EntityType::CapitalShip>(
+        capitals, [capital_rotations](std::uint32_t const row) {
+            auto const [pitch, yaw, roll]{capital_rotations[row]};
+            return std::array<double, 4>{pitch, yaw, roll, 0.0};
+        });
     auto const fighter_directions{fighters.view_aim_directions()};
-    append_ships(fighters, EntityType::Fighter, [fighter_directions](std::uint32_t const row) {
-        return std::array<double, 4>{fighter_directions.xs()[row],
-                                     fighter_directions.ys()[row],
-                                     fighter_directions.zs()[row],
-                                     0.0};
-    });
+    append_ships.operator()<EntityType::Fighter>(
+        fighters, [fighter_directions](std::uint32_t const row) {
+            auto const direction{fighter_directions[row]};
+            return std::array<double, 4>{direction.X, direction.Y, direction.Z, 0.0};
+        });
     auto const turret_rotations{turrets.view_rotations()};
-    append_ships(turrets, EntityType::Turret, [turret_rotations](std::uint32_t const row) {
-        return std::array<double, 4>{turret_rotations.pitches()[row],
-                                     turret_rotations.yaws()[row],
-                                     turret_rotations.rolls()[row],
-                                     0.0};
-    });
+    append_ships.operator()<EntityType::Turret>(
+        turrets, [turret_rotations](std::uint32_t const row) {
+            auto const [pitch, yaw, roll]{turret_rotations[row]};
+            return std::array<double, 4>{pitch, yaw, roll, 0.0};
+        });
 
     auto const spinner_ids{spinners.entity_ids()};
     auto const spinner_locations{spinners.view_locations()};
@@ -76,11 +70,9 @@ auto LevelSim::capture_thinking_phase_state() const -> std::vector<ThinkingEntit
     for (std::uint32_t row{}; row < spinner_count; ++row) {
         auto const id{spinner_ids[row]};
         assert(id.entity_type() == EntityType::TubeSpinner);
-        assert(agent_indexes_.find(id) == row);
-        auto const location{vector_at(spinner_locations, row)};
+        auto const location{spinner_locations[row]};
         state.push_back({id,
                          row,
-                         {},
                          1,
                          Team::White,
                          {location.X, location.Y, location.Z},
@@ -91,13 +83,11 @@ auto LevelSim::capture_thinking_phase_state() const -> std::vector<ThinkingEntit
         auto const& player{*player_ship_simulation_};
         auto const id{player.unique_entity_id};
         assert(id.entity_type() == EntityType::PlayerShip);
-        assert(agent_indexes_.find(id) == 0);
         auto const& transform{player.get_physical_state().transform};
         auto const location{transform.location};
         auto const rotation{transform.rotation};
         state.push_back({id,
                          0,
-                         player.get_health_index(),
                          player.get_health().health,
                          player.team,
                          {location.x, location.y, location.z},
@@ -108,13 +98,27 @@ auto LevelSim::capture_thinking_phase_state() const -> std::vector<ThinkingEntit
 }
 auto LevelSim::check_thinking_entry_invariants(
     std::span<ThinkingEntityState const> const state) const -> bool {
-    if (clock_.phase != SimulationPhase::Thinking) {
+    if (clock_.phase() != SimulationPhase::Thinking) {
         return false;
     }
 
     // Grid membership is live at Thinking entry; retained owner rows need not all be alive.
     std::vector<EntityUniqueId> live_ids;
     live_ids.reserve(state.size());
+    EntityTypeSizes maximum_healths;
+    maximum_healths[EntityType::CapitalShip] = capital_ships_simulation_.config.max_health;
+    maximum_healths[EntityType::Fighter] = fighters_simulation_.config.health;
+    maximum_healths[EntityType::Turret] = turrets_simulation_.config.max_health;
+    maximum_healths[EntityType::PlayerShip] =
+        player_ship_simulation_ ? player_ship_simulation_->max_health_ : 1;
+    maximum_healths[EntityType::TubeSpinner] = 1;
+    std::array<std::span<EntityInstanceHandle const>, EntityTypeSizes::size()> handles;
+    for (auto const type : ml::EnumTraits<EntityType>::values) {
+        // Bind each type's table once before checking entities.
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
+        handles[std::to_underlying(type)] = entity_tables_.lookups.for_type(type).entries();
+    }
+
     for (auto const& entity : state) {
         if (entity.team >= Team::COUNT ||
             !std::ranges::all_of(entity.location,
@@ -125,8 +129,23 @@ auto LevelSim::check_thinking_entry_invariants(
                 std::format("Invalid Thinking spatial state for entity {}", entity.id.raw_value()));
             return false;
         }
+        auto const type{entity.id.entity_type()};
+        // Select the already-bound span for this entity's type.
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
+        auto const table{handles[std::to_underlying(type)]};
+        auto const handle{table[entity.id.index()]};
         if (is_alive(entity.health)) {
+            if (!handle.is_valid() || handle.index() != entity.row ||
+                handle.team() != entity.team ||
+                handle.health_state() != quantise_health(entity.health, maximum_healths[type])) {
+                ml::log_error(std::format("Invalid Thinking lookup snapshot for entity {}",
+                                          entity.id.raw_value()));
+                return false;
+            }
             live_ids.push_back(entity.id);
+        } else if (handle.is_valid()) {
+            ml::log_error("Dead entity retained a published lookup handle");
+            return false;
         }
     }
 
@@ -145,7 +164,7 @@ auto LevelSim::check_thinking_entry_invariants(
 }
 auto LevelSim::check_thinking_phase_invariants(
     std::span<ThinkingEntityState const> const state) const -> bool {
-    if (clock_.phase != SimulationPhase::Thinking) {
+    if (clock_.phase() != SimulationPhase::Thinking) {
         return false;
     }
 

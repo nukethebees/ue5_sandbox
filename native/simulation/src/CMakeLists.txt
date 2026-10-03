@@ -1,13 +1,14 @@
 target_sources(native-simulation PRIVATE
   entity_ledger.cpp
   ../include/ioj/sim/entity_ledger.h
-  agent_accessor.cpp
+  entity_queries.cpp
   damage_queue.cpp
   ../include/ioj/sim/combat_events.h
   ../include/ioj/sim/damage_queue.h
-  ../include/ioj/sim/agent_indices.h
+  ../include/ioj/sim/entity_lookup_table.h
   ../include/ioj/sim/agent_display_batch.h
-  ../include/ioj/sim/agent_accessor.h
+  ../include/ioj/sim/entity_queries.h
+  ../include/ioj/sim/entity_read_sources.h
   ../include/ioj/sim/attack_distance_band.h
   ../include/ioj/sim/base_sim_config.h
   ../include/ioj/sim/batch_operations.h
@@ -122,7 +123,6 @@ target_sources(native-simulation PRIVATE
   frame_laser_spawn_requests.cpp
   frame_rotators3f.cpp
   frame_vectors3f.cpp
-  health_table.cpp
   laser_frame_output.cpp
   level_event_types.cpp
   level_sim.cpp

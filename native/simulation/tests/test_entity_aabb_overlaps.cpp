@@ -3,6 +3,7 @@
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/spatial_query_manager.h>
+#include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/spatial_query_manager_test_access.h>
 
 #include <sandbox/core/frame_memory_resource.h>
@@ -19,7 +20,7 @@ struct OverlapFixture {
     explicit OverlapFixture(Vector3f const capital_half_extents = {{10.f, 10.f, 10.f}},
                             Vector3f const capital_centre = Vector3f{},
                             Vector3f const turret_half_extents = {{10.f, 10.f, 10.f}})
-        : query_manager{owners.agents} {
+        : query_manager{owners.entity_tables} {
         for (auto const type : ml::EnumTraits<EntityType>::values) {
             set_bounds(type, Vector3f{}, Vector3f{{10.f, 10.f, 10.f}});
         }
@@ -187,7 +188,7 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
                   {{300.f, 0.f, 0.f}}, EntityType::CapitalShip, 20.f, stationary, nearby_ids),
               1);
     EXPECT_EQ(nearby_ids[0], moved);
-    fixture.owners.health_table.get_view(owner.health_indices(), owner.entity_ids()).health(0) = 0;
+    fixture.owners.health_table.get_view<EntityType::CapitalShip>(owner.num()).set_health(0, 0);
     EXPECT_EQ(
         queries.collect_non_team_entities_in_range({{300.f, 0.f, 0.f}}, Team::Blue, 20.f, nearby),
         0);
@@ -545,8 +546,8 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     auto const first_entities{entity_overlaps.first_entities()};
     auto const second_entities{entity_overlaps.second_entities()};
     for (std::uint32_t index{}; index < entity_overlap_count; ++index) {
-        EXPECT_TRUE(fixture.owners.agents.is_alive(first_entities[index]) &&
-                    fixture.owners.agents.is_alive(second_entities[index]))
+        EXPECT_TRUE(entity_is_alive(fixture.owners.entity_tables, first_entities[index]) &&
+                    entity_is_alive(fixture.owners.entity_tables, second_entities[index]))
             << "Dynamic overlap handles remain valid";
         EXPECT_TRUE(first_entities[index] < second_entities[index])
             << "Dynamic overlap is canonical";
@@ -569,7 +570,7 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     auto const static_entities{static_overlaps.entities()};
     auto const static_indices{static_overlaps.static_geometry_indices()};
     for (std::uint32_t index{}; index < static_overlap_count; ++index) {
-        EXPECT_TRUE(fixture.owners.agents.is_alive(static_entities[index]))
+        EXPECT_TRUE(entity_is_alive(fixture.owners.entity_tables, static_entities[index]))
             << "Static overlap entity remains valid";
         EXPECT_TRUE(static_indices[index] >= 0 &&
                     static_cast<std::uint32_t>(static_indices[index]) < static_geometry_count)
@@ -740,8 +741,8 @@ TEST(EntityAABBOverlaps, InvalidDeadAndRetiredCandidatesAreIgnored) {
     std::array const rotations{Rotator3f{}};
     std::array const dead{std::uint8_t{0}};
     fixture.run_tick(removed_handle, removed_location, rotations, dead);
-    EXPECT_TRUE(fixture.owners.agents.read(removed).has_value() &&
-                !fixture.owners.agents.read_alive(removed).has_value())
+    EXPECT_TRUE(observe_entity(fixture.owners.entity_tables, removed).has_value() &&
+                !observe_live_entity(fixture.owners.entity_tables, removed).has_value())
         << "Moved-and-dead entity remains structurally present until removal";
     EXPECT_EQ(fixture.get_entity_overlaps().num(), 0) << "Dead overlap candidate produces no pair";
     EXPECT_EQ(fixture.get_static_overlaps().num(), 0)
@@ -751,7 +752,7 @@ TEST(EntityAABBOverlaps, InvalidDeadAndRetiredCandidatesAreIgnored) {
     fixture.owners.remove(removed);
     auto const replacement{fixture.spawn({{10.f, 0.f, 0.f}})};
     fixture.owners.publish();
-    EXPECT_FALSE(fixture.owners.agents.read(removed).has_value())
+    EXPECT_FALSE(observe_entity(fixture.owners.entity_tables, removed).has_value())
         << "Removed ID no longer resolves after publication";
 
     std::array const overlap_candidates{

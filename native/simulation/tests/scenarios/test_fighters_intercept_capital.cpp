@@ -3,6 +3,7 @@
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/fighters/sim.h>
+#include <ioj/sim/testing/entity_observations.h>
 
 #include <algorithm>
 
@@ -55,9 +56,8 @@ void run_worldless_fighters_intercept_capital(tests::SimulationFixture const& co
         sample.parent_target = capitals.get_target_id(0);
         auto const target_ids{fighters.get_target_ids()};
         for (auto const fighter_id : capitals.get_fighter_ids(0)) {
-            auto const index{
-                harness.get_simulation().get_agent_accessor().indexes().find(fighter_id)};
-            if (index != AgentIndices::invalid_index) {
+            auto const index{observe_entity_row(harness.get_simulation(), fighter_id)};
+            if (index != EntityInstanceHandle::invalid_value) {
                 sample.fighter_targets.push_back(target_ids[index]);
             }
         }

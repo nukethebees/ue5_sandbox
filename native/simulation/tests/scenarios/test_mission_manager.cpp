@@ -3,6 +3,7 @@
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/mission_manager.h>
+#include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 
 namespace ioj::sim {
@@ -131,8 +132,7 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
         sample.kill_target = manager.get_kill_target();
         auto const survivors{manager.get_entity_ids_that_must_survive()};
         sample.survivor_alive =
-            !survivors.empty() &&
-            harness.get_simulation().get_agent_accessor().is_alive(survivors[0]);
+            !survivors.empty() && entity_is_alive(harness.get_simulation(), survivors[0]);
         auto const survivor_health{manager.get_entity_health_that_must_survive()};
         sample.survivor_health = survivor_health.empty() ? 0 : survivor_health[0].health;
         auto const required_health{manager.get_entity_health_required_to_kill()};

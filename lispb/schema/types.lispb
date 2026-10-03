@@ -125,12 +125,7 @@
   :pass-by value)
 
 ; The explicit constructor and private representation remain owned by C++.
-(type native_health_index
-  :spelling "ioj::sim::HealthIndex"
-  :header "ioj/sim/health_index.h"
-  :pass-by value
-  (integer :signed false :bit-width 32 :minimum 0 :maximum 4294967294
-    (code Invalid :value 4294967295 :sentinel true)))
+
 
 (type native_health_const_view
   :spelling "HealthConstView"

@@ -2,6 +2,7 @@
 
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/spatial_query_manager.h>
+#include <ioj/sim/testing/level_sim_test_access.h>
 
 namespace ioj::sim {
 void run_worldless_spatial_query_empty(tests::SimulationFixture const& config) {
@@ -10,6 +11,7 @@ void run_worldless_spatial_query_empty(tests::SimulationFixture const& config) {
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
+    LevelSimTestAccess::enter_thinking_phase(harness.get_simulation());
     auto const& queries{harness.get_simulation().get_spatial_query_manager()};
     std::vector<EntityUniqueId> ids{};
     Vectors3f starts;
@@ -36,6 +38,7 @@ void run_worldless_spatial_query_range(tests::SimulationFixture const& config) {
     tests::add_capital_spawn(data, Vector3f{{1000.1f, 0.f, 0.f}}, Team::Red);
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
+    LevelSimTestAccess::enter_thinking_phase(harness.get_simulation());
     auto const ignored_origin{harness.get_simulation().get_capital_ships().get_id(0)};
     auto const friendly{harness.get_simulation().get_capital_ships().get_id(1)};
     auto const boundary_enemy{harness.get_simulation().get_capital_ships().get_id(2)};

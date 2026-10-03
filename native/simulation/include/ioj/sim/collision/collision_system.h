@@ -14,7 +14,7 @@ class FrameScratchResource;
 }
 
 namespace ioj::sim {
-class AgentAccessor;
+struct EntityTables;
 struct SpatialQueryManager;
 struct SpatialQueryManagerTestAccess;
 }
@@ -29,7 +29,7 @@ class CollisionSystem {
     /* **************************************** */
     // Construction and setup
     /* **************************************** */
-    explicit CollisionSystem(AgentAccessor const& agents,
+    explicit CollisionSystem(EntityTables const& agents,
                              std::pmr::memory_resource* resource) noexcept;
     CollisionSystem(CollisionSystem const&) = delete;
     CollisionSystem(CollisionSystem&&) = delete;
@@ -71,7 +71,7 @@ class CollisionSystem {
     /* **************************************** */
     // State
     /* **************************************** */
-    AgentAccessor const& agents_;
+    EntityTables const& entity_tables_;
     CollisionUniformGrid uniform_grid_;
 
     EntityAABBs entity_aabbs_{};

@@ -3,6 +3,7 @@
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <ioj/sim/world_aabb_operations.h>
@@ -63,7 +64,7 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
     };
     ml::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim& simulation) {
-        auto const target_state{simulation.get_agent_accessor().read(target)};
+        auto const target_state{observe_entity(simulation, target)};
         samples.add(harness.get_time(),
                     Sample{lasers.get_num_instances(),
                            lasers.get_number_spawned(),
@@ -72,10 +73,8 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
                            harness.get_ledger().count_kills()});
     };
     harness.timeline.at(projectile_queue_time, [&] {
-        auto const shooter_location{
-            harness.get_simulation().get_agent_accessor().read(shooter)->location};
-        auto const target_location{
-            harness.get_simulation().get_agent_accessor().read(target)->location};
+        auto const shooter_location{observe_entity(harness.get_simulation(), shooter)->location};
+        auto const target_location{observe_entity(harness.get_simulation(), target)->location};
         auto const shooter_radius{
             harness.get_simulation().get_spatial_query_manager().get_entity_type_radius(
                 shooter.entity_type())};

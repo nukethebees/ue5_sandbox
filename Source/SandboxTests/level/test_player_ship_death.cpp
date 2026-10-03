@@ -1,4 +1,5 @@
 #include "test_player_ship_death_scenario.h"
+#include <ioj/sim/testing/entity_observations.h>
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
@@ -92,18 +93,16 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
 
     auto const* const controller{
         Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
-    samples.add(
-        test_driver->get_time(),
-        FSimulationSample{
-            !test_driver->orchestrator.get_level_simulation()->get_agent_accessor().is_alive(
-                player_ship_id),
-            IsValid(player_ship.Get()),
-            unique_entities
-                    .life_state()[test_driver->get_ledger().get_history_index(player_ship_id)] ==
-                ::ioj::sim::LifeState::Alive,
-            IsValid(controller) && IsValid(controller->GetPawn()),
-            IsValid(controller) &&
-                controller->get_active_control_context() == EPlayerControlContext::Player});
+    samples.add(test_driver->get_time(),
+                FSimulationSample{
+                    !::ioj::sim::entity_is_alive(*test_driver->orchestrator.get_level_simulation(),
+                                                 player_ship_id),
+                    IsValid(player_ship.Get()),
+                    unique_entities.life_state()[test_driver->get_ledger().get_history_index(
+                        player_ship_id)] == ::ioj::sim::LifeState::Alive,
+                    IsValid(controller) && IsValid(controller->GetPawn()),
+                    IsValid(controller) &&
+                        controller->get_active_control_context() == EPlayerControlContext::Player});
 }
 
 void FTestPlayerShipDeathScenario::check_player_ship_death() {

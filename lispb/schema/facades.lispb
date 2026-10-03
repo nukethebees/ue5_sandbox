@@ -163,7 +163,8 @@
     (method generate_fire_commands void
       (parameter scratch_resource "ml::FrameScratchResource&"))
     (method commit_spawns void)
-    (method resolve_damage_events void)
+    (method resolve_damage_events void
+      (parameter scratch_resource "ml::FrameScratchResource&"))
     (method publish_deaths void)
     (method remove_components void)
     (method remove_entities void)

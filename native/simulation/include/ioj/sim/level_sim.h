@@ -1,10 +1,10 @@
 #pragma once
-#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/capital_ships/phase_interface.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/team_list.h>
 #include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/fighters/phase_interface.h>
 #include <ioj/sim/fighters/sim.h>
@@ -145,8 +145,6 @@ struct LevelSim {
     auto get_spinners() const -> spinners::Sim const& { return spinners_simulation_; }
     auto get_entity_ledger() const -> EntityLedger const& { return entity_ledger_; }
     auto get_entity_tables() const -> EntityTables const& { return entity_tables_; }
-    auto get_agent_indexes() const -> AgentIndices const& { return agent_indexes_; }
-    auto get_agent_accessor() const -> AgentAccessor const& { return agent_accessor_; }
     auto get_mission_manager() const -> MissionManager const& { return mission_manager_; }
     auto get_spatial_query_manager() const -> SpatialQueryManager const& { return query_manager_; }
     auto get_level_telemetry_manager() const -> LevelTelemetryManager const& {
@@ -166,7 +164,6 @@ struct LevelSim {
     void initialise_spatial_queries(LevelSimInitData& data);
     void begin_subsystems();
     void initialise_events(CompiledLevelEvents events);
-    void rebuild_agent_indexes();
 
 #ifndef NDEBUG
     /* **************************************** */
@@ -175,7 +172,6 @@ struct LevelSim {
     struct ThinkingEntityState {
         EntityUniqueId id;
         std::uint32_t row{};
-        HealthIndex health_index;
         Health health{};
         Team team{};
         std::array<double, 3> location{};
@@ -205,9 +201,7 @@ struct LevelSim {
     ml::FrameMemoryResource frame_memory_;
     EntityLedger entity_ledger_;
     CombatEvents combat_events_{entity_ledger_};
-    AgentIndices agent_indexes_{clock_};
-    EntityTables entity_tables_{agent_indexes_};
-    AgentAccessor agent_accessor_{agent_indexes_, entity_tables_.health};
+    EntityTables entity_tables_{clock_};
     SpatialQueryManager query_manager_;
     OverlapHandler overlap_handler_;
     std::vector<EntityUniqueId> overlap_candidates_;

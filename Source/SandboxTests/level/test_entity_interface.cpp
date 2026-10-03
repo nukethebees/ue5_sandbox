@@ -1,6 +1,6 @@
 #include "test_entity_interface_scenario.h"
-#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/testing/entity_observations.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>
@@ -138,9 +138,9 @@ void FEntityInterfaceScenario::sample_values() {
     capital_target_ids.add(time, MoveTemp(target_ids));
 
     TArray<uint8> target_alive;
-    auto const& agents{*capitals->get_read_view().agents};
+    auto const& simulation{*test_driver->orchestrator.get_level_simulation()};
     for (auto const handle : capitals->get_target_ids()) {
-        target_alive.Add(agents.is_alive(handle));
+        target_alive.Add(::ioj::sim::entity_is_alive(simulation, handle));
     }
     capital_target_alive.add(time, MoveTemp(target_alive));
 }

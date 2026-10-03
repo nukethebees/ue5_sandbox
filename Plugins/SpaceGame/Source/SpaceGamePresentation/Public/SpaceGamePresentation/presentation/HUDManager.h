@@ -36,7 +36,7 @@ class UInstancedStaticMeshComponent;
 namespace ioj::sim {
 struct MissionManager;
 struct SpatialQueryManager;
-class AgentAccessor;
+struct EntityTables;
 }
 namespace ioj::sim::player {
 struct Sim;
@@ -161,7 +161,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     void initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                     ::ioj::sim::MissionManager const& new_mission_manager,
                     ::ioj::sim::EntityLedger const& new_entity_ledger,
-                    ::ioj::sim::AgentAccessor const& new_agents,
+                    ::ioj::sim::EntityTables const& new_entity_tables,
                     ::ioj::sim::SpatialQueryManager const& new_spatial_query_manager,
                     ::ioj::sim::player::Sim const* new_player_ship,
                     FLevelVisualConfig const& level_config,
@@ -237,7 +237,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
                                bool render_world_target);
     void configure_world_soft_target_renderer();
     void clear_world_soft_targets();
-    void add_world_soft_target(::ioj::sim::EntityUniqueId id,
+    void add_world_soft_target(TOptional<FVector> const& location,
                                float range_alpha,
                                float indicator_radius_pixels,
                                float world_units_per_pixel,
@@ -271,7 +271,7 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     ::ioj::sim::player::Sim const* player_ship{nullptr};
     ::ioj::sim::MissionManager const* mission_manager{nullptr};
     ::ioj::sim::EntityLedger const* entity_ledger{nullptr};
-    ::ioj::sim::AgentAccessor const* agents_{nullptr};
+    ::ioj::sim::EntityTables const* entity_tables_{nullptr};
     ::ioj::sim::SpatialQueryManager const* spatial_query_manager{nullptr};
     ::ioj::sim::FixedTickLoop tick_loop_{};
     ml::PeriodicTickCountdown8 update_timers;

@@ -1,6 +1,6 @@
 #pragma once
-#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/entity_death_info.h>
+#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/levels/level_runtime_events.h>
@@ -34,7 +34,6 @@ struct Sim {
         EntityLedger& ledger,
         CombatEvents const& combat_events,
         EntityTables& entity_tables,
-        AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& laser_simulation) noexcept;
     Sim(Sim const&) = delete;
@@ -48,8 +47,7 @@ struct Sim {
     auto get_read_view() const -> TurretReadView {
         auto const entity_data{entities.get_const_view()};
         return {entity_data,
-                entity_tables_.health.get_const_view(entity_data.health_indices(),
-                                                     entity_data.entity_ids()),
+                entity_tables_.health.get_const_view<EntityType::Turret>(entity_data.num()),
                 frame_changes_,
                 death_locations_};
     }
@@ -74,6 +72,7 @@ struct Sim {
     // Sim phases
     /* **************************************** */
     void begin_play();
+    void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(float dt, ml::FrameScratchResource& scratch_resource);
     void generate_fire_commands(ml::FrameScratchResource& scratch_resource);
@@ -126,7 +125,6 @@ struct Sim {
     EntityLedger& ledger_;
     CombatEvents const& combat_events_;
     EntityTables& entity_tables_;
-    AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
     lasers::Sim& laser_simulation;
     EntityStorage entities{};

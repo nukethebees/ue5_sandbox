@@ -1,6 +1,6 @@
 #pragma once
-#include <ioj/sim/agent_indices.h>
 #include <ioj/sim/direct_damage_events.h>
+#include <ioj/sim/entity_lookup_table.h>
 #include <ioj/sim/health_table.h>
 
 #include <cstdint>
@@ -15,7 +15,7 @@ namespace ioj::sim::batch {
 void sort_and_deduplicate_removal_indices(std::vector<std::uint32_t>& local_indices_to_remove);
 
 void resolve_damage_events(DirectDamageEventsConstView damage_events,
-                           AgentIndices const& indexes,
+                           EntityLookupTable const& lookup,
                            [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
                            HealthView healths,
                            std::vector<std::uint32_t>& local_indices_to_remove,

@@ -3,6 +3,7 @@
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/fighters/sim.h>
+#include <ioj/sim/testing/entity_observations.h>
 
 namespace ioj::sim {
 namespace fighters_standby_test {
@@ -47,8 +48,7 @@ void run_worldless_fighters_standby_transition(tests::SimulationFixture const& c
         auto const parents{fighters.get_parent_ids()};
         sample.parents.insert(sample.parents.end(), parents.begin(), parents.end());
         for (auto const id : fighters.get_entity_ids()) {
-            sample.velocities.push_back(
-                harness.get_simulation().get_agent_accessor().read(id)->velocity);
+            sample.velocities.push_back(observe_entity(harness.get_simulation(), id)->velocity);
         }
         samples.add(harness.get_time(), std::move(sample));
     };

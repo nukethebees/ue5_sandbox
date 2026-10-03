@@ -1,3 +1,4 @@
+#include <ioj/sim/entity_tables.h>
 #pragma once
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/health_table.h>
@@ -58,7 +59,7 @@ struct Sim {
     Sim(SimClock const& clock,
         EntityLedger& ledger,
         CombatEvents const& combat_events,
-        HealthTable& health_table,
+        EntityTables& entity_tables,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& lasers);
     Sim(Sim const&) = delete;
@@ -141,7 +142,6 @@ struct Sim {
     /* **************************************** */
     void add_health(Health added_health);
     [[nodiscard]] auto get_health() const -> ShipHealth;
-    [[nodiscard]] auto get_health_index() const noexcept -> HealthIndex { return health_index_; }
     [[nodiscard]] auto is_alive() const -> bool;
     auto consume_death_notification() noexcept -> bool;
 
@@ -192,6 +192,7 @@ struct Sim {
     // Tick phases
     /* **************************************** */
     void begin_play();
+    void update_entity_lookup_table();
     void prepare_tick(float dt);
     void think(float dt);
     void apply_movement();
@@ -223,7 +224,6 @@ struct Sim {
     // Health
     /* **************************************** */
     void set_health(Health new_health, EntityUniqueId killer = {});
-    auto health_ref() -> Health&;
     void die(EntityUniqueId killer);
 
     /* **************************************** */
@@ -242,11 +242,11 @@ struct Sim {
     PlayerSimConfig config{};
     EntityLedger& ledger_;
     CombatEvents const& combat_events_;
+    EntityTables& entity_tables_;
     HealthTable& health_table_;
     SpatialQueryManager const& spatial_query_manager;
     lasers::Sim& lasers;
     SimClock const& simulation_clock;
-    HealthIndex health_index_{};
     Health max_health_{1000};
     bool death_notification_pending{false};
 };

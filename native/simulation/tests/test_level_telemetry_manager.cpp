@@ -1,6 +1,6 @@
-#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/level_telemetry_manager.h>
 #include <ioj/sim/sim_clock.h>
@@ -39,10 +39,8 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     clock.initialise({});
     EntityLedger entity_ledger;
     CombatEvents combat_events{entity_ledger};
-    AgentIndices indexes{clock};
-    HealthTable health_table;
-    AgentAccessor agents{indexes, health_table};
-    SpatialQueryManager spatial_queries{agents};
+    EntityTables tables{clock};
+    SpatialQueryManager spatial_queries{tables};
     lasers::Sim lasers{clock, combat_events, spatial_queries};
     GameMemory game_memory{{.root_capacity_bytes = std::size_t{2} * 1024 * 1024}};
     LevelTelemetryManager telemetry_manager{

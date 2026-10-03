@@ -1,5 +1,6 @@
 #include "test_capital_ship_proxy_scenario.h"
 #include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/testing/entity_observations.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
@@ -73,20 +74,21 @@ void FTestCapitalShipProxyScenario::check_proxy_healths() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     auto const& capitals{driver.get_capital_ships()};
-    auto const& agents{driver.orchestrator.get_level_simulation()->get_agent_accessor()};
+    auto const& simulation{*driver.orchestrator.get_level_simulation()};
 
     checks.are_equal(
         2u, capitals.get_num_instances(), TEXT("Two capital ships are spawned from the proxies"));
-    checks.is_true(agents.is_alive(default_health_id), TEXT("Default-health proxy ID is alive"));
-    checks.is_true(agents.is_alive(overridden_health_id),
+    checks.is_true(::ioj::sim::entity_is_alive(simulation, default_health_id),
+                   TEXT("Default-health proxy ID is alive"));
+    checks.is_true(::ioj::sim::entity_is_alive(simulation, overridden_health_id),
                    TEXT("Overridden-health proxy ID is alive"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     checks.are_equal(default_health,
-                     agents.read(default_health_id)->health,
+                     ::ioj::sim::observe_entity(simulation, default_health_id)->health,
                      TEXT("Nullopt proxy health uses the capital-ship config"));
     checks.are_equal(overridden_health,
-                     agents.read(overridden_health_id)->health,
+                     ::ioj::sim::observe_entity(simulation, overridden_health_id)->health,
                      TEXT("Proxy health overrides the capital-ship config"));
 
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);

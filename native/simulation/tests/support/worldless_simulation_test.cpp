@@ -1,6 +1,7 @@
 #include "worldless_simulation_test.h"
 
 #include <ioj/sim/column_math.h>
+#include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 
 #include <algorithm>
@@ -35,7 +36,7 @@ void WorldlessSimulationTest::queue_kills(std::span<EntityUniqueId const> const 
     DirectDamageEvents events;
     events.reserve(static_cast<std::int32_t>(targets.size()));
     for (auto const target : targets) {
-        auto const state{simulation_.get_agent_accessor().read(target)};
+        auto const state{observe_entity(simulation_, target)};
         assert(state);
         events.add(target, std::max(1, state->health), instigator);
     }

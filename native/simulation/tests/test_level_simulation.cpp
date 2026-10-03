@@ -1,5 +1,6 @@
 #include "support/simulation_test_support.h"
 #include <ioj/sim/column_math.h>
+#include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <ioj/sim/world_aabb_operations.h>
@@ -90,32 +91,20 @@ void kill_enemy(LevelSim& simulation) {
 void expect_health_mappings(LevelSim const& simulation) {
     auto const world{simulation.get_read_view()};
     auto const& table{simulation.get_entity_tables().health};
-    std::int32_t expected_count{};
-    auto validate = [&](auto const& entities, HealthConstView const healths) {
+    auto validate = [&]<EntityType Type>(auto const& entities, HealthConstView const healths) {
         ASSERT_EQ(healths.num(), entities.num());
-        expected_count += entities.num();
-        auto const entity_count{entities.num()};
-        auto const entity_ids{entities.entity_ids()};
-        auto const health_indices{healths.indices()};
-        for (std::uint32_t row{}; row < entity_count; ++row) {
-            auto const element{static_cast<std::size_t>(row)};
-            auto const id{entity_ids[element]};
-            auto const index{health_indices[element]};
-            EXPECT_TRUE(table.contains(index, id));
-            EXPECT_EQ(table.get_health(index, id), healths.health(row));
-        }
+        auto const direct{table.get_const_view<Type>(entities.num())};
+        EXPECT_EQ(direct.values().data(), healths.values().data());
+        EXPECT_EQ(direct.num(), healths.num());
     };
 
-    validate(world.capitals.entities, world.capitals.healths);
-    validate(world.fighters.entities, world.fighters.healths);
-    validate(world.turrets.entities, world.turrets.healths);
+    validate.operator()<EntityType::CapitalShip>(world.capitals.entities, world.capitals.healths);
+    validate.operator()<EntityType::Fighter>(world.fighters.entities, world.fighters.healths);
+    validate.operator()<EntityType::Turret>(world.turrets.entities, world.turrets.healths);
     if (auto const* const player{simulation.get_player_ship_simulation()}) {
-        ++expected_count;
-        EXPECT_TRUE(table.contains(player->get_health_index(), player->unique_entity_id));
-        EXPECT_EQ(table.get_health(player->get_health_index(), player->unique_entity_id),
+        EXPECT_EQ(table.get_const_view<EntityType::PlayerShip>(1).health(0),
                   player->get_health().health);
     }
-    EXPECT_EQ(table.num_slots(), expected_count);
 }
 }
 
@@ -294,16 +283,17 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     EXPECT_EQ(simulation.get_entity_ledger().count_alive(), 5)
         << "Every compiled initial entity is registered";
     auto const& health_table{simulation.get_entity_tables().health};
-    EXPECT_TRUE(health_table.contains(player->get_health_index(), player->unique_entity_id))
-        << "Player health is allocated in the world health table";
+    EXPECT_EQ(health_table.get_const_view<EntityType::PlayerShip>(1).health(0),
+              player->get_health().health)
+        << "Player health is stored in the world health table";
     auto const turret_view{simulation.get_turrets().get_read_view()};
     auto const turrets{turret_view.entities};
     auto const turret_count{turrets.num()};
     auto const turret_teams{turrets.teams()};
+    auto const turret_healths{health_table.get_const_view<EntityType::Turret>(turret_count)};
     for (std::uint32_t i{}; i < turret_count; ++i) {
         auto const rotated{turret_teams[i] == Team::Green};
-        EXPECT_TRUE(
-            health_table.contains(turret_view.healths.indices()[i], turrets.entity_ids()[i]))
+        EXPECT_EQ(turret_healths.health(i), turret_view.healths.health(i))
             << "Turret health is allocated in the world health table";
         EXPECT_EQ(turret_view.healths.health(i), rotated ? 20 : 30)
             << "Compiled turret health is retained";
@@ -397,14 +387,13 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), fighter_count_before - 2);
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 1);
     EXPECT_TRUE(is_dead(player->get_health().health));
-    EXPECT_EQ(simulation.get_agent_indexes().find(player->unique_entity_id), 0);
-    EXPECT_FALSE(simulation.get_agent_accessor().read(player->unique_entity_id));
+    EXPECT_EQ(observe_entity_row(simulation, player->unique_entity_id),
+              EntityInstanceHandle::invalid_value);
+    EXPECT_FALSE(observe_entity(simulation, player->unique_entity_id));
 
-    auto const slots_after_removal{simulation.get_entity_tables().health.num_slots()};
     simulation.advance(tick_period);
     expect_health_mappings(simulation);
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 2);
-    EXPECT_EQ(simulation.get_entity_tables().health.num_slots(), slots_after_removal + 1);
 }
 
 TEST(NativeSimulation, LevelSimReconstructionTest) {
@@ -505,19 +494,18 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
             << "The tick captures one unique dynamic overlap";
         EXPECT_EQ(events.entity_static_overlaps.num(), 0) << "The tick captures no static overlap";
 
-        EXPECT_EQ(simulation.get_agent_accessor().read(capital)->health,
-                  5000 - (overlap_detection + 1) * 50)
+        EXPECT_EQ(observe_entity(simulation, capital)->health, 5000 - (overlap_detection + 1) * 50)
             << "The high-health capital receives damage in the detection tick";
         if (overlap_detection < 2) {
-            EXPECT_EQ(simulation.get_agent_accessor().read(player_id)->health,
+            EXPECT_EQ(observe_entity(simulation, player_id)->health,
                       150 - (overlap_detection + 1) * 50)
                 << "The low-health entity receives damage in the detection tick";
         }
     }
 
-    EXPECT_FALSE(simulation.get_agent_accessor().is_alive(player_id))
+    EXPECT_FALSE(entity_is_alive(simulation, player_id))
         << "The low-health entity dies after three detected overlaps";
-    EXPECT_EQ(simulation.get_agent_accessor().read(capital)->health, 4850)
+    EXPECT_EQ(observe_entity(simulation, capital)->health, 4850)
         << "The capital receives one contribution per detected tick";
     EXPECT_TRUE(ledger.get_unique_entities().life_state()[ledger.get_history_index(player_id)] ==
                 LifeState::Unknown)

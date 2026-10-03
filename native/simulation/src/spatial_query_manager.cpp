@@ -1,7 +1,7 @@
 #include "ioj/sim/spatial_query_manager.h"
 
-#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/column_math.h>
+#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/entity_world_bounds.h>
 #include <ioj/sim/line_trace_batch.h>
 #include <ioj/sim/profiling.h>
@@ -189,7 +189,7 @@ namespace ioj::sim {
 namespace {
 template <typename IncludeEntity>
 auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
-                               AgentAccessor const& agents,
+                               EntityTables const& agents,
                                QueryThreadBuffers& buffers,
                                Vector3f const origin,
                                float const radius,
@@ -213,7 +213,7 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
     max_coord = max_coord.component_min(max_grid_coord);
 
     auto& entity_stamps{buffers.range_query_entity_stamps};
-    auto const counts{agents.entity_counts()};
+    auto const counts{entity_counts(agents)};
     EntityTypeSizes offsets;
     std::uint32_t total_count{};
     auto const entity_type_count{EntityTypeSizes::size()};
@@ -225,6 +225,13 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
     buffers.ensure_entity_stamp_count(static_cast<std::uint32_t>(total_count));
     auto const query_stamp{buffers.advance_range_query_stamp()};
     auto const radius_squared{radius * radius};
+    buffers.candidates.clear();
+    std::array<std::span<EntityInstanceHandle const>, EntityTypeSizes::size()> handles;
+    for (auto const type : ml::EnumTraits<EntityType>::values) {
+        // Bind each type's table once before scanning.
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
+        handles[std::to_underlying(type)] = agents.lookups.for_type(type).entries();
+    }
     std::uint32_t count{};
 
     for (auto x{min_coord.x}; x <= max_coord.x; ++x) {
@@ -233,10 +240,10 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                 // Each grid coordinate selects a different cell.
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 for (auto const id : grid.get_cell_entities({x, y, z})) {
-                    auto const local_index{agents.indexes().find(id)};
-                    if (local_index == AgentIndices::invalid_index) {
-                        continue;
-                    }
+                    auto const local_index{
+                        // Select the already-bound span for this entity's type.
+                        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
+                        handles[std::to_underlying(id.entity_type())][id.index()].index()};
 
                     auto const entity_index{static_cast<std::size_t>(offsets[id.entity_type()]) +
                                             static_cast<std::size_t>(local_index)};
@@ -245,40 +252,42 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                     }
                     entity_stamps[entity_index] = query_stamp;
 
-                    auto const state{agents.read_spatial(id)};
-                    if (!state || is_dead(state->health) || !include_entity(id, *state)) {
-                        continue;
-                    }
-
-                    auto const dx{state->location.X - origin.X};
-                    auto const dy{state->location.Y - origin.Y};
-                    auto const dz{state->location.Z - origin.Z};
-                    auto const distance_squared{dx * dx + dy * dy + dz * dz};
-                    if (distance_squared > radius_squared) {
-                        continue;
-                    }
-
-                    out_entities[static_cast<std::size_t>(count++)] = id;
-                    if (count >= static_cast<std::uint32_t>(out_entities.size())) {
-                        return count;
-                    }
+                    buffers.candidates.push_back(id);
                 }
             }
         }
     }
 
+    buffers.gather_candidates(agents);
+    auto const locations{buffers.candidate_locations()};
+    auto const candidate_count{buffers.candidates.size()};
+    for (std::size_t index{}; index < candidate_count; ++index) {
+        auto const id{buffers.candidates[index]};
+        if (!buffers.candidate_alive[index] ||
+            !include_entity(id, buffers.candidate_teams[index])) {
+            continue;
+        }
+        auto const delta{locations[static_cast<std::uint32_t>(index)] - origin};
+        if (HMM_LenSqrV3(delta) > radius_squared) {
+            continue;
+        }
+        out_entities[count++] = id;
+        if (count == out_entities.size()) {
+            break;
+        }
+    }
+
     return count;
 }
-auto find_any_non_team_entity(AgentAccessor const& agents,
+auto find_any_non_team_entity(EntityTables const& agents,
                               Team const excluded_team,
                               std::optional<EntityType> const type = {}) -> EntityUniqueId {
     EntityUniqueId result;
-    agents.for_each_alive_spatial(
-        [&](EntityUniqueId const id, Vector3f, Rotator3f, Team const team) {
-            if (team != excluded_team && (!type || id.entity_type() == *type) && id < result) {
-                result = id;
-            }
-        });
+    visit_live_entities(agents, [&](EntityUniqueId const id, Vector3f, Rotator3f, Team const team) {
+        if (team != excluded_team && (!type || id.entity_type() == *type) && id < result) {
+            result = id;
+        }
+    });
     return result;
 }
 } // namespace
@@ -318,10 +327,10 @@ void SpatialQueryManager::release_thread_buffer(std::uint32_t const index) const
 /* **************************************** */
 // Construction and setup
 /* **************************************** */
-SpatialQueryManager::SpatialQueryManager(AgentAccessor const& agents,
+SpatialQueryManager::SpatialQueryManager(EntityTables const& agents,
                                          std::pmr::memory_resource* resource,
                                          std::pmr::memory_resource* query_resource)
-    : agents_{agents}
+    : entity_tables_{agents}
     , thread_buffer_pool_{resource, query_resource}
     , collision_system_{agents, resource} {}
 
@@ -467,12 +476,12 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
             "Sandbox::SpatialQueryManager::collect_non_team_entities_in_range::loop");
         return collect_entities_in_range(
             grid,
-            agents_,
+            entity_tables_,
             buffer_lease.get(),
             origin,
             radius,
             out_entities,
-            [team](EntityUniqueId, AgentSpatialState const& state) { return state.team != team; });
+            [team](EntityUniqueId, Team const candidate_team) { return candidate_team != team; });
     }
 }
 
@@ -491,26 +500,26 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     auto const& grid{collision_system_.uniform_grid_};
     validate_grid_for_range_query(grid, origin, radius);
     query_manager::ThreadBufferLease const buffer_lease{*this};
-    return collect_entities_in_range(
-        grid,
-        agents_,
-        buffer_lease.get(),
-        origin,
-        radius,
-        out_entities,
-        [entity_type, ignored_entity](EntityUniqueId const id, AgentSpatialState const&) {
-            return id != ignored_entity && id.entity_type() == entity_type;
-        });
+    return collect_entities_in_range(grid,
+                                     entity_tables_,
+                                     buffer_lease.get(),
+                                     origin,
+                                     radius,
+                                     out_entities,
+                                     [entity_type, ignored_entity](EntityUniqueId const id, Team) {
+                                         return id != ignored_entity &&
+                                                id.entity_type() == entity_type;
+                                     });
 }
 
 auto SpatialQueryManager::get_any_non_team_entity(Team const team) const -> EntityUniqueId {
-    return find_any_non_team_entity(agents_, team);
+    return find_any_non_team_entity(entity_tables_, team);
 }
 
 auto SpatialQueryManager::get_any_non_team_entity(Team const team,
                                                   EntityType const entity_type) const
     -> EntityUniqueId {
-    return find_any_non_team_entity(agents_, team, entity_type);
+    return find_any_non_team_entity(entity_tables_, team, entity_type);
 }
 
 void SpatialQueryManager::are_spheres_in_bounds(
@@ -534,9 +543,16 @@ void SpatialQueryManager::copy_entity_radii(std::span<EntityUniqueId const> cons
     assert(ids.size() == out_radii.size());
 
     auto const count{ids.size()};
+    query_manager::ThreadBufferLease const buffer_lease{*this};
+    auto& buffers{buffer_lease.get()};
+    buffers.candidate_order.resize(count);
+    buffers.candidate_alive.resize(count);
+    gather_entities(
+        entity_tables_, ids, buffers.candidate_order, {.alive = buffers.candidate_alive});
     for (std::size_t index{}; index < count; ++index) {
         auto const id{ids[index]};
-        out_radii[index] = agents_.is_alive(id) ? get_entity_type_radius(id.entity_type()) : 0.f;
+        out_radii[index] =
+            buffers.candidate_alive[index] ? get_entity_type_radius(id.entity_type()) : 0.f;
     }
 }
 

@@ -1,5 +1,5 @@
-#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/column_math.h>
+#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/frame_range_query_results.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spatial_query_manager.h>
@@ -50,7 +50,7 @@ struct MatchSource {
 };
 
 void collect_request_matches(collision::CollisionUniformGrid const& grid,
-                             AgentAccessor const& agents,
+                             EntityTables const& agents,
                              EntityTypeSizes const& entity_offsets,
                              collision::CellCoord const max_grid_coord,
                              Vector3f const radius_extent,
@@ -76,16 +76,26 @@ void collect_request_matches(collision::CollisionUniformGrid const& grid,
     // Start a fresh deduplication pass without clearing the stamp buffer.
     auto& stamps{worker.query_buffers.range_query_entity_stamps};
     auto const stamp{worker.query_buffers.advance_range_query_stamp()};
-    auto const& indices{agents.indexes()};
+    auto& buffers{worker.query_buffers};
+    buffers.candidates.clear();
+    std::array<std::span<EntityInstanceHandle const>, EntityTypeSizes::size()> handles;
+    for (auto const type : ml::EnumTraits<EntityType>::values) {
+        // Bind each type's table once before scanning.
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
+        handles[std::to_underlying(type)] = agents.lookups.for_type(type).entries();
+    }
 
     // Rely on the Thinking phase invariants for live membership and valid entity indices.
     for (auto x{min_coord.x}; x <= max_coord.x; ++x) {
         for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
             for (auto z{min_coord.z}; z <= max_coord.z; ++z) {
-                // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- each cell selects different
-                // members.
+                // Select the members for this cell.
+                // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 for (auto const id : grid.get_cell_entities({x, y, z})) {
-                    auto const local_index{indices.find(id)};
+                    auto const local_index{
+                        // Select the already-bound span for this entity's type.
+                        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
+                        handles[std::to_underlying(id.entity_type())][id.index()].index()};
 
                     // Visit each entity once, even if it occupies several cells.
                     auto const entity_index{entity_offsets[id.entity_type()] + local_index};
@@ -95,27 +105,32 @@ void collect_request_matches(collision::CollisionUniformGrid const& grid,
 
                     stamps[entity_index] = stamp;
 
-                    // Exclude teammates before calculating distance.
-                    auto const state{agents.read_spatial(id)};
-                    if (state->team == excluded_team) {
-                        continue;
-                    }
-
-                    // Reject bounding-box candidates outside the scan sphere.
-                    auto const delta{state->location - origin};
-                    auto const distance_squared{HMM_LenSqrV3(delta)};
-                    if (distance_squared > radius_squared) {
-                        continue;
-                    }
-
-                    // Store the match with a zero direction for coincident positions.
-                    auto const distance{std::sqrt(distance_squared)};
-                    auto const direction{distance_squared < 1.e-8f ? Vector3f{}
-                                                                   : delta * (1.f / distance)};
-                    worker.matches.push_back({id, distance, direction});
+                    buffers.candidates.push_back(id);
                 }
             }
         }
+    }
+
+    // Gather candidate columns in contiguous entity-type runs.
+    buffers.gather_candidates(agents);
+    auto const locations{buffers.candidate_locations()};
+    auto const count{buffers.candidates.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        if (buffers.candidate_teams[index] == excluded_team) {
+            continue;
+        }
+
+        // Reject bounding-box candidates outside the scan sphere.
+        auto const delta{locations[static_cast<std::uint32_t>(index)] - origin};
+        auto const distance_squared{HMM_LenSqrV3(delta)};
+        if (distance_squared > radius_squared) {
+            continue;
+        }
+
+        // Preserve a zero direction for coincident positions.
+        auto const distance{std::sqrt(distance_squared)};
+        auto const direction{distance_squared < 1.e-8f ? Vector3f{} : delta * (1.f / distance)};
+        worker.matches.push_back({buffers.candidates[index], distance, direction});
     }
 }
 } // namespace ioj::sim::range_query
@@ -156,7 +171,7 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
         SANDBOX_PROFILE_SCOPE("prepare workers");
 
         // Map each entity type into a shared stamp index space.
-        auto const counts{agents_.entity_counts()};
+        auto const counts{entity_counts(entity_tables_)};
         EntityCount entity_count{};
         for (auto const type : ml::EnumTraits<EntityType>::values) {
             entity_offsets[type] = entity_count;
@@ -206,7 +221,7 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
                     auto const first{static_cast<MatchIndex>(size_before_scan)};
 
                     collect_request_matches(grid,
-                                            agents_,
+                                            entity_tables_,
                                             entity_offsets,
                                             max_grid_coord,
                                             radius_extent,

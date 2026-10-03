@@ -21,24 +21,6 @@ inline constexpr EntityTypeSizes entity_lifetime_capacities{[] {
     return capacities;
 }()};
 
-inline constexpr EntityTypeSizes entity_identity_offsets{[] {
-    EntityTypeSizes offsets;
-    std::uint32_t offset{};
-    auto const entity_type_count{EntityTypeSizes::size()};
-    for (std::size_t i{}; i < entity_type_count; ++i) {
-        auto const type{static_cast<EntityType>(i)};
-        offsets[type] = offset;
-        offset += entity_lifetime_capacities[type];
-    }
-    return offsets;
-}()};
-
-[[nodiscard]] inline constexpr auto entity_identity_offset(EntityType const type,
-                                                           std::uint32_t const ordinal) noexcept
-    -> std::uint32_t {
-    return entity_identity_offsets[type] + ordinal;
-}
-
 inline constexpr std::uint32_t entity_identity_capacity{[] {
     std::uint32_t count{};
     auto const entity_type_count{EntityTypeSizes::size()};
@@ -56,7 +38,6 @@ static_assert(entity_identity_capacity <= EntityUniqueId::index_field::value_mas
     }
     auto const type{id.entity_type()};
     auto const offset{id.index()};
-    auto const base{entity_identity_offsets[type]};
-    return offset >= base && offset - base < entity_lifetime_capacities[type];
+    return offset < entity_lifetime_capacities[type];
 }
 }

@@ -180,7 +180,7 @@ TEST(QueryScratch, ManagerBindsQueriesToEachEpochAndRestoresOutsideQueries) {
     owners.publish();
     query_scratch_detail::CountingResource bookkeeping;
     query_scratch_detail::CountingResource persistent;
-    SpatialQueryManager manager{owners.agents, &bookkeeping, &persistent};
+    SpatialQueryManager manager{owners.entity_tables, &bookkeeping, &persistent};
     query_scratch_detail::initialise_queries(manager);
     auto const trace{[&] {
         return manager.trace_closest(Vector3f{{-10.f, 0.f, 0.f}}, Vector3f{{10.f, 0.f, 0.f}});
@@ -216,7 +216,7 @@ TEST(QueryScratch, PublishedOverlapBatchesSurviveScratchEpochs) {
     std::array const ids{owners.spawn(EntityType::CapitalShip), owners.spawn(EntityType::Fighter)};
     owners.publish();
     query_scratch_detail::CountingResource persistent;
-    SpatialQueryManager manager{owners.agents, &persistent};
+    SpatialQueryManager manager{owners.entity_tables, &persistent};
     query_scratch_detail::initialise_queries(manager);
     query_scratch_detail::FrameBacking frame;
     // Resolve each epoch's outputs and each distinct batch.

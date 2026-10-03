@@ -4,7 +4,6 @@
 #pragma once
 
 #include "ioj/sim/entity_unique_id.h"
-#include "ioj/sim/health_index.h"
 #include "ioj/sim/team.h"
 
 #include "sandbox/core/native_soa/storage.h"
@@ -60,19 +59,18 @@ struct TurretEntityDataSingleLayout {
     inline static constexpr ColLayout<float> TargetVelocitiesXsColumn{TargetLocationsZsColumn};
     inline static constexpr ColLayout<float> TargetVelocitiesYsColumn{TargetVelocitiesXsColumn};
     inline static constexpr ColLayout<float> TargetVelocitiesZsColumn{TargetVelocitiesYsColumn};
-    inline static constexpr ColLayout<HealthIndex> HealthIndicesColumn{TargetVelocitiesZsColumn};
 
     inline static constexpr byte_size_type allocation_alignment{
-        HealthIndicesColumn.allocation_alignment};
+        TargetVelocitiesZsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::capacity_block_bound(HealthIndicesColumn)};
+        ml::native_soa::capacity_block_bound(TargetVelocitiesZsColumn)};
     inline static constexpr size_type max_capacity{
         ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : HealthIndicesColumn.data_end(blocks);
+        return blocks == 0 ? 0 : TargetVelocitiesZsColumn.data_end(blocks);
     }
     static_assert(max_capacity >= capacity_granularity);
 };
@@ -268,15 +266,6 @@ struct TurretEntityDataSingleViewImpl {
                     state_, offset_, Layout::TargetVelocitiesZsColumn.offset(blocks)),
                 count_};
     }
-    auto health_indices() const -> std::span<Element<HealthIndex>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<HealthIndex>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::HealthIndicesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_ids());
@@ -302,7 +291,6 @@ struct TurretEntityDataSingleViewImpl {
         func(view_target_velocities().xs());
         func(view_target_velocities().ys());
         func(view_target_velocities().zs());
-        func(health_indices());
     }
   private:
     template <bool>
@@ -404,7 +392,6 @@ struct TurretEntityData
         Element<float>* target_velocities_xs{};
         Element<float>* target_velocities_ys{};
         Element<float>* target_velocities_zs{};
-        Element<HealthIndex>* health_indices{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
             if (entity_ids == nullptr) {
                 return {};
@@ -431,8 +418,7 @@ struct TurretEntityData
                     target_locations_zs + offset,
                     target_velocities_xs + offset,
                     target_velocities_ys + offset,
-                    target_velocities_zs + offset,
-                    health_indices + offset};
+                    target_velocities_zs + offset};
         }
     };
     template <typename Self>
@@ -480,8 +466,7 @@ struct TurretEntityData
                 cursor.column_pointer(data, Layout::TargetLocationsZsColumn),
                 cursor.column_pointer(data, Layout::TargetVelocitiesXsColumn),
                 cursor.column_pointer(data, Layout::TargetVelocitiesYsColumn),
-                cursor.column_pointer(data, Layout::TargetVelocitiesZsColumn),
-                cursor.column_pointer(data, Layout::HealthIndicesColumn)};
+                cursor.column_pointer(data, Layout::TargetVelocitiesZsColumn)};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -516,7 +501,6 @@ struct TurretEntityData
         ml::native_soa::default_construct_n(columns.target_velocities_xs, count);
         ml::native_soa::default_construct_n(columns.target_velocities_ys, count);
         ml::native_soa::default_construct_n(columns.target_velocities_zs, count);
-        ml::native_soa::default_construct_n(columns.health_indices, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -578,8 +562,6 @@ struct TurretEntityData
         ml::native_soa::copy_n(columns.target_velocities_zs + index,
                                columns.target_velocities_zs + source,
                                move_count);
-        ml::native_soa::copy_n(
-            columns.health_indices + index, columns.health_indices + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -682,9 +664,6 @@ struct TurretEntityData
                                ml::native_soa::source_data(source.view_target_velocities().zs()) +
                                    source_first,
                                count);
-        ml::native_soa::copy_n(destination.health_indices,
-                               ml::native_soa::source_data(source.health_indices()) + source_first,
-                               count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -780,9 +759,6 @@ struct TurretEntityData
                                ml::native_soa::source_data(source.view_target_velocities().zs()) +
                                    source_first,
                                count);
-        ml::native_soa::move_n(destination.health_indices,
-                               ml::native_soa::source_data(source.health_indices()) + source_first,
-                               count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
@@ -819,7 +795,6 @@ struct TurretEntityData
         ml::native_soa::copy_n(destination.target_velocities_xs, source.target_velocities_xs, num_);
         ml::native_soa::copy_n(destination.target_velocities_ys, source.target_velocities_ys, num_);
         ml::native_soa::copy_n(destination.target_velocities_zs, source.target_velocities_zs, num_);
-        ml::native_soa::copy_n(destination.health_indices, source.health_indices, num_);
     }
   public:
 };

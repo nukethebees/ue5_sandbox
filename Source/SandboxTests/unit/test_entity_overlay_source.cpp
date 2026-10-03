@@ -32,14 +32,12 @@ auto make_view(ml::tests::FDisplayEntityTestData const& entities,
     auto const count{entities.num()};
     batches.reserve(count);
     for (int32 i{}; i < count; ++i) {
-        batches.push_back(
-            {entities.entity_types[static_cast<std::size_t>(i)],
-             ids.empty() ? ids : ids.subspan(i, 1),
-             entities.motion.get_const_view(i, 1).view_locations(),
-             entities.motion.get_const_view(i, 1).view_velocities(),
-             entities.health_table.get_const_view(std::span{entities.health_indices}.subspan(i, 1),
-                                                  std::span{entities.entity_ids}.subspan(i, 1)),
-             std::span{entities.teams}.subspan(i, 1)});
+        batches.push_back({entities.entity_types[static_cast<std::size_t>(i)],
+                           ids.empty() ? ids : ids.subspan(i, 1),
+                           entities.motion.get_const_view(i, 1).view_locations(),
+                           entities.motion.get_const_view(i, 1).view_velocities(),
+                           ::ioj::sim::HealthConstView{std::span{entities.healths}.subspan(i, 1)},
+                           std::span{entities.teams}.subspan(i, 1)});
     }
     return batches;
 }
@@ -59,9 +57,8 @@ void add_entity(ml::tests::FDisplayEntityTestData& entities,
     entity_type_radii[type] = radius;
     entities.teams[index] = ml::to_native(team);
     entities.entity_types[index] = type;
-    auto const owner{::ioj::sim::EntityUniqueId(
-        ::ioj::sim::entity_identity_offset(entities.entity_types[index], index),
-        entities.entity_types[index])};
+    auto const owner{::ioj::sim::EntityUniqueId(static_cast<std::uint32_t>(index),
+                                                entities.entity_types[index])};
     entities.add_health(index, owner, alive ? health : 0);
 }
 
@@ -81,7 +78,7 @@ auto make_forward_x_view() -> FEntityOverlayView {
 auto entity_id(ml::tests::FDisplayEntityTestData const& entities, int32 const index)
     -> ::ioj::sim::EntityUniqueId {
     auto const type{entities.entity_types[index]};
-    return ::ioj::sim::EntityUniqueId(::ioj::sim::entity_identity_offset(type, index), type);
+    return ::ioj::sim::EntityUniqueId(index, type);
 }
 
 auto select_target(ml::tests::FDisplayEntityTestData const& entities,

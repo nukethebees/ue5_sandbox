@@ -3,6 +3,7 @@
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/fighters/sim.h>
+#include <ioj/sim/testing/entity_observations.h>
 
 #include <set>
 
@@ -67,9 +68,8 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
             auto const owned{capitals.get_fighter_ids(i)};
             sample.owned_fighters.emplace_back(owned.begin(), owned.end());
             for (auto const fighter : owned) {
-                auto const fighter_index{simulation.get_agent_indexes().find(fighter)};
-                sample.fighter_teams.push_back(
-                    simulation.get_agent_accessor().read_alive(fighter)->team);
+                auto const fighter_index{observe_entity_row(simulation, fighter)};
+                sample.fighter_teams.push_back(observe_live_entity(simulation, fighter)->team);
                 sample.fighter_parents.push_back(parent_ids[fighter_index]);
             }
         }
@@ -220,8 +220,7 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
             auto const count{static_cast<std::int32_t>(ids.size())};
             auto const entity_ids{fighters.get_entity_ids()};
             for (std::int32_t i{}; i < count; ++i) {
-                auto const row{
-                    harness.get_simulation().get_agent_accessor().indexes().find(ids[i])};
+                auto const row{observe_entity_row(harness.get_simulation(), ids[i])};
                 (i % 2 == 0 ? destroyed : kept).push_back(entity_ids[row]);
             }
             harness.queue_kills(std::span<EntityUniqueId const>{
@@ -236,7 +235,7 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
                       static_cast<std::int32_t>(capitals.get_fighter_ids().size()))
                 << "Killed fighters are removed from capital ownership";
             for (auto const id : destroyed) {
-                EXPECT_TRUE(!harness.get_simulation().get_agent_accessor().is_alive(id))
+                EXPECT_TRUE(!entity_is_alive(harness.get_simulation(), id))
                     << "Destroyed fighter is dead";
             }
             fighter_kill_checked = true;
@@ -252,7 +251,7 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
             green_fighters_before_capital_kill =
                 std::vector<EntityUniqueId>{owned.begin(), owned.end()};
             auto const id{capitals.get_target_id(*main_index)};
-            auto const row{harness.get_simulation().get_agent_accessor().indexes().find(id)};
+            auto const row{observe_entity_row(harness.get_simulation(), id)};
             harness.queue_kills(std::array{capitals.get_read_view().entities.entity_ids()[row]});
         });
         next_time += 0.5;
@@ -269,8 +268,7 @@ void run_worldless_fighter_ownership(tests::SimulationFixture const& config,
                 for (auto const id : remaining) {
                     EXPECT_TRUE(std::ranges::contains(green_fighters_before_capital_kill, id))
                         << "Surviving fighter retains capital ownership";
-                    auto const index{
-                        harness.get_simulation().get_agent_accessor().indexes().find(id)};
+                    auto const index{observe_entity_row(harness.get_simulation(), id)};
                     EXPECT_TRUE(fighters.get_target_ids()[index].is_valid())
                         << "Surviving fighter retargets";
                 }

@@ -1,5 +1,6 @@
 #include "support/simulation_test_support.h"
 #include <ioj/sim/column_math.h>
+#include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 
 namespace ioj::sim::tests::fighter_membership_refresh {
@@ -152,7 +153,7 @@ TEST_F(FighterMembershipRefresh, DeathInvalidatesBeforePhysicalRemoval) {
     auto const revision{simulation.get_fighters().get_membership_revision()};
     damage(fighters[0], 100);
     resolve();
-    ASSERT_NE(simulation.get_agent_indexes().find(fighters[0]), AgentIndices::invalid_index);
+    ASSERT_NE(observe_entity_row(simulation, fighters[0]), EntityInstanceHandle::invalid_value);
     EXPECT_GT(simulation.get_fighters().get_membership_revision(), revision);
     EXPECT_GT(refresh(), 0u);
     expect_membership();
@@ -210,7 +211,7 @@ TEST_F(FighterMembershipRefresh, CapitalDeathReassignsToSurvivingCapitalAndCompa
     LevelSimTestAccess::remove_dead_ships(simulation);
     EXPECT_GT(refresh(), 0u);
     expect_membership();
-    auto const index{simulation.get_agent_indexes().find(second_parent)};
+    auto const index{observe_entity_row(simulation, second_parent)};
     EXPECT_EQ(simulation.get_capital_ships().get_fighter_ids(index).size(), 4u);
     EXPECT_EQ(refresh(), 0u);
 }

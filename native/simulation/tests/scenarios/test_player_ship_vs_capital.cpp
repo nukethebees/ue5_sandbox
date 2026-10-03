@@ -3,6 +3,7 @@
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/fighters/sim.h>
+#include <ioj/sim/testing/entity_observations.h>
 
 namespace ioj::sim {
 namespace player_vs_capital_test {
@@ -38,13 +39,12 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
     };
     ml::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
-        Sample sample{
-            .player_location = player->get_physical_state().transform.location,
-            .accessor_location = [&] {
-                auto const location{
-                    harness.get_simulation().get_agent_accessor().read(player_id)->location};
-                return ml::Vector3d{location.X, location.Y, location.Z};
-            }()};
+        Sample sample{.player_location = player->get_physical_state().transform.location,
+                      .accessor_location = [&] {
+                          auto const location{
+                              observe_entity(harness.get_simulation(), player_id)->location};
+                          return ml::Vector3d{location.X, location.Y, location.Z};
+                      }()};
         sample.fighter_target_locations = tests::copy_vectors(fighters.get_target_locations());
         sample.fighter_locations = tests::copy_vectors(fighters.get_locations());
         samples.add(harness.get_time(), std::move(sample));

@@ -3,6 +3,7 @@
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/sim_config.h>
+#include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
@@ -104,7 +105,7 @@ void
     ::ioj::sim::DirectDamageEvents events;
     events.reserve(static_cast<int32>(targets.size()));
     for (auto const target : targets) {
-        auto const state{simulation_.get_agent_accessor().read(target)};
+        auto const state{::ioj::sim::observe_entity(simulation_, target)};
         check(state);
         events.add(target, FMath::Max(1, state->health), instigator);
     }

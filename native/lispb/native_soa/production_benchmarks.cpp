@@ -74,12 +74,9 @@ void compact_laser_hit_accumulation(benchmark::State& state) {
 __declspec(noinline) void fighter_narrow_kernel(ioj::sim::FighterEntityData::View const view) {
     auto const locations{view.view_locations().xs()};
     auto const velocities{view.view_velocities().xs()};
-    auto const health_indices{view.health_indices()};
     auto const count{view.num()};
     for (std::uint32_t index{}; index < count; ++index) {
         locations[index] += velocities[index] + 1.f;
-        health_indices[index] =
-            ioj::sim::HealthIndex{static_cast<ioj::sim::HealthIndex::storage_type>(index)};
     }
 }
 

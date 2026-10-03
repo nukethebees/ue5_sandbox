@@ -1,5 +1,6 @@
 #include "support/simulation_test_support.h"
 #include <ioj/sim/column_math.h>
+#include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 
@@ -120,7 +121,7 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     auto const& turrets{view.turrets.entities};
     ASSERT_EQ(turrets.num(), 1);
     auto const turret{turrets.entity_ids()[0]};
-    EXPECT_EQ(simulation.get_agent_accessor().read(turret)->health, 75);
+    EXPECT_EQ(observe_entity(simulation, turret)->health, 75);
     EXPECT_EQ(simulation.get_capital_ships().get_health(simulation.get_capital_ships().get_id(0)),
               75);
     EXPECT_EQ(simulation.get_lasers().get_number_spawned(), 0);
@@ -130,7 +131,7 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
 
     simulation.advance(simulation.get_clock().get_tick_period());
 
-    EXPECT_EQ(simulation.get_agent_accessor().read(turret)->health, 75);
+    EXPECT_EQ(observe_entity(simulation, turret)->health, 75);
     EXPECT_EQ(ledger.count_alive(), 2);
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 1);
 }
@@ -164,11 +165,11 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     auto const& fighters{view.fighters.entities};
     ASSERT_EQ(fighters.num(), 1);
     auto const fighter{fighters.entity_ids()[0]};
-    EXPECT_TRUE(simulation.get_agent_accessor().is_alive(fighter));
-    EXPECT_EQ(simulation.get_agent_accessor().read(fighter)->health, 75);
+    EXPECT_TRUE(entity_is_alive(simulation, fighter));
+    EXPECT_EQ(observe_entity(simulation, fighter)->health, 75);
 
     auto const parent{simulation.get_capital_ships().get_id(0)};
-    EXPECT_EQ(simulation.get_agent_accessor().read(parent)->health, 75);
+    EXPECT_EQ(observe_entity(simulation, parent)->health, 75);
 
     auto const& queries{simulation.get_spatial_query_manager()};
 
@@ -259,7 +260,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
 
     ASSERT_EQ(simulation.get_turrets().get_num_instances(), 1);
     auto const turret{simulation.get_read_view().turrets.entities.entity_ids()[0]};
-    EXPECT_EQ(simulation.get_agent_accessor().read(turret)->health, 75);
+    EXPECT_EQ(observe_entity(simulation, turret)->health, 75);
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 0);
     EXPECT_EQ(simulation.get_spatial_query_manager()
                   .trace_closest({{480.f, 100.f, 0.f}}, {{520.f, 100.f, 0.f}})
@@ -268,7 +269,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
 
     simulation.advance(period);
 
-    EXPECT_EQ(simulation.get_agent_accessor().read(turret)->health, 75);
+    EXPECT_EQ(observe_entity(simulation, turret)->health, 75);
 }
 
 TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverlaps) {
@@ -305,9 +306,9 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
     EXPECT_EQ(turret_view.changes[0].id, turret_view.changes[1].id);
     EXPECT_EQ(turret_view.death_locations.size(), 1);
     auto const dead_id{turret_view.changes[1].id};
-    EXPECT_EQ(simulation.get_agent_indexes().find(dead_id), AgentIndices::invalid_index);
-    EXPECT_FALSE(simulation.get_agent_accessor().read(dead_id));
-    EXPECT_FALSE(simulation.get_agent_accessor().read_alive(dead_id));
+    EXPECT_EQ(observe_entity_row(simulation, dead_id), EntityInstanceHandle::invalid_value);
+    EXPECT_FALSE(observe_entity(simulation, dead_id));
+    EXPECT_FALSE(observe_live_entity(simulation, dead_id));
     EXPECT_EQ(ledger.count_alive(), 1);
     EXPECT_EQ(capitals.get_health(capitals.get_id(0)), 900);
     EXPECT_EQ(simulation.get_mission_manager().get_mission_state(), MissionState::Failed);
@@ -319,8 +320,8 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
 
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 0);
-    EXPECT_EQ(simulation.get_agent_indexes().find(dead_id), AgentIndices::invalid_index);
-    EXPECT_FALSE(simulation.get_agent_accessor().read(dead_id));
+    EXPECT_EQ(observe_entity_row(simulation, dead_id), EntityInstanceHandle::invalid_value);
+    EXPECT_FALSE(observe_entity(simulation, dead_id));
 }
 
 TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndQueriesAdvanceAfterward) {
@@ -390,9 +391,10 @@ TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_lasers().get_number_spawned(), 1);
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 1);
-    EXPECT_EQ(simulation.get_agent_indexes().find(player->unique_entity_id), 0);
-    EXPECT_FALSE(simulation.get_agent_accessor().is_alive(player->unique_entity_id));
-    EXPECT_FALSE(simulation.get_agent_accessor().read(player->unique_entity_id));
+    EXPECT_EQ(observe_entity_row(simulation, player->unique_entity_id),
+              EntityInstanceHandle::invalid_value);
+    EXPECT_FALSE(entity_is_alive(simulation, player->unique_entity_id));
+    EXPECT_FALSE(observe_entity(simulation, player->unique_entity_id));
 }
 
 TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
@@ -465,13 +467,13 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
 
         LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
 
-        EXPECT_TRUE(simulation.get_agent_accessor().is_alive(victim));
-        EXPECT_EQ(simulation.get_agent_accessor().read(victim)->health, 100);
+        EXPECT_TRUE(entity_is_alive(simulation, victim));
+        EXPECT_EQ(observe_entity(simulation, victim)->health, 100);
         EXPECT_TRUE(queries.trace_closest({{-2020.f, 0.f, 0.f}}, {{-1980.f, 0.f, 0.f}}).hit);
 
         simulation.advance(period);
 
-        EXPECT_FALSE(simulation.get_agent_accessor().is_alive(victim));
+        EXPECT_FALSE(entity_is_alive(simulation, victim));
         EXPECT_EQ(fighter_sim.get_num_instances(), kill_tick == 1 ? 0 : 2);
         EXPECT_EQ(capitals.get_num_instances(), 1);
         auto const capital_view{simulation.get_read_view().capitals};
@@ -479,8 +481,8 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         EXPECT_EQ(capital_view.changes.back().kind, EntityFrameChangeKind::RemoveSwap);
         EXPECT_EQ(capital_view.changes.back().id, victim);
         ASSERT_EQ(capital_view.deaths.size(), 1);
-        EXPECT_EQ(simulation.get_agent_indexes().find(victim), AgentIndices::invalid_index);
-        EXPECT_EQ(simulation.get_agent_indexes().find(killer), 0);
+        EXPECT_EQ(observe_entity_row(simulation, victim), EntityInstanceHandle::invalid_value);
+        EXPECT_EQ(observe_entity_row(simulation, killer), 0);
         EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 3);
         EXPECT_EQ(simulation.get_mission_manager().get_mission_state(), MissionState::Succeeded);
         EXPECT_FALSE(queries.trace_closest({{-2020.f, 0.f, 0.f}}, {{-1980.f, 0.f, 0.f}}).hit);
@@ -492,8 +494,8 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
             auto const orphaned{std::ranges::find(fighter_parents, EntityUniqueId{})};
             ASSERT_NE(orphaned, fighter_parents.end());
             auto const orphaned_index{static_cast<std::size_t>(orphaned - fighter_parents.begin())};
-            EXPECT_NE(simulation.get_agent_indexes().find(fighter_ids[orphaned_index]),
-                      AgentIndices::invalid_index);
+            EXPECT_NE(observe_entity_row(simulation, fighter_ids[orphaned_index]),
+                      EntityInstanceHandle::invalid_value);
         }
     }
 
@@ -528,8 +530,8 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
     ASSERT_EQ(visual_ids.size(), 1);
     ASSERT_EQ(final.entities.num(), 1);
     EXPECT_EQ(visual_ids[0], final.entities.entity_ids()[0]);
-    EXPECT_EQ(simulation.get_agent_indexes().find(survivor_id), 0);
-    EXPECT_TRUE(simulation.get_agent_accessor().read_alive(survivor_id));
+    EXPECT_EQ(observe_entity_row(simulation, survivor_id), 0);
+    EXPECT_TRUE(observe_live_entity(simulation, survivor_id));
 }
 
 }

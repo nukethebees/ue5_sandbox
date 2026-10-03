@@ -1,6 +1,7 @@
 #include "support/collision_agent_storage.h"
 #include "support/simulation_test_support.h"
 #include <ioj/sim/overlap_handler.h>
+#include <ioj/sim/testing/entity_observations.h>
 
 namespace ioj::sim::tests {
 
@@ -36,8 +37,7 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
         columns.static_geometry_indices()[index] = 7;
     }
 
-    OverlapHandler handler{
-        owners.combat_events, owners.agents, {.damage_per_overlap_detection = 37}};
+    OverlapHandler handler{owners.combat_events, {.damage_per_overlap_detection = 37}};
     handler.handle({entity_overlaps.get_const_view(), static_overlaps.get_const_view()});
 
     auto const damage{owners.combat_events.all_events().get_const_view()};
@@ -64,7 +64,7 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
         << "Environmental damage gives no combat hits";
 }
 
-TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndRetiredRecipients) {
+TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDamagePreparation) {
 
     CollisionAgentStorage owners;
     auto const fighter{owners.spawn(EntityType::Fighter)};
@@ -94,8 +94,12 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndRetiredRecipients) {
         columns.first_entities()[index] = fighter;
         columns.second_entities()[index] = EntityUniqueId{};
     }
-    OverlapHandler handler{owners.combat_events, owners.agents, {}};
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
+    ml::FrameMemoryResource memory{backing};
+    ml::FrameScratchScope scope{memory};
+    OverlapHandler handler{owners.combat_events, {}};
     handler.handle({first_pairs.get_const_view(), {}});
+    owners.combat_events.prepare(owners.entity_tables.lookups, scope.scratch());
 
     auto const first_damage{owners.combat_events.all_events().get_const_view()};
     EXPECT_EQ(first_damage.num(), 3) << "Only the live supported endpoint is damaged per pair";
@@ -116,6 +120,7 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndRetiredRecipients) {
         columns.second_entities()[index] = doomed;
     }
     handler.handle({retired_pair.get_const_view(), {}});
+    owners.combat_events.prepare(owners.entity_tables.lookups, scope.scratch());
     auto const second_damage{owners.combat_events.all_events().get_const_view()};
     EXPECT_EQ(second_damage.num(), 1) << "Retired endpoint is skipped independently";
     EXPECT_TRUE(second_damage.damaged_entities[0] != replacement)
@@ -123,9 +128,10 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndRetiredRecipients) {
 
     owners.combat_events.reset();
     auto const fighter_data{owners.fighters.get_const_view()};
-    owners.health_table.get_view(fighter_data.health_indices(), fighter_data.entity_ids())
-        .health(0) = 0;
+    owners.health_table.get_view<EntityType::Fighter>(fighter_data.num()).set_health(0, 0);
+    owners.publish();
     handler.handle({retired_pair.get_const_view(), {}});
+    owners.combat_events.prepare(owners.entity_tables.lookups, scope.scratch());
     EXPECT_EQ(owners.combat_events.all_events().num(), 0);
 }
 

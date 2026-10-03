@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ioj/sim/agent_indices.h>
 #include <ioj/sim/direct_damage_events.h>
+#include <ioj/sim/entity_lookup_table.h>
 #include <ioj/sim/index_span.h>
 
 #include <sandbox/core/enum_array.h>
@@ -15,7 +15,7 @@ class DamageQueue {
         events_.reset();
         spans_ = {};
     }
-    void prepare(AgentIndices const& indexes, ml::FrameScratchResource& scratch_resource);
+    void prepare(EntityLookupTables const& indexes, ml::FrameScratchResource& scratch_resource);
     auto events_for(EntityType type) const -> DirectDamageEventsConstView {
         auto const span{spans_[type]};
         return events_.get_const_view(span.offset, span.count);

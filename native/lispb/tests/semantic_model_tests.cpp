@@ -60,23 +60,16 @@ TEST(SemanticTypeGraph, SimulationModelCompositionUsesDeclaredNodesAndStrongScal
               graph.find_declared("native_index_span", "IndexSpan"));
     EXPECT_EQ(graph.find_registered("native_trace_hit"),
               graph.find_declared("query_results", "TraceHit"));
-    auto const health{graph.find_registered("native_health_index")};
-    ASSERT_TRUE(health.has_value());
-    auto const& external{std::get<ExternalType>(graph.type(*health).definition)};
-    auto const& integer{std::get<IntegerScalarType>(external.semantics)};
+    auto const frame_index{graph.find_declared("entity_instance_handle", "EntityFrameIndex")};
+    ASSERT_TRUE(frame_index.has_value());
+    auto const& integer{std::get<IntegerScalarType>(graph.type(*frame_index).definition)};
     EXPECT_FALSE(integer.signedness);
-    EXPECT_EQ(integer.bit_width, 32U);
+    EXPECT_EQ(integer.bit_width, 18U);
     EXPECT_EQ(integer.minimum_value, codegen::PackedIntegerValue{0});
-    EXPECT_EQ(integer.maximum_value, codegen::PackedIntegerValue{4294967294ULL});
-    ASSERT_EQ(integer.named_codes.size(), 1U);
-    EXPECT_EQ(integer.named_codes[0].value, codegen::PackedIntegerValue{4294967295ULL});
-    EXPECT_TRUE(integer.named_codes[0].sentinel);
+    EXPECT_EQ(integer.maximum_value, codegen::PackedIntegerValue{262143});
+    EXPECT_FALSE(graph.find_registered("native_health_index").has_value());
     for (auto const& [module, name, column_name, registration] :
-         {std::tuple{"fighters_soa", "FighterEntityData", "health_indices", "native_health_index"},
-          std::tuple{
-              "capital_ships_soa", "CapitalEntityData", "health_indices", "native_health_index"},
-          std::tuple{"turrets_soa", "TurretEntityData", "health_indices", "native_health_index"},
-          std::tuple{"native_trace_hits", "TraceHits", "hits", "native_trace_hit"}}) {
+         {std::tuple{"native_trace_hits", "TraceHits", "hits", "native_trace_hit"}}) {
         auto const owner{graph.find_declared(module, name)};
         ASSERT_TRUE(owner.has_value()) << module;
         auto const& soa{std::get<SoaType>(graph.type(*owner).definition)};
@@ -431,7 +424,7 @@ TEST(SemanticTypeGraph, ResolvesPackedIntegerScalarDomainAndDependency) {
                                                            }},
                                                        }}},
                 },
-        };
+    };
 
     auto const graph{resolve_type_graph(manifest)};
     auto const health{graph.find_declared("domains", "Health")};

@@ -18,7 +18,7 @@ void sort_and_deduplicate_removal_indices(std::vector<std::uint32_t>& local_indi
 }
 
 void resolve_damage_events(DirectDamageEventsConstView damage_events,
-                           AgentIndices const& indexes,
+                           EntityLookupTable const& lookup,
                            [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
                            HealthView const healths,
                            std::vector<std::uint32_t>& local_indices_to_remove,
@@ -36,10 +36,14 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
     auto current_removal_count{static_cast<std::uint32_t>(removal_count)};
     auto current_death_count{death_count};
     auto const removal_storage{std::span{local_indices_to_remove}};
+    auto const handles{lookup.entries()};
     for (std::uint32_t event_index{}; event_index < n_direct_events; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
         auto const id{damage_events.damaged_entities[element]};
-        auto const local_index{indexes.find(id)};
+        if (id.index() >= handles.size() || !handles[id.index()].is_valid()) {
+            continue;
+        }
+        auto const local_index{handles[id.index()].index()};
         assert(local_index < entity_ids.size());
         assert(entity_ids[local_index] == id);
         if (is_dead(healths.health(local_index))) {
@@ -50,9 +54,10 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
         if (requested_damage == 0) {
             continue;
         }
-        auto& health{healths.health(local_index)};
+        auto health{healths.health(local_index)};
         auto const applied_damage{std::min(health, requested_damage)};
         health -= requested_damage;
+        healths.set_health(local_index, health);
         ledger.record_damage(id, damage_events.instigators[element], applied_damage);
         // The populated prefix grows as this loop discovers deaths.
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call)

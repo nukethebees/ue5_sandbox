@@ -9,6 +9,7 @@
 #include <ioj/sim/entity_cell_data_operations.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/spatial_query_manager.h>
+#include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/spatial_query_manager_test_access.h>
 #include <ioj/sim/trace_hits.h>
 #include <ioj/sim/world_aabb_operations.h>
@@ -78,7 +79,7 @@ struct TraceFixture {
     }
 
     tests::CollisionAgentStorage owners;
-    collision::CollisionUniformGrid grid{owners.agents};
+    collision::CollisionUniformGrid grid{owners.entity_tables};
     std::vector<EntityUniqueId> handles{};
     collision::EntityAABBs aabbs;
 };
@@ -274,7 +275,6 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
     expected_ids[EntityType::Fighter] = fighter_ids[0];
     expected_ids[EntityType::TubeSpinner] =
         simulation.get_spinners().get_read_view().entities.entity_ids()[0];
-    auto const& agents{simulation.get_agent_accessor()};
     auto const& spatial_queries{simulation.get_spatial_query_manager()};
     auto const& grid{SpatialQueryManagerTestAccess::uniform_grid(spatial_queries)};
     auto const& entity_aabbs{SpatialQueryManagerTestAccess::entity_aabbs(spatial_queries)};
@@ -286,13 +286,13 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
 
     for (auto const entity_type : ml::EnumTraits<EntityType>::values) {
         auto const id{expected_ids[entity_type]};
-        EXPECT_TRUE(agents.is_alive(id))
+        EXPECT_TRUE(entity_is_alive(simulation, id))
             << "Expected collision-grid entity is alive" << ::testing::PrintToString(entity_type);
-        if (!agents.is_alive(id)) {
+        if (!entity_is_alive(simulation, id)) {
             continue;
         }
 
-        auto const entity_location{agents.read(id)->location};
+        auto const entity_location{observe_entity(simulation, id)->location};
         auto const local_aabb_centre{entity_aabbs.get_centre(id.entity_type())};
         auto const half_extents{entity_aabbs.get_half_extents(id.entity_type())};
         auto const world_aabb_centre{entity_location + local_aabb_centre};
@@ -1273,10 +1273,11 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
              {{moved_location.X - aabb_half_extents.X, 0.f, 0.f}}},
         };
         check_traces(authoritative, owner_cases);
-        authoritative.owners.health_table.get_view(owner.health_indices(), owner.entity_ids())
-            .health(0) = 0;
+        authoritative.owners.health_table.get_view<EntityType::CapitalShip>(owner.num())
+            .set_health(0, 0);
+        authoritative.grid.rebuild_entity_grid(authoritative.aabbs);
         std::vector<ExpectedTrace> const dead_owner_cases{
-            {"Logical owner death filters cached geometry without rebuild",
+            {"Rebuild removes dead owners before subsequent queries",
              {{moved_location.X - trace_offset, 0.f, 0.f}},
              {{moved_location.X + trace_offset, 0.f, 0.f}},
              0},
@@ -1493,7 +1494,7 @@ void CollisionUniformGridTraceRunner::test_invariance_properties() {
     tied.grid.rebuild_entity_grid(tied.aabbs);
     auto const reordered_tied_hits{run_traces(tied, tied_starts, tied_ends)};
     EXPECT_EQ(reordered_tied_hits.get_const_view().entities()[0], expected_id);
-    SpatialQueryManager const tied_queries{tied.owners.agents};
+    SpatialQueryManager const tied_queries{tied.owners.entity_tables};
     EXPECT_EQ(tied_queries.get_any_non_team_entity(Team::Green), expected_id);
 
     Vector3f const aabb_half_extents{{18.f, 22.f, 15.f}};

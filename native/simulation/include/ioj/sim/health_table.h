@@ -1,143 +1,137 @@
 #pragma once
 
-#include <ioj/sim/entity_unique_id.h>
+#include <ioj/sim/entity_identity_layout.h>
+#include <ioj/sim/entity_instance_handle.h>
 #include <ioj/sim/health.h>
-#include <ioj/sim/health_move.h>
 
+#include <sandbox/core/soa_permutation.h>
+
+#include <algorithm>
 #include <cassert>
-#include <cstdint>
-#include <functional>
-#include <optional>
 #include <span>
 #include <vector>
 
 namespace ioj::sim {
-
-class HealthTable;
+namespace health_storage {
+inline constexpr auto capacities{entity_lifetime_capacities};
+inline constexpr auto offsets{[] {
+    EntityTypeSizes result;
+    std::uint32_t next{};
+    for (auto const type : ml::EnumTraits<EntityType>::values) {
+        result[type] = next;
+        next += capacities[type];
+    }
+    return result;
+}()};
+}
 
 class HealthConstView {
   public:
-    // Ephemeral borrowed view. Structural mutation of either HealthTable or the entity storage
-    // supplying indices/owners invalidates this view and its entity-to-component correspondence.
     HealthConstView() = default;
-
+    explicit HealthConstView(std::span<Health const> const values) noexcept
+        : values_{values} {}
     [[nodiscard]] auto num() const noexcept -> std::uint32_t {
-        return static_cast<std::uint32_t>(indices_.size());
+        return static_cast<std::uint32_t>(values_.size());
     }
-    [[nodiscard]] auto is_empty() const noexcept -> bool { return indices_.empty(); }
-    [[nodiscard]] auto indices() const noexcept -> std::span<HealthIndex const> { return indices_; }
-    [[nodiscard]] auto health(std::uint32_t row) const -> Health;
-    [[nodiscard]] auto owner(std::uint32_t row) const -> EntityUniqueId;
-    void copy_to(std::span<Health> output) const;
+    [[nodiscard]] auto is_empty() const noexcept -> bool { return values_.empty(); }
+    [[nodiscard]] auto values() const noexcept -> std::span<Health const> { return values_; }
+    [[nodiscard]] auto health(EntityFrameIndex const row) const -> Health {
+        assert(row < values_.size());
+        return values_[row];
+    }
+    void copy_to(std::span<Health> const output) const {
+        assert(output.size() == values_.size());
+        std::ranges::copy(values_, output.begin());
+    }
   private:
-    friend class HealthTable;
-
-    HealthConstView(std::span<Health const> values,
-                    std::span<EntityUniqueId const> owners,
-                    std::span<HealthIndex const> indices,
-                    std::span<EntityUniqueId const> expected_owners) noexcept
-        : values_{values}
-        , owners_{owners}
-        , indices_{indices}
-        , expected_owners_{expected_owners} {}
-
-    std::span<Health const> values_{};
-    std::span<EntityUniqueId const> owners_{};
-    std::span<HealthIndex const> indices_{};
-    std::span<EntityUniqueId const> expected_owners_{};
+    std::span<Health const> values_;
 };
 
 class HealthView {
   public:
-    // Ephemeral borrowed view. Structural mutation of either HealthTable or the entity storage
-    // supplying indices/owners invalidates this view and its entity-to-component correspondence.
     HealthView() = default;
-
     [[nodiscard]] auto num() const noexcept -> std::uint32_t {
-        return static_cast<std::uint32_t>(indices_.size());
+        return static_cast<std::uint32_t>(values_.size());
     }
-    [[nodiscard]] auto is_empty() const noexcept -> bool { return indices_.empty(); }
-    [[nodiscard]] auto indices() const noexcept -> std::span<HealthIndex const> { return indices_; }
-    [[nodiscard]] auto health(std::uint32_t row) const -> Health&;
-    [[nodiscard]] auto owner(std::uint32_t row) const -> EntityUniqueId;
-    void copy_from(std::span<Health const> input) const;
-    void copy_to(std::span<Health> output) const;
+    [[nodiscard]] auto is_empty() const noexcept -> bool { return values_.empty(); }
+    [[nodiscard]] auto health(EntityFrameIndex const row) const -> Health {
+        assert(row < values_.size());
+        return values_[row];
+    }
+    void set_health(EntityFrameIndex const row, Health const value) const {
+        assert(row < values_.size());
+        values_[row] = value;
+    }
+    void copy_from(std::span<Health const> const input) const {
+        assert(input.size() == values_.size());
+        std::ranges::copy(input, values_.begin());
+    }
+    void copy_to(std::span<Health> const output) const { HealthConstView{values_}.copy_to(output); }
   private:
     friend class HealthTable;
-
-    HealthView(std::span<Health> values,
-               std::span<EntityUniqueId const> owners,
-               std::span<HealthIndex const> indices,
-               std::span<EntityUniqueId const> expected_owners) noexcept
-        : values_{values}
-        , owners_{owners}
-        , indices_{indices}
-        , expected_owners_{expected_owners} {}
-
-    std::span<Health> values_{};
-    std::span<EntityUniqueId const> owners_{};
-    std::span<HealthIndex const> indices_{};
-    std::span<EntityUniqueId const> expected_owners_{};
+    explicit HealthView(std::span<Health> values)
+        : values_{values} {}
+    std::span<Health> values_;
 };
 
 class HealthTable {
   public:
-    void reserve(std::size_t capacity);
+    HealthTable()
+        : values_(entity_identity_capacity) {}
 
-    void add(std::span<EntityUniqueId const> owners,
-             std::span<Health const> initial_values,
-             std::span<HealthIndex> output_indices);
-    void add(std::span<EntityUniqueId const> owners,
-             Health initial_value,
-             std::span<HealthIndex> output_indices);
+    template <EntityType Type>
+    [[nodiscard]] auto get_const_view(std::size_t const count) const -> HealthConstView {
+        assert(count <= health_storage::capacities[Type]);
+        constexpr auto base{health_storage::offsets[Type]};
+        return HealthConstView{std::span{values_}.subspan(base, count)};
+    }
 
-    template <typename HandleMove>
-    // Rows are entity-row indices in strictly descending order. The owning entity storage and
-    // its index/owner spans must remain structurally unchanged until every move is handled.
-    void remove_rows(std::span<std::uint32_t const> const rows,
-                     std::span<HealthIndex const> const indices,
-                     std::span<EntityUniqueId const> const owners,
-                     HandleMove&& handle_move) {
-        assert(indices.size() == owners.size());
-#ifndef NDEBUG
-        auto previous_row{static_cast<std::uint32_t>(indices.size())};
+    template <EntityType Type>
+    [[nodiscard]] auto get_view(std::size_t const count) -> HealthView {
+        assert(count <= health_storage::capacities[Type]);
+        constexpr auto base{health_storage::offsets[Type]};
+        return HealthView{std::span{values_}.subspan(base, count)};
+    }
+
+    template <EntityType Type>
+    void initialise_rows(EntityFrameIndex const first,
+                         std::span<Health const> const initial_values) {
+        [[maybe_unused]] auto const count{static_cast<EntityFrameIndex>(initial_values.size())};
+        assert(EntityInstanceHandle::index_range_fits(first, count));
+        assert(first + count <= health_storage::capacities[Type]);
+        constexpr auto base{health_storage::offsets[Type]};
+        std::ranges::copy(initial_values, values_.begin() + base + first);
+    }
+
+    template <EntityType Type>
+    void initialise_rows(EntityFrameIndex const first,
+                         EntityFrameIndex const count,
+                         Health const initial_value) {
+        assert(EntityInstanceHandle::index_range_fits(first, count));
+        assert(first + count <= health_storage::capacities[Type]);
+        constexpr auto base{health_storage::offsets[Type]};
+        std::fill_n(values_.begin() + base + first, count, initial_value);
+    }
+
+    template <EntityType Type>
+    void remove_rows(std::size_t count, std::span<EntityFrameIndex const> const rows) {
+        assert(count <= health_storage::capacities[Type]);
+        constexpr auto base{health_storage::offsets[Type]};
+        [[maybe_unused]] auto previous{count};
         for (auto const row : rows) {
-            assert(row < previous_row);
-            auto const element{static_cast<std::size_t>(row)};
-            assert(contains(indices[element], owners[element]));
-            previous_row = row;
-        }
-#endif
-
-        for (auto const row : rows) {
-            auto const element{static_cast<std::size_t>(row)};
-            auto const move{remove(indices[element], owners[element])};
-            if (move.has_value()) {
-                std::invoke(handle_move, move.value());
-            }
+            assert(row < previous && row < count);
+            previous = row;
+            values_[base + row] = values_[base + --count];
         }
     }
 
-    [[nodiscard]] auto get_view(std::span<HealthIndex const> indices,
-                                std::span<EntityUniqueId const> owners) -> HealthView;
-    [[nodiscard]] auto get_const_view(std::span<HealthIndex const> indices,
-                                      std::span<EntityUniqueId const> owners) const
-        -> HealthConstView;
-    [[nodiscard]] auto contains(HealthIndex index, EntityUniqueId owner) const noexcept -> bool;
-    [[nodiscard]] auto get_health(HealthIndex index, EntityUniqueId owner) const -> Health;
-    [[nodiscard]] auto get_owner(HealthIndex index) const -> EntityUniqueId;
-    [[nodiscard]] auto num_slots() const noexcept -> std::uint32_t {
-        return static_cast<std::uint32_t>(values_.size());
+    template <EntityType Type>
+    void apply_permutation(std::span<std::int32_t> const order) {
+        assert(order.size() <= health_storage::capacities[Type]);
+        constexpr auto base{health_storage::offsets[Type]};
+        ml::apply_permutation(std::span{values_}.subspan(base, order.size()), order);
     }
   private:
-    [[nodiscard]] auto remove(HealthIndex index, EntityUniqueId owner) -> std::optional<HealthMove>;
-    void validate_owners(std::span<HealthIndex const> indices,
-                         std::span<EntityUniqueId const> owners) const;
-    [[nodiscard]] auto valid_slot(HealthIndex index) const noexcept -> bool;
-    [[nodiscard]] auto slot(HealthIndex index) const -> std::size_t;
-
-    std::vector<Health> values_{};
-    std::vector<EntityUniqueId> owners_{};
+    std::vector<Health> values_;
 };
-
-} // namespace ioj::sim
+}

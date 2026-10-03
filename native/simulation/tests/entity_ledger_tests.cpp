@@ -1,9 +1,9 @@
-#include <ioj/sim/agent_indices.h>
 #include <ioj/sim/batch_operations.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/damage_queue.h>
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/entity_lookup_table.h>
 
 #include <sandbox/core/frame_memory_resource.h>
 
@@ -16,20 +16,20 @@
 namespace ioj::sim::tests {
 namespace {
 auto make_id(EntityType const type, std::uint32_t const ordinal) -> EntityUniqueId {
-    return EntityUniqueId(entity_identity_offset(type, ordinal), type);
+    return EntityUniqueId(ordinal, type);
 }
 }
 
 TEST(DamageQueue, GroupsMixedOwnerEventsAndFiltersRetiredRecipients) {
     SimClock clock;
-    AgentIndices indexes{clock};
+    EntityLookupTables indexes{clock};
     auto const turret{make_id(EntityType::Turret, 0)};
     auto const capital{make_id(EntityType::CapitalShip, 0)};
     auto const retired_fighter{make_id(EntityType::Fighter, 0)};
     std::array const turrets{turret};
     std::array const capitals{capital};
-    indexes.bind(EntityType::Turret, turrets);
-    indexes.bind(EntityType::CapitalShip, capitals);
+    indexes.for_type(EntityType::Turret).publish_rows(turrets, {});
+    indexes.for_type(EntityType::CapitalShip).publish_rows(capitals, {});
 
     DirectDamageEvents first;
     first.add(capital, 5, turret);
@@ -79,9 +79,9 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     auto const retired{ledger.record_spawn(EntityType::CapitalShip, Team::Blue, true)};
 
     SimClock clock;
-    AgentIndices indexes{clock};
+    EntityLookupTables indexes{clock};
     std::array const fighters{victim};
-    indexes.bind(EntityType::Fighter, fighters);
+    indexes.for_type(EntityType::Fighter).publish_rows(fighters, {});
 
     DirectDamageEvents queued;
     queued.add(retired, 100, attacker);
@@ -108,20 +108,19 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
 
     std::array ids{victim};
     std::array<Health, 1> initial_healths{10};
-    std::array<HealthIndex, 1> health_indices{};
     HealthTable health_table;
-    health_table.add(ids, initial_healths, health_indices);
+    health_table.initialise_rows<EntityType::Fighter>(0, initial_healths);
     std::vector<std::uint32_t> removals;
     EntityDeathInfo deaths;
     batch::resolve_damage_events(events.events_for(EntityType::Fighter),
-                                 indexes,
+                                 indexes.for_type(EntityType::Fighter),
                                  ids,
-                                 health_table.get_view(health_indices, ids),
+                                 health_table.get_view<EntityType::Fighter>(ids.size()),
                                  removals,
                                  deaths,
                                  ledger);
 
-    EXPECT_EQ(health_table.get_health(health_indices[0], ids[0]), -6);
+    EXPECT_EQ(health_table.get_const_view<EntityType::Fighter>(ids.size()).health(0), -6);
     EXPECT_EQ(removals, std::vector<std::uint32_t>{0});
     ASSERT_EQ(deaths.num(), 1);
     EXPECT_EQ(deaths.victims[0], victim);
