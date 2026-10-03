@@ -1,15 +1,17 @@
 # Developer tools
 
+Set the `IOJ_ROOT` environment variable to an absolute directory for shared tools and
+temporary files (for example, `C:\dev\ioj`). Set it before starting the agent or developer shell.
 The maintainer installs stable tools explicitly under
-`%LOCALAPPDATA%\NukeTheBees\<ToolName>\bin`, keeping each tool's complete runtime together.
+`%IOJ_ROOT%\tools\<ToolName>\bin`, keeping each tool's complete runtime together.
 
 | Central tool | Installation/update | Source version |
 | --- | --- | --- |
 | agent-task | `pwsh -NoProfile -File PowerShell/InstallAgentTask.ps1` from the repository root | Cargo.toml |
 | jobserver | `agent-task install-central-tools` | CLI source |
 
-Installers publish literal symlinks in `%NTB_APPDATA_LOCAL%\bin` (default
-`%LOCALAPPDATA%\NukeTheBees\bin`). Add only that directory to PATH. Enable Windows Developer Mode before installing,
+Installers publish literal symlinks in `%IOJ_ROOT%\tools\bin`.
+Add only that directory to PATH. Enable Windows Developer Mode before installing,
 or grant your account the **Create symbolic links** right and sign out/in. Installers check
 link creation before building or updating tools and refuse to overwrite unrelated files.
 The two installers share only `install/ToolLinks.ps1`: destination selection, symlink preflight,
@@ -17,10 +19,19 @@ and collision-safe publication. Revision-local Rust tools use the workspace's pi
 
 `agent-task jobs` accesses the per-user jobs board. Its installer shuts down an empty board,
 copies the binaries, registers the logon task, and verifies startup. See [jobserver](jobserver/README.md).
+When migrating an existing installation, the installer also recognizes the daemon at the
+registered task's old path. It refuses to shut down a board with outstanding tickets.
 Agents assume central tools are installed, report missing commands, and never install/update them
 or build local fallbacks. `--version` is for manual diagnosis; bump the source version when shipping changes.
 
 Use stock Codex. This repository does not build or install it.
+
+Windows CTest runs set `TMP` and `TEMP` to `%IOJ_ROOT%\tmp\<worktree-name>`, creating it if needed.
+This applies to presets and direct `ctest --test-dir` calls. CTest reads `IOJ_ROOT` at run time;
+the worktree name comes from the configured source directory. Agent sandboxes must allow writes
+to the worktree's temp directory.
+The AgentTask installer and `agent-task codex start <name>` use the same directory, so
+Cargo and other child tools inherit the location automatically. Tests clean up their own fixtures.
 
 `agent-task prepare-worktree` clears output, updates submodules,
 generates presets, disables Live Coding in existing

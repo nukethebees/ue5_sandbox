@@ -12,7 +12,6 @@ add_custom_target(install-jobserver
     "${CMAKE_CURRENT_SOURCE_DIR}/Install-Jobserver.ps1"
     -BuiltClientPath "$<TARGET_FILE:jobserver>"
     -BuiltDaemonPath "$<TARGET_FILE:jobserverd>"
-    -InstallRoot "$ENV{LOCALAPPDATA}/NukeTheBees/jobserver"
     -RegisterScript "${CMAKE_CURRENT_SOURCE_DIR}/Register-Jobserver.ps1"
     -AsanEnabled "$<BOOL:${IOJ_ENABLE_ASAN}>"
   DEPENDS jobserver jobserverd

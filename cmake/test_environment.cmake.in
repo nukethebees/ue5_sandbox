@@ -1,0 +1,15 @@
+# Keep nonexistent test paths away from protected profile ancestors during canonicalization.
+file(TO_CMAKE_PATH "$ENV{IOJ_ROOT}" ioj_root)
+if(NOT IS_ABSOLUTE "${ioj_root}")
+  message(FATAL_ERROR "Set IOJ_ROOT to an absolute directory for shared tools and temporary files.")
+endif()
+set(ioj_test_temp_directory "${ioj_root}/tmp/@IOJ_TEST_WORKTREE_NAME@")
+file(MAKE_DIRECTORY "${ioj_test_temp_directory}" RESULT ioj_test_temp_error)
+if(NOT ioj_test_temp_error STREQUAL "0")
+  message(FATAL_ERROR
+    "Cannot create CTest temporary directory '${ioj_test_temp_directory}': ${ioj_test_temp_error}. "
+    "Allow writes to '${ioj_test_temp_directory}' in the agent sandbox.")
+endif()
+set(ENV{TMP} "${ioj_test_temp_directory}")
+set(ENV{TEMP} "${ioj_test_temp_directory}")
+message("CTest temporary directory: ${ioj_test_temp_directory}")

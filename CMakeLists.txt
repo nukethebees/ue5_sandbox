@@ -4,6 +4,7 @@ cmake_minimum_required(VERSION 4.4.2)
 
 project(SandboxUnrealBuild LANGUAGES CXX)
 enable_testing()
+include(cmake/test_environment.cmake)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 

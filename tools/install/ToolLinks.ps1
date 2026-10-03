@@ -1,13 +1,15 @@
+function Get-IojRoot {
+    if (-not $env:IOJ_ROOT -or -not [IO.Path]::IsPathFullyQualified($env:IOJ_ROOT)) {
+        throw 'Set IOJ_ROOT to an absolute directory for shared tools and temporary files.'
+    }
+    return [IO.Path]::GetFullPath($env:IOJ_ROOT)
+}
+
 function Get-ToolLinkDirectory([string]$InstallRoot, [string]$Directory) {
     if ($Directory) { return [IO.Path]::GetFullPath($Directory) }
 
-    $central = Join-Path $env:LOCALAPPDATA 'NukeTheBees'
-    if ($InstallRoot) {
-        $parent = Split-Path -Parent ([IO.Path]::GetFullPath($InstallRoot).TrimEnd('\', '/'))
-        if ($parent -ne $central) { return Join-Path $parent 'bin' }
-    }
-    if ($env:NTB_APPDATA_LOCAL) { $central = $env:NTB_APPDATA_LOCAL }
-    return Join-Path $central 'bin'
+    $parent = Split-Path -Parent ([IO.Path]::GetFullPath($InstallRoot).TrimEnd('\', '/'))
+    return Join-Path $parent 'bin'
 }
 
 function Assert-ToolLinkSupport([string]$Directory) {

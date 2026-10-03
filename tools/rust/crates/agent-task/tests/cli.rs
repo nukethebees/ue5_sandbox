@@ -51,11 +51,7 @@ fn fixture() -> TemporaryDirectory {
 
 fn tool(root: &Path, arguments: &[&str]) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_agent-task"));
-    command
-        .args(arguments)
-        .current_dir(root)
-        .env("LOCALAPPDATA", root.join("local-app-data"))
-        .env("NTB_APPDATA_LOCAL", root.join("local-app-data/NukeTheBees"));
+    command.args(arguments).current_dir(root);
     command
 }
 
@@ -99,7 +95,10 @@ fn jobs_help_and_missing_client_work_outside_a_worktree() {
     assert!(text.contains("request shared|exclusive"));
     assert!(text.contains("check|start|end|cancel"));
     assert!(!invoke(&directory.0, &["jobs", "unknown"]).status.success());
-    let missing = invoke(&directory.0, &["jobs", "status"]);
+    let missing = tool(&directory.0, &["jobs", "status"])
+        .env("PATH", directory.0.join("missing-tools"))
+        .output()
+        .unwrap();
     assert!(!missing.status.success());
     assert!(
         String::from_utf8_lossy(&missing.stderr)
@@ -161,7 +160,6 @@ fn nested_linked_worktree_cleans_only_its_root_out_and_runs_phases_in_order() {
     .unwrap();
 
     let output = tool(&root.join("nested"), &["prepare-worktree"])
-        .env("LOCALAPPDATA", directory.0.join("local-app-data"))
         .output()
         .unwrap();
     assert!(output.status.success(), "{output:?}");

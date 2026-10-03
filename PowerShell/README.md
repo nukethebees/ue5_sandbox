@@ -10,10 +10,12 @@ The maintainer tests and installs the Rust CLI with:
 pwsh -NoProfile -File PowerShell/InstallAgentTask.ps1
 ```
 
-`-InstallRoot` overrides the default `%LOCALAPPDATA%\NukeTheBees\agent-task` destination;
+Set `IOJ_ROOT` before installing. `-InstallRoot` overrides the default `%IOJ_ROOT%\tools\agent-task` destination;
 `-LinkDirectory` overrides the shared tool-link directory. The script checks symlink support,
 runs package tests, installs with the pinned Rust toolchain, smoke-tests the executable, and
 publishes its tool link. See [developer tools](../tools/README.md) for PATH setup.
+The installer sets `TMP` and `TEMP` to `%IOJ_ROOT%\tmp\<worktree-name>` for Cargo and its tests,
+creating it if needed.
 Agents assume the CLI is installed and report missing tools to the maintainer.
 
 Use `-SkipTests` to retry installation after tests have already passed, for example after

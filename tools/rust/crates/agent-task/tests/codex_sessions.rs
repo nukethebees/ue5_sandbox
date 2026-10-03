@@ -1,6 +1,7 @@
 #![cfg(windows)]
 
 use std::fs;
+use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
 use std::os::windows::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Output, Stdio};
@@ -76,6 +77,7 @@ impl Fixture {
             .arg("codex")
             .args(args)
             .current_dir(&self.root)
+            .env("IOJ_ROOT", self.root.join("shared"))
             .env("PATH", std::env::join_paths(paths).unwrap())
             .env("PROBE_AGENT_TASK", env!("CARGO_BIN_EXE_agent-task"))
             .creation_flags(NO_WINDOW);
@@ -93,7 +95,7 @@ impl Fixture {
             .stdout(Stdio::null())
             .spawn()
             .unwrap();
-        let mut running = Running(child, Some(self.command(&["processes", "test"])));
+        let mut running = Running(child, Vec::new());
         wait_until(|| {
             assert!(
                 running.0.try_wait().unwrap().is_none(),
@@ -101,6 +103,16 @@ impl Fixture {
             );
             self.root.join("probe/ready").exists()
         });
+        let listing = self.invoke(&["processes", "test"]);
+        assert!(listing.status.success(), "{listing:?}");
+        for line in String::from_utf8_lossy(&listing.stdout).lines() {
+            let pid = line.split_whitespace().next().unwrap().parse().unwrap();
+            let handle = unsafe { OpenProcess(PROCESS_TERMINATE | PROCESS_SYNCHRONIZE, 0, pid) };
+            assert!(!handle.is_null(), "Open fixture process {pid}");
+            running
+                .1
+                .push(unsafe { OwnedHandle::from_raw_handle(handle) });
+        }
         running
     }
 
@@ -137,26 +149,14 @@ impl Drop for Fixture {
     }
 }
 
-struct Running(Child, Option<Command>);
+struct Running(Child, Vec<OwnedHandle>);
 impl Drop for Running {
     fn drop(&mut self) {
-        // Test teardown owns the whole disposable job, including runtime helpers.
-        if let Some(command) = &mut self.1 {
-            if let Ok(output) = command.output() {
-                for line in String::from_utf8_lossy(&output.stdout).lines() {
-                    let Some(pid) = line.split_whitespace().next().and_then(|p| p.parse().ok())
-                    else {
-                        continue;
-                    };
-                    unsafe {
-                        let handle = OpenProcess(PROCESS_TERMINATE | PROCESS_SYNCHRONIZE, 0, pid);
-                        if !handle.is_null() {
-                            TerminateProcess(handle, 130);
-                            WaitForSingleObject(handle, 5000);
-                            CloseHandle(handle);
-                        }
-                    }
-                }
+        // Retain process handles so teardown also works after the launcher closes the job.
+        for handle in &self.1 {
+            unsafe {
+                TerminateProcess(handle.as_raw_handle(), 130);
+                WaitForSingleObject(handle.as_raw_handle(), 5000);
             }
         }
         let _ = self.0.kill();
@@ -197,7 +197,7 @@ fn cleanup_preserves_runtime_and_only_terminates_owned_work() {
             .creation_flags(NO_WINDOW)
             .spawn()
             .unwrap(),
-        None,
+        Vec::new(),
     );
     let pids = fixture.pids();
     let listing = fixture.invoke(&["processes", "test"]);

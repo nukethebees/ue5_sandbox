@@ -82,12 +82,15 @@ Unreal Engine 5.8 project.
 # Builds
 
 * CMake is used to drive all builds, including UBT
-* Stable tools are maintainer-installed under `%LOCALAPPDATA%\NukeTheBees\<ToolName>\bin`
+* Set `IOJ_ROOT` to the absolute base directory for shared tools and temporary files.
+  Stable tools are maintainer-installed under `%IOJ_ROOT%\tools\<ToolName>\bin`
   and invoked from PATH.
   Agents never auto-install/update tools or construct local fallbacks.
   Report a missing command; use `--version` for manual source/install comparison when needed.
   CMake builds revision-local game-package-tools, native-binary-tools, and
   benchmark-tools privately on demand.
+* Windows tools use `%IOJ_ROOT%\tmp\<worktree-name>` for temporary files. Allow that directory in
+  the agent sandbox; do not grant access to the user profile to resolve temporary-path failures.
 * For final integration, only build and test what your work has affected
 * Keep benchmarks short; Not more than 3 minutes total
 * For probe-level performance work, use `agent-task benchmark tracy-report --trace <capture.tracy>`

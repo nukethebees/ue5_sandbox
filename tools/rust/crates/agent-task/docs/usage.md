@@ -10,7 +10,7 @@ pwsh -NoProfile -File PowerShell/InstallAgentTask.ps1
 
 This runs package tests, installs AgentTask using the pinned Rust toolchain, and smoke-tests
 the installed executable with `--version`. Installers create symlinks in
-`%NTB_APPDATA_LOCAL%\bin`; add this directory to PATH. Windows Developer Mode or the
+`%IOJ_ROOT%\tools\bin`; set `IOJ_ROOT` and add this directory to PATH. Windows Developer Mode or the
 **Create symbolic links** privilege is required and checked before building.
 Agents assume AgentTask is already available; they do not install it as a preflight step.
 
@@ -118,6 +118,9 @@ The launcher joins a named Windows Job Object, then starts `codex --no-daemon` n
 Codex and its later tool processes inherit membership. It uses the existing console and
 does not open another PowerShell window. Keep running ordinary commands such as `ctest`
 and `cmake` directly; their approval prefixes are unchanged.
+The launcher sets `TMP` and `TEMP` to `%IOJ_ROOT%\tmp\<worktree-name>`, creating it if needed.
+It reads `IOJ_ROOT` from the environment and derives the worktree name from the checkout it starts in.
+Direct Cargo commands and other child tools inherit it. Allow writes there in the sandbox.
 
 Names contain 1-64 lowercase letters, digits, hyphens, or underscores and are scoped to
 the current worktree. The launcher accepts no additional Codex arguments.
@@ -139,8 +142,10 @@ require manual cleanup; a job with remaining processes prevents reuse of its ses
 This tracks a launched CLI session, including its subagents, rather than an existing desktop
 session or individual agents within a shared session.
 
-Run `cargo test --locked -p agent-task --test codex_sessions` from `tools/rust` for the
-focused launch, isolation, and cleanup tests.
+After building the `tool-tests` preset, run `ctest --test-dir out/build/native -L '^agent-task$'`
+for AgentTask tests with the configured temporary directory. For a focused direct run,
+`cargo test --locked -p agent-task --test codex_sessions` from `tools/rust` uses the caller's
+temporary environment.
 
 ## Integration and jobs
 

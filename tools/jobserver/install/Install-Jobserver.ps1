@@ -2,7 +2,7 @@
 param(
     [Parameter(Mandatory)] [string]$BuiltClientPath,
     [Parameter(Mandatory)] [string]$BuiltDaemonPath,
-    [Parameter(Mandatory)] [string]$InstallRoot,
+    [string]$InstallRoot,
     [Parameter(Mandatory)] [string]$RegisterScript,
     [Parameter(Mandatory)] [ValidateSet(0, 1)] [int]$AsanEnabled,
     [string]$LinkDirectory
@@ -17,6 +17,7 @@ $builtClient = (Resolve-Path -LiteralPath $BuiltClientPath).Path
 $builtDaemon = (Resolve-Path -LiteralPath $BuiltDaemonPath).Path
 $registerScript = (Resolve-Path -LiteralPath $RegisterScript).Path
 . "$PSScriptRoot/../../install/ToolLinks.ps1"
+if (-not $InstallRoot) { $InstallRoot = Join-Path (Get-IojRoot) 'tools/jobserver' }
 $links = Get-ToolLinkDirectory $InstallRoot $LinkDirectory
 Assert-ToolLinkSupport $links
 $bin = Join-Path ([IO.Path]::GetFullPath($InstallRoot)) 'bin'
@@ -24,10 +25,13 @@ $installedClient = Join-Path $bin 'jobserver.exe'
 $installedDaemon = Join-Path $bin 'jobserverd.exe'
 
 # Wait only for the daemon being replaced, never for jobs on the board.
+$registeredTask = Get-ScheduledTask -TaskName 'NukeTheBeesJobserver' -ErrorAction SilentlyContinue
+$registeredPaths = @()
+if ($registeredTask) { $registeredPaths = @($registeredTask.Actions.Execute) }
 $running = Get-Process jobserverd -ErrorAction SilentlyContinue |
-    Where-Object { $_.Path -eq $installedDaemon }
+    Where-Object { $_.Path -eq $installedDaemon -or $_.Path -in $registeredPaths }
 if ($running) {
-    & $installedClient shutdown
+    & $builtClient shutdown
     if ($LASTEXITCODE -ne 0) {
         throw 'End running tickets and cancel queued/ready tickets before updating jobserver.'
     }

@@ -309,8 +309,26 @@ fn launch_codex(root: &Path, name: &str) -> Result<i32, String> {
     )?;
     let path = state_path(root, name);
     fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
+    let ioj_root = std::env::var_os("IOJ_ROOT")
+        .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .ok_or("Set IOJ_ROOT to an absolute directory for shared tools and temporary files.")?;
+    let temporary_directory = ioj_root
+        .join("tmp")
+        .join(root.file_name().unwrap_or_default());
+    fs::create_dir_all(&temporary_directory).map_err(|e| {
+        format!(
+            "Create agent temporary directory '{}': {e}",
+            temporary_directory.display()
+        )
+    })?;
+
     let mut command = Command::new("codex.exe");
-    command.arg("--no-daemon").current_dir(root);
+    command
+        .arg("--no-daemon")
+        .current_dir(root)
+        .env("TMP", &temporary_directory)
+        .env("TEMP", &temporary_directory);
     if unsafe { GetConsoleCP() } == 0 {
         command.creation_flags(CREATE_NO_WINDOW);
     }
@@ -321,6 +339,10 @@ fn launch_codex(root: &Path, name: &str) -> Result<i32, String> {
     println!(
         "Codex session '{name}' (PID {}); shared daemon disabled.",
         child.id()
+    );
+    println!(
+        "Session temporary directory: {}",
+        temporary_directory.display()
     );
     let status = child.wait().map_err(|e| e.to_string())?;
     fs::remove_file(path).map_err(|e| e.to_string())?;
