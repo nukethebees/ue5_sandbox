@@ -1,7 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/agent-task",
+    "crates/coj",
+    "crates/jobserver-client",
     "crates/native-binary-tools",
     "crates/game-package-tools",
     "crates/benchmark-tools",

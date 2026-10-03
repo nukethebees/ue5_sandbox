@@ -30,7 +30,7 @@ auto Server::request(nlohmann::json const& message) -> nlohmann::json {
         return nlohmann::json{{"type", "error"}, {"code", code}, {"message", reason}};
     };
     if (message.value("protocol", 0U) != protocol::major_version) {
-        return error("protocol_mismatch", "Install matching AgentTask/jobserver components");
+        return error("protocol_mismatch", "Install matching coj/jobserver components");
     }
     auto const type{message.at("type").get<std::string>()};
     if (type == "status") {
@@ -55,13 +55,40 @@ auto Server::request(nlohmann::json const& message) -> nlohmann::json {
             return error("invalid_mode", "Choose shared or exclusive");
         }
         result = board_.request(mode == "shared" ? Mode::shared : Mode::exclusive,
-                                message.at("name").get<std::string>());
-    } else if (type == "check" || type == "start" || type == "end" || type == "cancel") {
+                                message.at("name").get<std::string>(),
+                                message.at("owner").get<std::string>(),
+                                message.at("worktree").get<std::string>());
+    } else if (type == "clear" && message.contains("owner")) {
+        if (message.contains("id")) {
+            return error("invalid_selector", "Clear requires either a ticket ID or an owner");
+        }
+        auto const owner{message.at("owner").get<std::string>()};
+        if (owner.empty()) {
+            return error("invalid_owner", "A nonempty owner is required");
+        }
+        std::optional<std::string> worktree;
+        if (message.contains("worktree")) {
+            worktree = message.at("worktree").get<std::string>();
+        }
+        return {{"type", "cleared"}, {"tickets", board_.clear_owner(owner, worktree)}};
+    } else if (type == "check" || type == "start" || type == "end" || type == "cancel" ||
+               type == "clear") {
         auto const& value{message.at("id")};
-        if (!value.is_number_unsigned()) {
+        if (!value.is_number_unsigned() || value.get<TicketId>() == 0) {
             return error("invalid_ticket", "Ticket ID must be a positive integer");
         }
         auto const id{value.get<TicketId>()};
+        if (type == "clear") {
+            if (message.contains("worktree")) {
+                return error("invalid_selector", "Worktree filtering requires an owner");
+            }
+            result = board_.clear(id);
+            if (!result) {
+                return error(result.error().code, result.error().message);
+            }
+            return {{"type", "cleared"},
+                    {"tickets", nlohmann::json::array({ticket_json(*result)})}};
+        }
         result = type == "check" ? board_.check(id)
                                  : board_.transition(id,
                                                      type == "start" ? State::running

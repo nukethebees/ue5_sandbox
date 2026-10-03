@@ -7,7 +7,7 @@ use crate::{
 use serde_json::{Value, json};
 use std::{fs, path::Path};
 
-const HELP: &str = "Usage: agent-task benchmark compare --baseline <ref> [options]
+const HELP: &str = "Usage: coj benchmark compare --baseline <ref> [options]
   --candidate <ref>         Compare a second commit (default: current working tree)
   --workload <name>         fighter-simulation (default) or native-simulation
   --level <relative-path>   Required for native-simulation; resolved in each revision

@@ -1,6 +1,5 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)] [string]$BuiltClientPath,
     [Parameter(Mandatory)] [string]$BuiltDaemonPath,
     [string]$InstallRoot,
     [Parameter(Mandatory)] [string]$RegisterScript,
@@ -13,7 +12,6 @@ if ($AsanEnabled) {
     throw 'An ASAN jobserver build is for local validation and must not replace the installed machine jobserver. Use a build configured with IOJ_ENABLE_ASAN=OFF for canonical installation.'
 }
 
-$builtClient = (Resolve-Path -LiteralPath $BuiltClientPath).Path
 $builtDaemon = (Resolve-Path -LiteralPath $BuiltDaemonPath).Path
 $registerScript = (Resolve-Path -LiteralPath $RegisterScript).Path
 . "$PSScriptRoot/../../install/ToolLinks.ps1"
@@ -21,7 +19,6 @@ if (-not $InstallRoot) { $InstallRoot = Join-Path (Get-IojRoot) 'tools/jobserver
 $links = Get-ToolLinkDirectory $InstallRoot $LinkDirectory
 Assert-ToolLinkSupport $links
 $bin = Join-Path ([IO.Path]::GetFullPath($InstallRoot)) 'bin'
-$installedClient = Join-Path $bin 'jobserver.exe'
 $installedDaemon = Join-Path $bin 'jobserverd.exe'
 
 # Wait only for the daemon being replaced, never for jobs on the board.
@@ -31,9 +28,9 @@ if ($registeredTask) { $registeredPaths = @($registeredTask.Actions.Execute) }
 $running = Get-Process jobserverd -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -eq $installedDaemon -or $_.Path -in $registeredPaths }
 if ($running) {
-    & $builtClient shutdown
+    & coj jobs shutdown
     if ($LASTEXITCODE -ne 0) {
-        throw 'End running tickets and cancel queued/ready tickets before updating jobserver.'
+        throw 'Could not shut down the installed board. Clear active tickets first. For a protocol upgrade, shut down the empty board with its matching client before replacing either component.'
     }
     foreach ($daemon in $running) {
         if (-not $daemon.WaitForExit(15000)) {
@@ -43,7 +40,6 @@ if ($running) {
 }
 
 New-Item -ItemType Directory -Path $bin -Force | Out-Null
-Copy-Item -LiteralPath $builtClient -Destination $installedClient -Force
 Copy-Item -LiteralPath $builtDaemon -Destination $installedDaemon -Force
 & pwsh -NoProfile -File $registerScript -DaemonPath $installedDaemon
 if ($LASTEXITCODE -ne 0) {
@@ -52,9 +48,10 @@ if ($LASTEXITCODE -ne 0) {
 
 $deadline = [DateTime]::UtcNow.AddSeconds(20)
 do {
-    & $installedClient ping
+    & coj jobs ping
     if ($LASTEXITCODE -eq 0) {
-        Publish-ToolLinks $bin @('jobserver.exe', 'jobserverd.exe') $links
+        Publish-ToolLinks $bin @('jobserverd.exe') $links
+        Remove-RetiredTool $bin 'jobserver.exe' $links
         Write-Host "Installed the per-user jobs board at '$bin'."
         return
     }

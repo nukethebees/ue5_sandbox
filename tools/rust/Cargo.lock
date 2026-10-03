@@ -3,16 +3,6 @@
 version = 4
 
 [[package]]
-name = "agent-task"
-version = "0.5.1"
-dependencies = [
- "clap",
- "ioj-test-support",
- "serde_json",
- "windows-sys",
-]
-
-[[package]]
 name = "android_system_properties"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -183,6 +173,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
+name = "coj"
+version = "0.6.0"
+dependencies = [
+ "clap",
+ "ioj-test-support",
+ "jobserver-client",
+ "serde_json",
+ "windows-sys",
+]
+
+[[package]]
 name = "core-foundation-sys"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -340,6 +341,14 @@ name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
+
+[[package]]
+name = "jobserver-client"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "windows-sys",
+]
 
 [[package]]
 name = "js-sys"

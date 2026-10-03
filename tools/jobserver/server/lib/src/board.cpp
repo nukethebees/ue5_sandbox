@@ -26,14 +26,22 @@ auto ticket_json(Ticket const& ticket) -> nlohmann::json {
     return {{"id", ticket.id},
             {"mode", ticket.mode == Mode::shared ? "shared" : "exclusive"},
             {"state", state},
-            {"name", ticket.name}};
+            {"name", ticket.name},
+            {"owner", ticket.owner},
+            {"worktree", ticket.worktree}};
 }
 
-auto JobsBoard::request(Mode const mode, std::string name) -> TicketResult {
+auto JobsBoard::request(Mode const mode, std::string name, std::string owner, std::string worktree)
+    -> TicketResult {
     if (name.empty()) {
         return TicketResult{std::unexpect, "invalid_name", "A descriptive name is required"};
     }
-    tickets_.push_back({next_id_++, mode, std::move(name)});
+    if (owner.empty() || worktree.empty()) {
+        return TicketResult{std::unexpect, "invalid_owner", "An owner and worktree are required"};
+    }
+
+    tickets_.push_back(
+        {next_id_++, mode, std::move(name), State::queued, std::move(owner), std::move(worktree)});
     ready();
     return TicketResult{std::in_place, tickets_.back()};
 }
@@ -59,7 +67,8 @@ auto JobsBoard::transition(TicketId const id, State const next) -> TicketResult 
         return TicketResult{
             std::unexpect,
             "invalid_transition",
-            "Start requires Ready; end requires Running; cancel requires Queued or Ready"};
+            "Start requires Ready; end requires Running; cancel requires Queued or Ready. Use 'coj "
+            "jobs clear ID' for manual board-only removal in any state"};
     }
 
     found->state = next;
@@ -69,6 +78,31 @@ auto JobsBoard::transition(TicketId const id, State const next) -> TicketResult 
         ready();
     }
     return result;
+}
+auto JobsBoard::clear(TicketId const id) -> TicketResult {
+    auto const found{std::ranges::find(tickets_, id, &Ticket::id)};
+    if (found == tickets_.end()) {
+        return TicketResult{
+            std::unexpect, "unknown_ticket", std::format("No active ticket #{}", id)};
+    }
+
+    TicketResult result{std::in_place, *found};
+    tickets_.erase(found);
+    ready();
+    return result;
+}
+auto JobsBoard::clear_owner(std::string const& owner, std::optional<std::string> const& worktree)
+    -> nlohmann::json {
+    auto removed = nlohmann::json::array();
+    std::erase_if(tickets_, [&](Ticket const& ticket) {
+        if (ticket.owner != owner || (worktree && ticket.worktree != *worktree)) {
+            return false;
+        }
+        removed.push_back(ticket_json(ticket));
+        return true;
+    });
+    ready();
+    return removed;
 }
 void JobsBoard::ready() {
     for (auto& ticket : tickets_) {

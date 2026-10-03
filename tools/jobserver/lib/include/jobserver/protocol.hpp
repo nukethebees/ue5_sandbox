@@ -16,7 +16,7 @@ using Frame = std::vector<std::byte>;
 using FrameResult = std::expected<Frame, Error>;
 using PayloadSizeResult = std::expected<PayloadSize, Error>;
 
-inline constexpr Version major_version{4};
+inline constexpr Version major_version{5};
 inline constexpr PayloadSize maximum_payload_size{1024U * 1024U};
 inline constexpr std::size_t header_size{sizeof(PayloadSize)};
 

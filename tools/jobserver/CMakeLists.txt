@@ -1,6 +1,5 @@
 add_subdirectory(lib)
 add_subdirectory(platform)
-add_subdirectory(client)
 add_subdirectory(server)
 add_subdirectory(tests)
 add_subdirectory(install)

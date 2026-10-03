@@ -1,0 +1,15 @@
+[package]
+name = "coj"
+version = "0.6.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+serde_json = "1"
+jobserver-client = { path = "../jobserver-client" }
+
+[dev-dependencies]
+ioj-test-support.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_Console", "Win32_System_Diagnostics_ToolHelp", "Win32_System_JobObjects", "Win32_System_SystemServices", "Win32_System_Threading"] }

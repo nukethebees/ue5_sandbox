@@ -6,7 +6,6 @@ endif()
 add_library(jobserver-platform STATIC)
 target_sources(jobserver-platform PRIVATE
   include/jobserver/platform/transport.hpp
-  windows/client_transport.cpp
   windows/server_transport.cpp
   windows/transport_common.cpp
   windows/transport_common.hpp

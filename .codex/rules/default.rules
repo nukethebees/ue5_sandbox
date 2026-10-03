@@ -1,20 +1,20 @@
 # Git
 # ---------------------------------------------
-# Integration remains privileged; never allow the entire agent-task prefix.
+# Integration remains privileged; never allow the entire coj prefix.
 prefix_rule(
-    pattern=["agent-task", "integrate"],
+    pattern=["coj", "integrate"],
     decision="prompt"
 )
 prefix_rule(
-    pattern=["agent-task", "git"],
+    pattern=["coj", "git"],
     decision="allow"
 )
 prefix_rule(
-    pattern=["agent-task", "prepare-worktree"],
+    pattern=["coj", "prepare-worktree"],
     decision="allow"
 )
 prefix_rule(
-    pattern=["agent-task", "install-central-tools"],
+    pattern=["coj", "install-central-tools"],
     decision="allow"
 )
 prefix_rule(
@@ -92,8 +92,8 @@ prefix_rule(
 # Named Codex session inspection and membership-checked self-cleanup only.
 # Launching or stopping a complete session is not covered by this allowance.
 prefix_rule(
-    pattern=["agent-task", "codex", ["processes", "clean"]],
+    pattern=["coj", "codex", ["processes", "clean"]],
     decision="allow",
-    match=["agent-task codex processes dev1", "agent-task codex clean dev1 --dry-run", "agent-task codex clean dev1"],
-    not_match=["agent-task codex start dev1", "agent-task codex stop dev1"]
+    match=["coj codex processes dev1", "coj codex clean dev1 --dry-run", "coj codex clean dev1"],
+    not_match=["coj codex start dev1", "coj codex stop dev1"]
 )

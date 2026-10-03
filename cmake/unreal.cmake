@@ -4,7 +4,7 @@ include("${CMAKE_CURRENT_LIST_DIR}/unreal_arguments.cmake")
 function(add_unreal_target target_name unreal_target)
   add_custom_target(${target_name}
     COMMAND
-      agent-task unreal-build
+      coj unreal-build
       --build-script "${UE_BUILD_SCRIPT}"
       --target ${unreal_target}
       --platform ${UE_PLATFORM}

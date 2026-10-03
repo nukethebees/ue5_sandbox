@@ -55,7 +55,7 @@ class NativeWorkflowTests(unittest.TestCase):
                 for name in ("ClangTidy.LoopConditionCall", "ClangTidy.no-tuple", "ClangTidy.SimulationPolicy"):
                     self.assertEqual(name in tests, enabled)
 
-    def test_unreal_build_invocation_uses_agent_task(self) -> None:
+    def test_unreal_build_invocation_uses_coj(self) -> None:
         with tempfile.TemporaryDirectory(prefix="sandbox unreal invocation ") as directory:
             fixture = Path(directory)
             (fixture / "CMakeLists.txt").write_text(
@@ -72,7 +72,7 @@ class NativeWorkflowTests(unittest.TestCase):
             build = fixture / "build"
             self.run_cmake("-S", str(fixture), "-B", str(build), "-G", "Ninja")
             commands = self.run_cmake("--build", str(build), "--target", "editor", "--", "-t", "commands")
-            self.assertIn("agent-task unreal-build", commands)
+            self.assertIn("coj unreal-build", commands)
             for argument in ("--target SandboxEditor", "--platform Win64", "--configuration DebugGame",
                              "--native-toolchain test-native"):
                 self.assertIn(argument, commands)
@@ -361,7 +361,7 @@ class NativeWorkflowTests(unittest.TestCase):
 
     @unittest.skipUnless(shutil.which("pwsh"), "requires PowerShell")
     def test_jobserver_installer_rejects_asan_before_mutation(self) -> None:
-        cmake_source = (self.source_dir / "tools/jobserver/CMakeLists.txt").read_text()
+        cmake_source = (self.source_dir / "tools/jobserver/install/CMakeLists.txt").read_text()
         self.assertIn('-AsanEnabled "$<BOOL:${IOJ_ENABLE_ASAN}>"', cmake_source)
         result = subprocess.run([
             "pwsh", "-NoProfile", "-File",
@@ -653,7 +653,7 @@ cmake_language(DEFER CALL check_simulation_policy)
                 "-t",
                 "commands",
             )
-            self.assertNotRegex(dry_run, r"agent-task unreal-build|UnrealEditor|RunUBT")
+            self.assertNotRegex(dry_run, r"coj unreal-build|UnrealEditor|RunUBT")
             self.assertNotRegex(dry_run, r"(?i)(?:^|[\\/\s])unreal(?:[\\/\s]|$)")
             self.assertNotIn("layout-planner-ui-tests", dry_run)
             self.assertNotIn("image-lab-tests", dry_run)
@@ -753,6 +753,9 @@ cmake_language(DEFER CALL check_simulation_policy)
         self.assertFalse(inventory("-L", "^all$").keys() & tools.keys())
         expected_tools = {"layout-planner-ui-tests", "image-lab-tests"}
         expected_tools.update(("benchmark-tools", "game-package-tools", "native-binary-tools"))
+        expected_tools.update(("coj", "jobserver-client"))
+        if sys.platform == "win32":
+            expected_tools.add("jobserver-client-integration")
         self.assertEqual(tools.keys(), expected_tools)
         self.assertEqual(inventory("-L", "^native-simulation$", "-LE", "soak|compile-contract").keys(),
                          {"native-simulation-tests"})

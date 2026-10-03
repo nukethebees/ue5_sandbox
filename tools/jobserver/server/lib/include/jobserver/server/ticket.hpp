@@ -13,5 +13,7 @@ struct Ticket {
     Mode mode;
     std::string name;
     State state{State::queued};
+    std::string owner;
+    std::string worktree;
 };
 }

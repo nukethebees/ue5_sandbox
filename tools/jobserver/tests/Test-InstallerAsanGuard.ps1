@@ -15,7 +15,7 @@ foreach ($asan in @(0, 1)) {
     $probe.PathResolutionReached = $false
     $failure = $null
     try {
-        & $installer -BuiltClientPath 'unused-client' -BuiltDaemonPath 'unused-daemon' `
+        & $installer -BuiltDaemonPath 'unused-daemon' `
             -InstallRoot 'unused-install' -RegisterScript 'unused-register' -AsanEnabled $asan
     } catch {
         $failure = $_.Exception.Message
