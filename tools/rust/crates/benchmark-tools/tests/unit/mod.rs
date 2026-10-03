@@ -208,7 +208,9 @@ fn csv_and_offline_report_enforce_comparability_and_sequence() {
     ] {
         write_json(&root.join(name), &value).unwrap();
     }
-    let args = vec!["--run-dir".into(), root.display().to_string()];
+    let args = crate::cli::IsmcReportOptions {
+        run_dir: root.to_owned(),
+    };
     ismc::regenerate_comparison_reports(&args).unwrap();
     let output: serde_json::Value =
         serde_json::from_slice(&fs::read(root.join("comparison.json")).unwrap()).unwrap();

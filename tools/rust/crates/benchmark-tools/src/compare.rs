@@ -1,3 +1,4 @@
+use crate::cli::{CompareOptions, NativeWorkload, SimulationOptions};
 use crate::{
     native,
     results::{self, Capture, Conditions, Identity, Metric, Summary},
@@ -6,26 +7,6 @@ use crate::{
 };
 use serde_json::{Value, json};
 use std::{fs, path::Path};
-
-const HELP: &str = "Usage: coj benchmark compare --baseline <ref> [options]
-  --candidate <ref>         Compare a second commit (default: current working tree)
-  --workload <name>         fighter-simulation (default) or native-simulation
-  --level <relative-path>   Required for native-simulation; resolved in each revision
-  --fighter-caps <caps>     Fighter workload populations (default: 2000,4000)
-  --seconds <seconds>       Simulated duration per case (fighter: 10, native: 5)
-  --warmup-seconds <n>      Fighter steady-state warmup (default: 5)
-  --saturation-timeout-seconds <n>  Fighter saturation limit (default: 60)
-  --game-speed <n>          Native simulation game speed (default: 1)
-  --repetitions <n>         Complete pairs, alternating AB/BA (default: 2)
-  --order <sequence>        Explicit A/B order, e.g. ABAB or AABB; replaces --repetitions
-  --prepare-only           Build both sides and retain comparison worktrees
-  --baseline-worktree <path>  Reuse a prepared baseline inside this workspace
-  --candidate-worktree <path> Reuse a prepared candidate; requires --candidate
-  --skip-build             Use prepared binaries; requires supplied commit worktrees
-  --keep-worktrees         Retain newly created worktrees after measurement
-  --output-dir <path>      Parent for unique runs (default: .local/benchmarks/compare)
-Results: raw JSON per process, captures.json, comparison.json/.csv/.md, source.diff.
-Use a shared jobs ticket for preparation and an exclusive ticket for measurement.";
 
 struct NativeBenchmarkConfig {
     level: String,
@@ -36,18 +17,13 @@ struct NativeBenchmarkConfig {
     timeout: f64,
 }
 
-fn parse_measurement_sequence(args: &Args) -> Result<Vec<revision::Repetition>> {
-    let Some(order) = args.optional("--order") else {
+fn parse_measurement_sequence(args: &CompareOptions) -> Result<Vec<revision::Repetition>> {
+    let Some(order) = &args.order else {
         return Ok(revision::balanced_repetitions(
-            args.integer("--repetitions", 2, 1, 100)?,
+            args.repetitions.unwrap_or(2),
             0,
         ));
     };
-    if args.flag("--repetitions") {
-        return Err(
-            "--order determines the run count and cannot be combined with --repetitions.".into(),
-        );
-    }
     let order = order.to_ascii_uppercase();
     let count_a = order.bytes().filter(|&side| side == b'A').count();
     let count_b = order.bytes().filter(|&side| side == b'B').count();
@@ -79,30 +55,24 @@ fn parse_measurement_sequence(args: &Args) -> Result<Vec<revision::Repetition>> 
 }
 
 impl NativeBenchmarkConfig {
-    fn parse_native_benchmark_options(args: &Args) -> Result<Self> {
-        let fighter = args.choice(
-            "--workload",
-            "fighter-simulation",
-            &["fighter-simulation", "native-simulation"],
-        )? == "fighter-simulation";
-        if fighter && (args.flag("--level") || args.flag("--game-speed")) {
+    fn parse_native_benchmark_options(args: &CompareOptions) -> Result<Self> {
+        let fighter = args.workload == NativeWorkload::FighterSimulation;
+        if fighter && (args.level.is_some() || args.game_speed.is_some()) {
             return Err("--level and --game-speed apply only to native-simulation.".into());
         }
         if !fighter
-            && [
-                "--fighter-caps",
-                "--warmup-seconds",
-                "--saturation-timeout-seconds",
-            ]
-            .iter()
-            .any(|arg| args.flag(arg))
+            && (args.fighter_caps.is_some()
+                || args.warmup_seconds.is_some()
+                || args.saturation_timeout_seconds.is_some())
         {
             return Err("Fighter controls apply only to fighter-simulation.".into());
         }
         let level = if fighter {
             "LevelScripts/FighterSchedulingBenchmark.scm"
         } else {
-            args.required("--level")?
+            args.level
+                .as_deref()
+                .ok_or("--level is required for native-simulation.")?
         };
         if Path::new(level).is_absolute()
             || Path::new(level).components().any(|component| {
@@ -119,42 +89,36 @@ impl NativeBenchmarkConfig {
         Ok(Self {
             level: level.into(),
             caps: if fighter {
-                native::parse_fighter_caps(args.value("--fighter-caps", "2000,4000"))?
+                native::parse_fighter_caps(args.fighter_caps.as_deref().unwrap_or("2000,4000"))?
             } else {
                 vec![]
             },
-            seconds: args.float("--seconds", if fighter { 10.0 } else { 5.0 }, 0.001, 180.0)?,
-            speed: args.integer("--game-speed", 1, 1, u32::MAX)?,
-            warmup: args.float("--warmup-seconds", 5.0, 0.0, 180.0)?,
-            timeout: args.float("--saturation-timeout-seconds", 60.0, 0.1, 180.0)?,
+            seconds: args.seconds.unwrap_or(if fighter { 10.0 } else { 5.0 }),
+            speed: args.game_speed.unwrap_or(1),
+            warmup: args.warmup_seconds.unwrap_or(5.0),
+            timeout: args.saturation_timeout_seconds.unwrap_or(60.0),
         })
     }
 
-    fn build_simulation_arguments(&self, source: &Source) -> Vec<String> {
-        let mut args = vec![
-            "--level".into(),
-            source.root.join(&self.level).to_string_lossy().into_owned(),
-            "--seconds".into(),
-            self.seconds.to_string(),
-            "--game-speed".into(),
-            self.speed.to_string(),
-            "--skip-build".into(),
-        ];
-        if !self.caps.is_empty() {
-            args.extend([
-                "--fighter-stress-caps".into(),
+    fn simulation_options(&self, source: &Source) -> SimulationOptions {
+        SimulationOptions {
+            level: source.root.join(&self.level),
+            seconds: self.seconds,
+            game_speed: self.speed,
+            fighter_stress_cap: None,
+            fighter_stress_caps: (!self.caps.is_empty()).then(|| {
                 self.caps
                     .iter()
                     .map(u32::to_string)
                     .collect::<Vec<_>>()
-                    .join(","),
-                "--warmup-seconds".into(),
-                self.warmup.to_string(),
-                "--saturation-timeout-seconds".into(),
-                self.timeout.to_string(),
-            ]);
+                    .join(",")
+            }),
+            warmup_seconds: self.warmup,
+            saturation_timeout_seconds: self.timeout,
+            build_preset: "native-simulation-benchmark".into(),
+            skip_build: true,
+            telemetry: false,
         }
-        args
     }
 
     fn parse_native_capture(
@@ -277,62 +241,36 @@ fn read_case_metrics(value: &Value, case: &str) -> Result<Vec<Metric>> {
     Ok(metrics)
 }
 
-pub fn run_native_comparison(arguments: &[String]) -> Result<()> {
-    if arguments.iter().any(|arg| arg == "--help" || arg == "-h") {
-        println!("{HELP}");
-        return Ok(());
-    }
-    let args = Args::parse_command_line(
-        arguments,
-        &[
-            "--baseline",
-            "--candidate",
-            "--workload",
-            "--level",
-            "--fighter-caps",
-            "--seconds",
-            "--warmup-seconds",
-            "--saturation-timeout-seconds",
-            "--game-speed",
-            "--repetitions",
-            "--order",
-            "--baseline-worktree",
-            "--candidate-worktree",
-            "--output-dir",
-        ],
-        &["--prepare-only", "--skip-build", "--keep-worktrees"],
-    )?;
-    let baseline = args.required("--baseline")?;
-    let config = NativeBenchmarkConfig::parse_native_benchmark_options(&args)?;
-    let sequence = parse_measurement_sequence(&args)?;
-    if args.flag("--candidate-worktree") && !args.flag("--candidate") {
-        return Err("--candidate-worktree requires --candidate.".into());
-    }
-    if args.flag("--prepare-only") && args.flag("--skip-build") {
-        return Err("--prepare-only and --skip-build are mutually exclusive.".into());
-    }
-    if args.flag("--skip-build")
-        && (!args.flag("--baseline-worktree")
-            || (args.flag("--candidate") && !args.flag("--candidate-worktree")))
+pub fn run_native_comparison(args: &CompareOptions, arguments: &[String]) -> Result<()> {
+    let baseline = &args.baseline;
+    let config = NativeBenchmarkConfig::parse_native_benchmark_options(args)?;
+    let sequence = parse_measurement_sequence(args)?;
+    if args.skip_build
+        && (args.baseline_worktree.is_none()
+            || (args.candidate.is_some() && args.candidate_worktree.is_none()))
     {
         return Err("--skip-build requires a supplied worktree for each explicit commit.".into());
     }
     let root = find_repository_root(&std::env::current_dir()?)?;
-    for option in ["--baseline-worktree", "--candidate-worktree"] {
-        if let Some(path) = args.optional(option) {
-            revision::validate_owned_path(&resolve_absolute_path(&root, path)?, &root)?;
-        }
+    for path in [
+        args.baseline_worktree.as_deref(),
+        args.candidate_worktree.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        revision::validate_owned_path(&resolve_absolute_path(&root, path)?, &root)?;
     }
     let mut run = Run::new(
         &root,
         "compare",
-        Path::new(args.value("--output-dir", ".local/benchmarks/compare")),
+        &args.output_dir,
         json!({"arguments":arguments,"sequence":sequence}),
         "",
         true,
     )?;
     println!("Artifacts: {}", run.directory.display());
-    if args.flag("--prepare-only") {
+    if args.prepare_only {
         run.manifest["purpose"] = json!("preparation");
         run.write_manifest()?;
     }
@@ -342,17 +280,17 @@ pub fn run_native_comparison(arguments: &[String]) -> Result<()> {
         let mut baseline_input = Revisions::new(
             &root,
             baseline,
-            args.optional("--baseline-worktree"),
-            args.flag("--keep-worktrees"),
+            args.baseline_worktree.as_deref(),
+            args.keep_worktrees,
             &run.directory,
         )?;
         let result = (|| {
-            let mut candidate_input = if let Some(candidate) = args.optional("--candidate") {
+            let mut candidate_input = if let Some(candidate) = &args.candidate {
                 Some(Revisions::new(
                     &root,
                     candidate,
-                    args.optional("--candidate-worktree"),
-                    args.flag("--keep-worktrees"),
+                    args.candidate_worktree.as_deref(),
+                    args.keep_worktrees,
                     &run.directory,
                 )?)
             } else {
@@ -366,7 +304,7 @@ pub fn run_native_comparison(arguments: &[String]) -> Result<()> {
                 record_comparison_inputs(&mut run, &config, baseline, candidate)?;
 
                 for source in [baseline, candidate] {
-                    if !args.flag("--skip-build") {
+                    if !args.skip_build {
                         prepare_native_benchmark(&root, &source.root)?;
                     }
                     revision::verify_source_unchanged(source)?;
@@ -374,20 +312,20 @@ pub fn run_native_comparison(arguments: &[String]) -> Result<()> {
 
                 write_source_diffs(&run, baseline, candidate)?;
 
-                if args.flag("--prepare-only") {
+                if args.prepare_only {
                     return write_preparation_result(
                         &run,
                         baseline,
                         candidate,
                         arguments,
-                        args.flag("--candidate"),
+                        args.candidate.is_some(),
                     );
                 }
 
                 measure_and_report_comparison(&mut run, &config, &sequence, baseline, candidate)
             })();
 
-            if operation.is_ok() && args.flag("--prepare-only") {
+            if operation.is_ok() && args.prepare_only {
                 baseline_input.keep = true;
                 if let Some(input) = &mut candidate_input {
                     input.keep = true;
@@ -545,7 +483,7 @@ fn collect_native_captures(
         let directory = run.path(&format!("runs/{}-{}", item.sequence, item.side));
         let output = native::run_simulation_benchmark_with_logs(
             &source.root,
-            &config.build_simulation_arguments(source),
+            &config.simulation_options(source),
             &directory,
         )?;
         let values = parse_json_lines(&output)?;
@@ -674,7 +612,6 @@ fn write_native_comparison_reports(run: &mut Run, captures: &[Capture]) -> Resul
         text.push_str(&format!("\nIncomparable: {error}\n"));
     }
     write_csv(&run.path("comparison.csv"), &rows)?;
-    write_text(&run.path("comparison.md"), &text)?;
     if comparison.comparable {
         let paths = crate::plots::automatic(|| {
             crate::plots::plot_comparison(&comparison, &run.path("plots"))
@@ -687,8 +624,8 @@ fn write_native_comparison_reports(run: &mut Run, captures: &[Capture]) -> Resul
                 path.file_stem().unwrap().to_string_lossy()
             ));
         }
-        write_text(&run.path("comparison.md"), &text)?;
     }
+    write_text(&run.path("comparison.md"), &text)?;
     println!("{text}\nReport: {}", run.path("comparison.md").display());
     Ok(comparison.comparable)
 }

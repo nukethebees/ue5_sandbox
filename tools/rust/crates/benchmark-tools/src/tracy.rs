@@ -1,4 +1,5 @@
-use crate::support::{Args, Result, write_json};
+use crate::cli::{TracyOptions, TracySort};
+use crate::support::{Result, write_json};
 use serde::Serialize;
 use std::{
     collections::BTreeMap,
@@ -6,23 +7,6 @@ use std::{
     path::PathBuf,
     process::{Command, Stdio},
 };
-
-const HELP: &str = "Usage: benchmark-tools tracy-report --trace <capture.tracy> [options]
-  --filter <substring>    Case-sensitive zone-name filter (default: all zones)
-  --from-seconds <time>   Include invocations starting at/after this capture time
-  --to-seconds <time>     Include invocations starting before this capture time
-  --thread <id>          Include only this Tracy-exported thread identifier
-  --self                 Measure self time instead of inclusive elapsed time
-  --sort <metric>        total, max, mean, p95 (default: total)
-  --top <count>          Maximum zones in the report (default: 10, maximum: 100)
-  --worst <count>        Worst invocations per reported zone (default: 3, maximum: 10)
-  --max-events <count>   Exact percentile storage limit (default: 5000000)
-  --output <report.json> Write JSON to a file; otherwise print JSON
-
-Requires matching tracy-csvexport on PATH. Streams events without saving raw CSV.
-Time windows select by invocation start, without clipping duration. Percentiles are
-exact nearest-rank values. Exceeding the event/zone limit fails rather than sampling.
-The exporter itself loads the trace into memory; only the report is bounded.";
 
 const SEPARATOR: char = '\u{1f}';
 const MAX_ZONES: usize = 4096;
@@ -79,7 +63,7 @@ struct Report {
     exporter_version: String,
     selection: Selection,
     percentile_method: &'static str,
-    sort: String,
+    sort: TracySort,
     matched_events: usize,
     skipped_incomplete_events: usize,
     matched_zones: usize,
@@ -209,47 +193,21 @@ fn summarize_probe_events(
     Ok((zones, matched_events, incomplete_events))
 }
 
-pub fn generate_tracy_report(args: &[String]) -> Result<()> {
-    if args.iter().any(|arg| arg == "--help" || arg == "-h") {
-        println!("{HELP}");
-        return Ok(());
-    }
-    let args = Args::parse_command_line(
-        args,
-        &[
-            "--trace",
-            "--filter",
-            "--from-seconds",
-            "--to-seconds",
-            "--thread",
-            "--sort",
-            "--top",
-            "--worst",
-            "--max-events",
-            "--output",
-        ],
-        &["--self"],
-    )?;
-    let trace = std::fs::canonicalize(args.required("--trace")?)?;
+pub fn generate_tracy_report(args: &TracyOptions) -> Result<()> {
+    let trace = std::fs::canonicalize(&args.trace)?;
     let trace_bytes = std::fs::metadata(&trace)?.len();
-    let output = args
-        .optional("--output")
-        .map(std::path::absolute)
-        .transpose()?;
+    let output = args.output.as_ref().map(std::path::absolute).transpose()?;
     if let Some(path) = &output
         && std::fs::canonicalize(path).ok().as_ref() == Some(&trace)
     {
         return Err("The output must not overwrite the input trace.".into());
     }
     let selection = Selection {
-        filter: args.value("--filter", "").into(),
-        from_seconds: args.float("--from-seconds", 0.0, 0.0, 1e9)?,
-        to_seconds: args
-            .optional("--to-seconds")
-            .map(|_| args.float("--to-seconds", 0.0, 0.0, 1e9))
-            .transpose()?,
-        thread: args.optional("--thread").map(str::parse).transpose()?,
-        self_time: args.flag("--self"),
+        filter: args.filter.clone(),
+        from_seconds: args.from_seconds,
+        to_seconds: args.to_seconds,
+        thread: args.thread,
+        self_time: args.self_time,
     };
     if selection
         .to_seconds
@@ -257,10 +215,10 @@ pub fn generate_tracy_report(args: &[String]) -> Result<()> {
     {
         return Err("--to-seconds must be greater than --from-seconds.".into());
     }
-    let sort = args.choice("--sort", "total", &["total", "max", "mean", "p95"])?;
-    let top = args.integer("--top", 10, 1, 100)? as usize;
-    let worst = args.integer("--worst", 3, 0, 10)? as usize;
-    let max_events = args.integer("--max-events", 5_000_000, 1, 100_000_000)? as usize;
+    let sort = args.sort;
+    let top = args.top as usize;
+    let worst = args.worst as usize;
+    let max_events = args.max_events as usize;
 
     let version = Command::new("tracy-csvexport")
         .arg("--version")
@@ -317,10 +275,10 @@ pub fn generate_tracy_report(args: &[String]) -> Result<()> {
         return Err(format!("tracy-csvexport failed ({status}): {diagnostics}").into());
     }
     let metric = |zone: &ZoneReport| match sort {
-        "max" => zone.max_ns as f64,
-        "mean" => zone.mean_ns,
-        "p95" => zone.p95_ns as f64,
-        _ => zone.total_ns as f64,
+        TracySort::Max => zone.max_ns as f64,
+        TracySort::Mean => zone.mean_ns,
+        TracySort::P95 => zone.p95_ns as f64,
+        TracySort::Total => zone.total_ns as f64,
     };
     zones.sort_by(|a, b| metric(b).total_cmp(&metric(a)).then(a.zone.cmp(&b.zone)));
     let matched_zones = zones.len();
@@ -332,7 +290,7 @@ pub fn generate_tracy_report(args: &[String]) -> Result<()> {
         exporter_version,
         selection,
         percentile_method: "exact_nearest_rank",
-        sort: sort.into(),
+        sort,
         matched_events,
         skipped_incomplete_events,
         matched_zones,

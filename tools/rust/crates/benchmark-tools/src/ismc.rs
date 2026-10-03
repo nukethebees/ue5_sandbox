@@ -1,3 +1,4 @@
+use crate::cli::{IsmcOptions, IsmcReportOptions};
 use crate::{
     results::{self, Capture, Conditions},
     revision::{self, Repetition, Revisions, Run, Source},
@@ -36,11 +37,10 @@ pub struct Request {
 }
 
 impl Request {
-    fn parse_ismc_options(args: &Args, root: &Path) -> Result<Self> {
+    fn parse_ismc_options(args: &IsmcOptions, root: &Path) -> Result<Self> {
         let fallback = PathBuf::from(std::env::var_os("UE_ROOT").unwrap_or_default())
             .join("Engine/Binaries/Win64/UnrealEditor-Cmd.exe");
-        let editor =
-            resolve_absolute_path(root, args.value("--editor", &fallback.to_string_lossy()))?;
+        let editor = resolve_absolute_path(root, args.editor.as_deref().unwrap_or(&fallback))?;
         if !editor.is_file() {
             return Err(format!(
                 "Unreal Editor executable does not exist: '{}'. Use --editor or UE_ROOT.",
@@ -48,34 +48,30 @@ impl Request {
             )
             .into());
         }
-        let instances = args.integer("--instances", 40000, 1, i32::MAX as u32)?;
+        let instances = args.instances;
+        let min_instances = args.min_instances.unwrap_or(1000.min(instances));
+        if min_instances > instances {
+            return Err("--min-instances must not exceed --instances.".into());
+        }
         Ok(Self {
             editor,
-            width: args.integer("--width", 1280, 1, 16384)?,
-            height: args.integer("--height", 720, 1, 16384)?,
+            width: args.width,
+            height: args.height,
             instances,
-            update_percent: args.float("--update-percent", 100.0, 0.0, 100.0)?,
-            mode: args
-                .choice("--mode", "paired", &["paired", "custom", "engine_ismc"])?
-                .into(),
-            visibility: args
-                .choice("--visibility", "all", &["all", "half", "none"])?
-                .into(),
-            bounds: args
-                .choice("--bounds", "calculated", &["calculated", "supplied"])?
-                .into(),
-            custom_data: args
-                .choice("--custom-data", "none", &["none", "static", "animated"])?
-                .into(),
-            shadows: args.choice("--shadows", "0", &["0", "1"])? == "1",
-            churn: args.choice("--churn", "0", &["0", "1"])? == "1",
-            min_instances: args.integer("--min-instances", 1000.min(instances), 0, instances)?,
-            half_cycle_updates: args.integer("--half-cycle-updates", 120, 1, i32::MAX as u32)?,
-            replacement_percent: args.float("--replacement-percent", 5.0, 0.0, 100.0)?,
-            warmup_updates: args.integer("--warmup-updates", 0, 0, i32::MAX as u32)?,
-            warmup_seconds: args.float("--warmup-seconds", 1.0, 0.0, 3600.0)?,
-            seconds: args.float("--seconds", 5.0, 0.01, 3600.0)?,
-            trace: args.choice("--trace", "1", &["0", "1"])? == "1",
+            update_percent: args.update_percent,
+            mode: args.mode.as_str().into(),
+            visibility: args.visibility.as_str().into(),
+            bounds: args.bounds.as_str().into(),
+            custom_data: args.custom_data.as_str().into(),
+            shadows: args.shadows,
+            churn: args.churn,
+            min_instances,
+            half_cycle_updates: args.half_cycle_updates,
+            replacement_percent: args.replacement_percent,
+            warmup_updates: args.warmup_updates,
+            warmup_seconds: args.warmup_seconds,
+            seconds: args.seconds,
+            trace: args.trace,
             cache_directory: root.join(".local/benchmarks/ddc"),
         })
     }
@@ -349,58 +345,23 @@ fn collect_measurement_captures(plan: &Plan, timeout_seconds: u32) -> Result<Vec
     Ok(captures)
 }
 
-pub fn run_ismc_benchmark(root: &Path, args: &[String], comparison: bool) -> Result<()> {
-    let parsed = Args::parse_command_line(
-        args,
-        &[
-            "--editor",
-            "--width",
-            "--height",
-            "--instances",
-            "--update-percent",
-            "--mode",
-            "--visibility",
-            "--bounds",
-            "--custom-data",
-            "--shadows",
-            "--churn",
-            "--min-instances",
-            "--half-cycle-updates",
-            "--replacement-percent",
-            "--warmup-updates",
-            "--warmup-seconds",
-            "--seconds",
-            "--trace",
-            "--timeout-seconds",
-            "--output-dir",
-            "--baseline",
-            "--baseline-worktree",
-            "--repetitions",
-            "--warmup-runs",
-            "--label",
-        ],
-        &[
-            "--skip-build",
-            "--keep-baseline-worktree",
-            "--prepare-only",
-            "--validate-only",
-        ],
-    )?;
-    let mut settings = Request::parse_ismc_options(&parsed, root)?;
-    let timeout_seconds = parsed.integer("--timeout-seconds", 600, 1, 86400)?;
-    let prepare = parsed.flag("--prepare-only");
-    let validate = parsed.flag("--validate-only");
-    if prepare && validate {
-        return Err("--prepare-only and --validate-only are mutually exclusive.".into());
-    }
-    let mut repetitions =
-        parsed.integer("--repetitions", if comparison { 2 } else { 1 }, 1, 100)?;
-    let mut warmups = parsed.integer("--warmup-runs", 0, 0, 10)?;
+pub fn run_ismc_benchmark(
+    root: &Path,
+    parsed: &IsmcOptions,
+    args: &[String],
+    comparison: bool,
+) -> Result<()> {
+    let mut settings = Request::parse_ismc_options(parsed, root)?;
+    let timeout_seconds = parsed.timeout_seconds;
+    let prepare = parsed.prepare_only;
+    let validate = parsed.validate_only;
+    let mut repetitions = parsed.repetitions.unwrap_or(if comparison { 2 } else { 1 });
+    let mut warmups = parsed.warmup_runs;
     if !comparison
         && (prepare
             || validate
-            || parsed.flag("--baseline")
-            || parsed.flag("--baseline-worktree")
+            || parsed.baseline.is_some()
+            || parsed.baseline_worktree.is_some()
             || repetitions != 1
             || warmups != 0)
     {
@@ -414,8 +375,8 @@ pub fn run_ismc_benchmark(root: &Path, args: &[String], comparison: bool) -> Res
         warmups = 0;
         println!("Validation only: one short A/B pair; no performance conclusions.");
     }
-    let supplied = parsed.value("--baseline-worktree", "");
-    if comparison && parsed.flag("--skip-build") && supplied.is_empty() {
+    let supplied = parsed.baseline_worktree.as_deref();
+    if comparison && parsed.skip_build && supplied.is_none() {
         return Err("--skip-build requires --baseline-worktree for revision comparisons.".into());
     }
     let command = if comparison {
@@ -427,9 +388,9 @@ pub fn run_ismc_benchmark(root: &Path, args: &[String], comparison: bool) -> Res
     let mut context = Run::new(
         root,
         command,
-        Path::new(parsed.value("--output-dir", &parent)),
+        parsed.output_dir.as_deref().unwrap_or(Path::new(&parent)),
         json!(settings),
-        parsed.value("--label", ""),
+        &parsed.label,
         true,
     )?;
     context.manifest["purpose"] = json!(if prepare {
@@ -445,13 +406,12 @@ pub fn run_ismc_benchmark(root: &Path, args: &[String], comparison: bool) -> Res
         let mut revisions = if comparison {
             Some(Revisions::new(
                 root,
-                parsed.required("--baseline")?,
-                if supplied.is_empty() {
-                    None
-                } else {
-                    Some(supplied)
-                },
-                parsed.flag("--keep-baseline-worktree"),
+                parsed
+                    .baseline
+                    .as_deref()
+                    .ok_or("--baseline is required for revision comparisons.")?,
+                supplied,
+                parsed.keep_baseline_worktree,
                 &context.directory,
             )?)
         } else {
@@ -474,7 +434,7 @@ pub fn run_ismc_benchmark(root: &Path, args: &[String], comparison: bool) -> Res
             if comparison {
                 validate_measurement_protocol(&baseline.root)?;
             }
-            if !parsed.flag("--skip-build") {
+            if !parsed.skip_build {
                 build_editor(&candidate.root, &settings.editor)?;
                 if let Some(revisions) = &revisions {
                     if revisions.owned {
@@ -571,9 +531,8 @@ pub fn run_ismc_benchmark(root: &Path, args: &[String], comparison: bool) -> Res
     result
 }
 
-pub fn regenerate_comparison_reports(args: &[String]) -> Result<()> {
-    let args = Args::parse_command_line(args, &["--run-dir"], &[])?;
-    let directory = resolve_absolute_path(&std::env::current_dir()?, args.required("--run-dir")?)?;
+pub fn regenerate_comparison_reports(args: &IsmcReportOptions) -> Result<()> {
+    let directory = resolve_absolute_path(&std::env::current_dir()?, &args.run_dir)?;
     let manifest: Value = read_json(&directory.join("manifest.json"))?;
     if manifest["schemaVersion"] != 1
         || manifest["benchmark"] != "sandbox-ismc-revision-ab"

@@ -4,6 +4,7 @@ mod native;
 pub use kernel::plot_kernel;
 pub use native::{plot_comparison, plot_fighters};
 
+use crate::cli::{PlotKind, PlotOptions};
 use crate::support::*;
 use plotters::coord::ranged1d::{DefaultFormatting, KeyPointHint};
 use plotters::coord::types::RangedCoordf64;
@@ -24,35 +25,24 @@ const COLORS: [RGBColor; 10] = [
     RGBColor(23, 160, 180),
 ];
 
-pub fn run(arguments: &[String]) -> Result<()> {
-    if arguments.iter().any(|arg| arg == "--help" || arg == "-h") {
-        println!(
-            "Usage: coj benchmark plot --kind <kernel|fighter|comparison> --input <json> --output-dir <directory> [--baseline <backend>]\nSVG only. --baseline is kernel-only (default: scalar; fallback: autovec-avx2)."
-        );
-        return Ok(());
-    }
-    let args = Args::parse_command_line(
-        arguments,
-        &["--kind", "--input", "--output-dir", "--baseline"],
-        &[],
-    )?;
-    let kind = args.required("--kind")?;
-    if kind != "kernel" && args.flag("--baseline") {
+pub fn run(args: &PlotOptions) -> Result<()> {
+    if args.kind != PlotKind::Kernel && args.baseline.is_some() {
         return Err("--baseline is only supported for kernel plots.".into());
     }
-    let input: Value = read_json(Path::new(args.required("--input")?))?;
-    let output = Path::new(args.required("--output-dir")?);
-    let paths = match kind {
-        "kernel" => plot_kernel(&input, output, args.value("--baseline", "scalar"))?,
-        "fighter" => plot_fighters(&input, output)?,
-        "comparison" => {
+    let input: Value = read_json(&args.input)?;
+    let output = &args.output_dir;
+    let paths = match args.kind {
+        PlotKind::Kernel => {
+            plot_kernel(&input, output, args.baseline.as_deref().unwrap_or("scalar"))?
+        }
+        PlotKind::Fighter => plot_fighters(&input, output)?,
+        PlotKind::Comparison => {
             if input["schemaVersion"] != 1 {
                 return Err("Unsupported native comparison schema.".into());
             }
             let comparison = serde_json::from_value(input["comparison"].clone())?;
             plot_comparison(&comparison, output)?
         }
-        _ => return Err("--kind must be kernel, fighter, or comparison.".into()),
     };
     print_paths(&paths);
     Ok(())

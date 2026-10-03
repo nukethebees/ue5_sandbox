@@ -72,6 +72,7 @@ name = "benchmark-tools"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "clap",
  "ioj-test-support",
  "plotters",
  "serde",

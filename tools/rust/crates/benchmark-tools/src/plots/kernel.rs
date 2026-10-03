@@ -1,5 +1,7 @@
 use super::*;
 use crate::results::Summary;
+use crate::time::TimeUnit;
+use serde::Deserialize;
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -25,6 +27,33 @@ struct Samples {
     median: Option<f64>,
     mean: Option<f64>,
     deviation: f64,
+}
+
+#[derive(Default, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum RunType {
+    #[default]
+    Iteration,
+    Aggregate,
+}
+
+#[derive(PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum AggregateKind {
+    Median,
+    Mean,
+    Stddev,
+    #[serde(other)]
+    Other,
+}
+
+#[derive(Default, PartialEq, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum AggregateUnit {
+    #[default]
+    Time,
+    #[serde(other)]
+    Other,
 }
 
 fn parse_key(name: &str) -> Result<Key> {
@@ -67,47 +96,41 @@ fn load(document: &Value) -> Result<Vec<Measurement>> {
             continue;
         }
         let key = parse_key(name)?;
-        let aggregate = match entry
+        let run_type = entry
             .get("run_type")
-            .and_then(Value::as_str)
-            .unwrap_or("iteration")
-        {
-            "iteration" => None,
-            "aggregate" => {
-                let name = entry["aggregate_name"]
-                    .as_str()
-                    .ok_or("Missing aggregate_name.")?;
-                if entry
+            .map(RunType::deserialize)
+            .transpose()?
+            .unwrap_or_default();
+        let aggregate = match run_type {
+            RunType::Iteration => None,
+            RunType::Aggregate => {
+                let kind = AggregateKind::deserialize(&entry["aggregate_name"])?;
+                let unit = entry
                     .get("aggregate_unit")
-                    .and_then(Value::as_str)
-                    .unwrap_or("time")
-                    != "time"
-                    || !["median", "mean", "stddev"].contains(&name)
-                {
+                    .map(AggregateUnit::deserialize)
+                    .transpose()?
+                    .unwrap_or_default();
+                if unit != AggregateUnit::Time || kind == AggregateKind::Other {
                     continue;
                 }
-                Some(name)
+                Some(kind)
             }
-            _ => return Err("Unsupported kernel run_type.".into()),
         };
-        let scale = match entry["time_unit"].as_str() {
-            Some("ns") => 1.0,
-            Some("us") => 1e3,
-            Some("ms") => 1e6,
-            Some("s") => 1e9,
-            _ => return Err("Unsupported kernel time_unit.".into()),
-        };
-        let time = read_finite_number(entry, "/real_time")? * scale;
-        if !time.is_finite() || time < 0.0 || (time == 0.0 && aggregate != Some("stddev")) {
+        let unit = TimeUnit::deserialize(&entry["time_unit"])?;
+        let time = unit.to_nanoseconds(read_finite_number(entry, "/real_time")?);
+        if !time.is_finite()
+            || time < 0.0
+            || (time == 0.0 && aggregate != Some(AggregateKind::Stddev))
+        {
             return Err("Kernel timing must be positive; standard deviation may be zero.".into());
         }
         let samples = groups.entry(key).or_default();
         match aggregate {
             None => samples.iterations.push(time),
-            Some("median") => samples.median = Some(time),
-            Some("mean") => samples.mean = Some(time),
-            Some("stddev") => samples.deviation = time,
-            _ => unreachable!(),
+            Some(AggregateKind::Median) => samples.median = Some(time),
+            Some(AggregateKind::Mean) => samples.mean = Some(time),
+            Some(AggregateKind::Stddev) => samples.deviation = time,
+            Some(AggregateKind::Other) => unreachable!(),
         }
     }
     let mut measurements = Vec::new();

@@ -157,7 +157,10 @@ fn automatic_failure_preserves_measurements_and_offline_failure_is_an_error() {
         blocked.to_str().unwrap(),
     ]
     .map(str::to_owned);
-    assert!(run(&args).is_err());
+    let args = std::iter::once("plot".to_owned())
+        .chain(args)
+        .collect::<Vec<_>>();
+    assert!(crate::dispatch_benchmark_command(&args).is_err());
 }
 
 #[test]
@@ -175,15 +178,18 @@ fn offline_commands_regenerate_saved_results() {
         let input = output.path().join(format!("{kind}.json"));
         let destination = output.path().join(kind);
         write_json(&input, &data).unwrap();
-        run(&[
-            "--kind",
-            kind,
-            "--input",
-            input.to_str().unwrap(),
-            "--output-dir",
-            destination.to_str().unwrap(),
-        ]
-        .map(str::to_owned))
+        crate::dispatch_benchmark_command(
+            &[
+                "plot",
+                "--kind",
+                kind,
+                "--input",
+                input.to_str().unwrap(),
+                "--output-dir",
+                destination.to_str().unwrap(),
+            ]
+            .map(str::to_owned),
+        )
         .unwrap();
         assert_eq!(fs::read_dir(destination).unwrap().count(), count);
     }

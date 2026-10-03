@@ -1,3 +1,7 @@
+use crate::cli::{
+    CommandletOptions, EditorOptions, HeatmapOptions, RadarOptions, ScatterOptions, SparkOptions,
+    TelemetryOptions,
+};
 use crate::support::*;
 use serde_json::Value;
 use std::{
@@ -89,142 +93,160 @@ fn validate_automation_log(log: &str) -> Result<()> {
     Ok(())
 }
 
-fn measurement_arguments(operation: &str, args: &Args) -> Result<(Vec<String>, u64, bool)> {
-    let mut command = Vec::new();
-    let (timeout, automation) = match operation {
-        "spark" => {
-            command.push("-ExecCmds=Automation Now; RunTests StartsWith:SandboxBenchmarks.SparkBenchmark; Quit".into());
-            command.push(format!(
-                "-SandboxSparkBenchmarkSeconds={}",
-                args.float("--seconds", 10.0, 0.01, 86400.0)?
-            ));
-            for (option, flag, default, min) in [
-                ("--capacity", "Capacity", 50000, 1),
-                ("--sparks-per-hit", "SparksPerHit", 96, 1),
-                ("--impacts-per-frame", "ImpactsPerFrame", 100, 1),
-                ("--warmup-frames", "WarmupFrames", 60, 0),
-            ] {
-                command.push(format!(
-                    "-SandboxSparkBenchmark{flag}={}",
-                    args.integer(option, default, min, i32::MAX as u32)?
-                ));
-            }
-            command.extend(["-RenderOffscreen".into(), "-FullStdOutLogOutput".into()]);
-            (1200, true)
-        }
-        "level-telemetry" => {
-            command.push(
-                "-ExecCmds=Automation Now; RunTests SandboxBenchmarks.LevelTelemetryStorage; Quit"
-                    .into(),
-            );
-            command.push(format!(
-                "-SandboxTelemetryBenchmarkSamples={}",
-                args.integer("--samples", 7, 1, 100)?
-            ));
-            command.push("-FullStdOutLogOutput".into());
-            (1200, true)
-        }
-        "entity-overlay" => {
-            command.extend(
-                [
-                    "-run=EntityOverlayBenchmark",
-                    "-RenderOffscreen",
-                    "-AllowCommandletRendering",
-                    "-DDC-ForceMemoryCache",
-                ]
-                .map(str::to_owned),
-            );
-            (1200, false)
-        }
-        "volume-heatmap-3d" => {
-            command.extend(
-                [
-                    "-run=VolumeHeatmap3DBenchmark",
-                    "-d3d12",
-                    "-RenderOffscreen",
-                    "-AllowCommandletRendering",
-                ]
-                .map(str::to_owned),
-            );
-            (1200, false)
-        }
-        _ => {
-            let (name, option, flag, defaults, warmup) = match operation {
-                "heatmap" => (
-                    "HeatmapBenchmark",
-                    "--resolutions",
-                    "Resolutions",
-                    "32,64,128,256,512",
-                    10,
-                ),
-                "radar-3d" => (
-                    "Radar3DBenchmark",
-                    "--contact-counts",
-                    "ContactCounts",
-                    "32,128,256,512",
-                    10,
-                ),
-                "scatter-3d" => (
-                    "Scatter3DBenchmark",
-                    "--point-counts",
-                    "PointCounts",
-                    "1,64,1024,16384,65536",
-                    20,
-                ),
-                _ => return Err(format!("Unknown Unreal measurement '{operation}'").into()),
-            };
-            command.extend([
-                format!("-run={name}"),
-                format!("-{flag}={}", args.value(option, defaults)),
-                format!(
-                    "-Warmup={}",
-                    args.integer("--warmup", warmup, 0, i32::MAX as u32)?
-                ),
-                format!(
-                    "-Iterations={}",
-                    args.integer("--iterations", 100, 1, i32::MAX as u32)?
-                ),
-                format!(
-                    "-Output={}",
-                    args.value("--output", &format!("Saved/Benchmarks/{name}.csv"))
-                ),
-                "-RenderOffscreen".into(),
-                "-AllowCommandletRendering".into(),
-            ]);
-            (1200, false)
-        }
-    };
-    Ok((command, timeout, automation))
+pub enum Benchmark {
+    Spark(SparkOptions),
+    Telemetry(TelemetryOptions),
+    Heatmap(HeatmapOptions),
+    Radar(RadarOptions),
+    Scatter(ScatterOptions),
+    VolumeHeatmap(EditorOptions),
+    EntityOverlay(EditorOptions),
 }
 
-pub fn run_unreal_benchmark(root: &Path, operation: &str, arguments: &[String]) -> Result<()> {
-    let mut options = vec!["--build-dir", "--timeout-seconds"];
-    options.extend(match operation {
-        "spark" => vec![
-            "--seconds",
-            "--capacity",
-            "--sparks-per-hit",
-            "--impacts-per-frame",
-            "--warmup-frames",
-        ],
-        "level-telemetry" => vec!["--samples", "--output-dir"],
-        "heatmap" => vec!["--resolutions", "--warmup", "--iterations", "--output"],
-        "radar-3d" => vec!["--contact-counts", "--warmup", "--iterations", "--output"],
-        "scatter-3d" => vec!["--point-counts", "--warmup", "--iterations", "--output"],
-        _ => vec![],
-    });
-    let args = Args::parse_command_line(arguments, &options, &["--skip-build"])?;
-    let (arguments, timeout, automation) = measurement_arguments(operation, &args)?;
-    let timeout = args.integer("--timeout-seconds", timeout as u32, 1, 86400)?;
+impl Benchmark {
+    fn editor(&self) -> &EditorOptions {
+        match self {
+            Self::Spark(options) => &options.editor,
+            Self::Telemetry(options) => &options.editor,
+            Self::Heatmap(options) => &options.common.editor,
+            Self::Radar(options) => &options.common.editor,
+            Self::Scatter(options) => &options.common.editor,
+            Self::VolumeHeatmap(options) | Self::EntityOverlay(options) => options,
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        match self {
+            Self::Spark(_) => "spark",
+            Self::Telemetry(_) => "level-telemetry",
+            Self::Heatmap(_) => "heatmap",
+            Self::Radar(_) => "radar-3d",
+            Self::Scatter(_) => "scatter-3d",
+            Self::VolumeHeatmap(_) => "volume-heatmap-3d",
+            Self::EntityOverlay(_) => "entity-overlay",
+        }
+    }
+}
+
+fn commandlet_arguments(
+    name: &str,
+    flag: &str,
+    values: &str,
+    options: &CommandletOptions,
+    warmup: u32,
+) -> Vec<String> {
+    vec![
+        format!("-run={name}"),
+        format!("-{flag}={values}"),
+        format!("-Warmup={}", options.warmup.unwrap_or(warmup)),
+        format!("-Iterations={}", options.iterations),
+        format!(
+            "-Output={}",
+            options
+                .output
+                .as_deref()
+                .unwrap_or(&format!("Saved/Benchmarks/{name}.csv"))
+        ),
+        "-RenderOffscreen".into(),
+        "-AllowCommandletRendering".into(),
+    ]
+}
+
+fn measurement_arguments(benchmark: &Benchmark) -> (Vec<String>, bool) {
+    match benchmark {
+        Benchmark::Spark(options) => {
+            let mut command = vec![
+                "-ExecCmds=Automation Now; RunTests StartsWith:SandboxBenchmarks.SparkBenchmark; Quit".into(),
+                format!("-SandboxSparkBenchmarkSeconds={}", options.seconds),
+                "-RenderOffscreen".into(),
+                "-FullStdOutLogOutput".into(),
+            ];
+            for (flag, value) in [
+                ("Capacity", options.capacity),
+                ("SparksPerHit", options.sparks_per_hit),
+                ("ImpactsPerFrame", options.impacts_per_frame),
+                ("WarmupFrames", options.warmup_frames),
+            ] {
+                command.push(format!("-SandboxSparkBenchmark{flag}={value}"));
+            }
+            (command, true)
+        }
+        Benchmark::Telemetry(options) => (
+            vec![
+                "-ExecCmds=Automation Now; RunTests SandboxBenchmarks.LevelTelemetryStorage; Quit"
+                    .into(),
+                format!("-SandboxTelemetryBenchmarkSamples={}", options.samples),
+                "-FullStdOutLogOutput".into(),
+            ],
+            true,
+        ),
+        Benchmark::EntityOverlay(_) => (
+            [
+                "-run=EntityOverlayBenchmark",
+                "-RenderOffscreen",
+                "-AllowCommandletRendering",
+                "-DDC-ForceMemoryCache",
+            ]
+            .map(str::to_owned)
+            .to_vec(),
+            false,
+        ),
+        Benchmark::VolumeHeatmap(_) => (
+            [
+                "-run=VolumeHeatmap3DBenchmark",
+                "-d3d12",
+                "-RenderOffscreen",
+                "-AllowCommandletRendering",
+            ]
+            .map(str::to_owned)
+            .to_vec(),
+            false,
+        ),
+        Benchmark::Heatmap(options) => (
+            commandlet_arguments(
+                "HeatmapBenchmark",
+                "Resolutions",
+                &options.resolutions,
+                &options.common,
+                10,
+            ),
+            false,
+        ),
+        Benchmark::Radar(options) => (
+            commandlet_arguments(
+                "Radar3DBenchmark",
+                "ContactCounts",
+                &options.contact_counts,
+                &options.common,
+                10,
+            ),
+            false,
+        ),
+        Benchmark::Scatter(options) => (
+            commandlet_arguments(
+                "Scatter3DBenchmark",
+                "PointCounts",
+                &options.point_counts,
+                &options.common,
+                20,
+            ),
+            false,
+        ),
+    }
+}
+
+pub fn run_unreal_benchmark(root: &Path, benchmark: Benchmark) -> Result<()> {
+    let (arguments, automation) = measurement_arguments(&benchmark);
+    let options = benchmark.editor();
     let settings = prepare_editor_build(
         root,
-        args.optional("--build-dir"),
+        options.build_dir.as_deref(),
         if automation {
             "development"
         } else {
             "debug-game"
         },
-        args.flag("--skip-build"),
+        options.skip_build,
     )?;
     let mut command = Command::new(read_build_path(&settings, "editor_cmd")?);
     command
@@ -241,19 +263,16 @@ pub fn run_unreal_benchmark(root: &Path, operation: &str, arguments: &[String]) 
             ),
         ]);
     }
-    let log = if operation == "level-telemetry" {
-        resolve_absolute_path(
-            root,
-            args.value("--output-dir", ".local/benchmarks/level-telemetry"),
-        )?
-        .join("telemetry-benchmark.log")
-    } else {
-        root.join(format!("Saved/Benchmarks/{operation}.log"))
+    let log = match &benchmark {
+        Benchmark::Telemetry(options) => {
+            resolve_absolute_path(root, &options.output_dir)?.join("telemetry-benchmark.log")
+        }
+        _ => root.join(format!("Saved/Benchmarks/{}.log", benchmark.name())),
     };
     let output = require_process_success(run_editor_with_timeout(
         &mut command,
         &log,
-        Instant::now() + Duration::from_secs(timeout.into()),
+        Instant::now() + Duration::from_secs(options.timeout_seconds.into()),
     )?)?;
     let text = String::from_utf8_lossy(&output.stdout);
     print!("{text}");

@@ -1,14 +1,15 @@
+use crate::cli::{FighterOptions, FrameMemoryOptions, SimulationOptions};
 use crate::support::*;
 use serde_json::Value;
 use std::path::Path;
 
-pub fn run_simulation_benchmark(root: &Path, args: &[String]) -> Result<String> {
+pub fn run_simulation_benchmark(root: &Path, args: &SimulationOptions) -> Result<String> {
     capture_simulation_output(root, args, None)
 }
 
 pub fn run_simulation_benchmark_with_logs(
     root: &Path,
-    args: &[String],
+    args: &SimulationOptions,
     directory: &Path,
 ) -> Result<String> {
     capture_simulation_output(root, args, Some(directory))
@@ -16,37 +17,17 @@ pub fn run_simulation_benchmark_with_logs(
 
 fn capture_simulation_output(
     root: &Path,
-    args: &[String],
+    parsed: &SimulationOptions,
     directory: Option<&Path>,
 ) -> Result<String> {
-    let parsed = Args::parse_command_line(
-        args,
-        &[
-            "--level",
-            "--seconds",
-            "--game-speed",
-            "--fighter-stress-cap",
-            "--fighter-stress-caps",
-            "--warmup-seconds",
-            "--saturation-timeout-seconds",
-            "--build-preset",
-        ],
-        &["--telemetry", "--skip-build"],
-    )?;
-    let level = resolve_absolute_path(&std::env::current_dir()?, parsed.required("--level")?)?;
+    let level = resolve_absolute_path(&std::env::current_dir()?, &parsed.level)?;
     if !level.is_file() {
         return Err(format!("The level path does not exist: '{}'.", level.display()).into());
     }
-    parsed.required("--seconds")?;
-    let seconds = parsed.float("--seconds", 0.0, f64::MIN_POSITIVE, f64::MAX)?;
-    let speed = parsed.integer("--game-speed", 1, 1, u32::MAX)?;
-    let warmup = parsed.float("--warmup-seconds", 5.0, 0.0, 86400.0)?;
-    let timeout = parsed.float("--saturation-timeout-seconds", 60.0, 0.1, 86400.0)?;
-    if parsed.flag("--fighter-stress-cap") && parsed.flag("--fighter-stress-caps") {
-        return Err(
-            "--fighter-stress-cap and --fighter-stress-caps are mutually exclusive.".into(),
-        );
-    }
+    let seconds = parsed.seconds;
+    let speed = parsed.game_speed;
+    let warmup = parsed.warmup_seconds;
+    let timeout = parsed.saturation_timeout_seconds;
     let mut command = vec![
         "--level".into(),
         level.to_string_lossy().into_owned(),
@@ -55,22 +36,17 @@ fn capture_simulation_output(
         "--game-speed".into(),
         speed.to_string(),
     ];
-    if parsed.flag("--telemetry") {
+    if parsed.telemetry {
         command.push("--telemetry".into());
     }
-    if parsed.flag("--fighter-stress-cap") {
-        let cap = parsed.integer("--fighter-stress-cap", 1, 1, u32::MAX)?;
+    if let Some(cap) = parsed.fighter_stress_cap {
         command.extend(["--fighter-stress-cap".into(), cap.to_string()]);
     }
-    if parsed.flag("--fighter-stress-caps") {
+    if let Some(caps) = &parsed.fighter_stress_caps {
         command.push("--fighter-stress-caps".into());
-        command.extend(
-            parse_fighter_caps(parsed.required("--fighter-stress-caps")?)?
-                .iter()
-                .map(u32::to_string),
-        );
+        command.extend(parse_fighter_caps(caps)?.iter().map(u32::to_string));
     }
-    if parsed.flag("--fighter-stress-cap") || parsed.flag("--fighter-stress-caps") {
+    if parsed.fighter_stress_cap.is_some() || parsed.fighter_stress_caps.is_some() {
         command.extend([
             "--warmup-seconds".into(),
             warmup.to_string(),
@@ -78,12 +54,12 @@ fn capture_simulation_output(
             timeout.to_string(),
         ]);
     }
-    let build = parsed.value("--build-preset", "native-simulation-benchmark");
+    let build = parsed.build_preset.as_str();
     let configure = match build {
         "native-simulation-benchmark" | "frame-memory-level-benchmark" => "native-benchmark",
         _ => build,
     };
-    if !parsed.flag("--skip-build") {
+    if !parsed.skip_build {
         run_process_inherited(root, "cmake", &["--preset", configure])?;
         run_process_inherited(root, "cmake", &["--build", "--preset", build])?;
     }
@@ -128,47 +104,32 @@ pub(crate) fn parse_fighter_caps(text: &str) -> Result<Vec<u32>> {
     Ok(values)
 }
 
-pub fn run_fighter_benchmark(root: &Path, args: &[String]) -> Result<()> {
-    let parsed = Args::parse_command_line(
-        args,
-        &[
-            "--fighter-caps",
-            "--seconds",
-            "--warmup-seconds",
-            "--saturation-timeout-seconds",
-            "--output-dir",
-        ],
-        &["--skip-build"],
-    )?;
-    let caps = parse_fighter_caps(parsed.value("--fighter-caps", "2000,4000"))?;
-    let seconds = parsed.float("--seconds", 10.0, 0.1, 86400.0)?;
-    let warmup = parsed.float("--warmup-seconds", 5.0, 0.0, 86400.0)?;
-    let timeout = parsed.float("--saturation-timeout-seconds", 60.0, 0.1, 86400.0)?;
+pub fn run_fighter_benchmark(root: &Path, parsed: &FighterOptions) -> Result<()> {
+    let caps = parse_fighter_caps(&parsed.fighter_caps)?;
+    let seconds = parsed.seconds;
     let default_output = format!(
         ".local/benchmarks/fighter-simulation/{}",
         chrono::Local::now().format("%Y%m%d-%H%M%S")
     );
-    let output = resolve_absolute_path(root, parsed.value("--output-dir", &default_output))?;
-    let mut command = vec![
-        "--level".into(),
-        root.join("LevelScripts/FighterSchedulingBenchmark.scm")
-            .to_string_lossy()
-            .into_owned(),
-        "--seconds".into(),
-        seconds.to_string(),
-        "--fighter-stress-caps".into(),
-        caps.iter()
-            .map(u32::to_string)
-            .collect::<Vec<_>>()
-            .join(","),
-        "--warmup-seconds".into(),
-        warmup.to_string(),
-        "--saturation-timeout-seconds".into(),
-        timeout.to_string(),
-    ];
-    if parsed.flag("--skip-build") {
-        command.push("--skip-build".into());
-    }
+    let output = resolve_absolute_path(
+        root,
+        parsed
+            .output_dir
+            .as_deref()
+            .unwrap_or(Path::new(&default_output)),
+    )?;
+    let command = SimulationOptions {
+        level: root.join("LevelScripts/FighterSchedulingBenchmark.scm"),
+        seconds,
+        game_speed: 1,
+        fighter_stress_cap: None,
+        fighter_stress_caps: Some(parsed.fighter_caps.clone()),
+        warmup_seconds: parsed.warmup_seconds,
+        saturation_timeout_seconds: parsed.saturation_timeout_seconds,
+        build_preset: "native-simulation-benchmark".into(),
+        telemetry: false,
+        skip_build: parsed.skip_build,
+    };
     let results = parse_json_lines(&run_simulation_benchmark(root, &command)?)?;
     if results.len() != caps.len() {
         return Err(format!(
@@ -267,13 +228,9 @@ pub fn validate_fighter_result(result: &Value, cap: u32, ticks: u64) -> Result<(
     Ok(())
 }
 
-pub fn run_frame_memory_benchmark(root: &Path, args: &[String]) -> Result<()> {
-    let parsed = Args::parse_command_line(args, &["--seconds"], &["--skip-build"])?;
-    let seconds = parsed.float("--seconds", 20.0, 0.1, 86400.0)?;
-    let mut command = frame_memory_arguments(root, seconds);
-    if parsed.flag("--skip-build") {
-        command.push("--skip-build".into());
-    }
+pub fn run_frame_memory_benchmark(root: &Path, parsed: &FrameMemoryOptions) -> Result<()> {
+    let mut command = frame_memory_options(root, parsed.seconds);
+    command.skip_build = parsed.skip_build;
     let results = parse_json_lines(&run_simulation_benchmark(root, &command)?)?;
     if results.len() != 1 {
         return Err("Expected one native simulation benchmark JSON result.".into());
@@ -283,19 +240,19 @@ pub fn run_frame_memory_benchmark(root: &Path, args: &[String]) -> Result<()> {
     Ok(())
 }
 
-pub fn frame_memory_arguments(root: &Path, seconds: f64) -> Vec<String> {
-    vec![
-        "--level".into(),
-        root.join("LevelScripts/Benchmarks/Batch_benchmark.scm")
-            .to_string_lossy()
-            .into_owned(),
-        "--seconds".into(),
-        seconds.to_string(),
-        "--game-speed".into(),
-        "100".into(),
-        "--build-preset".into(),
-        "frame-memory-level-benchmark".into(),
-    ]
+pub fn frame_memory_options(root: &Path, seconds: f64) -> SimulationOptions {
+    SimulationOptions {
+        level: root.join("LevelScripts/Benchmarks/Batch_benchmark.scm"),
+        seconds,
+        game_speed: 100,
+        build_preset: "frame-memory-level-benchmark".into(),
+        fighter_stress_cap: None,
+        fighter_stress_caps: None,
+        warmup_seconds: 5.0,
+        saturation_timeout_seconds: 60.0,
+        telemetry: false,
+        skip_build: false,
+    }
 }
 
 pub fn validate_frame_memory_result(result: &Value) -> Result<()> {

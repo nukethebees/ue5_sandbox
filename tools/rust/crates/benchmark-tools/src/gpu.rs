@@ -1,3 +1,4 @@
+use crate::cli::{CameraMode, GpuOptions};
 use crate::{results::Summary, support::*};
 use serde::Serialize;
 use serde_json::json;
@@ -57,28 +58,9 @@ struct Request {
     timeout_seconds: u32,
 }
 impl Request {
-    fn parse_starfield_options(root: &Path, args: &[String]) -> Result<Self> {
-        let args = Args::parse_command_line(
-            args,
-            &[
-                "--editor",
-                "--project",
-                "--output",
-                "--counts",
-                "--resolutions",
-                "--size-multipliers",
-                "--camera-modes",
-                "--warmup-frames",
-                "--capture-frames",
-                "--repeats",
-                "--trim-frames",
-                "--build-dir",
-                "--timeout-seconds",
-            ],
-            &["--skip-build"],
-        )?;
+    fn parse_starfield_options(root: &Path, args: &GpuOptions) -> Result<Self> {
         let mut counts = Vec::new();
-        for item in args.value("--counts", "10000,100000,1000000").split(',') {
+        for item in args.counts.split(',') {
             let count = item.trim().parse::<u32>()?;
             if !(1..=1_000_000).contains(&count) || counts.contains(&count) {
                 return Err("--counts must contain unique integers in 1..1000000.".into());
@@ -86,7 +68,7 @@ impl Request {
             counts.push(count);
         }
         let mut resolutions = Vec::new();
-        for item in args.value("--resolutions", "1280x720").split(',') {
+        for item in args.resolutions.split(',') {
             let (width, height) = item
                 .trim()
                 .split_once(['x', 'X'])
@@ -100,7 +82,7 @@ impl Request {
             }
         }
         let mut sizes = Vec::new();
-        for item in args.value("--size-multipliers", "1").split(',') {
+        for item in args.size_multipliers.split(',') {
             let size = item.trim().parse::<f64>()?;
             if !size.is_finite() || !(0.0..=100.0).contains(&size) {
                 return Err("--size-multipliers must contain finite values from 0 to 100.".into());
@@ -110,27 +92,21 @@ impl Request {
             }
         }
         let mut camera_modes = Vec::new();
-        for item in args.value("--camera-modes", "stationary,moving").split(',') {
-            let moving = match item.trim().to_lowercase().as_str() {
-                "stationary" => false,
-                "moving" => true,
-                _ => return Err("--camera-modes requires stationary and/or moving.".into()),
-            };
+        for mode in &args.camera_modes {
+            let moving = *mode == CameraMode::Moving;
             if !camera_modes.contains(&moving) {
                 camera_modes.push(moving);
             }
         }
         Ok(Self {
             editor: args
-                .optional("--editor")
+                .editor
+                .as_ref()
                 .map(|path| resolve_absolute_path(root, path))
                 .transpose()?
                 .unwrap_or_default(),
-            project: resolve_absolute_path(root, args.value("--project", "Sandbox.uproject"))?,
-            output: resolve_absolute_path(
-                root,
-                args.value("--output", "Saved/Benchmarks/GpuStarfield"),
-            )?,
+            project: resolve_absolute_path(root, &args.project)?,
+            output: resolve_absolute_path(root, &args.output)?,
             counts,
             configurations: resolutions
                 .iter()
@@ -143,13 +119,13 @@ impl Request {
                 })
                 .collect(),
             camera_modes,
-            warmup_frames: args.integer("--warmup-frames", 60, 1, i32::MAX as u32)?,
-            capture_frames: args.integer("--capture-frames", 180, 1, i32::MAX as u32)?,
-            repeats: args.integer("--repeats", 3, 1, i32::MAX as u32)?,
-            trim_frames: args.integer("--trim-frames", 10, 1, i32::MAX as u32)?,
-            build_dir: args.optional("--build-dir").map(str::to_owned),
-            skip_build: args.flag("--skip-build"),
-            timeout_seconds: args.integer("--timeout-seconds", 2400, 1, 86400)?,
+            warmup_frames: args.warmup_frames,
+            capture_frames: args.capture_frames,
+            repeats: args.repeats,
+            trim_frames: args.trim_frames,
+            build_dir: args.build_dir.clone(),
+            skip_build: args.skip_build,
+            timeout_seconds: args.timeout_seconds,
         })
     }
     fn build_starfield_arguments(&self, config: &Configuration, raw: &Path) -> Vec<String> {
@@ -498,7 +474,7 @@ fn write_starfield_reports(
     print!("{report}");
     Ok(())
 }
-pub fn run_starfield_benchmark(root: &Path, args: &[String]) -> Result<()> {
+pub fn run_starfield_benchmark(root: &Path, args: &GpuOptions) -> Result<()> {
     let mut request = Request::parse_starfield_options(root, args)?;
     if !request.skip_build || request.editor.as_os_str().is_empty() {
         let settings = crate::unreal::prepare_editor_build(

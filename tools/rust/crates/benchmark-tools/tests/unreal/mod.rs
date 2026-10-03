@@ -1,10 +1,11 @@
 use super::*;
+use clap::Parser;
 
 #[test]
 fn moved_automation_keeps_defaults_and_failure_detection() {
-    let args = Args::parse_command_line(&[], &[], &[]).unwrap();
-    let (spark, timeout, automation) = measurement_arguments("spark", &args).unwrap();
-    assert_eq!(timeout, 1200);
+    let benchmark = Benchmark::Spark(SparkOptions::try_parse_from(["spark"]).unwrap());
+    let (spark, automation) = measurement_arguments(&benchmark);
+    assert_eq!(benchmark.editor().timeout_seconds, 1200);
     assert!(automation);
     for argument in [
         "-SandboxSparkBenchmarkSeconds=10",
@@ -17,7 +18,9 @@ fn moved_automation_keeps_defaults_and_failure_detection() {
     ] {
         assert!(spark.iter().any(|value| value == argument));
     }
-    let (telemetry, _, _) = measurement_arguments("level-telemetry", &args).unwrap();
+    let benchmark =
+        Benchmark::Telemetry(TelemetryOptions::try_parse_from(["level-telemetry"]).unwrap());
+    let (telemetry, _) = measurement_arguments(&benchmark);
     assert!(telemetry.contains(&"-SandboxTelemetryBenchmarkSamples=7".into()));
     for log in [
         "Found 0 automation tests based on x",

@@ -1,18 +1,16 @@
 use super::*;
+use clap::Parser;
 #[test]
 fn workload_validation_and_editor_arguments() {
     let temp = ioj_test_support::temp_dir("benchmark ismc ");
     let editor = temp.path().join("UnrealEditor-Cmd.exe");
     fs::write(&editor, "").unwrap();
-    let args = Args::parse_command_line(
-        &[
-            "--editor".into(),
-            editor.to_string_lossy().into_owned(),
-            "--instances=10".into(),
-        ],
-        &["--editor", "--instances"],
-        &[],
-    )
+    let args = IsmcOptions::try_parse_from([
+        "sandbox-ismc",
+        "--editor",
+        editor.to_str().unwrap(),
+        "--instances=10",
+    ])
     .unwrap();
     let request = Request::parse_ismc_options(&args, temp.path()).unwrap();
     assert_eq!(request.min_instances, 10);
@@ -29,15 +27,13 @@ fn workload_validation_and_editor_arguments() {
         request.build_comparison_conditions()["custom_data"],
         "no_custom_data"
     );
-    let args = Args::parse_command_line(
-        &[
-            "--editor".into(),
-            editor.to_string_lossy().into_owned(),
-            "--width=0".into(),
-        ],
-        &["--editor", "--width"],
-        &[],
-    )
-    .unwrap();
-    assert!(Request::parse_ismc_options(&args, temp.path()).is_err());
+    assert!(
+        IsmcOptions::try_parse_from([
+            "sandbox-ismc",
+            "--editor",
+            editor.to_str().unwrap(),
+            "--width=0"
+        ])
+        .is_err()
+    );
 }

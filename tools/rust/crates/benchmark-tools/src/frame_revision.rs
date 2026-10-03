@@ -1,3 +1,4 @@
+use crate::cli::FrameComparisonOptions;
 use crate::{
     native,
     results::Summary,
@@ -22,42 +23,24 @@ struct Record {
     total_root_claims: u64,
 }
 
-pub fn run_frame_memory_comparison(root: &Path, args: &[String]) -> Result<()> {
-    let parsed = Args::parse_command_line(
-        args,
-        &[
-            "--iterations",
-            "--warmup-iterations",
-            "--baseline",
-            "--output-dir",
-            "--baseline-worktree",
-        ],
-        &[
-            "--skip-build",
-            "--prepare-only",
-            "--validate-only",
-            "--keep-baseline-worktree",
-        ],
-    )?;
-    if parsed.flag("--prepare-only") && parsed.flag("--validate-only") {
-        return Err("--prepare-only and --validate-only are mutually exclusive.".into());
-    }
-    let validate = parsed.flag("--validate-only");
-    let iterations = parsed.integer("--iterations", 5, 1, 100)?;
-    let warmups = parsed.integer("--warmup-iterations", 0, 0, 10)?;
+pub fn run_frame_memory_comparison(
+    root: &Path,
+    parsed: &FrameComparisonOptions,
+    args: &[String],
+) -> Result<()> {
+    let validate = parsed.validate_only;
+    let iterations = parsed.iterations;
+    let warmups = parsed.warmup_iterations;
     let (iterations, warmups) = if validate {
         (1, 0)
     } else {
         (iterations, warmups)
     };
-    let supplied = parsed.value("--baseline-worktree", "");
-    if parsed.flag("--skip-build") && supplied.is_empty() {
-        return Err("--skip-build requires --baseline-worktree.".into());
-    }
+    let supplied = parsed.baseline_worktree.as_deref();
     let mut run = Run::new(
         root,
         "frame-memory-revision-ab",
-        Path::new(parsed.value("--output-dir", ".local/benchmarks/frame-memory-revision-ab")),
+        &parsed.output_dir,
         json!({"iterations":iterations,"warmupIterations":warmups,"seconds":20,"gameSpeed":100}),
         "",
         true,
@@ -75,20 +58,16 @@ pub fn run_frame_memory_comparison(root: &Path, args: &[String]) -> Result<()> {
     let result = (|| {
         let revisions = Revisions::new(
             root,
-            parsed.value("--baseline", "HEAD"),
-            if supplied.is_empty() {
-                None
-            } else {
-                Some(supplied)
-            },
-            parsed.flag("--keep-baseline-worktree"),
+            &parsed.baseline,
+            supplied,
+            parsed.keep_baseline_worktree,
             &run.directory,
         )?;
         let operation = (|| {
             run.manifest["provenance"] = json!({"candidate":revisions.candidate,"baseline":revisions.baseline,"ownsBaseline":revisions.owned,
                 "orchestrator":std::env::current_exe()?,"effectiveArguments":args});
             run.write_manifest()?;
-            if !parsed.flag("--skip-build") {
+            if !parsed.skip_build {
                 let modules = [
                     "native/third_party/googletest",
                     "native/third_party/cpu_features",
@@ -108,7 +87,7 @@ pub fn run_frame_memory_comparison(root: &Path, args: &[String]) -> Result<()> {
             }
             revision::verify_source_unchanged(&revisions.candidate)?;
             revision::verify_source_unchanged(&revisions.baseline)?;
-            if parsed.flag("--prepare-only") {
+            if parsed.prepare_only {
                 return Ok(());
             }
             let sequence = revision::balanced_repetitions(iterations, warmups);
@@ -134,8 +113,8 @@ pub fn run_frame_memory_comparison(root: &Path, args: &[String]) -> Result<()> {
                 } else {
                     &revisions.candidate
                 };
-                let mut command = native::frame_memory_arguments(&source.root, 20.0);
-                command.push("--skip-build".into());
+                let mut command = native::frame_memory_options(&source.root, 20.0);
+                command.skip_build = true;
                 let values =
                     parse_json_lines(&native::run_simulation_benchmark(&source.root, &command)?)?;
                 if values.len() != 1 {

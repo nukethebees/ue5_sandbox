@@ -1,7 +1,6 @@
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use std::{
-    collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
     process::{Command, Output},
@@ -155,87 +154,6 @@ pub fn read_finite_number(value: &Value, pointer: &str) -> Result<f64> {
         .and_then(Value::as_f64)
         .filter(|n| n.is_finite())
         .ok_or_else(|| format!("Missing or invalid benchmark field: {pointer}").into())
-}
-
-pub struct Args(BTreeMap<String, String>);
-impl Args {
-    pub fn optional(&self, name: &str) -> Option<&str> {
-        self.0.get(name).map(String::as_str)
-    }
-
-    pub fn parse_command_line(args: &[String], values: &[&str], flags: &[&str]) -> Result<Self> {
-        let mut parsed = BTreeMap::new();
-        let mut args = args.iter();
-        while let Some(arg) = args.next() {
-            let (name, value) = if flags.contains(&arg.as_str()) {
-                (arg.as_str(), "true")
-            } else {
-                let (name, value) = match arg.split_once('=') {
-                    Some(pair) => pair,
-                    None => (
-                        arg.as_str(),
-                        args.next()
-                            .ok_or_else(|| format!("Missing value for '{arg}'."))?
-                            .as_str(),
-                    ),
-                };
-                if !values.contains(&name) || value.trim().is_empty() {
-                    return Err(format!("Unknown or missing argument '{arg}'.").into());
-                }
-                (name, value)
-            };
-            if parsed.insert(name.to_owned(), value.to_owned()).is_some() {
-                return Err(format!("Duplicate argument '{name}'.").into());
-            }
-        }
-        Ok(Self(parsed))
-    }
-    pub fn flag(&self, name: &str) -> bool {
-        self.0.contains_key(name)
-    }
-    pub fn value<'a>(&'a self, name: &str, fallback: &'a str) -> &'a str {
-        self.0.get(name).map(String::as_str).unwrap_or(fallback)
-    }
-    pub fn required(&self, name: &str) -> Result<&str> {
-        self.0
-            .get(name)
-            .map(String::as_str)
-            .ok_or_else(|| format!("'{name}' is required.").into())
-    }
-    pub fn integer(&self, name: &str, fallback: u32, min: u32, max: u32) -> Result<u32> {
-        let text = self.value(name, "");
-        if text.is_empty() {
-            return Ok(fallback);
-        }
-        text.parse::<u32>()
-            .ok()
-            .filter(|n| (min..=max).contains(n) && text.bytes().all(|c| c.is_ascii_digit()))
-            .ok_or_else(|| format!("'{name}' must be an integer from {min} to {max}.").into())
-    }
-    pub fn float(&self, name: &str, fallback: f64, min: f64, max: f64) -> Result<f64> {
-        let text = self.value(name, "");
-        if text.is_empty() {
-            return Ok(fallback);
-        }
-        text.parse::<f64>()
-            .ok()
-            .filter(|n| n.is_finite() && (min..=max).contains(n))
-            .ok_or_else(|| {
-                format!("'{name}' must be finite and in the range {min} to {max}.").into()
-            })
-    }
-    pub fn choice<'a>(
-        &'a self,
-        name: &str,
-        fallback: &'a str,
-        choices: &[&str],
-    ) -> Result<&'a str> {
-        let value = self.value(name, fallback);
-        if !choices.contains(&value) {
-            return Err(format!("'{name}' must be one of {}.", choices.join(", ")).into());
-        }
-        Ok(value)
-    }
 }
 
 #[cfg(test)]

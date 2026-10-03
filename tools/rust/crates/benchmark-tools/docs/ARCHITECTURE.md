@@ -12,6 +12,7 @@ jobs-board tickets or resource leases. Callers coordinate builds and measurement
 
 | Module | Responsibility |
 | --- | --- |
+| `cli.rs` | Clap command definitions, typed options, closed choices, and argument validation. |
 | `native.rs` | Native simulation invocation and fighter/frame-memory validation. |
 | `compare.rs` | Native commit comparison, literal run-order parsing, and native reports. |
 | `revision.rs` | Source fingerprints, owned worktrees, run manifests, and balanced ordering. |
@@ -20,10 +21,11 @@ jobs-board tickets or resource leases. Callers coordinate builds and measurement
 | `ismc.rs` | SandboxISMC preparation, measurement protocol, and offline-report entry point. |
 | `tracy.rs` | Offline probe statistics from Tracy exports. |
 | `kernel.rs`, `gpu.rs`, `unreal.rs` | Kernel plots and other workload runners. |
-| `support.rs` | Argument parsing, process execution, and file-format helpers. |
+| `support.rs` | Process execution and file-format helpers. |
+| `time.rs` | Time-unit decoding and conversion to nanoseconds. |
 | `plots.rs`, `plots/` | Shared SVG rendering, kernel measurements, fighter and native comparison charts. |
 
-Plotting runs after measurements and primary reports are saved. Automatic rendering errors warn
+Plotting runs after measurements and structured reports are saved. Automatic rendering errors warn
 without failing a valid benchmark; the offline `plot` command returns errors. Successful native
 comparison plots are linked in Markdown and recorded in the manifest. Incomparable runs never
 publish comparison charts. Offline regeneration consumes existing JSON formats and does not

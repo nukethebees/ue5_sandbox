@@ -1,41 +1,28 @@
+use crate::cli::{KernelOptions, KernelWorkload};
 use crate::support::*;
 use std::{fs, path::Path, process::Command};
 
-fn workload_filter(workload: &str) -> &'static str {
+fn workload_filter(workload: KernelWorkload) -> &'static str {
     match workload {
-        "representative" => {
+        KernelWorkload::Representative => {
             "^(add_scaled/elementwise|dot_product/relaxed)/(flat|chunked16)/[^/]+/ordinary/aligned/(4096|16384|65536|100000)/real_time$"
         }
-        "vector-layout" => {
+        KernelWorkload::VectorLayout => {
             "^dot_product_3d/elementwise/(aos/(scalar|autovec-avx2|avx2|autovec-avx512|avx512)|(soa-flat|soa-chunked16)/(autovec-avx2|avx2|autovec-avx512|avx512))/ordinary/aligned/(4096|16384|65536|100000)/real_time$"
         }
-        "highway" => {
+        KernelWorkload::Highway => {
             "^(add_scaled/elementwise|dot_product/relaxed|dot_product_3d/elementwise)/[^/]+/[^/]+/ordinary/(aligned|unaligned)/(17|32|4096|65536)/real_time$"
         }
-        _ => "",
+        KernelWorkload::Full => "",
     }
 }
 
-pub fn generate_kernel_report(root: &Path, arguments: &[String]) -> Result<()> {
-    let args = Args::parse_command_line(
-        arguments,
-        &["--workload", "--repetitions", "--min-time"],
-        &["--skip-build"],
-    )?;
-    let workload = args.choice(
-        "--workload",
-        "representative",
-        &["representative", "vector-layout", "full", "highway"],
-    )?;
-    let highway = workload == "highway";
-    let repetitions = args.integer("--repetitions", if highway { 3 } else { 7 }, 1, 1000)?;
-    let min_time = args.float(
-        "--min-time",
-        if highway { 0.02 } else { 0.05 },
-        0.001,
-        180.0,
-    )?;
-    if !args.flag("--skip-build") {
+pub fn generate_kernel_report(root: &Path, args: &KernelOptions) -> Result<()> {
+    let workload = args.workload;
+    let highway = workload == KernelWorkload::Highway;
+    let repetitions = args.repetitions.unwrap_or(if highway { 3 } else { 7 });
+    let min_time = args.min_time.unwrap_or(if highway { 0.02 } else { 0.05 });
+    if !args.skip_build {
         run_process_inherited(root, "cmake", &["--preset", "native-benchmark"])?;
         run_process_inherited(root, "cmake", &["--build", "--preset", "kernel-benchmark"])?;
     }

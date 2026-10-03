@@ -1,4 +1,5 @@
 use super::*;
+use clap::Parser;
 #[test]
 fn gpu_capture_trims_frames_and_checks_resolution() {
     let temp = ioj_test_support::temp_dir("benchmark gpu ");
@@ -39,7 +40,8 @@ fn workload_lists_and_unreal_arguments() {
         "--resolutions=1280x720,1920x1080",
         "--size-multipliers=1,4",
     ];
-    let request = Request::parse_starfield_options(&root, &args.map(str::to_owned)).unwrap();
+    let options = GpuOptions::try_parse_from(std::iter::once("gpu-starfield").chain(args)).unwrap();
+    let request = Request::parse_starfield_options(&root, &options).unwrap();
     assert_eq!(request.configurations.len(), 4);
     assert_eq!(request.counts, [10, 20]);
     let command =
@@ -52,12 +54,17 @@ fn workload_lists_and_unreal_arguments() {
         "--size-multipliers=101",
         "--camera-modes=orbiting",
     ] {
-        assert!(
-            Request::parse_starfield_options(
-                &root,
-                &["--editor=e", "--project=p", "--output=o", bad].map(str::to_owned)
-            )
-            .is_err()
-        );
+        let result = GpuOptions::try_parse_from([
+            "gpu-starfield",
+            "--editor=e",
+            "--project=p",
+            "--output=o",
+            bad,
+        ])
+        .map_err(|error| error.to_string())
+        .and_then(|options| {
+            Request::parse_starfield_options(&root, &options).map_err(|error| error.to_string())
+        });
+        assert!(result.is_err());
     }
 }
