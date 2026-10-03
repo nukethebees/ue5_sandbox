@@ -69,7 +69,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         ::ioj::sim::set_vector(
             entities.get_view().view_locations(), index, ml::to_native(positions[index]));
         entities.get_view().teams()[index] =
-            static_cast<::ioj::sim::Team>(index % static_cast<int32>(::ioj::sim::Team::COUNT));
+            static_cast<::ioj::sim::Team>(index % ml::enum_count<::ioj::sim::Team>());
     }
     health_table.initialise_rows<::ioj::sim::EntityType::Turret>(0, health);
 

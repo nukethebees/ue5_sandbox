@@ -8,6 +8,7 @@ Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_2f.h
 Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3d.h
 Plugins/SandboxISMC/Source/SandboxISMC/Private/SandboxISMCInstanceData.cpp
 Plugins/SandboxISMC/Source/SandboxISMC/Public/SandboxISMCInstanceData.h
+Plugins/ShooterGame/Source/ShooterGame/Public/ShooterGame/players/CharacterCameraMode.h
 Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/simulation/StaticCollisionSources.cpp
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionFailReason.h

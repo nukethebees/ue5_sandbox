@@ -132,7 +132,11 @@ struct EnumTraits<::ioj::sim::MissionFailReason> {
         std::string_view{"TimeElapsed"},
         std::string_view{"DefenceObjectiveFailed"},
     };
-    inline static constexpr std::size_t count{values.size()};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::MissionFailReason>() noexcept -> std::size_t {
+    return 4;
+}
 
 } // namespace ml

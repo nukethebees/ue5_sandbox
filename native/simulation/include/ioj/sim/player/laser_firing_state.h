@@ -54,7 +54,11 @@ struct EnumTraits<::ioj::sim::LaserFiringState> {
         std::string_view{"idle"},
         std::string_view{"burst"},
     };
-    inline static constexpr std::size_t count{values.size()};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::LaserFiringState>() noexcept -> std::size_t {
+    return 2;
+}
 
 } // namespace ml

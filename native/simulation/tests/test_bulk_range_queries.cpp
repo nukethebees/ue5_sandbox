@@ -99,7 +99,7 @@ TEST_F(BulkRangeQueries, OverlappingAndDisjointRequestsMatchScalarQueriesInInput
                        static_cast<float>(index / 45) * 110.f - 165.f}},
                      {},
                      100,
-                     static_cast<Team>(index % ml::EnumTraits<Team>::count));
+                     static_cast<Team>(index % ml::enum_count<Team>()));
     }
     owners.spawn(EntityType::CapitalShip, {});
     owners.spawn(EntityType::Turret, {}, {}, 100, Team::Red);
@@ -111,7 +111,7 @@ TEST_F(BulkRangeQueries, OverlappingAndDisjointRequestsMatchScalarQueriesInInput
         request({{static_cast<float>(index % 10) * 110.f - 440.f,
                   static_cast<float>((index / 10) % 3) * 140.f - 140.f,
                   0.f}},
-                static_cast<Team>(index % ml::EnumTraits<Team>::count));
+                static_cast<Team>(index % ml::enum_count<Team>()));
     }
     request({{2000.f, 0.f, 0.f}}, Team::White);
     FrameRangeQueryResults output{scope.scratch()};

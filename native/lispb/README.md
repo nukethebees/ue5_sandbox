@@ -18,6 +18,12 @@ their scalar properties. Integer definitions can also supply domains for packed 
 quantization, varints, and optionals. Size and alignment come from the selected ABI profile.
 The project's [common scalars](../../lispb/schema/common_scalars.lispb) provide standard examples.
 
+Use `:enum-array true` on native or Unreal enums to generate `ml::enum_count<Enum>()` for
+`ml::EnumArray<Enum, T>` and `ml::FixedEnumArray<Enum>`. LispB requires known codes in declaration
+order from zero through count minus one; gaps, aliases, negative codes, hidden values, and count
+sentinels are rejected. Explicit numeric initializers are allowed. Other enums can remain sparse
+and do not expose the array count API.
+
 See [Semantic type graph](SEMANTIC_TYPE_GRAPH.md) for the shared resolved model consumed by code
 generation and layout tooling. See [ARCHITECTURE.md](ARCHITECTURE.md) for the shared generation
 pipeline and the sibling DSL documents for their language-specific contracts.

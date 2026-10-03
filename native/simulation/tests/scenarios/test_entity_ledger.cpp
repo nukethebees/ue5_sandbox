@@ -54,8 +54,8 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
             EXPECT_EQ(expected_team_counts[team_index], counts[team_index])
                 << "Count team " + ::testing::PrintToString(team);
             std::int32_t type_count{};
-            constexpr auto type_count_limit{std::to_underlying(EntityType::COUNT)};
-            for (std::int32_t type{}; type < type_count_limit; ++type) {
+            constexpr auto type_count_limit{ml::enum_count<EntityType>()};
+            for (std::size_t type{}; type < type_count_limit; ++type) {
                 type_count += type_counts[team_index][type];
             }
             EXPECT_EQ(counts[team_index], type_count)

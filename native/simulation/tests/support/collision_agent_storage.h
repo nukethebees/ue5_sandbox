@@ -71,7 +71,7 @@ struct CollisionAgentStorage {
                 health_table.initialise_rows<EntityType::PlayerShip>(0, 1, health);
                 player_team = team;
                 break;
-            case EntityType::COUNT:
+            default:
                 assert(false);
                 break;
         }
@@ -116,7 +116,7 @@ struct CollisionAgentStorage {
                 health_table.get_view<EntityType::PlayerShip>(player_ids.size())
                     .set_health(0, health);
                 break;
-            case EntityType::COUNT:
+            default:
                 assert(false);
                 break;
         }
@@ -147,7 +147,7 @@ struct CollisionAgentStorage {
                 player_ids.clear();
                 health_table.remove_rows<EntityType::PlayerShip>(1, {&row, 1});
                 break;
-            case EntityType::COUNT:
+            default:
                 assert(false);
                 break;
         }
@@ -199,7 +199,7 @@ struct CollisionAgentStorage {
                 return find(spinners.get_const_view().entity_ids());
             case EntityType::PlayerShip:
                 return find(player_ids);
-            case EntityType::COUNT:
+            default:
                 return EntityInstanceHandle::invalid_value;
         }
         return EntityInstanceHandle::invalid_value;

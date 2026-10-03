@@ -92,7 +92,8 @@ TEST(SemanticTypeGraph, PreservesEntityTypeEnumSemantics) {
     EXPECT_EQ(graph.type(type->underlying_type->type).cpp_spelling, "std::uint8_t");
     EXPECT_NE(std::ranges::find(graph.dependencies_of(*id), type->underlying_type->type),
               graph.dependencies_of(*id).end());
-    EXPECT_EQ(type->count, "COUNT");
+    EXPECT_FALSE(type->count.has_value());
+    EXPECT_TRUE(type->enum_array);
 
     auto const player_ship{
         std::ranges::find(type->enumerators, std::string{"PlayerShip"}, &Enumerator::name)};
@@ -102,9 +103,7 @@ TEST(SemanticTypeGraph, PreservesEntityTypeEnumSemantics) {
     EXPECT_EQ(player_ship->serialized_name, "player_ship");
 
     auto const count{std::ranges::find(type->enumerators, std::string{"COUNT"}, &Enumerator::name)};
-    ASSERT_NE(count, type->enumerators.end());
-    EXPECT_TRUE(count->hidden);
-    EXPECT_TRUE(count->count_sentinel);
+    EXPECT_EQ(count, type->enumerators.end());
 }
 
 TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {

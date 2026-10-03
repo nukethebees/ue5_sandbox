@@ -3,6 +3,8 @@
 #include "ScalarValues.h"
 #include "SignatureDefinitions.h"
 
+#include <sandbox/core/enum_array.h>
+
 #include <gtest/gtest.h>
 
 #include <array>
@@ -1040,18 +1042,18 @@ TEST(GeneratedFacade, Operations) {
 }
 
 TEST(GeneratedEnum, ValuesAndConversions) {
-    static_assert(TEnumTraits<EPlainFixture>::count == 2);
-    static_assert(TEnumArray<EPlainFixture, float>::size() == 2);
+    static_assert(ml::enum_count<EPlainFixture>() == 2);
+    static_assert(ml::EnumArray<EPlainFixture, float>::size() == 2);
 
-    TEnumArray<EPlainFixture, float> radii;
+    ml::EnumArray<EPlainFixture, float> radii;
     radii[EPlainFixture::First] = 100.0f;
     radii[EPlainFixture::ReadableName] = 200.0f;
     check(radii[EPlainFixture::First] == 100.0f);
     check(radii[EPlainFixture::ReadableName] == 200.0f);
 
-    static_assert(TEnumTraits<EReflectedFixture>::count == 1);
-    static_assert(TEnumArray<EReflectedFixture, int32>::size() == 1);
-    TEnumArray<EReflectedFixture, int32> reflected_values;
+    static_assert(ml::enum_count<EReflectedFixture>() == 1);
+    static_assert(ml::EnumArray<EReflectedFixture, int32>::size() == 1);
+    ml::EnumArray<EReflectedFixture, int32> reflected_values;
     reflected_values[EReflectedFixture::Visible] = 42;
     check(reflected_values[EReflectedFixture::Visible] == 42);
 

@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "SandboxCore/enum_array.h"
+#include "sandbox/core/enum_traits.h"
 
 #include "CoreMinimal.h"
 
@@ -42,20 +42,29 @@ enum class EGameUiIcon : uint8 {
     LevelComplete,
 };
 
+namespace ml {
 template <>
-struct TEnumTraits<EGameTextStyle> {
-    static constexpr int32 count{10};
-};
+[[nodiscard]] constexpr auto enum_count<::EGameTextStyle>() noexcept -> std::size_t {
+    return 10;
+}
 
-template <>
-struct TEnumTraits<EGameButtonStyle> {
-    static constexpr int32 count{2};
-};
+} // namespace ml
 
+namespace ml {
 template <>
-struct TEnumTraits<EGameUiIcon> {
-    static constexpr int32 count{9};
-};
+[[nodiscard]] constexpr auto enum_count<::EGameButtonStyle>() noexcept -> std::size_t {
+    return 2;
+}
+
+} // namespace ml
+
+namespace ml {
+template <>
+[[nodiscard]] constexpr auto enum_count<::EGameUiIcon>() noexcept -> std::size_t {
+    return 9;
+}
+
+} // namespace ml
 
 SPACEGAMEPRESENTATION_API auto LexToString(EGameTextStyle const value) -> TCHAR const*;
 

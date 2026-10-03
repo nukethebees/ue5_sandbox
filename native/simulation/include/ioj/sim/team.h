@@ -19,7 +19,6 @@ enum class Team : std::uint8_t {
     Blue = 3,
     Orange = 4,
     Yellow = 5,
-    COUNT = 6,
 };
 
 [[nodiscard]] constexpr auto to_string(Team const value) noexcept -> std::string_view {
@@ -41,9 +40,6 @@ enum class Team : std::uint8_t {
         }
         case Team::Yellow: {
             return "Yellow";
-        }
-        case Team::COUNT: {
-            return "COUNT";
         }
     }
 
@@ -70,39 +66,8 @@ enum class Team : std::uint8_t {
     if (value == "Yellow") {
         return Team::Yellow;
     }
-    if (value == "COUNT") {
-        return Team::COUNT;
-    }
 
     return std::nullopt;
-}
-
-[[nodiscard]] constexpr auto to_display_string(Team const value) noexcept -> std::string_view {
-    switch (value) {
-        case Team::White: {
-            return "White";
-        }
-        case Team::Red: {
-            return "Red";
-        }
-        case Team::Green: {
-            return "Green";
-        }
-        case Team::Blue: {
-            return "Blue";
-        }
-        case Team::Orange: {
-            return "Orange";
-        }
-        case Team::Yellow: {
-            return "Yellow";
-        }
-        case Team::COUNT: {
-            return "Count";
-        }
-    }
-
-    return "<invalid Team>";
 }
 
 [[nodiscard]] constexpr auto to_serialized_string(Team const value) noexcept -> std::string_view {
@@ -124,9 +89,6 @@ enum class Team : std::uint8_t {
         }
         case Team::Yellow: {
             return "yellow";
-        }
-        case Team::COUNT: {
-            return "count";
         }
         default: {
             return "<invalid Team>";
@@ -154,9 +116,6 @@ enum class Team : std::uint8_t {
     if (value == "yellow") {
         return Team::Yellow;
     }
-    if (value == "count") {
-        return Team::COUNT;
-    }
 
     return std::nullopt;
 }
@@ -181,7 +140,11 @@ struct EnumTraits<::ioj::sim::Team> {
         std::string_view{"Orange"},
         std::string_view{"Yellow"},
     };
-    inline static constexpr std::size_t count{values.size()};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::Team>() noexcept -> std::size_t {
+    return 6;
+}
 
 } // namespace ml

@@ -9,9 +9,6 @@ auto get_reflected_fixture_name(EReflectedFixture const value) -> TCHAR const* {
         case EReflectedFixture::Visible: {
             return TEXT("Visible");
         }
-        case EReflectedFixture::COUNT: {
-            return TEXT("COUNT");
-        }
     }
 
     ensureMsgf(false, TEXT("Unhandled EReflectedFixture value: %lld"), static_cast<int64>(value));

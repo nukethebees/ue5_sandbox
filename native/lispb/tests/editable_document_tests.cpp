@@ -688,12 +688,10 @@ TEST(EditableSchemaDocument, PreservesEnumGenerationPolicyPropertiesDuringEdits)
     ; Keep the declaration policy note.
     :reflection uenum
     :enum-array true
-    :count Count
     :export-specifier POLICY_API
     ; Keep the idle value note.
     (value Idle)
-    (value Active)
-    (value Count :hidden true)))
+    (value Active)))
 )");
     auto document{files.load_with_module_source("enum_policy.lispb")};
     auto const enumeration{declaration_id(document, "enum_policy", "PolicyMode", "")};
@@ -2848,8 +2846,17 @@ TEST(EditableSchemaDocument, RejectsInvalidEditsWithoutChangingTheDraft) {
 }
 
 TEST(EditableSchemaDocument, EnumeratorRenamePreservesCountSentinelSemantics) {
-    auto document{fixture_document()};
-    auto const id{declaration_id(document, "reflected_enum_fixture", "EReflectedFixture", "")};
+    TemporarySchema files;
+    files.write_source("counted_enum.lispb", R"((module counted_enum
+  :header "CountedEnum.h"
+  (enum CountedEnum std::uint8_t
+    :reflection uenum
+    :count COUNT
+    (value Visible)
+    (value COUNT :hidden true)))
+)");
+    auto document{files.load_with_module_source("counted_enum.lispb")};
+    auto const id{declaration_id(document, "counted_enum", "CountedEnum", "")};
 
     auto result{document.apply(
         SetEnumeratorName{.enum_declaration = id, .current_name = "COUNT", .new_name = "Count"})};

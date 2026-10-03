@@ -119,7 +119,7 @@ void gather_entities(EntityTables const& tables,
         // Resolve each sorted type run against its own table.
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
         auto const group{order.subspan(begin, end - begin)};
-        if (type >= EntityType::COUNT) {
+        if (std::to_underlying(type) >= ml::enum_count<EntityType>()) {
             for (auto const row : group) {
                 scatter(row, {});
             }
@@ -200,8 +200,6 @@ void gather_entities(EntityTables const& tables,
                         read_rotations ? Rotator3f{.yaw = yaws[index]} : Rotator3f{}};
                 });
             } break;
-            case EntityType::COUNT:
-                break;
         }
         begin = end;
     }

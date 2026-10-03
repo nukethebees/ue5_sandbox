@@ -49,7 +49,7 @@ struct Sim {
     using EntityStorage = FighterEntityData;
     using EntityBuffers = ml::MultiBuffer<EntityStorage, 2>;
     using Task = FighterTask;
-    static constexpr auto n_task_types{static_cast<std::size_t>(Task::COUNT)};
+    static constexpr auto n_task_types{ml::enum_count<Task>()};
     using TaskSpans = std::array<IndexSpan, n_task_types>;
     using TaskCounts = std::array<std::uint32_t, n_task_types>;
     using TaskView = EntityStorage::View;
@@ -246,13 +246,12 @@ struct Sim {
     float collision_radius_{};
     float fire_point_distance_{};
     bool diagnostics_enabled_{};
-    std::array<std::uint8_t, static_cast<std::size_t>(Team::COUNT)> participant_mask{};
-    std::array<std::int32_t, static_cast<std::size_t>(Team::COUNT)> remaining_team_capacity{};
+    std::array<std::uint8_t, ml::enum_count<Team>()> participant_mask{};
+    std::array<std::int32_t, ml::enum_count<Team>()> remaining_team_capacity{};
     std::int32_t per_team_limit{};
     SimClock const& simulation_clock;
     std::int16_t attack_retry_cooldown_tick_value{0};
-    std::array<std::int16_t, static_cast<std::uint32_t>(NavigationRiskTier::Count)>
-        navigation_tick_periods{};
+    std::array<std::int16_t, ml::enum_count<NavigationRiskTier>()> navigation_tick_periods{};
     float minimum_navigation_lookahead_time{};
 
     std::int8_t awareness_restart_ticks_{};

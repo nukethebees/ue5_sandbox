@@ -144,7 +144,12 @@ struct EnumTraits<::ioj::sim::LevelTelemetryRunEndReason> {
         std::string_view{"OrchestratorReset"},
         std::string_view{"WorldEnd"},
     };
-    inline static constexpr std::size_t count{values.size()};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::LevelTelemetryRunEndReason>() noexcept
+    -> std::size_t {
+    return 6;
+}
 
 } // namespace ml

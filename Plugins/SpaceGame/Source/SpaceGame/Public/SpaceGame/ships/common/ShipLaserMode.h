@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "sandbox/core/enum_traits.h"
+
 #include "CoreMinimal.h"
 
 #include "ShipLaserMode.generated.h"
@@ -12,3 +14,10 @@ enum class EShipLaserMode : uint8 {
     Double = 1 UMETA(DisplayName = "Double"),
     Hyper = 2 UMETA(DisplayName = "Hyper"),
 };
+
+namespace ml {
+template <>
+[[nodiscard]] constexpr auto enum_count<::EShipLaserMode>() noexcept -> std::size_t {
+    return 3;
+}
+} // namespace ml

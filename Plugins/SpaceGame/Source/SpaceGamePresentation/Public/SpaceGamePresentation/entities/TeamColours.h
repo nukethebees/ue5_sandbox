@@ -8,13 +8,13 @@
 #include <utility>
 
 namespace ml {
-inline constexpr int32 test_team_count{std::to_underlying(ETestTeam::COUNT)};
+inline constexpr int32 test_team_count{ml::enum_count<ETestTeam>()};
 
 template <typename T>
 using TStaticTeamArray = TStaticArray<T, test_team_count>;
 
 constexpr bool is_valid(ETestTeam const team) {
-    return std::to_underlying(team) < std::to_underlying(ETestTeam::COUNT);
+    return std::to_underlying(team) < ml::enum_count<ETestTeam>();
 }
 }
 

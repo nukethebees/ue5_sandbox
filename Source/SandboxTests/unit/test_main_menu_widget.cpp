@@ -120,7 +120,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Primary text remains readable against the canvas"),
                              palette.text_primary.GetLuminance() - palette.canvas.GetLuminance() >
                                  0.65f);
-        for (int32 index{}; index < TEnumTraits<EGameUiIcon>::count; ++index) {
+        for (std::size_t index{}; index < ml::enum_count<EGameUiIcon>(); ++index) {
             auto const icon_role{static_cast<EGameUiIcon>(index)};
             auto const& icon{ui_style.icon(icon_role)};
             TestRunner->TestTrue(

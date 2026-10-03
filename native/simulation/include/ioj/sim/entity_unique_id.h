@@ -43,13 +43,14 @@ struct EntityUniqueId {
     explicit constexpr EntityUniqueId(index_type const index_value,
                                       entity_type_type const entity_type_value) noexcept {
         assert(index_value <= static_cast<index_type>(index_field::value_mask));
-        assert(entity_type_value < entity_type_type::COUNT);
+        assert(static_cast<std::size_t>(entity_type_value) < ml::enum_count<entity_type_type>());
         value_ = static_cast<storage_type>(ml::packed_pack<index_field>(index_value) |
                                            ml::packed_pack<entity_type_field>(entity_type_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return value_ != invalid_value && entity_type() < entity_type_type::COUNT;
+        return value_ != invalid_value &&
+               static_cast<std::size_t>(entity_type()) < ml::enum_count<entity_type_type>();
     }
 
     [[nodiscard]] constexpr auto operator<=>(EntityUniqueId const&) const noexcept = default;

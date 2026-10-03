@@ -15,7 +15,7 @@ TEST(EntityInstanceHandle, RejectsUnrepresentableRowsAndMetadata) {
     EXPECT_FALSE(result.is_valid());
 #ifndef NDEBUG
     EXPECT_DEATH((EntityInstanceHandle{262144, Team::White, 3}), "");
-    EXPECT_DEATH((EntityInstanceHandle{0, Team::COUNT, 3}), "");
+    EXPECT_DEATH((EntityInstanceHandle{0, static_cast<Team>(ml::enum_count<Team>()), 3}), "");
     EXPECT_DEATH((EntityInstanceHandle{0, Team::White, 4}), "");
 #endif
     result = EntityInstanceHandle{262143, Team::Yellow, 3};

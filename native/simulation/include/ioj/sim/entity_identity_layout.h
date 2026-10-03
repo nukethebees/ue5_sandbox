@@ -8,8 +8,7 @@
 #include <cstdint>
 
 namespace ioj::sim {
-using EntityTypeSizes =
-    ml::EnumArray<EntityType, std::uint32_t, static_cast<std::size_t>(EntityType::COUNT)>;
+using EntityTypeSizes = ml::EnumArray<EntityType, std::uint32_t>;
 
 inline constexpr EntityTypeSizes entity_lifetime_capacities{[] {
     EntityTypeSizes capacities;

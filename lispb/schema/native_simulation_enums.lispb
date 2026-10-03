@@ -4,7 +4,7 @@
   :namespace ioj::sim
   (enum Team @native_uint8
     :native-api true
-    :count COUNT
+    :enum-array true
     (unreal-projection ETestTeam
       :header "Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/entities/TestTeam.h"
       :header-include "SpaceGamePresentation/entities/TestTeam.h"
@@ -16,14 +16,14 @@
     (value Green :value "2" :serialized-name "green")
     (value Blue :value "3" :serialized-name "blue")
     (value Orange :value "4" :serialized-name "orange")
-    (value Yellow :value "5" :serialized-name "yellow")
-    (value COUNT :value "6" :hidden true :display-name "Count" :serialized-name "count")))
+    (value Yellow :value "5" :serialized-name "yellow")))
 
 (module native_mission_mode
   :header "native/simulation/include/ioj/sim/missions/mission_mode.h"
   :namespace ioj::sim
   (enum MissionMode @native_uint8
     :native-api true
+    :enum-array true
     (unreal-projection ETestMissionMode
       :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionMode.h"
       :header-include "SpaceGame/missions/TestMissionMode.h"
@@ -40,6 +40,7 @@
   :namespace ioj::sim
   (enum MissionState @native_uint8
     :native-api true
+    :enum-array true
     (unreal-projection ETestMissionState
       :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionState.h"
       :header-include "SpaceGame/missions/TestMissionState.h"
@@ -57,6 +58,7 @@
   :namespace ioj::sim
   (enum MissionFailReason @native_uint8
     :native-api true
+    :enum-array true
     (unreal-projection ETestMissionFailReason
       :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionFailReason.h"
       :header-include "SpaceGame/missions/TestMissionFailReason.h"
@@ -74,6 +76,7 @@
   :namespace ioj::sim::player
   (enum BoostBrakeState @native_uint8
     :native-api true
+    :enum-array true
     (value None :value "0")
     (value Boost :value "1")
     (value Brake :value "2")
@@ -84,6 +87,7 @@
   :namespace ioj::sim
   (enum ShipLaserMode @native_uint8
     :native-api true
+    :enum-array true
     (unreal-projection EShipLaserMode
       :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/common/ShipLaserMode.h"
       :header-include "SpaceGame/ships/common/ShipLaserMode.h"
@@ -99,6 +103,7 @@
   :namespace ioj::sim
   (enum LaserFiringState @native_uint8
     :native-api true
+    :enum-array true
     (value idle :value "0")
     (value burst :value "1")))
 
@@ -107,7 +112,7 @@
   :namespace ioj::sim
   (enum ShipFireRate @native_uint8
     :native-api true
-    :count COUNT
+    :enum-array true
     (unreal-projection ETestShipFireRate
       :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h"
       :header-include "SpaceGame/ships/player/TestShipFireRate.h"
@@ -116,14 +121,14 @@
       :reflection uenum)
     (value Single :value "0" :display-name "Single" :serialized-name "single")
     (value Burst3 :value "1" :display-name "Burst 3" :serialized-name "burst_3")
-    (value FullAuto :value "2" :display-name "Full Auto" :serialized-name "full_auto")
-    (value COUNT :value "3" :hidden true :display-name "Count" :serialized-name "count")))
+    (value FullAuto :value "2" :display-name "Full Auto" :serialized-name "full_auto")))
 
 (module native_level_telemetry_run_end_reason
   :header "native/simulation/include/ioj/sim/telemetry/level_telemetry_run_end_reason.h"
   :namespace ioj::sim
   (enum LevelTelemetryRunEndReason @native_uint8
     :native-api true
+    :enum-array true
     (value MissionSucceeded :value "0" :serialized-name "mission_succeeded")
     (value MissionFailed :value "1" :serialized-name "mission_failed")
     (value BattleResolved :value "2" :serialized-name "battle_resolved")

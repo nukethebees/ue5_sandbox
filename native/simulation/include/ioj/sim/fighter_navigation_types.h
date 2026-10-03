@@ -3,15 +3,15 @@
 
 #pragma once
 
-#include <cstdint>
+#include "sandbox/core/enum_traits.h"
 
+#include <cstdint>
 namespace ioj::sim::fighters {
 enum class NavigationRiskTier : std::uint8_t {
     Clear = 0,
     Nearby = 1,
     Active = 2,
     Immediate = 3,
-    Count = 4,
 };
 
 using NavigationRiskCode = std::uint8_t;
@@ -20,3 +20,11 @@ using NavigationScanCount = std::uint8_t;
 
 using AvoidanceChoice = std::int8_t;
 } // namespace ioj::sim::fighters
+namespace ml {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::fighters::NavigationRiskTier>() noexcept
+    -> std::size_t {
+    return 4;
+}
+
+} // namespace ml

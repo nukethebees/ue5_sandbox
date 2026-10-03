@@ -19,7 +19,7 @@ TEST(SimulationSchema, PreservesHealthAndFighterOrderRepresentations) {
     static_assert(static_cast<std::uint8_t>(FighterTask::Standby) == 0);
     static_assert(static_cast<std::uint8_t>(FighterTask::MoveToDestination) == 1);
     static_assert(static_cast<std::uint8_t>(FighterTask::Attack) == 2);
-    static_assert(static_cast<std::uint8_t>(FighterTask::COUNT) == 3);
+    static_assert(ml::enum_count<FighterTask>() == 3);
     for (std::uint8_t raw{}; raw < 4; ++raw) {
         auto const order{FighterOrder::from_raw(raw)};
         EXPECT_EQ(order.task(), raw & 1);

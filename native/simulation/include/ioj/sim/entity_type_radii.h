@@ -7,6 +7,5 @@
 #include <cstddef>
 
 namespace ioj::sim {
-using EntityTypeRadii =
-    ml::EnumArray<EntityType, float, static_cast<std::size_t>(EntityType::COUNT)>;
+using EntityTypeRadii = ml::EnumArray<EntityType, float>;
 } // namespace ioj::sim

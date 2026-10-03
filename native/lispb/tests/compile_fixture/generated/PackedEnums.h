@@ -3,8 +3,9 @@
 
 #pragma once
 
-#include <cstdint>
+#include "sandbox/core/enum_traits.h"
 
+#include <cstdint>
 namespace codegen_compile_fixture {
 enum class PackedState : std::uint8_t {
     Zero = 0x00,
@@ -26,7 +27,14 @@ enum class TinyState : std::uint8_t {
 enum class DomainState : std::uint8_t {
     Zero,
     One,
-    COUNT,
 };
 
 } // namespace codegen_compile_fixture
+namespace ml {
+template <>
+[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::DomainState>() noexcept
+    -> std::size_t {
+    return 2;
+}
+
+} // namespace ml

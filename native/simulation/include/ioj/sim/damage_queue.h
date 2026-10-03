@@ -23,6 +23,6 @@ class DamageQueue {
     auto all_events() const -> DirectDamageEvents const& { return events_; }
   private:
     DirectDamageEvents events_;
-    ml::EnumArray<EntityType, IndexSpan, static_cast<std::size_t>(EntityType::COUNT)> spans_{};
+    ml::EnumArray<EntityType, IndexSpan> spans_{};
 };
 }

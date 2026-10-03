@@ -120,7 +120,7 @@ auto LevelSim::check_thinking_entry_invariants(
     }
 
     for (auto const& entity : state) {
-        if (entity.team >= Team::COUNT ||
+        if (std::to_underlying(entity.team) >= ml::enum_count<Team>() ||
             !std::ranges::all_of(entity.location,
                                  [](double const value) { return std::isfinite(value); }) ||
             !std::ranges::all_of(entity.orientation,

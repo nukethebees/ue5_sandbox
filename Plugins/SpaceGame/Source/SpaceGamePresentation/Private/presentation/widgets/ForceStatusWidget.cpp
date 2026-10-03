@@ -70,7 +70,7 @@ auto UForceStatusWidget::build_content() const -> TSharedRef<SWidget> {
         auto const& category{categories[category_index]};
         auto const type_index{std::to_underlying(category.type)};
         int32 total{};
-        constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
+        constexpr int32 team_count{ml::enum_count<ETestTeam>()};
         for (int32 team_index{}; team_index < team_count; ++team_index) {
             total += entity_counts_[team_index][type_index];
         }

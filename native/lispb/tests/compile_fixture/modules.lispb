@@ -21,12 +21,9 @@
   (enum EReflectedFixture uint8
     :reflection blueprint
     :enum-array true
-    :count COUNT
     :conversions (lex-to-string display-string-view)
     (value Visible
-      :display-name "Visible Value")
-    (value COUNT
-      :hidden true)))
+      :display-name "Visible Value")))
 
 (module packed_enum_fixture
   :header "PackedEnums.h"
@@ -45,10 +42,9 @@
     (value One :value "1")
     (value Max :value "3"))
   (enum DomainState @standard_uint8
-    :count COUNT
+    :enum-array true
     (value Zero)
-    (value One)
-    (value COUNT)))
+    (value One)))
 
 (module scalar_fixture
   :header "ScalarValues.h"

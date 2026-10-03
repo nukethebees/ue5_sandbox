@@ -512,8 +512,7 @@ void validate_enum(EnumSchema const& schema,
         throw std::invalid_argument{"Native enum '" + schema.name +
                                     "' cannot use Unreal reflection"};
     }
-    if (schema.native_api &&
-        (schema.enum_array || !schema.conversions.empty() || schema.export_specifier.has_value())) {
+    if (schema.native_api && (!schema.conversions.empty() || schema.export_specifier.has_value())) {
         throw std::invalid_argument{"Native enum '" + schema.name +
                                     "' cannot use Unreal enum generation options"};
     }
@@ -589,25 +588,22 @@ void validate_enum(EnumSchema const& schema,
         }
     }
     if (schema.enum_array) {
-        for (auto const& value : schema.values) {
-            if (value.initializer.has_value()) {
-                throw std::invalid_argument{"Enum-array enum '" + schema.name + "' value '" +
-                                            value.name + "' must not have an explicit initializer"};
-            }
-        }
-
         if (schema.count.has_value()) {
-            if ((schema.reflection != EnumReflection::none ||
-                 schema.unreal_projection.has_value()) &&
-                !count_value->hidden) {
-                throw std::invalid_argument{"Reflected enum-array enum '" + schema.name +
-                                            "' count must be hidden"};
-            }
+            throw std::invalid_argument{
+                "Enum-array enum '" + schema.name +
+                "' must use its generated count instead of a count sentinel"};
         }
 
-        for (auto const& value : schema.values) {
-            auto const is_count{schema.count.has_value() && value.name == *schema.count};
-            if (value.hidden && !is_count) {
+        // Certify direct indexing before emitting the count specialization.
+        auto const value_count{domain.values.size()};
+        for (std::size_t index{}; index < value_count; ++index) {
+            auto const& value{domain.values[index]};
+            if (!value.code.has_value() || value.code->negative || value.code->magnitude != index) {
+                throw std::invalid_argument{
+                    "Enum-array enum '" + schema.name + "' value '" + value.name +
+                    "' must have the zero-based contiguous code " + std::to_string(index)};
+            }
+            if (schema.values[index].hidden) {
                 throw std::invalid_argument{"Enum-array enum '" + schema.name + "' value '" +
                                             value.name + "' must not be hidden"};
             }

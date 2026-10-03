@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "SandboxCore/enum_array.h"
+#include "sandbox/core/enum_traits.h"
 
 #include "CoreMinimal.h"
 
@@ -12,13 +12,15 @@
 UENUM(BlueprintType)
 enum class EReflectedFixture : uint8 {
     Visible UMETA(DisplayName = "Visible Value"),
-    COUNT UMETA(Hidden),
 };
 
+namespace ml {
 template <>
-struct TEnumTraits<EReflectedFixture> {
-    static constexpr int32 count{static_cast<int32>(EReflectedFixture::COUNT)};
-};
+[[nodiscard]] constexpr auto enum_count<::EReflectedFixture>() noexcept -> std::size_t {
+    return 1;
+}
+
+} // namespace ml
 
 auto LexToString(EReflectedFixture const value) -> TCHAR const*;
 

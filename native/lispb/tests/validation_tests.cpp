@@ -209,9 +209,7 @@ auto valid_native_enum_module() -> NormalModuleSchema {
         .declarations = {EnumSchema{
             .name = "NativeMode",
             .underlying_type = TypeRef{"std::uint8_t"},
-            .values = {EnumeratorSchema{"Idle", "0", std::nullopt, false, "idle"},
-                       EnumeratorSchema{"COUNT", "1", std::nullopt, true}},
-            .count = "COUNT",
+            .values = {EnumeratorSchema{"Idle", "0", std::nullopt, false, "idle"}},
             .native_api = true,
         }}};
 }
@@ -888,7 +886,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
 
     module = valid_native_enum_module();
     std::get<codegen::EnumSchema>(module.declarations.front()).enum_array = true;
-    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
 
     module = valid_native_enum_module();
     std::get<codegen::EnumSchema>(module.declarations.front()).conversions = {
@@ -908,7 +906,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
             .conversion_header = "Project/NativeModeConversion.h",
             .native_header_include = "project/NativeEnums.h",
             .reflection = EnumReflection::none,
-        };
+    };
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
@@ -919,7 +917,7 @@ TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
             .header_include = "Project/NativeMode.h",
             .conversion_header = "Project/NativeModeConversion.h",
             .native_header_include = "project/NativeEnums.h",
-        };
+    };
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
@@ -943,7 +941,22 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
     auto module{valid_enum_module()};
     std::get<codegen::EnumSchema>(module.declarations.front()).enum_array = true;
     std::get<codegen::EnumSchema>(module.declarations.front()).values.front().initializer = "0";
-    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
+
+    for (auto const* code : {"2", "0", "-1", "unknown_code", "0x2"}) {
+        SCOPED_TRACE(code);
+        module = valid_enum_module();
+        auto& schema{std::get<EnumSchema>(module.declarations.front())};
+        schema.enum_array = true;
+        schema.values = {EnumeratorSchema{"First", "0"}, EnumeratorSchema{"Second", code}};
+        EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+    }
+
+    module = valid_native_enum_module();
+    auto& native_schema{std::get<EnumSchema>(module.declarations.front())};
+    native_schema.enum_array = true;
+    native_schema.values = {EnumeratorSchema{"First", "0x0"}, EnumeratorSchema{"Second", "1"}};
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
 
     module = valid_enum_module();
     std::get<codegen::EnumSchema>(module.declarations.front()).enum_array = true;
@@ -1003,6 +1016,7 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
 TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
     auto module{valid_native_enum_module()};
     auto& schema{std::get<codegen::EnumSchema>(module.declarations.front())};
+    schema.values.push_back(EnumeratorSchema{"Active"});
     schema.underlying_type.reset();
     schema.bit_width = 12;
     schema.signedness = false;

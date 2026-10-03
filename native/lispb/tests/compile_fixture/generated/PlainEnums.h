@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "SandboxCore/enum_array.h"
+#include "sandbox/core/enum_traits.h"
 
 #include "CoreMinimal.h"
 namespace codegen_compile_fixture {
@@ -13,10 +13,14 @@ enum class EPlainFixture : uint8 {
 };
 
 } // namespace codegen_compile_fixture
+namespace ml {
 template <>
-struct TEnumTraits<codegen_compile_fixture::EPlainFixture> {
-    static constexpr int32 count{2};
-};
+[[nodiscard]] constexpr auto enum_count<::codegen_compile_fixture::EPlainFixture>() noexcept
+    -> std::size_t {
+    return 2;
+}
+
+} // namespace ml
 
 namespace codegen_compile_fixture {
 COMPILE_FIXTURE_API auto LexToString(EPlainFixture const value) -> TCHAR const*;

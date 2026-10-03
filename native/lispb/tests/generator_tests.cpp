@@ -617,7 +617,7 @@ TEST(Generator, RendersCompleteProductionManifest) {
     auto const manifest{load_sources(project.root / target.types, sources)};
     auto const files{render_modules(lower_modules(manifest))};
 
-    EXPECT_EQ(files.size(), 103);
+    EXPECT_EQ(files.size(), 104);
     EXPECT_EQ(files.front().path, "native/simulation/include/ioj/sim/sim_state.h");
     EXPECT_EQ(files.back().path,
               "Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp");

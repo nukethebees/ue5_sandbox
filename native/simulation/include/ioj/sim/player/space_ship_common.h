@@ -72,7 +72,12 @@ struct EnumTraits<::ioj::sim::player::BoostBrakeState> {
         std::string_view{"Brake"},
         std::string_view{"EmergencyBrake"},
     };
-    inline static constexpr std::size_t count{values.size()};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::player::BoostBrakeState>() noexcept
+    -> std::size_t {
+    return 4;
+}
 
 } // namespace ml

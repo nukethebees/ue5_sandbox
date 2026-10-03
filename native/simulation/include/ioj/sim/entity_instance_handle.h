@@ -54,7 +54,7 @@ struct EntityInstanceHandle {
         assert(index_value <= static_cast<index_type>(index_field::value_mask));
         assert((index_value >= static_cast<index_type>(0) &&
                 index_value <= static_cast<index_type>(262143)));
-        assert(team_value < team_type::COUNT);
+        assert(static_cast<std::size_t>(team_value) < ml::enum_count<team_type>());
         assert(health_state_value <=
                static_cast<health_state_type>(health_state_field::value_mask));
         assert((health_state_value >= static_cast<health_state_type>(0) &&
@@ -68,7 +68,7 @@ struct EntityInstanceHandle {
         return value_ != invalid_value &&
                ((index() >= static_cast<index_type>(0) &&
                  index() <= static_cast<index_type>(262143))) &&
-               team() < team_type::COUNT &&
+               static_cast<std::size_t>(team()) < ml::enum_count<team_type>() &&
                ((health_state() >= static_cast<health_state_type>(0) &&
                  health_state() <= static_cast<health_state_type>(3)));
     }
@@ -97,7 +97,7 @@ struct EntityInstanceHandle {
     }
 
     constexpr void set_team(team_type const value) noexcept {
-        assert(value < team_type::COUNT);
+        assert(static_cast<std::size_t>(value) < ml::enum_count<team_type>());
         value_ = ml::packed_insert<team_field>(value_, value);
     }
 

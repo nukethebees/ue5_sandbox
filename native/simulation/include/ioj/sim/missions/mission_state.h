@@ -150,7 +150,11 @@ struct EnumTraits<::ioj::sim::MissionState> {
         std::string_view{"Failed"},
         std::string_view{"Disabled"},
     };
-    inline static constexpr std::size_t count{values.size()};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::MissionState>() noexcept -> std::size_t {
+    return 5;
+}
 
 } // namespace ml

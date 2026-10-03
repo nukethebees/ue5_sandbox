@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "sandbox/core/enum_traits.h"
+
 #include "CoreMinimal.h"
 
 #include "TestMissionState.generated.h"
@@ -14,3 +16,10 @@ enum class ETestMissionState : uint8 {
     Failed = 3 UMETA(DisplayName = "Failed"),
     Disabled = 4,
 };
+
+namespace ml {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ETestMissionState>() noexcept -> std::size_t {
+    return 5;
+}
+} // namespace ml

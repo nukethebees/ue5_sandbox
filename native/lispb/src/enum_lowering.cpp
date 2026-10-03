@@ -49,17 +49,10 @@ auto internal_name(EnumSchema const& schema, std::string_view const suffix) -> s
     return "get_" + snake_case_type_name(schema.name) + "_" + std::string{suffix};
 }
 
-auto enum_traits(ModuleSettings const& settings, EnumSchema const& schema) -> Node {
-    auto const count{
-        schema.count.has_value()
-            ? static_cast_expr("int32",
-                               named(qualified_enum_name(settings, schema) + "::" + *schema.count))
-            : literal(std::to_string(schema.values.size()))};
-    return Struct{
-        .name = "TEnumTraits<" + qualified_enum_name(settings, schema) + ">",
-        .children = {Member{"int32", "count", count, {.is_static = true, .is_constexpr = true}}},
-        .template_parameters = "",
-    };
+auto enum_count_specialization(std::string const& qualified_name, std::size_t const count)
+    -> std::string {
+    return "template <>\n[[nodiscard]] constexpr auto enum_count<" + qualified_name +
+           ">() noexcept -> std::size_t {\n    return " + std::to_string(count) + ";\n}\n";
 }
 
 auto exact_lookup(ModuleSettings const& settings, EnumSchema const& schema) -> FunctionSpec {
@@ -399,8 +392,10 @@ auto native_enum_traits(ModuleSettings const& settings, EnumSchema const& schema
         output << "std::string_view{" << native_string_literal(value->name) << "}, ";
     }
     output << "};\n";
-    output << "    inline static constexpr std::size_t count{values.size()};\n";
     output << "};\n";
+    if (schema.enum_array) {
+        output << "\n" << enum_count_specialization(qualified, values.size());
+    }
     return output.str();
 }
 
@@ -461,6 +456,11 @@ auto unreal_projection_header(EnumSchema const& schema,
         output << ",\n";
     }
     output << "};";
+    if (schema.enum_array) {
+        output << "\n\nnamespace ml {\n"
+               << enum_count_specialization("::" + projection.name, schema.values.size())
+               << "} // namespace ml\n";
+    }
     return output.str();
 }
 
@@ -527,6 +527,7 @@ auto lower_enum(EnumSchema const& schema,
                 .header =
                     CppFile{.path = projection.header,
                             .nodes = {Include{"CoreMinimal.h", false},
+                                      Include{"sandbox/core/enum_traits.h", false},
                                       Include{generated_header, false},
                                       raw(unreal_projection_header(schema, projection, types))},
                             .clang_format_off = true},
@@ -565,8 +566,11 @@ auto lower_enum(EnumSchema const& schema,
                           .values = std::move(values)},
                      2);
     if (schema.enum_array) {
-        emission.header_prefix.push_back(Include{"SandboxCore/enum_array.h", false});
-        emission.header_global.push_back(enum_traits(settings, schema));
+        emission.header_prefix.push_back(Include{"sandbox/core/enum_traits.h", false});
+        emission.header_global.push_back(
+            Namespace{"ml",
+                      {raw(enum_count_specialization("::" + qualified_enum_name(settings, schema),
+                                                     schema.values.size()))}});
     }
 
     NodeListBuilder lex_declarations;

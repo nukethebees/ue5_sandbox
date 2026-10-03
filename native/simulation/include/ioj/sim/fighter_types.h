@@ -16,9 +16,6 @@ namespace ioj::sim {
         case FighterTask::Attack: {
             return "Attack";
         }
-        case FighterTask::COUNT: {
-            return "COUNT";
-        }
     }
 
     return "Unknown";

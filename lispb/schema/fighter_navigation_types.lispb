@@ -4,12 +4,12 @@
   :backend standard-library
   :namespace ioj::sim::fighters
   (enum NavigationRiskTier @native_uint8
+    :enum-array true
     (value Clear :value "0")
     (value Nearby :value "1")
     (value Active :value "2")
-    (value Immediate :value "3")
-    (value Count :value "4"))
-  ; Stored risk codes exclude the enum's Count marker.
+    (value Immediate :value "3"))
+  ; Store the four navigation risk levels in two bits.
   (integer-scalar NavigationRiskCode
     :signed false :minimum 0 :maximum 3 :bit-width 2
     :cpp-type @native_uint8 :cpp-emission alias)

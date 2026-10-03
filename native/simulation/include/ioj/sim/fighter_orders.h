@@ -21,7 +21,6 @@ enum class FighterTask : std::uint8_t {
     Standby = 0,
     MoveToDestination = 1,
     Attack = 2,
-    COUNT = 3,
 };
 
 [[nodiscard]] constexpr auto to_string(FighterTask const value) noexcept -> std::string_view {
@@ -34,9 +33,6 @@ enum class FighterTask : std::uint8_t {
         }
         case FighterTask::Attack: {
             return "Attack";
-        }
-        case FighterTask::COUNT: {
-            return "COUNT";
         }
     }
 
@@ -53,9 +49,6 @@ enum class FighterTask : std::uint8_t {
     }
     if (value == "Attack") {
         return FighterTask::Attack;
-    }
-    if (value == "COUNT") {
-        return FighterTask::COUNT;
     }
 
     return std::nullopt;
@@ -119,7 +112,11 @@ struct EnumTraits<::ioj::sim::FighterTask> {
         std::string_view{"MoveToDestination"},
         std::string_view{"Attack"},
     };
-    inline static constexpr std::size_t count{values.size()};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::FighterTask>() noexcept -> std::size_t {
+    return 3;
+}
 
 } // namespace ml

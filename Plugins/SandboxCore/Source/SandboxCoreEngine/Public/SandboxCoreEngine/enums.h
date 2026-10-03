@@ -1,5 +1,6 @@
 #pragma once
 
+#include <sandbox/core/enum_traits.h>
 #include <SandboxCore/string.h>
 
 #include <CoreMinimal.h>
@@ -13,26 +14,19 @@ namespace ml {
 template <typename T>
 concept is_uenum = static_cast<bool>(TIsUEnumClass<std::remove_cvref_t<T>>::Value);
 
-template <typename T>
-struct EnumCountTrait {
-    static constexpr T count{T::COUNT};
-    static constexpr auto count_value{std::to_underlying(count)};
-};
-
 template <typename Enum>
 auto get_next(Enum const current) -> Enum {
     using Underlying = std::underlying_type_t<Enum>;
-    auto const next{std::to_underlying(current) + 1};
+    auto const next{static_cast<std::size_t>(current) + 1};
 
-    return (next >= EnumCountTrait<Enum>::count_value) ? static_cast<Enum>(Underlying{0})
-                                                       : static_cast<Enum>(next);
+    return (next >= enum_count<Enum>()) ? static_cast<Enum>(Underlying{0})
+                                        : static_cast<Enum>(next);
 }
 
 template <typename Enum>
 auto get_previous(Enum const current) -> Enum {
-    return (current == static_cast<Enum>(0))
-             ? static_cast<Enum>(EnumCountTrait<Enum>::count_value - 1)
-             : static_cast<Enum>(std::to_underlying(current) - 1);
+    return (current == static_cast<Enum>(0)) ? static_cast<Enum>(enum_count<Enum>() - 1)
+                                             : static_cast<Enum>(std::to_underlying(current) - 1);
 }
 
 template <is_uenum Enum>

@@ -1,3 +1,11 @@
+(module character_camera_mode
+  :header "Plugins/ShooterGame/Source/ShooterGame/Public/ShooterGame/players/CharacterCameraMode.h"
+  (enum ECharacterCameraMode uint8
+    :reflection blueprint
+    :enum-array true
+    (value FirstPerson :display-name "First Person")
+    (value ThirdPerson :display-name "Third Person")))
+
 (module game_ui_style_types
   :header "Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h"
   :source "Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes.cpp"

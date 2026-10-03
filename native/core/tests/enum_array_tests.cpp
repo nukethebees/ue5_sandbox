@@ -9,8 +9,13 @@ enum class Key {
 };
 }
 
+template <>
+constexpr auto ml::enum_count<Key>() noexcept -> std::size_t {
+    return 2;
+}
+
 TEST(EnumArray, IndexesByEnum) {
-    ml::EnumArray<Key, int, 2> values;
+    ml::EnumArray<Key, int> values;
     values[Key::First] = 10;
     values[Key::Second] = 20;
 

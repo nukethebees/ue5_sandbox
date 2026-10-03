@@ -16,7 +16,6 @@ enum class ShipFireRate : std::uint8_t {
     Single = 0,
     Burst3 = 1,
     FullAuto = 2,
-    COUNT = 3,
 };
 
 [[nodiscard]] constexpr auto to_string(ShipFireRate const value) noexcept -> std::string_view {
@@ -29,9 +28,6 @@ enum class ShipFireRate : std::uint8_t {
         }
         case ShipFireRate::FullAuto: {
             return "FullAuto";
-        }
-        case ShipFireRate::COUNT: {
-            return "COUNT";
         }
     }
 
@@ -49,9 +45,6 @@ enum class ShipFireRate : std::uint8_t {
     if (value == "FullAuto") {
         return ShipFireRate::FullAuto;
     }
-    if (value == "COUNT") {
-        return ShipFireRate::COUNT;
-    }
 
     return std::nullopt;
 }
@@ -67,9 +60,6 @@ enum class ShipFireRate : std::uint8_t {
         }
         case ShipFireRate::FullAuto: {
             return "Full Auto";
-        }
-        case ShipFireRate::COUNT: {
-            return "Count";
         }
     }
 
@@ -87,9 +77,6 @@ enum class ShipFireRate : std::uint8_t {
         }
         case ShipFireRate::FullAuto: {
             return "full_auto";
-        }
-        case ShipFireRate::COUNT: {
-            return "count";
         }
         default: {
             return "<invalid ShipFireRate>";
@@ -109,9 +96,6 @@ enum class ShipFireRate : std::uint8_t {
     if (value == "full_auto") {
         return ShipFireRate::FullAuto;
     }
-    if (value == "count") {
-        return ShipFireRate::COUNT;
-    }
 
     return std::nullopt;
 }
@@ -130,7 +114,11 @@ struct EnumTraits<::ioj::sim::ShipFireRate> {
         std::string_view{"Burst3"},
         std::string_view{"FullAuto"},
     };
-    inline static constexpr std::size_t count{values.size()};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::ShipFireRate>() noexcept -> std::size_t {
+    return 3;
+}
 
 } // namespace ml

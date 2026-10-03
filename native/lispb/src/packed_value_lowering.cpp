@@ -262,6 +262,9 @@ auto packed_field_layouts(PackedValueSchema const& schema,
 }
 
 auto enum_count_value(lispb::schema::EnumType const& type) -> std::optional<std::uint64_t> {
+    if (type.enum_array) {
+        return type.enumerators.size();
+    }
     if (!type.count.has_value()) {
         return std::nullopt;
     }
@@ -273,6 +276,18 @@ auto enum_count_value(lispb::schema::EnumType const& type) -> std::optional<std:
         return std::nullopt;
     }
     return value->code->magnitude;
+}
+
+auto enum_range_check(lispb::schema::EnumType const& type,
+                      std::string const& field_alias,
+                      std::string const& value) -> std::optional<std::string> {
+    if (type.enum_array) {
+        return "static_cast<std::size_t>(" + value + ") < ml::enum_count<" + field_alias + ">()";
+    }
+    if (auto const count{enum_count_value(type)}; count.has_value()) {
+        return "static_cast<std::uint64_t>(" + value + ") < " + std::to_string(*count);
+    }
+    return std::nullopt;
 }
 
 auto invalid_value_may_be_constructed(std::optional<std::uint64_t> const invalid_value,
@@ -356,14 +371,17 @@ void append_field_validation(std::string& output,
         return;
     }
     if (field.kind == PackedFieldKind::enumeration) {
-        if (packed_field.enum_type != nullptr && packed_field.enum_type->count.has_value()) {
-            output += "        assert(" + value_name + " < " + field_alias +
-                      "::" + *packed_field.enum_type->count + ");\n";
-        } else {
-            output += "        assert(static_cast<" + field.name + "_underlying_type>(" +
-                      value_name + ") <= static_cast<" + field.name + "_underlying_type>(" +
-                      field.name + "_field::value_mask));\n";
+        if (packed_field.enum_type != nullptr) {
+            if (auto const check{
+                    enum_range_check(*packed_field.enum_type, field_alias, value_name)};
+                check.has_value()) {
+                output += "        assert(" + *check + ");\n";
+                return;
+            }
         }
+        output += "        assert(static_cast<" + field.name + "_underlying_type>(" + value_name +
+                  ") <= static_cast<" + field.name + "_underlying_type>(" + field.name +
+                  "_field::value_mask));\n";
         return;
     }
     if (field.kind == PackedFieldKind::signed_integer) {
@@ -676,10 +694,12 @@ auto packed_value_text(PackedValueSchema const& source_schema,
             continue;
         }
         auto const* enum_type{enum_type_for_field(packed, type_graph, field.name)};
-        if (enum_type != nullptr && enum_type->count.has_value()) {
-            auto const field_alias{packed_field_type_alias(field)};
-            validity_checks.push_back(field.name + "() < " + field_alias +
-                                      "::" + *enum_type->count);
+        if (enum_type != nullptr) {
+            if (auto const check{enum_range_check(
+                    *enum_type, packed_field_type_alias(field), field.name + "()")};
+                check.has_value()) {
+                validity_checks.push_back(*check);
+            }
         }
     }
     output += "        return ";

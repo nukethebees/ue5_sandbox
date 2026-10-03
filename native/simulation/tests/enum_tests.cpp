@@ -15,7 +15,7 @@
 
 namespace ioj::sim::tests {
 TEST(NativeEnums, EntityTypeNamesAndSerializedNamesRoundTrip) {
-    EXPECT_EQ(ml::EnumTraits<EntityType>::count, 5U);
+    EXPECT_EQ(ml::enum_count<EntityType>(), 5U);
     for (auto const value : ml::EnumTraits<EntityType>::values) {
         EXPECT_FALSE(to_string(value).empty());
         EXPECT_EQ(try_parse_entity_type(to_string(value)), value);
@@ -30,13 +30,14 @@ TEST(NativeEnums, EntityTypeNamesAndSerializedNamesRoundTrip) {
     EXPECT_EQ(to_serialized_string(EntityType::CapitalShip), "capital_ship");
     EXPECT_EQ(to_serialized_string(EntityType::Fighter), "capital_ship_fighter");
     EXPECT_EQ(to_serialized_string(EntityType::TubeSpinner), "tube_spinner");
-    EXPECT_EQ(to_serialized_string(EntityType::COUNT), "<invalid EntityType>");
-    EXPECT_EQ(try_parse_entity_type("COUNT"), EntityType::COUNT);
+    EXPECT_EQ(to_serialized_string(static_cast<EntityType>(ml::enum_count<EntityType>())),
+              "<invalid EntityType>");
+    EXPECT_FALSE(try_parse_entity_type("COUNT").has_value());
     EXPECT_FALSE(try_parse_serialized_entity_type("count").has_value());
 }
 
 TEST(NativeEnums, TeamNamesAndSerializedNamesRoundTrip) {
-    EXPECT_EQ(ml::EnumTraits<Team>::count, 6U);
+    EXPECT_EQ(ml::enum_count<Team>(), 6U);
     for (auto const value : ml::EnumTraits<Team>::values) {
         EXPECT_FALSE(to_string(value).empty());
         EXPECT_EQ(try_parse_team(to_string(value)), value);
@@ -50,9 +51,9 @@ TEST(NativeEnums, TeamNamesAndSerializedNamesRoundTrip) {
     EXPECT_EQ(to_serialized_string(Team::Blue), "blue");
     EXPECT_EQ(to_serialized_string(Team::Orange), "orange");
     EXPECT_EQ(to_serialized_string(Team::Yellow), "yellow");
-    EXPECT_EQ(to_serialized_string(Team::COUNT), "count");
-    EXPECT_EQ(try_parse_team("COUNT"), Team::COUNT);
-    EXPECT_EQ(try_parse_serialized_team("count"), Team::COUNT);
+    EXPECT_EQ(to_serialized_string(static_cast<Team>(ml::enum_count<Team>())), "<invalid Team>");
+    EXPECT_FALSE(try_parse_team("COUNT").has_value());
+    EXPECT_FALSE(try_parse_serialized_team("count").has_value());
 }
 
 TEST(NativeEnums, MissionAndTelemetrySerializedNamesRoundTrip) {
@@ -101,7 +102,7 @@ TEST(NativeEnums, PersistedEnumNumericValuesRemainStable) {
     EXPECT_EQ(std::to_underlying(EntityType::CapitalShip), 2U);
     EXPECT_EQ(std::to_underlying(EntityType::Fighter), 3U);
     EXPECT_EQ(std::to_underlying(EntityType::TubeSpinner), 4U);
-    EXPECT_EQ(std::to_underlying(EntityType::COUNT), 5U);
+    EXPECT_EQ(ml::enum_count<EntityType>(), 5U);
 
     EXPECT_EQ(std::to_underlying(Team::White), 0U);
     EXPECT_EQ(std::to_underlying(Team::Red), 1U);
@@ -109,7 +110,7 @@ TEST(NativeEnums, PersistedEnumNumericValuesRemainStable) {
     EXPECT_EQ(std::to_underlying(Team::Blue), 3U);
     EXPECT_EQ(std::to_underlying(Team::Orange), 4U);
     EXPECT_EQ(std::to_underlying(Team::Yellow), 5U);
-    EXPECT_EQ(std::to_underlying(Team::COUNT), 6U);
+    EXPECT_EQ(ml::enum_count<Team>(), 6U);
 
     EXPECT_EQ(std::to_underlying(MissionMode::None), 0U);
     EXPECT_EQ(std::to_underlying(MissionMode::SurviveTime), 1U);
@@ -136,10 +137,10 @@ TEST(NativeEnums, PersistedEnumNumericValuesRemainStable) {
 }
 
 TEST(NativeEnums, PlayerEnumsExposeExhaustiveNativeValues) {
-    EXPECT_EQ(ml::EnumTraits<ShipLaserMode>::count, 3U);
-    EXPECT_EQ(ml::EnumTraits<LaserFiringState>::count, 2U);
-    EXPECT_EQ(ml::EnumTraits<ShipFireRate>::count, 3U);
-    EXPECT_EQ(ml::EnumTraits<player::BoostBrakeState>::count, 4U);
+    EXPECT_EQ(ml::enum_count<ShipLaserMode>(), 3U);
+    EXPECT_EQ(ml::enum_count<LaserFiringState>(), 2U);
+    EXPECT_EQ(ml::enum_count<ShipFireRate>(), 3U);
+    EXPECT_EQ(ml::enum_count<player::BoostBrakeState>(), 4U);
 
     for (auto const value : ml::EnumTraits<ShipLaserMode>::values) {
         EXPECT_FALSE(to_string(value).empty());

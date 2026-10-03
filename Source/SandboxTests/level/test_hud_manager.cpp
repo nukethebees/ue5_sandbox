@@ -824,8 +824,8 @@ void FTestHUDManagerScenario::check_sampled_speed_data_equal(
 auto FTestHUDManagerScenario::count_cached_entities(FHUDManager const& manager) -> int32 {
     int32 total{0};
     auto const& counts{manager.get_entity_count_data().alive_per_team_and_type};
-    constexpr auto n_teams{ml::EnumCountTrait<ETestTeam>::count_value};
-    constexpr auto n_types{ml::EnumCountTrait<::ioj::sim::EntityType>::count_value};
+    constexpr int32 n_teams{ml::enum_count<ETestTeam>()};
+    constexpr int32 n_types{ml::enum_count<::ioj::sim::EntityType>()};
     for (int32 team{0}; team < n_teams; ++team) {
         for (int32 type{0}; type < n_types; ++type) {
             total += counts[team][type];

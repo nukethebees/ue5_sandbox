@@ -766,13 +766,14 @@ struct CheckedValue {
     explicit constexpr CheckedValue(serial_type const serial_value,
                                     state_type const state_value) noexcept {
         assert(serial_value <= static_cast<serial_type>(serial_field::value_mask));
-        assert(state_value < state_type::COUNT);
+        assert(static_cast<std::size_t>(state_value) < ml::enum_count<state_type>());
         value_ = static_cast<storage_type>(ml::packed_pack<serial_field>(serial_value) |
                                            ml::packed_pack<state_field>(state_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return value_ != invalid_value && state() < state_type::COUNT;
+        return value_ != invalid_value &&
+               static_cast<std::size_t>(state()) < ml::enum_count<state_type>();
     }
 
     [[nodiscard]] constexpr auto operator<=>(CheckedValue const&) const noexcept = default;

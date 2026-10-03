@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "sandbox/core/enum_traits.h"
+
 #include "CoreMinimal.h"
 
 #include "TestShipFireRate.generated.h"
@@ -11,5 +13,11 @@ enum class ETestShipFireRate : uint8 {
     Single = 0 UMETA(DisplayName = "Single"),
     Burst3 = 1 UMETA(DisplayName = "Burst 3"),
     FullAuto = 2 UMETA(DisplayName = "Full Auto"),
-    COUNT = 3 UMETA(DisplayName = "Count", Hidden),
 };
+
+namespace ml {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ETestShipFireRate>() noexcept -> std::size_t {
+    return 3;
+}
+} // namespace ml

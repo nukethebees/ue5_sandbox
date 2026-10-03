@@ -65,6 +65,7 @@ struct EnumType {
     std::optional<bool> signedness;
     std::vector<Enumerator> enumerators;
     std::optional<std::string> count;
+    bool enum_array{};
 };
 
 struct PackedNamedCode {

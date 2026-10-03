@@ -18,9 +18,6 @@ namespace ml {
         case ETestShipFireRate::FullAuto: {
             return ::ioj::sim::ShipFireRate::FullAuto;
         }
-        case ETestShipFireRate::COUNT: {
-            return ::ioj::sim::ShipFireRate::COUNT;
-        }
     }
 
     return static_cast<::ioj::sim::ShipFireRate>(value);
@@ -38,9 +35,6 @@ namespace ml {
         case ::ioj::sim::ShipFireRate::FullAuto: {
             return ETestShipFireRate::FullAuto;
         }
-        case ::ioj::sim::ShipFireRate::COUNT: {
-            return ETestShipFireRate::COUNT;
-        }
     }
 
     return static_cast<ETestShipFireRate>(value);
@@ -52,6 +46,4 @@ static_assert(static_cast<int>(ETestShipFireRate::Burst3) ==
               static_cast<int>(::ioj::sim::ShipFireRate::Burst3));
 static_assert(static_cast<int>(ETestShipFireRate::FullAuto) ==
               static_cast<int>(::ioj::sim::ShipFireRate::FullAuto));
-static_assert(static_cast<int>(ETestShipFireRate::COUNT) ==
-              static_cast<int>(::ioj::sim::ShipFireRate::COUNT));
 } // namespace ml

@@ -185,7 +185,7 @@ void Sim::begin_play() {
            std::in_range<std::int16_t>(attack_reposition_tick_period));
     reposition_restart_ticks_ = static_cast<std::int16_t>(attack_reposition_tick_period);
 
-    std::array<float, static_cast<std::uint32_t>(NavigationRiskTier::Count)> const frequencies{
+    std::array<float, ml::enum_count<NavigationRiskTier>()> const frequencies{
         config.avoidance_clear_update_frequency,
         config.avoidance_update_frequency,
         config.avoidance_active_update_frequency,
@@ -1289,7 +1289,7 @@ bool Sim::tasks_are_contiguous() const noexcept {
     auto const data{entity_buffers.current().get_const_view()};
     auto current_task{Task::Standby};
     for (auto const task : data.tasks()) {
-        if (task < current_task || task >= Task::COUNT) {
+        if (task < current_task || std::to_underlying(task) >= ml::enum_count<Task>()) {
             return false;
         }
         current_task = task;

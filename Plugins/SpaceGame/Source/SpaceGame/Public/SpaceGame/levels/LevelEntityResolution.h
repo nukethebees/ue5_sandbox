@@ -75,8 +75,6 @@ inline auto to_level_team_id(ETestTeam const team) -> TOptional<FLevelTeamId> {
             return level_teams::orange;
         case ETestTeam::Yellow:
             return level_teams::yellow;
-        case ETestTeam::COUNT:
-            return NullOpt;
     }
     return NullOpt;
 }

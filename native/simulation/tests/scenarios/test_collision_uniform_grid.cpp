@@ -266,8 +266,7 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
         return;
     }
 
-    ml::EnumArray<EntityType, EntityUniqueId, static_cast<std::size_t>(EntityType::COUNT)>
-        expected_ids{};
+    ml::EnumArray<EntityType, EntityUniqueId> expected_ids{};
     expected_ids[EntityType::PlayerShip] = player->unique_entity_id;
     expected_ids[EntityType::Turret] =
         simulation.get_turrets().get_read_view().entities.entity_ids()[0];

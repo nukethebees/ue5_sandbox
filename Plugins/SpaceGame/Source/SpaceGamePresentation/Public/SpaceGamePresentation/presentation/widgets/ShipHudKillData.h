@@ -45,8 +45,8 @@ struct FTopKillerEntries : public ml::FSoAArrayMixin {
 };
 
 struct FTeamKillMatrix {
-    static constexpr int32 team_count{ml::EnumCountTrait<ETestTeam>::count_value};
-    static constexpr int32 entity_type_count{static_cast<int32>(::ioj::sim::EntityType::COUNT)};
+    static constexpr int32 team_count{ml::enum_count<ETestTeam>()};
+    static constexpr int32 entity_type_count{ml::enum_count<::ioj::sim::EntityType>()};
     static constexpr int32 count{team_count * entity_type_count};
 
     bool operator==(FTeamKillMatrix const&) const noexcept = default;

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "sandbox/core/enum_traits.h"
+
 #include "CoreMinimal.h"
 
 #include "TestTeam.generated.h"
@@ -14,5 +16,11 @@ enum class ETestTeam : uint8 {
     Blue = 3,
     Orange = 4,
     Yellow = 5,
-    COUNT = 6 UMETA(DisplayName = "Count", Hidden),
 };
+
+namespace ml {
+template <>
+[[nodiscard]] constexpr auto enum_count<::ETestTeam>() noexcept -> std::size_t {
+    return 6;
+}
+} // namespace ml

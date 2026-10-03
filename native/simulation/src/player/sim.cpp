@@ -525,19 +525,19 @@ void Sim::upgrade_laser() noexcept {
 
 void Sim::select_next_laser_fire_rate() noexcept {
     set_laser_fire_rate(static_cast<ShipFireRate>((static_cast<unsigned>(laser_fire_rate) + 1) %
-                                                  static_cast<unsigned>(ShipFireRate::COUNT)));
+                                                  ml::enum_count<ShipFireRate>()));
 }
 
 void Sim::select_previous_laser_fire_rate() noexcept {
     set_laser_fire_rate(static_cast<ShipFireRate>(
-        (static_cast<unsigned>(laser_fire_rate) + static_cast<unsigned>(ShipFireRate::COUNT) - 1) %
-        static_cast<unsigned>(ShipFireRate::COUNT)));
+        (static_cast<unsigned>(laser_fire_rate) + ml::enum_count<ShipFireRate>() - 1) %
+        ml::enum_count<ShipFireRate>()));
 }
 
 void Sim::set_laser_fire_rate(ShipFireRate const value) noexcept {
     laser_fire_rate = value;
     switch (laser_fire_rate) {
-        case ShipFireRate::COUNT: {
+        default: {
             ml::fatal_error("Invalid player laser fire rate.");
         }
         case ShipFireRate::Single: {

@@ -6,7 +6,6 @@
 #include <ioj/sim/sim_clock.h>
 
 #include <algorithm>
-#include <array>
 #include <cassert>
 #include <memory_resource>
 #include <span>
@@ -98,15 +97,15 @@ class EntityLookupTables {
   public:
     explicit EntityLookupTables(SimClock const& clock)
         : clock_{clock}
-        , tables_{EntityLookupTable{EntityType::PlayerShip},
-                  EntityLookupTable{EntityType::Turret},
-                  EntityLookupTable{EntityType::CapitalShip},
-                  EntityLookupTable{EntityType::Fighter},
-                  EntityLookupTable{EntityType::TubeSpinner}} {}
+        , tables_{{EntityLookupTable{EntityType::PlayerShip},
+                   EntityLookupTable{EntityType::Turret},
+                   EntityLookupTable{EntityType::CapitalShip},
+                   EntityLookupTable{EntityType::Fighter},
+                   EntityLookupTable{EntityType::TubeSpinner}}} {}
 
     [[nodiscard]] auto for_type(EntityType const type) -> EntityLookupTable& {
-        assert(type < EntityType::COUNT);
-        return tables_[static_cast<std::size_t>(type)];
+        assert(std::to_underlying(type) < ml::enum_count<EntityType>());
+        return tables_[type];
     }
 
     void assert_structural_mutation_allowed() const {
@@ -122,8 +121,8 @@ class EntityLookupTables {
     [[nodiscard]] auto permits_lookup() const noexcept -> bool { return clock_.permits_lookup(); }
 
     [[nodiscard]] auto for_type(EntityType const type) const -> EntityLookupTable const& {
-        assert(type < EntityType::COUNT);
-        return tables_[static_cast<std::size_t>(type)];
+        assert(std::to_underlying(type) < ml::enum_count<EntityType>());
+        return tables_[type];
     }
 
     // Resolve each contiguous type run into the matching caller-owned output slice.
@@ -143,7 +142,7 @@ class EntityLookupTables {
             }
 
             auto const destination{output.subspan(first, end - first)};
-            if (type < EntityType::COUNT) {
+            if (std::to_underlying(type) < ml::enum_count<EntityType>()) {
                 for_type(type).resolve(ids.subspan(first, end - first), destination);
             } else {
                 std::ranges::fill(destination, EntityInstanceHandle{});
@@ -153,6 +152,6 @@ class EntityLookupTables {
     }
   private:
     SimClock const& clock_;
-    std::array<EntityLookupTable, static_cast<std::size_t>(EntityType::COUNT)> tables_;
+    ml::EnumArray<EntityType, EntityLookupTable> tables_;
 };
 }

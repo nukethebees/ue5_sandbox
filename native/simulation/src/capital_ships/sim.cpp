@@ -488,7 +488,7 @@ void Sim::reassign_fighters_of_dying_capital() {
     auto const entities{this->entities.get_const_view()};
     auto const capital_healths{
         entity_tables_.health.get_const_view<EntityType::CapitalShip>(entities.num())};
-    ml::EnumArray<Team, EntityUniqueId, static_cast<std::size_t>(Team::COUNT)> replacements{};
+    ml::EnumArray<Team, EntityUniqueId> replacements{};
     auto const count{entities.num()};
     auto const teams{entities.teams()};
     auto const entity_ids{entities.entity_ids()};

@@ -503,7 +503,8 @@ class TypeGraphBuilder {
                                   .bit_width = source.bit_width,
                                   .signedness = source.signedness,
                                   .enumerators = {},
-                                  .count = source.count};
+                                  .count = source.count,
+                                  .enum_array = source.enum_array};
                     type.enumerators.reserve(source.values.size());
                     for (auto const& value : source.values) {
                         type.enumerators.push_back({.name = value.name,

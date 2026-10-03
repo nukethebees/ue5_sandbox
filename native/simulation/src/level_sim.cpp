@@ -21,7 +21,7 @@ namespace level_simulation {
 // Participating teams
 /* **************************************** */
 static void finalise_participating_teams(LevelSimInitData& data) {
-    std::array<std::uint8_t, static_cast<std::size_t>(Team::COUNT)> included{};
+    std::array<std::uint8_t, ml::enum_count<Team>()> included{};
     auto const included_count{included.size()};
     auto include = [&included](Team const team) {
         auto const team_index{static_cast<std::int32_t>(team)};

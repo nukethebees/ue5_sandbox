@@ -52,7 +52,7 @@ class ADroppableWaypoint;
 
 namespace ml {
 namespace AMyCharacter {
-inline static constexpr int32 camera_count{static_cast<int32>(ECharacterCameraMode::MAX)};
+inline static constexpr int32 camera_count{ml::enum_count<ECharacterCameraMode>()};
 inline static constexpr FCameraConfig camera_configs[camera_count] = {
     {ECharacterCameraMode::FirstPerson, "Camera", false, true},
     {ECharacterCameraMode::ThirdPerson, "ThirdPersonCamera", true, true}};

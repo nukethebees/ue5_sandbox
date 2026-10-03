@@ -258,9 +258,8 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
                 .values = {EnumeratorSchema{
                                .name = "Idle", .initializer = "0", .serialized_name = "idle"},
                            EnumeratorSchema{
-                               .name = "Active", .initializer = "1", .serialized_name = "active"},
-                           EnumeratorSchema{.name = "COUNT", .initializer = "2", .hidden = true}},
-                .count = "COUNT",
+                               .name = "Active", .initializer = "1", .serialized_name = "active"}},
+                .enum_array = true,
                 .native_api = true,
                 .unreal_projection =
                     EnumUnrealProjection{
@@ -287,9 +286,7 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
     EXPECT_NE(traits.find("::fixture::NativeState::Active"), std::string::npos);
     EXPECT_EQ(traits.find("::fixture::NativeState::COUNT"), std::string::npos);
     EXPECT_EQ(native_header.find("CoreMinimal.h"), std::string::npos);
-    EXPECT_NE(projection_header.find("#include \"CoreMinimal.h\"\n"
-                                     "#include \"NativeState.generated.h\""),
-              std::string::npos);
+    EXPECT_NE(projection_header.find("#include \"NativeState.generated.h\""), std::string::npos);
     EXPECT_NE(projection_header.find("UENUM()\nenum class ENativeState : uint8"),
               std::string::npos);
     EXPECT_NE(conversion_header.find("#include \"fixture/NativeEnum.h\"\n"
@@ -385,7 +382,7 @@ TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
     EXPECT_NE(output.source.find("project::states::EState::Ready"), std::string::npos);
 }
 
-TEST(Lowering, EmitsTraitsForEnumArrayEnums) {
+TEST(Lowering, EmitsCountsForEnumArrays) {
     auto const output{render_enum(
         NormalModuleSchema{.settings =
                                ModuleSettings{
@@ -400,39 +397,37 @@ TEST(Lowering, EmitsTraitsForEnumArrayEnums) {
                                .enum_array = true,
                            }}})};
 
-    EXPECT_NE(output.header.find("#include \"SandboxCore/enum_array.h\""), std::string::npos);
+    EXPECT_NE(output.header.find("#include \"sandbox/core/enum_traits.h\""), std::string::npos);
     EXPECT_NE(
-        output.header.find("struct TEnumTraits<EMode> {\n    static constexpr int32 count{2};\n};"),
+        output.header.find(
+            "constexpr auto enum_count<::EMode>() noexcept -> std::size_t {\n    return 2;\n}"),
         std::string::npos);
     EXPECT_EQ(output.header.find("COUNT"), std::string::npos);
 }
 
-TEST(Lowering, EmitsTraitsForEnumArrayEnumsWithCountSentinels) {
-    auto const output{render_enum(
-        NormalModuleSchema{.settings =
-                               ModuleSettings{
-                                   .name = "modes",
-                                   .header = "Modes.h",
-                                   .source = "Modes.cpp",
-                               },
-                           .declarations = {EnumSchema{
-                               .name = "EMode",
-                               .underlying_type = TypeRef{"uint8"},
-                               .reflection = EnumReflection::uenum,
-                               .values =
-                                   {
-                                       EnumeratorSchema{"First"},
-                                       EnumeratorSchema{"Second"},
-                                       EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true},
-                                   },
-                               .enum_array = true,
-                               .count = "COUNT",
-                           }}})};
+TEST(Lowering, EmitsCountsForReflectedEnumArrays) {
+    auto const output{render_enum(NormalModuleSchema{.settings =
+                                                         ModuleSettings{
+                                                             .name = "modes",
+                                                             .header = "Modes.h",
+                                                             .source = "Modes.cpp",
+                                                         },
+                                                     .declarations = {EnumSchema{
+                                                         .name = "EMode",
+                                                         .underlying_type = TypeRef{"uint8"},
+                                                         .reflection = EnumReflection::uenum,
+                                                         .values =
+                                                             {
+                                                                 EnumeratorSchema{"First"},
+                                                                 EnumeratorSchema{"Second"},
+                                                             },
+                                                         .enum_array = true,
+                                                     }}})};
 
-    EXPECT_NE(output.header.find("#include \"SandboxCore/enum_array.h\""), std::string::npos);
-    EXPECT_NE(output.header.find("struct TEnumTraits<EMode> {\n    static constexpr int32 "
-                                 "count{static_cast<int32>(EMode::COUNT)};\n};"),
-              std::string::npos);
+    EXPECT_NE(output.header.find("#include \"sandbox/core/enum_traits.h\""), std::string::npos);
+    EXPECT_NE(
+        output.header.find("enum_count<::EMode>() noexcept -> std::size_t {\n    return 2;\n}"),
+        std::string::npos);
 }
 
 TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
@@ -493,28 +488,24 @@ TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
               std::string::npos);
 }
 
-TEST(Lowering, EnumTraitsRemainGlobalForQualifiedHeaderOnlyEnums) {
+TEST(Lowering, EnumCountsUseMlNamespaceForQualifiedHeaderOnlyEnums) {
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
-        .modules = {NormalModuleSchema{
-            .settings =
-                {.name = "states", .header = "States.h", .namespace_name = "project::states"},
-            .declarations = {EnumSchema{
-                .name = "EState",
-                .underlying_type = TypeRef{"int"},
-                .values = {EnumeratorSchema{"Ready"}, EnumeratorSchema{"COUNT"}},
-                .enum_array = true,
-                .count = "COUNT",
-            }}}},
+        .modules = {NormalModuleSchema{.settings = {.name = "states",
+                                                    .header = "States.h",
+                                                    .namespace_name = "project::states"},
+                                       .declarations = {EnumSchema{
+                                           .name = "EState",
+                                           .underlying_type = TypeRef{"int"},
+                                           .values = {EnumeratorSchema{"Ready"}},
+                                           .enum_array = true,
+                                       }}}},
     }))};
     ASSERT_EQ(files.size(), 1);
+    EXPECT_NE(files.front().content.find("namespace ml {"), std::string::npos);
     EXPECT_NE(
-        files.front().content.find("} // namespace project::states\n"
-                                   "template <>\n"
-                                   "struct TEnumTraits<project::states::EState> {\n"
-                                   "    static constexpr int32 "
-                                   "count{static_cast<int32>(project::states::EState::COUNT)};\n"
-                                   "};"),
+        files.front().content.find(
+            "enum_count<::project::states::EState>() noexcept -> std::size_t {\n    return 1;\n}"),
         std::string::npos);
 }
 

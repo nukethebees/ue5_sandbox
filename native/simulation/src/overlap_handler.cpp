@@ -47,8 +47,7 @@ void OverlapHandler::append_damage(EntityUniqueId const id) {
             damage_events_.add(id, damage_per_overlap_detection_, {});
             break;
         }
-        case EntityType::TubeSpinner:
-        case EntityType::COUNT: {
+        case EntityType::TubeSpinner: {
             break;
         }
     }

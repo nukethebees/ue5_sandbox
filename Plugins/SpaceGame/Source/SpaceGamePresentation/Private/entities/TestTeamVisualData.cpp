@@ -38,7 +38,7 @@ auto UTestTeamVisualData::build_team_colour_cache(UTestTeamVisualData const* con
 }
 
 void UTestTeamVisualData::ensure_all_team_colours_exist() {
-    constexpr auto count{std::to_underlying(ETestTeam::COUNT)};
+    constexpr int32 count{ml::enum_count<ETestTeam>()};
 
     for (int32 i{0}; i < count; ++i) {
         colours.FindOrAdd(static_cast<ETestTeam>(i), missing_colour);

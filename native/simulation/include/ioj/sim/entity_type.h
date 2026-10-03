@@ -18,7 +18,6 @@ enum class EntityType : std::uint8_t {
     CapitalShip = 2,
     Fighter = 3,
     TubeSpinner = 4,
-    COUNT = 5,
 };
 
 [[nodiscard]] constexpr auto to_string(EntityType const value) noexcept -> std::string_view {
@@ -37,9 +36,6 @@ enum class EntityType : std::uint8_t {
         }
         case EntityType::TubeSpinner: {
             return "TubeSpinner";
-        }
-        case EntityType::COUNT: {
-            return "COUNT";
         }
     }
 
@@ -63,9 +59,6 @@ enum class EntityType : std::uint8_t {
     if (value == "TubeSpinner") {
         return EntityType::TubeSpinner;
     }
-    if (value == "COUNT") {
-        return EntityType::COUNT;
-    }
 
     return std::nullopt;
 }
@@ -87,9 +80,6 @@ enum class EntityType : std::uint8_t {
         }
         case EntityType::TubeSpinner: {
             return "Tube Spinner";
-        }
-        case EntityType::COUNT: {
-            return "COUNT";
         }
     }
 
@@ -159,7 +149,11 @@ struct EnumTraits<::ioj::sim::EntityType> {
         std::string_view{"Fighter"},
         std::string_view{"TubeSpinner"},
     };
-    inline static constexpr std::size_t count{values.size()};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::EntityType>() noexcept -> std::size_t {
+    return 5;
+}
 
 } // namespace ml

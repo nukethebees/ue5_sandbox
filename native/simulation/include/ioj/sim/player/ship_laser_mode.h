@@ -114,7 +114,11 @@ struct EnumTraits<::ioj::sim::ShipLaserMode> {
         std::string_view{"Double"},
         std::string_view{"Hyper"},
     };
-    inline static constexpr std::size_t count{values.size()};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::ShipLaserMode>() noexcept -> std::size_t {
+    return 3;
+}
 
 } // namespace ml

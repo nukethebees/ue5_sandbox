@@ -115,7 +115,9 @@ TEST(EntityUniqueId, AssertsWhenConstructionViolatesThePackedDomain) {
     EXPECT_DEATH(static_cast<void>(EntityUniqueId(EntityUniqueId::index_field::value_mask + 1,
                                                   EntityType::Turret)),
                  "");
-    EXPECT_DEATH(static_cast<void>(EntityUniqueId(0, EntityType::COUNT)), "");
+    EXPECT_DEATH(
+        static_cast<void>(EntityUniqueId(0, static_cast<EntityType>(ml::enum_count<EntityType>()))),
+        "");
 }
 
 TEST(EntityUniqueId, AllocationRangeDetectsExhaustionWithoutWrapping) {

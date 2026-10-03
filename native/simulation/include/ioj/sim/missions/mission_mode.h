@@ -132,7 +132,11 @@ struct EnumTraits<::ioj::sim::MissionMode> {
         std::string_view{"KillEnemies"},
         std::string_view{"KillEnemiesWithinTime"},
     };
-    inline static constexpr std::size_t count{values.size()};
 };
+
+template <>
+[[nodiscard]] constexpr auto enum_count<::ioj::sim::MissionMode>() noexcept -> std::size_t {
+    return 4;
+}
 
 } // namespace ml

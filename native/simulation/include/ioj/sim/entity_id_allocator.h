@@ -14,7 +14,7 @@ class EntityIdAllocator {
     inline static constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};
     [[nodiscard]] auto allocate(EntityType const type, std::uint32_t const history_row)
         -> EntityUniqueId {
-        if (type >= EntityType::COUNT) {
+        if (std::to_underlying(type) >= ml::enum_count<EntityType>()) {
             ml::fatal_error("Cannot allocate an entity ID with an invalid type");
         }
         auto& count{issued_counts_[type]};
@@ -52,6 +52,6 @@ class EntityIdAllocator {
     }
   private:
     EntityTypeSizes issued_counts_{};
-    ml::EnumArray<EntityType, std::vector<std::uint32_t>, EntityTypeSizes::size()> history_rows_;
+    ml::EnumArray<EntityType, std::vector<std::uint32_t>> history_rows_;
 };
 }

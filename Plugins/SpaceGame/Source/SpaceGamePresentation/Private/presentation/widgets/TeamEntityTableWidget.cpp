@@ -17,8 +17,8 @@ void UTeamEntityTableWidget::NativePreConstruct() {
     Super::NativePreConstruct();
 
     if (IsDesignTime()) {
-        constexpr auto n_teams{ml::EnumCountTrait<ETestTeam>::count_value};
-        constexpr auto n_types{static_cast<int32>(::ioj::sim::EntityType::COUNT)};
+        constexpr int32 n_teams{ml::enum_count<ETestTeam>()};
+        constexpr int32 n_types{ml::enum_count<::ioj::sim::EntityType>()};
         for (int32 team{0}; team < n_teams; ++team) {
             for (int32 type{0}; type < n_types; ++type) {
                 values[team][type] = 10 + team + type;
@@ -109,8 +109,8 @@ void UTeamEntityTableWidget::rebuild_table() {
 
     constexpr auto row_heading{0};
     constexpr auto first_team_column{1};
-    constexpr auto n_teams{ml::EnumCountTrait<ETestTeam>::count_value};
-    constexpr auto n_types{static_cast<int32>(::ioj::sim::EntityType::COUNT)};
+    constexpr int32 n_teams{ml::enum_count<ETestTeam>()};
+    constexpr int32 n_types{ml::enum_count<::ioj::sim::EntityType>()};
     auto const n_data_rows{n_types + (show_team_totals ? 1 : 0)};
 
     team_entity_grid->SetColumnFill(0, 1.f);

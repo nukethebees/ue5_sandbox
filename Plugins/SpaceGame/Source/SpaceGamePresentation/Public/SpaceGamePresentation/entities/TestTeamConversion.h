@@ -26,9 +26,6 @@ namespace ml {
         case ETestTeam::Yellow: {
             return ::ioj::sim::Team::Yellow;
         }
-        case ETestTeam::COUNT: {
-            return ::ioj::sim::Team::COUNT;
-        }
     }
 
     return static_cast<::ioj::sim::Team>(value);
@@ -54,9 +51,6 @@ namespace ml {
         case ::ioj::sim::Team::Yellow: {
             return ETestTeam::Yellow;
         }
-        case ::ioj::sim::Team::COUNT: {
-            return ETestTeam::COUNT;
-        }
     }
 
     return static_cast<ETestTeam>(value);
@@ -68,5 +62,4 @@ static_assert(static_cast<int>(ETestTeam::Green) == static_cast<int>(::ioj::sim:
 static_assert(static_cast<int>(ETestTeam::Blue) == static_cast<int>(::ioj::sim::Team::Blue));
 static_assert(static_cast<int>(ETestTeam::Orange) == static_cast<int>(::ioj::sim::Team::Orange));
 static_assert(static_cast<int>(ETestTeam::Yellow) == static_cast<int>(::ioj::sim::Team::Yellow));
-static_assert(static_cast<int>(ETestTeam::COUNT) == static_cast<int>(::ioj::sim::Team::COUNT));
 } // namespace ml
