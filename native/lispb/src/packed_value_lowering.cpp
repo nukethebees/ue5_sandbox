@@ -517,13 +517,10 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         }
         output += "    using " + field_alias + " = " + field_type.spelling + ";\n";
         if (field->kind == PackedFieldKind::enumeration) {
+            output += "    static_assert(ml::valid_packed_enum<" + field_alias + ", " +
+                      std::to_string(field_bits) + ">());\n";
             output += "    using " + field->name + "_underlying_type = std::underlying_type_t<" +
                       field_alias + ">;\n";
-            output += "    static_assert(std::is_enum_v<" + field_alias + ">);\n";
-            output +=
-                "    static_assert(std::is_unsigned_v<" + field->name + "_underlying_type>);\n";
-            output += "    static_assert(std::numeric_limits<" + field->name +
-                      "_underlying_type>::digits >= " + std::to_string(field_bits) + ");\n";
         } else if (field->kind == PackedFieldKind::signed_integer) {
             output += "    static_assert(std::is_signed_v<" + field_alias + ">);\n";
             output += "    static_assert(std::numeric_limits<" + field_alias +
@@ -902,10 +899,7 @@ auto packed_value_text(PackedValueSchema const& source_schema,
             : schema.invalid_value.has_value() ? "invalid_value"
                                                : "";
     output += "};\n};\n";
-    output += "static_assert(sizeof(" + schema.name + ") == sizeof(" + schema.name +
-              "::storage_type));\n";
-    output += "static_assert(std::is_trivially_copyable_v<" + schema.name + ">);\n";
-    output += "static_assert(std::is_standard_layout_v<" + schema.name + ">);";
+    output += "static_assert(ml::valid_packed_value_layout<" + schema.name + ">());";
 
     return Raw{std::move(output), std::move(dependencies)};
 }

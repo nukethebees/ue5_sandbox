@@ -100,9 +100,7 @@ struct FighterOrder {
   private:
     storage_type value_{0x0};
 };
-static_assert(sizeof(FighterOrder) == sizeof(FighterOrder::storage_type));
-static_assert(std::is_trivially_copyable_v<FighterOrder>);
-static_assert(std::is_standard_layout_v<FighterOrder>);
+static_assert(ml::valid_packed_value_layout<FighterOrder>());
 } // namespace ioj::sim
 namespace ml {
 template <>

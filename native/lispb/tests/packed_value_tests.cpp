@@ -314,8 +314,9 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
     EXPECT_NE(header.find("entity_index() == entity_index_Invalid"), std::string::npos);
     EXPECT_NE(header.find("is_valid() const noexcept"), std::string::npos);
     EXPECT_NE(header.find("std::underlying_type_t<state_type>"), std::string::npos);
-    EXPECT_NE(header.find("static_assert(std::is_enum_v<state_type>)"), std::string::npos);
-    EXPECT_NE(header.find("std::is_standard_layout_v<FighterState>"), std::string::npos);
+    EXPECT_NE(header.find("static_assert(ml::valid_packed_enum<state_type, 8>())"),
+              std::string::npos);
+    EXPECT_NE(header.find("ml::valid_packed_value_layout<FighterState>()"), std::string::npos);
 }
 
 TEST(PackedValue, EmitsFallibleMutationOnlyWhenRequested) {

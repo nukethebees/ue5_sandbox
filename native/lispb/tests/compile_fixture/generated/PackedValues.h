@@ -100,9 +100,7 @@ struct Defaults {
   private:
     storage_type value_{0x3a5};
 };
-static_assert(sizeof(Defaults) == sizeof(Defaults::storage_type));
-static_assert(std::is_trivially_copyable_v<Defaults>);
-static_assert(std::is_standard_layout_v<Defaults>);
+static_assert(ml::valid_packed_value_layout<Defaults>());
 
 struct DefaultsMsb {
     using storage_type = std::uint16_t;
@@ -147,9 +145,7 @@ struct DefaultsMsb {
   private:
     storage_type value_{0xa740};
 };
-static_assert(sizeof(DefaultsMsb) == sizeof(DefaultsMsb::storage_type));
-static_assert(std::is_trivially_copyable_v<DefaultsMsb>);
-static_assert(std::is_standard_layout_v<DefaultsMsb>);
+static_assert(ml::valid_packed_value_layout<DefaultsMsb>());
 
 struct PartialDefaults {
     using storage_type = std::uint8_t;
@@ -260,9 +256,7 @@ struct PartialDefaults {
         : value_{raw} {}
     storage_type value_{0x0};
 };
-static_assert(sizeof(PartialDefaults) == sizeof(PartialDefaults::storage_type));
-static_assert(std::is_trivially_copyable_v<PartialDefaults>);
-static_assert(std::is_standard_layout_v<PartialDefaults>);
+static_assert(ml::valid_packed_value_layout<PartialDefaults>());
 
 struct PackedSingle {
     using storage_type = std::uint8_t;
@@ -294,9 +288,7 @@ struct PackedSingle {
   private:
     storage_type value_{};
 };
-static_assert(sizeof(PackedSingle) == sizeof(PackedSingle::storage_type));
-static_assert(std::is_trivially_copyable_v<PackedSingle>);
-static_assert(std::is_standard_layout_v<PackedSingle>);
+static_assert(ml::valid_packed_value_layout<PackedSingle>());
 
 struct FighterState {
     using storage_type = std::uint32_t;
@@ -304,10 +296,8 @@ struct FighterState {
     using entity_index_type = std::uint32_t;
     using entity_index_field = ml::PackedField<storage_type, entity_index_type, 0, 24>;
     using state_type = codegen_compile_fixture::PackedState;
+    static_assert(ml::valid_packed_enum<state_type, 8>());
     using state_underlying_type = std::underlying_type_t<state_type>;
-    static_assert(std::is_enum_v<state_type>);
-    static_assert(std::is_unsigned_v<state_underlying_type>);
-    static_assert(std::numeric_limits<state_underlying_type>::digits >= 8);
     using state_field = ml::PackedField<storage_type, state_type, 24, 8>;
 
     constexpr FighterState() noexcept = default;
@@ -386,9 +376,7 @@ struct FighterState {
   private:
     storage_type value_{};
 };
-static_assert(sizeof(FighterState) == sizeof(FighterState::storage_type));
-static_assert(std::is_trivially_copyable_v<FighterState>);
-static_assert(std::is_standard_layout_v<FighterState>);
+static_assert(ml::valid_packed_value_layout<FighterState>());
 
 struct PackedByte {
     using storage_type = std::uint8_t;
@@ -494,9 +482,7 @@ struct PackedByte {
   private:
     storage_type value_{};
 };
-static_assert(sizeof(PackedByte) == sizeof(PackedByte::storage_type));
-static_assert(std::is_trivially_copyable_v<PackedByte>);
-static_assert(std::is_standard_layout_v<PackedByte>);
+static_assert(ml::valid_packed_value_layout<PackedByte>());
 
 struct NetworkHeader {
     using storage_type = std::uint32_t;
@@ -606,9 +592,7 @@ struct NetworkHeader {
   private:
     storage_type value_{};
 };
-static_assert(sizeof(NetworkHeader) == sizeof(NetworkHeader::storage_type));
-static_assert(std::is_trivially_copyable_v<NetworkHeader>);
-static_assert(std::is_standard_layout_v<NetworkHeader>);
+static_assert(ml::valid_packed_value_layout<NetworkHeader>());
 
 struct PackedWide {
     using storage_type = std::uint64_t;
@@ -674,9 +658,7 @@ struct PackedWide {
   private:
     storage_type value_{};
 };
-static_assert(sizeof(PackedWide) == sizeof(PackedWide::storage_type));
-static_assert(std::is_trivially_copyable_v<PackedWide>);
-static_assert(std::is_standard_layout_v<PackedWide>);
+static_assert(ml::valid_packed_value_layout<PackedWide>());
 
 struct SignedDelta {
     using storage_type = std::uint32_t;
@@ -739,9 +721,7 @@ struct SignedDelta {
   private:
     storage_type value_{};
 };
-static_assert(sizeof(SignedDelta) == sizeof(SignedDelta::storage_type));
-static_assert(std::is_trivially_copyable_v<SignedDelta>);
-static_assert(std::is_standard_layout_v<SignedDelta>);
+static_assert(ml::valid_packed_value_layout<SignedDelta>());
 
 struct SignedWide {
     using storage_type = std::uint64_t;
@@ -811,9 +791,7 @@ struct SignedWide {
   private:
     storage_type value_{};
 };
-static_assert(sizeof(SignedWide) == sizeof(SignedWide::storage_type));
-static_assert(std::is_trivially_copyable_v<SignedWide>);
-static_assert(std::is_standard_layout_v<SignedWide>);
+static_assert(ml::valid_packed_value_layout<SignedWide>());
 
 struct SignedTemperature {
     using storage_type = std::uint32_t;
@@ -892,18 +870,14 @@ struct SignedTemperature {
   private:
     storage_type value_{};
 };
-static_assert(sizeof(SignedTemperature) == sizeof(SignedTemperature::storage_type));
-static_assert(std::is_trivially_copyable_v<SignedTemperature>);
-static_assert(std::is_standard_layout_v<SignedTemperature>);
+static_assert(ml::valid_packed_value_layout<SignedTemperature>());
 
 struct PackedTinyState {
     using storage_type = std::uint8_t;
     static_assert(ml::valid_packed_storage<storage_type, 8>());
     using state_type = codegen_compile_fixture::TinyState;
+    static_assert(ml::valid_packed_enum<state_type, 2>());
     using state_underlying_type = std::underlying_type_t<state_type>;
-    static_assert(std::is_enum_v<state_type>);
-    static_assert(std::is_unsigned_v<state_underlying_type>);
-    static_assert(std::numeric_limits<state_underlying_type>::digits >= 2);
     using state_field = ml::PackedField<storage_type, state_type, 0, 2>;
     using payload_type = std::uint8_t;
     using payload_field = ml::PackedField<storage_type, payload_type, 2, 6>;
@@ -984,18 +958,14 @@ struct PackedTinyState {
   private:
     storage_type value_{};
 };
-static_assert(sizeof(PackedTinyState) == sizeof(PackedTinyState::storage_type));
-static_assert(std::is_trivially_copyable_v<PackedTinyState>);
-static_assert(std::is_standard_layout_v<PackedTinyState>);
+static_assert(ml::valid_packed_value_layout<PackedTinyState>());
 
 struct PackedOpaqueState {
     using storage_type = std::uint8_t;
     static_assert(ml::valid_packed_storage<storage_type, 8>());
     using state_type = codegen_compile_fixture::OpaqueState;
+    static_assert(ml::valid_packed_enum<state_type, 8>());
     using state_underlying_type = std::underlying_type_t<state_type>;
-    static_assert(std::is_enum_v<state_type>);
-    static_assert(std::is_unsigned_v<state_underlying_type>);
-    static_assert(std::numeric_limits<state_underlying_type>::digits >= 8);
     using state_field = ml::PackedField<storage_type, state_type, 0, 8>;
 
     static_assert([]<auto... values>() consteval -> bool {
@@ -1057,9 +1027,7 @@ struct PackedOpaqueState {
   private:
     storage_type value_{};
 };
-static_assert(sizeof(PackedOpaqueState) == sizeof(PackedOpaqueState::storage_type));
-static_assert(std::is_trivially_copyable_v<PackedOpaqueState>);
-static_assert(std::is_standard_layout_v<PackedOpaqueState>);
+static_assert(ml::valid_packed_value_layout<PackedOpaqueState>());
 
 struct CheckedValue {
     using storage_type = std::uint32_t;
@@ -1067,10 +1035,8 @@ struct CheckedValue {
     using serial_type = std::uint32_t;
     using serial_field = ml::PackedField<storage_type, serial_type, 0, 24>;
     using state_type = codegen_compile_fixture::DomainState;
+    static_assert(ml::valid_packed_enum<state_type, 8>());
     using state_underlying_type = std::underlying_type_t<state_type>;
-    static_assert(std::is_enum_v<state_type>);
-    static_assert(std::is_unsigned_v<state_underlying_type>);
-    static_assert(std::numeric_limits<state_underlying_type>::digits >= 8);
     using state_field = ml::PackedField<storage_type, state_type, 24, 8>;
 
     inline static constexpr storage_type invalid_value{storage_type{0x7fffffff}};
@@ -1115,9 +1081,7 @@ struct CheckedValue {
   private:
     storage_type value_{invalid_value};
 };
-static_assert(sizeof(CheckedValue) == sizeof(CheckedValue::storage_type));
-static_assert(std::is_trivially_copyable_v<CheckedValue>);
-static_assert(std::is_standard_layout_v<CheckedValue>);
+static_assert(ml::valid_packed_value_layout<CheckedValue>());
 
 struct Vitals {
     using storage_type = std::uint16_t;
@@ -1207,9 +1171,7 @@ struct Vitals {
   private:
     storage_type value_{};
 };
-static_assert(sizeof(Vitals) == sizeof(Vitals::storage_type));
-static_assert(std::is_trivially_copyable_v<Vitals>);
-static_assert(std::is_standard_layout_v<Vitals>);
+static_assert(ml::valid_packed_value_layout<Vitals>());
 
 struct Motion {
     using storage_type = std::uint32_t;
@@ -1415,9 +1377,7 @@ struct Motion {
   private:
     storage_type value_{};
 };
-static_assert(sizeof(Motion) == sizeof(Motion::storage_type));
-static_assert(std::is_trivially_copyable_v<Motion>);
-static_assert(std::is_standard_layout_v<Motion>);
+static_assert(ml::valid_packed_value_layout<Motion>());
 
 struct PackedMiniFloat {
     using storage_type = std::uint16_t;
@@ -1508,7 +1468,5 @@ struct PackedMiniFloat {
   private:
     storage_type value_{};
 };
-static_assert(sizeof(PackedMiniFloat) == sizeof(PackedMiniFloat::storage_type));
-static_assert(std::is_trivially_copyable_v<PackedMiniFloat>);
-static_assert(std::is_standard_layout_v<PackedMiniFloat>);
+static_assert(ml::valid_packed_value_layout<PackedMiniFloat>());
 } // namespace codegen_compile_fixture

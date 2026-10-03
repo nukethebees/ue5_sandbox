@@ -20,10 +20,8 @@ struct EntityUniqueId {
     using index_type = std::uint32_t;
     using index_field = ml::PackedField<storage_type, index_type, 0, 24>;
     using entity_type_type = ioj::sim::EntityType;
+    static_assert(ml::valid_packed_enum<entity_type_type, 8>());
     using entity_type_underlying_type = std::underlying_type_t<entity_type_type>;
-    static_assert(std::is_enum_v<entity_type_type>);
-    static_assert(std::is_unsigned_v<entity_type_underlying_type>);
-    static_assert(std::numeric_limits<entity_type_underlying_type>::digits >= 8);
     using entity_type_field = ml::PackedField<storage_type, entity_type_type, 24, 8>;
 
     inline static constexpr storage_type invalid_value{storage_type{0xffffffff}};
@@ -68,7 +66,5 @@ struct EntityUniqueId {
   private:
     storage_type value_{invalid_value};
 };
-static_assert(sizeof(EntityUniqueId) == sizeof(EntityUniqueId::storage_type));
-static_assert(std::is_trivially_copyable_v<EntityUniqueId>);
-static_assert(std::is_standard_layout_v<EntityUniqueId>);
+static_assert(ml::valid_packed_value_layout<EntityUniqueId>());
 } // namespace ioj::sim
