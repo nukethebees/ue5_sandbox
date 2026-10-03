@@ -32,6 +32,8 @@ the worktree name comes from the configured source directory. Agent sandboxes mu
 to the worktree's temp directory.
 The AgentTask installer and `agent-task codex start <name>` use the same directory, so
 Cargo and other child tools inherit the location automatically. Tests clean up their own fixtures.
+Rust tests also support direct Cargo runs: their shared test-support crate reads `IOJ_ROOT`
+and derives the worktree from the current directory without relying on `TMP` or `TEMP`.
 
 `agent-task prepare-worktree` clears output, updates submodules,
 generates presets, disables Live Coding in existing

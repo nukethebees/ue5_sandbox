@@ -1,7 +1,7 @@
 use super::*;
 
 struct Fixture {
-    _root: tempfile::TempDir,
+    _root: ioj_test_support::TempDir,
     request: Request,
     inventory: String,
 }
@@ -13,10 +13,7 @@ fn write(path: &Path) {
 
 impl Fixture {
     fn new() -> Self {
-        let root = tempfile::Builder::new()
-            .prefix("package tools ")
-            .tempdir()
-            .unwrap();
+        let root = ioj_test_support::temp_dir("package tools ");
         let request = Request {
             project_root: root.path().join("project root"),
             package_root: root.path().join("package root"),

@@ -12,7 +12,7 @@ pub struct Repo {
 }
 impl Repo {
     pub fn new() -> Self {
-        let root = std::env::temp_dir().join(format!(
+        let root = ioj_test_support::temp_root().join(format!(
             "agent-task git {}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)

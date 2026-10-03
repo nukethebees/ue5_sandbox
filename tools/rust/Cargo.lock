@@ -7,6 +7,7 @@ name = "agent-task"
 version = "0.5.1"
 dependencies = [
  "clap",
+ "ioj-test-support",
  "serde_json",
  "windows-sys",
 ]
@@ -81,10 +82,10 @@ name = "benchmark-tools"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "ioj-test-support",
  "serde",
  "serde_json",
  "sha2",
- "tempfile",
 ]
 
 [[package]]
@@ -267,7 +268,7 @@ name = "game-package-tools"
 version = "0.1.0"
 dependencies = [
  "clap",
- "tempfile",
+ "ioj-test-support",
 ]
 
 [[package]]
@@ -319,6 +320,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f31827a206f56af32e590ba56d5d2d085f558508192593743f16b2306495269f"
 dependencies = [
  "cc",
+]
+
+[[package]]
+name = "ioj-test-support"
+version = "0.1.0"
+dependencies = [
+ "tempfile",
 ]
 
 [[package]]

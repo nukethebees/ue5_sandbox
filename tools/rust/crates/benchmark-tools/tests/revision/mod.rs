@@ -21,14 +21,14 @@ fn balanced_order_preserves_pairs_and_excludes_warmups_from_numbering() {
 }
 #[test]
 fn owned_paths_cannot_escape_or_equal_the_parent() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = ioj_test_support::temp_dir("benchmark paths ");
     assert!(owned_path(&temp.path().join("wt/0"), &temp.path().join("wt")).is_ok());
     assert!(owned_path(temp.path(), temp.path()).is_err());
     assert!(owned_path(&temp.path().join("wt/../outside"), &temp.path().join("wt")).is_err());
 }
 #[test]
 fn manifest_requires_nonempty_expected_artifacts_and_keeps_failure() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = ioj_test_support::temp_dir("benchmark manifest ");
     let mut run = Run::new(temp.path(), "test", temp.path(), json!({}), "", true).unwrap();
     run.expect("result.json").unwrap();
     assert!(run.validate().is_err());

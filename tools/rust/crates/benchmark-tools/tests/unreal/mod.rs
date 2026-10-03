@@ -32,7 +32,7 @@ fn moved_automation_keeps_defaults_and_failure_detection() {
 
 #[test]
 fn engine_failure_and_timeout_preserve_logs() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = ioj_test_support::temp_dir("benchmark engine ");
     let log = directory.path().join("engine.log");
     let mut command = Command::new("python");
     command.args([

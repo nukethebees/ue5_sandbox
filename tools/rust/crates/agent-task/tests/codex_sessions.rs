@@ -49,7 +49,7 @@ struct Fixture {
 
 impl Fixture {
     fn new() -> Self {
-        let root = std::env::temp_dir().join(format!(
+        let root = ioj_test_support::temp_root().join(format!(
             "agent-task codex {} {}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)

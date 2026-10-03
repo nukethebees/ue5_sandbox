@@ -1,7 +1,7 @@
 use super::*;
 #[test]
 fn workload_validation_and_editor_arguments() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = ioj_test_support::temp_dir("benchmark ismc ");
     let editor = temp.path().join("UnrealEditor-Cmd.exe");
     fs::write(&editor, "").unwrap();
     let args = Args::parse(

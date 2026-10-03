@@ -1,7 +1,7 @@
 use super::*;
 #[test]
 fn gpu_capture_trims_frames_and_checks_resolution() {
-    let temp = tempfile::tempdir().unwrap();
+    let temp = ioj_test_support::temp_dir("benchmark gpu ");
     let path = temp.path().join("capture.csv");
     fs::write(&path,"tag,width,GameThreadTime,GPUTime\n[systemresolution.resx],1280,1,2\n[systemresolution.resy],720,2,3\nframe,,3,4\nframe,,4,5\nframe,,5,6\n").unwrap();
     let config = Configuration {

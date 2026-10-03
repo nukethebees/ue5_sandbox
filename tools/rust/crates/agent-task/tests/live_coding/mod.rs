@@ -12,7 +12,7 @@ struct TemporaryDirectory {
 impl TemporaryDirectory {
     fn new() -> Self {
         let sequence = NEXT_DIRECTORY.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
+        let path = ioj_test_support::temp_root().join(format!(
             "agent-task-live-coding-{}-{sequence}",
             std::process::id()
         ));

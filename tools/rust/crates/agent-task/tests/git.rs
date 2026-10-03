@@ -4,7 +4,7 @@ use support::Repo;
 
 #[test]
 fn grammar_is_closed_and_help_is_available_without_a_repository() {
-    let temp = std::env::temp_dir();
+    let temp = ioj_test_support::temp_root();
     for args in [
         vec!["update-ref", "refs/heads/dev", "HEAD"],
         vec!["bisect", "reset", "master"],

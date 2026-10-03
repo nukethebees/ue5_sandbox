@@ -5,4 +5,8 @@ members = [
     "crates/native-binary-tools",
     "crates/game-package-tools",
     "crates/benchmark-tools",
+    "crates/test-support",
 ]
+
+[workspace.dependencies]
+ioj-test-support = { path = "crates/test-support" }

@@ -144,8 +144,8 @@ session or individual agents within a shared session.
 
 After building the `tool-tests` preset, run `ctest --test-dir out/build/native -L '^agent-task$'`
 for AgentTask tests with the configured temporary directory. For a focused direct run,
-`cargo test --locked -p agent-task --test codex_sessions` from `tools/rust` uses the caller's
-temporary environment.
+`cargo test --locked -p agent-task --test codex_sessions` from `tools/rust` reads `IOJ_ROOT`
+through the shared test-support crate; no `TMP`/`TEMP` override is needed.
 
 ## Integration and jobs
 

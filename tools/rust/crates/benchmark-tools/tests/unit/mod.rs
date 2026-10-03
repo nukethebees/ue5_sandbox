@@ -7,11 +7,8 @@ use crate::{
 use serde_json::json;
 use std::{fs, path::Path};
 
-fn repository_fixture() -> tempfile::TempDir {
-    let directory = tempfile::Builder::new()
-        .prefix("benchmark source ")
-        .tempdir()
-        .unwrap();
+fn repository_fixture() -> ioj_test_support::TempDir {
+    let directory = ioj_test_support::temp_dir("benchmark source ");
     let root = directory.path();
     git(root, &["init"]).unwrap();
     git(root, &["config", "user.name", "Benchmark test"]).unwrap();
@@ -127,7 +124,7 @@ fn conditions(request: &Request) -> Conditions {
 
 #[test]
 fn csv_and_offline_report_enforce_comparability_and_sequence() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = ioj_test_support::temp_dir("benchmark report ");
     let root = directory.path();
     let request = workload(root);
     let conditions = conditions(&request);
@@ -242,7 +239,7 @@ fn csv_and_offline_report_enforce_comparability_and_sequence() {
 #[cfg(windows)]
 #[test]
 fn subprocess_failure_preserves_exit_code_and_captures_both_streams() {
-    let directory = tempfile::tempdir().unwrap();
+    let directory = ioj_test_support::temp_dir("benchmark subprocess ");
     let log = directory.path().join("nested/process.log");
     let output = logged(
         std::process::Command::new("cmd.exe").args([
