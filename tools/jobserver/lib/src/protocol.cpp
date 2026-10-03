@@ -1,35 +1,36 @@
 #include "jobserver/protocol.hpp"
 
-#include <algorithm>
-#include <array>
 #include <cstring>
 
 namespace jobserver::protocol {
-auto encode_frame(std::string const& payload) -> std::expected<std::vector<std::byte>, Error> {
+auto encode_frame(std::string const& payload) -> FrameResult {
     if (payload.size() > maximum_payload_size) {
-        return std::unexpected(Error{"payload_too_large", "Protocol payload exceeds one MiB"});
+        return FrameResult{std::unexpect, "payload_too_large", "Protocol payload exceeds one MiB"};
     }
 
-    auto const size{static_cast<std::uint32_t>(payload.size())};
-    std::vector<std::byte> frame(sizeof(size) + payload.size());
-    frame[0] = static_cast<std::byte>(size & 0xffU);
-    frame[1] = static_cast<std::byte>((size >> 8U) & 0xffU);
-    frame[2] = static_cast<std::byte>((size >> 16U) & 0xffU);
-    frame[3] = static_cast<std::byte>((size >> 24U) & 0xffU);
-    std::memcpy(frame.data() + sizeof(size), payload.data(), payload.size());
-    return frame;
+    auto const size{static_cast<PayloadSize>(payload.size())};
+    FrameResult result{std::in_place, header_size + payload.size()};
+    auto& frame{*result};
+    for (std::size_t index{}; index < header_size; ++index) {
+        frame[index] = static_cast<std::byte>((size >> (index * 8U)) & 0xffU);
+    }
+
+    std::memcpy(frame.data() + header_size, payload.data(), payload.size());
+    return result;
 }
 
-auto decode_header(std::span<std::byte const, 4> const header)
-    -> std::expected<std::uint32_t, Error> {
-    auto const size{std::to_integer<std::uint32_t>(header[0]) |
-                    (std::to_integer<std::uint32_t>(header[1]) << 8U) |
-                    (std::to_integer<std::uint32_t>(header[2]) << 16U) |
-                    (std::to_integer<std::uint32_t>(header[3]) << 24U)};
-    if (size > maximum_payload_size) {
-        return std::unexpected(Error{"payload_too_large", "Protocol payload exceeds one MiB"});
+auto decode_header(std::span<std::byte const, header_size> const header) -> PayloadSizeResult {
+    PayloadSize size{};
+    auto const byte_count{header.size()};
+    for (std::size_t index{}; index < byte_count; ++index) {
+        size |= std::to_integer<PayloadSize>(header[index]) << (index * 8U);
     }
-    return size;
+
+    if (size > maximum_payload_size) {
+        return PayloadSizeResult{
+            std::unexpect, "payload_too_large", "Protocol payload exceeds one MiB"};
+    }
+    return PayloadSizeResult{std::in_place, size};
 }
 
 }
