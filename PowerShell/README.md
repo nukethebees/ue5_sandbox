@@ -4,12 +4,6 @@ Run these scripts directly from the repository root; no shell setup is required.
 
 ## Install coj
 
-Before upgrading from AgentTask, finish the active tickets and shut down the empty board with
-the existing client. Install coj, then run `coj install-central-tools` to update
-the daemon. The protocol must match; there is no compatibility client. Installation removes
-the retired default `agent-task.exe` and `jobserver.exe` binaries and their matching PATH links.
-Remove any custom old installation separately.
-
 The maintainer tests and installs the Rust CLI with:
 
 ```powershell
