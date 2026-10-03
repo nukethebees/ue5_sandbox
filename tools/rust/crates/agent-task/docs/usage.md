@@ -14,6 +14,14 @@ the installed executable with `--version`. Installers create symlinks in
 **Create symbolic links** privilege is required and checked before building.
 Agents assume AgentTask is already available; they do not install it as a preflight step.
 
+Pass `-SkipTests` to retry installation without repeating package tests that already passed:
+
+```powershell
+pwsh -NoProfile -File PowerShell/InstallAgentTask.ps1 -SkipTests
+```
+
+The install, executable `--version` check, and tool-link publication still run.
+
 ## Worktree preparation and central tools
 
 Run `agent-task prepare-worktree` from anywhere inside the current worktree. It removes the

@@ -16,6 +16,9 @@ runs package tests, installs with the pinned Rust toolchain, smoke-tests the exe
 publishes its tool link. See [developer tools](../tools/README.md) for PATH setup.
 Agents assume the CLI is installed and report missing tools to the maintainer.
 
+Use `-SkipTests` to retry installation after tests have already passed, for example after
+fixing a file-access error. Installation and the executable smoke check still run.
+
 Use `agent-task prepare-worktree` to begin tasks and `agent-task git` for feature Git operations.
 After validation and explicit user authorization, run `agent-task integrate`; use
 `--keep-branch` to retain the feature branch. See [AgentTask usage](../tools/rust/crates/agent-task/docs/usage.md).

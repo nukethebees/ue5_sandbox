@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'NukeTheBees/agent-task'),
-    [string]$LinkDirectory
+    [string]$LinkDirectory,
+    [switch]$SkipTests
 )
 
 $ErrorActionPreference = 'Stop'
@@ -15,9 +16,11 @@ Assert-ToolLinkSupport $links
 # Run Cargo inside the workspace so rustup selects its pinned toolchain.
 Push-Location -LiteralPath (Join-Path $PSScriptRoot '..\tools\rust')
 try {
-    & cargo test --package agent-task --locked
-    if ($LASTEXITCODE -ne 0) {
-        throw "agent-task tests exited with code $LASTEXITCODE."
+    if (-not $SkipTests) {
+        & cargo test --package agent-task --locked
+        if ($LASTEXITCODE -ne 0) {
+            throw "agent-task tests exited with code $LASTEXITCODE."
+        }
     }
 
     & cargo install --path crates/agent-task --root $install_root --locked --force
