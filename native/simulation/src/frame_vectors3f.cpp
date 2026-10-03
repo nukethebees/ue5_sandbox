@@ -26,6 +26,12 @@ void FrameVectors3f::add(Vector3f const value) {
     ys_.add(value.Y);
     zs_.add(value.Z);
 }
+void FrameVectors3f::add(Vectors3fConstView const source,
+                         std::span<size_type const> const indices) {
+    xs_.add(source.xs(), indices);
+    ys_.add(source.ys(), indices);
+    zs_.add(source.zs(), indices);
+}
 void FrameVectors3f::set(size_type const index, Vector3f const value) {
     xs_[index] = value.X;
     ys_[index] = value.Y;

@@ -96,6 +96,33 @@ class FrameArray {
 
     auto add(T&& value) -> T& { return emplace(std::move(value)); }
 
+    void add(std::span<T const> const source, std::span<std::uint32_t const> const indices)
+        requires std::is_nothrow_copy_constructible_v<T>
+    {
+        assert(indices.size() <= max_supported_size - size_);
+        if (indices.empty()) {
+            return;
+        }
+
+        auto const count{static_cast<std::uint32_t>(indices.size())};
+        auto const new_size{size_ + count};
+        auto const needs_storage{new_size > capacity_};
+        auto const new_capacity{needs_storage ? growth_capacity(new_size) : capacity_};
+        auto* const destination{needs_storage ? allocate(new_capacity) : data_};
+
+        // Gather before relocation to preserve sources that refer to this array.
+        for (std::uint32_t index{}; index < count; ++index) {
+            auto const source_index{indices[index]};
+            assert(source_index < source.size());
+            std::construct_at(destination + size_ + index, source[source_index]);
+        }
+
+        if (needs_storage) {
+            replace_storage(destination, new_capacity);
+        }
+        size_ = new_size;
+    }
+
     template <typename... Args>
         requires std::is_constructible_v<T, Args...>
     auto emplace(Args&&... args) -> T& {
