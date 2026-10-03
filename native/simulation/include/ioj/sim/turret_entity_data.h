@@ -76,122 +76,11 @@ struct TurretEntityDataSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct TurretEntityDataSingleView_rotations;
-struct TurretEntityDataSingleConstView_rotations;
-template <bool Const>
-struct TurretEntityDataSingleView_rotationsImpl {
-    using soa_schema = Rotators3fSchema;
-    using size_type = std::uint32_t;
-    using Storage = ml::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    using View = TurretEntityDataSingleView_rotations;
-    using ConstView = TurretEntityDataSingleConstView_rotations;
-    TurretEntityDataSingleView_rotationsImpl() = default;
-    TurretEntityDataSingleView_rotationsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {
-        validate();
-    }
-    template <bool Enabled = Const>
-    TurretEntityDataSingleView_rotationsImpl(
-        TurretEntityDataSingleView_rotationsImpl<false> const& other)
-        requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count >= 0 && count <= self.count_);
-        return self.slice(self.count_ - count, count);
-    }
-    auto pitches() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    TurretEntityDataSingleLayout::RotationsPitchesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto yaws() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    TurretEntityDataSingleLayout::RotationsYawsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto rolls() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    TurretEntityDataSingleLayout::RotationsRollsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(pitches());
-        func(yaws());
-        func(rolls());
-    }
-  private:
-    template <bool>
-    friend struct TurretEntityDataSingleView_rotationsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
-};
-struct TurretEntityDataSingleConstView_rotations : TurretEntityDataSingleView_rotationsImpl<true> {
-    using Base = TurretEntityDataSingleView_rotationsImpl<true>;
-    using Base::Base;
-    using View = TurretEntityDataSingleView_rotations;
-    using ConstView = TurretEntityDataSingleConstView_rotations;
-    TurretEntityDataSingleConstView_rotations() = default;
-    TurretEntityDataSingleConstView_rotations(TurretEntityDataSingleView_rotations const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
-};
-static_assert(
-    ml::soa_storage_detail::validate_compact_view<TurretEntityDataSingleConstView_rotations>());
-struct TurretEntityDataSingleView_rotations : TurretEntityDataSingleView_rotationsImpl<false> {
-    using Base = TurretEntityDataSingleView_rotationsImpl<false>;
-    using Base::Base;
-    using View = TurretEntityDataSingleView_rotations;
-    using ConstView = TurretEntityDataSingleConstView_rotations;
-    TurretEntityDataSingleView_rotations() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
-};
-static_assert(
-    ml::soa_storage_detail::validate_compact_view<TurretEntityDataSingleView_rotations>());
-inline TurretEntityDataSingleConstView_rotations::TurretEntityDataSingleConstView_rotations(
-    TurretEntityDataSingleView_rotations const& other)
-    : Base{other} {}
 template <bool Const>
 struct TurretEntityDataSingleViewImpl {
     using soa_schema = TurretEntityDataSchema;
     using size_type = std::uint32_t;
+    using Layout = TurretEntityDataSingleLayout;
     using Storage = ml::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -211,7 +100,10 @@ struct TurretEntityDataSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -219,8 +111,8 @@ struct TurretEntityDataSingleViewImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -228,152 +120,151 @@ struct TurretEntityDataSingleViewImpl {
         return self.slice(self.count_ - count, count);
     }
     auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
-        return {ml::soa_storage_detail::view_column_data<EntityUniqueId>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
                     state_,
                     offset_,
                     count_,
-                    TurretEntityDataSingleLayout::EntityIdsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto integral_biases() const -> std::span<Element<std::uint32_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::uint32_t>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::uint32_t>(
                     state_,
                     offset_,
                     count_,
-                    TurretEntityDataSingleLayout::IntegralBiasesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::IntegralBiasesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto view_locations() const -> std::conditional_t<Const,
                                                       ml::native_soa::Vector3ConstView<float>,
                                                       ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{TurretEntityDataSingleLayout::LocationsXsColumn.offset(blocks)};
-        auto const stride{TurretEntityDataSingleLayout::LocationsYsColumn.offset(blocks) - first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::LocationsXsColumn.offset(blocks)};
+        auto const stride{Layout::LocationsYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto view_fire_point_locations() const
         -> std::conditional_t<Const,
                               ml::native_soa::Vector3ConstView<float>,
                               ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{TurretEntityDataSingleLayout::FirePointLocationsXsColumn.offset(blocks)};
-        auto const stride{TurretEntityDataSingleLayout::FirePointLocationsYsColumn.offset(blocks) -
-                          first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::FirePointLocationsXsColumn.offset(blocks)};
+        auto const stride{Layout::FirePointLocationsYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto view_rotations() const -> std::conditional_t<Const,
-                                                      TurretEntityDataSingleConstView_rotations,
-                                                      TurretEntityDataSingleView_rotations> {
-        return {state_, offset_, count_};
+                                                      ml::native_soa::RotatorSoAConstView<float>,
+                                                      ml::native_soa::RotatorSoAView<float>> {
+        using namespace ml::soa_storage_detail;
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::RotationsPitchesColumn.offset(blocks)};
+        auto const stride{Layout::RotationsYawsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto teams() const -> std::span<Element<Team>> {
-        return {ml::soa_storage_detail::view_column_data<Team>(
-                    state_,
-                    offset_,
-                    count_,
-                    TurretEntityDataSingleLayout::TeamsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<Team>(
+                state_, offset_, count_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto laser_cooldowns() const -> std::span<Element<std::int16_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::int16_t>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::int16_t>(
                     state_,
                     offset_,
                     count_,
-                    TurretEntityDataSingleLayout::LaserCooldownsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::LaserCooldownsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto laser_damages() const -> std::span<Element<std::int32_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::int32_t>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::int32_t>(
                     state_,
                     offset_,
                     count_,
-                    TurretEntityDataSingleLayout::LaserDamagesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::LaserDamagesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto target_refresh_countdowns_periods() const -> std::span<Element<std::int16_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::int16_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    TurretEntityDataSingleLayout::TargetRefreshCountdownsPeriodsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::int16_t>(state_,
+                                               offset_,
+                                               count_,
+                                               Layout::TargetRefreshCountdownsPeriodsColumn.offset(
+                                                   view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto target_refresh_countdowns_remaining_ticks() const -> std::span<Element<std::int16_t>> {
-        return {
-            ml::soa_storage_detail::view_column_data<std::int16_t>(
-                state_,
-                offset_,
-                count_,
-                TurretEntityDataSingleLayout::TargetRefreshCountdownsRemainingTicksColumn.offset(
-                    ml::soa_storage_detail::view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
-    }
-    auto target_ids() const -> std::span<Element<EntityUniqueId>> {
-        return {ml::soa_storage_detail::view_column_data<EntityUniqueId>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::int16_t>(
                     state_,
                     offset_,
                     count_,
-                    TurretEntityDataSingleLayout::TargetIdsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::TargetRefreshCountdownsRemainingTicksColumn.offset(
+                        view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    auto target_ids() const -> std::span<Element<EntityUniqueId>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
+                    state_,
+                    offset_,
+                    count_,
+                    Layout::TargetIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto view_target_locations() const
         -> std::conditional_t<Const,
                               ml::native_soa::Vector3ConstView<float>,
                               ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{TurretEntityDataSingleLayout::TargetLocationsXsColumn.offset(blocks)};
-        auto const stride{TurretEntityDataSingleLayout::TargetLocationsYsColumn.offset(blocks) -
-                          first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::TargetLocationsXsColumn.offset(blocks)};
+        auto const stride{Layout::TargetLocationsYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto view_target_velocities() const
         -> std::conditional_t<Const,
                               ml::native_soa::Vector3ConstView<float>,
                               ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{TurretEntityDataSingleLayout::TargetVelocitiesXsColumn.offset(blocks)};
-        auto const stride{TurretEntityDataSingleLayout::TargetVelocitiesYsColumn.offset(blocks) -
-                          first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::TargetVelocitiesXsColumn.offset(blocks)};
+        auto const stride{Layout::TargetVelocitiesYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto health_indices() const -> std::span<Element<HealthIndex>> {
-        return {ml::soa_storage_detail::view_column_data<HealthIndex>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<HealthIndex>(
                     state_,
                     offset_,
                     count_,
-                    TurretEntityDataSingleLayout::HealthIndicesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::HealthIndicesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>

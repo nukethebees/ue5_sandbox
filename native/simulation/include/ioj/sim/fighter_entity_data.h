@@ -128,6 +128,7 @@ template <bool Const>
 struct FighterEntityDataSingleViewImpl {
     using soa_schema = FighterEntityDataSchema;
     using size_type = std::uint32_t;
+    using Layout = FighterEntityDataSingleLayout;
     using Storage = ml::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -147,7 +148,10 @@ struct FighterEntityDataSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -155,8 +159,8 @@ struct FighterEntityDataSingleViewImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -164,386 +168,360 @@ struct FighterEntityDataSingleViewImpl {
         return self.slice(self.count_ - count, count);
     }
     auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
-        return {ml::soa_storage_detail::view_column_data<EntityUniqueId>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::EntityIdsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto integral_biases() const -> std::span<Element<std::uint32_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::uint32_t>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::uint32_t>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::IntegralBiasesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::IntegralBiasesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto float_biases() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    FighterEntityDataSingleLayout::FloatBiasesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(state_,
+                                    offset_,
+                                    count_,
+                                    Layout::FloatBiasesColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto tasks() const -> std::span<Element<FighterTask>> {
-        return {ml::soa_storage_detail::view_column_data<FighterTask>(
-                    state_,
-                    offset_,
-                    count_,
-                    FighterEntityDataSingleLayout::TasksColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<FighterTask>(
+                state_, offset_, count_, Layout::TasksColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto view_locations() const -> std::conditional_t<Const,
                                                       ml::native_soa::Vector3ConstView<float>,
                                                       ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{FighterEntityDataSingleLayout::LocationsXsColumn.offset(blocks)};
-        auto const stride{FighterEntityDataSingleLayout::LocationsYsColumn.offset(blocks) - first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::LocationsXsColumn.offset(blocks)};
+        auto const stride{Layout::LocationsYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto view_desired_move_locations() const
         -> std::conditional_t<Const,
                               ml::native_soa::Vector3ConstView<float>,
                               ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{
-            FighterEntityDataSingleLayout::DesiredMoveLocationsXsColumn.offset(blocks)};
-        auto const stride{
-            FighterEntityDataSingleLayout::DesiredMoveLocationsYsColumn.offset(blocks) - first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::DesiredMoveLocationsXsColumn.offset(blocks)};
+        auto const stride{Layout::DesiredMoveLocationsYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto view_aim_directions() const -> std::conditional_t<Const,
                                                            ml::native_soa::Vector3ConstView<float>,
                                                            ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{FighterEntityDataSingleLayout::AimDirectionsXsColumn.offset(blocks)};
-        auto const stride{FighterEntityDataSingleLayout::AimDirectionsYsColumn.offset(blocks) -
-                          first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::AimDirectionsXsColumn.offset(blocks)};
+        auto const stride{Layout::AimDirectionsYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto view_planned_aim_directions() const
         -> std::conditional_t<Const,
                               ml::native_soa::Vector3ConstView<float>,
                               ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{
-            FighterEntityDataSingleLayout::PlannedAimDirectionsXsColumn.offset(blocks)};
-        auto const stride{
-            FighterEntityDataSingleLayout::PlannedAimDirectionsYsColumn.offset(blocks) - first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::PlannedAimDirectionsXsColumn.offset(blocks)};
+        auto const stride{Layout::PlannedAimDirectionsYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto view_desired_aiming_directions() const
         -> std::conditional_t<Const,
                               ml::native_soa::Vector3ConstView<float>,
                               ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{
-            FighterEntityDataSingleLayout::DesiredAimingDirectionsXsColumn.offset(blocks)};
-        auto const stride{
-            FighterEntityDataSingleLayout::DesiredAimingDirectionsYsColumn.offset(blocks) - first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::DesiredAimingDirectionsXsColumn.offset(blocks)};
+        auto const stride{Layout::DesiredAimingDirectionsYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto view_movement_directions() const
         -> std::conditional_t<Const,
                               ml::native_soa::Vector3ConstView<float>,
                               ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{FighterEntityDataSingleLayout::MovementDirectionsXsColumn.offset(blocks)};
-        auto const stride{FighterEntityDataSingleLayout::MovementDirectionsYsColumn.offset(blocks) -
-                          first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::MovementDirectionsXsColumn.offset(blocks)};
+        auto const stride{Layout::MovementDirectionsYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto view_velocities() const -> std::conditional_t<Const,
                                                        ml::native_soa::Vector3ConstView<float>,
                                                        ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{FighterEntityDataSingleLayout::VelocitiesXsColumn.offset(blocks)};
-        auto const stride{FighterEntityDataSingleLayout::VelocitiesYsColumn.offset(blocks) - first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::VelocitiesXsColumn.offset(blocks)};
+        auto const stride{Layout::VelocitiesYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto move_distances() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::MoveDistancesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::MoveDistancesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto speeds() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    FighterEntityDataSingleLayout::SpeedsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(
+                state_, offset_, count_, Layout::SpeedsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto teams() const -> std::span<Element<Team>> {
-        return {ml::soa_storage_detail::view_column_data<Team>(
-                    state_,
-                    offset_,
-                    count_,
-                    FighterEntityDataSingleLayout::TeamsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<Team>(
+                state_, offset_, count_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto health_indices() const -> std::span<Element<HealthIndex>> {
-        return {ml::soa_storage_detail::view_column_data<HealthIndex>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<HealthIndex>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::HealthIndicesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::HealthIndicesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto parent_ids() const -> std::span<Element<EntityUniqueId>> {
-        return {ml::soa_storage_detail::view_column_data<EntityUniqueId>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::ParentIdsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::ParentIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto awareness_scan_countdowns() const -> std::span<Element<std::int8_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::int8_t>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::int8_t>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::AwarenessScanCountdownsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::AwarenessScanCountdownsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto navigation_update_countdowns_remaining_ticks() const -> std::span<Element<std::int16_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::int16_t>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::int16_t>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::NavigationUpdateCountdownsRemainingTicksColumn
-                        .offset(ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::NavigationUpdateCountdownsRemainingTicksColumn.offset(
+                        view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto navigation_update_countdowns_periods() const -> std::span<Element<std::int16_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::int16_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    FighterEntityDataSingleLayout::NavigationUpdateCountdownsPeriodsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<std::int16_t>(state_,
+                                           offset_,
+                                           count_,
+                                           Layout::NavigationUpdateCountdownsPeriodsColumn.offset(
+                                               view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto view_separation_steering() const
         -> std::conditional_t<Const,
                               ml::native_soa::Vector3ConstView<float>,
                               ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{FighterEntityDataSingleLayout::SeparationSteeringXsColumn.offset(blocks)};
-        auto const stride{FighterEntityDataSingleLayout::SeparationSteeringYsColumn.offset(blocks) -
-                          first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::SeparationSteeringXsColumn.offset(blocks)};
+        auto const stride{Layout::SeparationSteeringYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto navigation_risk_tiers() const -> std::span<Element<fighters::NavigationRiskCode>> {
-        return {ml::soa_storage_detail::view_column_data<fighters::NavigationRiskCode>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<fighters::NavigationRiskCode>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::NavigationRiskTiersColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::NavigationRiskTiersColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto navigation_lower_risk_scan_counts() const
         -> std::span<Element<fighters::NavigationScanCount>> {
-        return {ml::soa_storage_detail::view_column_data<fighters::NavigationScanCount>(
-                    state_,
-                    offset_,
-                    count_,
-                    FighterEntityDataSingleLayout::NavigationLowerRiskScanCountsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<fighters::NavigationScanCount>(
+                state_,
+                offset_,
+                count_,
+                Layout::NavigationLowerRiskScanCountsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto avoidance_choice_indices() const -> std::span<Element<fighters::AvoidanceChoice>> {
-        return {ml::soa_storage_detail::view_column_data<fighters::AvoidanceChoice>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<fighters::AvoidanceChoice>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::AvoidanceChoiceIndicesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::AvoidanceChoiceIndicesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto avoidance_clear_scan_counts() const -> std::span<Element<fighters::NavigationScanCount>> {
-        return {ml::soa_storage_detail::view_column_data<fighters::NavigationScanCount>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<fighters::NavigationScanCount>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::AvoidanceClearScanCountsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::AvoidanceClearScanCountsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto attack_reposition_countdowns() const -> std::span<Element<std::int16_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::int16_t>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::int16_t>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::AttackRepositionCountdownsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::AttackRepositionCountdownsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto attack_cooldowns() const -> std::span<Element<std::int16_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::int16_t>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::int16_t>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::AttackCooldownsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::AttackCooldownsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto target_ids() const -> std::span<Element<EntityUniqueId>> {
-        return {ml::soa_storage_detail::view_column_data<EntityUniqueId>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::TargetIdsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::TargetIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto view_target_locations() const
         -> std::conditional_t<Const,
                               ml::native_soa::Vector3ConstView<float>,
                               ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{FighterEntityDataSingleLayout::TargetLocationsXsColumn.offset(blocks)};
-        auto const stride{FighterEntityDataSingleLayout::TargetLocationsYsColumn.offset(blocks) -
-                          first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::TargetLocationsXsColumn.offset(blocks)};
+        auto const stride{Layout::TargetLocationsYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto view_target_velocities() const
         -> std::conditional_t<Const,
                               ml::native_soa::Vector3ConstView<float>,
                               ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{FighterEntityDataSingleLayout::TargetVelocitiesXsColumn.offset(blocks)};
-        auto const stride{FighterEntityDataSingleLayout::TargetVelocitiesYsColumn.offset(blocks) -
-                          first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::TargetVelocitiesXsColumn.offset(blocks)};
+        auto const stride{Layout::TargetVelocitiesYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto view_target_directions() const
         -> std::conditional_t<Const,
                               ml::native_soa::Vector3ConstView<float>,
                               ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{FighterEntityDataSingleLayout::TargetDirectionsXsColumn.offset(blocks)};
-        auto const stride{FighterEntityDataSingleLayout::TargetDirectionsYsColumn.offset(blocks) -
-                          first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::TargetDirectionsXsColumn.offset(blocks)};
+        auto const stride{Layout::TargetDirectionsYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto intercept_times() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::InterceptTimesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::InterceptTimesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto target_distance_sq() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::TargetDistanceSqColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::TargetDistanceSqColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto target_distances() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    FighterEntityDataSingleLayout::TargetDistancesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::TargetDistancesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto target_radii() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    FighterEntityDataSingleLayout::TargetRadiiColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(state_,
+                                    offset_,
+                                    count_,
+                                    Layout::TargetRadiiColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {

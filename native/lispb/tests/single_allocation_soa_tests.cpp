@@ -243,6 +243,11 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
     EXPECT_NE(output.find("validate_compact_view<RowsSingleView>()"), std::string::npos);
     EXPECT_NE(output.find("validate_compact_view<RowsSingleConstView>()"), std::string::npos);
     EXPECT_NE(output.find("view_column_data<Aligned256>"), std::string::npos);
+    EXPECT_NE(output.find("using namespace ml::soa_storage_detail;"), std::string::npos);
+    EXPECT_NE(output.find("using Layout = RowsSingleLayout;"), std::string::npos);
+    EXPECT_NE(output.find("Layout::NestedWideColumn.offset(view_capacity_blocks(state_))"),
+              std::string::npos);
+    EXPECT_EQ(output.find("ml::soa_storage_detail::view_column_data<"), std::string::npos);
     EXPECT_EQ(output.find("auto columns() const"), std::string::npos);
     EXPECT_NE(output.find("for_each_removal_run(num_, indices"), std::string::npos);
     EXPECT_NE(output.find("ml::soa_storage::source_data(source.view_nested().wide())"),
@@ -264,6 +269,15 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
     input.front().vector_components.push_back("zs");
     vectors = render(input);
     EXPECT_NE(vectors.find("ml::soa::Vector3View<double>"), std::string::npos);
+    input.front().vector_components = {"pitches", "yaws", "rolls"};
+    for (std::size_t index{}; index < input.front().members.size(); ++index) {
+        input.front().members[index].name = input.front().vector_components[index];
+    }
+    auto const rotations{render(input)};
+    EXPECT_NE(rotations.find("ml::soa::RotatorSoAView<double>"), std::string::npos);
+    EXPECT_NE(rotations.find("ml::soa::RotatorSoAConstView<double>"), std::string::npos);
+    EXPECT_NE(rotations.find("NestedYawsColumn.offset(blocks) - first"), std::string::npos);
+    EXPECT_EQ(rotations.find("struct RowsSingleView_nested"), std::string::npos);
     input.front().members.back().type = TypeRef{"float"};
     EXPECT_THROW(render(input), std::invalid_argument);
 }

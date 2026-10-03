@@ -59,6 +59,7 @@ template <bool Const>
 struct SpinnerEntityDataSingleViewImpl {
     using soa_schema = SpinnerEntityDataSchema;
     using size_type = std::uint32_t;
+    using Layout = SpinnerEntityDataSingleLayout;
     using Storage = ml::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -78,7 +79,10 @@ struct SpinnerEntityDataSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -86,8 +90,8 @@ struct SpinnerEntityDataSingleViewImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -95,53 +99,50 @@ struct SpinnerEntityDataSingleViewImpl {
         return self.slice(self.count_ - count, count);
     }
     auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
-        return {ml::soa_storage_detail::view_column_data<EntityUniqueId>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
                     state_,
                     offset_,
                     count_,
-                    SpinnerEntityDataSingleLayout::EntityIdsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto view_locations() const -> std::conditional_t<Const,
                                                       ml::native_soa::Vector3ConstView<float>,
                                                       ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{SpinnerEntityDataSingleLayout::LocationsXsColumn.offset(blocks)};
-        auto const stride{SpinnerEntityDataSingleLayout::LocationsYsColumn.offset(blocks) - first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::LocationsXsColumn.offset(blocks)};
+        auto const stride{Layout::LocationsYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto yaws() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    SpinnerEntityDataSingleLayout::YawsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(
+                state_, offset_, count_, Layout::YawsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto laser_cooldowns() const -> std::span<Element<std::int16_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::int16_t>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::int16_t>(
                     state_,
                     offset_,
                     count_,
-                    SpinnerEntityDataSingleLayout::LaserCooldownsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::LaserCooldownsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto next_fire_point_indices() const -> std::span<Element<std::int32_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::int32_t>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::int32_t>(
                     state_,
                     offset_,
                     count_,
-                    SpinnerEntityDataSingleLayout::NextFirePointIndicesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::NextFirePointIndicesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>

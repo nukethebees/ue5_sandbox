@@ -1587,14 +1587,17 @@ void validate_soa(NormalModuleSchema const& module,
                 throw std::invalid_argument{"SOA '" + schema.name +
                                             "' vector-components must list every member"};
             }
+            auto const rotation{schema.vector_components ==
+                                std::vector<std::string>{"pitches", "yaws", "rolls"}};
             for (std::size_t index{}; index < dimensions; ++index) {
                 auto const& member{schema.members[index]};
-                auto const expected{std::string(1, "xyz"[index]) + "s"};
+                auto const expected{rotation ? schema.vector_components[index]
+                                             : std::string(1, "xyz"[index]) + "s"};
                 if (schema.vector_components[index] != expected || member.name != expected ||
                     member.kind != SoaMemberKind::array) {
-                    throw std::invalid_argument{
-                        "SOA '" + schema.name +
-                        "' vector-components must be ordered xs/ys[/zs] arrays"};
+                    throw std::invalid_argument{"SOA '" + schema.name +
+                                                "' vector-components must be ordered xs/ys[/zs] or "
+                                                "pitches/yaws/rolls arrays"};
                 }
             }
         }

@@ -566,6 +566,24 @@ TEST(NativeSoa, VectorViewContracts) {
     EXPECT_EQ(view.xs().begin() + 4, view.xs().end());
     EXPECT_EQ(view.right(0).zs().data(), values + 68);
     EXPECT_TRUE(view.right(0).zs().empty());
+    using RotationView = native_soa::RotatorSoAView<double>;
+    using RotationConstView = native_soa::RotatorSoAConstView<double>;
+    static_assert(soa_storage_detail::validate_compact_view<RotationView>());
+    static_assert(soa_storage_detail::validate_compact_view<RotationConstView>());
+    static_assert(std::is_convertible_v<RotationView, RotationConstView>);
+    static_assert(!std::is_convertible_v<RotationConstView, RotationView>);
+    RotationView rotations{values, 256, 4};
+    auto const slice{rotations.slice(1, 2)};
+    EXPECT_EQ(slice.pitches().data(), values + 1);
+    EXPECT_EQ(slice.yaws().data(), values + 33);
+    EXPECT_EQ(slice.rolls().data(), values + 65);
+    slice.rolls()[1] = 19.;
+    EXPECT_EQ(values[66], 19.);
+    EXPECT_EQ(slice.get_const_view().rolls()[1], 19.);
+    EXPECT_EQ(slice.byte_stride(), 256);
+    EXPECT_EQ(slice.num(), 2);
+    EXPECT_EQ(rotations.right(0).rolls().data(), values + 68);
+    EXPECT_EQ(RotationView{}.slice(0, 0).rolls().data(), nullptr);
 #ifndef NDEBUG
     EXPECT_DEATH((View{nullptr, 256, 1}), "");
     EXPECT_DEATH((View{values, 256, std::numeric_limits<std::uint32_t>::max()}), "");

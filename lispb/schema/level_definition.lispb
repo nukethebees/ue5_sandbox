@@ -26,6 +26,7 @@
     (member zs array float))
   (struct Rotators3f
     :layout-only true
+    :vector-components (pitches yaws rolls)
     (member pitches array float)
     (member yaws array float)
     (member rolls array float))

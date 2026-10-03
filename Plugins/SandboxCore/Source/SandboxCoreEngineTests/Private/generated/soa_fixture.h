@@ -236,6 +236,7 @@ template <bool Const>
 struct RowsSingleViewImpl {
     using soa_schema = RowsSchema;
     using size_type = int32;
+    using Layout = RowsSingleLayout;
     using Storage = ml::soa_storage::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -255,7 +256,10 @@ struct RowsSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -263,8 +267,8 @@ struct RowsSingleViewImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -272,26 +276,23 @@ struct RowsSingleViewImpl {
         return self.slice(self.count_ - count, count);
     }
     auto bytes() const -> TArrayView<Element<uint8>> {
-        return {ml::soa_storage_detail::view_column_data<uint8>(
-                    state_,
-                    offset_,
-                    count_,
-                    RowsSingleLayout::BytesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                count_};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<uint8>(
+                state_, offset_, count_, Layout::BytesColumn.offset(view_capacity_blocks(state_))),
+            count_};
     }
     auto view_nested() const -> std::
         conditional_t<Const, ml::soa::Vector3ConstView<float>, ml::soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{RowsSingleLayout::NestedXsColumn.offset(blocks)};
-        auto const stride{RowsSingleLayout::NestedYsColumn.offset(blocks) - first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::NestedXsColumn.offset(blocks)};
+        auto const stride{Layout::NestedYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
@@ -602,6 +603,7 @@ template <bool Const>
 struct ApiView_positionsImpl {
     using soa_schema = ApiCoordinatesSchema;
     using size_type = int32;
+    using Layout = ApiRowsSingleLayout;
     using Storage = ml::soa_storage::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -621,7 +623,10 @@ struct ApiView_positionsImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -629,8 +634,8 @@ struct ApiView_positionsImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -638,22 +643,22 @@ struct ApiView_positionsImpl {
         return self.slice(self.count_ - count, count);
     }
     auto xs() const -> TArrayView<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    ApiRowsSingleLayout::PositionsXsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                count_};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(state_,
+                                    offset_,
+                                    count_,
+                                    Layout::PositionsXsColumn.offset(view_capacity_blocks(state_))),
+            count_};
     }
     auto ys() const -> TArrayView<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    ApiRowsSingleLayout::PositionsYsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                count_};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(state_,
+                                    offset_,
+                                    count_,
+                                    Layout::PositionsYsColumn.offset(view_capacity_blocks(state_))),
+            count_};
     }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
@@ -716,6 +721,7 @@ template <bool Const>
 struct ApiViewImpl {
     using soa_schema = ApiRowsSchema;
     using size_type = int32;
+    using Layout = ApiRowsSingleLayout;
     using Storage = ml::soa_storage::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -735,7 +741,10 @@ struct ApiViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -743,8 +752,8 @@ struct ApiViewImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -752,22 +761,18 @@ struct ApiViewImpl {
         return self.slice(self.count_ - count, count);
     }
     auto values() const -> TArrayView<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    ApiRowsSingleLayout::ValuesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                count_};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(
+                state_, offset_, count_, Layout::ValuesColumn.offset(view_capacity_blocks(state_))),
+            count_};
     }
     auto masks() const -> TArrayView<Element<ApiMask>> {
-        return {ml::soa_storage_detail::view_column_data<ApiMask>(
-                    state_,
-                    offset_,
-                    count_,
-                    ApiRowsSingleLayout::MasksColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                count_};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<ApiMask>(
+                state_, offset_, count_, Layout::MasksColumn.offset(view_capacity_blocks(state_))),
+            count_};
     }
     auto view_positions() const
         -> std::conditional_t<Const, ApiConstView_positions, ApiView_positions> {
@@ -1033,6 +1038,7 @@ template <bool Const>
 struct EquivalentRowsSingleViewImpl {
     using soa_schema = EquivalentRowsSchema;
     using size_type = int32;
+    using Layout = EquivalentRowsSingleLayout;
     using Storage = ml::soa_storage::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -1052,7 +1058,10 @@ struct EquivalentRowsSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -1060,8 +1069,8 @@ struct EquivalentRowsSingleViewImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -1069,21 +1078,15 @@ struct EquivalentRowsSingleViewImpl {
         return self.slice(self.count_ - count, count);
     }
     auto xs() const -> TArrayView<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    EquivalentRowsSingleLayout::XsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
+                    state_, offset_, count_, Layout::XsColumn.offset(view_capacity_blocks(state_))),
                 count_};
     }
     auto ys() const -> TArrayView<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    EquivalentRowsSingleLayout::YsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
+                    state_, offset_, count_, Layout::YsColumn.offset(view_capacity_blocks(state_))),
                 count_};
     }
     template <typename Func>

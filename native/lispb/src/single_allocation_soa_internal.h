@@ -35,7 +35,8 @@ struct SingleAllocationColumn {
 
 struct CompactVectorShape {
     std::string element_type;
-    std::size_t dimensions{};
+    std::vector<std::string> components;
+    std::string runtime_prefix;
 };
 
 struct SingleAllocationModel {

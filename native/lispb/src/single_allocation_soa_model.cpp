@@ -59,7 +59,10 @@ auto recognize_compact_vector(lispb::schema::SoaType const& type, SoaBackend con
     if (backend == SoaBackend::standard_library) {
         element_type = native_spelling(element_type);
     }
-    return CompactVectorShape{std::move(element_type), dimensions};
+    auto const prefix{type.vector_components.front() == "pitches"
+                          ? "RotatorSoA"
+                          : "Vector" + std::to_string(dimensions)};
+    return CompactVectorShape{std::move(element_type), type.vector_components, prefix};
 }
 
 auto relative_column_spelling(std::string const& spelling,

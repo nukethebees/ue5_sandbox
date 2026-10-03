@@ -69,6 +69,7 @@ template <bool Const>
 struct SpawnRequestsSingleView_locationsImpl {
     using soa_schema = Vectors3fSchema;
     using size_type = std::uint32_t;
+    using Layout = SpawnRequestsSingleLayout;
     using Storage = ml::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -88,7 +89,10 @@ struct SpawnRequestsSingleView_locationsImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -96,8 +100,8 @@ struct SpawnRequestsSingleView_locationsImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -105,31 +109,31 @@ struct SpawnRequestsSingleView_locationsImpl {
         return self.slice(self.count_ - count, count);
     }
     auto xs() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    SpawnRequestsSingleLayout::LocationsXsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(state_,
+                                    offset_,
+                                    count_,
+                                    Layout::LocationsXsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto ys() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    SpawnRequestsSingleLayout::LocationsYsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(state_,
+                                    offset_,
+                                    count_,
+                                    Layout::LocationsYsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto zs() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    SpawnRequestsSingleLayout::LocationsZsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(state_,
+                                    offset_,
+                                    count_,
+                                    Layout::LocationsZsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -187,6 +191,7 @@ template <bool Const>
 struct SpawnRequestsSingleView_rotationsImpl {
     using soa_schema = Rotators3fSchema;
     using size_type = std::uint32_t;
+    using Layout = SpawnRequestsSingleLayout;
     using Storage = ml::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -206,7 +211,10 @@ struct SpawnRequestsSingleView_rotationsImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -214,8 +222,8 @@ struct SpawnRequestsSingleView_rotationsImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -223,30 +231,30 @@ struct SpawnRequestsSingleView_rotationsImpl {
         return self.slice(self.count_ - count, count);
     }
     auto pitches() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    SpawnRequestsSingleLayout::RotationsPitchesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::RotationsPitchesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto yaws() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    SpawnRequestsSingleLayout::RotationsYawsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::RotationsYawsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto rolls() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    SpawnRequestsSingleLayout::RotationsRollsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::RotationsRollsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>
@@ -305,6 +313,7 @@ template <bool Const>
 struct SpawnRequestsSingleView_base_velocitiesImpl {
     using soa_schema = Vectors3fSchema;
     using size_type = std::uint32_t;
+    using Layout = SpawnRequestsSingleLayout;
     using Storage = ml::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -325,7 +334,10 @@ struct SpawnRequestsSingleView_base_velocitiesImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -333,8 +345,8 @@ struct SpawnRequestsSingleView_base_velocitiesImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -342,30 +354,30 @@ struct SpawnRequestsSingleView_base_velocitiesImpl {
         return self.slice(self.count_ - count, count);
     }
     auto xs() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    SpawnRequestsSingleLayout::BaseVelocitiesXsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::BaseVelocitiesXsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto ys() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    SpawnRequestsSingleLayout::BaseVelocitiesYsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::BaseVelocitiesYsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto zs() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    SpawnRequestsSingleLayout::BaseVelocitiesZsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::BaseVelocitiesZsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>
@@ -426,6 +438,7 @@ template <bool Const>
 struct SpawnRequestsSingleViewImpl {
     using soa_schema = SpawnRequestsSchema;
     using size_type = std::uint32_t;
+    using Layout = SpawnRequestsSingleLayout;
     using Storage = ml::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -445,7 +458,10 @@ struct SpawnRequestsSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -453,8 +469,8 @@ struct SpawnRequestsSingleViewImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -478,48 +494,46 @@ struct SpawnRequestsSingleViewImpl {
         return {state_, offset_, count_};
     }
     auto damages() const -> std::span<Element<std::int32_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::int32_t>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::int32_t>(
                     state_,
                     offset_,
                     count_,
-                    SpawnRequestsSingleLayout::DamagesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::DamagesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto speeds() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    SpawnRequestsSingleLayout::SpeedsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(
+                state_, offset_, count_, Layout::SpeedsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto max_distances() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    SpawnRequestsSingleLayout::MaxDistancesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::MaxDistancesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto instigator_ids() const -> std::span<Element<EntityUniqueId>> {
-        return {ml::soa_storage_detail::view_column_data<EntityUniqueId>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
                     state_,
                     offset_,
                     count_,
-                    SpawnRequestsSingleLayout::InstigatorIdsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::InstigatorIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto sources() const -> std::span<Element<ioj::sim::LaserSource>> {
-        return {ml::soa_storage_detail::view_column_data<ioj::sim::LaserSource>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<ioj::sim::LaserSource>(
                     state_,
                     offset_,
                     count_,
-                    SpawnRequestsSingleLayout::SourcesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::SourcesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>
@@ -949,6 +963,7 @@ template <bool Const>
 struct EntitiesSingleView_locationsImpl {
     using soa_schema = Vectors3fSchema;
     using size_type = std::uint32_t;
+    using Layout = EntitiesSingleLayout;
     using Storage = ml::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -968,7 +983,10 @@ struct EntitiesSingleView_locationsImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -976,8 +994,8 @@ struct EntitiesSingleView_locationsImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -985,31 +1003,31 @@ struct EntitiesSingleView_locationsImpl {
         return self.slice(self.count_ - count, count);
     }
     auto xs() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    EntitiesSingleLayout::LocationsXsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(state_,
+                                    offset_,
+                                    count_,
+                                    Layout::LocationsXsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto ys() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    EntitiesSingleLayout::LocationsYsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(state_,
+                                    offset_,
+                                    count_,
+                                    Layout::LocationsYsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto zs() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    EntitiesSingleLayout::LocationsZsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(state_,
+                                    offset_,
+                                    count_,
+                                    Layout::LocationsZsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -1066,6 +1084,7 @@ template <bool Const>
 struct EntitiesSingleView_rotationsImpl {
     using soa_schema = Rotators3fSchema;
     using size_type = std::uint32_t;
+    using Layout = EntitiesSingleLayout;
     using Storage = ml::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -1085,7 +1104,10 @@ struct EntitiesSingleView_rotationsImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -1093,8 +1115,8 @@ struct EntitiesSingleView_rotationsImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -1102,30 +1124,30 @@ struct EntitiesSingleView_rotationsImpl {
         return self.slice(self.count_ - count, count);
     }
     auto pitches() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    EntitiesSingleLayout::RotationsPitchesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::RotationsPitchesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto yaws() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    EntitiesSingleLayout::RotationsYawsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::RotationsYawsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto rolls() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    EntitiesSingleLayout::RotationsRollsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::RotationsRollsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>
@@ -1183,6 +1205,7 @@ template <bool Const>
 struct EntitiesSingleView_velocitiesImpl {
     using soa_schema = Vectors3fSchema;
     using size_type = std::uint32_t;
+    using Layout = EntitiesSingleLayout;
     using Storage = ml::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -1202,7 +1225,10 @@ struct EntitiesSingleView_velocitiesImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -1210,8 +1236,8 @@ struct EntitiesSingleView_velocitiesImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -1219,30 +1245,30 @@ struct EntitiesSingleView_velocitiesImpl {
         return self.slice(self.count_ - count, count);
     }
     auto xs() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    EntitiesSingleLayout::VelocitiesXsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::VelocitiesXsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto ys() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    EntitiesSingleLayout::VelocitiesYsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::VelocitiesYsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto zs() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    EntitiesSingleLayout::VelocitiesZsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::VelocitiesZsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>
@@ -1298,6 +1324,7 @@ template <bool Const>
 struct EntitiesSingleViewImpl {
     using soa_schema = EntitiesSchema;
     using size_type = std::uint32_t;
+    using Layout = EntitiesSingleLayout;
     using Storage = ml::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -1317,7 +1344,10 @@ struct EntitiesSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -1325,8 +1355,8 @@ struct EntitiesSingleViewImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -1334,21 +1364,19 @@ struct EntitiesSingleViewImpl {
         return self.slice(self.count_ - count, count);
     }
     auto active() const -> std::span<Element<std::uint8_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::uint8_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    EntitiesSingleLayout::ActiveColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<std::uint8_t>(
+                state_, offset_, count_, Layout::ActiveColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto sources() const -> std::span<Element<ioj::sim::LaserSource>> {
-        return {ml::soa_storage_detail::view_column_data<ioj::sim::LaserSource>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<ioj::sim::LaserSource>(
                     state_,
                     offset_,
                     count_,
-                    EntitiesSingleLayout::SourcesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::SourcesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto view_locations() const -> std::
@@ -1364,49 +1392,49 @@ struct EntitiesSingleViewImpl {
         return {state_, offset_, count_};
     }
     auto damages() const -> std::span<Element<std::int32_t>> {
-        return {ml::soa_storage_detail::view_column_data<std::int32_t>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::int32_t>(
                     state_,
                     offset_,
                     count_,
-                    EntitiesSingleLayout::DamagesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::DamagesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto lifetimes_remaining() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    EntitiesSingleLayout::LifetimesRemainingColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::LifetimesRemainingColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto instigator_ids() const -> std::span<Element<EntityUniqueId>> {
-        return {ml::soa_storage_detail::view_column_data<EntityUniqueId>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
                     state_,
                     offset_,
                     count_,
-                    EntitiesSingleLayout::InstigatorIdsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::InstigatorIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto initial_lifetimes() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    EntitiesSingleLayout::InitialLifetimesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::InitialLifetimesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto spawn_times() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    EntitiesSingleLayout::SpawnTimesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<float>(state_,
+                                    offset_,
+                                    count_,
+                                    Layout::SpawnTimesColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {

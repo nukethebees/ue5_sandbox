@@ -63,123 +63,11 @@ struct CapitalEntityDataSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct CapitalEntityDataSingleView_rotations;
-struct CapitalEntityDataSingleConstView_rotations;
-template <bool Const>
-struct CapitalEntityDataSingleView_rotationsImpl {
-    using soa_schema = Rotators3fSchema;
-    using size_type = std::uint32_t;
-    using Storage = ml::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    using View = CapitalEntityDataSingleView_rotations;
-    using ConstView = CapitalEntityDataSingleConstView_rotations;
-    CapitalEntityDataSingleView_rotationsImpl() = default;
-    CapitalEntityDataSingleView_rotationsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {
-        validate();
-    }
-    template <bool Enabled = Const>
-    CapitalEntityDataSingleView_rotationsImpl(
-        CapitalEntityDataSingleView_rotationsImpl<false> const& other)
-        requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count >= 0 && count <= self.count_);
-        return self.slice(self.count_ - count, count);
-    }
-    auto pitches() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    CapitalEntityDataSingleLayout::RotationsPitchesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto yaws() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    CapitalEntityDataSingleLayout::RotationsYawsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto rolls() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    CapitalEntityDataSingleLayout::RotationsRollsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(pitches());
-        func(yaws());
-        func(rolls());
-    }
-  private:
-    template <bool>
-    friend struct CapitalEntityDataSingleView_rotationsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
-};
-struct CapitalEntityDataSingleConstView_rotations
-    : CapitalEntityDataSingleView_rotationsImpl<true> {
-    using Base = CapitalEntityDataSingleView_rotationsImpl<true>;
-    using Base::Base;
-    using View = CapitalEntityDataSingleView_rotations;
-    using ConstView = CapitalEntityDataSingleConstView_rotations;
-    CapitalEntityDataSingleConstView_rotations() = default;
-    CapitalEntityDataSingleConstView_rotations(CapitalEntityDataSingleView_rotations const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
-};
-static_assert(
-    ml::soa_storage_detail::validate_compact_view<CapitalEntityDataSingleConstView_rotations>());
-struct CapitalEntityDataSingleView_rotations : CapitalEntityDataSingleView_rotationsImpl<false> {
-    using Base = CapitalEntityDataSingleView_rotationsImpl<false>;
-    using Base::Base;
-    using View = CapitalEntityDataSingleView_rotations;
-    using ConstView = CapitalEntityDataSingleConstView_rotations;
-    CapitalEntityDataSingleView_rotations() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
-};
-static_assert(
-    ml::soa_storage_detail::validate_compact_view<CapitalEntityDataSingleView_rotations>());
-inline CapitalEntityDataSingleConstView_rotations::CapitalEntityDataSingleConstView_rotations(
-    CapitalEntityDataSingleView_rotations const& other)
-    : Base{other} {}
 template <bool Const>
 struct CapitalEntityDataSingleViewImpl {
     using soa_schema = CapitalEntityDataSchema;
     using size_type = std::uint32_t;
+    using Layout = CapitalEntityDataSingleLayout;
     using Storage = ml::native_soa::StorageState;
     using State = std::conditional_t<Const, Storage const, Storage>;
     template <typename T>
@@ -199,7 +87,10 @@ struct CapitalEntityDataSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const { ml::soa_storage_detail::validate_view(state_, offset_, count_); }
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
     auto num() const noexcept -> size_type { return count_; }
     auto is_empty() const noexcept -> bool { return count_ == 0; }
     auto get_view(this auto const& self) { return self; }
@@ -207,8 +98,8 @@ struct CapitalEntityDataSingleViewImpl {
         return self.slice(offset, count);
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
-        return ml::soa_storage_detail::slice_view<decltype(self)>(
-            self.state_, self.offset_, self.count_, offset, count);
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
@@ -216,85 +107,90 @@ struct CapitalEntityDataSingleViewImpl {
         return self.slice(self.count_ - count, count);
     }
     auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
-        return {ml::soa_storage_detail::view_column_data<EntityUniqueId>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
                     state_,
                     offset_,
                     count_,
-                    CapitalEntityDataSingleLayout::EntityIdsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto view_locations() const -> std::conditional_t<Const,
                                                       ml::native_soa::Vector3ConstView<float>,
                                                       ml::native_soa::Vector3View<float>> {
+        using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{ml::soa_storage_detail::view_capacity_blocks(state_)};
-        auto const first{CapitalEntityDataSingleLayout::LocationsXsColumn.offset(blocks)};
-        auto const stride{CapitalEntityDataSingleLayout::LocationsYsColumn.offset(blocks) - first};
-        return {ml::soa_storage_detail::view_column_data_unchecked<float>(state_, offset_, first),
-                stride,
-                count_};
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::LocationsXsColumn.offset(blocks)};
+        auto const stride{Layout::LocationsYsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto view_rotations() const -> std::conditional_t<Const,
-                                                      CapitalEntityDataSingleConstView_rotations,
-                                                      CapitalEntityDataSingleView_rotations> {
-        return {state_, offset_, count_};
+                                                      ml::native_soa::RotatorSoAConstView<float>,
+                                                      ml::native_soa::RotatorSoAView<float>> {
+        using namespace ml::soa_storage_detail;
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{view_capacity_blocks(state_)};
+        auto const first{Layout::RotationsPitchesColumn.offset(blocks)};
+        auto const stride{Layout::RotationsYawsColumn.offset(blocks) - first};
+        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
     }
     auto fighter_spawn_timers() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    CapitalEntityDataSingleLayout::FighterSpawnTimersColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::FighterSpawnTimersColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto fighter_spawn_cooldowns() const -> std::span<Element<float>> {
-        return {ml::soa_storage_detail::view_column_data<float>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<float>(
                     state_,
                     offset_,
                     count_,
-                    CapitalEntityDataSingleLayout::FighterSpawnCooldownsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::FighterSpawnCooldownsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto teams() const -> std::span<Element<Team>> {
-        return {ml::soa_storage_detail::view_column_data<Team>(
-                    state_,
-                    offset_,
-                    count_,
-                    CapitalEntityDataSingleLayout::TeamsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<Team>(
+                state_, offset_, count_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto health_indices() const -> std::span<Element<HealthIndex>> {
-        return {ml::soa_storage_detail::view_column_data<HealthIndex>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<HealthIndex>(
                     state_,
                     offset_,
                     count_,
-                    CapitalEntityDataSingleLayout::HealthIndicesColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::HealthIndicesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto fighter_id_spans() const -> std::span<Element<IndexSpan>> {
-        return {ml::soa_storage_detail::view_column_data<IndexSpan>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<IndexSpan>(
                     state_,
                     offset_,
                     count_,
-                    CapitalEntityDataSingleLayout::FighterIdSpansColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::FighterIdSpansColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto target_ids() const -> std::span<Element<EntityUniqueId>> {
-        return {ml::soa_storage_detail::view_column_data<EntityUniqueId>(
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
                     state_,
                     offset_,
                     count_,
-                    CapitalEntityDataSingleLayout::TargetIdsColumn.offset(
-                        ml::soa_storage_detail::view_capacity_blocks(state_))),
+                    Layout::TargetIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>

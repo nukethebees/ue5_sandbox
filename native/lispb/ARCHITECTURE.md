@@ -179,7 +179,7 @@ The LispB `struct` declaration selects `:storage vector`, `single-allocation`, o
 Without an explicit policy, a `(single-allocation OwnerName)` declaration selects only that
 owner; other schemas emit vector-backed owners. `both` explicitly requests both representations.
 Nested schemas and flattened column names are checked during semantic validation.
-The explicit `:vector-components (xs ys)` or `(xs ys zs)` annotation requires
+The explicit `:vector-components (xs ys)`, `(xs ys zs)`, or `(pitches yaws rolls)` annotation requires
 exactly those ordered arrays with a common resolved element type. The generated compact vector
 view additionally compiler-checks that the C++ element type is arithmetic and non-volatile.
 The resolved `TypeGraph` records the vector meaning and checks a declared vector equivalent's
@@ -187,6 +187,12 @@ components and element type when one exists. The single-allocation planner walks
 resolved graph columns for physical order and C++ types; emission receives those typed columns
 and does not infer vector semantics. C++ ABI facts such as `sizeof`, `alignof`, trivial
 copyability, and default construction remain compiler-checked.
+
+Plain annotated nested vectors and rotations return shared strided views on demand. They hold
+one data pointer, a byte stride between columns, and a count; slicing advances the pointer.
+Homogeneous adjacent columns have equal spacing, including the layout's alignment and gaps.
+`RotatorSoAView` reuses the vector view's storage and exposes `pitches()`, `yaws()`, and `rolls()`.
+Schemas with equivalent values or custom view APIs retain generated views to preserve those APIs.
 
 The generated `FooSingleLayout` is metadata, not an owner base. Its chained `ColumnLayout<T>`
 constants determine random-access offsets, exact allocation size, and alignment. All layouts and
@@ -226,7 +232,8 @@ receive these values for range validation, slicing, and column-pointer calculati
 friend access. Mutable and const specializations are friends only for view conversion. Non-vector
 nested views share the same owner state and range. Column iteration calls individual accessors;
 there is no schema-wide `columns()` conversion. A retained compact handle survives allocation growth while the owner
-stays in place and its range remains valid; materialized spans and vector views do not. Moving an
+stays in place and its range remains valid; materialized spans and strided vector/rotation views
+do not. Moving an
 owner is outside the view lifetime contract: move construction leaves handles referring to the
 moved-from state, while move assignment replaces the destination's state and can make its old
 handles observe the moved-in allocation without failing validation. Do not use outstanding views

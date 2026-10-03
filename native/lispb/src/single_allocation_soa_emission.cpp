@@ -377,6 +377,7 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
     children.append(adjacent(
         {UsingDeclaration{"soa_schema", CppType{model.schema->name + "Schema"}},
          UsingDeclaration{"size_type", CppType{model.dialect.size_type}},
+         UsingDeclaration{"Layout", CppType{model.layout_name}},
          UsingDeclaration{"Storage", CppType{model.dialect.runtime_namespace + "StorageState"}},
          raw("using State = std::conditional_t<Const, Storage const, Storage>;\n"
              "template <typename T>\n"
@@ -410,7 +411,8 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
         compact_function(FunctionSpec{
             .name = "validate",
             .return_type = "void",
-            .body = {ExpressionStmt{call(named("ml::soa_storage_detail::validate_view"),
+            .body = {raw("using namespace ml::soa_storage_detail;"),
+                     ExpressionStmt{call(named("validate_view"),
                                          {named("state_"), named("offset_"), named("count_")})}},
             .qualifiers = {.is_const = true},
         }),
@@ -449,7 +451,8 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
             .parameters = {FunctionParameter{"this auto const&", "self"},
                            FunctionParameter{"size_type", "offset"},
                            FunctionParameter{"size_type", "count"}},
-            .body = {ReturnStmt{call(named("ml::soa_storage_detail::slice_view<decltype(self)>"),
+            .body = {raw("using namespace ml::soa_storage_detail;"),
+                     ReturnStmt{call(named("slice_view<decltype(self)>"),
                                      {named("self.state_"),
                                       named("self.offset_"),
                                       named("self.count_"),
@@ -496,21 +499,21 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
                 continue;
             }
 
-            auto xs_path{path};
-            xs_path.push_back("xs");
-            auto ys_path{path};
-            ys_path.push_back("ys");
-            auto const& first_column{column_for(model, xs_path)};
-            auto const& second_column{column_for(model, ys_path)};
-            auto const vector_prefix{model.dialect.vector_namespace + "Vector" +
-                                     std::to_string(vector->dimensions)};
+            auto first_path{path};
+            first_path.push_back(vector->components[0]);
+            auto second_path{path};
+            second_path.push_back(vector->components[1]);
+            auto const& first_column{column_for(model, first_path)};
+            auto const& second_column{column_for(model, second_path)};
+            auto const vector_prefix{model.dialect.vector_namespace + vector->runtime_prefix};
             auto const vector_type{"std::conditional_t<Const, " + vector_prefix + "ConstView<" +
                                    vector->element_type + ">, " + vector_prefix + "View<" +
                                    vector->element_type + ">>"};
             children.new_lines(1).add(inline_function(FunctionSpec{
                 .name = "view_" + member.name,
                 .return_type = "auto",
-                .body = {ExpressionStmt{call(named("validate"))},
+                .body = {raw("using namespace ml::soa_storage_detail;"),
+                         ExpressionStmt{call(named("validate"))},
                          IfStmt{binary(BinaryOperator::logical_or,
                                        unary(UnaryOperator::logical_not, named("state_")),
                                        unary(UnaryOperator::logical_not,
@@ -519,30 +522,28 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
                          VariableDeclarationStmt{
                              "auto const",
                              "blocks",
-                             call(named("ml::soa_storage_detail::view_capacity_blocks"),
-                                  {named("state_")})},
+                             call(named("view_capacity_blocks"), {named("state_")})},
                          VariableDeclarationStmt{
                              "auto const",
                              "first",
-                             call(member_access(named(model.layout_name +
-                                                      "::" + first_column.layout_identifier),
+                             call(member_access(named("Layout::" + first_column.layout_identifier),
                                                 "offset"),
                                   {named("blocks")})},
                          VariableDeclarationStmt{
                              "auto const",
                              "stride",
                              binary(BinaryOperator::subtract,
-                                    call(member_access(named(model.layout_name + "::" +
-                                                             second_column.layout_identifier),
-                                                       "offset"),
+                                    call(member_access(
+                                             named("Layout::" + second_column.layout_identifier),
+                                             "offset"),
                                          {named("blocks")}),
                                     named("first"))},
-                         ReturnStmt{init_list(
-                             {call(named("ml::soa_storage_detail::view_column_data_unchecked<" +
-                                         vector->element_type + ">"),
-                                   {named("state_"), named("offset_"), named("first")}),
-                              named("stride"),
-                              named("count_")})}},
+                         ReturnStmt{
+                             init_list({call(named("view_column_data_unchecked<" +
+                                                   vector->element_type + ">"),
+                                             {named("state_"), named("offset_"), named("first")}),
+                                        named("stride"),
+                                        named("count_")})}},
                 .qualifiers = {.trailing_return_type = CppType{vector_type}, .is_const = true},
             }));
         } else {
@@ -550,19 +551,18 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
             children.new_lines(1).add(compact_function(FunctionSpec{
                 .name = member.name,
                 .return_type = "auto",
-                .body = {ReturnStmt{init_list(
-                    {call(named("ml::soa_storage_detail::view_column_data<" + column.type.spelling +
-                                    ">",
-                                column.type.dependencies),
-                          {named("state_"),
-                           named("offset_"),
-                           named("count_"),
-                           call(member_access(
-                                    named(model.layout_name + "::" + column.layout_identifier),
-                                    "offset"),
-                                {call(named("ml::soa_storage_detail::view_capacity_blocks"),
-                                      {named("state_")})})}),
-                     model.dialect.span_count(named("count_"))})}},
+                .body = {raw("using namespace ml::soa_storage_detail;"),
+                         ReturnStmt{init_list(
+                             {call(
+                                  named("view_column_data<" + column.type.spelling + ">",
+                                        column.type.dependencies),
+                                  {named("state_"),
+                                   named("offset_"),
+                                   named("count_"),
+                                   call(member_access(named("Layout::" + column.layout_identifier),
+                                                      "offset"),
+                                        {call(named("view_capacity_blocks"), {named("state_")})})}),
+                              model.dialect.span_count(named("count_"))})}},
                 .qualifiers = {.trailing_return_type =
                                    CppType{model.dialect.span_template + "<Element<" +
                                            column.type.spelling + ">>"},
