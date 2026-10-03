@@ -42,6 +42,7 @@ native/simulation/include/ioj/sim/direct_damage_events.h
 native/simulation/include/ioj/sim/entity_cell_data.h
 native/simulation/include/ioj/sim/entity_death_info.h
 native/simulation/include/ioj/sim/entity_history.h
+native/simulation/include/ioj/sim/entity_instance_handle.h
 native/simulation/include/ioj/sim/entity_life_state.h
 native/simulation/include/ioj/sim/entity_overlaps.h
 native/simulation/include/ioj/sim/entity_type.h

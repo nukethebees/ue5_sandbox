@@ -1,0 +1,17 @@
+(module entity_instance_handle
+  :header "native/simulation/include/ioj/sim/entity_instance_handle.h"
+  :header-include "ioj/sim/entity_instance_handle.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (integer-scalar EntityFrameIndex
+    :signed false :minimum 0 :maximum 262143 :bit-width 18
+    :cpp-type std::uint32_t :cpp-emission alias)
+  (integer-scalar QuantisedHealth
+    :signed false :minimum 0 :maximum 3 :bit-width 2
+    :cpp-type std::uint8_t :cpp-emission alias)
+  (packed-value EntityInstanceHandle
+    :storage std::uint32_t :invalid-value 0xffffffff :mutable true
+    (field index ioj::sim::EntityFrameIndex :bits 18 :range-helper true)
+    (field team @native_team :bits 3 :kind enum)
+    (field health_state ioj::sim::QuantisedHealth :bits 2)
+    (reserved future :bits 9)))
