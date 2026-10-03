@@ -3,6 +3,22 @@ use serde_json::Value;
 use std::path::Path;
 
 pub fn run_simulation_benchmark(root: &Path, args: &[String]) -> Result<String> {
+    capture_simulation_output(root, args, None)
+}
+
+pub fn run_simulation_benchmark_with_logs(
+    root: &Path,
+    args: &[String],
+    directory: &Path,
+) -> Result<String> {
+    capture_simulation_output(root, args, Some(directory))
+}
+
+fn capture_simulation_output(
+    root: &Path,
+    args: &[String],
+    directory: Option<&Path>,
+) -> Result<String> {
     let parsed = Args::parse_command_line(
         args,
         &[
@@ -87,6 +103,10 @@ pub fn run_simulation_benchmark(root: &Path, args: &[String]) -> Result<String> 
             .args(&command)
             .current_dir(root),
     )?;
+    if let Some(directory) = directory {
+        write_text(&directory.join("stdout.jsonl"), &result.stdout)?;
+        write_text(&directory.join("stderr.log"), &result.stderr)?;
+    }
     let result = require_process_success(result)?;
     eprint!("{}", String::from_utf8_lossy(&result.stderr));
     Ok(String::from_utf8_lossy(&result.stdout).into_owned())

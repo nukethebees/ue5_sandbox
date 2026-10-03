@@ -1,3 +1,4 @@
+mod compare;
 mod frame_revision;
 mod gpu;
 mod ismc;
@@ -17,12 +18,15 @@ use support::*;
 const USAGE: &str = "Usage: benchmark-tools <kernel-report|spark|heatmap|radar-3d|scatter-3d|volume-heatmap-3d|entity-overlay|native-simulation|fighter-simulation|frame-memory-level|frame-memory-revision-ab|level-telemetry|gpu-starfield|sandbox-ismc|sandbox-ismc-revision-ab|sandbox-ismc-report> [options]\nSee docs/benchmarks.md for workload options.";
 
 fn dispatch_benchmark_command(args: &[String]) -> Result<()> {
+    if args.first().is_some_and(|arg| arg == "compare") {
+        return compare::run_native_comparison(&args[1..]);
+    }
     if args.first().is_some_and(|arg| arg == "tracy-report") {
         return tracy::generate_tracy_report(&args[1..]);
     }
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!(
-            "{USAGE}\n  tracy-report --trace <capture.tracy> [options]  Offline zone statistics"
+            "{USAGE}\n  compare --baseline <ref> [--candidate <ref>] [options]  Native revision comparison\n  tracy-report --trace <capture.tracy> [options]  Offline zone statistics"
         );
         return Ok(());
     }
