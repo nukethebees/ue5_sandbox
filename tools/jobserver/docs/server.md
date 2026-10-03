@@ -11,8 +11,7 @@ jobserver under `%IOJ_ROOT%\tools\jobserver\bin` and register the
 installing or updating them.
 
 For a protocol upgrade, shut down the empty board using its existing matching client before
-replacing either component. Install coj, then update the daemon. The installer
-removes the retired standalone client executable and its matching PATH link; no shim remains.
+replacing either component. Install coj, then update the daemon.
 
 Start an installed, stopped board with:
 

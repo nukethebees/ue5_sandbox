@@ -42,16 +42,3 @@ function Publish-ToolLinks([string]$Bin, [string[]]$Names, [string]$Directory) {
     }
     Write-Host "Tool links are in '$Directory'. Keep this one directory on PATH."
 }
-
-function Remove-RetiredTool([string]$Bin, [string]$Name, [string]$Directory) {
-    $target = Join-Path ([IO.Path]::GetFullPath($Bin)) $Name
-    $link = Join-Path $Directory $Name
-    $existing = Get-Item -LiteralPath $link -Force -ErrorAction SilentlyContinue
-    if ($existing -and ($existing.LinkType -ne 'SymbolicLink' -or $existing.LinkTarget -ne $target)) {
-        throw "Cannot retire '$link': it belongs to another target. Remove it explicitly. Expected target: '$target'."
-    }
-
-    # Remove only the retired executable and its verified link, retaining unrelated tools.
-    if (Test-Path -LiteralPath $target) { Remove-Item -LiteralPath $target -Force }
-    if ($existing) { Remove-Item -LiteralPath $link -Force }
-}

@@ -22,9 +22,6 @@ pwsh -NoProfile -File PowerShell/InstallCoj.ps1 -SkipTests
 
 The install, executable `--version` check, and tool-link publication still run.
 
-For the AgentTask migration, stop the empty jobs board with the existing client before updating.
-See the [installation guide](../../../../../PowerShell/README.md) for retiring the old binaries.
-
 ## Worktree preparation and central tools
 
 Run `coj prepare-worktree` from anywhere inside the current worktree. It removes the

@@ -51,7 +51,6 @@ do {
     & coj jobs ping
     if ($LASTEXITCODE -eq 0) {
         Publish-ToolLinks $bin @('jobserverd.exe') $links
-        Remove-RetiredTool $bin 'jobserver.exe' $links
         Write-Host "Installed the per-user jobs board at '$bin'."
         return
     }
