@@ -13,7 +13,7 @@ namespace ioj::sim::fighters {
 struct FrameSpawnQueue {
     using soa_schema = FighterSpawnQueue::soa_schema;
 
-    explicit FrameSpawnQueue(ml::FrameScratch& scratch);
+    explicit FrameSpawnQueue(ml::FrameScratchResource& scratch_resource);
     void reserve(std::uint32_t count);
     void clear();
     void add(Vector3f location,

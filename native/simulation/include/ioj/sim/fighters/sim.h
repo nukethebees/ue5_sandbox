@@ -148,10 +148,10 @@ struct Sim {
     /* **************************************** */
     void begin_play();
     void prepare_tick(float dt);
-    void think(float dt, ml::FrameScratch& scratch);
-    void plan_movement(float dt, ml::FrameScratch& scratch);
-    void apply_movement(ml::FrameScratch& scratch);
-    void generate_fire_commands(ml::FrameScratch& scratch);
+    void think(float dt, ml::FrameScratchResource& scratch_resource);
+    void plan_movement(float dt, ml::FrameScratchResource& scratch_resource);
+    void apply_movement(ml::FrameScratchResource& scratch_resource);
+    void generate_fire_commands(ml::FrameScratchResource& scratch_resource);
     void resolve_damage_events();
     void publish_deaths();
     void remove_components();
@@ -172,8 +172,8 @@ struct Sim {
     /* **************************************** */
     // Movement
     /* **************************************** */
-    void move(float dt, TaskView fighters, ml::FrameScratch& scratch);
-    void update_navigation_steering(ml::FrameScratch& scratch);
+    void move(float dt, TaskView fighters, ml::FrameScratchResource& scratch_resource);
+    void update_navigation_steering(ml::FrameScratchResource& scratch_resource);
     void collect_navigation_updates(NavigationScratch& scratch);
     void update_separation_observations(NavigationScratch& scratch);
     void apply_separation_steering();
@@ -193,7 +193,7 @@ struct Sim {
     /* **************************************** */
     // Combat
     /* **************************************** */
-    void handle_firing(TaskView data, ml::FrameScratch& scratch);
+    void handle_firing(TaskView data, ml::FrameScratchResource& scratch_resource);
 
     /* **************************************** */
     // Spawning
@@ -220,7 +220,7 @@ struct Sim {
     /* **************************************** */
     void set_target_id_unchecked(std::uint32_t fighter_index, EntityUniqueId new_target) noexcept;
     void set_target_id(EntityUniqueId fighter, EntityUniqueId new_target) noexcept;
-    void refresh_target_data(ml::FrameScratch& scratch);
+    void refresh_target_data(ml::FrameScratchResource& scratch_resource);
 
     /* **************************************** */
     // Tasks

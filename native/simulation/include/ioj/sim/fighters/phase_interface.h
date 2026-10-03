@@ -16,11 +16,11 @@ class PhaseInterface {
 
     void prepare_tick(float const dt);
 
-    void think(float const dt, ml::FrameScratch& scratch);
+    void think(float const dt, ml::FrameScratchResource& scratch_resource);
 
-    void apply_movement(ml::FrameScratch& scratch);
+    void apply_movement(ml::FrameScratchResource& scratch_resource);
 
-    void generate_fire_commands(ml::FrameScratch& scratch);
+    void generate_fire_commands(ml::FrameScratchResource& scratch_resource);
 
     void commit_spawns();
 

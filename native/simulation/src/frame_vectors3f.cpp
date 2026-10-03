@@ -1,10 +1,10 @@
 #include "ioj/sim/frame_vectors3f.h"
 
 namespace ioj::sim {
-FrameVectors3f::FrameVectors3f(ml::FrameScratch& scratch)
-    : xs_{&scratch}
-    , ys_{&scratch}
-    , zs_{&scratch} {}
+FrameVectors3f::FrameVectors3f(ml::FrameScratchResource& scratch_resource)
+    : xs_{&scratch_resource}
+    , ys_{&scratch_resource}
+    , zs_{&scratch_resource} {}
 
 void FrameVectors3f::reserve(size_type const count) {
     xs_.reserve(count);

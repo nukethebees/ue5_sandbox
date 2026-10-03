@@ -1,12 +1,12 @@
 #include "ioj/sim/fighter_frame_spawn_queue.h"
 
 namespace ioj::sim::fighters {
-FrameSpawnQueue::FrameSpawnQueue(ml::FrameScratch& scratch)
-    : locations_{scratch}
-    , rotations_{scratch}
-    , teams_{&scratch}
-    , parents_{&scratch}
-    , targets_{&scratch} {}
+FrameSpawnQueue::FrameSpawnQueue(ml::FrameScratchResource& scratch_resource)
+    : locations_{scratch_resource}
+    , rotations_{scratch_resource}
+    , teams_{&scratch_resource}
+    , parents_{&scratch_resource}
+    , targets_{&scratch_resource} {}
 void FrameSpawnQueue::reserve(std::uint32_t const count) {
     locations_.reserve(count);
     rotations_.reserve(count);

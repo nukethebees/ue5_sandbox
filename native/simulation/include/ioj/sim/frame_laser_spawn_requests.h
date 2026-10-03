@@ -16,7 +16,7 @@ namespace ioj::sim::lasers {
 struct FrameSpawnRequests {
     using soa_schema = LaserSpawnRequests::soa_schema;
 
-    explicit FrameSpawnRequests(ml::FrameScratch& scratch);
+    explicit FrameSpawnRequests(ml::FrameScratchResource& scratch_resource);
 
     FrameSpawnRequests(FrameSpawnRequests const&) = delete;
     FrameSpawnRequests(FrameSpawnRequests&&) = delete;

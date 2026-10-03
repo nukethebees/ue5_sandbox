@@ -13,8 +13,8 @@ void PhaseInterface::begin_play() {
     simulation.begin_play();
 }
 
-void PhaseInterface::simulate(float const dt, ml::FrameScratch& scratch) {
-    simulation.simulate(dt, scratch);
+void PhaseInterface::simulate(float const dt, ml::FrameScratchResource& scratch_resource) {
+    simulation.simulate(dt, scratch_resource);
 }
 
 void PhaseInterface::commit_spawns() {

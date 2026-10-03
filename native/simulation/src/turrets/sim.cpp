@@ -188,11 +188,11 @@ void Sim::prepare_tick(float const) {
     ml::tick_periodic_countdowns<std::int16_t>(
         entities.target_refresh_countdowns_remaining_ticks());
 }
-void Sim::refresh_target_data(ml::FrameScratch& scratch) {
+void Sim::refresh_target_data(ml::FrameScratchResource& scratch_resource) {
     auto const entities{this->entities.get_view()};
     auto const count{entities.num()};
-    ml::FrameArray<std::uint32_t> order{&scratch};
-    ml::FrameArray<std::uint8_t> alive{&scratch};
+    ml::FrameArray<std::uint32_t> order{&scratch_resource};
+    ml::FrameArray<std::uint8_t> alive{&scratch_resource};
     order.set_num(count);
     alive.set_num(count);
     auto const target_ids{entities.target_ids()};
@@ -212,16 +212,16 @@ void Sim::refresh_target_data(ml::FrameScratch& scratch) {
         }
     }
 }
-void Sim::think(float const, ml::FrameScratch& scratch) {
+void Sim::think(float const, ml::FrameScratchResource& scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::think");
-    refresh_target_data(scratch);
+    refresh_target_data(scratch_resource);
     perform_search();
-    refresh_target_data(scratch);
+    refresh_target_data(scratch_resource);
 }
-void Sim::generate_fire_commands(ml::FrameScratch& scratch) {
+void Sim::generate_fire_commands(ml::FrameScratchResource& scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::generate_fire_commands");
 
-    fire_at_enemies(scratch);
+    fire_at_enemies(scratch_resource);
 }
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::resolve_damage_events");
@@ -393,14 +393,14 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
 /* **************************************** */
 // Attacking
 /* **************************************** */
-void Sim::fire_at_enemies(ml::FrameScratch& scratch) {
+void Sim::fire_at_enemies(ml::FrameScratchResource& scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::fire_at_enemies");
 
     auto const count{get_num_instances()};
-    ml::FrameArray<std::uint32_t> candidate_indices{&scratch};
-    ml::FrameArray<EntityUniqueId> hit_ids{&scratch};
-    FrameVectors3f starts{scratch};
-    FrameVectors3f ends{scratch};
+    ml::FrameArray<std::uint32_t> candidate_indices{&scratch_resource};
+    ml::FrameArray<EntityUniqueId> hit_ids{&scratch_resource};
+    FrameVectors3f starts{scratch_resource};
+    FrameVectors3f ends{scratch_resource};
     candidate_indices.reserve(count);
     starts.reserve(count);
     ends.reserve(count);
@@ -451,7 +451,7 @@ void Sim::fire_at_enemies(ml::FrameScratch& scratch) {
         ends.get_const_view(),
         {hit_ids.data(), static_cast<std::size_t>(candidate_count)});
 
-    lasers::FrameSpawnRequests new_lasers{scratch};
+    lasers::FrameSpawnRequests new_lasers{scratch_resource};
     new_lasers.reserve(candidate_count);
     auto const target_velocities{entities.view_target_velocities()};
     auto const laser_damages{entities.laser_damages()};

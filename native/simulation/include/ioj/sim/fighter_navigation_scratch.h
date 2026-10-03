@@ -11,16 +11,16 @@
 
 namespace ioj::sim::fighters {
 struct NavigationScratch {
-    explicit NavigationScratch(ml::FrameScratch& scratch)
-        : ready_fighter_indices{&scratch}
-        , line_of_sight_starts{scratch}
-        , line_of_sight_ends{scratch}
-        , line_of_sight_results{&scratch}
-        , trace_hits{&scratch}
-        , blocked_fighter_indices{&scratch}
-        , trace_fighter_indices{&scratch}
-        , trace_choice_indices{&scratch}
-        , observed_risk_tiers{&scratch} {}
+    explicit NavigationScratch(ml::FrameScratchResource& scratch_resource)
+        : ready_fighter_indices{&scratch_resource}
+        , line_of_sight_starts{scratch_resource}
+        , line_of_sight_ends{scratch_resource}
+        , line_of_sight_results{&scratch_resource}
+        , trace_hits{&scratch_resource}
+        , blocked_fighter_indices{&scratch_resource}
+        , trace_fighter_indices{&scratch_resource}
+        , trace_choice_indices{&scratch_resource}
+        , observed_risk_tiers{&scratch_resource} {}
 
     ml::FrameArray<std::uint32_t> ready_fighter_indices;
     FrameVectors3f line_of_sight_starts;

@@ -200,23 +200,25 @@ void FrameMemoryResource::end_epoch() noexcept {
     epoch_active_ = false;
 }
 
-auto FrameScratch::do_allocate(std::size_t const bytes, std::size_t const alignment) -> void* {
+auto FrameScratchResource::do_allocate(std::size_t const bytes, std::size_t const alignment)
+    -> void* {
     return resource_.allocate(bytes, alignment);
 }
 
-void FrameScratch::do_deallocate(void* const pointer,
-                                 std::size_t const bytes,
-                                 std::size_t const alignment) {
+void FrameScratchResource::do_deallocate(void* const pointer,
+                                         std::size_t const bytes,
+                                         std::size_t const alignment) {
     resource_.deallocate(pointer, bytes, alignment);
 }
 
-auto FrameScratch::do_is_equal(std::pmr::memory_resource const& other) const noexcept -> bool {
+auto FrameScratchResource::do_is_equal(std::pmr::memory_resource const& other) const noexcept
+    -> bool {
     return this == &other;
 }
 
 FrameScratchScope::FrameScratchScope(FrameMemoryResource& resource)
     : resource_{resource}
-    , scratch_{resource} {
+    , scratch_resource_{resource} {
     resource_.begin_epoch();
 }
 

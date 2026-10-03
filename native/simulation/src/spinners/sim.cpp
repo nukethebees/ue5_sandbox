@@ -54,12 +54,12 @@ void Sim::think(float const dt) {
 
     planned_yaw_delta_ = dt * config.yaw_rotation_speed_degrees;
 }
-void Sim::apply_movement(ml::FrameScratch& scratch) {
+void Sim::apply_movement(ml::FrameScratchResource& scratch_resource) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::apply_movement");
     for (auto& yaw : entities.get_view().yaws()) {
         yaw += planned_yaw_delta_;
     }
-    materialize_fire_commands(scratch);
+    materialize_fire_commands(scratch_resource);
 }
 void Sim::generate_fire_commands() {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::generate_fire_commands");
@@ -99,9 +99,9 @@ void Sim::fire_lasers() {
         }
     }
 }
-void Sim::materialize_fire_commands(ml::FrameScratch& scratch) {
+void Sim::materialize_fire_commands(ml::FrameScratchResource& scratch_resource) {
     auto const entity_columns{entities.get_view()};
-    lasers::FrameSpawnRequests new_lasers{scratch};
+    lasers::FrameSpawnRequests new_lasers{scratch_resource};
     auto const ready_count{static_cast<std::uint32_t>(pending_fire_indices_.size())};
     auto const fire_point_count{static_cast<std::uint32_t>(config.fire_point_offsets.size())};
     new_lasers.set_num(ready_count);

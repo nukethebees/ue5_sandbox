@@ -11,7 +11,7 @@
 
 namespace ioj::sim {
 struct FrameRotators3f {
-    explicit FrameRotators3f(ml::FrameScratch& scratch);
+    explicit FrameRotators3f(ml::FrameScratchResource& scratch_resource);
 
     FrameRotators3f(FrameRotators3f const&) = delete;
     FrameRotators3f(FrameRotators3f&&) = delete;

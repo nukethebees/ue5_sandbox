@@ -5,7 +5,7 @@
 #include <sandbox/core/frame_array.h>
 
 namespace ioj::sim {
-void DamageQueue::prepare(AgentIndices const& indexes, ml::FrameScratch& scratch) {
+void DamageQueue::prepare(AgentIndices const& indexes, ml::FrameScratchResource& scratch_resource) {
     SANDBOX_PROFILE_SCOPE("DamageQueue::prepare");
     spans_ = {};
     auto const count{events_.num()};
@@ -44,7 +44,7 @@ void DamageQueue::prepare(AgentIndices const& indexes, ml::FrameScratch& scratch
         return;
     }
 
-    ml::FrameArray<std::int32_t> order{&scratch};
+    ml::FrameArray<std::int32_t> order{&scratch_resource};
     order.set_num(live_count);
     for (std::uint32_t i{}; i < live_count; ++i) {
         auto const type{events_.damaged_entities[i].entity_type()};

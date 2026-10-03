@@ -10,7 +10,7 @@
 
 namespace ioj::sim::lasers {
 struct FrameDirectDamageEvents {
-    explicit FrameDirectDamageEvents(ml::FrameScratch& scratch);
+    explicit FrameDirectDamageEvents(ml::FrameScratchResource& scratch_resource);
 
     FrameDirectDamageEvents(FrameDirectDamageEvents const&) = delete;
     FrameDirectDamageEvents(FrameDirectDamageEvents&&) = delete;

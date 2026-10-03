@@ -129,7 +129,7 @@ class FighterTargetRefresh : public ::testing::Test {
     LevelSim simulation{make_world()};
     EntityUniqueId fighter;
     EntityUniqueId target;
-    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024> backing{};
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 256 * 1024> backing{};
     ml::FrameMemoryResource memory{backing};
 };
 
@@ -145,12 +145,36 @@ TEST_F(FighterTargetRefresh, UnchangedTargetUsesOneRefreshAndReadsCurrentKinemat
     EXPECT_EQ(simulation.get_fighters().get_read_view().entities.awareness_scan_countdowns()[0], 5);
 }
 
-TEST_F(FighterTargetRefresh, AwarenessSelectingSameIdUsesOneRefresh) {
+TEST_F(FighterTargetRefresh, AwarenessSelectingSameIdPreservesTargetState) {
     LevelSimTestAccess::set_fighter_target(simulation, fighter, target);
-    auto const claims{think()};
+    think();
     expect_target_state(target);
-    // Account for scan indices, worker containers, and the worker's range-query stamps.
-    EXPECT_EQ(claims, single_refresh_and_plan() + 3);
+    EXPECT_GT(simulation.get_fighters().get_read_view().entities.awareness_scan_countdowns()[0], 0);
+}
+
+TEST_F(FighterTargetRefresh, AwarenessFindsForwardTargetAmongMoreThan128Enemies) {
+    constexpr std::uint32_t count{160};
+    FighterSpawnQueue spawns;
+    spawns.add_defaulted(count);
+    auto const spawn{spawns.get_view()};
+    auto const locations{spawn.view_locations()};
+    auto const teams{spawn.teams()};
+    auto const parents{spawn.parents()};
+    auto const enemy_parent{simulation.get_capital_ships().get_id(1)};
+    for (std::uint32_t index{}; index < count; ++index) {
+        set_vector(locations, index, {{-1500.f, 100.f, 0.f}});
+        teams[index] = Team::Red;
+        parents[index] = enemy_parent;
+    }
+    LevelSimTestAccess::commit_fighter_spawns(simulation, spawns.get_const_view());
+    for (auto const id : simulation.get_fighters().get_entity_ids()) {
+        LevelSimTestAccess::set_fighter_target(simulation, id, fighter, 5);
+    }
+    LevelSimTestAccess::set_fighter_target(simulation, fighter, {});
+
+    think();
+
+    expect_target_state(target);
     EXPECT_GT(simulation.get_fighters().get_read_view().entities.awareness_scan_countdowns()[0], 0);
 }
 

@@ -89,16 +89,16 @@ class FrameMemoryResource final : public std::pmr::memory_resource {
     bool epoch_active_{};
 };
 
-class FrameScratch final : public std::pmr::memory_resource {
+class FrameScratchResource final : public std::pmr::memory_resource {
   public:
-    FrameScratch(FrameScratch const&) = delete;
-    FrameScratch(FrameScratch&&) = delete;
-    auto operator=(FrameScratch const&) -> FrameScratch& = delete;
-    auto operator=(FrameScratch&&) -> FrameScratch& = delete;
+    FrameScratchResource(FrameScratchResource const&) = delete;
+    FrameScratchResource(FrameScratchResource&&) = delete;
+    auto operator=(FrameScratchResource const&) -> FrameScratchResource& = delete;
+    auto operator=(FrameScratchResource&&) -> FrameScratchResource& = delete;
   private:
     friend class FrameScratchScope;
 
-    explicit FrameScratch(FrameMemoryResource& resource) noexcept
+    explicit FrameScratchResource(FrameMemoryResource& resource) noexcept
         : resource_{resource} {}
 
     auto do_allocate(std::size_t bytes, std::size_t alignment) -> void* override;
@@ -118,9 +118,9 @@ class FrameScratchScope final {
     auto operator=(FrameScratchScope const&) -> FrameScratchScope& = delete;
     auto operator=(FrameScratchScope&&) -> FrameScratchScope& = delete;
 
-    auto scratch() noexcept -> FrameScratch& { return scratch_; }
+    auto scratch() noexcept -> FrameScratchResource& { return scratch_resource_; }
   private:
     FrameMemoryResource& resource_;
-    FrameScratch scratch_;
+    FrameScratchResource scratch_resource_;
 };
 }

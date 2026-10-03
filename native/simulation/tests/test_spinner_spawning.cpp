@@ -29,9 +29,10 @@ struct SpinnerSpawnTestAccess {
     static void set_cooldown(Sim& simulation, std::int16_t const ticks) {
         simulation.cooldown_restart_ticks_ = ticks;
     }
-    static void rotate(Sim& simulation, float const yaw_delta, ml::FrameScratch& scratch) {
+    static void
+        rotate(Sim& simulation, float const yaw_delta, ml::FrameScratchResource& scratch_resource) {
         simulation.planned_yaw_delta_ = yaw_delta;
-        simulation.apply_movement(scratch);
+        simulation.apply_movement(scratch_resource);
     }
     static auto cooldowns(Sim& simulation) -> ml::TickCountdownView<std::int16_t> {
         return {simulation.entities.get_view().laser_cooldowns(),

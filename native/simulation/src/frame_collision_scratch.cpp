@@ -1,10 +1,10 @@
 #include "ioj/sim/frame_collision_scratch.h"
 
 namespace ioj::sim::lasers {
-FrameCollisionScratch::FrameCollisionScratch(ml::FrameScratch& scratch)
-    : trace_starts{scratch}
-    , trace_ends{scratch}
-    , trace_hits{&scratch} {}
+FrameCollisionScratch::FrameCollisionScratch(ml::FrameScratchResource& scratch_resource)
+    : trace_starts{scratch_resource}
+    , trace_ends{scratch_resource}
+    , trace_hits{&scratch_resource} {}
 
 void FrameCollisionScratch::set_num(std::uint32_t const count) {
     trace_starts.set_num(count);

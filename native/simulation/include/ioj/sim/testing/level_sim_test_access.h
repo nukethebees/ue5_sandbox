@@ -42,8 +42,9 @@ struct LevelSimTestAccess {
         fighters::CommandInterface{simulation.fighters_simulation_}.reassign_pending_spawns(
             parent, replacement);
     }
-    static void refresh_fighter_membership(LevelSim& simulation, ml::FrameScratch& scratch) {
-        simulation.capital_ships_simulation_.refresh_fighter_ids(scratch);
+    static void refresh_fighter_membership(LevelSim& simulation,
+                                           ml::FrameScratchResource& scratch_resource) {
+        simulation.capital_ships_simulation_.refresh_fighter_ids(scratch_resource);
     }
     static void
         set_fighter_parent(LevelSim& simulation, EntityUniqueId fighter, EntityUniqueId parent) {
@@ -56,9 +57,10 @@ struct LevelSimTestAccess {
             static_cast<float>(simulation.clock_.get_tick_period()));
         simulation.rebuild_agent_indexes();
     }
-    static void resolve_ship_damage(LevelSim& simulation, ml::FrameScratch& scratch) {
+    static void resolve_ship_damage(LevelSim& simulation,
+                                    ml::FrameScratchResource& scratch_resource) {
         simulation.clock_.phase = SimulationPhase::Resolution;
-        simulation.combat_events_.prepare(simulation.agent_indexes_, scratch);
+        simulation.combat_events_.prepare(simulation.agent_indexes_, scratch_resource);
         simulation.capital_ships_simulation_.resolve_damage_events();
         simulation.fighters_simulation_.resolve_damage_events();
         simulation.capital_ships_simulation_.resolve_fighters_of_dying_capitals();
@@ -103,10 +105,10 @@ struct LevelSimTestAccess {
         data.attack_reposition_countdowns()[index] = 0;
         data.navigation_update_countdowns_remaining_ticks()[index] = 1;
     }
-    static void think_fighters(LevelSim& simulation, ml::FrameScratch& scratch) {
+    static void think_fighters(LevelSim& simulation, ml::FrameScratchResource& scratch_resource) {
         simulation.clock_.phase = SimulationPhase::Thinking;
         simulation.fighters_simulation_.think(
-            static_cast<float>(simulation.clock_.get_tick_period()), scratch);
+            static_cast<float>(simulation.clock_.get_tick_period()), scratch_resource);
     }
     static void set_fighter_kinematics(LevelSim& simulation,
                                        EntityUniqueId fighter,
@@ -118,9 +120,10 @@ struct LevelSimTestAccess {
         set_vector(data.view_velocities(), index, velocity);
         simulation.query_manager_.refresh_spatial_index();
     }
-    static void resolve_fighter_damage(LevelSim& simulation, ml::FrameScratch& scratch) {
+    static void resolve_fighter_damage(LevelSim& simulation,
+                                       ml::FrameScratchResource& scratch_resource) {
         simulation.clock_.phase = SimulationPhase::Resolution;
-        simulation.combat_events_.prepare(simulation.agent_indexes_, scratch);
+        simulation.combat_events_.prepare(simulation.agent_indexes_, scratch_resource);
         simulation.fighters_simulation_.resolve_damage_events();
         simulation.fighters_simulation_.publish_deaths();
         simulation.combat_events_.reset();
@@ -132,11 +135,13 @@ struct LevelSimTestAccess {
         simulation.rebuild_agent_indexes();
         simulation.query_manager_.refresh_spatial_index();
     }
-    static void refresh_fighter_targets_and_plan(LevelSim& simulation, ml::FrameScratch& scratch) {
+    static void refresh_fighter_targets_and_plan(LevelSim& simulation,
+                                                 ml::FrameScratchResource& scratch_resource) {
         simulation.clock_.phase = SimulationPhase::Thinking;
         auto& fighters{simulation.fighters_simulation_};
-        fighters.refresh_target_data(scratch);
-        fighters.plan_movement(static_cast<float>(simulation.clock_.get_tick_period()), scratch);
+        fighters.refresh_target_data(scratch_resource);
+        fighters.plan_movement(static_cast<float>(simulation.clock_.get_tick_period()),
+                               scratch_resource);
     }
     static void queue_fighter_orders(LevelSim& simulation, FighterOrderQueue const& orders) {
         fighters::CommandInterface{simulation.fighters_simulation_}.queue_orders(orders);

@@ -141,7 +141,7 @@ auto LevelSim::check_thinking_entry_invariants(
         return false;
     }
 
-    return true;
+    return query_manager_.check_live_grid_membership();
 }
 auto LevelSim::check_thinking_phase_invariants(
     std::span<ThinkingEntityState const> const state) const -> bool {

@@ -18,6 +18,7 @@
 #include <cmath>
 #include <cstddef>
 #include <format>
+#include <limits>
 #include <utility>
 
 namespace ioj::sim::collision {
@@ -52,6 +53,9 @@ void CollisionUniformGrid::set_geometry(GridGeometry const geometry) noexcept {
 }
 auto CollisionUniformGrid::get_grid_dims() const noexcept -> collision::CellCoord {
     return geometry_.dimensions;
+}
+auto CollisionUniformGrid::get_max_grid_coord() const noexcept -> collision::CellCoord {
+    return geometry_.dimensions - 1;
 }
 auto CollisionUniformGrid::get_cell_dims() const noexcept -> Vector3f {
     return geometry_.cell_dimensions;
@@ -317,6 +321,22 @@ void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& ent
 auto CollisionUniformGrid::get_entity_world_bounds() const -> EntityCellData::ConstView {
     return entity_storage_.rebuild_entity_data.get_const_view();
 }
+#ifndef NDEBUG
+auto CollisionUniformGrid::check_live_entity_membership() const -> bool {
+    // Check the cell entries consumed by queries, not just the rebuild's entity list.
+    for (auto const id : entity_storage_.entities) {
+        auto const state{agents_.read_spatial(id)};
+        if (!state || !is_alive(state->health)) {
+            ml::log_error(
+                std::format("Collision grid cell membership contains missing or dead entity {}",
+                            id.raw_value()));
+            return false;
+        }
+    }
+
+    return true;
+}
+#endif
 
 /* **************************************** */
 // Spatial queries
@@ -326,20 +346,21 @@ void CollisionUniformGrid::collect_unique_entities_in_cells(
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::collect_unique_entities_in_cells");
     out_entities.clear();
 
-    std::uint64_t membership_count{};
+    std::uint32_t membership_count{};
     for (auto const cell : cells) {
-        membership_count += get_cell_entities(cell).size();
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- each cell has a different membership span.
+        auto const count{get_cell_entities(cell).size()};
+        assert(count <= std::numeric_limits<std::uint32_t>::max() - membership_count);
+        membership_count += static_cast<std::uint32_t>(count);
     }
     if (membership_count == 0) {
         return;
     }
-    if (!std::in_range<std::uint32_t>(membership_count)) {
-        throw std::length_error{"Cell membership exceeds the frame array size limit"};
-    }
 
     // Reserve once because released frame allocations cannot be reused within the epoch.
-    out_entities.reserve(static_cast<std::uint32_t>(membership_count));
+    out_entities.reserve(membership_count);
     for (auto const cell : cells) {
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- each cell has a different membership span.
         for (auto const id : get_cell_entities(cell)) {
             out_entities.add(id);
         }
@@ -531,7 +552,7 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
     }
 
     auto const geometry{geometry_};
-    auto const max_cell_coord{geometry.dimensions - 1};
+    auto const max_cell_coord{get_max_grid_coord()};
     auto const static_aabbs{static_storage_.aabbs().get_const_view()};
     auto const entity_aabbs{entity_storage_.aabbs.get_const_view()};
     auto const static_min_xs{static_aabbs.min_xs()};

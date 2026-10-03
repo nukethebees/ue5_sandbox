@@ -113,7 +113,7 @@ struct Sim {
     /* **************************************** */
     void begin_play();
     void prepare_tick(float dt);
-    void think(float dt, ml::FrameScratch& scratch);
+    void think(float dt, ml::FrameScratchResource& scratch_resource);
     void resolve_damage_events();
     void resolve_fighters_of_dying_capitals();
     void publish_deaths();
@@ -135,8 +135,8 @@ struct Sim {
     /* **************************************** */
     // Fighter spawning
     /* **************************************** */
-    void queue_fighter_spawns(ml::FrameScratch& scratch);
-    void refresh_fighter_ids(ml::FrameScratch& scratch);
+    void queue_fighter_spawns(ml::FrameScratchResource& scratch_resource);
+    void refresh_fighter_ids(ml::FrameScratchResource& scratch_resource);
 
     /* **************************************** */
     // Orders

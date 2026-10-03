@@ -40,6 +40,7 @@ struct CollisionUniformGrid {
     auto is_configured() const noexcept -> bool;
     void set_geometry(GridGeometry geometry) noexcept;
     auto get_grid_dims() const noexcept -> CellCoord;
+    auto get_max_grid_coord() const noexcept -> CellCoord;
     auto get_cell_dims() const noexcept -> Vector3f;
     auto num_cells() const -> GridCellCount;
     auto to_cell_coord(Vector3f pos) const -> CellCoord;
@@ -63,6 +64,9 @@ struct CollisionUniformGrid {
     /* **************************************** */
     void rebuild_entity_grid(EntityAABBs const& entity_aabbs);
     auto get_entity_world_bounds() const -> EntityCellData::ConstView;
+#ifndef NDEBUG
+    auto check_live_entity_membership() const -> bool;
+#endif
     auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityUniqueId const> {
         auto const dimensions{geometry_.dimensions};
         assert(cell_coord.x >= 0 && cell_coord.x < dimensions.x && cell_coord.y >= 0 &&

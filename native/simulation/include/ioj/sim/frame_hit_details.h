@@ -15,7 +15,7 @@ namespace ioj::sim::lasers {
 struct FrameHitDetails {
     using soa_schema = LaserHitDetails::soa_schema;
 
-    explicit FrameHitDetails(ml::FrameScratch& scratch);
+    explicit FrameHitDetails(ml::FrameScratchResource& scratch_resource);
 
     FrameHitDetails(FrameHitDetails const&) = delete;
     FrameHitDetails(FrameHitDetails&&) = delete;

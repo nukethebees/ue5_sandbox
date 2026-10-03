@@ -15,12 +15,13 @@
 
 namespace ioj::sim {
 class AgentAccessor;
+struct FrameRangeQueryResults;
 struct SpatialQueryManager;
 struct SpatialQueryManagerTestAccess;
 }
 
 namespace ml {
-class FrameScratch;
+class FrameScratchResource;
 }
 
 namespace ioj::sim::query_manager {
@@ -45,7 +46,7 @@ class ThreadBufferLease {
 // Enclose synchronous query work inside its owning FrameScratchScope.
 class ScratchScope {
   public:
-    ScratchScope(SpatialQueryManager& manager, ml::FrameScratch& scratch);
+    ScratchScope(SpatialQueryManager& manager, ml::FrameScratchResource& scratch_resource);
     ~ScratchScope();
 
     ScratchScope(ScratchScope const&) = delete;
@@ -109,6 +110,19 @@ struct SpatialQueryManager {
         collision::TraceEntityFilter entity_filter = collision::TraceEntityFilter::None) const;
 
     /* **************************************** */
+    // Batched range queries
+    /* **************************************** */
+    // Requires a current, live grid and stable entity state, as guaranteed during Thinking.
+    // Replace caller-owned results in request order; candidate order within each range is
+    // unspecified. Range tests use inclusive centre distance and abs(radius). Directions point from
+    // each origin to its candidate, with zero for squared distances below 1.e-8.
+    void collect_non_team_entities_in_range(Vectors3fConstView origins,
+                                            std::span<Team const> teams,
+                                            float radius,
+                                            FrameRangeQueryResults& out_results,
+                                            ml::FrameScratchResource& scratch_resource) const;
+
+    /* **************************************** */
     // Scalar and entity queries
     /* **************************************** */
     // Return unique membership from the last grid rebuild, ordered by entity ID.
@@ -127,12 +141,6 @@ struct SpatialQueryManager {
                                             float const radius,
                                             std::span<EntityUniqueId> const out_entities) const
         -> std::uint32_t;
-    // Reuse exclusive scratch buffers across a batch of range queries.
-    auto collect_non_team_entities_in_range(Vector3f const& origin,
-                                            Team team,
-                                            float radius,
-                                            std::span<EntityUniqueId> out_entities,
-                                            QueryThreadBuffers& buffers) const -> std::uint32_t;
     auto collect_entities_of_type_in_range(Vector3f const& origin,
                                            EntityType entity_type,
                                            float radius,
@@ -157,11 +165,17 @@ struct SpatialQueryManager {
         -> collision::StaticGeometryIndex;
     void refresh_spatial_index();
     auto detect_overlaps(std::span<EntityUniqueId const> overlap_candidates,
-                         ml::FrameScratch& scratch) -> collision::DetectedOverlapsView;
+                         ml::FrameScratchResource& scratch_resource)
+        -> collision::DetectedOverlapsView;
     void reset_frame_collision_events();
     auto get_aabb_overlap_events() const -> collision::AABBOverlapEventsView;
     auto get_entity_collision_bounds() const -> collision::EntityCellData::ConstView;
     auto get_static_collision_bounds() const -> collision::WorldAABBs::ConstView;
+#ifndef NDEBUG
+    auto check_live_grid_membership() const -> bool {
+        return collision_system_.uniform_grid_.check_live_entity_membership();
+    }
+#endif
   private:
     /* **************************************** */
     // Thread buffer leasing

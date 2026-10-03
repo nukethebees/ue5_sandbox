@@ -6,7 +6,7 @@
 #include <cstdint>
 namespace ioj::sim::lasers {
 struct FrameCollisionScratch {
-    explicit FrameCollisionScratch(ml::FrameScratch& scratch);
+    explicit FrameCollisionScratch(ml::FrameScratchResource& scratch_resource);
 
     FrameCollisionScratch(FrameCollisionScratch const&) = delete;
     FrameCollisionScratch(FrameCollisionScratch&&) = delete;

@@ -47,6 +47,7 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/frame_laser_spawn_requests.h
   ../include/ioj/sim/frame_rotators3f.h
   ../include/ioj/sim/frame_vectors3f.h
+  ../include/ioj/sim/frame_range_query_results.h
   ../include/ioj/sim/entity_tables.h
   ../include/ioj/sim/health_table.h
   ../include/ioj/sim/index_span.h
@@ -71,6 +72,7 @@ target_sources(native-simulation PRIVATE
         ../include/ioj/sim/entity_type.h
         ../include/ioj/sim/entity_unique_id.h
   ../include/ioj/sim/entity_unique_id_checks.h
+  ../include/ioj/sim/team_checks.h
   ../include/ioj/sim/profiling.h
   ../include/ioj/sim/query_thread_buffer_pool.h
   ../include/ioj/sim/query_thread_buffers.h
@@ -137,6 +139,7 @@ target_sources(native-simulation PRIVATE
   ship_health.cpp
   sim_time.cpp
   spatial_query_manager.cpp
+  spatial_range_queries.cpp
   spatial.cpp
   step_response.cpp
   transform3d.cpp

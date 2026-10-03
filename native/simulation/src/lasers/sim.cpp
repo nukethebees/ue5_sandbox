@@ -57,12 +57,12 @@ void Sim::cleanup_entities() {
     pending_removals_.clear();
 }
 
-void Sim::simulate(float const dt, ml::FrameScratch& scratch) {
+void Sim::simulate(float const dt, ml::FrameScratchResource& scratch_resource) {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::simulate");
 
-    handle_collisions(dt, scratch);
+    handle_collisions(dt, scratch_resource);
     update_locations(dt);
-    expire_instances(dt, scratch);
+    expire_instances(dt, scratch_resource);
 }
 
 void Sim::finish_action() {
@@ -152,14 +152,14 @@ void Sim::process_pending_spawns() {
 /* **************************************** */
 // Movement and collision
 /* **************************************** */
-void Sim::expire_instances(float const dt, ml::FrameScratch& scratch) {
+void Sim::expire_instances(float const dt, ml::FrameScratchResource& scratch_resource) {
     auto const entities{this->entities.get_view()};
     auto const lifetimes{entities.lifetimes_remaining()};
     auto const active{entities.active()};
 
     ml::subtract_in_place(std::span<float>{lifetimes}, dt);
 
-    ml::FrameArray<std::uint32_t> expired_indices{&scratch};
+    ml::FrameArray<std::uint32_t> expired_indices{&scratch_resource};
     auto const count{entities.num()};
     expired_indices.reserve(count);
     for (auto remaining{count}; remaining > 0; --remaining) {
@@ -189,7 +189,7 @@ void Sim::update_locations(float const dt) {
         }
     }
 }
-void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
+void Sim::handle_collisions(float const dt, ml::FrameScratchResource& scratch_resource) {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::handle_collisions");
 
     auto const n{entities.num()};
@@ -197,7 +197,7 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
         return;
     }
 
-    FrameCollisionScratch collision_scratch{scratch};
+    FrameCollisionScratch collision_scratch{scratch_resource};
     collision_scratch.set_num(n);
     auto const entities{this->entities.get_const_view()};
     auto const locations{entities.view_locations().get_const_view()};
@@ -238,9 +238,9 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
                 trace_starts_view, trace_ends_view, hits, ignored_entities);
         });
 
-    ml::FrameArray<std::uint32_t> to_remove{&scratch};
-    FrameHitDetails hit_details{scratch};
-    FrameDirectDamageEvents collision_damage_events{scratch};
+    ml::FrameArray<std::uint32_t> to_remove{&scratch_resource};
+    FrameHitDetails hit_details{scratch_resource};
+    FrameDirectDamageEvents collision_damage_events{scratch_resource};
     auto const trace_hits{collision_scratch.trace_hits.get_const_view()};
     auto const hit_flags{trace_hits.hits()};
     auto const hit_entities{trace_hits.entities()};

@@ -21,16 +21,16 @@ void PhaseInterface::prepare_tick(float const dt) {
     simulation.prepare_tick(dt);
 }
 
-void PhaseInterface::think(float const dt, ml::FrameScratch& scratch) {
-    simulation.think(dt, scratch);
+void PhaseInterface::think(float const dt, ml::FrameScratchResource& scratch_resource) {
+    simulation.think(dt, scratch_resource);
 }
 
-void PhaseInterface::apply_movement(ml::FrameScratch& scratch) {
-    simulation.apply_movement(scratch);
+void PhaseInterface::apply_movement(ml::FrameScratchResource& scratch_resource) {
+    simulation.apply_movement(scratch_resource);
 }
 
-void PhaseInterface::generate_fire_commands(ml::FrameScratch& scratch) {
-    simulation.generate_fire_commands(scratch);
+void PhaseInterface::generate_fire_commands(ml::FrameScratchResource& scratch_resource) {
+    simulation.generate_fire_commands(scratch_resource);
 }
 
 void PhaseInterface::commit_spawns() {

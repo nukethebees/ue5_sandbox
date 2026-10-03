@@ -313,7 +313,7 @@ void LevelSim::advance(time_type const dt) {
         /* -------------------------------------------------------------------------------- */
         {
             ml::FrameScratchScope scratch_scope{frame_memory_};
-            auto& scratch{scratch_scope.scratch()};
+            auto& scratch_resource{scratch_scope.scratch()};
 
             SANDBOX_PROFILE_SCOPE("Preparation");
             clock_.phase = SimulationPhase::Preparation;
@@ -361,7 +361,7 @@ void LevelSim::advance(time_type const dt) {
 
             rebuild_agent_indexes();
             mission_manager_.prepare_objectives();
-            capital_ships_simulation_.refresh_fighter_ids(scratch);
+            capital_ships_simulation_.refresh_fighter_ids(scratch_resource);
             query_manager_.refresh_spatial_index();
         }
 
@@ -370,10 +370,10 @@ void LevelSim::advance(time_type const dt) {
         /* -------------------------------------------------------------------------------- */
         {
             ml::FrameScratchScope scratch_scope{frame_memory_};
-            auto& scratch{scratch_scope.scratch()};
+            auto& scratch_resource{scratch_scope.scratch()};
 
             SANDBOX_PROFILE_SCOPE("Thinking");
-            query_manager::ScratchScope query_scratch{query_manager_, scratch};
+            query_manager::ScratchScope query_scratch{query_manager_, scratch_resource};
             clock_.phase = SimulationPhase::Thinking;
 
 #ifndef NDEBUG
@@ -382,9 +382,9 @@ void LevelSim::advance(time_type const dt) {
 #endif
 
             // Run decision phases
-            turrets_phase_.think(tick_period, scratch);
-            capital_ships_phase_.think(tick_period, scratch);
-            fighters_phase_.think(tick_period, scratch);
+            turrets_phase_.think(tick_period, scratch_resource);
+            capital_ships_phase_.think(tick_period, scratch_resource);
+            fighters_phase_.think(tick_period, scratch_resource);
             if (player_active) {
                 player_ship_phase_->think(tick_period);
             }
@@ -394,8 +394,8 @@ void LevelSim::advance(time_type const dt) {
             if (player_active) {
                 player_ship_phase_->generate_fire_commands();
             }
-            fighters_phase_.generate_fire_commands(scratch);
-            turrets_phase_.generate_fire_commands(scratch);
+            fighters_phase_.generate_fire_commands(scratch_resource);
+            turrets_phase_.generate_fire_commands(scratch_resource);
             spinners_phase_.generate_fire_commands();
 
             assert(check_phase_invariants(thinking_state));
@@ -437,9 +437,9 @@ void LevelSim::advance(time_type const dt) {
             // Move dynamic entities
             {
                 ml::FrameScratchScope scratch_scope{frame_memory_};
-                auto& scratch{scratch_scope.scratch()};
-                fighters_phase_.apply_movement(scratch);
-                spinners_phase_.apply_movement(scratch);
+                auto& scratch_resource{scratch_scope.scratch()};
+                fighters_phase_.apply_movement(scratch_resource);
+                spinners_phase_.apply_movement(scratch_resource);
             }
 
             {

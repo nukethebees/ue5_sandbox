@@ -75,8 +75,8 @@ struct Sim {
     /* **************************************** */
     void begin_play();
     void prepare_tick(float dt);
-    void think(float dt, ml::FrameScratch& scratch);
-    void generate_fire_commands(ml::FrameScratch& scratch);
+    void think(float dt, ml::FrameScratchResource& scratch_resource);
+    void generate_fire_commands(ml::FrameScratchResource& scratch_resource);
     void resolve_damage_events();
     void publish_deaths();
     void remove_components();
@@ -97,13 +97,13 @@ struct Sim {
     // Searching
     /* **************************************** */
     void perform_search();
-    void refresh_target_data(ml::FrameScratch& scratch);
+    void refresh_target_data(ml::FrameScratchResource& scratch_resource);
     void perform_search_on_slice(std::uint32_t begin, std::uint32_t end, float radius);
 
     /* **************************************** */
     // Attacking
     /* **************************************** */
-    void fire_at_enemies(ml::FrameScratch& scratch);
+    void fire_at_enemies(ml::FrameScratchResource& scratch_resource);
     auto get_disengage_radius() const -> float;
 
     /* **************************************** */

@@ -55,9 +55,9 @@ struct Sim {
     void begin_play();
     void prepare_tick(float dt);
     void think(float dt);
-    void apply_movement(ml::FrameScratch& scratch);
+    void apply_movement(ml::FrameScratchResource& scratch_resource);
     void generate_fire_commands();
-    void materialize_fire_commands(ml::FrameScratch& scratch);
+    void materialize_fire_commands(ml::FrameScratchResource& scratch_resource);
     std::vector<std::uint32_t> pending_fire_indices_;
     void finish_action();
 

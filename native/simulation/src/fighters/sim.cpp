@@ -9,6 +9,7 @@
 #include <ioj/sim/fighter_diagnostics.h>
 #include <ioj/sim/fighter_frame_spawn_queue.h>
 #include <ioj/sim/frame_laser_spawn_requests.h>
+#include <ioj/sim/frame_range_query_results.h>
 #include <ioj/sim/frame_vectors3f.h>
 #include <ioj/sim/laser_source.h>
 #include <ioj/sim/lasers/frame_scratch.h>
@@ -27,10 +28,7 @@
 #include <sandbox/core/tick_countdown.h>
 #include <sandbox/core/vector_math.h>
 #include <sandbox/core/vector_normalization.h>
-
-#include <oneapi/tbb/blocked_range.h>
-#include <oneapi/tbb/parallel_for.h>
-#include <oneapi/tbb/task_arena.h>
+#include <sandbox/core/vector_soa_view.h>
 
 #include <algorithm>
 #include <array>
@@ -249,8 +247,8 @@ void Sim::prepare_tick(float const dt) {
     }
     ml::tick_countdowns<std::int16_t>(data.attack_cooldowns(), attack_cleaner_, 16384);
 }
-void Sim::think(float const dt, ml::FrameScratch& scratch) {
-    refresh_target_data(scratch);
+void Sim::think(float const dt, ml::FrameScratchResource& scratch_resource) {
+    refresh_target_data(scratch_resource);
     SANDBOX_PROFILE_SCOPE("fighters::Sim::think");
 
     auto const data{entity_buffers.current().get_view()};
@@ -264,7 +262,9 @@ void Sim::think(float const dt, ml::FrameScratch& scratch) {
 
     ml::TickCountdownView<std::int8_t> const awareness_countdowns{data.awareness_scan_countdowns(),
                                                                   awareness_restart_ticks_};
-    auto const locations{data.view_locations()};
+    auto const location_columns{data.view_locations()};
+    ml::Vector3fSoAConstView const locations{
+        location_columns.xs(), location_columns.ys(), location_columns.zs()};
     auto const target_ids{data.target_ids()};
     auto const target_distance_sq{data.target_distance_sq()};
     auto const teams{data.teams()};
@@ -272,112 +272,71 @@ void Sim::think(float const dt, ml::FrameScratch& scratch) {
 
     {
         SANDBOX_PROFILE_SCOPE("awareness_scan");
-        ml::FrameArray<std::uint32_t> scan_indices{&scratch};
-        for (std::uint32_t i{}; i < n; ++i) {
-            if (!awareness_countdowns.try_consume(i)) {
-                continue;
-            }
-            if (agents_.is_alive(target_ids[i]) &&
-                target_distance_sq[i] <= attack_engagement_threshold_sq) {
-                continue;
-            }
+        ml::FrameArray<std::uint32_t> scan_indices{&scratch_resource};
 
-            if (scan_indices.is_empty()) {
-                scan_indices.reserve(n);
+        {
+            SANDBOX_PROFILE_SCOPE("Build scan indices");
+
+            for (std::uint32_t i{}; i < n; ++i) {
+                if (!awareness_countdowns.try_consume(i)) {
+                    continue;
+                }
+                if (target_ids[i].is_valid() &&
+                    target_distance_sq[i] <= attack_engagement_threshold_sq) {
+                    continue;
+                }
+
+                if (scan_indices.is_empty()) {
+                    scan_indices.reserve(n);
+                }
+                scan_indices.add(i);
             }
-            scan_indices.add(i);
         }
 
         if (!scan_indices.is_empty()) {
-            struct WorkerScratch {
-                explicit WorkerScratch(ml::FrameScratch& resource, std::uint32_t const entity_count)
-                    : query_buffers{&resource} {
-                    query_buffers.ensure_entity_stamp_count(entity_count);
-                }
-
-                QueryThreadBuffers query_buffers;
-                std::array<EntityUniqueId, 128> nearby_entities;
-                bool targets_changed{};
-            };
-
-            constexpr std::uint32_t grain_size{64};
             auto const scan_count{scan_indices.num()};
-            auto const concurrency{std::min(oneapi::tbb::this_task_arena::max_concurrency(),
-                                            static_cast<int>((scan_count - 1) / grain_size + 1))};
-            oneapi::tbb::task_arena arena{concurrency};
-            arena.initialize();
-            ml::FrameArray<WorkerScratch> workers{&scratch};
+            FrameVectors3f scan_origins{scratch_resource};
+            ml::FrameArray<Team> scan_teams{&scratch_resource};
+            FrameRangeQueryResults nearby{scratch_resource};
+
             {
-                SANDBOX_PROFILE_SCOPE("awareness_scan_setup");
-                auto const counts{agents_.entity_counts()};
-                std::uint32_t entity_count{};
-                for (auto const type : ml::EnumTraits<EntityType>::values) {
-                    entity_count += counts[type];
-                }
-                auto const worker_count{static_cast<std::uint32_t>(arena.max_concurrency())};
-                workers.reserve(worker_count);
-                for (std::uint32_t worker{}; worker < worker_count; ++worker) {
-                    workers.emplace(scratch, entity_count);
-                }
+                SANDBOX_PROFILE_SCOPE("add origins and teams");
+                auto const indices{scan_indices.view()};
+                scan_origins.add(locations, indices);
+                scan_teams.add(teams, indices);
             }
 
-            arena.execute([&] {
-                oneapi::tbb::parallel_for(
-                    oneapi::tbb::blocked_range<std::uint32_t>{0, scan_count, grain_size},
-                    [&](oneapi::tbb::blocked_range<std::uint32_t> const& range) {
-                        SANDBOX_PROFILE_SCOPE("awareness_scan_chunk");
-                        // Each arena slot exclusively owns its scratch until this callback returns.
-                        auto const worker_index{
-                            oneapi::tbb::this_task_arena::current_thread_index()};
-                        assert(worker_index >= 0);
-                        auto& worker{workers[static_cast<std::uint32_t>(worker_index)]};
-                        auto const end{range.end()};
-                        for (auto scan_index{range.begin()}; scan_index < end; ++scan_index) {
-                            auto const i{scan_indices[scan_index]};
-                            auto const fighter_location{vector_at(locations, i)};
-                            auto const target_id{target_ids[i]};
-                            auto const n_nearby_entities{
-                                spatial_query_manager.collect_non_team_entities_in_range(
-                                    fighter_location,
-                                    teams[i],
-                                    awareness_radius,
-                                    worker.nearby_entities,
-                                    worker.query_buffers)};
-                            auto const aim_direction{vector_at(aim_directions, i)};
-                            EntityUniqueId selected_target{};
-                            for (std::uint32_t nearby_index{}; nearby_index < n_nearby_entities;
-                                 ++nearby_index) {
-                                auto const candidate{worker.nearby_entities[nearby_index]};
-                                auto const state{agents_.read_alive(candidate)};
-                                if (!state) {
-                                    continue;
-                                }
-                                auto const direction{ml::native_math::safe_normal(
-                                    state->location - fighter_location, 1.e-8f)};
-                                if (HMM_DotV3(aim_direction, direction) > dot_threshold) {
-                                    selected_target = candidate;
-                                    break;
-                                }
-                            }
+            spatial_query_manager.collect_non_team_entities_in_range(scan_origins.get_const_view(),
+                                                                     scan_teams.view(),
+                                                                     awareness_radius,
+                                                                     nearby,
+                                                                     scratch_resource);
 
-                            if (selected_target.is_valid() && selected_target != target_id) {
-                                target_ids[i] = selected_target;
-                                worker.targets_changed = true;
-                            }
+            auto const directions{nearby.directions.get_const_view()};
+            for (std::uint32_t scan_index{}; scan_index < scan_count; ++scan_index) {
+                auto const index{scan_indices[scan_index]};
+                auto const aim_direction{vector_at(aim_directions, index)};
+                auto const range{nearby.ranges[scan_index]};
+                auto const end{range.end()};
+                for (auto match{range.offset}; match < end; ++match) {
+                    if (HMM_DotV3(aim_direction, directions[match]) > dot_threshold) {
+                        auto const selected_target{nearby.entities[match]};
+                        if (selected_target != target_ids[index]) {
+                            target_ids[index] = selected_target;
+                            targets_changed = true;
                         }
-                    });
-            });
-            for (auto const& worker : workers) {
-                targets_changed |= worker.targets_changed;
+                        break;
+                    }
+                }
             }
         }
     }
     if (targets_changed) {
-        refresh_target_data(scratch);
+        refresh_target_data(scratch_resource);
     }
-    plan_movement(dt, scratch);
+    plan_movement(dt, scratch_resource);
 }
-void Sim::plan_movement(float const dt, ml::FrameScratch& scratch) {
+void Sim::plan_movement(float const dt, ml::FrameScratchResource& scratch_resource) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::plan_movement");
 
     auto const d_turn{std::min(1.f, config.turn_speed_unitless * dt)};
@@ -457,7 +416,7 @@ void Sim::plan_movement(float const dt, ml::FrameScratch& scratch) {
                                             destinations.ys().data(),
                                             destinations.zs().data(),
                                             data.num());
-    update_navigation_steering(scratch);
+    update_navigation_steering(scratch_resource);
     if (do_move) {
         auto const movement_directions{move_view.view_movement_directions()};
         lerp_in_place(move_view.view_planned_aim_directions(), movement_directions, d_turn);
@@ -507,7 +466,7 @@ void Sim::plan_movement(float const dt, ml::FrameScratch& scratch) {
         attack_target_distances[index] = std::sqrt(distance_sq);
     }
 }
-void Sim::apply_movement(ml::FrameScratch& scratch) {
+void Sim::apply_movement(ml::FrameScratchResource& scratch_resource) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::apply_movement");
     auto const data{entity_buffers.current().get_view()};
     overlap_candidates_.clear();
@@ -531,13 +490,13 @@ void Sim::apply_movement(ml::FrameScratch& scratch) {
     }
     data.view_velocities().each_column([](auto column) { std::ranges::fill(column, 0.f); });
     copy_vectors(aim_directions, planned_directions.get_const_view());
-    move(movement_tick_period_, get_task_view(Task::MoveToDestination), scratch);
-    move(movement_tick_period_, get_task_view(Task::Attack), scratch);
+    move(movement_tick_period_, get_task_view(Task::MoveToDestination), scratch_resource);
+    move(movement_tick_period_, get_task_view(Task::Attack), scratch_resource);
     std::ranges::sort(overlap_candidates_);
     auto const duplicates{std::ranges::unique(overlap_candidates_)};
     overlap_candidates_.erase(duplicates.begin(), duplicates.end());
 
-    lasers::FrameSpawnRequests requests{scratch};
+    lasers::FrameSpawnRequests requests{scratch_resource};
     auto const locations{data.view_locations()};
     auto const velocities{data.view_velocities()};
     auto const teams{data.teams()};
@@ -556,9 +515,9 @@ void Sim::apply_movement(ml::FrameScratch& scratch) {
     laser_simulation.queue_laser_spawns(requests);
     pending_fire_indices_.clear();
 }
-void Sim::generate_fire_commands(ml::FrameScratch& scratch) {
+void Sim::generate_fire_commands(ml::FrameScratchResource& scratch_resource) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::generate_fire_commands");
-    handle_firing(get_task_view(Task::Attack), scratch);
+    handle_firing(get_task_view(Task::Attack), scratch_resource);
 }
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::resolve_damage_events");
@@ -644,11 +603,11 @@ void Sim::finish_action() {
 /* **************************************** */
 // Movement
 /* **************************************** */
-void Sim::move(float const dt, TaskView fighters, ml::FrameScratch& scratch) {
+void Sim::move(float const dt, TaskView fighters, ml::FrameScratchResource& scratch_resource) {
     assert(dt > 0.f);
     auto const count{fighters.num()};
     auto const directions{fighters.view_movement_directions().get_const_view()};
-    FrameVectors3f previous_locations{scratch};
+    FrameVectors3f previous_locations{scratch_resource};
     previous_locations.set_num(count);
     copy_vectors(previous_locations.get_view(), fighters.view_locations().get_const_view());
     auto const move_distances{fighters.move_distances()};
@@ -687,7 +646,7 @@ void Sim::move(float const dt, TaskView fighters, ml::FrameScratch& scratch) {
         }
     }
 }
-void Sim::update_navigation_steering(ml::FrameScratch& frame_scratch) {
+void Sim::update_navigation_steering(ml::FrameScratchResource& scratch_resource) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::update_navigation_steering");
 
     auto const clearance{collision_radius_ + config.avoidance_clearance_buffer};
@@ -699,7 +658,7 @@ void Sim::update_navigation_steering(ml::FrameScratch& frame_scratch) {
                            simulation_clock.get_tick_period())};
     auto const safe_progress_time{active_update_interval * 1.25f};
     navigation_telemetry = {};
-    NavigationScratch scratch{frame_scratch};
+    NavigationScratch scratch{scratch_resource};
 
     // Only expired countdowns observe the world. Held steering is applied to every mover.
     collect_navigation_updates(scratch);
@@ -1255,11 +1214,11 @@ void Sim::set_target_id_unchecked(std::uint32_t const fighter_index,
 void Sim::set_target_id(EntityUniqueId const fighter, EntityUniqueId const new_target) noexcept {
     set_target_id_unchecked(find_index(fighter), new_target);
 }
-void Sim::refresh_target_data(ml::FrameScratch& scratch) {
+void Sim::refresh_target_data(ml::FrameScratchResource& scratch_resource) {
     auto const data{entity_buffers.current().get_view()};
     auto const count{data.num()};
-    ml::FrameArray<std::uint32_t> order{&scratch};
-    ml::FrameArray<std::uint8_t> alive{&scratch};
+    ml::FrameArray<std::uint32_t> order{&scratch_resource};
+    ml::FrameArray<std::uint8_t> alive{&scratch_resource};
     order.set_num(count);
     alive.set_num(count);
     auto const target_ids{data.target_ids()};
@@ -1519,7 +1478,7 @@ void Sim::remove_dead_entities() {
 /* **************************************** */
 // Combat
 /* **************************************** */
-void Sim::handle_firing(TaskView data, ml::FrameScratch& scratch) {
+void Sim::handle_firing(TaskView data, ml::FrameScratchResource& scratch_resource) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::handle_firing");
 
     auto const locations{data.view_locations()};
@@ -1540,14 +1499,14 @@ void Sim::handle_firing(TaskView data, ml::FrameScratch& scratch) {
                                        config.attack_distance_band.desired_ratio};
     auto const arrival_distance{config.arrival_distance};
     auto const attack_position_arrival_distance_sq{arrival_distance * arrival_distance};
-    ml::FrameArray<float> aiming_dot_products{&scratch};
-    ml::FrameArray<std::uint32_t> can_fire{&scratch};
-    FrameVectors3f line_of_sight_starts{scratch};
-    FrameVectors3f line_of_sight_ends{scratch};
-    ml::FrameArray<LineQueryResult> line_of_sight_results{&scratch};
-    ml::FrameArray<EntityUniqueId> firing_ignored_entities{&scratch};
-    ml::FrameArray<std::uint32_t> firing_position_fighter_indices{&scratch};
-    FrameVectors3f firing_position_candidates{scratch};
+    ml::FrameArray<float> aiming_dot_products{&scratch_resource};
+    ml::FrameArray<std::uint32_t> can_fire{&scratch_resource};
+    FrameVectors3f line_of_sight_starts{scratch_resource};
+    FrameVectors3f line_of_sight_ends{scratch_resource};
+    ml::FrameArray<LineQueryResult> line_of_sight_results{&scratch_resource};
+    ml::FrameArray<EntityUniqueId> firing_ignored_entities{&scratch_resource};
+    ml::FrameArray<std::uint32_t> firing_position_fighter_indices{&scratch_resource};
+    FrameVectors3f firing_position_candidates{scratch_resource};
 
     firing_position_fighter_indices.reserve(n_ships);
     firing_position_candidates.reserve(n_ships);

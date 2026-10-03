@@ -3,15 +3,15 @@
 #include <algorithm>
 
 namespace ioj::sim::lasers {
-FrameSpawnRequests::FrameSpawnRequests(ml::FrameScratch& scratch)
-    : locations_{scratch}
-    , rotations_{scratch}
-    , base_velocities_{scratch}
-    , damages_{&scratch}
-    , speeds_{&scratch}
-    , max_distances_{&scratch}
-    , instigator_ids_{&scratch}
-    , sources_{&scratch} {}
+FrameSpawnRequests::FrameSpawnRequests(ml::FrameScratchResource& scratch_resource)
+    : locations_{scratch_resource}
+    , rotations_{scratch_resource}
+    , base_velocities_{scratch_resource}
+    , damages_{&scratch_resource}
+    , speeds_{&scratch_resource}
+    , max_distances_{&scratch_resource}
+    , instigator_ids_{&scratch_resource}
+    , sources_{&scratch_resource} {}
 
 void FrameSpawnRequests::reserve(std::uint32_t const count) {
     locations_.reserve(count);
