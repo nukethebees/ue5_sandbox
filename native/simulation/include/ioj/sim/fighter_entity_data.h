@@ -10,6 +10,7 @@
 #include "ioj/sim/team.h"
 
 #include "sandbox/core/native_soa/storage.h"
+#include "sandbox/core/vector_soa_view.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -201,100 +202,110 @@ struct FighterEntityDataSingleViewImpl {
                 state_, offset_, count_, Layout::TasksColumn.offset(view_capacity_blocks(state_))),
             static_cast<std::size_t>(count_)};
     }
-    auto view_locations() const -> std::conditional_t<Const,
-                                                      ml::native_soa::Vector3ConstView<float>,
-                                                      ml::native_soa::Vector3View<float>> {
+    auto view_locations() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::LocationsXsColumn.offset(blocks)};
-        auto const stride{Layout::LocationsYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsZsColumn.offset(blocks)),
+                count_};
     }
-    auto view_desired_move_locations() const
-        -> std::conditional_t<Const,
-                              ml::native_soa::Vector3ConstView<float>,
-                              ml::native_soa::Vector3View<float>> {
+    auto view_desired_move_locations() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::DesiredMoveLocationsXsColumn.offset(blocks)};
-        auto const stride{Layout::DesiredMoveLocationsYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::DesiredMoveLocationsXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::DesiredMoveLocationsYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::DesiredMoveLocationsZsColumn.offset(blocks)),
+                count_};
     }
-    auto view_aim_directions() const -> std::conditional_t<Const,
-                                                           ml::native_soa::Vector3ConstView<float>,
-                                                           ml::native_soa::Vector3View<float>> {
+    auto view_aim_directions() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::AimDirectionsXsColumn.offset(blocks)};
-        auto const stride{Layout::AimDirectionsYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::AimDirectionsXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::AimDirectionsYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::AimDirectionsZsColumn.offset(blocks)),
+                count_};
     }
-    auto view_planned_aim_directions() const
-        -> std::conditional_t<Const,
-                              ml::native_soa::Vector3ConstView<float>,
-                              ml::native_soa::Vector3View<float>> {
+    auto view_planned_aim_directions() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::PlannedAimDirectionsXsColumn.offset(blocks)};
-        auto const stride{Layout::PlannedAimDirectionsYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::PlannedAimDirectionsXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::PlannedAimDirectionsYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::PlannedAimDirectionsZsColumn.offset(blocks)),
+                count_};
     }
-    auto view_desired_aiming_directions() const
-        -> std::conditional_t<Const,
-                              ml::native_soa::Vector3ConstView<float>,
-                              ml::native_soa::Vector3View<float>> {
+    auto view_desired_aiming_directions() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::DesiredAimingDirectionsXsColumn.offset(blocks)};
-        auto const stride{Layout::DesiredAimingDirectionsYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::DesiredAimingDirectionsXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::DesiredAimingDirectionsYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::DesiredAimingDirectionsZsColumn.offset(blocks)),
+                count_};
     }
-    auto view_movement_directions() const
-        -> std::conditional_t<Const,
-                              ml::native_soa::Vector3ConstView<float>,
-                              ml::native_soa::Vector3View<float>> {
+    auto view_movement_directions() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::MovementDirectionsXsColumn.offset(blocks)};
-        auto const stride{Layout::MovementDirectionsYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::MovementDirectionsXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::MovementDirectionsYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::MovementDirectionsZsColumn.offset(blocks)),
+                count_};
     }
-    auto view_velocities() const -> std::conditional_t<Const,
-                                                       ml::native_soa::Vector3ConstView<float>,
-                                                       ml::native_soa::Vector3View<float>> {
+    auto view_velocities() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::VelocitiesXsColumn.offset(blocks)};
-        auto const stride{Layout::VelocitiesYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::VelocitiesXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::VelocitiesYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::VelocitiesZsColumn.offset(blocks)),
+                count_};
     }
     auto move_distances() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
@@ -366,19 +377,20 @@ struct FighterEntityDataSingleViewImpl {
                                                view_capacity_blocks(state_))),
             static_cast<std::size_t>(count_)};
     }
-    auto view_separation_steering() const
-        -> std::conditional_t<Const,
-                              ml::native_soa::Vector3ConstView<float>,
-                              ml::native_soa::Vector3View<float>> {
+    auto view_separation_steering() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::SeparationSteeringXsColumn.offset(blocks)};
-        auto const stride{Layout::SeparationSteeringYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::SeparationSteeringXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::SeparationSteeringYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::SeparationSteeringZsColumn.offset(blocks)),
+                count_};
     }
     auto navigation_risk_tiers() const -> std::span<Element<fighters::NavigationRiskCode>> {
         using namespace ml::soa_storage_detail;
@@ -445,47 +457,50 @@ struct FighterEntityDataSingleViewImpl {
                     Layout::TargetIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
-    auto view_target_locations() const
-        -> std::conditional_t<Const,
-                              ml::native_soa::Vector3ConstView<float>,
-                              ml::native_soa::Vector3View<float>> {
+    auto view_target_locations() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::TargetLocationsXsColumn.offset(blocks)};
-        auto const stride{Layout::TargetLocationsYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::TargetLocationsXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::TargetLocationsYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::TargetLocationsZsColumn.offset(blocks)),
+                count_};
     }
-    auto view_target_velocities() const
-        -> std::conditional_t<Const,
-                              ml::native_soa::Vector3ConstView<float>,
-                              ml::native_soa::Vector3View<float>> {
+    auto view_target_velocities() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::TargetVelocitiesXsColumn.offset(blocks)};
-        auto const stride{Layout::TargetVelocitiesYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::TargetVelocitiesXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::TargetVelocitiesYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::TargetVelocitiesZsColumn.offset(blocks)),
+                count_};
     }
-    auto view_target_directions() const
-        -> std::conditional_t<Const,
-                              ml::native_soa::Vector3ConstView<float>,
-                              ml::native_soa::Vector3View<float>> {
+    auto view_target_directions() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::TargetDirectionsXsColumn.offset(blocks)};
-        auto const stride{Layout::TargetDirectionsYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::TargetDirectionsXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::TargetDirectionsYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::TargetDirectionsZsColumn.offset(blocks)),
+                count_};
     }
     auto intercept_times() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;

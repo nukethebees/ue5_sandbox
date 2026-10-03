@@ -1,8 +1,8 @@
 #pragma once
 
 #include <sandbox/core/address_cast.h>
-#include <sandbox/core/compact_rotator_view.h>
 #include <sandbox/core/compact_vector_view.h>
+#include <sandbox/core/rotator_soa_view.h>
 #include <sandbox/core/single_allocation/layout.h>
 #include <sandbox/core/single_allocation/operations.h>
 #include <sandbox/core/single_allocation/removal.h>

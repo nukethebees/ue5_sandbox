@@ -13,8 +13,8 @@ namespace ioj::sim {
 struct AgentDisplayBatch {
     EntityType type{};
     std::span<EntityUniqueId const> ids;
-    ml::native_soa::Vector3ConstView<float> locations;
-    ml::native_soa::Vector3ConstView<float> velocities;
+    Vectors3fConstView locations;
+    Vectors3fConstView velocities;
     HealthConstView healths;
     std::span<Team const> teams;
 

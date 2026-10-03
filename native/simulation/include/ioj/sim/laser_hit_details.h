@@ -6,6 +6,7 @@
 #include "ioj/sim/laser_source.h"
 
 #include "sandbox/core/native_soa/storage.h"
+#include "sandbox/core/vector_soa_view.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -94,32 +95,35 @@ struct LaserHitDetailsSingleViewImpl {
         assert(count >= 0 && count <= self.count_);
         return self.slice(self.count_ - count, count);
     }
-    auto view_locations() const -> std::conditional_t<Const,
-                                                      ml::native_soa::Vector3ConstView<float>,
-                                                      ml::native_soa::Vector3View<float>> {
+    auto view_locations() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::LocationsXsColumn.offset(blocks)};
-        auto const stride{Layout::LocationsYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsZsColumn.offset(blocks)),
+                count_};
     }
-    auto view_emission_directions() const
-        -> std::conditional_t<Const,
-                              ml::native_soa::Vector3ConstView<float>,
-                              ml::native_soa::Vector3View<float>> {
+    auto view_emission_directions() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::EmissionDirectionsXsColumn.offset(blocks)};
-        auto const stride{Layout::EmissionDirectionsYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::EmissionDirectionsXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::EmissionDirectionsYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::EmissionDirectionsZsColumn.offset(blocks)),
+                count_};
     }
     auto sources() const -> std::span<Element<LaserSource>> {
         using namespace ml::soa_storage_detail;

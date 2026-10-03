@@ -1,7 +1,7 @@
 #pragma once
 
-#include <sandbox/core/compact_rotator_view.h>
 #include <sandbox/core/compact_vector_view.h>
+#include <sandbox/core/rotator_soa_view.h>
 #include <SandboxCore/single_allocation/runtime.h>
 
 #include <Containers/ArrayView.h>

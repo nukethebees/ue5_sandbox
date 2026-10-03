@@ -276,7 +276,10 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
     auto const rotations{render(input)};
     EXPECT_NE(rotations.find("ml::soa::RotatorSoAView<double>"), std::string::npos);
     EXPECT_NE(rotations.find("ml::soa::RotatorSoAConstView<double>"), std::string::npos);
-    EXPECT_NE(rotations.find("NestedYawsColumn.offset(blocks) - first"), std::string::npos);
+    EXPECT_NE(rotations.find("Layout::NestedPitchesColumn.offset(blocks)"), std::string::npos);
+    EXPECT_NE(rotations.find("Layout::NestedYawsColumn.offset(blocks)"), std::string::npos);
+    EXPECT_NE(rotations.find("Layout::NestedRollsColumn.offset(blocks)"), std::string::npos);
+    EXPECT_EQ(rotations.find("NestedYawsColumn.offset(blocks) - first"), std::string::npos);
     EXPECT_EQ(rotations.find("struct RowsSingleView_nested"), std::string::npos);
     input.front().members.back().type = TypeRef{"float"};
     EXPECT_THROW(render(input), std::invalid_argument);

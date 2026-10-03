@@ -10,6 +10,7 @@
 
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/native_soa/vector_storage_ops.h"
+#include "sandbox/core/vector_soa_view.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -368,18 +369,20 @@ struct LevelCapitalSpawnEventsSingleViewImpl {
                     Layout::TargetEntityIndicesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
-    auto view_locations() const -> std::conditional_t<Const,
-                                                      ml::native_soa::Vector3ConstView<float>,
-                                                      ml::native_soa::Vector3View<float>> {
+    auto view_locations() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::LocationsXsColumn.offset(blocks)};
-        auto const stride{Layout::LocationsYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsZsColumn.offset(blocks)),
+                count_};
     }
     auto view_rotations() const -> std::conditional_t<Const,
                                                       ml::native_soa::RotatorSoAConstView<float>,
@@ -390,9 +393,13 @@ struct LevelCapitalSpawnEventsSingleViewImpl {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::RotationsPitchesColumn.offset(blocks)};
-        auto const stride{Layout::RotationsYawsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::RotationsPitchesColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::RotationsYawsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::RotationsRollsColumn.offset(blocks)),
+                count_};
     }
     auto teams() const -> std::span<Element<Team>> {
         using namespace ml::soa_storage_detail;
@@ -875,18 +882,20 @@ struct LevelTurretSpawnEventsSingleViewImpl {
                     Layout::EntityIndicesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
-    auto view_locations() const -> std::conditional_t<Const,
-                                                      ml::native_soa::Vector3ConstView<float>,
-                                                      ml::native_soa::Vector3View<float>> {
+    auto view_locations() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::LocationsXsColumn.offset(blocks)};
-        auto const stride{Layout::LocationsYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsZsColumn.offset(blocks)),
+                count_};
     }
     auto view_rotations() const -> std::conditional_t<Const,
                                                       ml::native_soa::RotatorSoAConstView<float>,
@@ -897,9 +906,13 @@ struct LevelTurretSpawnEventsSingleViewImpl {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::RotationsPitchesColumn.offset(blocks)};
-        auto const stride{Layout::RotationsYawsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::RotationsPitchesColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::RotationsYawsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::RotationsRollsColumn.offset(blocks)),
+                count_};
     }
     auto teams() const -> std::span<Element<Team>> {
         using namespace ml::soa_storage_detail;
@@ -1329,18 +1342,20 @@ struct LevelSpinnerSpawnEventsSingleViewImpl {
                     Layout::EntityIndicesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
-    auto view_locations() const -> std::conditional_t<Const,
-                                                      ml::native_soa::Vector3ConstView<float>,
-                                                      ml::native_soa::Vector3View<float>> {
+    auto view_locations() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
         validate();
         if (!state_ || !state_->data_) {
             return {};
         }
         auto const blocks{view_capacity_blocks(state_)};
-        auto const first{Layout::LocationsXsColumn.offset(blocks)};
-        auto const stride{Layout::LocationsYsColumn.offset(blocks) - first};
-        return {view_column_data_unchecked<float>(state_, offset_, first), stride, count_};
+        return {view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsXsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsYsColumn.offset(blocks)),
+                view_column_data_unchecked<float>(
+                    state_, offset_, Layout::LocationsZsColumn.offset(blocks)),
+                count_};
     }
     auto yaws() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;

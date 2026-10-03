@@ -499,6 +499,52 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
                 continue;
             }
 
+            auto const rotation_view{vector->runtime_prefix == "RotatorSoA"};
+            if (rotation_view ||
+                (model.backend == SoaBackend::standard_library &&
+                 vector->runtime_prefix == "Vector3" && vector->element_type == "float")) {
+                // Resolve vector and rotation columns once when acquiring the view.
+                auto const rotation_prefix{model.dialect.vector_namespace + "RotatorSoA"};
+                auto const view_type{
+                    rotation_view
+                        ? CppType{"std::conditional_t<Const, " + rotation_prefix + "ConstView<" +
+                                  vector->element_type + ">, " + rotation_prefix + "View<" +
+                                  vector->element_type + ">>"}
+                        : CppType{"ml::Vector3SoAView<Element<float>>",
+                                  {{"vector_soa_view", "sandbox/core/vector_soa_view.h", {}}}}};
+                std::vector<Expr> columns;
+                for (auto const& component : vector->components) {
+                    auto component_path{path};
+                    component_path.push_back(component);
+                    auto const& column{column_for(model, component_path)};
+                    columns.push_back(call(
+                        named("view_column_data_unchecked<" + vector->element_type + ">"),
+                        {named("state_"),
+                         named("offset_"),
+                         call(member_access(named("Layout::" + column.layout_identifier), "offset"),
+                              {named("blocks")})}));
+                }
+                columns.push_back(named("count_"));
+                children.new_lines(1).add(inline_function(FunctionSpec{
+                    .name = "view_" + member.name,
+                    .return_type = "auto",
+                    .body = {raw("using namespace ml::soa_storage_detail;"),
+                             ExpressionStmt{call(named("validate"))},
+                             IfStmt{binary(BinaryOperator::logical_or,
+                                           unary(UnaryOperator::logical_not, named("state_")),
+                                           unary(UnaryOperator::logical_not,
+                                                 pointer_member_access(named("state_"), "data_"))),
+                                    Block{{ReturnStmt{init_list({})}}}},
+                             VariableDeclarationStmt{
+                                 "auto const",
+                                 "blocks",
+                                 call(named("view_capacity_blocks"), {named("state_")})},
+                             ReturnStmt{init_list(std::move(columns))}},
+                    .qualifiers = {.trailing_return_type = view_type, .is_const = true},
+                }));
+                continue;
+            }
+
             auto first_path{path};
             first_path.push_back(vector->components[0]);
             auto second_path{path};

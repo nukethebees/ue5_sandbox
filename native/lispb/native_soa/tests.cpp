@@ -568,11 +568,11 @@ TEST(NativeSoa, VectorViewContracts) {
     EXPECT_TRUE(view.right(0).zs().empty());
     using RotationView = native_soa::RotatorSoAView<double>;
     using RotationConstView = native_soa::RotatorSoAConstView<double>;
-    static_assert(soa_storage_detail::validate_compact_view<RotationView>());
-    static_assert(soa_storage_detail::validate_compact_view<RotationConstView>());
+    static_assert(sizeof(RotationView) == 32);
+    static_assert(sizeof(RotationConstView) == 32);
     static_assert(std::is_convertible_v<RotationView, RotationConstView>);
     static_assert(!std::is_convertible_v<RotationConstView, RotationView>);
-    RotationView rotations{values, 256, 4};
+    RotationView rotations{values, values + 32, values + 64, 4};
     auto const slice{rotations.slice(1, 2)};
     EXPECT_EQ(slice.pitches().data(), values + 1);
     EXPECT_EQ(slice.yaws().data(), values + 33);
@@ -580,7 +580,7 @@ TEST(NativeSoa, VectorViewContracts) {
     slice.rolls()[1] = 19.;
     EXPECT_EQ(values[66], 19.);
     EXPECT_EQ(slice.get_const_view().rolls()[1], 19.);
-    EXPECT_EQ(slice.byte_stride(), 256);
+    EXPECT_EQ(slice[1], (std::array<double, 3>{values[2], values[34], 19.}));
     EXPECT_EQ(slice.num(), 2);
     EXPECT_EQ(rotations.right(0).rolls().data(), values + 68);
     EXPECT_EQ(RotationView{}.slice(0, 0).rolls().data(), nullptr);
@@ -620,8 +620,10 @@ TEST(NativeSoa, CompactViewsAndBulkAppend) {
     using Owner = SingleRows;
     static_assert(soa_storage_detail::validate_compact_view<Owner::View>());
     static_assert(soa_storage_detail::validate_compact_view<Owner::ConstView>());
-    static_assert(std::is_same_v<decltype(std::declval<Owner::View>().view_positions()),
-                                 native_soa::Vector3View<float>>);
+    static_assert(
+        std::is_same_v<decltype(std::declval<Owner::View>().view_positions()), Vector3fSoAView>);
+    static_assert(std::is_same_v<decltype(std::declval<Owner::ConstView>().view_positions()),
+                                 Vector3fSoAConstView>);
     Owner source{test_resource()};
     source.set_num(129);
     auto view{source.get_view()};
