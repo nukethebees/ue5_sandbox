@@ -12,6 +12,24 @@ template <typename Storage, int ExpectedBits>
            std::numeric_limits<Storage>::digits == ExpectedBits;
 }
 
+template <typename Enum, int Bits>
+[[nodiscard]] constexpr auto valid_packed_enum() noexcept -> bool {
+    if constexpr (std::is_enum_v<Enum>) {
+        using Underlying = std::underlying_type_t<Enum>;
+        return std::is_unsigned_v<Underlying> && std::numeric_limits<Underlying>::digits >= Bits;
+    } else {
+        return false;
+    }
+}
+
+template <typename T>
+[[nodiscard]] consteval auto valid_packed_value_layout() noexcept -> bool {
+    static_assert(sizeof(T) == sizeof(typename T::storage_type));
+    static_assert(std::is_trivially_copyable_v<T>);
+    static_assert(std::is_standard_layout_v<T>);
+    return true;
+}
+
 template <typename Storage, typename Value, int Offset, int Bits>
 struct PackedField {
     using storage_type = Storage;
@@ -33,9 +51,7 @@ struct PackedField {
                            (std::is_signed_v<UnqualifiedValue> ? 1 : 0) >=
                        Bits;
             } else if constexpr (std::is_enum_v<UnqualifiedValue>) {
-                using Underlying = std::underlying_type_t<UnqualifiedValue>;
-                return std::is_unsigned_v<Underlying> &&
-                       std::numeric_limits<Underlying>::digits >= Bits;
+                return valid_packed_enum<UnqualifiedValue, Bits>();
             } else {
                 return false;
             }
