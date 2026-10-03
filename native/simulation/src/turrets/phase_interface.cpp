@@ -17,11 +17,11 @@ void PhaseInterface::prepare_tick(float const dt) {
     simulation.prepare_tick(dt);
 }
 
-void PhaseInterface::think(float const dt, ml::FrameScratchResource& scratch_resource) {
+void PhaseInterface::think(float const dt, ml::FrameMemoryResource* const scratch_resource) {
     simulation.think(dt, scratch_resource);
 }
 
-void PhaseInterface::generate_fire_commands(ml::FrameScratchResource& scratch_resource) {
+void PhaseInterface::generate_fire_commands(ml::FrameMemoryResource* const scratch_resource) {
     simulation.generate_fire_commands(scratch_resource);
 }
 

@@ -107,7 +107,7 @@
     (method begin_play void)
     (method simulate void
       (parameter dt "float const")
-      (parameter scratch_resource "ml::FrameScratchResource&"))
+      (parameter scratch_resource "ml::FrameMemoryResource* const"))
     (method commit_spawns void)
     (method cleanup_entities void)
     (method finish_action void)))
@@ -130,7 +130,7 @@
       (parameter dt "float const"))
     (method think void
       (parameter dt "float const")
-      (parameter scratch_resource "ml::FrameScratchResource&"))
+      (parameter scratch_resource "ml::FrameMemoryResource* const"))
     (method resolve_damage_events void)
     (method resolve_fighters_of_dying_capitals void)
     (method publish_deaths void)
@@ -157,14 +157,14 @@
       (parameter dt "float const"))
     (method think void
       (parameter dt "float const")
-      (parameter scratch_resource "ml::FrameScratchResource&"))
+      (parameter scratch_resource "ml::FrameMemoryResource* const"))
     (method apply_movement void
-      (parameter scratch_resource "ml::FrameScratchResource&"))
+      (parameter scratch_resource "ml::FrameMemoryResource* const"))
     (method generate_fire_commands void
-      (parameter scratch_resource "ml::FrameScratchResource&"))
+      (parameter scratch_resource "ml::FrameMemoryResource* const"))
     (method commit_spawns void)
     (method resolve_damage_events void
-      (parameter scratch_resource "ml::FrameScratchResource&"))
+      (parameter scratch_resource "ml::FrameMemoryResource* const"))
     (method publish_deaths void)
     (method remove_components void)
     (method remove_entities void)
@@ -188,9 +188,9 @@
       (parameter dt "float const"))
     (method think void
       (parameter dt "float const")
-      (parameter scratch_resource "ml::FrameScratchResource&"))
+      (parameter scratch_resource "ml::FrameMemoryResource* const"))
     (method generate_fire_commands void
-      (parameter scratch_resource "ml::FrameScratchResource&"))
+      (parameter scratch_resource "ml::FrameMemoryResource* const"))
     (method resolve_damage_events void)
     (method publish_deaths void)
     (method remove_components void)
@@ -216,6 +216,6 @@
     (method think void
       (parameter dt "float const"))
     (method apply_movement void
-      (parameter scratch_resource "ml::FrameScratchResource&"))
+      (parameter scratch_resource "ml::FrameMemoryResource* const"))
     (method generate_fire_commands void)
     (method finish_action void)))

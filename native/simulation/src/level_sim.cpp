@@ -358,7 +358,7 @@ void LevelSim::advance(time_type const dt) {
         /* -------------------------------------------------------------------------------- */
         {
             ml::FrameScratchScope scratch_scope{frame_memory_};
-            auto& scratch_resource{scratch_scope.scratch()};
+            auto* const scratch_resource{&frame_memory_};
 
             SANDBOX_PROFILE_SCOPE("Thinking");
             query_manager::ScratchScope query_scratch{query_manager_, scratch_resource};
@@ -403,8 +403,8 @@ void LevelSim::advance(time_type const dt) {
             // Simulate projectiles
             {
                 ml::FrameScratchScope scratch_scope{frame_memory_};
-                query_manager::ScratchScope query_scratch{query_manager_, scratch_scope.scratch()};
-                lasers_phase_.simulate(tick_period, scratch_scope.scratch());
+                query_manager::ScratchScope query_scratch{query_manager_, &frame_memory_};
+                lasers_phase_.simulate(tick_period, &frame_memory_);
             }
 
             // Track player movement
@@ -429,7 +429,7 @@ void LevelSim::advance(time_type const dt) {
             // Move dynamic entities
             {
                 ml::FrameScratchScope scratch_scope{frame_memory_};
-                auto& scratch_resource{scratch_scope.scratch()};
+                auto* const scratch_resource{&frame_memory_};
                 fighters_phase_.apply_movement(scratch_resource);
                 spinners_phase_.apply_movement(scratch_resource);
             }
@@ -452,7 +452,7 @@ void LevelSim::advance(time_type const dt) {
                 auto const overlaps{
                     // Detection creates a new scratch-backed result for this tick.
                     // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-                    query_manager_.detect_overlaps(overlap_candidates_, scratch_scope.scratch())};
+                    query_manager_.detect_overlaps(overlap_candidates_, &frame_memory_)};
                 overlap_handler_.handle(overlaps);
             }
         }
@@ -468,14 +468,14 @@ void LevelSim::advance(time_type const dt) {
                 ml::FrameScratchScope scratch_scope{frame_memory_};
 
                 // Prepare combat events
-                combat_events_.prepare(entity_tables_.lookups, scratch_scope.scratch());
+                combat_events_.prepare(entity_tables_.lookups, &frame_memory_);
 
                 // Resolve damage
                 if (player_active) {
                     player_ship_phase_->resolve_damage_events();
                 }
                 capital_ships_phase_.resolve_damage_events();
-                fighters_phase_.resolve_damage_events(scratch_scope.scratch());
+                fighters_phase_.resolve_damage_events(&frame_memory_);
                 turrets_phase_.resolve_damage_events();
                 capital_ships_phase_.resolve_fighters_of_dying_capitals();
 
@@ -509,7 +509,7 @@ void LevelSim::advance(time_type const dt) {
                 fighters_phase_.remove_entities();
                 turrets_phase_.remove_entities();
                 lasers_phase_.cleanup_entities();
-                capital_ships_simulation_.refresh_fighter_ids(scratch_scope.scratch());
+                capital_ships_simulation_.refresh_fighter_ids(&frame_memory_);
 
                 // Keep geometry-only queries valid between ticks after removing dead owners.
                 if (removed_entities) {

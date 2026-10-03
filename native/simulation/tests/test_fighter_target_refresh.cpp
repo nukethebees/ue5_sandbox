@@ -61,14 +61,14 @@ class FighterTargetRefresh : public ::testing::Test {
     auto think() -> std::uint64_t {
         auto const before{memory.get_stats().current_root_claim_count};
         ml::FrameScratchScope scope{memory};
-        LevelSimTestAccess::think_fighters(simulation, scope.scratch());
+        LevelSimTestAccess::think_fighters(simulation, &memory);
         return memory.get_stats().current_root_claim_count - before;
     }
 
     auto single_refresh_and_plan() -> std::uint64_t {
         auto const before{memory.get_stats().current_root_claim_count};
         ml::FrameScratchScope scope{memory};
-        LevelSimTestAccess::refresh_fighter_targets_and_plan(simulation, scope.scratch());
+        LevelSimTestAccess::refresh_fighter_targets_and_plan(simulation, &memory);
         return memory.get_stats().current_root_claim_count - before;
     }
 
@@ -107,7 +107,7 @@ class FighterTargetRefresh : public ::testing::Test {
         damage.damage_amounts[0] = 100;
         LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
         ml::FrameScratchScope scope{memory};
-        LevelSimTestAccess::resolve_fighter_damage(simulation, scope.scratch());
+        LevelSimTestAccess::resolve_fighter_damage(simulation, &memory);
     }
 
     void expect_cleared_target() {

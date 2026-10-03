@@ -99,7 +99,7 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
     ml::FrameScratchScope scope{memory};
     OverlapHandler handler{owners.combat_events, {}};
     handler.handle({first_pairs.get_const_view(), {}});
-    owners.combat_events.prepare(owners.entity_tables.lookups, scope.scratch());
+    owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
 
     auto const first_damage{owners.combat_events.all_events().get_const_view()};
     EXPECT_EQ(first_damage.num(), 3) << "Only the live supported endpoint is damaged per pair";
@@ -120,7 +120,7 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
         columns.second_entities()[index] = doomed;
     }
     handler.handle({retired_pair.get_const_view(), {}});
-    owners.combat_events.prepare(owners.entity_tables.lookups, scope.scratch());
+    owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
     auto const second_damage{owners.combat_events.all_events().get_const_view()};
     EXPECT_EQ(second_damage.num(), 1) << "Retired endpoint is skipped independently";
     EXPECT_TRUE(second_damage.damaged_entities[0] != replacement)
@@ -131,7 +131,7 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
     owners.health_table.get_view<EntityType::Fighter>(fighter_data.num()).set_health(0, 0);
     owners.publish();
     handler.handle({retired_pair.get_const_view(), {}});
-    owners.combat_events.prepare(owners.entity_tables.lookups, scope.scratch());
+    owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
     EXPECT_EQ(owners.combat_events.all_events().num(), 0);
 }
 

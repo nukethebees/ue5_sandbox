@@ -65,7 +65,7 @@ struct Sim {
     void begin_play();
     void commit_spawns();
     void cleanup_entities();
-    void simulate(float dt, ml::FrameScratchResource& scratch_resource);
+    void simulate(float dt, ml::FrameMemoryResource* const scratch_resource);
     void finish_action();
 
     /* **************************************** */
@@ -77,9 +77,9 @@ struct Sim {
     /* **************************************** */
     // Movement and collision
     /* **************************************** */
-    void expire_instances(float dt, ml::FrameScratchResource& scratch_resource);
+    void expire_instances(float dt, ml::FrameMemoryResource* const scratch_resource);
     void update_locations(float dt);
-    void handle_collisions(float dt, ml::FrameScratchResource& scratch_resource);
+    void handle_collisions(float dt, ml::FrameMemoryResource* const scratch_resource);
     void remove_instances(std::span<std::uint32_t const> indices);
 
     /* **************************************** */

@@ -21,7 +21,7 @@ void PhaseInterface::think(float const dt) {
     simulation.think(dt);
 }
 
-void PhaseInterface::apply_movement(ml::FrameScratchResource& scratch_resource) {
+void PhaseInterface::apply_movement(ml::FrameMemoryResource* const scratch_resource) {
     simulation.apply_movement(scratch_resource);
 }
 

@@ -219,21 +219,21 @@ TEST(NativeCoreFrameMemoryResource, ScratchScopesReclaimAndCleanUpDuringExceptio
     void* first{};
     {
         ml::FrameScratchScope scope{resource};
-        first = scope.scratch().allocate(128, 16);
-        scope.scratch().deallocate(first, 128, 16);
+        first = resource.allocate(128, 16);
+        resource.deallocate(first, 128, 16);
     }
     EXPECT_EQ(resource.get_stats().current_claimed_bytes, 0);
 
     {
         ml::FrameScratchScope scope{resource};
-        auto* const reused{scope.scratch().allocate(64, 16)};
+        auto* const reused{resource.allocate(64, 16)};
         EXPECT_EQ(reused, first);
-        scope.scratch().deallocate(reused, 64, 16);
+        resource.deallocate(reused, 64, 16);
     }
 
     try {
         ml::FrameScratchScope scope{resource};
-        ml::FrameArray<std::int32_t> values{&scope.scratch()};
+        ml::FrameArray<std::int32_t> values{&resource};
         values.set_num(16);
         throw 7;
     } catch (std::int32_t const value) {

@@ -30,7 +30,7 @@ class UniqueCellMembership : public ::testing::Test {
     alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024> backing{};
     ml::FrameMemoryResource memory{backing};
     ml::FrameScratchScope scope{memory};
-    ml::FrameArray<EntityUniqueId> output{&scope.scratch()};
+    ml::FrameArray<EntityUniqueId> output{&memory};
 };
 
 TEST_F(UniqueCellMembership, EmptyInputAndEmptyCellsReplacePreviousOutput) {

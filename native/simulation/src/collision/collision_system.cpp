@@ -50,11 +50,11 @@ void CollisionSystem::refresh_spatial_index() {
 // Overlap detection
 /* **************************************** */
 auto CollisionSystem::detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates,
-                                      ml::FrameScratchResource& scratch_resource)
+                                      ml::FrameMemoryResource* const scratch_resource)
     -> DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::detect_overlaps");
-    EntityEntityOverlaps entity_overlaps{&scratch_resource};
-    EntityStaticOverlaps static_overlaps{&scratch_resource};
+    EntityEntityOverlaps entity_overlaps{scratch_resource};
+    EntityStaticOverlaps static_overlaps{scratch_resource};
     collect_overlaps_for_candidates(
         overlap_candidates, entity_overlaps, static_overlaps, scratch_resource);
 
@@ -70,7 +70,7 @@ void CollisionSystem::collect_overlaps_for_candidates(
     std::span<EntityUniqueId const> const overlap_candidates,
     EntityEntityOverlaps& entity_overlaps,
     EntityStaticOverlaps& static_overlaps,
-    ml::FrameScratchResource& scratch_resource) {
+    ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::collect_overlaps_for_candidates");
 
     if (overlap_candidates.empty()) {
@@ -79,17 +79,17 @@ void CollisionSystem::collect_overlaps_for_candidates(
 
     assert(std::in_range<std::uint32_t>(overlap_candidates.size()));
     auto const candidate_count{static_cast<std::uint32_t>(overlap_candidates.size())};
-    ml::FrameArray<WorldAABB> bounds{&scratch_resource};
-    ml::FrameArray<CollisionUniformGrid::OverlapCounts> counts{&scratch_resource};
-    ml::FrameArray<CollisionUniformGrid::OverlapCounts> offsets{&scratch_resource};
+    ml::FrameArray<WorldAABB> bounds{scratch_resource};
+    ml::FrameArray<CollisionUniformGrid::OverlapCounts> counts{scratch_resource};
+    ml::FrameArray<CollisionUniformGrid::OverlapCounts> offsets{scratch_resource};
     bounds.set_num(candidate_count);
     counts.set_num(candidate_count);
     offsets.set_num(candidate_count);
 
     FrameVectors3f locations{scratch_resource};
-    ml::FrameArray<Rotator3f> rotations{&scratch_resource};
-    ml::FrameArray<std::uint8_t> alive{&scratch_resource};
-    ml::FrameArray<std::uint32_t> order{&scratch_resource};
+    ml::FrameArray<Rotator3f> rotations{scratch_resource};
+    ml::FrameArray<std::uint8_t> alive{scratch_resource};
+    ml::FrameArray<std::uint32_t> order{scratch_resource};
     locations.set_num(candidate_count);
     rotations.set_num(candidate_count);
     alive.set_num(candidate_count);
@@ -183,12 +183,12 @@ void CollisionSystem::collect_overlaps_for_candidates(
 }
 void CollisionSystem::finalize_overlaps(EntityEntityOverlaps& entity_overlaps,
                                         EntityStaticOverlaps& static_overlaps,
-                                        ml::FrameScratchResource& scratch_resource) {
+                                        ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::finalize_overlaps");
     auto const entity_overlap_count{entity_overlaps.num()};
     auto const static_overlap_count{static_overlaps.num()};
     auto const sort_index_count{std::max(entity_overlap_count, static_overlap_count)};
-    ml::FrameArray<std::int32_t> sort_indices{&scratch_resource};
+    ml::FrameArray<std::int32_t> sort_indices{scratch_resource};
     sort_indices.reserve(sort_index_count);
 
     auto const entity_columns{entity_overlaps.get_view()};

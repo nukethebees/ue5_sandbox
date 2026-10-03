@@ -5,15 +5,15 @@
 #include "ioj/sim/frame_vectors3f.h"
 
 #include "sandbox/core/frame_array.h"
-#include "sandbox/core/frame_memory_resource.h"
 
 #include <cassert>
+#include <memory_resource>
 
 namespace ioj::sim::fighters {
 struct FrameSpawnQueue {
     using soa_schema = FighterSpawnQueue::soa_schema;
 
-    explicit FrameSpawnQueue(ml::FrameScratchResource& scratch_resource);
+    explicit FrameSpawnQueue(std::pmr::memory_resource* const scratch_resource);
     void reserve(std::uint32_t count);
     void clear();
     void add(Vector3f location,

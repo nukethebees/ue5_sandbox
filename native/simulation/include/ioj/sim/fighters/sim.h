@@ -146,11 +146,11 @@ struct Sim {
     void begin_play();
     void update_entity_lookup_table();
     void prepare_tick(float dt);
-    void think(float dt, ml::FrameScratchResource& scratch_resource);
-    void plan_movement(float dt, ml::FrameScratchResource& scratch_resource);
-    void apply_movement(ml::FrameScratchResource& scratch_resource);
-    void generate_fire_commands(ml::FrameScratchResource& scratch_resource);
-    void resolve_damage_events(ml::FrameScratchResource& scratch_resource);
+    void think(float dt, ml::FrameMemoryResource* const scratch_resource);
+    void plan_movement(float dt, ml::FrameMemoryResource* const scratch_resource);
+    void apply_movement(ml::FrameMemoryResource* const scratch_resource);
+    void generate_fire_commands(ml::FrameMemoryResource* const scratch_resource);
+    void resolve_damage_events(ml::FrameMemoryResource* const scratch_resource);
     void publish_deaths();
     void remove_components();
     void remove_entities();
@@ -170,8 +170,8 @@ struct Sim {
     /* **************************************** */
     // Movement
     /* **************************************** */
-    void move(float dt, TaskView fighters, ml::FrameScratchResource& scratch_resource);
-    void update_navigation_steering(ml::FrameScratchResource& scratch_resource);
+    void move(float dt, TaskView fighters, ml::FrameMemoryResource* const scratch_resource);
+    void update_navigation_steering(ml::FrameMemoryResource* const scratch_resource);
     void collect_navigation_updates(NavigationScratch& scratch);
     void update_separation_observations(NavigationScratch& scratch);
     void apply_separation_steering();
@@ -191,7 +191,7 @@ struct Sim {
     /* **************************************** */
     // Combat
     /* **************************************** */
-    void handle_firing(TaskView data, ml::FrameScratchResource& scratch_resource);
+    void handle_firing(TaskView data, ml::FrameMemoryResource* const scratch_resource);
 
     /* **************************************** */
     // Spawning
@@ -218,7 +218,7 @@ struct Sim {
     /* **************************************** */
     void set_target_id_unchecked(std::uint32_t fighter_index, EntityUniqueId new_target) noexcept;
     void set_target_id(EntityUniqueId fighter, EntityUniqueId new_target) noexcept;
-    void refresh_target_data(ml::FrameScratchResource& scratch_resource);
+    void refresh_target_data(ml::FrameMemoryResource* const scratch_resource);
 
     /* **************************************** */
     // Tasks

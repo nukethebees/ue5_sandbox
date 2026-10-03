@@ -4,9 +4,10 @@
 #include "ioj/sim/trace_hits.h"
 
 #include <cstdint>
+#include <memory_resource>
 namespace ioj::sim::lasers {
 struct FrameCollisionScratch {
-    explicit FrameCollisionScratch(ml::FrameScratchResource& scratch_resource);
+    explicit FrameCollisionScratch(std::pmr::memory_resource* const scratch_resource);
 
     FrameCollisionScratch(FrameCollisionScratch const&) = delete;
     FrameCollisionScratch(FrameCollisionScratch&&) = delete;

@@ -65,7 +65,7 @@ void Sim::prepare_tick(float const dt) {
     ml::tick_countdowns(entities.fighter_spawn_timers(), dt);
     update_entity_lookup_table();
 }
-void Sim::think(float const, ml::FrameScratchResource& scratch_resource) {
+void Sim::think(float const, ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::think");
 
     auto const entities{this->entities.get_view()};
@@ -73,8 +73,8 @@ void Sim::think(float const, ml::FrameScratchResource& scratch_resource) {
     auto const teams{entities.teams()};
 
     auto const target_count{static_cast<std::uint32_t>(target_ids.size())};
-    ml::FrameArray<std::uint32_t> order{&scratch_resource};
-    ml::FrameArray<std::uint8_t> alive{&scratch_resource};
+    ml::FrameArray<std::uint32_t> order{scratch_resource};
+    ml::FrameArray<std::uint8_t> alive{scratch_resource};
     order.set_num(target_count);
     alive.set_num(target_count);
     gather_entities(entity_tables_, target_ids, order, {.alive = alive});
@@ -84,7 +84,7 @@ void Sim::think(float const, ml::FrameScratchResource& scratch_resource) {
             target_ids[index] = {};
         }
     }
-    ml::FrameArray<std::uint32_t> indices_without_targets{&scratch_resource};
+    ml::FrameArray<std::uint32_t> indices_without_targets{scratch_resource};
     auto const n_capitals{static_cast<std::uint32_t>(target_ids.size())};
     indices_without_targets.reserve(n_capitals);
     for (std::uint32_t index{}; index < n_capitals; ++index) {
@@ -283,14 +283,14 @@ void Sim::spawn_ships(LevelCapitalSpawnEvents::ConstView const spawn_data) {
 auto Sim::get_fighter_spawn_slots() const noexcept -> std::uint32_t {
     return config.fighter_spawn_slots;
 }
-void Sim::queue_fighter_spawns(ml::FrameScratchResource& scratch_resource) {
+void Sim::queue_fighter_spawns(ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::queue_fighter_spawns");
     if (!diagnostics_enabled_) {}
 
     auto const entities{this->entities.get_view()};
 
     auto const n_capital_ships{get_num_instances()};
-    ml::FrameArray<std::uint32_t> ships_ready_to_spawn_fighters_indices{&scratch_resource};
+    ml::FrameArray<std::uint32_t> ships_ready_to_spawn_fighters_indices{scratch_resource};
     ships_ready_to_spawn_fighters_indices.set_num(n_capital_ships);
     ships_ready_to_spawn_fighters_indices.set_num(
         ml::kernel::collect_indices_less_equal(entities.fighter_spawn_timers().data(),
@@ -342,7 +342,7 @@ void Sim::queue_fighter_spawns(ml::FrameScratchResource& scratch_resource) {
         spawn_timers[capital_index] = spawn_cooldowns[capital_index];
     }
 }
-void Sim::refresh_fighter_ids(ml::FrameScratchResource& scratch_resource) {
+void Sim::refresh_fighter_ids(ml::FrameMemoryResource* const scratch_resource) {
     auto const membership_revision{fighters_interface.get_membership_revision()};
     auto const layout_revision{fighters_interface.get_layout_revision()};
     if (fighter_ids_current_ && fighter_membership_revision_ == membership_revision &&
@@ -356,12 +356,12 @@ void Sim::refresh_fighter_ids(ml::FrameScratchResource& scratch_resource) {
     auto const healths{fighters_interface.get_healths()};
     auto const capital_count{entities.num()};
     auto const fighter_count{static_cast<std::uint32_t>(ids.size())};
-    ml::FrameArray<std::uint32_t> counts{&scratch_resource};
-    ml::FrameArray<std::uint32_t> owners{&scratch_resource};
+    ml::FrameArray<std::uint32_t> counts{scratch_resource};
+    ml::FrameArray<std::uint32_t> owners{scratch_resource};
     counts.set_num(capital_count);
     owners.set_num(fighter_count);
     auto const capital_ids{entities.entity_ids()};
-    ml::FrameArray<std::uint32_t> capital_order{&scratch_resource};
+    ml::FrameArray<std::uint32_t> capital_order{scratch_resource};
     capital_order.set_num(capital_count);
     std::iota(capital_order.begin(), capital_order.end(), 0u);
     std::ranges::sort(capital_order, {}, [&](auto const row) { return capital_ids[row]; });
@@ -403,14 +403,14 @@ void Sim::refresh_fighter_ids(ml::FrameScratchResource& scratch_resource) {
 /* **************************************** */
 // Orders
 /* **************************************** */
-void Sim::queue_fighter_orders(ml::FrameScratchResource& scratch_resource) {
+void Sim::queue_fighter_orders(ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::queue_fighter_orders");
 
     auto const n_capitals{get_num_instances()};
     auto const fighter_targets{fighters_interface.get_target_ids()};
     auto const target_count{static_cast<std::uint32_t>(fighter_targets.size())};
-    ml::FrameArray<std::uint32_t> order{&scratch_resource};
-    ml::FrameArray<std::uint8_t> alive{&scratch_resource};
+    ml::FrameArray<std::uint32_t> order{scratch_resource};
+    ml::FrameArray<std::uint8_t> alive{scratch_resource};
     order.set_num(target_count);
     alive.set_num(target_count);
     gather_entities(entity_tables_, fighter_targets, order, {.alive = alive});

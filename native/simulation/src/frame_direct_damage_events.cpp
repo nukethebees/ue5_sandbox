@@ -1,10 +1,10 @@
 #include "ioj/sim/frame_direct_damage_events.h"
 
 namespace ioj::sim::lasers {
-FrameDirectDamageEvents::FrameDirectDamageEvents(ml::FrameScratchResource& scratch_resource)
-    : damaged_entities{&scratch_resource}
-    , damage_amounts{&scratch_resource}
-    , instigators{&scratch_resource} {}
+FrameDirectDamageEvents::FrameDirectDamageEvents(std::pmr::memory_resource* const scratch_resource)
+    : damaged_entities{scratch_resource}
+    , damage_amounts{scratch_resource}
+    , instigators{scratch_resource} {}
 
 void FrameDirectDamageEvents::reserve(std::uint32_t const count) {
     damaged_entities.reserve(count);

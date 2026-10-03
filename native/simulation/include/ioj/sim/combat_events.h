@@ -3,6 +3,8 @@
 #include <ioj/sim/damage_queue.h>
 #include <ioj/sim/entity_ledger.h>
 
+#include <sandbox/core/frame_memory_resource.h>
+
 namespace ioj::sim {
 // Tick-local damage transport. Owning simulations record applied damage during resolution.
 class CombatEvents {
@@ -18,7 +20,8 @@ class CombatEvents {
     void record_shots(std::span<EntityUniqueId const> instigators) {
         ledger_.record_shots(instigators);
     }
-    void prepare(EntityLookupTables const& indexes, ml::FrameScratchResource& scratch_resource) {
+    void prepare(EntityLookupTables const& indexes,
+                 ml::FrameMemoryResource* const scratch_resource) {
         damage_.prepare(indexes, scratch_resource);
     }
     auto events_for(EntityType type) const -> DirectDamageEventsConstView {

@@ -47,7 +47,7 @@ TEST(DamageQueue, GroupsMixedOwnerEventsAndFiltersRetiredRecipients) {
     ml::FrameMemoryResource frame_memory{backing};
     {
         ml::FrameScratchScope scratch_scope{frame_memory};
-        queue.prepare(indexes, scratch_scope.scratch());
+        queue.prepare(indexes, &frame_memory);
     }
 
     auto const turret_events{queue.events_for(EntityType::Turret)};
@@ -102,7 +102,7 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     ml::FrameMemoryResource frame_memory{backing};
     {
         ml::FrameScratchScope scratch_scope{frame_memory};
-        events.prepare(indexes, scratch_scope.scratch());
+        events.prepare(indexes, &frame_memory);
     }
     ASSERT_EQ(events.all_events().num(), 3);
 

@@ -4,14 +4,14 @@
 #include "ioj/sim/rotators3f.h"
 
 #include "sandbox/core/frame_array.h"
-#include "sandbox/core/frame_memory_resource.h"
 
 #include <cassert>
 #include <cstdint>
+#include <memory_resource>
 
 namespace ioj::sim {
 struct FrameRotators3f {
-    explicit FrameRotators3f(ml::FrameScratchResource& scratch_resource);
+    explicit FrameRotators3f(std::pmr::memory_resource* const scratch_resource);
 
     FrameRotators3f(FrameRotators3f const&) = delete;
     FrameRotators3f(FrameRotators3f&&) = delete;

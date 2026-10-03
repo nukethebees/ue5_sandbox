@@ -7,16 +7,16 @@
 #include "ioj/sim/laser_source.h"
 
 #include "sandbox/core/frame_array.h"
-#include "sandbox/core/frame_memory_resource.h"
 
 #include <cassert>
 #include <cstdint>
+#include <memory_resource>
 
 namespace ioj::sim::lasers {
 struct FrameSpawnRequests {
     using soa_schema = LaserSpawnRequests::soa_schema;
 
-    explicit FrameSpawnRequests(ml::FrameScratchResource& scratch_resource);
+    explicit FrameSpawnRequests(std::pmr::memory_resource* const scratch_resource);
 
     FrameSpawnRequests(FrameSpawnRequests const&) = delete;
     FrameSpawnRequests(FrameSpawnRequests&&) = delete;

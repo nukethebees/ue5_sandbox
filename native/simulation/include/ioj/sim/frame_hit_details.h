@@ -6,16 +6,16 @@
 #include "ioj/sim/vector_types.h"
 
 #include "sandbox/core/frame_array.h"
-#include "sandbox/core/frame_memory_resource.h"
 
 #include <cassert>
 #include <cstdint>
+#include <memory_resource>
 
 namespace ioj::sim::lasers {
 struct FrameHitDetails {
     using soa_schema = LaserHitDetails::soa_schema;
 
-    explicit FrameHitDetails(ml::FrameScratchResource& scratch_resource);
+    explicit FrameHitDetails(std::pmr::memory_resource* const scratch_resource);
 
     FrameHitDetails(FrameHitDetails const&) = delete;
     FrameHitDetails(FrameHitDetails&&) = delete;

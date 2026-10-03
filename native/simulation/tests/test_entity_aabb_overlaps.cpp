@@ -35,7 +35,7 @@ struct OverlapFixture {
         {
             ml::FrameScratchScope scratch_scope{frame_memory};
             try {
-                query_manager.detect_overlaps(overlap_candidates, scratch_scope.scratch());
+                query_manager.detect_overlaps(overlap_candidates, &frame_memory);
             } catch (std::bad_alloc const&) {
                 auto const stats{frame_memory.get_stats()};
                 ADD_FAILURE() << "Frame overflow count: " << stats.overflow_count
@@ -307,7 +307,7 @@ TEST(EntityAABBOverlaps, DetectOverlapsUsesExistingSpatialIndex) {
     {
         ml::FrameScratchScope scratch_scope{fixture.frame_memory};
         auto const overlaps{
-            fixture.query_manager.detect_overlaps(candidates, scratch_scope.scratch())};
+            fixture.query_manager.detect_overlaps(candidates, &fixture.frame_memory)};
         EXPECT_EQ(overlaps.entity_entity_overlaps.num(), 0);
     }
 
@@ -315,7 +315,7 @@ TEST(EntityAABBOverlaps, DetectOverlapsUsesExistingSpatialIndex) {
     {
         ml::FrameScratchScope scratch_scope{fixture.frame_memory};
         auto const overlaps{
-            fixture.query_manager.detect_overlaps(candidates, scratch_scope.scratch())};
+            fixture.query_manager.detect_overlaps(candidates, &fixture.frame_memory)};
         check_single_pair(overlaps.entity_entity_overlaps, candidate, stationary);
     }
 

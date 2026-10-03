@@ -139,7 +139,7 @@ TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
     ml::FrameMemoryResource frame_memory{
         std::span<std::byte>{frame_block.data(), frame_block.size_bytes()}};
     ml::FrameScratchScope scratch_scope{frame_memory};
-    auto& scratch_resource{scratch_scope.scratch()};
+    auto* const scratch_resource{&frame_memory};
     lasers::FrameHitDetails first_batch{scratch_resource};
     for (std::int32_t index{}; index < 65; ++index) {
         first_batch.add(HMM_V3(static_cast<float>(index), 1.f, 2.f),

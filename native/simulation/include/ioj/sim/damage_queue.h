@@ -15,7 +15,8 @@ class DamageQueue {
         events_.reset();
         spans_ = {};
     }
-    void prepare(EntityLookupTables const& indexes, ml::FrameScratchResource& scratch_resource);
+    void prepare(EntityLookupTables const& indexes,
+                 ml::FrameMemoryResource* const scratch_resource);
     auto events_for(EntityType type) const -> DirectDamageEventsConstView {
         auto const span{spans_[type]};
         return events_.get_const_view(span.offset, span.count);

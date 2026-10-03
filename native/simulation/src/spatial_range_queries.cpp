@@ -5,6 +5,7 @@
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/team_checks.h>
 
+#include <sandbox/core/frame_memory_resource.h>
 #include <sandbox/core/parallel_for.h>
 
 #include <oneapi/tbb/blocked_range.h>
@@ -33,10 +34,10 @@ struct Match {
 };
 
 struct WorkerScratch {
-    explicit WorkerScratch(ml::FrameScratchResource& scratch_resource,
+    explicit WorkerScratch(std::pmr::memory_resource* const scratch_resource,
                            EntityCount const entity_count)
-        : query_buffers{&scratch_resource}
-        , matches{&scratch_resource} {
+        : query_buffers{scratch_resource}
+        , matches{scratch_resource} {
         query_buffers.ensure_entity_stamp_count(entity_count);
     }
 
@@ -143,7 +144,7 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
     std::span<Team const> const teams,
     float const radius,
     FrameRangeQueryResults& out_results,
-    ml::FrameScratchResource& scratch_resource) const {
+    ml::FrameMemoryResource* const scratch_resource) const {
     using namespace range_query;
 
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::collect_non_team_entities_in_range_batch");
@@ -163,8 +164,8 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
     constexpr RequestCount grain_size{64};
     auto const concurrency{ml::task_arena_concurrency(request_count, grain_size)};
     tbb::task_arena arena{concurrency};
-    ml::FrameArray<WorkerScratch> workers{&scratch_resource};
-    ml::FrameArray<MatchSource> match_sources{&scratch_resource};
+    ml::FrameArray<WorkerScratch> workers{scratch_resource};
+    ml::FrameArray<MatchSource> match_sources{scratch_resource};
     EntityTypeSizes entity_offsets;
 
     {

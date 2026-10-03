@@ -89,25 +89,7 @@ class FrameMemoryResource final : public std::pmr::memory_resource {
     bool epoch_active_{};
 };
 
-class FrameScratchResource final : public std::pmr::memory_resource {
-  public:
-    FrameScratchResource(FrameScratchResource const&) = delete;
-    FrameScratchResource(FrameScratchResource&&) = delete;
-    auto operator=(FrameScratchResource const&) -> FrameScratchResource& = delete;
-    auto operator=(FrameScratchResource&&) -> FrameScratchResource& = delete;
-  private:
-    friend class FrameScratchScope;
-
-    explicit FrameScratchResource(FrameMemoryResource& resource) noexcept
-        : resource_{resource} {}
-
-    auto do_allocate(std::size_t bytes, std::size_t alignment) -> void* override;
-    void do_deallocate(void* pointer, std::size_t bytes, std::size_t alignment) override;
-    auto do_is_equal(std::pmr::memory_resource const& other) const noexcept -> bool override;
-
-    FrameMemoryResource& resource_;
-};
-
+// End the epoch after its containers are destroyed and all parallel work has completed.
 class FrameScratchScope final {
   public:
     explicit FrameScratchScope(FrameMemoryResource& resource);
@@ -117,10 +99,7 @@ class FrameScratchScope final {
     FrameScratchScope(FrameScratchScope&&) = delete;
     auto operator=(FrameScratchScope const&) -> FrameScratchScope& = delete;
     auto operator=(FrameScratchScope&&) -> FrameScratchScope& = delete;
-
-    auto scratch() noexcept -> FrameScratchResource& { return scratch_resource_; }
   private:
     FrameMemoryResource& resource_;
-    FrameScratchResource scratch_resource_;
 };
 }

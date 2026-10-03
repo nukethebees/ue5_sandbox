@@ -4,13 +4,13 @@
 #include "ioj/sim/entity_unique_id.h"
 
 #include "sandbox/core/frame_array.h"
-#include "sandbox/core/frame_memory_resource.h"
 
 #include <cstdint>
+#include <memory_resource>
 
 namespace ioj::sim::lasers {
 struct FrameDirectDamageEvents {
-    explicit FrameDirectDamageEvents(ml::FrameScratchResource& scratch_resource);
+    explicit FrameDirectDamageEvents(std::pmr::memory_resource* const scratch_resource);
 
     FrameDirectDamageEvents(FrameDirectDamageEvents const&) = delete;
     FrameDirectDamageEvents(FrameDirectDamageEvents&&) = delete;

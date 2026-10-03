@@ -29,8 +29,9 @@ struct SpinnerSpawnTestAccess {
     static void set_cooldown(Sim& simulation, std::int16_t const ticks) {
         simulation.cooldown_restart_ticks_ = ticks;
     }
-    static void
-        rotate(Sim& simulation, float const yaw_delta, ml::FrameScratchResource& scratch_resource) {
+    static void rotate(Sim& simulation,
+                       float const yaw_delta,
+                       ml::FrameMemoryResource* const scratch_resource) {
         simulation.planned_yaw_delta_ = yaw_delta;
         simulation.apply_movement(scratch_resource);
     }
@@ -117,7 +118,7 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
 
     {
         ml::FrameScratchScope scratch_scope{frame_memory};
-        Access::rotate(simulation, 5.f, scratch_scope.scratch());
+        Access::rotate(simulation, 5.f, &frame_memory);
     }
     auto const rotated_entities{entity_storage.get_const_view()};
     for (std::uint32_t i{}; i < count; ++i) {

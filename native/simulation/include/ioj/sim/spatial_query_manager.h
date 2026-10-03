@@ -21,7 +21,7 @@ struct SpatialQueryManagerTestAccess;
 }
 
 namespace ml {
-class FrameScratchResource;
+class FrameMemoryResource;
 }
 
 namespace ioj::sim::query_manager {
@@ -46,7 +46,7 @@ class ThreadBufferLease {
 // Enclose synchronous query work inside its owning FrameScratchScope.
 class ScratchScope {
   public:
-    ScratchScope(SpatialQueryManager& manager, ml::FrameScratchResource& scratch_resource);
+    ScratchScope(SpatialQueryManager& manager, ml::FrameMemoryResource* const scratch_resource);
     ~ScratchScope();
 
     ScratchScope(ScratchScope const&) = delete;
@@ -120,7 +120,7 @@ struct SpatialQueryManager {
                                             std::span<Team const> teams,
                                             float radius,
                                             FrameRangeQueryResults& out_results,
-                                            ml::FrameScratchResource& scratch_resource) const;
+                                            ml::FrameMemoryResource* const scratch_resource) const;
 
     /* **************************************** */
     // Scalar and entity queries
@@ -165,7 +165,7 @@ struct SpatialQueryManager {
         -> collision::StaticGeometryIndex;
     void refresh_spatial_index();
     auto detect_overlaps(std::span<EntityUniqueId const> overlap_candidates,
-                         ml::FrameScratchResource& scratch_resource)
+                         ml::FrameMemoryResource* const scratch_resource)
         -> collision::DetectedOverlapsView;
     void reset_frame_collision_events();
     auto get_aabb_overlap_events() const -> collision::AABBOverlapEventsView;

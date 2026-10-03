@@ -168,10 +168,11 @@ auto ThreadBufferLease::get() const -> ThreadBuffers& {
     return manager.thread_buffer_pool_.get(index);
 }
 
-ScratchScope::ScratchScope(SpatialQueryManager& manager, ml::FrameScratchResource& scratch_resource)
+ScratchScope::ScratchScope(SpatialQueryManager& manager,
+                           ml::FrameMemoryResource* const scratch_resource)
     : manager_{manager} {
     if (manager_.scratch_active_ ||
-        !manager_.thread_buffer_pool_.set_buffer_resource(&scratch_resource)) {
+        !manager_.thread_buffer_pool_.set_buffer_resource(scratch_resource)) {
         ml::fatal_error("Cannot bind query scratch with an active scope or leased buffers");
     }
     manager_.scratch_active_ = true;
@@ -572,7 +573,7 @@ void SpatialQueryManager::refresh_spatial_index() {
     collision_system_.refresh_spatial_index();
 }
 auto SpatialQueryManager::detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates,
-                                          ml::FrameScratchResource& scratch_resource)
+                                          ml::FrameMemoryResource* const scratch_resource)
     -> collision::DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::detect_overlaps");
 

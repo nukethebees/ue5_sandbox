@@ -6,7 +6,7 @@
 
 namespace ioj::sim {
 void DamageQueue::prepare(EntityLookupTables const& indexes,
-                          ml::FrameScratchResource& scratch_resource) {
+                          ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("DamageQueue::prepare");
     spans_ = {};
     auto const count{events_.num()};
@@ -39,7 +39,7 @@ void DamageQueue::prepare(EntityLookupTables const& indexes,
         groups += span.count > 0 ? 1 : 0;
     }
     if (groups > 1) {
-        ml::FrameArray<std::int32_t> order{&scratch_resource};
+        ml::FrameArray<std::int32_t> order{scratch_resource};
         order.set_num(live_count);
         for (std::uint32_t i{}; i < live_count; ++i) {
             auto const type{events_.damaged_entities[i].entity_type()};

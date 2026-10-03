@@ -34,7 +34,7 @@ class BulkRangeQueries : public ::testing::Test {
 
     void query(float const radius, FrameRangeQueryResults& output) {
         queries.collect_non_team_entities_in_range(
-            origins.get_const_view(), teams.view(), radius, output, scope.scratch());
+            origins.get_const_view(), teams.view(), radius, output, &memory);
     }
 
     void expect_scalar_matches(float const radius, FrameRangeQueryResults& output) {
@@ -87,8 +87,8 @@ class BulkRangeQueries : public ::testing::Test {
         ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 1024 * 1024> backing{};
     ml::FrameMemoryResource memory{backing};
     ml::FrameScratchScope scope{memory};
-    FrameVectors3f origins{scope.scratch()};
-    ml::FrameArray<Team> teams{&scope.scratch()};
+    FrameVectors3f origins{&memory};
+    ml::FrameArray<Team> teams{&memory};
 };
 
 TEST_F(BulkRangeQueries, OverlappingAndDisjointRequestsMatchScalarQueriesInInputOrder) {
@@ -114,7 +114,7 @@ TEST_F(BulkRangeQueries, OverlappingAndDisjointRequestsMatchScalarQueriesInInput
                 static_cast<Team>(index % ml::enum_count<Team>()));
     }
     request({{2000.f, 0.f, 0.f}}, Team::White);
-    FrameRangeQueryResults output{scope.scratch()};
+    FrameRangeQueryResults output{&memory};
     expect_scalar_matches(175.f, output);
 }
 
@@ -127,7 +127,7 @@ TEST_F(BulkRangeQueries, DenseMulticellMembershipIsUniqueAndHasNo128ResultLimit)
     rebuild();
     request({}, Team::Blue);
     request({{1.f, 0.f, 0.f}}, Team::Blue);
-    FrameRangeQueryResults output{scope.scratch()};
+    FrameRangeQueryResults output{&memory};
     expect_scalar_matches(20.f, output);
     ASSERT_EQ(output.ranges[0].count, count);
     ASSERT_EQ(output.ranges[1].count, count);
@@ -144,10 +144,10 @@ TEST_F(BulkRangeQueries, InclusiveNegativeAndZeroRadiusPreserveDirectionSemantic
     owners.spawn(EntityType::Fighter, {{5.01f, 0.f, 0.f}}, {}, 100, Team::Red);
     rebuild();
     request({}, Team::Blue);
-    FrameRangeQueryResults output{scope.scratch()};
+    FrameRangeQueryResults output{&memory};
     expect_scalar_matches(-5.f, output);
     EXPECT_EQ(output.ranges[0].count, 3u);
-    FrameRangeQueryResults zero_radius_output{scope.scratch()};
+    FrameRangeQueryResults zero_radius_output{&memory};
     expect_scalar_matches(0.f, zero_radius_output);
     EXPECT_EQ(zero_radius_output.ranges[0].count, 1u);
 }
@@ -156,13 +156,13 @@ TEST_F(BulkRangeQueries, EmptyRequestsAndEmptyResultsUseIndependentOutput) {
     auto const id{owners.spawn(EntityType::Fighter, {}, {}, 100, Team::Red)};
     rebuild();
     request({}, Team::Blue);
-    FrameRangeQueryResults output{scope.scratch()};
+    FrameRangeQueryResults output{&memory};
     expect_scalar_matches(10.f, output);
     ASSERT_EQ(output.entities.num(), 1u);
     EXPECT_EQ(output.entities[0], id);
 
     teams[0] = Team::Red;
-    FrameRangeQueryResults same_team_output{scope.scratch()};
+    FrameRangeQueryResults same_team_output{&memory};
     expect_scalar_matches(10.f, same_team_output);
     EXPECT_TRUE(same_team_output.entities.is_empty());
     EXPECT_EQ(same_team_output.ranges[0].count, 0u);
@@ -170,14 +170,14 @@ TEST_F(BulkRangeQueries, EmptyRequestsAndEmptyResultsUseIndependentOutput) {
     origins.clear();
     teams.clear();
     request({{2000.f, 0.f, 0.f}}, Team::Blue);
-    FrameRangeQueryResults outside_grid_output{scope.scratch()};
+    FrameRangeQueryResults outside_grid_output{&memory};
     expect_scalar_matches(10.f, outside_grid_output);
     EXPECT_TRUE(outside_grid_output.entities.is_empty());
     EXPECT_EQ(outside_grid_output.ranges[0].offset, 0u);
 
     origins.clear();
     teams.clear();
-    FrameRangeQueryResults empty_output{scope.scratch()};
+    FrameRangeQueryResults empty_output{&memory};
     query(10.f, empty_output);
     EXPECT_TRUE(empty_output.ranges.is_empty());
     EXPECT_TRUE(empty_output.entities.is_empty());
@@ -193,7 +193,7 @@ TEST_F(BulkRangeQueries, EmptyGridHasOneEmptyRangePerRequest) {
     rebuild();
     request({}, Team::Blue);
     request({{200.f, 0.f, 0.f}}, Team::Red);
-    FrameRangeQueryResults output{scope.scratch()};
+    FrameRangeQueryResults output{&memory};
     expect_scalar_matches(10.f, output);
     EXPECT_TRUE(output.entities.is_empty());
 }

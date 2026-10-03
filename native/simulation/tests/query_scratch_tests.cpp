@@ -73,7 +73,7 @@ TEST(QueryScratch, ExhaustionDoesNotFallBackToHeap) {
     ml::FrameMemoryResource frame{backing};
     {
         ml::FrameScratchScope scope{frame};
-        QueryThreadBuffers buffers{&scope.scratch()};
+        QueryThreadBuffers buffers{&frame};
         EXPECT_THROW(buffers.line_traces.set_num(64), std::bad_alloc);
         EXPECT_TRUE(buffers.line_traces.is_empty());
         EXPECT_EQ(frame.get_stats().overflow_count, 1u);
@@ -117,11 +117,11 @@ TEST(QueryScratch, RejectsResourceChangesWhileLeasedAndReusesScratchWithinScope)
         ml::FrameScratchScope scope{frame.resource};
         auto const first{pool.try_acquire()};
         ASSERT_TRUE(first.has_value());
-        EXPECT_FALSE(pool.set_buffer_resource(&scope.scratch()));
+        EXPECT_FALSE(pool.set_buffer_resource(&frame.resource));
         EXPECT_EQ(pool.reserve(2), QueryThreadBufferReserveResult::active_queries);
         EXPECT_TRUE(pool.release(*first));
 
-        ASSERT_TRUE(pool.set_buffer_resource(&scope.scratch()));
+        ASSERT_TRUE(pool.set_buffer_resource(&frame.resource));
         auto const index{pool.try_acquire()};
         ASSERT_TRUE(index.has_value());
         query_scratch_detail::fill_buffers(pool.get(*index), 64);
@@ -149,7 +149,7 @@ TEST(QueryScratch, ConcurrentLeasesAllocateFromSharedFrameAndReleaseBeforeReclai
     query_scratch_detail::FrameBacking frame;
     {
         ml::FrameScratchScope scope{frame.resource};
-        ASSERT_TRUE(pool.set_buffer_resource(&scope.scratch()));
+        ASSERT_TRUE(pool.set_buffer_resource(&frame.resource));
         std::barrier start{4};
         std::array<std::jthread, 4> workers;
         for (auto& worker : workers) {
@@ -192,7 +192,7 @@ TEST(QueryScratch, ManagerBindsQueriesToEachEpochAndRestoresOutsideQueries) {
     for (int epoch{}; epoch < 3; ++epoch) {
         {
             ml::FrameScratchScope scratch_scope{frame.resource};
-            query_manager::ScratchScope query_scope{manager, scratch_scope.scratch()};
+            query_manager::ScratchScope query_scope{manager, &frame.resource};
             auto const persistent_allocations{persistent.allocations.load()};
             auto const bookkeeping_allocations{bookkeeping.allocations.load()};
             EXPECT_EQ(persistent.outstanding.load(), 0u);
@@ -224,7 +224,7 @@ TEST(QueryScratch, PublishedOverlapBatchesSurviveScratchEpochs) {
     for (int epoch{}; epoch < 3; ++epoch) {
         {
             ml::FrameScratchScope scratch_scope{frame.resource};
-            auto const overlaps{manager.detect_overlaps(ids, scratch_scope.scratch())};
+            auto const overlaps{manager.detect_overlaps(ids, &frame.resource)};
             ASSERT_EQ(overlaps.entity_entity_overlaps.num(), 1u);
             EXPECT_FALSE(
                 frame.resource.owns(overlaps.entity_entity_overlaps.first_entities().data()));

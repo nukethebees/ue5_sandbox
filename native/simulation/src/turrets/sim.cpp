@@ -187,11 +187,11 @@ void Sim::prepare_tick(float const) {
         entities.target_refresh_countdowns_remaining_ticks());
     update_entity_lookup_table();
 }
-void Sim::refresh_target_data(ml::FrameScratchResource& scratch_resource) {
+void Sim::refresh_target_data(ml::FrameMemoryResource* const scratch_resource) {
     auto const entities{this->entities.get_view()};
     auto const count{entities.num()};
-    ml::FrameArray<std::uint32_t> order{&scratch_resource};
-    ml::FrameArray<std::uint8_t> alive{&scratch_resource};
+    ml::FrameArray<std::uint32_t> order{scratch_resource};
+    ml::FrameArray<std::uint8_t> alive{scratch_resource};
     order.set_num(count);
     alive.set_num(count);
     auto const target_ids{entities.target_ids()};
@@ -211,13 +211,13 @@ void Sim::refresh_target_data(ml::FrameScratchResource& scratch_resource) {
         }
     }
 }
-void Sim::think(float const, ml::FrameScratchResource& scratch_resource) {
+void Sim::think(float const, ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::think");
     refresh_target_data(scratch_resource);
     perform_search();
     refresh_target_data(scratch_resource);
 }
-void Sim::generate_fire_commands(ml::FrameScratchResource& scratch_resource) {
+void Sim::generate_fire_commands(ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::generate_fire_commands");
 
     fire_at_enemies(scratch_resource);
@@ -390,12 +390,12 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
 /* **************************************** */
 // Attacking
 /* **************************************** */
-void Sim::fire_at_enemies(ml::FrameScratchResource& scratch_resource) {
+void Sim::fire_at_enemies(ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::fire_at_enemies");
 
     auto const count{get_num_instances()};
-    ml::FrameArray<std::uint32_t> candidate_indices{&scratch_resource};
-    ml::FrameArray<EntityUniqueId> hit_ids{&scratch_resource};
+    ml::FrameArray<std::uint32_t> candidate_indices{scratch_resource};
+    ml::FrameArray<EntityUniqueId> hit_ids{scratch_resource};
     FrameVectors3f starts{scratch_resource};
     FrameVectors3f ends{scratch_resource};
     candidate_indices.reserve(count);

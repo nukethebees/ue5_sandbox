@@ -64,7 +64,7 @@ class FighterMembershipRefresh : public ::testing::Test {
     auto refresh() -> std::uint64_t {
         auto const before{memory.get_stats().current_root_claim_count};
         ml::FrameScratchScope scope{memory};
-        LevelSimTestAccess::refresh_fighter_membership(simulation, scope.scratch());
+        LevelSimTestAccess::refresh_fighter_membership(simulation, &memory);
         return memory.get_stats().current_root_claim_count - before;
     }
 
@@ -110,7 +110,7 @@ class FighterMembershipRefresh : public ::testing::Test {
 
     void resolve() {
         ml::FrameScratchScope scope{memory};
-        LevelSimTestAccess::resolve_ship_damage(simulation, scope.scratch());
+        LevelSimTestAccess::resolve_ship_damage(simulation, &memory);
     }
 
     void order_task(EntityUniqueId const fighter, FighterTask const task) {
@@ -337,10 +337,10 @@ TEST_F(FighterMembershipRefresh, ReconstructedSimulationBuildsItsOwnEmptyCache) 
     reconstructed.finish_initialisation();
     ml::FrameScratchScope scope{memory};
     auto const before{memory.get_stats().current_root_claim_count};
-    LevelSimTestAccess::refresh_fighter_membership(reconstructed, scope.scratch());
+    LevelSimTestAccess::refresh_fighter_membership(reconstructed, &memory);
     EXPECT_GT(memory.get_stats().current_root_claim_count, before);
     auto const after{memory.get_stats().current_root_claim_count};
-    LevelSimTestAccess::refresh_fighter_membership(reconstructed, scope.scratch());
+    LevelSimTestAccess::refresh_fighter_membership(reconstructed, &memory);
     EXPECT_EQ(memory.get_stats().current_root_claim_count, after);
     EXPECT_TRUE(reconstructed.get_capital_ships().get_fighter_ids().empty());
 }

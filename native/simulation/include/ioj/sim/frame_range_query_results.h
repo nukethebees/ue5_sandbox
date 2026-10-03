@@ -4,15 +4,17 @@
 #include <ioj/sim/frame_vectors3f.h>
 #include <ioj/sim/index_span.h>
 
+#include <memory_resource>
+
 namespace ioj::sim {
 // Populate once per instance. Keep the result storage within its scratch epoch.
 // Each request owns a contiguous range of matches.
 struct FrameRangeQueryResults {
-    explicit FrameRangeQueryResults(ml::FrameScratchResource& scratch_resource)
-        : entities{&scratch_resource}
-        , distances{&scratch_resource}
+    explicit FrameRangeQueryResults(std::pmr::memory_resource* const scratch_resource)
+        : entities{scratch_resource}
+        , distances{scratch_resource}
         , directions{scratch_resource}
-        , ranges{&scratch_resource} {}
+        , ranges{scratch_resource} {}
 
     void set_num_matches(std::uint32_t const count) {
         entities.set_num(count);
