@@ -389,36 +389,15 @@ set_tests_properties(KernelNativeBenchmarkDryRun
   PROPERTIES LABELS "native-kernel-benchmark"
 )
 
-set(KERNEL_BENCHMARK_PLOT_TEST
-  "${PROJECT_SOURCE_DIR}/Scripts/test_plot_kernel_benchmarks.py"
-)
-set(KERNEL_BENCHMARK_UV_CACHE
-  "${PROJECT_SOURCE_DIR}/out/uv-cache"
-)
-set(KERNEL_BENCHMARK_MATPLOTLIB_CACHE
-  "${PROJECT_SOURCE_DIR}/out/matplotlib-cache"
-)
-set(KERNEL_BENCHMARK_TEST_TEMP
-  "${PROJECT_SOURCE_DIR}/out/test-temp"
-)
-file(MAKE_DIRECTORY
-  "${KERNEL_BENCHMARK_UV_CACHE}"
-  "${KERNEL_BENCHMARK_MATPLOTLIB_CACHE}"
-  "${KERNEL_BENCHMARK_TEST_TEMP}"
-)
-
 add_test(
   NAME KernelBenchmarkPlotTests
-  COMMAND "${Python3_EXECUTABLE}"
-    "${KERNEL_BENCHMARK_PLOT_TEST}"
-    "--uv=uv"
-    "--temporary-root=${KERNEL_BENCHMARK_TEST_TEMP}"
+  COMMAND "${IOJ_CARGO_EXECUTABLE}" test --locked --package benchmark-tools
+    --target-dir "${SANDBOX_RUST_TARGET_DIRECTORY}" plots::
 )
 set_tests_properties(KernelBenchmarkPlotTests PROPERTIES
   LABELS "kernel-benchmark-plot"
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  ENVIRONMENT
-    "UV_CACHE_DIR=${KERNEL_BENCHMARK_UV_CACHE};MPLCONFIGDIR=${KERNEL_BENCHMARK_MATPLOTLIB_CACHE};TMP=${KERNEL_BENCHMARK_TEST_TEMP};TEMP=${KERNEL_BENCHMARK_TEST_TEMP}"
+  WORKING_DIRECTORY "${SANDBOX_RUST_DIRECTORY}"
+  RESOURCE_LOCK rust-tools
 )
 
 add_dependencies(generate-code generate-kernel-code)

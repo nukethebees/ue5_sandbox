@@ -167,7 +167,7 @@ performs pinned rebase, cheap sanity checks, atomic dev promotion, refresh and c
 not select or rerun build/test gates. Resolve a conflicting final rebase with
 `coj git rebase dev`, validate, and retry.
 Validate shared tool build and registration changes with the CMake infrastructure checks.
-Python validation covers repository-owned Python under `Scripts` and `cmake` with Ruff and Pyright.
+Python validation covers repository-owned Python under `cmake` with Ruff and Pyright.
 
 Do not rebuild Unreal merely because a native implementation has a thin Unreal adapter. Settle
 the native behavior with the smallest target and test subset first.

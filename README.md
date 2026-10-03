@@ -35,7 +35,6 @@ For complete setup, build, testing, debugging, and packaging instructions, see
 | `Source/` | Project Unreal modules and their adapters/tests | [Source map](Source/README.md) |
 | `Plugins/` | Reusable engine extensions and game plugins | [Plugin map](Plugins/README.md) |
 | `LevelScripts/` | S7-authored campaign, showcase, and benchmark scenarios | [Level scripts guide](LevelScripts/README.md) |
-| `Scripts/` | Developer automation, benchmark runners, and analysis tools | [Scripts guide](Scripts/README.md) |
 | `tools/` | Shared developer tools, including the jobserver | [Tools guide](tools/README.md) |
 | `docs/` | Cross-cutting development and investigation documentation | [Documentation hub](docs/README.md) |
 

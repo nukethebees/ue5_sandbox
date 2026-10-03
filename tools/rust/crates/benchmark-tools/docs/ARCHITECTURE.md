@@ -7,7 +7,7 @@ For commands and workflows, see [Benchmarks](../../../../../docs/benchmarks.md) 
 
 `coj benchmark` builds the invoking checkout's `benchmark-tools-host` target and delegates
 arguments to that executable. Workload orchestration, parsing, comparisons, and reports are
-revision-local Rust code; Python remains responsible for kernel plots. The tools do not acquire
+revision-local Rust code, including SVG plotting with Plotters. The tools do not acquire
 jobs-board tickets or resource leases. Callers coordinate builds and measurements.
 
 | Module | Responsibility |
@@ -21,6 +21,13 @@ jobs-board tickets or resource leases. Callers coordinate builds and measurement
 | `tracy.rs` | Offline probe statistics from Tracy exports. |
 | `kernel.rs`, `gpu.rs`, `unreal.rs` | Kernel plots and other workload runners. |
 | `support.rs` | Argument parsing, process execution, and file-format helpers. |
+| `plots.rs`, `plots/` | Shared SVG rendering, kernel measurements, fighter and native comparison charts. |
+
+Plotting runs after measurements and primary reports are saved. Automatic rendering errors warn
+without failing a valid benchmark; the offline `plot` command returns errors. Successful native
+comparison plots are linked in Markdown and recorded in the manifest. Incomparable runs never
+publish comparison charts. Offline regeneration consumes existing JSON formats and does not
+modify measurements or recalculate paired statistics.
 
 ## Revision inputs and ownership
 

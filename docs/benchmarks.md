@@ -34,7 +34,8 @@ The fighter runner defaults to a five-second warmup and ten-second measurement. 
 to start firing; an inactive workload fails validation. Caps must be unique positive integers.
 
 Find fighter results in the printed directory: `summary.csv` for timings and `results.json`
-for full results. Set `--output-dir` to choose the destination. Native simulation and frame-memory
+for full results, and `plots/` for SVG tick-latency and throughput charts. Set `--output-dir` to
+choose the destination. Native simulation and frame-memory
 commands print their JSON results.
 
 For a frame-memory revision comparison, run `coj benchmark frame-memory-revision-ab
@@ -80,6 +81,8 @@ Open `comparison.md` in the printed run directory under `.local/benchmarks/compa
 Use `comparison.csv` or `comparison.json` for further analysis. Negative timing deltas mean
 faster execution; positive throughput deltas mean higher throughput. Deltas pair the first A
 with the first B, and so on. These reports do not establish statistical significance.
+Comparable runs also generate SVG timing, throughput, and paired-delta charts in `plots/`,
+linked from `comparison.md`.
 
 Inspect `runs/` for raw results and errors, `sequence.json` for ordering, and `source.diff` for
 the commit diff. Dirty tracked edits also appear in `candidate-working-tree.diff`.
@@ -131,6 +134,26 @@ Choose `representative`, `vector-layout`, `full`, or `highway`. Adjust `--repeti
 `--min-time` (seconds) to keep the campaign short. The first three default to seven repetitions
 and 0.05 seconds per case, writing results and plots to `out/benchmarks/kernel/`. Highway defaults
 to three repetitions and 0.02 seconds, writing `.local/benchmarks/highway/kernels.json`.
+All four workloads automatically write SVG charts to `plots/` beside their JSON results.
+
+## Regenerate plots
+
+Plotting runs after measurement using the Rust tool's SVG renderer. A plotting failure warns
+without invalidating saved benchmark results. Regenerate charts without measuring again:
+
+```powershell
+coj benchmark plot --kind kernel --input out/benchmarks/kernel/results.json --output-dir .local/benchmarks/kernel-plots
+coj benchmark plot --kind fighter --input <run>/results.json --output-dir <run>/plots
+coj benchmark plot --kind comparison --input <run>/comparison.json --output-dir <run>/plots
+```
+
+Kernel charts include throughput, time per element with sample-deviation bars, backend and
+layout speedups, and alignment penalties where matching measurements exist. `--baseline`
+selects a kernel backend (default `scalar`, falling back to `autovec-avx2`). If both are absent,
+absolute charts remain available and backend speedup is omitted with a warning.
+
+Offline plotting returns failure for invalid input, incomparable results, or rendering errors.
+Only SVG output is supported; Python and Matplotlib are not needed for plotting.
 
 ## SandboxISMC experiments
 
@@ -144,4 +167,3 @@ level telemetry, and commandlet benchmarks. It includes options and output locat
   result formats, and comparison rules.
 - [Profiling](profiling.md): capture native benchmarks with Tracy.
 - [Level scripts](../LevelScripts/README.md): choose benchmark scenarios and other S7 levels.
-- [Scripts](../Scripts/README.md): result plotters and analysis utilities.

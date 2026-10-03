@@ -14,7 +14,7 @@ single subsystem lives beside that subsystem instead.
 | Find an Unreal module or its responsibility | [Source map](../Source/README.md) |
 | Find an engine extension or game plugin | [Plugin map](../Plugins/README.md) |
 | Find or author an S7 scenario | [Level scripts guide](../LevelScripts/README.md) |
-| Install coj or use a repository script | [PowerShell guide](../PowerShell/README.md) and [Scripts guide](../Scripts/README.md) |
+| Install coj or run benchmarks | [PowerShell guide](../PowerShell/README.md) and [Benchmarks](benchmarks.md) |
 | Understand CMake presets and build coordination | [CMake guide](../cmake/README.md) |
 | Work on the jobserver or other standalone tool | [Tools guide](../tools/README.md) |
 
