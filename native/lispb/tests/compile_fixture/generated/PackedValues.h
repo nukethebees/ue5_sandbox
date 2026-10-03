@@ -18,8 +18,12 @@ namespace codegen_compile_fixture {
 struct Defaults {
     using storage_type = std::uint16_t;
     static_assert(ml::valid_packed_storage<storage_type, 16>());
+
+    // low
     using low_type = std::uint8_t;
     using low_field = ml::PackedField<storage_type, low_type, 0, 3>;
+
+    // delta
     using delta_type = std::int8_t;
     static_assert(std::is_signed_v<delta_type>);
     static_assert(std::numeric_limits<delta_type>::digits + 1 >= 5);
@@ -36,26 +40,11 @@ struct Defaults {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto try_make(low_type const low_value,
-                                                 delta_type const delta_value,
-                                                 Defaults& out_result) noexcept -> bool {
-        auto result{from_raw(storage_type{0})};
-        if (!result.try_set_low(low_value)) {
-            return false;
-        }
-        if (!result.try_set_delta(delta_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     explicit constexpr Defaults(low_type const low_value, delta_type const delta_value) noexcept {
-        [[maybe_unused]] auto const success{try_make(low_value, delta_value, *this)};
-        assert(success && "Packed field value does not fit.");
+        assert(low_value <= static_cast<low_type>(low_field::value_mask));
+        assert(delta_value >= delta_minimum && delta_value <= delta_maximum);
+        value_ = static_cast<storage_type>(ml::packed_pack<low_field>(low_value) |
+                                           ml::packed_pack<delta_field>(delta_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
@@ -66,36 +55,18 @@ struct Defaults {
         return ml::packed_extract<low_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_low(low_type const value) noexcept -> bool {
-        if (value > static_cast<low_type>(low_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<low_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_low(low_type const value) noexcept {
-        if (!try_set_low(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<low_type>(low_field::value_mask));
+        value_ = ml::packed_insert<low_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto delta() const noexcept -> delta_type {
         return ml::packed_extract<delta_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_delta(delta_type const value) noexcept -> bool {
-        if (value < delta_minimum || value > delta_maximum) {
-            return false;
-        }
-        value_ = ml::packed_insert<delta_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_delta(delta_type const value) noexcept {
-        if (!try_set_delta(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value >= delta_minimum && value <= delta_maximum);
+        value_ = ml::packed_insert<delta_field>(value_, value);
     }
   private:
     storage_type value_{0x3a5};
@@ -105,8 +76,12 @@ static_assert(ml::valid_packed_value_layout<Defaults>());
 struct DefaultsMsb {
     using storage_type = std::uint16_t;
     static_assert(ml::valid_packed_storage<storage_type, 16>());
+
+    // low
     using low_type = std::uint8_t;
     using low_field = ml::PackedField<storage_type, low_type, 13, 3>;
+
+    // delta
     using delta_type = std::int8_t;
     static_assert(std::is_signed_v<delta_type>);
     static_assert(std::numeric_limits<delta_type>::digits + 1 >= 5);
@@ -150,10 +125,16 @@ static_assert(ml::valid_packed_value_layout<DefaultsMsb>());
 struct PartialDefaults {
     using storage_type = std::uint8_t;
     static_assert(ml::valid_packed_storage<storage_type, 8>());
+
+    // first
     using first_type = std::uint8_t;
     using first_field = ml::PackedField<storage_type, first_type, 0, 2>;
+
+    // gap
     using gap_type = std::uint8_t;
     using gap_field = ml::PackedField<storage_type, gap_type, 2, 2>;
+
+    // last
     using last_type = std::uint8_t;
     using last_field = ml::PackedField<storage_type, last_type, 4, 2>;
 
@@ -165,32 +146,15 @@ struct PartialDefaults {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto try_make(first_type const first_value,
-                                                 gap_type const gap_value,
-                                                 last_type const last_value,
-                                                 PartialDefaults& out_result) noexcept -> bool {
-        auto result{from_raw(storage_type{0})};
-        if (!result.try_set_first(first_value)) {
-            return false;
-        }
-        if (!result.try_set_gap(gap_value)) {
-            return false;
-        }
-        if (!result.try_set_last(last_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     explicit constexpr PartialDefaults(first_type const first_value,
                                        gap_type const gap_value,
                                        last_type const last_value) noexcept {
-        [[maybe_unused]] auto const success{try_make(first_value, gap_value, last_value, *this)};
-        assert(success && "Packed field value does not fit.");
+        assert(first_value <= static_cast<first_type>(first_field::value_mask));
+        assert(gap_value <= static_cast<gap_type>(gap_field::value_mask));
+        assert(last_value <= static_cast<last_type>(last_field::value_mask));
+        value_ = static_cast<storage_type>(ml::packed_pack<first_field>(first_value) |
+                                           ml::packed_pack<gap_field>(gap_value) |
+                                           ml::packed_pack<last_field>(last_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
@@ -201,54 +165,27 @@ struct PartialDefaults {
         return ml::packed_extract<first_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_first(first_type const value) noexcept -> bool {
-        if (value > static_cast<first_type>(first_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<first_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_first(first_type const value) noexcept {
-        if (!try_set_first(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<first_type>(first_field::value_mask));
+        value_ = ml::packed_insert<first_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto gap() const noexcept -> gap_type {
         return ml::packed_extract<gap_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_gap(gap_type const value) noexcept -> bool {
-        if (value > static_cast<gap_type>(gap_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<gap_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_gap(gap_type const value) noexcept {
-        if (!try_set_gap(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<gap_type>(gap_field::value_mask));
+        value_ = ml::packed_insert<gap_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto last() const noexcept -> last_type {
         return ml::packed_extract<last_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_last(last_type const value) noexcept -> bool {
-        if (value > static_cast<last_type>(last_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<last_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_last(last_type const value) noexcept {
-        if (!try_set_last(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<last_type>(last_field::value_mask));
+        value_ = ml::packed_insert<last_field>(value_, value);
     }
   private:
     struct RawTag {};
@@ -261,6 +198,8 @@ static_assert(ml::valid_packed_value_layout<PartialDefaults>());
 struct PackedSingle {
     using storage_type = std::uint8_t;
     static_assert(ml::valid_packed_storage<storage_type, 8>());
+
+    // value
     using value_type = std::uint8_t;
     using value_field = ml::PackedField<storage_type, value_type, 4, 4>;
 
@@ -293,8 +232,12 @@ static_assert(ml::valid_packed_value_layout<PackedSingle>());
 struct FighterState {
     using storage_type = std::uint32_t;
     static_assert(ml::valid_packed_storage<storage_type, 32>());
+
+    // entity_index
     using entity_index_type = std::uint32_t;
     using entity_index_field = ml::PackedField<storage_type, entity_index_type, 0, 24>;
+
+    // state
     using state_type = codegen_compile_fixture::PackedState;
     static_assert(ml::valid_packed_enum<state_type, 8>());
     using state_underlying_type = std::underlying_type_t<state_type>;
@@ -309,27 +252,14 @@ struct FighterState {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto try_make(entity_index_type const entity_index_value,
-                                                 state_type const state_value,
-                                                 FighterState& out_result) noexcept -> bool {
-        auto result{from_raw(storage_type{0})};
-        if (!result.try_set_entity_index(entity_index_value)) {
-            return false;
-        }
-        if (!result.try_set_state(state_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     explicit constexpr FighterState(entity_index_type const entity_index_value,
                                     state_type const state_value) noexcept {
-        [[maybe_unused]] auto const success{try_make(entity_index_value, state_value, *this)};
-        assert(success && "Packed field value does not fit.");
+        assert(entity_index_value <=
+               static_cast<entity_index_type>(entity_index_field::value_mask));
+        assert(static_cast<state_underlying_type>(state_value) <=
+               static_cast<state_underlying_type>(state_field::value_mask));
+        value_ = static_cast<storage_type>(ml::packed_pack<entity_index_field>(entity_index_value) |
+                                           ml::packed_pack<state_field>(state_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
@@ -340,38 +270,19 @@ struct FighterState {
         return ml::packed_extract<entity_index_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_entity_index(entity_index_type const value) noexcept
-        -> bool {
-        if (value > static_cast<entity_index_type>(entity_index_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<entity_index_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_entity_index(entity_index_type const value) noexcept {
-        if (!try_set_entity_index(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<entity_index_type>(entity_index_field::value_mask));
+        value_ = ml::packed_insert<entity_index_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto state() const noexcept -> state_type {
         return ml::packed_extract<state_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_state(state_type const value) noexcept -> bool {
-        auto const underlying{static_cast<state_underlying_type>(value)};
-        if (underlying > static_cast<state_underlying_type>(state_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<state_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_state(state_type const value) noexcept {
-        if (!try_set_state(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(static_cast<state_underlying_type>(value) <=
+               static_cast<state_underlying_type>(state_field::value_mask));
+        value_ = ml::packed_insert<state_field>(value_, value);
     }
   private:
     storage_type value_{};
@@ -381,10 +292,16 @@ static_assert(ml::valid_packed_value_layout<FighterState>());
 struct PackedByte {
     using storage_type = std::uint8_t;
     static_assert(ml::valid_packed_storage<storage_type, 8>());
+
+    // low
     using low_type = std::uint8_t;
     using low_field = ml::PackedField<storage_type, low_type, 0, 3>;
+
+    // flag
     using flag_type = bool;
     using flag_field = ml::PackedField<storage_type, flag_type, 3, 1>;
+
+    // high
     using high_type = std::uint8_t;
     using high_field = ml::PackedField<storage_type, high_type, 4, 4>;
 
@@ -397,32 +314,14 @@ struct PackedByte {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto try_make(low_type const low_value,
-                                                 flag_type const flag_value,
-                                                 high_type const high_value,
-                                                 PackedByte& out_result) noexcept -> bool {
-        auto result{from_raw(storage_type{0})};
-        if (!result.try_set_low(low_value)) {
-            return false;
-        }
-        if (!result.try_set_flag(flag_value)) {
-            return false;
-        }
-        if (!result.try_set_high(high_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     explicit constexpr PackedByte(low_type const low_value,
                                   flag_type const flag_value,
                                   high_type const high_value) noexcept {
-        [[maybe_unused]] auto const success{try_make(low_value, flag_value, high_value, *this)};
-        assert(success && "Packed field value does not fit.");
+        assert(low_value <= static_cast<low_type>(low_field::value_mask));
+        assert(high_value <= static_cast<high_type>(high_field::value_mask));
+        value_ = static_cast<storage_type>(ml::packed_pack<low_field>(low_value) |
+                                           ml::packed_pack<flag_field>(flag_value) |
+                                           ml::packed_pack<high_field>(high_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
@@ -433,51 +332,26 @@ struct PackedByte {
         return ml::packed_extract<low_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_low(low_type const value) noexcept -> bool {
-        if (value > static_cast<low_type>(low_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<low_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_low(low_type const value) noexcept {
-        if (!try_set_low(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<low_type>(low_field::value_mask));
+        value_ = ml::packed_insert<low_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto flag() const noexcept -> flag_type {
         return ml::packed_extract<flag_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_flag(flag_type const value) noexcept -> bool {
-        value_ = ml::packed_insert<flag_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_flag(flag_type const value) noexcept {
-        if (!try_set_flag(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        value_ = ml::packed_insert<flag_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto high() const noexcept -> high_type {
         return ml::packed_extract<high_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_high(high_type const value) noexcept -> bool {
-        if (value > static_cast<high_type>(high_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<high_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_high(high_type const value) noexcept {
-        if (!try_set_high(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<high_type>(high_field::value_mask));
+        value_ = ml::packed_insert<high_field>(value_, value);
     }
   private:
     storage_type value_{};
@@ -487,10 +361,16 @@ static_assert(ml::valid_packed_value_layout<PackedByte>());
 struct NetworkHeader {
     using storage_type = std::uint32_t;
     static_assert(ml::valid_packed_storage<storage_type, 32>());
+
+    // version
     using version_type = std::uint8_t;
     using version_field = ml::PackedField<storage_type, version_type, 28, 4>;
+
+    // kind
     using kind_type = std::uint8_t;
     using kind_field = ml::PackedField<storage_type, kind_type, 20, 8>;
+
+    // length
     using length_type = std::uint16_t;
     using length_field = ml::PackedField<storage_type, length_type, 0, 16>;
 
@@ -503,33 +383,15 @@ struct NetworkHeader {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto try_make(version_type const version_value,
-                                                 kind_type const kind_value,
-                                                 length_type const length_value,
-                                                 NetworkHeader& out_result) noexcept -> bool {
-        auto result{from_raw(storage_type{0})};
-        if (!result.try_set_version(version_value)) {
-            return false;
-        }
-        if (!result.try_set_kind(kind_value)) {
-            return false;
-        }
-        if (!result.try_set_length(length_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     explicit constexpr NetworkHeader(version_type const version_value,
                                      kind_type const kind_value,
                                      length_type const length_value) noexcept {
-        [[maybe_unused]] auto const success{
-            try_make(version_value, kind_value, length_value, *this)};
-        assert(success && "Packed field value does not fit.");
+        assert(version_value <= static_cast<version_type>(version_field::value_mask));
+        assert(kind_value <= static_cast<kind_type>(kind_field::value_mask));
+        assert(length_value <= static_cast<length_type>(length_field::value_mask));
+        value_ = static_cast<storage_type>(ml::packed_pack<version_field>(version_value) |
+                                           ml::packed_pack<kind_field>(kind_value) |
+                                           ml::packed_pack<length_field>(length_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
@@ -540,54 +402,27 @@ struct NetworkHeader {
         return ml::packed_extract<version_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_version(version_type const value) noexcept -> bool {
-        if (value > static_cast<version_type>(version_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<version_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_version(version_type const value) noexcept {
-        if (!try_set_version(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<version_type>(version_field::value_mask));
+        value_ = ml::packed_insert<version_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto kind() const noexcept -> kind_type {
         return ml::packed_extract<kind_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_kind(kind_type const value) noexcept -> bool {
-        if (value > static_cast<kind_type>(kind_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<kind_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_kind(kind_type const value) noexcept {
-        if (!try_set_kind(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<kind_type>(kind_field::value_mask));
+        value_ = ml::packed_insert<kind_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto length() const noexcept -> length_type {
         return ml::packed_extract<length_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_length(length_type const value) noexcept -> bool {
-        if (value > static_cast<length_type>(length_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<length_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_length(length_type const value) noexcept {
-        if (!try_set_length(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<length_type>(length_field::value_mask));
+        value_ = ml::packed_insert<length_field>(value_, value);
     }
   private:
     storage_type value_{};
@@ -597,6 +432,8 @@ static_assert(ml::valid_packed_value_layout<NetworkHeader>());
 struct PackedWide {
     using storage_type = std::uint64_t;
     static_assert(ml::valid_packed_storage<storage_type, 64>());
+
+    // value
     using value_type = std::uint64_t;
     using value_field = ml::PackedField<storage_type, value_type, 0, 64>;
 
@@ -609,22 +446,11 @@ struct PackedWide {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto try_make(value_type const value_value,
-                                                 PackedWide& out_result) noexcept -> bool {
-        auto result{from_raw(storage_type{0})};
-        if (!result.try_set_value(value_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     explicit constexpr PackedWide(value_type const value_value) noexcept {
-        [[maybe_unused]] auto const success{try_make(value_value, *this)};
-        assert(success && "Packed field value does not fit.");
+        assert(value_value <= static_cast<value_type>(value_field::value_mask));
+        assert((value_value >= static_cast<value_type>(0) &&
+                value_value <= static_cast<value_type>(18446744073709551615ULL)));
+        value_ = static_cast<storage_type>(ml::packed_pack<value_field>(value_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
@@ -638,22 +464,11 @@ struct PackedWide {
         return ml::packed_extract<value_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_value(value_type const value) noexcept -> bool {
-        if (value > static_cast<value_type>(value_field::value_mask)) {
-            return false;
-        }
-        if ((value < static_cast<value_type>(0) ||
-             value > static_cast<value_type>(18446744073709551615ULL))) {
-            return false;
-        }
-        value_ = ml::packed_insert<value_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_value(value_type const value) noexcept {
-        if (!try_set_value(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<value_type>(value_field::value_mask));
+        assert((value >= static_cast<value_type>(0) &&
+                value <= static_cast<value_type>(18446744073709551615ULL)));
+        value_ = ml::packed_insert<value_field>(value_, value);
     }
   private:
     storage_type value_{};
@@ -663,6 +478,8 @@ static_assert(ml::valid_packed_value_layout<PackedWide>());
 struct SignedDelta {
     using storage_type = std::uint32_t;
     static_assert(ml::valid_packed_storage<storage_type, 32>());
+
+    // delta
     using delta_type = std::int32_t;
     static_assert(std::is_signed_v<delta_type>);
     static_assert(std::numeric_limits<delta_type>::digits + 1 >= 17);
@@ -679,22 +496,9 @@ struct SignedDelta {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto try_make(delta_type const delta_value,
-                                                 SignedDelta& out_result) noexcept -> bool {
-        auto result{from_raw(storage_type{0})};
-        if (!result.try_set_delta(delta_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     explicit constexpr SignedDelta(delta_type const delta_value) noexcept {
-        [[maybe_unused]] auto const success{try_make(delta_value, *this)};
-        assert(success && "Packed field value does not fit.");
+        assert(delta_value >= delta_minimum && delta_value <= delta_maximum);
+        value_ = static_cast<storage_type>(ml::packed_pack<delta_field>(delta_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
@@ -705,18 +509,9 @@ struct SignedDelta {
         return ml::packed_extract<delta_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_delta(delta_type const value) noexcept -> bool {
-        if (value < delta_minimum || value > delta_maximum) {
-            return false;
-        }
-        value_ = ml::packed_insert<delta_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_delta(delta_type const value) noexcept {
-        if (!try_set_delta(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value >= delta_minimum && value <= delta_maximum);
+        value_ = ml::packed_insert<delta_field>(value_, value);
     }
   private:
     storage_type value_{};
@@ -726,6 +521,8 @@ static_assert(ml::valid_packed_value_layout<SignedDelta>());
 struct SignedWide {
     using storage_type = std::uint64_t;
     static_assert(ml::valid_packed_storage<storage_type, 64>());
+
+    // delta
     using delta_type = std::int64_t;
     static_assert(std::is_signed_v<delta_type>);
     static_assert(std::numeric_limits<delta_type>::digits + 1 >= 64);
@@ -742,22 +539,11 @@ struct SignedWide {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto try_make(delta_type const delta_value,
-                                                 SignedWide& out_result) noexcept -> bool {
-        auto result{from_raw(storage_type{0})};
-        if (!result.try_set_delta(delta_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     explicit constexpr SignedWide(delta_type const delta_value) noexcept {
-        [[maybe_unused]] auto const success{try_make(delta_value, *this)};
-        assert(success && "Packed field value does not fit.");
+        assert(delta_value >= delta_minimum && delta_value <= delta_maximum);
+        assert((delta_value >= std::numeric_limits<delta_type>::min() &&
+                delta_value <= static_cast<delta_type>(9223372036854775807)));
+        value_ = static_cast<storage_type>(ml::packed_pack<delta_field>(delta_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
@@ -771,22 +557,11 @@ struct SignedWide {
         return ml::packed_extract<delta_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_delta(delta_type const value) noexcept -> bool {
-        if (value < delta_minimum || value > delta_maximum) {
-            return false;
-        }
-        if ((value < std::numeric_limits<delta_type>::min() ||
-             value > static_cast<delta_type>(9223372036854775807))) {
-            return false;
-        }
-        value_ = ml::packed_insert<delta_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_delta(delta_type const value) noexcept {
-        if (!try_set_delta(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value >= delta_minimum && value <= delta_maximum);
+        assert((value >= std::numeric_limits<delta_type>::min() &&
+                value <= static_cast<delta_type>(9223372036854775807)));
+        value_ = ml::packed_insert<delta_field>(value_, value);
     }
   private:
     storage_type value_{};
@@ -796,6 +571,8 @@ static_assert(ml::valid_packed_value_layout<SignedWide>());
 struct SignedTemperature {
     using storage_type = std::uint32_t;
     static_assert(ml::valid_packed_storage<storage_type, 32>());
+
+    // temperature
     using temperature_type = std::int16_t;
     static_assert(std::is_signed_v<temperature_type>);
     static_assert(std::numeric_limits<temperature_type>::digits + 1 >= 8);
@@ -818,22 +595,13 @@ struct SignedTemperature {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto try_make(temperature_type const temperature_value,
-                                                 SignedTemperature& out_result) noexcept -> bool {
-        auto result{from_raw(storage_type{0})};
-        if (!result.try_set_temperature(temperature_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     explicit constexpr SignedTemperature(temperature_type const temperature_value) noexcept {
-        [[maybe_unused]] auto const success{try_make(temperature_value, *this)};
-        assert(success && "Packed field value does not fit.");
+        assert(temperature_value >= temperature_minimum &&
+               temperature_value <= temperature_maximum);
+        assert((temperature_value >= static_cast<temperature_type>(-100) &&
+                temperature_value <= static_cast<temperature_type>(100)) ||
+               temperature_value == temperature_Unknown);
+        value_ = static_cast<storage_type>(ml::packed_pack<temperature_field>(temperature_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
@@ -848,24 +616,12 @@ struct SignedTemperature {
         return ml::packed_extract<temperature_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_temperature(temperature_type const value) noexcept
-        -> bool {
-        if (value < temperature_minimum || value > temperature_maximum) {
-            return false;
-        }
-        if ((value < static_cast<temperature_type>(-100) ||
-             value > static_cast<temperature_type>(100)) &&
-            value != temperature_Unknown) {
-            return false;
-        }
-        value_ = ml::packed_insert<temperature_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_temperature(temperature_type const value) noexcept {
-        if (!try_set_temperature(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value >= temperature_minimum && value <= temperature_maximum);
+        assert((value >= static_cast<temperature_type>(-100) &&
+                value <= static_cast<temperature_type>(100)) ||
+               value == temperature_Unknown);
+        value_ = ml::packed_insert<temperature_field>(value_, value);
     }
   private:
     storage_type value_{};
@@ -875,10 +631,14 @@ static_assert(ml::valid_packed_value_layout<SignedTemperature>());
 struct PackedTinyState {
     using storage_type = std::uint8_t;
     static_assert(ml::valid_packed_storage<storage_type, 8>());
+
+    // state
     using state_type = codegen_compile_fixture::TinyState;
     static_assert(ml::valid_packed_enum<state_type, 2>());
     using state_underlying_type = std::underlying_type_t<state_type>;
     using state_field = ml::PackedField<storage_type, state_type, 0, 2>;
+
+    // payload
     using payload_type = std::uint8_t;
     using payload_field = ml::PackedField<storage_type, payload_type, 2, 6>;
 
@@ -892,27 +652,13 @@ struct PackedTinyState {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto try_make(state_type const state_value,
-                                                 payload_type const payload_value,
-                                                 PackedTinyState& out_result) noexcept -> bool {
-        auto result{from_raw(storage_type{0})};
-        if (!result.try_set_state(state_value)) {
-            return false;
-        }
-        if (!result.try_set_payload(payload_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     explicit constexpr PackedTinyState(state_type const state_value,
                                        payload_type const payload_value) noexcept {
-        [[maybe_unused]] auto const success{try_make(state_value, payload_value, *this)};
-        assert(success && "Packed field value does not fit.");
+        assert(static_cast<state_underlying_type>(state_value) <=
+               static_cast<state_underlying_type>(state_field::value_mask));
+        assert(payload_value <= static_cast<payload_type>(payload_field::value_mask));
+        value_ = static_cast<storage_type>(ml::packed_pack<state_field>(state_value) |
+                                           ml::packed_pack<payload_field>(payload_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
@@ -923,37 +669,19 @@ struct PackedTinyState {
         return ml::packed_extract<state_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_state(state_type const value) noexcept -> bool {
-        auto const underlying{static_cast<state_underlying_type>(value)};
-        if (underlying > static_cast<state_underlying_type>(state_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<state_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_state(state_type const value) noexcept {
-        if (!try_set_state(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(static_cast<state_underlying_type>(value) <=
+               static_cast<state_underlying_type>(state_field::value_mask));
+        value_ = ml::packed_insert<state_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto payload() const noexcept -> payload_type {
         return ml::packed_extract<payload_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_payload(payload_type const value) noexcept -> bool {
-        if (value > static_cast<payload_type>(payload_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<payload_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_payload(payload_type const value) noexcept {
-        if (!try_set_payload(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<payload_type>(payload_field::value_mask));
+        value_ = ml::packed_insert<payload_field>(value_, value);
     }
   private:
     storage_type value_{};
@@ -963,6 +691,8 @@ static_assert(ml::valid_packed_value_layout<PackedTinyState>());
 struct PackedOpaqueState {
     using storage_type = std::uint8_t;
     static_assert(ml::valid_packed_storage<storage_type, 8>());
+
+    // state
     using state_type = codegen_compile_fixture::OpaqueState;
     static_assert(ml::valid_packed_enum<state_type, 8>());
     using state_underlying_type = std::underlying_type_t<state_type>;
@@ -984,22 +714,10 @@ struct PackedOpaqueState {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto try_make(state_type const state_value,
-                                                 PackedOpaqueState& out_result) noexcept -> bool {
-        auto result{from_raw(storage_type{0})};
-        if (!result.try_set_state(state_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     explicit constexpr PackedOpaqueState(state_type const state_value) noexcept {
-        [[maybe_unused]] auto const success{try_make(state_value, *this)};
-        assert(success && "Packed field value does not fit.");
+        assert(static_cast<state_underlying_type>(state_value) <=
+               static_cast<state_underlying_type>(state_field::value_mask));
+        value_ = static_cast<storage_type>(ml::packed_pack<state_field>(state_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
@@ -1010,19 +728,10 @@ struct PackedOpaqueState {
         return ml::packed_extract<state_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_state(state_type const value) noexcept -> bool {
-        auto const underlying{static_cast<state_underlying_type>(value)};
-        if (underlying > static_cast<state_underlying_type>(state_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<state_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_state(state_type const value) noexcept {
-        if (!try_set_state(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(static_cast<state_underlying_type>(value) <=
+               static_cast<state_underlying_type>(state_field::value_mask));
+        value_ = ml::packed_insert<state_field>(value_, value);
     }
   private:
     storage_type value_{};
@@ -1032,8 +741,12 @@ static_assert(ml::valid_packed_value_layout<PackedOpaqueState>());
 struct CheckedValue {
     using storage_type = std::uint32_t;
     static_assert(ml::valid_packed_storage<storage_type, 32>());
+
+    // serial
     using serial_type = std::uint32_t;
     using serial_field = ml::PackedField<storage_type, serial_type, 0, 24>;
+
+    // state
     using state_type = codegen_compile_fixture::DomainState;
     static_assert(ml::valid_packed_enum<state_type, 8>());
     using state_underlying_type = std::underlying_type_t<state_type>;
@@ -1086,11 +799,15 @@ static_assert(ml::valid_packed_value_layout<CheckedValue>());
 struct Vitals {
     using storage_type = std::uint16_t;
     static_assert(ml::valid_packed_storage<storage_type, 16>());
+
+    // health
     using health_encoded_type = std::uint8_t;
     static_assert(std::is_unsigned_v<health_encoded_type>);
     static_assert(std::numeric_limits<health_encoded_type>::digits >= 8);
     using health_field = ml::PackedField<storage_type, health_encoded_type, 0, 8>;
     inline static constexpr health_encoded_type health_maximum_encoded{health_encoded_type{0xfd}};
+
+    // state
     using state_type = std::uint8_t;
     using state_field = ml::PackedField<storage_type, state_type, 8, 8>;
 
@@ -1103,27 +820,12 @@ struct Vitals {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto try_make(health_encoded_type const health_encoded_value,
-                                                 state_type const state_value,
-                                                 Vitals& out_result) noexcept -> bool {
-        auto result{from_raw(storage_type{0})};
-        if (!result.try_set_health_encoded(health_encoded_value)) {
-            return false;
-        }
-        if (!result.try_set_state(state_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     explicit constexpr Vitals(health_encoded_type const health_encoded_value,
                               state_type const state_value) noexcept {
-        [[maybe_unused]] auto const success{try_make(health_encoded_value, state_value, *this)};
-        assert(success && "Packed field value does not fit.");
+        assert(health_encoded_value <= health_maximum_encoded);
+        assert(state_value <= static_cast<state_type>(state_field::value_mask));
+        value_ = static_cast<storage_type>(ml::packed_pack<health_field>(health_encoded_value) |
+                                           ml::packed_pack<state_field>(state_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
@@ -1136,37 +838,18 @@ struct Vitals {
         return ml::packed_extract<health_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_health_encoded(health_encoded_type const value) noexcept
-        -> bool {
-        if (value > health_maximum_encoded) {
-            return false;
-        }
-        value_ = ml::packed_insert<health_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_health_encoded(health_encoded_type const value) noexcept {
-        if (!try_set_health_encoded(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= health_maximum_encoded);
+        value_ = ml::packed_insert<health_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto state() const noexcept -> state_type {
         return ml::packed_extract<state_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_state(state_type const value) noexcept -> bool {
-        if (value > static_cast<state_type>(state_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<state_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_state(state_type const value) noexcept {
-        if (!try_set_state(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<state_type>(state_field::value_mask));
+        value_ = ml::packed_insert<state_field>(value_, value);
     }
   private:
     storage_type value_{};
@@ -1176,6 +859,8 @@ static_assert(ml::valid_packed_value_layout<Vitals>());
 struct Motion {
     using storage_type = std::uint32_t;
     static_assert(ml::valid_packed_storage<storage_type, 32>());
+
+    // velocity
     using velocity_raw_type = std::int16_t;
     static_assert(std::is_signed_v<velocity_raw_type>);
     static_assert(std::numeric_limits<velocity_raw_type>::digits + 1 >= 12);
@@ -1186,6 +871,8 @@ struct Motion {
         static_cast<velocity_raw_type>(2047)};
     inline static constexpr velocity_raw_type velocity_minimum_allowed_raw{velocity_minimum_raw};
     inline static constexpr velocity_raw_type velocity_maximum_allowed_raw{velocity_maximum_raw};
+
+    // fraction
     using fraction_raw_type = std::uint8_t;
     static_assert(std::is_unsigned_v<fraction_raw_type>);
     static_assert(std::numeric_limits<fraction_raw_type>::digits >= 7);
@@ -1194,6 +881,8 @@ struct Motion {
     inline static constexpr fraction_raw_type fraction_maximum_raw{fraction_raw_type{0x7f}};
     inline static constexpr fraction_raw_type fraction_minimum_allowed_raw{fraction_minimum_raw};
     inline static constexpr fraction_raw_type fraction_maximum_allowed_raw{fraction_maximum_raw};
+
+    // state
     using state_type = std::uint16_t;
     using state_field = ml::PackedField<storage_type, state_type, 19, 13>;
 
@@ -1206,33 +895,17 @@ struct Motion {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto try_make(velocity_raw_type const velocity_raw_value,
-                                                 fraction_raw_type const fraction_raw_value,
-                                                 state_type const state_value,
-                                                 Motion& out_result) noexcept -> bool {
-        auto result{from_raw(storage_type{0})};
-        if (!result.try_set_velocity_raw(velocity_raw_value)) {
-            return false;
-        }
-        if (!result.try_set_fraction_raw(fraction_raw_value)) {
-            return false;
-        }
-        if (!result.try_set_state(state_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     explicit constexpr Motion(velocity_raw_type const velocity_raw_value,
                               fraction_raw_type const fraction_raw_value,
                               state_type const state_value) noexcept {
-        [[maybe_unused]] auto const success{
-            try_make(velocity_raw_value, fraction_raw_value, state_value, *this)};
-        assert(success && "Packed field value does not fit.");
+        assert(velocity_raw_value >= velocity_minimum_allowed_raw &&
+               velocity_raw_value <= velocity_maximum_allowed_raw);
+        assert(fraction_raw_value >= fraction_minimum_allowed_raw &&
+               fraction_raw_value <= fraction_maximum_allowed_raw);
+        assert(state_value <= static_cast<state_type>(state_field::value_mask));
+        value_ = static_cast<storage_type>(ml::packed_pack<velocity_field>(velocity_raw_value) |
+                                           ml::packed_pack<fraction_field>(fraction_raw_value) |
+                                           ml::packed_pack<state_field>(state_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
@@ -1277,27 +950,16 @@ struct Motion {
         return true;
     }
 
-    [[nodiscard]] constexpr auto try_set_velocity_raw(velocity_raw_type const value) noexcept
-        -> bool {
-        if (value < velocity_minimum_allowed_raw || value > velocity_maximum_allowed_raw) {
-            return false;
-        }
-        value_ = ml::packed_insert<velocity_field>(value_, value);
-        return true;
-    }
-
-    [[nodiscard]] auto try_set_velocity_value(double const value) noexcept -> bool {
-        velocity_raw_type raw{};
-        if (!try_encode_velocity_value(value, raw)) {
-            return false;
-        }
-        return try_set_velocity_raw(raw);
-    }
-
     constexpr void set_velocity_raw(velocity_raw_type const value) noexcept {
-        if (!try_set_velocity_raw(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value >= velocity_minimum_allowed_raw && value <= velocity_maximum_allowed_raw);
+        value_ = ml::packed_insert<velocity_field>(value_, value);
+    }
+
+    void set_velocity_value(double const value) noexcept {
+        velocity_raw_type raw{};
+        [[maybe_unused]] auto const success{try_encode_velocity_value(value, raw)};
+        assert(success && "Packed fixed-point value does not fit.");
+        set_velocity_raw(raw);
     }
 
     [[nodiscard]] constexpr auto fraction_raw() const noexcept -> fraction_raw_type {
@@ -1334,45 +996,25 @@ struct Motion {
         return true;
     }
 
-    [[nodiscard]] constexpr auto try_set_fraction_raw(fraction_raw_type const value) noexcept
-        -> bool {
-        if (value < fraction_minimum_allowed_raw || value > fraction_maximum_allowed_raw) {
-            return false;
-        }
-        value_ = ml::packed_insert<fraction_field>(value_, value);
-        return true;
-    }
-
-    [[nodiscard]] auto try_set_fraction_value(double const value) noexcept -> bool {
-        fraction_raw_type raw{};
-        if (!try_encode_fraction_value(value, raw)) {
-            return false;
-        }
-        return try_set_fraction_raw(raw);
-    }
-
     constexpr void set_fraction_raw(fraction_raw_type const value) noexcept {
-        if (!try_set_fraction_raw(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value >= fraction_minimum_allowed_raw && value <= fraction_maximum_allowed_raw);
+        value_ = ml::packed_insert<fraction_field>(value_, value);
+    }
+
+    void set_fraction_value(double const value) noexcept {
+        fraction_raw_type raw{};
+        [[maybe_unused]] auto const success{try_encode_fraction_value(value, raw)};
+        assert(success && "Packed fixed-point value does not fit.");
+        set_fraction_raw(raw);
     }
 
     [[nodiscard]] constexpr auto state() const noexcept -> state_type {
         return ml::packed_extract<state_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_state(state_type const value) noexcept -> bool {
-        if (value > static_cast<state_type>(state_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<state_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_state(state_type const value) noexcept {
-        if (!try_set_state(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<state_type>(state_field::value_mask));
+        value_ = ml::packed_insert<state_field>(value_, value);
     }
   private:
     storage_type value_{};
@@ -1382,12 +1024,16 @@ static_assert(ml::valid_packed_value_layout<Motion>());
 struct PackedMiniFloat {
     using storage_type = std::uint16_t;
     static_assert(ml::valid_packed_storage<storage_type, 16>());
+
+    // component
     using component_encoded_type = std::uint16_t;
     static_assert(std::is_unsigned_v<component_encoded_type>);
     static_assert(std::numeric_limits<component_encoded_type>::digits >= 12);
     using component_field = ml::PackedField<storage_type, component_encoded_type, 0, 12>;
     inline static constexpr component_encoded_type component_maximum_encoded{
         component_encoded_type{0xfff}};
+
+    // state
     using state_type = std::uint8_t;
     using state_field = ml::PackedField<storage_type, state_type, 12, 4>;
 
@@ -1401,28 +1047,13 @@ struct PackedMiniFloat {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto
-        try_make(component_encoded_type const component_encoded_value,
-                 state_type const state_value,
-                 PackedMiniFloat& out_result) noexcept -> bool {
-        auto result{from_raw(storage_type{0})};
-        if (!result.try_set_component_encoded(component_encoded_value)) {
-            return false;
-        }
-        if (!result.try_set_state(state_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     explicit constexpr PackedMiniFloat(component_encoded_type const component_encoded_value,
                                        state_type const state_value) noexcept {
-        [[maybe_unused]] auto const success{try_make(component_encoded_value, state_value, *this)};
-        assert(success && "Packed field value does not fit.");
+        assert(component_encoded_value <= component_maximum_encoded);
+        assert(state_value <= static_cast<state_type>(state_field::value_mask));
+        value_ =
+            static_cast<storage_type>(ml::packed_pack<component_field>(component_encoded_value) |
+                                      ml::packed_pack<state_field>(state_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
@@ -1433,37 +1064,18 @@ struct PackedMiniFloat {
         return ml::packed_extract<component_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto
-        try_set_component_encoded(component_encoded_type const value) noexcept -> bool {
-        if (value > component_maximum_encoded) {
-            return false;
-        }
-        value_ = ml::packed_insert<component_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_component_encoded(component_encoded_type const value) noexcept {
-        if (!try_set_component_encoded(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= component_maximum_encoded);
+        value_ = ml::packed_insert<component_field>(value_, value);
     }
 
     [[nodiscard]] constexpr auto state() const noexcept -> state_type {
         return ml::packed_extract<state_field>(value_);
     }
 
-    [[nodiscard]] constexpr auto try_set_state(state_type const value) noexcept -> bool {
-        if (value > static_cast<state_type>(state_field::value_mask)) {
-            return false;
-        }
-        value_ = ml::packed_insert<state_field>(value_, value);
-        return true;
-    }
-
     constexpr void set_state(state_type const value) noexcept {
-        if (!try_set_state(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
+        assert(value <= static_cast<state_type>(state_field::value_mask));
+        value_ = ml::packed_insert<state_field>(value_, value);
     }
   private:
     storage_type value_{};

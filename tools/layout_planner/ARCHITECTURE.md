@@ -284,7 +284,7 @@ patch the property without taking ownership of child rows or comments.
 The packed editor's mutable-API checkbox likewise changes only
 `PackedValueSchema::mutable_value` through `ReplacePackedValue`. It is a C++ API-generation policy,
 not semantic-domain or target-layout state; the shared lowering remains the sole owner of the
-resulting `try_make`, `try_set_*`, and setter surface.
+resulting assert-backed setter surface.
 
 Declaration rename is a typed document transaction rather than text replacement. Supported enum,
 integer-scalar, representation, packed-value, record, union, and ordinary SoA declarations retain

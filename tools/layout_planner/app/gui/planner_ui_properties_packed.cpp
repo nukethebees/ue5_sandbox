@@ -218,9 +218,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         }
     }
     if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip(
-            "Generates fallible try_make/try_set and checked setter APIs; it does not change the "
-            "packed bit layout or semantic value domain.");
+        ImGui::SetTooltip("Generates assert-backed setter APIs; it does not change the "
+                          "packed bit layout or semantic value domain.");
     }
 
     detail::prepare_property_input("Storage type");

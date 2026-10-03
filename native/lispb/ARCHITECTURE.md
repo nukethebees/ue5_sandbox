@@ -112,9 +112,11 @@ sentinel validation remain in generated code. Standard fixed-width integer spell
 
 An explicit field-value constructor replaces `make(...)`. `Type::from_raw(raw)` replaces
 the raw-storage constructor and preserves all bits without validation. Default construction
-produces zero or the schema's invalid value when no field defaults are declared. Mutable types retain `try_make` and setters;
-immutable types expose neither. These are source API migrations; storage layout, comparison,
-serialization, and value validation are unchanged.
+produces zero or the schema's invalid value when no field defaults are declared. Constructors and
+mutable setters assert their input contracts; neither mutable nor immutable types expose
+`try_make` or `try_set_*`. Immutable types have no setters. Invalid constructor/setter inputs
+are programming errors, not recoverable failures. Storage layout, comparison, and serialization
+are unchanged.
 
 Packed fields accept numeric `:default` values, for example
 `(field task std::uint8_t :bits 1 :default 0)`. Values use the field constructor's units:
@@ -122,7 +124,7 @@ integer/enum codes, fixed-point raw integers, or quantized/mini-float encodings.
 must fit the field's domain and width. When every non-reserved field has a default, default
 construction packs those values with zero reserved bits; the result must not equal `:invalid-value`.
 An incomplete explicit default set is valid authoring state but deletes the C++ default constructor.
-Full-field constructors, `try_make`, and `from_raw` remain usable. Removing every explicit default
+Full-field constructors and `from_raw` remain usable. Removing every explicit default
 restores implicit zero initialization, with `:invalid-value` taking precedence where declared.
 
 ## Integer scalar C++ emission

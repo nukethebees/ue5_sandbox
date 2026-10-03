@@ -17,8 +17,12 @@ namespace ioj::sim {
 struct EntityUniqueId {
     using storage_type = std::uint32_t;
     static_assert(ml::valid_packed_storage<storage_type, 32>());
+
+    // index
     using index_type = std::uint32_t;
     using index_field = ml::PackedField<storage_type, index_type, 0, 24>;
+
+    // entity_type
     using entity_type_type = ioj::sim::EntityType;
     static_assert(ml::valid_packed_enum<entity_type_type, 8>());
     using entity_type_underlying_type = std::underlying_type_t<entity_type_type>;

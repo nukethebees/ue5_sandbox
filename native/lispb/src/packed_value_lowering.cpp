@@ -314,76 +314,66 @@ void append_make_parameters(std::string& output, std::vector<PackedFieldLayout> 
     }
 }
 
-void append_make_arguments(std::string& output, std::vector<PackedFieldLayout> const& fields) {
-    for (std::size_t index{}; index < fields.size(); ++index) {
-        if (index != 0) {
-            output += ", ";
-        }
-        output += packed_field_value_name(fields[index].field);
-    }
-}
-
-void append_semantic_range_assertion(std::string& output, PackedFieldSchema const& field) {
+void append_semantic_range_assertion(std::string& output,
+                                     PackedFieldSchema const& field,
+                                     std::string const& value_name) {
     if (!field.minimum_value.has_value()) {
         return;
     }
 
     auto const field_alias{packed_field_type_alias(field)};
-    output += "        assert((" + field.name +
-              "_value >= " + integer_cast_literal(field_alias, *field.minimum_value) + " && " +
-              field.name + "_value <= " + integer_cast_literal(field_alias, *field.maximum_value) +
-              ")";
+    output += "        assert((" + value_name +
+              " >= " + integer_cast_literal(field_alias, *field.minimum_value) + " && " +
+              value_name + " <= " + integer_cast_literal(field_alias, *field.maximum_value) + ")";
     for (auto const& code : field.named_codes) {
         if (code.sentinel) {
-            output += " || " + field.name + "_value == " + field.name + "_" + code.name;
+            output += " || " + value_name + " == " + field.name + "_" + code.name;
         }
     }
     output += ");\n";
 }
 
-void append_immutable_validation(std::string& output,
-                                 std::vector<PackedFieldLayout> const& fields) {
-    for (auto const& packed_field : fields) {
-        auto const& field{packed_field.field};
-        auto const value_name{packed_field_value_name(field)};
-        auto const field_alias{packed_field_type_alias(field)};
-        if (packed_field.type.spelling == "bool") {
-            continue;
-        }
-        if (packed_field.linear_quantized_type != nullptr) {
-            output += "        assert(" + value_name + " <= " + field.name + "_maximum_encoded);\n";
-            continue;
-        }
-        if (packed_field.fixed_point_type != nullptr) {
-            output += "        assert(" + value_name + " >= " + field.name +
-                      "_minimum_allowed_raw && " + value_name + " <= " + field.name +
-                      "_maximum_allowed_raw);\n";
-            continue;
-        }
-        if (packed_field.mini_float_type != nullptr) {
-            output += "        assert(" + value_name + " <= " + field.name + "_maximum_encoded);\n";
-            continue;
-        }
-        if (field.kind == PackedFieldKind::enumeration) {
-            if (packed_field.enum_type != nullptr && packed_field.enum_type->count.has_value()) {
-                output += "        assert(" + value_name + " < " + field_alias +
-                          "::" + *packed_field.enum_type->count + ");\n";
-            } else if (packed_field.enum_type == nullptr) {
-                output += "        assert(static_cast<" + field.name + "_underlying_type>(" +
-                          value_name + ") <= static_cast<" + field.name + "_underlying_type>(" +
-                          field.name + "_field::value_mask));\n";
-            }
-            continue;
-        }
-        if (field.kind == PackedFieldKind::signed_integer) {
-            output += "        assert(" + value_name + " >= " + field.name + "_minimum && " +
-                      value_name + " <= " + field.name + "_maximum);\n";
+void append_field_validation(std::string& output,
+                             PackedFieldLayout const& packed_field,
+                             std::string const& value_name) {
+    auto const& field{packed_field.field};
+    auto const field_alias{packed_field_type_alias(field)};
+    if (packed_field.type.spelling == "bool") {
+        return;
+    }
+    if (packed_field.linear_quantized_type != nullptr) {
+        output += "        assert(" + value_name + " <= " + field.name + "_maximum_encoded);\n";
+        return;
+    }
+    if (packed_field.fixed_point_type != nullptr) {
+        output += "        assert(" + value_name + " >= " + field.name +
+                  "_minimum_allowed_raw && " + value_name + " <= " + field.name +
+                  "_maximum_allowed_raw);\n";
+        return;
+    }
+    if (packed_field.mini_float_type != nullptr) {
+        output += "        assert(" + value_name + " <= " + field.name + "_maximum_encoded);\n";
+        return;
+    }
+    if (field.kind == PackedFieldKind::enumeration) {
+        if (packed_field.enum_type != nullptr && packed_field.enum_type->count.has_value()) {
+            output += "        assert(" + value_name + " < " + field_alias +
+                      "::" + *packed_field.enum_type->count + ");\n";
         } else {
-            output += "        assert(" + value_name + " <= static_cast<" + field_alias + ">(" +
+            output += "        assert(static_cast<" + field.name + "_underlying_type>(" +
+                      value_name + ") <= static_cast<" + field.name + "_underlying_type>(" +
                       field.name + "_field::value_mask));\n";
         }
-        append_semantic_range_assertion(output, field);
+        return;
     }
+    if (field.kind == PackedFieldKind::signed_integer) {
+        output += "        assert(" + value_name + " >= " + field.name + "_minimum && " +
+                  value_name + " <= " + field.name + "_maximum);\n";
+    } else {
+        output += "        assert(" + value_name + " <= static_cast<" + field_alias + ">(" +
+                  field.name + "_field::value_mask));\n";
+    }
+    append_semantic_range_assertion(output, field, value_name);
 }
 
 auto packed_field_expression(PackedFieldLayout const& packed_field) -> std::string {
@@ -401,39 +391,15 @@ auto packed_raw_value_expression(std::vector<PackedFieldLayout> const& fields) -
     return expression;
 }
 
-void append_mutable_construction(std::string& output,
-                                 PackedValueSchema const& schema,
-                                 std::vector<PackedFieldLayout> const& fields) {
-    output += "    [[nodiscard]] static constexpr auto try_make(";
+void append_construction(std::string& output,
+                         PackedValueSchema const& schema,
+                         std::vector<PackedFieldLayout> const& fields) {
+    output += "    explicit constexpr " + schema.name + "(";
     append_make_parameters(output, fields);
-    output += ", " + schema.name + "& out_result) noexcept -> bool {\n";
-    output += "        auto result{from_raw(storage_type{0})};\n";
+    output += ") noexcept {\n";
     for (auto const& packed_field : fields) {
-        auto const accessor{packed_field_accessor(packed_field.field)};
-        output += "        if (!result.try_set_" + accessor + "(" +
-                  packed_field_value_name(packed_field.field) + ")) {\n";
-        output += "            return false;\n        }\n";
+        append_field_validation(output, packed_field, packed_field_value_name(packed_field.field));
     }
-    output += "        if (!result.is_valid()) {\n            return false;\n        }\n";
-    output += "        out_result = result;\n        return true;\n    }\n\n";
-
-    output += "    explicit constexpr " + schema.name + "(";
-    append_make_parameters(output, fields);
-    output += ") noexcept {\n";
-    output += "        [[maybe_unused]] auto const success{try_make(";
-    append_make_arguments(output, fields);
-    output += ", *this)};\n";
-    output += "        assert(success && \"Packed field value does not fit.\");\n";
-    output += "    }\n\n";
-}
-
-void append_immutable_construction(std::string& output,
-                                   PackedValueSchema const& schema,
-                                   std::vector<PackedFieldLayout> const& fields) {
-    output += "    explicit constexpr " + schema.name + "(";
-    append_make_parameters(output, fields);
-    output += ") noexcept {\n";
-    append_immutable_validation(output, fields);
 
     auto const raw_value{packed_raw_value_expression(fields)};
     if (invalid_value_may_be_constructed(schema.invalid_value, fields)) {
@@ -515,6 +481,7 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         if (auto dependency{dependency_for_integer(field_type)}) {
             dependencies.push_back(std::move(*dependency));
         }
+        output += "\n    // " + field->name + "\n";
         output += "    using " + field_alias + " = " + field_type.spelling + ";\n";
         if (field->kind == PackedFieldKind::enumeration) {
             output += "    static_assert(ml::valid_packed_enum<" + field_alias + ", " +
@@ -666,11 +633,7 @@ auto packed_value_text(PackedValueSchema const& source_schema,
     }
     output += "    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type {\n";
     output += "        return value_;\n    }\n\n";
-    if (schema.mutable_value) {
-        append_mutable_construction(output, schema, field_layouts);
-    } else {
-        append_immutable_construction(output, schema, field_layouts);
-    }
+    append_construction(output, schema, field_layouts);
 
     output += "    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {\n";
     std::vector<std::string> validity_checks;
@@ -730,9 +693,8 @@ auto packed_value_text(PackedValueSchema const& source_schema,
     output += "    [[nodiscard]] constexpr auto operator<=>(" + schema.name +
               " const&) const noexcept = default;\n";
 
-    for (auto const* field_pointer : fields) {
-        auto const& field{*field_pointer};
-        auto const field_type{resolve_type(field.type, types)};
+    for (auto const& field_layout : field_layouts) {
+        auto const& field{field_layout.field};
         auto const field_alias{packed_field_type_alias(field)};
         auto const field_bits{resolved_width_for_field(packed, field.name)};
         auto const accessor{packed_field_accessor(field)};
@@ -789,80 +751,23 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         }
 
         if (schema.mutable_value) {
-            output += "\n    [[nodiscard]] constexpr auto try_set_" + accessor + "(" + field_alias +
-                      " const value) noexcept -> bool {\n";
-            if (field.kind == PackedFieldKind::linear_quantized ||
-                field.kind == PackedFieldKind::mini_float) {
-                output += "        if (value > " + field.name + "_maximum_encoded) {\n";
-                output += "            return false;\n        }\n";
-            } else if (field.kind == PackedFieldKind::fixed_point) {
-                output += "        if (value < " + field.name + "_minimum_allowed_raw || value > " +
-                          field.name + "_maximum_allowed_raw) {\n";
-                output += "            return false;\n        }\n";
-            } else if (field.kind == PackedFieldKind::enumeration) {
-                output += "        auto const underlying{static_cast<" + field.name +
-                          "_underlying_type>(value)};\n";
-                output += "        if (underlying > static_cast<" + field.name +
-                          "_underlying_type>(" + field.name + "_field::value_mask)) {\n";
-                output += "            return false;\n        }\n";
-                if (auto const* enum_type{enum_type_for_field(packed, type_graph, field.name)};
-                    enum_type != nullptr && enum_type->count.has_value()) {
-                    output +=
-                        "        if (value >= " + field_alias + "::" + *enum_type->count + ") {\n";
-                    output += "            return false;\n        }\n";
-                }
-            } else if (field.kind == PackedFieldKind::signed_integer) {
-                output += "        if (value < " + field.name + "_minimum || value > " +
-                          field.name + "_maximum) {\n";
-                output += "            return false;\n        }\n";
-                if (field.minimum_value.has_value()) {
-                    output += "        if ((value < " +
-                              integer_cast_literal(field_alias, *field.minimum_value) +
-                              " || value > " +
-                              integer_cast_literal(field_alias, *field.maximum_value) + ")";
-                    for (auto const& code : field.named_codes) {
-                        if (code.sentinel) {
-                            output += " && value != " + field.name + "_" + code.name;
-                        }
-                    }
-                    output += ") {\n";
-                    output += "            return false;\n        }\n";
-                }
-            } else if (field_type.spelling != "bool") {
-                output += "        if (value > static_cast<" + field_alias + ">(" + field.name +
-                          "_field::value_mask)) {\n";
-                output += "            return false;\n        }\n";
-                if (field.minimum_value.has_value()) {
-                    output += "        if ((value < " +
-                              integer_cast_literal(field_alias, *field.minimum_value) +
-                              " || value > " +
-                              integer_cast_literal(field_alias, *field.maximum_value) + ")";
-                    for (auto const& code : field.named_codes) {
-                        if (code.sentinel) {
-                            output += " && value != " + field.name + "_" + code.name;
-                        }
-                    }
-                    output += ") {\n";
-                    output += "            return false;\n        }\n";
-                }
-            }
-            output +=
-                "        value_ = ml::packed_insert<" + field.name + "_field>(value_, value);\n";
-            output += "        return true;\n    }\n";
-            if (fixed_type != nullptr) {
-                output += "\n    [[nodiscard]] auto try_set_" + field.name +
-                          "_value(double const value) noexcept -> bool {\n";
-                output += "        " + packed_field_type_alias(field) + " raw{};\n";
-                output += "        if (!try_encode_" + field.name +
-                          "_value(value, raw)) {\n            return false;\n        }\n";
-                output += "        return try_set_" + field.name + "_raw(raw);\n    }\n";
-            }
-
             output += "\n    constexpr void set_" + accessor + "(" + field_alias +
                       " const value) noexcept {\n";
-            output += "        if (!try_set_" + accessor + "(value)) {\n";
-            output += "            assert(false && \"Packed field value does not fit.\");\n";
-            output += "        }\n    }\n";
+            append_field_validation(output, field_layout, "value");
+            output +=
+                "        value_ = ml::packed_insert<" + field.name + "_field>(value_, value);\n";
+            output += "    }\n";
+
+            if (fixed_type != nullptr) {
+                output +=
+                    "\n    void set_" + field.name + "_value(double const value) noexcept {\n";
+                output += "        " + packed_field_type_alias(field) + " raw{};\n";
+                output += "        [[maybe_unused]] auto const success{try_encode_" + field.name +
+                          "_value(value, raw)};\n";
+                output +=
+                    "        assert(success && \"Packed fixed-point value does not fit.\");\n";
+                output += "        set_" + field.name + "_raw(raw);\n    }\n";
+            }
         }
 
         if (field.range_helper) {

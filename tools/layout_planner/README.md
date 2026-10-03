@@ -401,8 +401,8 @@ one undoable semantic command.
 Packed values, records, raw unions, and tagged unions expose their optional generated export
 specifier directly in Properties. Empty text clears it; malformed identifiers are rejected by the
 shared schema validator without changing the draft or history.
-Packed values also expose the existing mutable-API policy inline. Enabling it generates fallible
-construction/mutation and checked setters; it does not alter the semantic domain, packed bit map,
+Packed values also expose the existing mutable-API policy inline. Enabling it generates
+assert-backed setters; it does not alter the semantic domain, packed bit map,
 object storage, or target analysis.
 For an ordinary selected field, **Create enum for selected field...** opens the existing declaration
 creation workflow with the resolved field width prefilled. **Create and use** adds the shared enum,
@@ -487,7 +487,7 @@ to **fixed point**, follows the exact representation width, and clears competing
 range, code, helper, and relationship metadata. The packed table and detail view reuse the same
 headless fixed-point facts. The Layout panel shows sign, whole, and fractional bits. Generated
 packed APIs retain `*_raw` scaled integer accessors and add a decoded `*_value()` getter plus
-checked `try_encode_*_value(double, raw&)` and mutable `try_set_*_value(double)` helpers. Encoding
+checked `try_encode_*_value(double, raw&)` and assert-backed mutable `set_*_value(double)` helpers. Encoding
 applies the selected rounding policy and rejects nonfinite or out-of-range values.
 
 Mini-float declarations also fit in packed fields through the shared type picker. The placement

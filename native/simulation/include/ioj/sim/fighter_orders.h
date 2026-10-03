@@ -64,8 +64,12 @@ enum class FighterTask : std::uint8_t {
 struct FighterOrder {
     using storage_type = std::uint8_t;
     static_assert(ml::valid_packed_storage<storage_type, 8>());
+
+    // task
     using task_type = std::uint8_t;
     using task_field = ml::PackedField<storage_type, task_type, 0, 1>;
+
+    // target
     using target_type = std::uint8_t;
     using target_field = ml::PackedField<storage_type, target_type, 1, 1>;
 

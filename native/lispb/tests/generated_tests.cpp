@@ -176,8 +176,7 @@ TEST(GeneratedPackedDefaults, ConstructsDefaultsAndSupportsPartialRawConstructio
     constexpr auto raw_partial{PartialDefaults::from_raw(0xff)};
     static_assert(raw_partial.raw_value() == 0xff);
     static_assert(raw_partial.first() == 3 && raw_partial.gap() == 3 && raw_partial.last() == 3);
-    auto partial{PartialDefaults::from_raw(0)};
-    EXPECT_TRUE(PartialDefaults::try_make(2, 1, 0, partial));
+    PartialDefaults const partial{2, 1, 0};
     EXPECT_EQ(partial.first(), 2);
     EXPECT_EQ(partial.gap(), 1);
     EXPECT_EQ(partial.last(), 0);
@@ -608,9 +607,9 @@ TEST(GeneratedPackedValue, SettersPreserveOtherFieldsAndRejectOverflow) {
     value.set_state(PackedState::Max);
     EXPECT_EQ(value.raw_value(), 0xffffffffu);
 
-    auto const before_failure{value.raw_value()};
-    EXPECT_FALSE(value.try_set_entity_index(0x01000000u));
-    EXPECT_EQ(value.raw_value(), before_failure);
+#ifndef NDEBUG
+    EXPECT_DEATH(value.set_entity_index(0x01000000u), "");
+#endif
 }
 
 TEST(GeneratedPackedValue, ComparesByRawValue) {
@@ -669,7 +668,7 @@ TEST(GeneratedPackedValue, HandlesFullWidthStorageAndNarrowEnums) {
     auto const maximum{std::numeric_limits<std::uint64_t>::max()};
     static_assert(PackedWide::value_field::bits == 64);
     PackedWide wide;
-    EXPECT_TRUE(wide.try_set_value(maximum));
+    wide.set_value(maximum);
     EXPECT_EQ(wide.value(), maximum);
     EXPECT_EQ(wide.raw_value(), maximum);
     EXPECT_EQ(PackedWide::from_raw(std::uint64_t{0x123456789abcdef0}).value(),
@@ -680,9 +679,9 @@ TEST(GeneratedPackedValue, HandlesFullWidthStorageAndNarrowEnums) {
     tiny.set_payload(std::uint8_t{42});
     EXPECT_EQ(tiny.raw_value(), std::uint8_t{0xa9});
 
-    auto const before_failure{tiny.raw_value()};
-    EXPECT_FALSE(tiny.try_set_state(static_cast<TinyState>(4)));
-    EXPECT_EQ(tiny.raw_value(), before_failure);
+#ifndef NDEBUG
+    EXPECT_DEATH(tiny.set_state(static_cast<TinyState>(4)), "");
+#endif
     EXPECT_EQ(tiny.state(), TinyState::One);
     EXPECT_EQ(tiny.payload(), std::uint8_t{42});
 }
@@ -690,27 +689,27 @@ TEST(GeneratedPackedValue, HandlesFullWidthStorageAndNarrowEnums) {
 TEST(GeneratedPackedValue, RoundTripsSignedArbitraryWidthBoundaries) {
     static_assert(SignedWide::delta_field::bits == 64);
     SignedDelta delta;
-    EXPECT_TRUE(delta.try_set_delta(-65'536));
+    delta.set_delta(-65'536);
     EXPECT_EQ(delta.delta(), -65'536);
     EXPECT_EQ(delta.raw_value(), std::uint32_t{0x10000});
-    EXPECT_TRUE(delta.try_set_delta(-1));
+    delta.set_delta(-1);
     EXPECT_EQ(delta.delta(), -1);
     EXPECT_EQ(delta.raw_value(), std::uint32_t{0x1ffff});
-    EXPECT_TRUE(delta.try_set_delta(65'535));
+    delta.set_delta(65'535);
     EXPECT_EQ(delta.delta(), 65'535);
     EXPECT_EQ(delta.raw_value(), std::uint32_t{0xffff});
 
-    auto const before_failure{delta.raw_value()};
-    EXPECT_FALSE(delta.try_set_delta(-65'537));
-    EXPECT_FALSE(delta.try_set_delta(65'536));
-    EXPECT_EQ(delta.raw_value(), before_failure);
+#ifndef NDEBUG
+    EXPECT_DEATH(delta.set_delta(-65'537), "");
+    EXPECT_DEATH(delta.set_delta(65'536), "");
+#endif
     EXPECT_EQ(SignedDelta::from_raw(std::uint32_t{0x1ffff}).delta(), -1);
     EXPECT_EQ(SignedDelta::from_raw(std::uint32_t{0x10000}).delta(), -65'536);
 
     SignedWide wide;
-    EXPECT_TRUE(wide.try_set_delta(std::numeric_limits<std::int64_t>::min()));
+    wide.set_delta(std::numeric_limits<std::int64_t>::min());
     EXPECT_EQ(wide.delta(), std::numeric_limits<std::int64_t>::min());
-    EXPECT_TRUE(wide.try_set_delta(std::numeric_limits<std::int64_t>::max()));
+    wide.set_delta(std::numeric_limits<std::int64_t>::max());
     EXPECT_EQ(wide.delta(), std::numeric_limits<std::int64_t>::max());
     EXPECT_EQ(SignedWide::from_raw(std::numeric_limits<std::uint64_t>::max()).delta(), -1);
 }
@@ -721,19 +720,19 @@ TEST(GeneratedPackedValue, EnforcesSignedSemanticRangeAndSentinel) {
     static_assert(SignedTemperature::temperature_Unknown == -128);
 
     SignedTemperature temperature;
-    EXPECT_TRUE(temperature.try_set_temperature(-100));
+    temperature.set_temperature(-100);
     EXPECT_EQ(temperature.temperature(), -100);
     EXPECT_TRUE(temperature.is_valid());
-    EXPECT_TRUE(temperature.try_set_temperature(100));
+    temperature.set_temperature(100);
     EXPECT_EQ(temperature.temperature(), 100);
-    EXPECT_TRUE(temperature.try_set_temperature(SignedTemperature::temperature_Unknown));
+    temperature.set_temperature(SignedTemperature::temperature_Unknown);
     EXPECT_EQ(temperature.temperature(), -128);
     EXPECT_TRUE(temperature.is_valid());
 
-    auto const before_failure{temperature.raw_value()};
-    EXPECT_FALSE(temperature.try_set_temperature(-101));
-    EXPECT_FALSE(temperature.try_set_temperature(101));
-    EXPECT_EQ(temperature.raw_value(), before_failure);
+#ifndef NDEBUG
+    EXPECT_DEATH(temperature.set_temperature(-101), "");
+    EXPECT_DEATH(temperature.set_temperature(101), "");
+#endif
     EXPECT_FALSE(SignedTemperature::from_raw(std::uint32_t{0x9b}).is_valid());
 }
 
@@ -742,20 +741,19 @@ TEST(GeneratedPackedValue, RoundTripsLinearQuantizedEncodedCodes) {
     static_assert(Vitals::health_maximum_encoded == 253);
 
     Vitals value;
-    EXPECT_TRUE(value.try_set_health_encoded(253));
-    EXPECT_TRUE(value.try_set_state(0xab));
+    value.set_health_encoded(253);
+    value.set_state(0xab);
     EXPECT_EQ(value.health_encoded(), 253);
     EXPECT_EQ(value.state(), 0xab);
     EXPECT_EQ(value.raw_value(), 0xabfdu);
     EXPECT_TRUE(value.is_valid());
 
-    auto const before_failure{value.raw_value()};
-    EXPECT_FALSE(value.try_set_health_encoded(254));
-    EXPECT_EQ(value.raw_value(), before_failure);
+#ifndef NDEBUG
+    EXPECT_DEATH(value.set_health_encoded(254), "");
+#endif
     EXPECT_FALSE(Vitals::from_raw(0x00feu).is_valid());
 
-    Vitals made;
-    EXPECT_TRUE(Vitals::try_make(42, 7, made));
+    Vitals const made{42, 7};
     EXPECT_EQ(made.health_encoded(), 42);
     EXPECT_EQ(made.state(), 7);
 }
@@ -769,9 +767,9 @@ TEST(GeneratedPackedValue, RoundTripsFixedPointRawCodes) {
     static_assert(Motion::fraction_maximum_raw == 127);
 
     Motion value;
-    EXPECT_TRUE(value.try_set_velocity_raw(-2048));
-    EXPECT_TRUE(value.try_set_fraction_raw(127));
-    EXPECT_TRUE(value.try_set_state(0x1abc));
+    value.set_velocity_raw(-2048);
+    value.set_fraction_raw(127);
+    value.set_state(0x1abc);
     EXPECT_EQ(value.velocity_raw(), -2048);
     EXPECT_EQ(value.fraction_raw(), 127);
     EXPECT_EQ(value.state(), 0x1abc);
@@ -789,17 +787,16 @@ TEST(GeneratedPackedValue, RoundTripsFixedPointRawCodes) {
     EXPECT_FALSE(
         Motion::try_encode_velocity_value((std::numeric_limits<double>::infinity)(), converted));
     EXPECT_FALSE(Motion::try_encode_velocity_value(128.0, converted));
-    EXPECT_TRUE(value.try_set_velocity_value(-1.5));
+    value.set_velocity_value(-1.5);
     EXPECT_EQ(value.velocity_raw(), -24);
 
-    auto const before_failure{value.raw_value()};
-    EXPECT_FALSE(value.try_set_velocity_raw(-2049));
-    EXPECT_FALSE(value.try_set_velocity_raw(2048));
-    EXPECT_FALSE(value.try_set_fraction_raw(128));
-    EXPECT_EQ(value.raw_value(), before_failure);
+#ifndef NDEBUG
+    EXPECT_DEATH(value.set_velocity_raw(-2049), "");
+    EXPECT_DEATH(value.set_velocity_raw(2048), "");
+    EXPECT_DEATH(value.set_fraction_raw(128), "");
+#endif
 
-    Motion made;
-    EXPECT_TRUE(Motion::try_make(42, 64, 7, made));
+    Motion const made{42, 64, 7};
     EXPECT_EQ(made.velocity_raw(), 42);
     EXPECT_EQ(made.fraction_raw(), 64);
     EXPECT_EQ(made.state(), 7);
@@ -810,18 +807,17 @@ TEST(GeneratedPackedValue, RoundTripsMiniFloatEncodedCodes) {
     static_assert(PackedMiniFloat::component_maximum_encoded == 0xfff);
 
     PackedMiniFloat value;
-    EXPECT_TRUE(value.try_set_component_encoded(0xfff));
-    EXPECT_TRUE(value.try_set_state(0xa));
+    value.set_component_encoded(0xfff);
+    value.set_state(0xa);
     EXPECT_EQ(value.component_encoded(), 0xfff);
     EXPECT_EQ(value.state(), 0xa);
     EXPECT_EQ(value.raw_value(), 0xafff);
 
-    auto const before_failure{value.raw_value()};
-    EXPECT_FALSE(value.try_set_component_encoded(0x1000));
-    EXPECT_EQ(value.raw_value(), before_failure);
+#ifndef NDEBUG
+    EXPECT_DEATH(value.set_component_encoded(0x1000), "");
+#endif
 
-    PackedMiniFloat made;
-    EXPECT_TRUE(PackedMiniFloat::try_make(0x7c0, 3, made));
+    PackedMiniFloat const made{0x7c0, 3};
     EXPECT_EQ(made.component_encoded(), 0x7c0);
     EXPECT_EQ(made.state(), 3);
 }

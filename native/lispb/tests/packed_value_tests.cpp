@@ -319,14 +319,14 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
     EXPECT_NE(header.find("ml::valid_packed_value_layout<FighterState>()"), std::string::npos);
 }
 
-TEST(PackedValue, EmitsFallibleMutationOnlyWhenRequested) {
+TEST(PackedValue, EmitsAssertBackedMutationOnlyWhenRequested) {
     auto module{valid_module()};
     std::get<codegen::PackedValueSchema>(module.declarations.front()).mutable_value = true;
     auto const header{lower(std::move(module))};
 
-    EXPECT_NE(header.find("try_make(entity_index_type const entity_index_value"),
+    EXPECT_EQ(header.find("try_make(entity_index_type const entity_index_value"),
               std::string::npos);
-    EXPECT_NE(header.find("try_set_entity_index"), std::string::npos);
+    EXPECT_EQ(header.find("try_set_entity_index"), std::string::npos);
     EXPECT_NE(header.find("set_entity_index"), std::string::npos);
 }
 
@@ -351,15 +351,15 @@ TEST(PackedValue, UsesFieldAliasesAcrossImmutableAndMutablePublicApis) {
                             "entity_index_typeconstcount)noexcept->bool"),
                   std::string::npos);
         if (mutable_value) {
-            EXPECT_NE(
+            EXPECT_EQ(
                 text.find("try_make(entity_index_typeconstentity_index_value,"
                           "state_typeconststate_value,FighterState&out_result)noexcept->bool"),
                 std::string::npos);
-            EXPECT_NE(text.find("try_set_entity_index(entity_index_typeconstvalue)noexcept->bool"),
+            EXPECT_EQ(text.find("try_set_entity_index(entity_index_typeconstvalue)noexcept->bool"),
                       std::string::npos);
             EXPECT_NE(text.find("set_entity_index(entity_index_typeconstvalue)noexcept"),
                       std::string::npos);
-            EXPECT_NE(text.find("try_set_state(state_typeconstvalue)noexcept->bool"),
+            EXPECT_EQ(text.find("try_set_state(state_typeconstvalue)noexcept->bool"),
                       std::string::npos);
             EXPECT_NE(text.find("set_state(state_typeconstvalue)noexcept"), std::string::npos);
         } else {
@@ -400,11 +400,11 @@ TEST(PackedValue, UsesRepresentationAliasesAcrossPublicApis) {
         EXPECT_NE(text.find("explicitconstexpr" + schema.name + "(" + parameter +
                             ",state_typeconststate_value)noexcept"),
                   std::string::npos);
-        EXPECT_NE(text.find("try_make(" + parameter + ",state_typeconststate_value," + schema.name +
+        EXPECT_EQ(text.find("try_make(" + parameter + ",state_typeconststate_value," + schema.name +
                             "&out_result)noexcept->bool"),
                   std::string::npos);
         EXPECT_NE(text.find(accessor + "()constnoexcept->" + alias), std::string::npos);
-        EXPECT_NE(text.find("try_set_" + accessor + "(" + alias + "constvalue)noexcept->bool"),
+        EXPECT_EQ(text.find("try_set_" + accessor + "(" + alias + "constvalue)noexcept->bool"),
                   std::string::npos);
         EXPECT_NE(text.find("set_" + accessor + "(" + alias + "constvalue)noexcept"),
                   std::string::npos);
@@ -423,7 +423,7 @@ TEST(PackedValue, UsesBooleanFieldAliasWithoutChangingStatusTypes) {
     EXPECT_NE(text.find("explicitconstexprFighterState(flag_typeconstflag_value)noexcept"),
               std::string::npos);
     EXPECT_NE(text.find("flag()constnoexcept->flag_type"), std::string::npos);
-    EXPECT_NE(text.find("try_set_flag(flag_typeconstvalue)noexcept->bool"), std::string::npos);
+    EXPECT_EQ(text.find("try_set_flag(flag_typeconstvalue)noexcept->bool"), std::string::npos);
     EXPECT_NE(text.find("set_flag(flag_typeconstvalue)noexcept"), std::string::npos);
     EXPECT_NE(text.find("is_valid()constnoexcept->bool"), std::string::npos);
 }
@@ -504,12 +504,14 @@ TEST(PackedValue, LowersSignedArbitraryWidthFieldWithSafeSignExtension) {
 
     EXPECT_NE(header.find("using delta_type = std::int32_t;"), std::string::npos);
     EXPECT_NE(header.find("delta() const noexcept -> delta_type"), std::string::npos);
-    EXPECT_NE(header.find("try_set_delta(delta_type const value)"), std::string::npos);
+    EXPECT_EQ(header.find("try_set_delta(delta_type const value)"), std::string::npos);
+    EXPECT_NE(header.find("set_delta(delta_type const value)"), std::string::npos);
     EXPECT_NE(header.find("delta_minimum{static_cast<delta_type>(-65536)}"), std::string::npos);
     EXPECT_NE(header.find("delta_maximum{static_cast<delta_type>(65535)}"), std::string::npos);
     EXPECT_NE(header.find("ml::packed_extract<delta_field>(value_)"), std::string::npos);
     EXPECT_NE(header.find("ml::packed_insert<delta_field>(value_, value)"), std::string::npos);
-    EXPECT_NE(header.find("value < delta_minimum || value > delta_maximum"), std::string::npos);
+    EXPECT_NE(header.find("assert(value >= delta_minimum && value <= delta_maximum)"),
+              std::string::npos);
 }
 
 TEST(PackedValue, DerivesAndEnforcesSignedSemanticRangeWithNamedSentinel) {
@@ -534,9 +536,9 @@ TEST(PackedValue, DerivesAndEnforcesSignedSemanticRangeWithNamedSentinel) {
               std::string::npos);
     EXPECT_NE(header.find("temperature_Unknown{static_cast<temperature_type>(-128)}"),
               std::string::npos);
-    EXPECT_NE(header.find("value < static_cast<temperature_type>(-100)"), std::string::npos);
-    EXPECT_NE(header.find("value > static_cast<temperature_type>(100)"), std::string::npos);
-    EXPECT_NE(header.find("value != temperature_Unknown"), std::string::npos);
+    EXPECT_NE(header.find("value >= static_cast<temperature_type>(-100)"), std::string::npos);
+    EXPECT_NE(header.find("value <= static_cast<temperature_type>(100)"), std::string::npos);
+    EXPECT_NE(header.find("value == temperature_Unknown"), std::string::npos);
     EXPECT_NE(header.find("temperature() == temperature_Unknown"), std::string::npos);
 }
 
@@ -549,9 +551,9 @@ TEST(PackedValue, LowersSharedIntegerScalarDomainForPackedPlacement) {
               std::string::npos);
     EXPECT_NE(header.find("entity_index_Unknown{static_cast<entity_index_type>(4095)}"),
               std::string::npos);
-    EXPECT_NE(header.find("value < static_cast<entity_index_type>(0)"), std::string::npos);
-    EXPECT_NE(header.find("value > static_cast<entity_index_type>(1000)"), std::string::npos);
-    EXPECT_NE(header.find("value != entity_index_Unknown"), std::string::npos);
+    EXPECT_NE(header.find("value >= static_cast<entity_index_type>(0)"), std::string::npos);
+    EXPECT_NE(header.find("value <= static_cast<entity_index_type>(1000)"), std::string::npos);
+    EXPECT_NE(header.find("value == entity_index_Unknown"), std::string::npos);
     EXPECT_NE(header.find("entity_index() == entity_index_Unknown"), std::string::npos);
     EXPECT_EQ(header.find("using entity_index_type = project::Health;"), std::string::npos);
 }
@@ -575,13 +577,15 @@ TEST(PackedValue, LowersLinearQuantizedPlacementToExplicitEncodedCodeApi) {
 
     EXPECT_NE(header.find("using health_encoded_type = std::uint8_t;"), std::string::npos);
     EXPECT_NE(header.find("health_maximum_encoded{health_encoded_type{0xfd}}"), std::string::npos);
-    EXPECT_NE(header.find("try_make(health_encoded_type const health_encoded_value"),
+    EXPECT_EQ(header.find("try_make(health_encoded_type const health_encoded_value"),
               std::string::npos);
     EXPECT_NE(header.find("auto health_encoded() const noexcept -> health_encoded_type"),
               std::string::npos);
-    EXPECT_NE(header.find("try_set_health_encoded(health_encoded_type const value)"),
+    EXPECT_EQ(header.find("try_set_health_encoded(health_encoded_type const value)"),
               std::string::npos);
-    EXPECT_NE(header.find("value > health_maximum_encoded"), std::string::npos);
+    EXPECT_NE(header.find("set_health_encoded(health_encoded_type const value)"),
+              std::string::npos);
+    EXPECT_NE(header.find("value <= health_maximum_encoded"), std::string::npos);
     EXPECT_NE(header.find("health_encoded() <= health_maximum_encoded"), std::string::npos);
     EXPECT_EQ(header.find("project::HealthQ8"), std::string::npos);
     EXPECT_EQ(header.find("health()"), std::string::npos);
@@ -620,18 +624,20 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
               std::string::npos);
     EXPECT_NE(header.find("velocity_maximum_raw{static_cast<velocity_raw_type>(2047)}"),
               std::string::npos);
-    EXPECT_NE(header.find("try_make(velocity_raw_type const velocity_raw_value"),
+    EXPECT_EQ(header.find("try_make(velocity_raw_type const velocity_raw_value"),
               std::string::npos);
     EXPECT_NE(header.find("auto velocity_raw() const noexcept -> velocity_raw_type"),
               std::string::npos);
-    EXPECT_NE(header.find("try_set_velocity_raw(velocity_raw_type const value)"),
+    EXPECT_EQ(header.find("try_set_velocity_raw(velocity_raw_type const value)"),
               std::string::npos);
-    EXPECT_NE(header.find("value < velocity_minimum_allowed_raw || value > "
+    EXPECT_NE(header.find("set_velocity_raw(velocity_raw_type const value)"), std::string::npos);
+    EXPECT_NE(header.find("value >= velocity_minimum_allowed_raw && value <= "
                           "velocity_maximum_allowed_raw"),
               std::string::npos);
     EXPECT_NE(header.find("auto velocity_value() const noexcept -> double"), std::string::npos);
     EXPECT_NE(header.find("try_encode_velocity_value(double const value"), std::string::npos);
-    EXPECT_NE(header.find("try_set_velocity_value(double const value"), std::string::npos);
+    EXPECT_EQ(header.find("try_set_velocity_value(double const value"), std::string::npos);
+    EXPECT_NE(header.find("set_velocity_value(double const value"), std::string::npos);
     EXPECT_EQ(header.find("project::VelocityQ8_4"), std::string::npos);
     EXPECT_EQ(header.find("velocity()"), std::string::npos);
 
@@ -712,9 +718,11 @@ TEST(PackedValue, LowersMiniFloatPlacementAsRawEncodedBits) {
               std::string::npos);
     EXPECT_NE(header.find("auto component_encoded() const noexcept -> component_encoded_type"),
               std::string::npos);
-    EXPECT_NE(header.find("try_set_component_encoded(component_encoded_type const value)"),
+    EXPECT_EQ(header.find("try_set_component_encoded(component_encoded_type const value)"),
               std::string::npos);
-    EXPECT_NE(header.find("value > component_maximum_encoded"), std::string::npos);
+    EXPECT_NE(header.find("set_component_encoded(component_encoded_type const value)"),
+              std::string::npos);
+    EXPECT_NE(header.find("value <= component_maximum_encoded"), std::string::npos);
     EXPECT_EQ(header.find("project::PositionF12"), std::string::npos);
     EXPECT_EQ(header.find("component()"), std::string::npos);
 

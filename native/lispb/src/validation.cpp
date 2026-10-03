@@ -655,9 +655,6 @@ void validate_packed_value(PackedValueSchema const& value,
 
     std::set<std::string> generated_names{
         value.name, "raw_value", "storage_type", "from_raw", "is_valid"};
-    if (value.mutable_value) {
-        generated_names.insert("try_make");
-    }
     if (value.invalid_value.has_value()) {
         generated_names.insert("invalid_value");
     }
@@ -1011,7 +1008,6 @@ void validate_packed_value(PackedValueSchema const& value,
             names.push_back(field->name + "_maximum_encoded");
             if (value.mutable_value) {
                 names.push_back("set_" + field->name + "_encoded");
-                names.push_back("try_set_" + field->name + "_encoded");
             }
         } else if (fixed != nullptr) {
             names.push_back(field->name + "_raw_type");
@@ -1020,14 +1016,13 @@ void validate_packed_value(PackedValueSchema const& value,
             names.push_back(field->name + "_maximum_raw");
             if (value.mutable_value) {
                 names.push_back("set_" + field->name + "_raw");
-                names.push_back("try_set_" + field->name + "_raw");
+                names.push_back("set_" + field->name + "_value");
             }
         } else {
             names.push_back(field->name + "_type");
             names.push_back(field->name);
             if (value.mutable_value) {
                 names.push_back("set_" + field->name);
-                names.push_back("try_set_" + field->name);
             }
         }
         if (field->kind == PackedFieldKind::enumeration) {
