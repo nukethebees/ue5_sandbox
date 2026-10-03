@@ -93,7 +93,7 @@ class EntityLookupTable {
         return handles_;
     }
   private:
-    EntityType type_;
+    [[maybe_unused]] EntityType type_;
     std::pmr::vector<EntityInstanceHandle> handles_;
 };
 
