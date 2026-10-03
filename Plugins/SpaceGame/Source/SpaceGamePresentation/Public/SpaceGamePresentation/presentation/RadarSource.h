@@ -36,7 +36,6 @@ namespace ml::radar_source {
                             FRadarContactColours const& contact_colours,
                             FTransform const& player_transform,
                             ::ioj::sim::EntityUniqueId player_id,
-                            ::ioj::sim::EntityUniqueId selected_id,
                             ETestTeam player_team,
                             FRadarSettings const& settings,
                             FRadarFrame& output_frame) -> FRadarCollectionResult;

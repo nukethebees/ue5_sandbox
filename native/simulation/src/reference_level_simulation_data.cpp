@@ -45,8 +45,6 @@ auto make_reference_level_simulation_data() -> ReferenceLevelSimulationData {
     player.config.yaw_speed = 3.000000000e+00f;
     player.config.turn_bank_angle_max = 3.000000000e+01f;
     player.config.turn_bank_speed = 2.000000000e+00f;
-    player.config.laser_lock_on_transition_delay = 1.000000000e+00f;
-    player.config.laser_lock_on_distance = 1.000000000e+04f;
     data.fighters.laser.damage = 10;
     data.fighters.laser.projectile_speed = 1.000000000e+04f;
     data.fighters.laser.max_distance = 4.000000000e+04f;

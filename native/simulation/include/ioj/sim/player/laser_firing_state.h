@@ -15,9 +15,6 @@ namespace ioj::sim {
 enum class LaserFiringState : std::uint8_t {
     idle = 0,
     burst = 1,
-    lock_on_transition = 2,
-    lock_on_searching = 3,
-    lock_on_acquired = 4,
 };
 
 [[nodiscard]] constexpr auto to_string(LaserFiringState const value) noexcept -> std::string_view {
@@ -27,15 +24,6 @@ enum class LaserFiringState : std::uint8_t {
         }
         case LaserFiringState::burst: {
             return "burst";
-        }
-        case LaserFiringState::lock_on_transition: {
-            return "lock_on_transition";
-        }
-        case LaserFiringState::lock_on_searching: {
-            return "lock_on_searching";
-        }
-        case LaserFiringState::lock_on_acquired: {
-            return "lock_on_acquired";
         }
     }
 
@@ -50,15 +38,6 @@ enum class LaserFiringState : std::uint8_t {
     if (value == "burst") {
         return LaserFiringState::burst;
     }
-    if (value == "lock_on_transition") {
-        return LaserFiringState::lock_on_transition;
-    }
-    if (value == "lock_on_searching") {
-        return LaserFiringState::lock_on_searching;
-    }
-    if (value == "lock_on_acquired") {
-        return LaserFiringState::lock_on_acquired;
-    }
 
     return std::nullopt;
 }
@@ -70,16 +49,10 @@ struct EnumTraits<::ioj::sim::LaserFiringState> {
     inline static constexpr std::array values{
         ::ioj::sim::LaserFiringState::idle,
         ::ioj::sim::LaserFiringState::burst,
-        ::ioj::sim::LaserFiringState::lock_on_transition,
-        ::ioj::sim::LaserFiringState::lock_on_searching,
-        ::ioj::sim::LaserFiringState::lock_on_acquired,
     };
     inline static constexpr std::array names{
         std::string_view{"idle"},
         std::string_view{"burst"},
-        std::string_view{"lock_on_transition"},
-        std::string_view{"lock_on_searching"},
-        std::string_view{"lock_on_acquired"},
     };
     inline static constexpr std::size_t count{values.size()};
 };

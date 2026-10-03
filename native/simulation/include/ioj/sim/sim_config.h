@@ -23,8 +23,6 @@ struct PlayerSimConfig {
     float turn_bank_angle_max{30.f};
     float turn_bank_speed{2.f};
     LaserWeaponSimConfig laser{};
-    float laser_lock_on_transition_delay{1.f};
-    float laser_lock_on_distance{10000.f};
 };
 
 struct TurretSimConfig {

@@ -100,10 +100,7 @@
   (enum LaserFiringState @native_uint8
     :native-api true
     (value idle :value "0")
-    (value burst :value "1")
-    (value lock_on_transition :value "2")
-    (value lock_on_searching :value "3")
-    (value lock_on_acquired :value "4")))
+    (value burst :value "1")))
 
 (module native_ship_fire_rate
   :header "native/simulation/include/ioj/sim/player/fire_rate.h"

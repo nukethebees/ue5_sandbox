@@ -29,7 +29,6 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     lasers.debug_drawer = config.laser_debug_drawer;
     lasers.debugging_shapes_enabled = config.laser_debug_shapes;
 #endif
-    capital_ships.debugging_shapes_enabled = config.capital_debug_shapes;
     capital_ship_fighters.enable_target_debug_drawing = config.fighter_debug_targets;
     capital_ship_fighters.enable_ship_location_debug_drawing = config.fighter_debug_locations;
     turrets.draw_target_arrows_enabled = config.turret_debug_targets;

@@ -123,7 +123,6 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                                   colours,
                                                   FTransform::Identity,
                                                   ids[0],
-                                                  ids[2],
                                                   ETestTeam::Blue,
                                                   ml::test_radar_source::linear_settings(),
                                                   frame)};
@@ -140,16 +139,16 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                               ERadarGlyph::Unknown);
         TestRunner->TestEqual(TEXT("Objective follows normal contacts"),
                               ml::test_radar_source::glyph(instances[2]),
-                              ERadarGlyph::Turret);
+                              ERadarGlyph::CapitalShip);
         TestRunner->TestEqual(TEXT("Objective preserves its role"),
                               ml::test_radar_source::flags(instances[2]),
-                              ERadarContactFlags::DestroyObjective);
-        TestRunner->TestEqual(TEXT("Selected contact follows objectives"),
+                              ERadarContactFlags::DefendObjective);
+        TestRunner->TestEqual(TEXT("Second objective preserves input order"),
                               ml::test_radar_source::glyph(instances[3]),
-                              ERadarGlyph::CapitalShip);
-        TestRunner->TestEqual(TEXT("Selection preserves its flag"),
+                              ERadarGlyph::Turret);
+        TestRunner->TestEqual(TEXT("Second objective preserves its role"),
                               ml::test_radar_source::flags(instances[3]),
-                              ERadarContactFlags::Selected | ERadarContactFlags::DefendObjective);
+                              ERadarContactFlags::DestroyObjective);
         TestRunner->TestEqual(TEXT("Player is always last"),
                               ml::test_radar_source::glyph(instances.Last()),
                               ERadarGlyph::Player);
@@ -173,7 +172,6 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                     colours,
                                     FTransform::Identity,
                                     ids[0],
-                                    {},
                                     ETestTeam::Blue,
                                     zero_range_settings,
                                     frame)};
@@ -213,7 +211,6 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                                   colours,
                                                   FTransform::Identity,
                                                   ids[0],
-                                                  {},
                                                   ETestTeam::Blue,
                                                   ml::test_radar_source::linear_settings(),
                                                   frame));
@@ -259,7 +256,6 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                                   colours,
                                                   FTransform{no_roll_rotation, player_location},
                                                   ids[0],
-                                                  {},
                                                   ETestTeam::Blue,
                                                   ml::test_radar_source::linear_settings(),
                                                   no_roll_frame));
@@ -269,7 +265,6 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                     colours,
                                     FTransform{FRotator{28.0, 37.0, 120.0}, player_location},
                                     ids[0],
-                                    {},
                                     ETestTeam::Blue,
                                     ml::test_radar_source::linear_settings(),
                                     rolled_frame));
@@ -382,7 +377,6 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                                   colours,
                                                   FTransform::Identity,
                                                   ids[0],
-                                                  {},
                                                   ETestTeam::Blue,
                                                   settings,
                                                   frame));
@@ -400,7 +394,6 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                                   colours,
                                                   FTransform::Identity,
                                                   ids[0],
-                                                  {},
                                                   ETestTeam::Blue,
                                                   settings,
                                                   frame));
@@ -441,7 +434,6 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                                   FRadarContactColours{},
                                                   FTransform::Identity,
                                                   ids[0],
-                                                  ids[2],
                                                   ETestTeam::Blue,
                                                   settings,
                                                   frame)};

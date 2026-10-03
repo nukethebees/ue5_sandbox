@@ -34,16 +34,12 @@ struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
     void add_initial_visual_instances();
     void add_visual_instances(int32 first_index, int32 count);
     void trigger_death_effects();
-    void draw_debugging_shapes() const;
     void validate_array_sizes() const;
 
     FCapitalShipConfig const* actor_config{nullptr};
 
     UInstancedStaticMeshComponent* instances{nullptr};
     FDelayedNiagaraSpawns* niagara_spawner{nullptr};
-
-    FDrawDebugConfig debug_drawer;
-    bool debugging_shapes_enabled{false};
 
     ::ioj::sim::CapitalReadView view_{};
 };

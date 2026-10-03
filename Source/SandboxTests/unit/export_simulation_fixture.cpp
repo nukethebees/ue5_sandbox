@@ -204,11 +204,6 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
             out, "player.config.turn_bank_angle_max", player.config.turn_bank_angle_max);
         ml::fixture_export::write(
             out, "player.config.turn_bank_speed", player.config.turn_bank_speed);
-        ml::fixture_export::write(out,
-                                  "player.config.laser_lock_on_transition_delay",
-                                  player.config.laser_lock_on_transition_delay);
-        ml::fixture_export::write(
-            out, "player.config.laser_lock_on_distance", player.config.laser_lock_on_distance);
         ml::fixture_export::write(out, "data.fighters.laser.damage", data.fighters.laser.damage);
         ml::fixture_export::write(
             out, "data.fighters.laser.projectile_speed", data.fighters.laser.projectile_speed);

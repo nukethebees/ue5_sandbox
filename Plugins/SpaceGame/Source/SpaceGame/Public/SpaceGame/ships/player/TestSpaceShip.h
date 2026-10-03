@@ -96,7 +96,6 @@ class SPACEGAME_API ATestSpaceShip
     auto energy_is_full() const -> bool;
     auto get_energy() const -> float;
 
-    auto get_lock_on_target() const -> ::ioj::sim::EntityUniqueId;
     void start_fire_laser();
     void stop_fire_laser();
     void upgrade_laser();
@@ -184,10 +183,6 @@ class SPACEGAME_API ATestSpaceShip
     bool debug_forward_socket_direction{false};
     UPROPERTY(EditAnywhere, Category = "Debug", meta = (AllowPrivateAccess))
     bool debug_forward_direction{false};
-    UPROPERTY(EditAnywhere, Category = "Debug", meta = (AllowPrivateAccess))
-    bool debug_lock_on{false};
-    UPROPERTY(EditAnywhere, Category = "Debug", meta = (AllowPrivateAccess))
-    float debug_lock_on_sphere_radius{1000.f};
 #endif
 
     ::ioj::sim::player::CommandInterface* bound_commands_{nullptr};

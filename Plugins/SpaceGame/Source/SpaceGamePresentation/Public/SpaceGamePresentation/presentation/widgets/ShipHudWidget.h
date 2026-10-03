@@ -66,7 +66,6 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     void set_fire_rate_visibility(ESlateVisibility const new_visibility);
 
     void set_crosshair_positions(FVector2d near, FVector2d far);
-    void set_crosshair_targeting(bool targeting);
     void set_crosshair_widget_visibility(ESlateVisibility const new_visibility);
     void set_crosshair_distances(FHudCrosshairDistances const& value) {
         crosshair_distances = value;
@@ -74,10 +73,6 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     auto get_crosshair_distances() const noexcept -> FHudCrosshairDistances const& {
         return crosshair_distances;
     }
-
-    void set_lock_on_widget_position(FVector2d pos);
-    void set_lock_on_widget_visibility(bool const new_visibility);
-    void set_lock_on_widget_visibility(ESlateVisibility const new_visibility);
 
     void set_target_speed(float value);
 
@@ -170,15 +165,12 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     FLinearColor reticle_normal_colour_{FLinearColor::Green};
     FLinearColor reticle_warning_colour_{FLinearColor::Yellow};
     FLinearColor reticle_danger_colour_{FLinearColor::Red};
-    bool crosshair_targeting_{};
 
     UPROPERTY(meta = (BindWidget))
     UNativeWidgetHost* radar_host{nullptr};
     UPROPERTY(meta = (BindWidget))
     UBorder* radar_background{nullptr};
 
-    UPROPERTY(meta = (BindWidget))
-    UImage* lock_on_widget{nullptr};
 #if WITH_EDITORONLY_DATA
     UPROPERTY(meta = (BindWidget))
     UDebugGraphWidget* speed_graph{nullptr};

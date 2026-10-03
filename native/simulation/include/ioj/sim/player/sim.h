@@ -170,7 +170,6 @@ struct Sim {
     float laser_shot_cooldown{0.f};
     std::int32_t lasers_fired_this_burst{0};
     std::int32_t lasers_per_burst{3};
-    EntityUniqueId lock_on_target{};
     LaserFiringState laser_firing_mode{LaserFiringState::idle};
     ShipFireRate laser_fire_rate{ShipFireRate::Burst3};
 
@@ -213,7 +212,6 @@ struct Sim {
     /* **************************************** */
     // Weapons
     /* **************************************** */
-    void set_lock_on_target(EntityUniqueId target) noexcept;
     void set_laser_mode(LaserFiringState mode) noexcept;
     void update_laser_firing();
     void fire_laser();

@@ -55,9 +55,8 @@ auto size_scale(::ioj::sim::EntityType const type) -> float {
     }
 }
 
-auto flags(EEntityOverlayObjectiveRole const objective_role, bool const selected)
-    -> ERadarContactFlags {
-    auto result{selected ? ERadarContactFlags::Selected : ERadarContactFlags::None};
+auto flags(EEntityOverlayObjectiveRole const objective_role) -> ERadarContactFlags {
+    auto result{ERadarContactFlags::None};
     if (objective_role == EEntityOverlayObjectiveRole::Defend) {
         result |= ERadarContactFlags::DefendObjective;
     } else if (objective_role == EEntityOverlayObjectiveRole::Destroy) {
@@ -67,9 +66,6 @@ auto flags(EEntityOverlayObjectiveRole const objective_role, bool const selected
 }
 
 auto draw_priority(ERadarContactFlags const contact_flags) -> int32 {
-    if (EnumHasAnyFlags(contact_flags, ERadarContactFlags::Selected)) {
-        return 2;
-    }
     if (EnumHasAnyFlags(contact_flags,
                         ERadarContactFlags::DefendObjective |
                             ERadarContactFlags::DestroyObjective)) {
@@ -156,7 +152,6 @@ auto collect_radar_instances(std::span<::ioj::sim::AgentDisplayBatch const> cons
                              FRadarContactColours const& contact_colours,
                              FTransform const& player_transform,
                              ::ioj::sim::EntityUniqueId const player_id,
-                             ::ioj::sim::EntityUniqueId const selected_id,
                              ETestTeam const player_team,
                              FRadarSettings const& settings,
                              FRadarFrame& output_frame) -> FRadarCollectionResult {
@@ -177,7 +172,7 @@ auto collect_radar_instances(std::span<::ioj::sim::AgentDisplayBatch const> cons
     output_frame.instances.Reserve(count + 1);
 
     int32 candidate_count{0};
-    for (int32 priority{0}; priority < 3; ++priority) {
+    for (int32 priority{0}; priority < 2; ++priority) {
         int32 output_index{};
         for (auto const& batch : batches) {
             auto const batch_count{static_cast<int32>(batch.num())};
@@ -195,8 +190,7 @@ auto collect_radar_instances(std::span<::ioj::sim::AgentDisplayBatch const> cons
                     ++candidate_count;
                 }
 
-                auto const contact_flags{
-                    ml::radar_source::flags(objective_roles[output_index], id == selected_id)};
+                auto const contact_flags{ml::radar_source::flags(objective_roles[output_index])};
                 if (ml::radar_source::draw_priority(contact_flags) != priority) {
                     continue;
                 }

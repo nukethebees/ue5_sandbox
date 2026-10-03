@@ -422,9 +422,6 @@ auto Sim::set_flight_model_slot_profile(FlightModelSlot const slot,
 /* **************************************** */
 // Weapons
 /* **************************************** */
-void Sim::set_lock_on_target(EntityUniqueId const target) noexcept {
-    lock_on_target = target;
-}
 
 void Sim::set_laser_mode(LaserFiringState const mode) noexcept {
     laser_firing_mode = mode;
@@ -442,33 +439,9 @@ void Sim::update_laser_firing() {
                 laser_shot_cooldown = config.laser.fire_cooldown;
 
                 if (lasers_fired_this_burst >= lasers_per_burst) {
-                    laser_shot_cooldown = config.laser_lock_on_transition_delay;
-                    set_laser_mode(LaserFiringState::lock_on_transition);
+                    set_laser_mode(LaserFiringState::idle);
                 }
             }
-            break;
-        }
-        case LaserFiringState::lock_on_transition: {
-            if (cooldown_finished) {
-                set_laser_mode(LaserFiringState::lock_on_searching);
-            }
-            [[fallthrough]];
-        }
-        case LaserFiringState::lock_on_searching: {
-            auto const middle{(middle_socket * planned_state_.presentation.body_transform *
-                               planned_state_.physical.transform)};
-            auto const start{middle.location};
-            auto const end{start + middle.forward() * config.laser_lock_on_distance};
-            auto const hit{spatial_query_manager.trace_closest(
-                to_float(start), to_float(end), unique_entity_id)};
-
-            if (hit.hit && hit.entity.is_valid()) {
-                set_lock_on_target(hit.entity);
-                set_laser_mode(LaserFiringState::lock_on_acquired);
-            }
-            break;
-        }
-        case LaserFiringState::lock_on_acquired: {
             break;
         }
     }
@@ -478,13 +451,9 @@ void Sim::start_fire_laser() {
     set_laser_mode(LaserFiringState::burst);
     lasers_fired_this_burst = 0;
     laser_shot_cooldown = 0.f;
-    set_lock_on_target({});
 }
 
 void Sim::stop_fire_laser() {
-    if (laser_firing_mode == LaserFiringState::lock_on_acquired) {
-        set_lock_on_target({});
-    }
     set_laser_mode(LaserFiringState::idle);
 }
 

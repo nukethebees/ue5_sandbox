@@ -83,12 +83,6 @@ struct SPACEGAMEPRESENTATION_API FPlayerShipConfig {
 
     UPROPERTY(EditAnywhere, Category = "Combat")
     FLaserWeaponConfig laser{};
-
-    UPROPERTY(EditAnywhere, Category = "Combat")
-    float laser_lock_on_transition_delay{1.f};
-
-    UPROPERTY(EditAnywhere, Category = "Combat")
-    float laser_lock_on_distance{10000.f};
 };
 
 USTRUCT(BlueprintType)
@@ -351,7 +345,6 @@ struct SPACEGAMEPRESENTATION_API FLevelVisualConfig {
     FTubeSpinnerConfig tube_spinners;
     FDrawDebugConfig laser_debug_drawer;
     bool laser_debug_shapes{};
-    bool capital_debug_shapes{};
     bool fighter_debug_targets{};
     bool fighter_debug_locations{};
     bool turret_debug_targets{};

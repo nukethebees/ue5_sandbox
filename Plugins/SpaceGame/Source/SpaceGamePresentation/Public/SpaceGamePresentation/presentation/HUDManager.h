@@ -119,7 +119,6 @@ struct FPlayerStatusDataCache {
     float energy{1.f};
     int32 points{0};
     ::ioj::sim::ShipFireRate fire_rate{::ioj::sim::ShipFireRate::Single};
-    bool crosshair_targeting{false};
 };
 
 struct FPlayerFlightDataCache {
@@ -135,8 +134,6 @@ struct FPlayerFlightDataCache {
     ::ioj::sim::player::BoostBrakeState boost_brake_state{};
     FVector crosshair_origin{};
     FVector crosshair_direction{};
-    bool has_lock_on_target{false};
-    FVector lock_on_target_position{};
     FString selected_mapping_context;
 };
 

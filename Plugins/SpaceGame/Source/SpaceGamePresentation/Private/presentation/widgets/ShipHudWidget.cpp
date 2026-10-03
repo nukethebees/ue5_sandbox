@@ -240,9 +240,6 @@ void UShipHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
             }
         });
     }
-    if (lock_on_widget) {
-        lock_on_widget->SetColorAndOpacity(hud_style.reticle_danger);
-    }
 
     apply_radar_colours();
     update_crosshair_colours();
@@ -396,10 +393,6 @@ void UShipHudWidget::set_crosshair_positions(FVector2d near, FVector2d far) {
     far_slot->SetPosition(far);
     near_slot->SetPosition(near);
 }
-void UShipHudWidget::set_crosshair_targeting(bool const targeting) {
-    crosshair_targeting_ = targeting;
-    update_crosshair_colours();
-}
 
 void UShipHudWidget::update_crosshair_colours() {
     RETURN_IF_NULLPTR(near_crosshair_material_instance);
@@ -409,10 +402,8 @@ void UShipHudWidget::update_crosshair_colours() {
 
     UE_LOG(LogSandboxUI, Verbose, TEXT("Setting colour parameters."));
 
-    near_crosshair_material_instance->SetVectorParameterValue(
-        name, crosshair_targeting_ ? reticle_warning_colour_ : reticle_normal_colour_);
-    far_crosshair_material_instance->SetVectorParameterValue(
-        name, crosshair_targeting_ ? reticle_danger_colour_ : reticle_normal_colour_);
+    near_crosshair_material_instance->SetVectorParameterValue(name, reticle_normal_colour_);
+    far_crosshair_material_instance->SetVectorParameterValue(name, reticle_normal_colour_);
 }
 
 void UShipHudWidget::apply_radar_colours() {
@@ -431,21 +422,6 @@ void UShipHudWidget::apply_radar_colours() {
 void UShipHudWidget::set_crosshair_widget_visibility(ESlateVisibility const new_visibility) {
     set_widget_visibility_checked(far_crosshair_widget, new_visibility);
     set_widget_visibility_checked(near_crosshair_widget, new_visibility);
-}
-
-void UShipHudWidget::set_lock_on_widget_visibility(bool const visible) {
-    RETURN_IF_NULLPTR(lock_on_widget);
-
-    lock_on_widget->SetVisibility(visible ? ESlateVisibility::Visible
-                                          : ESlateVisibility::Collapsed);
-}
-void UShipHudWidget::set_lock_on_widget_visibility(ESlateVisibility const new_visibility) {
-    set_widget_visibility_checked(lock_on_widget, new_visibility);
-}
-void UShipHudWidget::set_lock_on_widget_position(FVector2d pos) {
-    RETURN_IF_NULLPTR(lock_on_widget);
-    TRY_INIT_PTR(slot, Cast<UCanvasPanelSlot>(lock_on_widget->Slot));
-    slot->SetPosition(pos);
 }
 
 void UShipHudWidget::set_widget_visibility_checked(UWidget* const widget,

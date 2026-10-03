@@ -22,8 +22,6 @@ auto make_simulation_config(FPlayerShipConfig const& source) -> ::ioj::sim::Play
     result.turn_bank_angle_max = source.turn_bank_angle_max;
     result.turn_bank_speed = source.turn_bank_speed;
     result.laser = make_simulation_config(source.laser);
-    result.laser_lock_on_transition_delay = source.laser_lock_on_transition_delay;
-    result.laser_lock_on_distance = source.laser_lock_on_distance;
     return result;
 }
 

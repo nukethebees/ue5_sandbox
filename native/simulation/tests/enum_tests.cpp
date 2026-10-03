@@ -137,7 +137,7 @@ TEST(NativeEnums, PersistedEnumNumericValuesRemainStable) {
 
 TEST(NativeEnums, PlayerEnumsExposeExhaustiveNativeValues) {
     EXPECT_EQ(ml::EnumTraits<ShipLaserMode>::count, 3U);
-    EXPECT_EQ(ml::EnumTraits<LaserFiringState>::count, 5U);
+    EXPECT_EQ(ml::EnumTraits<LaserFiringState>::count, 2U);
     EXPECT_EQ(ml::EnumTraits<ShipFireRate>::count, 3U);
     EXPECT_EQ(ml::EnumTraits<player::BoostBrakeState>::count, 4U);
 

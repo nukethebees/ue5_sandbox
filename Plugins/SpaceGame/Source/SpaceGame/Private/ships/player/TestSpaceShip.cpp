@@ -272,10 +272,6 @@ auto ATestSpaceShip::get_energy() const -> float {
     return simulation().get_energy();
 }
 
-auto ATestSpaceShip::get_lock_on_target() const -> ::ioj::sim::EntityUniqueId {
-    return simulation().lock_on_target;
-}
-
 void ATestSpaceShip::start_fire_laser() {
     commands().start_fire_laser();
 }
@@ -363,8 +359,6 @@ auto ATestSpaceShip::get_presentation_resources() const -> FPlayerPresentationRe
 #if WITH_EDITORONLY_DATA
     resources.debug_forward_socket_direction = debug_forward_socket_direction;
     resources.debug_forward_direction = debug_forward_direction;
-    resources.debug_lock_on = debug_lock_on;
-    resources.debug_lock_on_sphere_radius = debug_lock_on_sphere_radius;
 #endif
     return resources;
 }

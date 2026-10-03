@@ -102,7 +102,6 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
                 tube_spinners,
                 laser_debug_drawer,
                 laser_debug_shapes,
-                capital_debug_shapes,
                 fighter_debug_targets,
                 fighter_debug_locations,
                 turret_debug_targets,
@@ -148,9 +147,6 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
 
     UPROPERTY(EditAnywhere, Category = "Debug")
     bool laser_debug_shapes{false};
-
-    UPROPERTY(EditAnywhere, Category = "Debug")
-    bool capital_debug_shapes{false};
 
     UPROPERTY(EditAnywhere, Category = "Debug")
     bool fighter_debug_targets{false};

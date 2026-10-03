@@ -49,6 +49,55 @@ void schedule_turret(LevelSimInitData& data, Vector3f const location, SimTick co
     ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, 0, 1));
 }
 
+TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
+    for (auto const rate : {ShipFireRate::Single, ShipFireRate::Burst3}) {
+        auto data{make_world()};
+        add_moving_player(data);
+        data.player->laser_fire_rate = rate;
+        data.player->config.laser.fire_cooldown = 0.05f;
+
+        LevelSim simulation{std::move(data)};
+        simulation.finish_initialisation();
+        simulation.start();
+        auto* const commands{simulation.get_player_ship_commands()};
+        commands->start_fire_laser();
+        simulation.advance(1.0);
+
+        auto const shots{rate == ShipFireRate::Single ? 1u : 3u};
+        EXPECT_EQ(simulation.get_lasers().get_number_spawned(), shots);
+        EXPECT_EQ(simulation.get_player_ship_simulation()->laser_firing_mode,
+                  LaserFiringState::idle);
+        simulation.advance(1.0);
+        EXPECT_EQ(simulation.get_lasers().get_number_spawned(), shots);
+
+        commands->start_fire_laser();
+        simulation.advance(1.0);
+        EXPECT_EQ(simulation.get_lasers().get_number_spawned(), shots * 2);
+    }
+}
+
+TEST(TickPhases, AutomaticFireContinuesUntilReleased) {
+    auto data{make_world()};
+    add_moving_player(data);
+    data.player->laser_fire_rate = ShipFireRate::FullAuto;
+    data.player->config.laser.fire_cooldown = 0.05f;
+
+    LevelSim simulation{std::move(data)};
+    simulation.finish_initialisation();
+    simulation.start();
+    auto* const commands{simulation.get_player_ship_commands()};
+    commands->start_fire_laser();
+    simulation.advance(1.0);
+    EXPECT_GT(simulation.get_lasers().get_number_spawned(), 3u);
+    EXPECT_EQ(simulation.get_player_ship_simulation()->laser_firing_mode, LaserFiringState::burst);
+
+    commands->stop_fire_laser();
+    simulation.advance(1.0);
+    auto const shots{simulation.get_lasers().get_number_spawned()};
+    simulation.advance(1.0);
+    EXPECT_EQ(simulation.get_lasers().get_number_spawned(), shots);
+}
+
 TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     auto data{make_world()};
     add_capital_spawn(data, {}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);

@@ -1,6 +1,5 @@
 #include "SpaceGamePresentation/presentation/CapitalPresentation.h"
 
-#include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_types.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
@@ -64,9 +63,6 @@ void FCapitalPresentation::begin_play_presentation() {
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data.Get()),
     });
 
-    debug_drawer = actor_config->debug_drawer;
-    debug_drawer.world = world;
-
     configure_ismc();
     add_initial_visual_instances();
     validate_array_sizes();
@@ -95,9 +91,6 @@ void FCapitalPresentation::commit_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::commit_visual_data);
 
     instances->MarkRenderStateDirty();
-    if (debugging_shapes_enabled) {
-        draw_debugging_shapes();
-    }
 }
 
 void FCapitalPresentation::end_tick_presentation() {
@@ -227,33 +220,6 @@ void FCapitalPresentation::trigger_death_effects() {
     }
 
     niagara_spawner->add_spawns(spawn_systems, spawn_locations, spawn_delays);
-}
-
-void FCapitalPresentation::draw_debugging_shapes() const {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::draw_debugging_shapes);
-
-    auto const& capital_simulation{view()};
-    auto const& entities{capital_simulation.entities};
-    auto const& agents{*capital_simulation.agents};
-    auto const n{static_cast<int32>(capital_simulation.get_num_instances())};
-    auto const text_offset{actor_config->debug_status_text_offset};
-    auto const locations{entities.view_locations()};
-    auto const targets{entities.target_ids()};
-    auto const ids{entities.entity_ids()};
-
-    for (int32 i{0}; i < n; ++i) {
-        FVector const ship_location{ml::to_unreal(::ioj::sim::vector_at(locations, i))};
-        auto const target_id{targets[i]};
-        if (auto const target{agents.read_alive(target_id)}) {
-            FVector3d const target_location{ml::to_unreal(target->location)};
-            debug_drawer.draw_arrow(ship_location, target_location);
-        }
-
-        auto const entity_id{ids[i]};
-        auto const message{FString::Printf(
-            TEXT("[%u] HP=%d"), entity_id.raw_value(), capital_simulation.healths.health(i))};
-        debug_drawer.draw_string(ship_location + text_offset, message);
-    }
 }
 
 void FCapitalPresentation::validate_array_sizes() const {

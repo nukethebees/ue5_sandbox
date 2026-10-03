@@ -787,7 +787,6 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
                                 radar_contact_colours_,
                                 ml::to_unreal(player_ship->get_physical_state().transform),
                                 player_ship->unique_entity_id,
-                                player_ship->lock_on_target,
                                 ml::to_unreal(player_ship->team),
                                 radar_settings_,
                                 frame)};
@@ -935,12 +934,6 @@ bool FHUDManager::collect_player_status_data() {
         next_data.energy = player_ship->get_energy();
         next_data.points = player_ship->get_kills();
         next_data.fire_rate = player_ship->laser_fire_rate;
-
-        auto const firing_mode{player_ship->laser_firing_mode};
-        if (firing_mode == ::ioj::sim::LaserFiringState::lock_on_searching ||
-            firing_mode == ::ioj::sim::LaserFiringState::lock_on_acquired) {
-            next_data.crosshair_targeting = true;
-        }
     }
 
     player_status_data_buffers.cycle();
@@ -954,7 +947,6 @@ bool FHUDManager::collect_player_flight_data() {
 
     if (validate_player_ship_for_collection()) {
         auto const ship_socket{player_ship->get_middle_socket()};
-        auto const lock_on_target{player_ship->lock_on_target};
         auto const& physical_state{player_ship->get_physical_state()};
         auto const local_velocity{
             physical_state.transform.inverse_transform_vector_no_scale(physical_state.velocity)};
@@ -988,11 +980,6 @@ bool FHUDManager::collect_player_flight_data() {
         next_data.boost_brake_state = player_ship->get_controller_state().effective_action;
         next_data.crosshair_origin = ml::to_unreal(ship_socket.location);
         next_data.crosshair_direction = ml::to_unreal(ship_socket.forward());
-        auto const target{agents_->read_spatial(lock_on_target)};
-        next_data.has_lock_on_target = target.has_value() && ::ioj::sim::is_alive(target->health);
-        if (next_data.has_lock_on_target) {
-            next_data.lock_on_target_position = FVector{ml::to_unreal(target->location)};
-        }
     }
 
     player_flight_data_buffers.cycle();
@@ -1095,19 +1082,16 @@ void FHUDManager::update_player_status_hud(UShipHudWidget& hud) const {
     hud.set_energy(data.energy);
     hud.set_points(data.points);
     hud.set_fire_rate(ml::to_fstring(::ioj::sim::to_string(data.fire_rate)));
-    hud.set_crosshair_targeting(data.crosshair_targeting);
 }
 void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_player_flight_hud);
     auto const& data{player_flight_data_buffers.current()};
     if (!data.has_player_ship) {
         hud.set_crosshair_widget_visibility(ESlateVisibility::Collapsed);
-        hud.set_lock_on_widget_visibility(false);
         return;
     }
 
     hud.set_crosshair_widget_visibility(ESlateVisibility::Visible);
-    hud.set_lock_on_widget_visibility(data.has_lock_on_target);
     hud.set_selected_imc(FStringView{data.selected_mapping_context});
     hud.set_flight_vector_debug(data.flight_vector_debug);
     hud.set_ship_velocity(data.ship_velocity);
@@ -1155,18 +1139,6 @@ void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
             LogSandboxUI, Warning, TEXT("FHUDManager: Failed to project far crosshair position."));
     }
     hud.set_crosshair_positions(near_screen_position, far_screen_position);
-
-    if (data.has_lock_on_target) {
-        FVector2d lock_on_screen_position{};
-        if (!UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(
-                controller,
-                data.lock_on_target_position,
-                lock_on_screen_position,
-                player_viewport_relative)) {
-            UE_LOG(LogSandboxUI, Warning, TEXT("FHUDManager: Failed to project lock-on position."));
-        }
-        hud.set_lock_on_widget_position(lock_on_screen_position);
-    }
 }
 #if WITH_EDITOR
 void FHUDManager::update_sampled_speed_hud(UShipHudWidget& hud) const {

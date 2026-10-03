@@ -16,8 +16,6 @@ struct FPlayerPresentationResources {
     TWeakObjectPtr<USpaceDustComponent> space_dust;
     bool debug_forward_socket_direction{};
     bool debug_forward_direction{};
-    bool debug_lock_on{};
-    float debug_lock_on_sphere_radius{1000.f};
 };
 struct SPACEGAMEPRESENTATION_API FPlayerPresentation {
     FPlayerPresentation(FPlayerPresentationResources resources,

@@ -68,11 +68,5 @@ void FPlayerPresentation::tick(::ioj::sim::PlayerReadView const& state) {
     if (resources_.debug_forward_direction) {
         draw_direction(ml::to_unreal(state.transform), 5000.f);
     }
-    if (resources_.debug_lock_on &&
-        state.laser_firing_mode == ::ioj::sim::LaserFiringState::lock_on_searching) {
-        auto const end{
-            draw_direction(ml::to_unreal(state.middle_socket), config_.laser_lock_on_distance)};
-        DrawDebugSphere(world, end, resources_.debug_lock_on_sphere_radius, 8, FColor::Orange);
-    }
 #endif
 }
