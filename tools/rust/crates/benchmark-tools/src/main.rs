@@ -16,9 +16,9 @@ use support::*;
 
 const USAGE: &str = "Usage: benchmark-tools <kernel-report|spark|heatmap|radar-3d|scatter-3d|volume-heatmap-3d|entity-overlay|native-simulation|fighter-simulation|frame-memory-level|frame-memory-revision-ab|level-telemetry|gpu-starfield|sandbox-ismc|sandbox-ismc-revision-ab|sandbox-ismc-report> [options]\nSee docs/benchmarks.md for workload options.";
 
-fn execute(args: &[String]) -> Result<()> {
+fn dispatch_benchmark_command(args: &[String]) -> Result<()> {
     if args.first().is_some_and(|arg| arg == "tracy-report") {
-        return tracy::execute(&args[1..]);
+        return tracy::generate_tracy_report(&args[1..]);
     }
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!(
@@ -30,29 +30,31 @@ fn execute(args: &[String]) -> Result<()> {
         .split_first()
         .ok_or("A benchmark command is required.")?;
     if command == "sandbox-ismc-report" {
-        return ismc::report(args);
+        return ismc::regenerate_comparison_reports(args);
     }
-    let root = repository(&std::env::current_dir()?)?;
+    let root = find_repository_root(&std::env::current_dir()?)?;
     match command.as_str() {
         "native-simulation" => {
-            print!("{}", native::simulation(&root, args)?);
+            print!("{}", native::run_simulation_benchmark(&root, args)?);
             Ok(())
         }
-        "fighter-simulation" => native::fighter(&root, args),
-        "frame-memory-level" => native::frame(&root, args),
-        "frame-memory-revision-ab" => frame_revision::execute(&root, args),
-        "kernel-report" => kernel::execute(&root, args),
+        "fighter-simulation" => native::run_fighter_benchmark(&root, args),
+        "frame-memory-level" => native::run_frame_memory_benchmark(&root, args),
+        "frame-memory-revision-ab" => frame_revision::run_frame_memory_comparison(&root, args),
+        "kernel-report" => kernel::generate_kernel_report(&root, args),
         "spark" | "level-telemetry" | "heatmap" | "radar-3d" | "scatter-3d"
-        | "volume-heatmap-3d" | "entity-overlay" => unreal::execute(&root, command, args),
-        "gpu-starfield" => gpu::execute(&root, args),
-        "sandbox-ismc" => ismc::execute(&root, args, false),
-        "sandbox-ismc-revision-ab" => ismc::execute(&root, args, true),
+        | "volume-heatmap-3d" | "entity-overlay" => {
+            unreal::run_unreal_benchmark(&root, command, args)
+        }
+        "gpu-starfield" => gpu::run_starfield_benchmark(&root, args),
+        "sandbox-ismc" => ismc::run_ismc_benchmark(&root, args, false),
+        "sandbox-ismc-revision-ab" => ismc::run_ismc_benchmark(&root, args, true),
         _ => Err(format!("Unknown benchmark command '{command}'.\n{USAGE}").into()),
     }
 }
 fn main() {
     let args: Vec<_> = std::env::args().skip(1).collect();
-    if let Err(error) = execute(&args) {
+    if let Err(error) = dispatch_benchmark_command(&args) {
         eprintln!("benchmark-tools: {error}");
         std::process::exit(
             error

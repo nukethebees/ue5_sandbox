@@ -22,8 +22,8 @@ struct Record {
     total_root_claims: u64,
 }
 
-pub fn execute(root: &Path, args: &[String]) -> Result<()> {
-    let parsed = Args::parse(
+pub fn run_frame_memory_comparison(root: &Path, args: &[String]) -> Result<()> {
+    let parsed = Args::parse_command_line(
         args,
         &[
             "--iterations",
@@ -67,7 +67,7 @@ pub fn execute(root: &Path, args: &[String]) -> Result<()> {
     } else {
         "measurement"
     });
-    run.publish()?;
+    run.write_manifest()?;
     println!("Artifacts: {}", run.directory.display());
     if validate {
         println!("Validation only: one smoke A/B pair; no performance conclusions.");
@@ -87,7 +87,7 @@ pub fn execute(root: &Path, args: &[String]) -> Result<()> {
         let operation = (|| {
             run.manifest["provenance"] = json!({"candidate":revisions.candidate,"baseline":revisions.baseline,"ownsBaseline":revisions.owned,
                 "orchestrator":std::env::current_exe()?,"effectiveArguments":args});
-            run.publish()?;
+            run.write_manifest()?;
             if !parsed.flag("--skip-build") {
                 let modules = [
                     "native/third_party/googletest",
@@ -96,7 +96,7 @@ pub fn execute(root: &Path, args: &[String]) -> Result<()> {
                     "native/third_party/cli11",
                 ];
                 revision::initialize_submodules(root, None, Some(&modules))?;
-                build(root)?;
+                build_frame_memory_benchmark(root)?;
                 if revisions.owned {
                     revision::initialize_submodules(
                         &revisions.baseline.root,
@@ -104,14 +104,14 @@ pub fn execute(root: &Path, args: &[String]) -> Result<()> {
                         Some(&modules),
                     )?;
                 }
-                build(&revisions.baseline.root)?;
+                build_frame_memory_benchmark(&revisions.baseline.root)?;
             }
-            revision::verify_source(&revisions.candidate)?;
-            revision::verify_source(&revisions.baseline)?;
+            revision::verify_source_unchanged(&revisions.candidate)?;
+            revision::verify_source_unchanged(&revisions.baseline)?;
             if parsed.flag("--prepare-only") {
                 return Ok(());
             }
-            let sequence = revision::balanced(iterations, warmups);
+            let sequence = revision::balanced_repetitions(iterations, warmups);
             write_json(&run.path("sequence.json"), &sequence)?;
             let plan = crate::ismc::Plan {
                 output: run.directory.clone(),
@@ -125,8 +125,8 @@ pub fn execute(root: &Path, args: &[String]) -> Result<()> {
             for name in ["sequence.json", "measurement-plan.json"] {
                 run.manifest["artifacts"][name] = json!(run.path(name));
             }
-            run.expect("records.json")?;
-            run.status("measuring")?;
+            run.expect_artifact("records.json")?;
+            run.set_status("measuring")?;
             let mut records = Vec::new();
             for item in sequence {
                 let source = if item.side == "baseline" {
@@ -134,14 +134,15 @@ pub fn execute(root: &Path, args: &[String]) -> Result<()> {
                 } else {
                     &revisions.candidate
                 };
-                let mut command = native::frame_args(&source.root, 20.0);
+                let mut command = native::frame_memory_arguments(&source.root, 20.0);
                 command.push("--skip-build".into());
-                let values = json_lines(&native::simulation(&source.root, &command)?)?;
+                let values =
+                    parse_json_lines(&native::run_simulation_benchmark(&source.root, &command)?)?;
                 if values.len() != 1 {
                     return Err("NativeFrameMemoryLevel must produce one JSON result.".into());
                 }
                 let value = &values[0];
-                let mean_tick_us = number(value, "/timing/mean_tick_microseconds")?;
+                let mean_tick_us = read_finite_number(value, "/timing/mean_tick_microseconds")?;
                 if mean_tick_us <= 0.0 {
                     return Err(
                         "NativeFrameMemoryLevel result contained an invalid mean tick time.".into(),
@@ -168,9 +169,9 @@ pub fn execute(root: &Path, args: &[String]) -> Result<()> {
                 }
                 write_json(&run.path("records.json"), &records)?;
             }
-            revision::verify_source(&revisions.candidate)?;
-            revision::verify_source(&revisions.baseline)?;
-            run.validate()?;
+            revision::verify_source_unchanged(&revisions.candidate)?;
+            revision::verify_source_unchanged(&revisions.baseline)?;
+            run.validate_artifacts()?;
             let mut rows = vec![
                 [
                     "pair",
@@ -202,7 +203,7 @@ pub fn execute(root: &Path, args: &[String]) -> Result<()> {
                 ]);
             }
             write_csv(&run.path("raw-results.csv"), &rows)?;
-            run.expect("raw-results.csv")?;
+            run.expect_artifact("raw-results.csv")?;
             if !validate {
                 let mut rows = vec![
                     [
@@ -243,22 +244,22 @@ pub fn execute(root: &Path, args: &[String]) -> Result<()> {
                     ]);
                 }
                 write_csv(&run.path("paired-results.csv"), &rows)?;
-                run.expect("paired-results.csv")?;
+                run.expect_artifact("paired-results.csv")?;
                 println!(
                     "native: mean delta {:.3}%, median delta {:.3}%",
                     percentages.iter().sum::<f64>() / percentages.len() as f64,
-                    Summary::across(percentages)?.median
+                    Summary::from_samples(percentages)?.median
                 );
             }
             Ok(())
         })();
-        revisions.finish(operation)
+        revisions.cleanup_worktrees(operation)
     })();
-    run.finish(result)
+    run.finish_run(result)
 }
-fn build(root: &Path) -> Result<()> {
-    visible(root, "cmake", &["--preset", "native-benchmark"])?;
-    visible(
+fn build_frame_memory_benchmark(root: &Path) -> Result<()> {
+    run_process_inherited(root, "cmake", &["--preset", "native-benchmark"])?;
+    run_process_inherited(
         root,
         "cmake",
         &[

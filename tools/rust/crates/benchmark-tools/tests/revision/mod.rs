@@ -1,7 +1,7 @@
 use super::*;
 #[test]
 fn balanced_order_preserves_pairs_and_excludes_warmups_from_numbering() {
-    let sequence = balanced(3, 1);
+    let sequence = balanced_repetitions(3, 1);
     assert_eq!(
         sequence.iter().map(|r| r.side.as_str()).collect::<Vec<_>>(),
         [
@@ -22,19 +22,24 @@ fn balanced_order_preserves_pairs_and_excludes_warmups_from_numbering() {
 #[test]
 fn owned_paths_cannot_escape_or_equal_the_parent() {
     let temp = ioj_test_support::temp_dir("benchmark paths ");
-    assert!(owned_path(&temp.path().join("wt/0"), &temp.path().join("wt")).is_ok());
-    assert!(owned_path(temp.path(), temp.path()).is_err());
-    assert!(owned_path(&temp.path().join("wt/../outside"), &temp.path().join("wt")).is_err());
+    assert!(validate_owned_path(&temp.path().join("wt/0"), &temp.path().join("wt")).is_ok());
+    assert!(validate_owned_path(temp.path(), temp.path()).is_err());
+    assert!(
+        validate_owned_path(&temp.path().join("wt/../outside"), &temp.path().join("wt")).is_err()
+    );
 }
 #[test]
 fn manifest_requires_nonempty_expected_artifacts_and_keeps_failure() {
     let temp = ioj_test_support::temp_dir("benchmark manifest ");
     let mut run = Run::new(temp.path(), "test", temp.path(), json!({}), "", true).unwrap();
-    run.expect("result.json").unwrap();
-    assert!(run.validate().is_err());
+    run.expect_artifact("result.json").unwrap();
+    assert!(run.validate_artifacts().is_err());
     write_text(&run.path("result.json"), "{}").unwrap();
-    run.validate().unwrap();
-    assert!(run.finish::<()>(Err("failed measurement".into())).is_err());
+    run.validate_artifacts().unwrap();
+    assert!(
+        run.finish_run::<()>(Err("failed measurement".into()))
+            .is_err()
+    );
     let manifest: Value =
         serde_json::from_slice(&fs::read(run.path("manifest.json")).unwrap()).unwrap();
     assert_eq!(manifest["status"], "failed");

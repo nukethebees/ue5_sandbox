@@ -7,23 +7,23 @@ use std::{
     time::{Duration, Instant},
 };
 
-pub fn prepare(
+pub fn prepare_editor_build(
     root: &Path,
     build_dir: Option<&str>,
     default_preset: &str,
     skip: bool,
 ) -> Result<Value> {
     let build = match build_dir {
-        Some(directory) => absolute(root, directory)?,
+        Some(directory) => resolve_absolute_path(root, directory)?,
         None => {
             if !skip {
-                visible(root, "cmake", &["--preset", default_preset])?;
+                run_process_inherited(root, "cmake", &["--preset", default_preset])?;
             }
             root.join("out/build").join(default_preset)
         }
     };
     if !skip {
-        visible(
+        run_process_inherited(
             root,
             "cmake",
             &["--build", &build.to_string_lossy(), "--target", "editor"],
@@ -32,7 +32,7 @@ pub fn prepare(
     read_json(&build.join("unreal-paths.json"))
 }
 
-pub fn path(settings: &Value, key: &str) -> Result<PathBuf> {
+pub fn read_build_path(settings: &Value, key: &str) -> Result<PathBuf> {
     settings[key]
         .as_str()
         .filter(|value| !value.is_empty())
@@ -41,7 +41,11 @@ pub fn path(settings: &Value, key: &str) -> Result<PathBuf> {
 }
 
 // Bound engine measurements and retain output even when Unreal hangs or fails.
-pub fn run_logged(command: &mut Command, log: &Path, deadline: Instant) -> Result<Output> {
+pub fn run_editor_with_timeout(
+    command: &mut Command,
+    log: &Path,
+    deadline: Instant,
+) -> Result<Output> {
     if Instant::now() >= deadline {
         return Err(format!("Unreal benchmark timed out; log: {}", log.display()).into());
     }
@@ -69,7 +73,7 @@ pub fn run_logged(command: &mut Command, log: &Path, deadline: Instant) -> Resul
     })
 }
 
-fn automation_succeeded(log: &str) -> Result<()> {
+fn validate_automation_log(log: &str) -> Result<()> {
     if log.contains("Found 0 automation tests based on")
         || log.contains("Test Completed. Result={Fail}")
         || log.contains("Test Completed. Result={Error}")
@@ -85,7 +89,7 @@ fn automation_succeeded(log: &str) -> Result<()> {
     Ok(())
 }
 
-fn measurement(operation: &str, args: &Args) -> Result<(Vec<String>, u64, bool)> {
+fn measurement_arguments(operation: &str, args: &Args) -> Result<(Vec<String>, u64, bool)> {
     let mut command = Vec::new();
     let (timeout, automation) = match operation {
         "spark" => {
@@ -193,7 +197,7 @@ fn measurement(operation: &str, args: &Args) -> Result<(Vec<String>, u64, bool)>
     Ok((command, timeout, automation))
 }
 
-pub fn execute(root: &Path, operation: &str, arguments: &[String]) -> Result<()> {
+pub fn run_unreal_benchmark(root: &Path, operation: &str, arguments: &[String]) -> Result<()> {
     let mut options = vec!["--build-dir", "--timeout-seconds"];
     options.extend(match operation {
         "spark" => vec![
@@ -209,10 +213,10 @@ pub fn execute(root: &Path, operation: &str, arguments: &[String]) -> Result<()>
         "scatter-3d" => vec!["--point-counts", "--warmup", "--iterations", "--output"],
         _ => vec![],
     });
-    let args = Args::parse(arguments, &options, &["--skip-build"])?;
-    let (arguments, timeout, automation) = measurement(operation, &args)?;
+    let args = Args::parse_command_line(arguments, &options, &["--skip-build"])?;
+    let (arguments, timeout, automation) = measurement_arguments(operation, &args)?;
     let timeout = args.integer("--timeout-seconds", timeout as u32, 1, 86400)?;
-    let settings = prepare(
+    let settings = prepare_editor_build(
         root,
         args.optional("--build-dir"),
         if automation {
@@ -222,9 +226,9 @@ pub fn execute(root: &Path, operation: &str, arguments: &[String]) -> Result<()>
         },
         args.flag("--skip-build"),
     )?;
-    let mut command = Command::new(path(&settings, "editor_cmd")?);
+    let mut command = Command::new(read_build_path(&settings, "editor_cmd")?);
     command
-        .arg(path(&settings, "project")?)
+        .arg(read_build_path(&settings, "project")?)
         .args(arguments)
         .args(["-unattended", "-nop4", "-nosplash", "-nosound", "-stdout"])
         .current_dir(root);
@@ -233,12 +237,12 @@ pub fn execute(root: &Path, operation: &str, arguments: &[String]) -> Result<()>
             "-ddc=NoZenLocalFallback".into(),
             format!(
                 "-LocalDataCachePath={}",
-                path(&settings, "local_ddc")?.display()
+                read_build_path(&settings, "local_ddc")?.display()
             ),
         ]);
     }
     let log = if operation == "level-telemetry" {
-        absolute(
+        resolve_absolute_path(
             root,
             args.value("--output-dir", ".local/benchmarks/level-telemetry"),
         )?
@@ -246,7 +250,7 @@ pub fn execute(root: &Path, operation: &str, arguments: &[String]) -> Result<()>
     } else {
         root.join(format!("Saved/Benchmarks/{operation}.log"))
     };
-    let output = succeeded(run_logged(
+    let output = require_process_success(run_editor_with_timeout(
         &mut command,
         &log,
         Instant::now() + Duration::from_secs(timeout.into()),
@@ -254,7 +258,7 @@ pub fn execute(root: &Path, operation: &str, arguments: &[String]) -> Result<()>
     let text = String::from_utf8_lossy(&output.stdout);
     print!("{text}");
     if automation {
-        automation_succeeded(&text)?;
+        validate_automation_log(&text)?;
     }
     Ok(())
 }

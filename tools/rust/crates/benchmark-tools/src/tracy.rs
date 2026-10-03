@@ -87,7 +87,7 @@ struct Report {
     zones: Vec<ZoneReport>,
 }
 
-fn summarize(
+fn summarize_probe_events(
     reader: impl Read,
     selection: &Selection,
     max_events: usize,
@@ -209,12 +209,12 @@ fn summarize(
     Ok((zones, matched_events, incomplete_events))
 }
 
-pub fn execute(args: &[String]) -> Result<()> {
+pub fn generate_tracy_report(args: &[String]) -> Result<()> {
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!("{HELP}");
         return Ok(());
     }
-    let args = Args::parse(
+    let args = Args::parse_command_line(
         args,
         &[
             "--trace",
@@ -298,7 +298,7 @@ pub fn execute(args: &[String]) -> Result<()> {
         io::copy(&mut reader, &mut io::sink())?;
         Ok(String::from_utf8_lossy(&retained).into_owned())
     });
-    let result = summarize(
+    let result = summarize_probe_events(
         child.stdout.take().ok_or("Missing exporter stdout")?,
         &selection,
         max_events,

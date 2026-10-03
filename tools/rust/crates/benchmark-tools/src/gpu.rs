@@ -57,8 +57,8 @@ struct Request {
     timeout_seconds: u32,
 }
 impl Request {
-    fn parse(root: &Path, args: &[String]) -> Result<Self> {
-        let args = Args::parse(
+    fn parse_starfield_options(root: &Path, args: &[String]) -> Result<Self> {
+        let args = Args::parse_command_line(
             args,
             &[
                 "--editor",
@@ -123,11 +123,11 @@ impl Request {
         Ok(Self {
             editor: args
                 .optional("--editor")
-                .map(|path| absolute(root, path))
+                .map(|path| resolve_absolute_path(root, path))
                 .transpose()?
                 .unwrap_or_default(),
-            project: absolute(root, args.value("--project", "Sandbox.uproject"))?,
-            output: absolute(
+            project: resolve_absolute_path(root, args.value("--project", "Sandbox.uproject"))?,
+            output: resolve_absolute_path(
                 root,
                 args.value("--output", "Saved/Benchmarks/GpuStarfield"),
             )?,
@@ -152,7 +152,7 @@ impl Request {
             timeout_seconds: args.integer("--timeout-seconds", 2400, 1, 86400)?,
         })
     }
-    fn arguments(&self, config: &Configuration, raw: &Path) -> Vec<String> {
+    fn build_starfield_arguments(&self, config: &Configuration, raw: &Path) -> Vec<String> {
         let mut args = vec![self.project.to_string_lossy().into_owned()];
         args.extend(
             [
@@ -200,7 +200,7 @@ impl Request {
                 "-GpuStarfieldBenchmarkCameraModes={}",
                 self.camera_modes
                     .iter()
-                    .map(|&moving| camera(moving))
+                    .map(|&moving| camera_mode_name(moving))
                     .collect::<Vec<_>>()
                     .join(",")
             ),
@@ -216,7 +216,7 @@ impl Request {
         args
     }
 }
-fn camera(moving: bool) -> &'static str {
+fn camera_mode_name(moving: bool) -> &'static str {
     if moving { "moving" } else { "stationary" }
 }
 
@@ -247,7 +247,7 @@ struct Delta {
     delta_max: f64,
 }
 
-fn read_capture(
+fn read_starfield_capture(
     path: &Path,
     configuration: &Configuration,
     count: u32,
@@ -258,7 +258,7 @@ fn read_capture(
 ) -> Result<Capture> {
     let text = fs::read_to_string(path)?;
     let mut lines = text.trim_start_matches('\u{feff}').lines();
-    let columns = parse_csv(lines.next().ok_or("Capture is empty.")?)?;
+    let columns = parse_csv_row(lines.next().ok_or("Capture is empty.")?)?;
     let indices: BTreeMap<_, _> = METRICS
         .iter()
         .filter_map(|&(name, column)| columns.iter().position(|c| c == column).map(|i| (name, i)))
@@ -270,7 +270,7 @@ fn read_capture(
         METRICS.iter().map(|(k, _)| (*k, Vec::new())).collect();
     let (mut width, mut height) = (0, 0);
     for line in lines {
-        let row = parse_csv(line)?;
+        let row = parse_csv_row(line)?;
         for pair in row.windows(2) {
             if pair[0] == "[systemresolution.resx]"
                 && let Ok(v) = pair[1].parse()
@@ -326,7 +326,7 @@ fn read_capture(
     };
     for (name, samples) in values {
         let summary = if samples.len() > 2 * trim {
-            Summary::across(samples[trim..samples.len() - trim].iter().copied())?
+            Summary::from_samples(samples[trim..samples.len() - trim].iter().copied())?
         } else {
             Summary {
                 samples: 0,
@@ -343,7 +343,7 @@ fn read_capture(
     Ok(capture)
 }
 
-fn deltas(request: &Request, captures: &[Capture]) -> Result<Vec<Delta>> {
+fn calculate_capture_deltas(request: &Request, captures: &[Capture]) -> Result<Vec<Delta>> {
     let mut result = Vec::new();
     for configuration in &request.configurations {
         for &count in &request.counts {
@@ -375,14 +375,15 @@ fn deltas(request: &Request, captures: &[Capture]) -> Result<Vec<Delta>> {
                             );
                         }
                     }
-                    let delta = Summary::across(enabled.iter().zip(&disabled).map(|(b, a)| b - a))?;
+                    let delta =
+                        Summary::from_samples(enabled.iter().zip(&disabled).map(|(b, a)| b - a))?;
                     result.push(Delta {
                         configuration: configuration.clone(),
                         star_count: count,
                         moving,
                         metric: metric.into(),
-                        disabled_median: Summary::across(disabled)?.median,
-                        enabled_median: Summary::across(enabled)?.median,
+                        disabled_median: Summary::from_samples(disabled)?.median,
+                        enabled_median: Summary::from_samples(enabled)?.median,
                         delta_median: delta.median,
                         delta_min: delta.min,
                         delta_max: delta.max,
@@ -393,7 +394,7 @@ fn deltas(request: &Request, captures: &[Capture]) -> Result<Vec<Delta>> {
     }
     Ok(result)
 }
-fn validate(captures: &[Capture], deltas: &[Delta]) -> Result<()> {
+fn validate_capture_deltas(captures: &[Capture], deltas: &[Delta]) -> Result<()> {
     for delta in deltas {
         let expected = (delta.star_count * 2 + 2) as f64;
         let valid = match delta.metric.as_str() {
@@ -427,7 +428,7 @@ fn validate(captures: &[Capture], deltas: &[Delta]) -> Result<()> {
     }
     Ok(())
 }
-fn write_outputs(
+fn write_starfield_reports(
     directory: &Path,
     request: &Request,
     captures: &[Capture],
@@ -469,7 +470,7 @@ fn write_outputs(
             d.configuration.height.to_string(),
             d.configuration.size_multiplier.to_string(),
             d.star_count.to_string(),
-            camera(d.moving).into(),
+            camera_mode_name(d.moving).into(),
             d.metric.clone(),
             d.disabled_median.to_string(),
             d.enabled_median.to_string(),
@@ -483,7 +484,7 @@ fn write_outputs(
             d.configuration.height,
             d.configuration.size_multiplier,
             d.star_count,
-            camera(d.moving),
+            camera_mode_name(d.moving),
             d.metric,
             d.disabled_median,
             d.enabled_median,
@@ -497,17 +498,17 @@ fn write_outputs(
     print!("{report}");
     Ok(())
 }
-pub fn execute(root: &Path, args: &[String]) -> Result<()> {
-    let mut request = Request::parse(root, args)?;
+pub fn run_starfield_benchmark(root: &Path, args: &[String]) -> Result<()> {
+    let mut request = Request::parse_starfield_options(root, args)?;
     if !request.skip_build || request.editor.as_os_str().is_empty() {
-        let settings = crate::unreal::prepare(
+        let settings = crate::unreal::prepare_editor_build(
             root,
             request.build_dir.as_deref(),
             "development",
             request.skip_build,
         )?;
         if request.editor.as_os_str().is_empty() {
-            request.editor = crate::unreal::path(&settings, "editor_cmd")?;
+            request.editor = crate::unreal::read_build_path(&settings, "editor_cmd")?;
         }
     }
     let deadline =
@@ -527,9 +528,9 @@ pub fn execute(root: &Path, args: &[String]) -> Result<()> {
         let raw = config_dir.join("raw");
         fs::create_dir_all(&raw)?;
         println!("Running {}...", configuration.name());
-        succeeded(crate::unreal::run_logged(
+        require_process_success(crate::unreal::run_editor_with_timeout(
             Command::new(&request.editor)
-                .args(request.arguments(configuration, &raw))
+                .args(request.build_starfield_arguments(configuration, &raw))
                 .current_dir(request.project.parent().ok_or("Project has no parent.")?),
             &config_dir.join("unreal.log"),
             deadline,
@@ -540,10 +541,10 @@ pub fn execute(root: &Path, args: &[String]) -> Result<()> {
                     for enabled in [false, true] {
                         let path = raw.join(format!(
                             "gpu_starfield_{count}_{}_{}_r{repeat}.csv",
-                            camera(moving),
+                            camera_mode_name(moving),
                             if enabled { "enabled" } else { "disabled" }
                         ));
-                        captures.push(read_capture(
+                        captures.push(read_starfield_capture(
                             &path,
                             configuration,
                             count,
@@ -557,9 +558,9 @@ pub fn execute(root: &Path, args: &[String]) -> Result<()> {
             }
         }
     }
-    let deltas = deltas(&request, &captures)?;
-    validate(&captures, &deltas)?;
-    write_outputs(&directory, &request, &captures, &deltas)?;
+    let deltas = calculate_capture_deltas(&request, &captures)?;
+    validate_capture_deltas(&captures, &deltas)?;
+    write_starfield_reports(&directory, &request, &captures, &deltas)?;
     println!("Artifacts: {}", directory.display());
     Ok(())
 }

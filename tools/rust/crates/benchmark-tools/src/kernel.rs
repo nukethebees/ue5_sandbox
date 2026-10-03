@@ -1,7 +1,7 @@
 use crate::support::*;
 use std::{fs, path::Path, process::Command};
 
-fn filter(workload: &str) -> &'static str {
+fn workload_filter(workload: &str) -> &'static str {
     match workload {
         "representative" => {
             "^(add_scaled/elementwise|dot_product/relaxed)/(flat|chunked16)/[^/]+/ordinary/aligned/(4096|16384|65536|100000)/real_time$"
@@ -16,8 +16,8 @@ fn filter(workload: &str) -> &'static str {
     }
 }
 
-pub fn execute(root: &Path, arguments: &[String]) -> Result<()> {
-    let args = Args::parse(
+pub fn generate_kernel_report(root: &Path, arguments: &[String]) -> Result<()> {
+    let args = Args::parse_command_line(
         arguments,
         &["--workload", "--repetitions", "--min-time"],
         &["--skip-build"],
@@ -36,8 +36,8 @@ pub fn execute(root: &Path, arguments: &[String]) -> Result<()> {
         180.0,
     )?;
     if !args.flag("--skip-build") {
-        visible(root, "cmake", &["--preset", "native-benchmark"])?;
-        visible(root, "cmake", &["--build", "--preset", "kernel-benchmark"])?;
+        run_process_inherited(root, "cmake", &["--preset", "native-benchmark"])?;
+        run_process_inherited(root, "cmake", &["--build", "--preset", "kernel-benchmark"])?;
     }
     let directory = root.join(if highway {
         ".local/benchmarks/highway"
@@ -73,8 +73,8 @@ pub fn execute(root: &Path, arguments: &[String]) -> Result<()> {
         format!("--benchmark_out={}", results.display()),
         "--benchmark_out_format=json".into(),
     ]);
-    if !filter(workload).is_empty() {
-        command.arg(format!("--benchmark_filter={}", filter(workload)));
+    if !workload_filter(workload).is_empty() {
+        command.arg(format!("--benchmark_filter={}", workload_filter(workload)));
     }
     let status = command.status()?;
     if !status.success() {

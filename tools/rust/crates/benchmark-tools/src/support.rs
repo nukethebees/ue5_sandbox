@@ -2,7 +2,6 @@ use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use std::{
     collections::BTreeMap,
-    ffi::OsStr,
     fs,
     path::{Path, PathBuf},
     process::{Command, Output},
@@ -19,7 +18,7 @@ impl std::fmt::Display for ProcessFailure {
 }
 impl std::error::Error for ProcessFailure {}
 
-pub fn captured(command: &mut Command) -> Result<Output> {
+pub fn capture_process_output(command: &mut Command) -> Result<Output> {
     command.output().map_err(|error| {
         format!(
             "Unable to run {}: {error}",
@@ -29,8 +28,8 @@ pub fn captured(command: &mut Command) -> Result<Output> {
     })
 }
 
-pub fn logged(command: &mut Command, path: &Path) -> Result<Output> {
-    let output = captured(command)?;
+pub fn run_process_with_log(command: &mut Command, path: &Path) -> Result<Output> {
+    let output = capture_process_output(command)?;
 
     // Preserve diagnostics before the caller checks exit status or result artifacts.
     write_text(
@@ -45,7 +44,7 @@ pub fn logged(command: &mut Command, path: &Path) -> Result<Output> {
     Ok(output)
 }
 
-pub fn succeeded(output: Output) -> Result<Output> {
+pub fn require_process_success(output: Output) -> Result<Output> {
     if !output.status.success() {
         print!("{}", String::from_utf8_lossy(&output.stdout));
         eprint!("{}", String::from_utf8_lossy(&output.stderr));
@@ -54,17 +53,7 @@ pub fn succeeded(output: Output) -> Result<Output> {
     Ok(output)
 }
 
-pub fn run(
-    root: &Path,
-    executable: impl AsRef<OsStr>,
-    args: &[impl AsRef<OsStr>],
-) -> Result<Output> {
-    succeeded(captured(
-        Command::new(executable).args(args).current_dir(root),
-    )?)
-}
-
-pub fn visible(root: &Path, executable: &str, args: &[&str]) -> Result<()> {
+pub fn run_process_inherited(root: &Path, executable: &str, args: &[&str]) -> Result<()> {
     let status = Command::new(executable)
         .args(args)
         .current_dir(root)
@@ -75,7 +64,7 @@ pub fn visible(root: &Path, executable: &str, args: &[&str]) -> Result<()> {
     Ok(())
 }
 
-pub fn repository(start: &Path) -> Result<PathBuf> {
+pub fn find_repository_root(start: &Path) -> Result<PathBuf> {
     start
         .ancestors()
         .find(|p| p.join(".git").exists() && p.join("CMakeLists.txt").is_file())
@@ -89,7 +78,7 @@ pub fn repository(start: &Path) -> Result<PathBuf> {
         })
 }
 
-pub fn absolute(root: &Path, path: impl AsRef<Path>) -> Result<PathBuf> {
+pub fn resolve_absolute_path(root: &Path, path: impl AsRef<Path>) -> Result<PathBuf> {
     Ok(std::path::absolute(root.join(path))?)
 }
 
@@ -107,7 +96,7 @@ pub fn read_json<T: DeserializeOwned>(path: &Path) -> Result<T> {
     Ok(serde_json::from_slice(&fs::read(path)?)?)
 }
 
-pub fn json_lines(output: &str) -> Result<Vec<Value>> {
+pub fn parse_json_lines(output: &str) -> Result<Vec<Value>> {
     output
         .lines()
         .map(str::trim_start)
@@ -137,7 +126,7 @@ pub fn write_csv(path: &Path, rows: &[Vec<String>]) -> Result<()> {
     write_text(path, text)
 }
 
-pub fn parse_csv(line: &str) -> Result<Vec<String>> {
+pub fn parse_csv_row(line: &str) -> Result<Vec<String>> {
     let mut result = Vec::new();
     let mut field = String::new();
     let mut quoted = false;
@@ -160,7 +149,7 @@ pub fn parse_csv(line: &str) -> Result<Vec<String>> {
     Ok(result)
 }
 
-pub fn number(value: &Value, pointer: &str) -> Result<f64> {
+pub fn read_finite_number(value: &Value, pointer: &str) -> Result<f64> {
     value
         .pointer(pointer)
         .and_then(Value::as_f64)
@@ -174,7 +163,7 @@ impl Args {
         self.0.get(name).map(String::as_str)
     }
 
-    pub fn parse(args: &[String], values: &[&str], flags: &[&str]) -> Result<Self> {
+    pub fn parse_command_line(args: &[String], values: &[&str], flags: &[&str]) -> Result<Self> {
         let mut parsed = BTreeMap::new();
         let mut args = args.iter();
         while let Some(arg) = args.next() {

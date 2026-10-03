@@ -36,10 +36,11 @@ pub struct Request {
 }
 
 impl Request {
-    fn parse(args: &Args, root: &Path) -> Result<Self> {
+    fn parse_ismc_options(args: &Args, root: &Path) -> Result<Self> {
         let fallback = PathBuf::from(std::env::var_os("UE_ROOT").unwrap_or_default())
             .join("Engine/Binaries/Win64/UnrealEditor-Cmd.exe");
-        let editor = absolute(root, args.value("--editor", &fallback.to_string_lossy()))?;
+        let editor =
+            resolve_absolute_path(root, args.value("--editor", &fallback.to_string_lossy()))?;
         if !editor.is_file() {
             return Err(format!(
                 "Unreal Editor executable does not exist: '{}'. Use --editor or UE_ROOT.",
@@ -78,7 +79,7 @@ impl Request {
             cache_directory: root.join(".local/benchmarks/ddc"),
         })
     }
-    pub fn conditions(&self) -> Conditions {
+    pub fn build_comparison_conditions(&self) -> Conditions {
         let mut result: Conditions = [
             ("mode", self.mode.clone()),
             ("visibility", format!("{}_visible", self.visibility)),
@@ -123,10 +124,10 @@ impl Request {
         }
         result
     }
-    fn common_arguments(&self, root: &Path, log: &Path) -> Vec<String> {
+    fn build_common_editor_arguments(&self, root: &Path, log: &Path) -> Vec<String> {
         let mut args = vec![
             root.join("Sandbox.uproject").to_string_lossy().into_owned(),
-            map(root).to_string_lossy().into_owned(),
+            benchmark_map_path(root).to_string_lossy().into_owned(),
         ];
         args.extend(
             [
@@ -147,8 +148,8 @@ impl Request {
         ]);
         args
     }
-    fn editor_arguments(&self, root: &Path, run: &Run) -> Vec<String> {
-        let mut args = self.common_arguments(root, &run.path("unreal.log"));
+    fn build_measurement_editor_arguments(&self, root: &Path, run: &Run) -> Vec<String> {
+        let mut args = self.build_common_editor_arguments(root, &run.path("unreal.log"));
         args.extend(["-ExecCmds=r.VSync 0,r.Editor.Viewport.OverridePIEScreenPercentage 0,r.ScreenPercentage 100,r.DynamicRes.OperationMode 0,Automation Now;RunTests SandboxISMC.RemoteBenchmark;Quit".into(),
             "-SandboxISMCBenchmarkEndPIE".into(),format!("-ResX={}",self.width),format!("-ResY={}",self.height),"-ForceRes".into(),"-windowed".into(),
             format!("-SandboxISMCBenchmarkOutput={}",run.directory.display()),format!("-SandboxISMCBenchmarkRunId={}",run.id())]);
@@ -176,7 +177,7 @@ impl Request {
         args
     }
 }
-fn map(root: &Path) -> PathBuf {
+fn benchmark_map_path(root: &Path) -> PathBuf {
     root.join("Plugins/SandboxISMC/Content/Lab/FT_SandboxISMCBenchmark.umap")
 }
 
@@ -191,12 +192,12 @@ pub struct Plan {
     pub validation_only: bool,
 }
 
-fn build(root: &Path, editor: &Path) -> Result<()> {
+fn build_editor(root: &Path, editor: &Path) -> Result<()> {
     let engine = editor
         .ancestors()
         .nth(4)
         .ok_or("Editor must be under Engine/Binaries/Win64")?;
-    visible(
+    run_process_inherited(
         root,
         "cmake",
         &[
@@ -205,14 +206,14 @@ fn build(root: &Path, editor: &Path) -> Result<()> {
             &format!("-DUE_ROOT={}", engine.display()),
         ],
     )?;
-    visible(
+    run_process_inherited(
         root,
         "cmake",
         &["--build", "--preset", "development", "--target", "editor"],
     )
 }
 
-fn require_protocol(root: &Path) -> Result<()> {
+fn validate_measurement_protocol(root: &Path) -> Result<()> {
     let path = root
         .join("Plugins/SandboxISMC/Source/SandboxISMCLab/Private/SandboxISMCBenchmarkActor.cpp");
     if !fs::read_to_string(path)
@@ -224,7 +225,12 @@ fn require_protocol(root: &Path) -> Result<()> {
     Ok(())
 }
 
-fn prepare_cache(context: &mut Run, source: &Source, request: &Request, side: &str) -> Result<()> {
+fn prepare_shader_cache(
+    context: &mut Run,
+    source: &Source,
+    request: &Request,
+    side: &str,
+) -> Result<()> {
     let mut run = Run::new(
         &source.root,
         "sandbox-ismc-cache",
@@ -233,38 +239,38 @@ fn prepare_cache(context: &mut Run, source: &Source, request: &Request, side: &s
         "",
         false,
     )?;
-    let mut args = request.common_arguments(&source.root, &run.path("unreal.log"));
+    let mut args = request.build_common_editor_arguments(&source.root, &run.path("unreal.log"));
     args.push("-ExecCmds=r.VSync 0,r.Editor.Viewport.OverridePIEScreenPercentage 0,r.ScreenPercentage 100,r.DynamicRes.OperationMode 0,Editor.AsyncAssetCompilationFinishAll,Automation Now;SoftQuit".into());
     run.manifest["purpose"] = json!("cache-preparation");
     run.manifest["provenance"] = json!({"source":source,"side":side,"arguments":args});
     for name in ["process.log", "unreal.log"] {
-        run.expect(name)?;
+        run.expect_artifact(name)?;
     }
     context.manifest["artifacts"][format!("cache-{side}")] = json!(run.path("manifest.json"));
-    context.publish()?;
+    context.write_manifest()?;
     println!(
         "Preparing {side} shader/cache data: {}",
         run.directory.display()
     );
     let result = (|| {
-        revision::verify_source(source)?;
-        if !map(&source.root).is_file() {
+        revision::verify_source_unchanged(source)?;
+        if !benchmark_map_path(&source.root).is_file() {
             return Err("SandboxISMC cache preparation map is missing.".into());
         }
-        let process = logged(
+        let process = run_process_with_log(
             Command::new(&request.editor)
                 .args(args)
                 .current_dir(&source.root),
             &run.path("process.log"),
         )?;
-        succeeded(process)?;
-        revision::verify_source(source)?;
-        run.validate()
+        require_process_success(process)?;
+        revision::verify_source_unchanged(source)?;
+        run.validate_artifacts()
     })();
-    run.finish(result)
+    run.finish_run(result)
 }
 
-fn measure(plan: &Plan, timeout_seconds: u32) -> Result<Vec<Capture>> {
+fn collect_measurement_captures(plan: &Plan, timeout_seconds: u32) -> Result<Vec<Capture>> {
     let request = plan
         .ismc
         .as_ref()
@@ -289,17 +295,17 @@ fn measure(plan: &Plan, timeout_seconds: u32) -> Result<Vec<Capture>> {
         } else {
             "measurement"
         });
-        let args = request.editor_arguments(&source.root, &run);
+        let args = request.build_measurement_editor_arguments(&source.root, &run);
         run.manifest["provenance"] = json!({"source":source,"repetition":repetition,"editor":request.editor,"arguments":args});
         for name in ["metrics.csv", "result.json", "unreal.log", "process.log"] {
-            run.expect(name)?;
+            run.expect_artifact(name)?;
         }
         if request.trace {
-            run.expect("capture.utrace")?;
+            run.expect_artifact("capture.utrace")?;
         }
         let result = (|| -> Result<Capture> {
-            run.status("measuring")?;
-            let process = crate::unreal::run_logged(
+            run.set_status("measuring")?;
+            let process = crate::unreal::run_editor_with_timeout(
                 Command::new(&request.editor)
                     .args(&args)
                     .current_dir(&source.root),
@@ -320,31 +326,31 @@ fn measure(plan: &Plan, timeout_seconds: u32) -> Result<Vec<Capture>> {
             }
             let conditions: Conditions = serde_json::from_value(terminal["conditions"].clone())?;
             run.manifest["comparability"] = json!(conditions);
-            run.publish()?;
+            run.write_manifest()?;
             if terminal["complete"] != true {
                 return Err(format!("SandboxISMC did not complete: {}", terminal["error"]).into());
             }
-            results::validate_conditions(&conditions)?;
-            results::validate_request(&conditions, request)?;
-            succeeded(process)?;
-            run.validate()?;
+            results::validate_ismc_conditions(&conditions)?;
+            results::validate_ismc_request(&conditions, request)?;
+            require_process_success(process)?;
+            run.validate_artifacts()?;
             Ok(Capture {
                 run_id: run.id().into(),
                 directory: run.directory.to_string_lossy().into_owned(),
                 repetition: repetition.clone(),
-                metrics: results::read_metrics(&run.path("metrics.csv"), &conditions)?,
+                metrics: results::read_ismc_metrics(&run.path("metrics.csv"), &conditions)?,
                 conditions,
                 schema_version: 1,
             })
         })();
-        captures.push(run.finish(result)?);
+        captures.push(run.finish_run(result)?);
         write_json(&plan.output.join("captures.json"), &captures)?;
     }
     Ok(captures)
 }
 
-pub fn execute(root: &Path, args: &[String], comparison: bool) -> Result<()> {
-    let parsed = Args::parse(
+pub fn run_ismc_benchmark(root: &Path, args: &[String], comparison: bool) -> Result<()> {
+    let parsed = Args::parse_command_line(
         args,
         &[
             "--editor",
@@ -380,7 +386,7 @@ pub fn execute(root: &Path, args: &[String], comparison: bool) -> Result<()> {
             "--validate-only",
         ],
     )?;
-    let mut settings = Request::parse(&parsed, root)?;
+    let mut settings = Request::parse_ismc_options(&parsed, root)?;
     let timeout_seconds = parsed.integer("--timeout-seconds", 600, 1, 86400)?;
     let prepare = parsed.flag("--prepare-only");
     let validate = parsed.flag("--validate-only");
@@ -433,7 +439,7 @@ pub fn execute(root: &Path, args: &[String], comparison: bool) -> Result<()> {
     } else {
         "measurement"
     });
-    context.publish()?;
+    context.write_manifest()?;
     println!("Artifacts: {}", context.directory.display());
     let result = (|| -> Result<()> {
         let mut revisions = if comparison {
@@ -455,7 +461,7 @@ pub fn execute(root: &Path, args: &[String], comparison: bool) -> Result<()> {
             let candidate = if let Some(revisions) = &revisions {
                 revisions.candidate.clone()
             } else {
-                revision::source(root, Some(&context.directory))?
+                revision::capture_source_identity(root, Some(&context.directory))?
             };
             let baseline = revisions
                 .as_ref()
@@ -463,13 +469,13 @@ pub fn execute(root: &Path, args: &[String], comparison: bool) -> Result<()> {
                 .unwrap_or_else(|| candidate.clone());
             context.manifest["provenance"] = json!({"candidate":candidate,"baseline":if comparison{Some(&baseline)}else{None},"baselineOwned":revisions.as_ref().map(|r|r.owned),
                 "orchestrator":std::env::current_exe()?,"effectiveArguments":args});
-            context.publish()?;
-            require_protocol(&candidate.root)?;
+            context.write_manifest()?;
+            validate_measurement_protocol(&candidate.root)?;
             if comparison {
-                require_protocol(&baseline.root)?;
+                validate_measurement_protocol(&baseline.root)?;
             }
             if !parsed.flag("--skip-build") {
-                build(&candidate.root, &settings.editor)?;
+                build_editor(&candidate.root, &settings.editor)?;
                 if let Some(revisions) = &revisions {
                     if revisions.owned {
                         revision::initialize_submodules(
@@ -478,29 +484,29 @@ pub fn execute(root: &Path, args: &[String], comparison: bool) -> Result<()> {
                             None,
                         )?;
                     }
-                    build(&baseline.root, &settings.editor)?;
+                    build_editor(&baseline.root, &settings.editor)?;
                 }
             }
-            revision::verify_source(&candidate)?;
-            revision::verify_source(&baseline)?;
+            revision::verify_source_unchanged(&candidate)?;
+            revision::verify_source_unchanged(&baseline)?;
             if prepare {
-                context.expect("preparation.json")?;
+                context.expect_artifact("preparation.json")?;
                 write_json(
                     &context.path("preparation.json"),
                     &json!({"candidate":candidate,"baseline":baseline,"baselineOwned":revisions.as_ref().unwrap().owned,
                     "retainedBaselinePath":baseline.root,"workload":settings}),
                 )?;
-                context.status("prepared")?;
+                context.set_status("prepared")?;
                 revisions.as_mut().unwrap().keep = true;
                 println!("Prepared baseline retained: {}", baseline.root.display());
                 return Ok(());
             }
-            prepare_cache(&mut context, &candidate, &settings, "candidate")?;
+            prepare_shader_cache(&mut context, &candidate, &settings, "candidate")?;
             if comparison {
-                prepare_cache(&mut context, &baseline, &settings, "baseline")?;
+                prepare_shader_cache(&mut context, &baseline, &settings, "baseline")?;
             }
             let sequence = if comparison {
-                revision::balanced(repetitions, warmups)
+                revision::balanced_repetitions(repetitions, warmups)
             } else {
                 vec![Repetition {
                     sequence: 1,
@@ -522,32 +528,36 @@ pub fn execute(root: &Path, args: &[String], comparison: bool) -> Result<()> {
             }
             write_json(&context.path("sequence.json"), &plan.sequence)?;
             write_json(&context.path("measurement-plan.json"), &plan)?;
-            context.expect("captures.json")?;
-            context.status("measuring")?;
-            revision::verify_source(&plan.candidate)?;
-            revision::verify_source(&plan.baseline)?;
-            let captures = measure(&plan, timeout_seconds)?;
-            revision::verify_source(&plan.candidate)?;
-            revision::verify_source(&plan.baseline)?;
-            context.validate()?;
+            context.expect_artifact("captures.json")?;
+            context.set_status("measuring")?;
+            revision::verify_source_unchanged(&plan.candidate)?;
+            revision::verify_source_unchanged(&plan.baseline)?;
+            let captures = collect_measurement_captures(&plan, timeout_seconds)?;
+            revision::verify_source_unchanged(&plan.candidate)?;
+            revision::verify_source_unchanged(&plan.baseline)?;
+            context.validate_artifacts()?;
             context.manifest["comparability"] = json!(captures[0].conditions);
             if comparison {
-                let comparable =
-                    results::reports(&context.directory, &context.manifest, &plan, &captures)?;
+                let comparable = results::write_ismc_comparison_reports(
+                    &context.directory,
+                    &context.manifest,
+                    &plan,
+                    &captures,
+                )?;
                 for name in ["comparison.json", "comparison.csv", "comparison.md"] {
-                    context.expect(name)?;
+                    context.expect_artifact(name)?;
                 }
                 if !comparable {
                     context.manifest["failure"] =
                         json!("Comparison conditions or metric identities differ.");
-                    context.status("incomparable")?;
+                    context.set_status("incomparable")?;
                     return Err("Comparison is incomparable; see comparison.json.".into());
                 }
             }
-            context.status("complete")
+            context.set_status("complete")
         })();
         if let Some(revisions) = revisions {
-            revisions.finish(operation)
+            revisions.cleanup_worktrees(operation)
         } else {
             operation
         }
@@ -556,14 +566,14 @@ pub fn execute(root: &Path, args: &[String], comparison: bool) -> Result<()> {
         && context.manifest["status"] != "incomparable"
     {
         context.manifest["failure"] = json!(error.to_string());
-        context.status("failed")?;
+        context.set_status("failed")?;
     }
     result
 }
 
-pub fn report(args: &[String]) -> Result<()> {
-    let args = Args::parse(args, &["--run-dir"], &[])?;
-    let directory = absolute(&std::env::current_dir()?, args.required("--run-dir")?)?;
+pub fn regenerate_comparison_reports(args: &[String]) -> Result<()> {
+    let args = Args::parse_command_line(args, &["--run-dir"], &[])?;
+    let directory = resolve_absolute_path(&std::env::current_dir()?, args.required("--run-dir")?)?;
     let manifest: Value = read_json(&directory.join("manifest.json"))?;
     if manifest["schemaVersion"] != 1
         || manifest["benchmark"] != "sandbox-ismc-revision-ab"
@@ -577,7 +587,7 @@ pub fn report(args: &[String]) -> Result<()> {
         return Err("Comparison plan and sequence disagree.".into());
     }
     let captures: Vec<Capture> = read_json(&directory.join("captures.json"))?;
-    if !results::reports(&directory, &manifest, &plan, &captures)? {
+    if !results::write_ismc_comparison_reports(&directory, &manifest, &plan, &captures)? {
         return Err("Comparison is incomparable.".into());
     }
     println!("Reports regenerated: {}", directory.display());

@@ -10,14 +10,14 @@ use std::{fs, path::Path};
 fn repository_fixture() -> ioj_test_support::TempDir {
     let directory = ioj_test_support::temp_dir("benchmark source ");
     let root = directory.path();
-    git(root, &["init"]).unwrap();
-    git(root, &["config", "user.name", "Benchmark test"]).unwrap();
-    git(root, &["config", "user.email", "benchmark@example.invalid"]).unwrap();
+    run_git_capture(root, &["init"]).unwrap();
+    run_git_capture(root, &["config", "user.name", "Benchmark test"]).unwrap();
+    run_git_capture(root, &["config", "user.email", "benchmark@example.invalid"]).unwrap();
     fs::write(root.join(".gitignore"), ".local/\nout/\n").unwrap();
     fs::write(root.join("CMakeLists.txt"), "# fixture\n").unwrap();
     fs::write(root.join("source.txt"), "original").unwrap();
-    git(root, &["add", "."]).unwrap();
-    git(root, &["commit", "-m", "fixture"]).unwrap();
+    run_git_capture(root, &["add", "."]).unwrap();
+    run_git_capture(root, &["commit", "-m", "fixture"]).unwrap();
     directory
 }
 
@@ -28,19 +28,19 @@ fn fingerprint_tracks_dirty_and_untracked_files_but_excludes_artifacts() {
     let artifacts = root.join("results");
     fs::create_dir(&artifacts).unwrap();
     fs::write(artifacts.join("capture.json"), "one").unwrap();
-    let clean = source(root, Some(&artifacts)).unwrap();
+    let clean = capture_source_identity(root, Some(&artifacts)).unwrap();
     assert!(!clean.dirty);
     fs::write(artifacts.join("capture.json"), "two").unwrap();
-    verify_source(&clean).unwrap();
+    verify_source_unchanged(&clean).unwrap();
     fs::write(root.join("source.txt"), "edited").unwrap();
-    assert!(verify_source(&clean).is_err());
-    let dirty = source(root, Some(&artifacts)).unwrap();
+    assert!(verify_source_unchanged(&clean).is_err());
+    let dirty = capture_source_identity(root, Some(&artifacts)).unwrap();
     assert!(dirty.dirty);
     fs::write(root.join("untracked.txt"), "one").unwrap();
-    let untracked = source(root, Some(&artifacts)).unwrap();
+    let untracked = capture_source_identity(root, Some(&artifacts)).unwrap();
     assert_ne!(dirty.untracked_sha256, untracked.untracked_sha256);
     fs::write(root.join("untracked.txt"), "two").unwrap();
-    assert!(verify_source(&untracked).is_err());
+    assert!(verify_source_unchanged(&untracked).is_err());
 }
 
 #[test]
@@ -52,17 +52,17 @@ fn owned_baselines_are_detached_and_cleaned_and_supplied_ones_retained() {
     let baseline = revisions.baseline.root.clone();
     assert!(baseline.join(".git").is_file());
     assert!(
-        git(&baseline, &["branch", "--show-current"])
+        run_git_capture(&baseline, &["branch", "--show-current"])
             .unwrap()
             .trim()
             .is_empty()
     );
-    revisions.finish(Ok(())).unwrap();
+    revisions.cleanup_worktrees(Ok(())).unwrap();
     assert!(!baseline.exists());
 
     let revisions = Revisions::new(root, "HEAD", None, true, &root.join(".local/results")).unwrap();
     let baseline = revisions.baseline.root.clone();
-    revisions.finish(Ok(())).unwrap();
+    revisions.cleanup_worktrees(Ok(())).unwrap();
     let supplied = Revisions::new(
         root,
         "HEAD",
@@ -74,7 +74,7 @@ fn owned_baselines_are_detached_and_cleaned_and_supplied_ones_retained() {
     assert!(!supplied.owned);
     assert!(
         supplied
-            .finish::<()>(Err("measurement failed".into()))
+            .cleanup_worktrees::<()>(Err("measurement failed".into()))
             .is_err()
     );
     assert!(baseline.exists());
@@ -93,7 +93,7 @@ fn owned_baselines_are_detached_and_cleaned_and_supplied_ones_retained() {
         fs::read_to_string(root.join("source.txt")).unwrap(),
         "original"
     );
-    git(
+    run_git_capture(
         root,
         &[
             "worktree",
@@ -114,7 +114,7 @@ fn workload(root: &Path) -> Request {
 }
 
 fn conditions(request: &Request) -> Conditions {
-    let mut conditions = request.conditions();
+    let mut conditions = request.build_comparison_conditions();
     for &key in CONDITIONS {
         conditions.entry(key.into()).or_insert("1".into());
     }
@@ -128,8 +128,8 @@ fn csv_and_offline_report_enforce_comparability_and_sequence() {
     let root = directory.path();
     let request = workload(root);
     let conditions = conditions(&request);
-    validate_conditions(&conditions).unwrap();
-    validate_request(&conditions, &request).unwrap();
+    validate_ismc_conditions(&conditions).unwrap();
+    validate_ismc_request(&conditions, &request).unwrap();
     let csv = root.join("metrics.csv");
     let mut header = vec![
         "renderer",
@@ -152,16 +152,16 @@ fn csv_and_offline_report_enforce_comparability_and_sequence() {
         .collect::<Vec<_>>();
     row.extend(conditions.values().cloned());
     write_csv(&csv, &[header.clone(), row.clone()]).unwrap();
-    let metrics = read_metrics(&csv, &conditions).unwrap();
+    let metrics = read_ismc_metrics(&csv, &conditions).unwrap();
     assert_eq!(metrics[0].summary.median, 2.0);
     let mut mismatched = conditions.clone();
     mismatched.insert("instances".into(), "100".into());
-    assert!(read_metrics(&csv, &mismatched).is_err());
+    assert!(read_ismc_metrics(&csv, &mismatched).is_err());
     write_csv(&csv, &[header.clone(), row.clone(), row.clone()]).unwrap();
-    assert!(read_metrics(&csv, &conditions).is_err());
+    assert!(read_ismc_metrics(&csv, &conditions).is_err());
     row[3] = "0".into();
     write_csv(&csv, &[header, row]).unwrap();
-    assert!(read_metrics(&csv, &conditions).is_err());
+    assert!(read_ismc_metrics(&csv, &conditions).is_err());
 
     let source = Source {
         root: root.into(),
@@ -172,7 +172,7 @@ fn csv_and_offline_report_enforce_comparability_and_sequence() {
         untracked_sha256: String::new(),
         artifact_root: None,
     };
-    let sequence = balanced(2, 1);
+    let sequence = balanced_repetitions(2, 1);
     let plan = Plan {
         output: root.into(),
         candidate: source.clone(),
@@ -190,7 +190,7 @@ fn csv_and_offline_report_enforce_comparability_and_sequence() {
         } else {
             3.0
         };
-        metrics[0].summary = Summary::across([value]).unwrap();
+        metrics[0].summary = Summary::from_samples([value]).unwrap();
         captures.push(Capture {
             run_id: format!("run{}", repetition.sequence),
             directory: root.display().to_string(),
@@ -209,7 +209,7 @@ fn csv_and_offline_report_enforce_comparability_and_sequence() {
         write_json(&root.join(name), &value).unwrap();
     }
     let args = vec!["--run-dir".into(), root.display().to_string()];
-    ismc::report(&args).unwrap();
+    ismc::regenerate_comparison_reports(&args).unwrap();
     let output: serde_json::Value =
         serde_json::from_slice(&fs::read(root.join("comparison.json")).unwrap()).unwrap();
     assert_eq!(output["schemaVersion"], 2);
@@ -226,14 +226,14 @@ fn csv_and_offline_report_enforce_comparability_and_sequence() {
         .conditions
         .insert("rhi".into(), "different".into());
     write_json(&root.join("captures.json"), &captures).unwrap();
-    assert!(ismc::report(&args).is_err());
+    assert!(ismc::regenerate_comparison_reports(&args).is_err());
     let output: serde_json::Value =
         serde_json::from_slice(&fs::read(root.join("comparison.json")).unwrap()).unwrap();
     assert_eq!(output["comparable"], false);
     assert!(output["metrics"].as_array().unwrap().is_empty());
     captures.pop();
     write_json(&root.join("captures.json"), &captures).unwrap();
-    assert!(ismc::report(&args).is_err());
+    assert!(ismc::regenerate_comparison_reports(&args).is_err());
 }
 
 #[cfg(windows)]
@@ -241,7 +241,7 @@ fn csv_and_offline_report_enforce_comparability_and_sequence() {
 fn subprocess_failure_preserves_exit_code_and_captures_both_streams() {
     let directory = ioj_test_support::temp_dir("benchmark subprocess ");
     let log = directory.path().join("nested/process.log");
-    let output = logged(
+    let output = run_process_with_log(
         std::process::Command::new("cmd.exe").args([
             "/d",
             "/c",
@@ -260,6 +260,6 @@ fn subprocess_failure_preserves_exit_code_and_captures_both_streams() {
             String::from_utf8_lossy(&output.stderr)
         )
     );
-    let error = succeeded(output).unwrap_err();
+    let error = require_process_success(output).unwrap_err();
     assert_eq!(error.downcast_ref::<ProcessFailure>().unwrap().0, 17);
 }

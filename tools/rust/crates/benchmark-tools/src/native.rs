@@ -2,8 +2,8 @@ use crate::support::*;
 use serde_json::Value;
 use std::path::Path;
 
-pub fn simulation(root: &Path, args: &[String]) -> Result<String> {
-    let parsed = Args::parse(
+pub fn run_simulation_benchmark(root: &Path, args: &[String]) -> Result<String> {
+    let parsed = Args::parse_command_line(
         args,
         &[
             "--level",
@@ -17,7 +17,7 @@ pub fn simulation(root: &Path, args: &[String]) -> Result<String> {
         ],
         &["--telemetry", "--skip-build"],
     )?;
-    let level = absolute(&std::env::current_dir()?, parsed.required("--level")?)?;
+    let level = resolve_absolute_path(&std::env::current_dir()?, parsed.required("--level")?)?;
     if !level.is_file() {
         return Err(format!("The level path does not exist: '{}'.", level.display()).into());
     }
@@ -49,7 +49,7 @@ pub fn simulation(root: &Path, args: &[String]) -> Result<String> {
     if parsed.flag("--fighter-stress-caps") {
         command.push("--fighter-stress-caps".into());
         command.extend(
-            caps(parsed.required("--fighter-stress-caps")?)?
+            parse_fighter_caps(parsed.required("--fighter-stress-caps")?)?
                 .iter()
                 .map(u32::to_string),
         );
@@ -68,8 +68,8 @@ pub fn simulation(root: &Path, args: &[String]) -> Result<String> {
         _ => build,
     };
     if !parsed.flag("--skip-build") {
-        visible(root, "cmake", &["--preset", configure])?;
-        visible(root, "cmake", &["--build", "--preset", build])?;
+        run_process_inherited(root, "cmake", &["--preset", configure])?;
+        run_process_inherited(root, "cmake", &["--build", "--preset", build])?;
     }
     let executable = root
         .join("out/build")
@@ -82,12 +82,17 @@ pub fn simulation(root: &Path, args: &[String]) -> Result<String> {
         )
         .into());
     }
-    let result = run(root, executable, &command)?;
+    let result = capture_process_output(
+        std::process::Command::new(executable)
+            .args(&command)
+            .current_dir(root),
+    )?;
+    let result = require_process_success(result)?;
     eprint!("{}", String::from_utf8_lossy(&result.stderr));
     Ok(String::from_utf8_lossy(&result.stdout).into_owned())
 }
 
-fn caps(text: &str) -> Result<Vec<u32>> {
+pub(crate) fn parse_fighter_caps(text: &str) -> Result<Vec<u32>> {
     let mut values = Vec::new();
     for item in text.split(',').map(str::trim) {
         let cap = item
@@ -103,8 +108,8 @@ fn caps(text: &str) -> Result<Vec<u32>> {
     Ok(values)
 }
 
-pub fn fighter(root: &Path, args: &[String]) -> Result<()> {
-    let parsed = Args::parse(
+pub fn run_fighter_benchmark(root: &Path, args: &[String]) -> Result<()> {
+    let parsed = Args::parse_command_line(
         args,
         &[
             "--fighter-caps",
@@ -115,7 +120,7 @@ pub fn fighter(root: &Path, args: &[String]) -> Result<()> {
         ],
         &["--skip-build"],
     )?;
-    let caps = caps(parsed.value("--fighter-caps", "2000,4000"))?;
+    let caps = parse_fighter_caps(parsed.value("--fighter-caps", "2000,4000"))?;
     let seconds = parsed.float("--seconds", 10.0, 0.1, 86400.0)?;
     let warmup = parsed.float("--warmup-seconds", 5.0, 0.0, 86400.0)?;
     let timeout = parsed.float("--saturation-timeout-seconds", 60.0, 0.1, 86400.0)?;
@@ -123,7 +128,7 @@ pub fn fighter(root: &Path, args: &[String]) -> Result<()> {
         ".local/benchmarks/fighter-simulation/{}",
         chrono::Local::now().format("%Y%m%d-%H%M%S")
     );
-    let output = absolute(root, parsed.value("--output-dir", &default_output))?;
+    let output = resolve_absolute_path(root, parsed.value("--output-dir", &default_output))?;
     let mut command = vec![
         "--level".into(),
         root.join("LevelScripts/FighterSchedulingBenchmark.scm")
@@ -144,7 +149,7 @@ pub fn fighter(root: &Path, args: &[String]) -> Result<()> {
     if parsed.flag("--skip-build") {
         command.push("--skip-build".into());
     }
-    let results = json_lines(&simulation(root, &command)?)?;
+    let results = parse_json_lines(&run_simulation_benchmark(root, &command)?)?;
     if results.len() != caps.len() {
         return Err(format!(
             "Expected {} benchmark JSON results, found {}.",
@@ -154,7 +159,7 @@ pub fn fighter(root: &Path, args: &[String]) -> Result<()> {
         .into());
     }
     for (result, cap) in results.iter().zip(&caps) {
-        validate_fighter(result, *cap, (seconds * 60.0).ceil() as u64)?;
+        validate_fighter_result(result, *cap, (seconds * 60.0).ceil() as u64)?;
     }
     let mut rows = vec![
         [
@@ -202,7 +207,7 @@ pub fn fighter(root: &Path, args: &[String]) -> Result<()> {
     Ok(())
 }
 
-pub fn validate_fighter(result: &Value, cap: u32, ticks: u64) -> Result<()> {
+pub fn validate_fighter_result(result: &Value, cap: u32, ticks: u64) -> Result<()> {
     let valid = result["level"]["id"] == "fighter-scheduling-benchmark"
         && result["fighter_stress"]["enabled"] == true
         && result["workload"]["measured_ticks"].as_u64() == Some(ticks)
@@ -216,7 +221,7 @@ pub fn validate_fighter(result: &Value, cap: u32, ticks: u64) -> Result<()> {
         .all(|key| result["fighter_stress"][key].as_u64() == Some(cap.into()))
         && result["fighter_stress"]["fighter_spawns_during_measurement"].as_u64() == Some(0)
         && result["fighter_stress"]["task_counts"]["attack"].as_u64() == Some(cap.into())
-        && number(result, "/fighter_stress/lasers_spawned_during_measurement")? > 0.0
+        && read_finite_number(result, "/fighter_stress/lasers_spawned_during_measurement")? > 0.0
         && result["memory"]["frame_overflow_count"].as_u64() == Some(0);
     if !valid {
         return Err(format!("Fighter benchmark validation failed for cap {cap}.").into());
@@ -230,28 +235,28 @@ pub fn validate_fighter(result: &Value, cap: u32, ticks: u64) -> Result<()> {
         "ticks_per_second",
         "realtime_factor",
     ] {
-        number(result, &format!("/timing/{metric}"))?;
+        read_finite_number(result, &format!("/timing/{metric}"))?;
     }
     Ok(())
 }
 
-pub fn frame(root: &Path, args: &[String]) -> Result<()> {
-    let parsed = Args::parse(args, &["--seconds"], &["--skip-build"])?;
+pub fn run_frame_memory_benchmark(root: &Path, args: &[String]) -> Result<()> {
+    let parsed = Args::parse_command_line(args, &["--seconds"], &["--skip-build"])?;
     let seconds = parsed.float("--seconds", 20.0, 0.1, 86400.0)?;
-    let mut command = frame_args(root, seconds);
+    let mut command = frame_memory_arguments(root, seconds);
     if parsed.flag("--skip-build") {
         command.push("--skip-build".into());
     }
-    let results = json_lines(&simulation(root, &command)?)?;
+    let results = parse_json_lines(&run_simulation_benchmark(root, &command)?)?;
     if results.len() != 1 {
         return Err("Expected one native simulation benchmark JSON result.".into());
     }
-    validate_frame(&results[0])?;
+    validate_frame_memory_result(&results[0])?;
     println!("{}", results[0]);
     Ok(())
 }
 
-pub fn frame_args(root: &Path, seconds: f64) -> Vec<String> {
+pub fn frame_memory_arguments(root: &Path, seconds: f64) -> Vec<String> {
     vec![
         "--level".into(),
         root.join("LevelScripts/Benchmarks/Batch_benchmark.scm")
@@ -266,7 +271,7 @@ pub fn frame_args(root: &Path, seconds: f64) -> Vec<String> {
     ]
 }
 
-pub fn validate_frame(result: &Value) -> Result<()> {
+pub fn validate_frame_memory_result(result: &Value) -> Result<()> {
     let requested = result["workload"]["requested_ticks"]
         .as_u64()
         .ok_or("Missing requested_ticks")?;
@@ -275,8 +280,8 @@ pub fn validate_frame(result: &Value) -> Result<()> {
         || result["workload"]["game_speed"].as_u64() != Some(100)
         || result["workload"]["advance_calls"].as_u64() != Some(requested)
         || result["memory"]["frame_overflow_count"].as_u64() != Some(0)
-        || number(result, "/memory/frame_peak_claimed_bytes")? <= 0.0
-        || number(result, "/final_state/peak_fighters")? <= 0.0
+        || read_finite_number(result, "/memory/frame_peak_claimed_bytes")? <= 0.0
+        || read_finite_number(result, "/final_state/peak_fighters")? <= 0.0
     {
         return Err("Frame-memory benchmark validation failed.".into());
     }

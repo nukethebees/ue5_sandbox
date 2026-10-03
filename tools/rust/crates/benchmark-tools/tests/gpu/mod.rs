@@ -9,11 +9,11 @@ fn gpu_capture_trims_frames_and_checks_resolution() {
         height: 720,
         size_multiplier: 1.0,
     };
-    let capture = read_capture(&path, &config, 100, 1, false, false, 1).unwrap();
+    let capture = read_starfield_capture(&path, &config, 100, 1, false, false, 1).unwrap();
     assert_eq!(capture.frame_count, 5);
     assert_eq!(capture.medians["game_thread_ms"], 3.0);
     assert!(
-        read_capture(
+        read_starfield_capture(
             &path,
             &Configuration {
                 width: 640,
@@ -39,10 +39,11 @@ fn workload_lists_and_unreal_arguments() {
         "--resolutions=1280x720,1920x1080",
         "--size-multipliers=1,4",
     ];
-    let request = Request::parse(&root, &args.map(str::to_owned)).unwrap();
+    let request = Request::parse_starfield_options(&root, &args.map(str::to_owned)).unwrap();
     assert_eq!(request.configurations.len(), 4);
     assert_eq!(request.counts, [10, 20]);
-    let command = request.arguments(&request.configurations[0], Path::new("raw output"));
+    let command =
+        request.build_starfield_arguments(&request.configurations[0], Path::new("raw output"));
     assert!(command.contains(&"-GpuStarfieldBenchmarkCameraModes=stationary,moving".into()));
     assert!(command.contains(&"-GpuStarfieldBenchmarkOutput=raw output".into()));
     for bad in [
@@ -52,7 +53,7 @@ fn workload_lists_and_unreal_arguments() {
         "--camera-modes=orbiting",
     ] {
         assert!(
-            Request::parse(
+            Request::parse_starfield_options(
                 &root,
                 &["--editor=e", "--project=p", "--output=o", bad].map(str::to_owned)
             )

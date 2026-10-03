@@ -8,7 +8,7 @@ fn arguments_reject_unknown_duplicate_missing_and_invalid_numbers() {
         vec!["--flag", "--flag"],
     ] {
         assert!(
-            Args::parse(
+            Args::parse_command_line(
                 &args.into_iter().map(str::to_owned).collect::<Vec<_>>(),
                 &["--size"],
                 &["--flag"]
@@ -17,17 +17,21 @@ fn arguments_reject_unknown_duplicate_missing_and_invalid_numbers() {
         );
     }
     for value in ["NaN", "inf", "-1", "101"] {
-        let args = Args::parse(&[format!("--size={value}")], &["--size"], &[]).unwrap();
+        let args =
+            Args::parse_command_line(&[format!("--size={value}")], &["--size"], &[]).unwrap();
         assert!(args.float("--size", 1.0, 0.0, 100.0).is_err());
     }
 }
 #[test]
 fn csv_quotes_and_json_noise() {
     assert_eq!(
-        parse_csv("one,\"two,three\",\"say \"\"hello\"\"\"").unwrap(),
+        parse_csv_row("one,\"two,three\",\"say \"\"hello\"\"\"").unwrap(),
         ["one", "two,three", "say \"hello\""]
     );
-    assert!(parse_csv("\"unclosed").is_err());
-    assert_eq!(json_lines("noise\n {\"ok\":1}\nmore").unwrap().len(), 1);
-    assert!(json_lines("{broken").is_err());
+    assert!(parse_csv_row("\"unclosed").is_err());
+    assert_eq!(
+        parse_json_lines("noise\n {\"ok\":1}\nmore").unwrap().len(),
+        1
+    );
+    assert!(parse_json_lines("{broken").is_err());
 }

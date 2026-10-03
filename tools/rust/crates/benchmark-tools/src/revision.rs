@@ -20,7 +20,7 @@ pub struct Source {
     pub artifact_root: Option<PathBuf>,
 }
 
-pub fn git_command(root: &Path, args: &[&str]) -> Command {
+pub fn make_git_command(root: &Path, args: &[&str]) -> Command {
     let mut command = Command::new("git");
     command
         .current_dir(root)
@@ -50,17 +50,18 @@ pub fn git_command(root: &Path, args: &[&str]) -> Command {
     command
 }
 
-pub fn git(root: &Path, args: &[&str]) -> Result<String> {
-    let output = succeeded(captured(&mut git_command(root, args))?)?;
+pub fn run_git_capture(root: &Path, args: &[&str]) -> Result<String> {
+    let output =
+        require_process_success(capture_process_output(&mut make_git_command(root, args))?)?;
     Ok(String::from_utf8(output.stdout)?)
 }
 
-pub fn hash(bytes: impl AsRef<[u8]>) -> String {
+pub fn sha256_hex(bytes: impl AsRef<[u8]>) -> String {
     format!("{:x}", Sha256::digest(bytes.as_ref()))
 }
 
-pub fn source(root: &Path, artifact_root: Option<&Path>) -> Result<Source> {
-    let modules = git(
+pub fn capture_source_identity(root: &Path, artifact_root: Option<&Path>) -> Result<Source> {
+    let modules = run_git_capture(
         root,
         &[
             "submodule",
@@ -77,10 +78,10 @@ pub fn source(root: &Path, artifact_root: Option<&Path>) -> Result<Source> {
         )
         .into());
     }
-    let commit = git(root, &["rev-parse", "--verify", "HEAD^{commit}"])?
+    let commit = run_git_capture(root, &["rev-parse", "--verify", "HEAD^{commit}"])?
         .trim()
         .to_owned();
-    let mut status = git(
+    let mut status = run_git_capture(
         root,
         &[
             "status",
@@ -91,7 +92,7 @@ pub fn source(root: &Path, artifact_root: Option<&Path>) -> Result<Source> {
     )?
     .trim()
     .to_owned();
-    let diff = git(
+    let diff = run_git_capture(
         root,
         &[
             "diff",
@@ -102,7 +103,7 @@ pub fn source(root: &Path, artifact_root: Option<&Path>) -> Result<Source> {
             "--ignore-submodules=none",
         ],
     )?;
-    let untracked = git(root, &["ls-files", "--others", "--exclude-standard", "-z"])?;
+    let untracked = run_git_capture(root, &["ls-files", "--others", "--exclude-standard", "-z"])?;
     let mut paths: Vec<_> = untracked.split('\0').filter(|s| !s.is_empty()).collect();
     paths.sort();
     let mut content = Sha256::new();
@@ -126,14 +127,14 @@ pub fn source(root: &Path, artifact_root: Option<&Path>) -> Result<Source> {
         commit,
         dirty: !status.is_empty(),
         status,
-        diff_sha256: hash(diff),
+        diff_sha256: sha256_hex(diff),
         untracked_sha256: format!("{:x}", content.finalize()),
         artifact_root: artifact_root.map(Path::to_path_buf),
     })
 }
 
-pub fn verify_source(expected: &Source) -> Result<()> {
-    if *expected != source(&expected.root, expected.artifact_root.as_deref())? {
+pub fn verify_source_unchanged(expected: &Source) -> Result<()> {
+    if *expected != capture_source_identity(&expected.root, expected.artifact_root.as_deref())? {
         return Err(format!(
             "Source changed during benchmark preparation or measurement: '{}'. Start a new run.",
             expected.root.display()
@@ -156,7 +157,7 @@ impl Run {
         label: &str,
         latest: bool,
     ) -> Result<Self> {
-        let parent = absolute(root, parent)?;
+        let parent = resolve_absolute_path(root, parent)?;
         fs::create_dir_all(&parent)?;
         let stamp = chrono::Utc::now();
         let id = format!(
@@ -173,7 +174,7 @@ impl Run {
             "purpose":"measurement","createdUtc":stamp.to_rfc3339(),"status":"preparing","configuration":configuration,"provenance":null,
             "comparability":null,"artifacts":{},"expectedArtifacts":[],"failure":null}),
         };
-        run.publish()?;
+        run.write_manifest()?;
         if latest {
             write_text(
                 &parent.join("latest.txt"),
@@ -188,18 +189,18 @@ impl Run {
     pub fn id(&self) -> &str {
         self.manifest["runId"].as_str().unwrap()
     }
-    pub fn publish(&self) -> Result<()> {
+    pub fn write_manifest(&self) -> Result<()> {
         write_json(&self.path("manifest.json"), &self.manifest)
     }
-    pub fn expect(&mut self, name: &str) -> Result<()> {
+    pub fn expect_artifact(&mut self, name: &str) -> Result<()> {
         self.manifest["artifacts"][name] = json!(self.path(name));
         self.manifest["expectedArtifacts"]
             .as_array_mut()
             .unwrap()
             .push(json!(name));
-        self.publish()
+        self.write_manifest()
     }
-    pub fn validate(&self) -> Result<()> {
+    pub fn validate_artifacts(&self) -> Result<()> {
         for name in self.manifest["expectedArtifacts"].as_array().unwrap() {
             let path = self.path(name.as_str().unwrap());
             if !path.is_file() || fs::metadata(&path)?.len() == 0 {
@@ -212,19 +213,19 @@ impl Run {
         }
         Ok(())
     }
-    pub fn status(&mut self, status: &str) -> Result<()> {
+    pub fn set_status(&mut self, status: &str) -> Result<()> {
         self.manifest["status"] = json!(status);
-        self.publish()
+        self.write_manifest()
     }
-    pub fn finish<T>(&mut self, result: Result<T>) -> Result<T> {
+    pub fn finish_run<T>(&mut self, result: Result<T>) -> Result<T> {
         match result {
             Ok(value) => {
-                self.status("complete")?;
+                self.set_status("complete")?;
                 Ok(value)
             }
             Err(error) => {
                 self.manifest["failure"] = json!(error.to_string());
-                self.status("failed")?;
+                self.set_status("failed")?;
                 Err(error)
             }
         }
@@ -240,7 +241,7 @@ pub struct Repetition {
     pub side: String,
     pub warmup: bool,
 }
-pub fn balanced(repetitions: u32, warmups: u32) -> Vec<Repetition> {
+pub fn balanced_repetitions(repetitions: u32, warmups: u32) -> Vec<Repetition> {
     let mut result = Vec::new();
     for (warmup, count) in [(true, warmups), (false, repetitions)] {
         for repetition in 1..=count {
@@ -262,7 +263,7 @@ pub fn balanced(repetitions: u32, warmups: u32) -> Vec<Repetition> {
     result
 }
 
-pub fn owned_path(path: &Path, parent: &Path) -> Result<()> {
+pub fn validate_owned_path(path: &Path, parent: &Path) -> Result<()> {
     let path = std::path::absolute(path)?;
     let parent = std::path::absolute(parent)?;
     if path == parent
@@ -312,8 +313,8 @@ impl Revisions {
         keep: bool,
         artifacts: &Path,
     ) -> Result<Self> {
-        let candidate = source(root, Some(artifacts))?;
-        let commit = git(
+        let candidate = capture_source_identity(root, Some(artifacts))?;
+        let commit = run_git_capture(
             root,
             &[
                 "rev-parse",
@@ -327,9 +328,9 @@ impl Revisions {
         let parent = root.join(".local/benchmarks/wt");
         let owned = supplied.is_none();
         let path = if let Some(supplied) = supplied {
-            absolute(root, supplied)?
+            resolve_absolute_path(root, supplied)?
         } else {
-            owned_path(&parent.join("0"), &parent)?;
+            validate_owned_path(&parent.join("0"), &parent)?;
             fs::create_dir_all(&parent)?;
             let mut slot = 0;
             loop {
@@ -342,11 +343,11 @@ impl Revisions {
             }
         };
         let prepare = (|| -> Result<Source> {
-            if path_eq(&path, root) {
+            if paths_equal(&path, root) {
                 return Err("The baseline must be a separate worktree from the candidate.".into());
             }
             if owned {
-                git(
+                run_git_capture(
                     root,
                     &[
                         "worktree",
@@ -357,12 +358,12 @@ impl Revisions {
                     ],
                 )?;
             } else {
-                let top = git(&path, &["rev-parse", "--show-toplevel"])?;
-                if !path_eq(Path::new(top.trim()), &path) {
+                let top = run_git_capture(&path, &["rev-parse", "--show-toplevel"])?;
+                if !paths_equal(Path::new(top.trim()), &path) {
                     return Err("Prepared baseline must be a worktree root.".into());
                 }
             }
-            let baseline = source(&path, None)?;
+            let baseline = capture_source_identity(&path, None)?;
             if baseline.commit != commit || baseline.dirty {
                 return Err("Baseline worktree must be clean and at the requested commit.".into());
             }
@@ -378,7 +379,7 @@ impl Revisions {
             Err(error) => {
                 if owned {
                     if path.join(".git").exists() {
-                        git(
+                        run_git_capture(
                             root,
                             &[
                                 "worktree",
@@ -396,13 +397,13 @@ impl Revisions {
             }
         }
     }
-    pub fn finish<T>(self, result: Result<T>) -> Result<T> {
+    pub fn cleanup_worktrees<T>(self, result: Result<T>) -> Result<T> {
         if self.owned && !self.keep {
-            owned_path(
+            validate_owned_path(
                 &self.baseline.root,
                 &self.candidate.root.join(".local/benchmarks/wt"),
             )?;
-            git(
+            run_git_capture(
                 &self.candidate.root,
                 &[
                     "worktree",
@@ -417,7 +418,7 @@ impl Revisions {
     }
 }
 
-fn path_eq(a: &Path, b: &Path) -> bool {
+fn paths_equal(a: &Path, b: &Path) -> bool {
     a.to_string_lossy()
         .replace('\\', "/")
         .eq_ignore_ascii_case(&b.to_string_lossy().replace('\\', "/"))
@@ -433,11 +434,11 @@ pub fn initialize_submodules(
         args.push("--");
         args.extend(paths);
     }
-    git(target, &args)?;
+    run_git_capture(target, &args)?;
     if !target.join(".gitmodules").is_file() {
         return Ok(());
     }
-    let output = captured(&mut git_command(
+    let output = capture_process_output(&mut make_git_command(
         target,
         &[
             "config",
@@ -451,7 +452,7 @@ pub fn initialize_submodules(
     if output.status.code() == Some(1) {
         return Ok(());
     }
-    let listing = String::from_utf8(succeeded(output)?.stdout)?;
+    let listing = String::from_utf8(require_process_success(output)?.stdout)?;
     for entry in listing.split('\0').filter(|s| !s.is_empty()) {
         let (key, relative) = entry
             .split_once('\n')
@@ -460,19 +461,19 @@ pub fn initialize_submodules(
             continue;
         }
         let destination = target.join(relative);
-        owned_path(&destination, target)?;
+        validate_owned_path(&destination, target)?;
         let local = source
             .map(|p| p.join(relative))
             .filter(|p| p.join(".git").exists());
         if let Some(local) = &local {
-            owned_path(local, source.unwrap())?;
-            if !path_eq(
-                Path::new(git(local, &["rev-parse", "--show-toplevel"])?.trim()),
+            validate_owned_path(local, source.unwrap())?;
+            if !paths_equal(
+                Path::new(run_git_capture(local, &["rev-parse", "--show-toplevel"])?.trim()),
                 local,
             ) {
                 return Err("Local submodule is not a repository root.".into());
             }
-            let url = git(
+            let url = run_git_capture(
                 target,
                 &[
                     "config",
@@ -480,14 +481,14 @@ pub fn initialize_submodules(
                     &(key.trim_end_matches("path").to_owned() + "url"),
                 ],
             )?;
-            let tree = git(target, &["ls-tree", "-z", "HEAD", "--", relative])?;
+            let tree = run_git_capture(target, &["ls-tree", "-z", "HEAD", "--", relative])?;
             let fields: Vec<_> = tree.splitn(4, [' ', '\t']).collect();
             if fields.len() != 4 || fields[0] != "160000" || fields[1] != "commit" {
                 return Err(format!("Missing baseline gitlink for '{relative}'.").into());
             }
             let commit = fields[2];
             println!("Seeding submodule {relative} from {}", local.display());
-            git(
+            run_git_capture(
                 target,
                 &[
                     "clone",
@@ -498,8 +499,8 @@ pub fn initialize_submodules(
                     &destination.to_string_lossy(),
                 ],
             )?;
-            git(&destination, &["remote", "set-url", "origin", url.trim()])?;
-            git(
+            run_git_capture(&destination, &["remote", "set-url", "origin", url.trim()])?;
+            run_git_capture(
                 &destination,
                 &[
                     "config",
@@ -508,19 +509,19 @@ pub fn initialize_submodules(
                     &destination.join(".git/lfs").to_string_lossy(),
                 ],
             )?;
-            if !captured(&mut git_command(
+            if !capture_process_output(&mut make_git_command(
                 &destination,
                 &["cat-file", "-e", &format!("{commit}^{{commit}}")],
             ))?
             .status
             .success()
             {
-                git(&destination, &["fetch", "--no-tags", "origin", commit])?;
+                run_git_capture(&destination, &["fetch", "--no-tags", "origin", commit])?;
             }
-            copy_lfs(local, &destination, commit)?;
-            git(&destination, &["checkout", "--detach", commit])?;
+            copy_lfs_objects(local, &destination, commit)?;
+            run_git_capture(&destination, &["checkout", "--detach", commit])?;
         } else {
-            git(
+            run_git_capture(
                 target,
                 &[
                     "submodule",
@@ -537,26 +538,28 @@ pub fn initialize_submodules(
     Ok(())
 }
 
-fn copy_lfs(source: &Path, target: &Path, commit: &str) -> Result<()> {
-    let listing: Value =
-        serde_json::from_str(&git(target, &["lfs", "ls-files", "--json", commit])?)?;
+fn copy_lfs_objects(source: &Path, target: &Path, commit: &str) -> Result<()> {
+    let listing: Value = serde_json::from_str(&run_git_capture(
+        target,
+        &["lfs", "ls-files", "--json", commit],
+    )?)?;
     let Some(files) = listing["files"]
         .as_array()
         .filter(|files| !files.is_empty())
     else {
         return Ok(());
     };
-    fn media(root: &Path) -> Result<PathBuf> {
-        let env = git(root, &["lfs", "env"])?;
-        absolute(
+    fn find_lfs_cache_directory(root: &Path) -> Result<PathBuf> {
+        let env = run_git_capture(root, &["lfs", "env"])?;
+        resolve_absolute_path(
             root,
             env.lines()
                 .find_map(|line| line.strip_prefix("LocalMediaDir="))
                 .ok_or("Could not locate LFS cache.")?,
         )
     }
-    let source = media(source)?;
-    let target = media(target)?;
+    let source = find_lfs_cache_directory(source)?;
+    let target = find_lfs_cache_directory(target)?;
     for file in files {
         let oid = file["oid"].as_str().ok_or("Missing LFS object identity.")?;
         if oid.len() != 64 || !oid.bytes().all(|c| c.is_ascii_hexdigit()) {

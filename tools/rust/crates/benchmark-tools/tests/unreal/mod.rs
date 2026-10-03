@@ -2,8 +2,8 @@ use super::*;
 
 #[test]
 fn moved_automation_keeps_defaults_and_failure_detection() {
-    let args = Args::parse(&[], &[], &[]).unwrap();
-    let (spark, timeout, automation) = measurement("spark", &args).unwrap();
+    let args = Args::parse_command_line(&[], &[], &[]).unwrap();
+    let (spark, timeout, automation) = measurement_arguments("spark", &args).unwrap();
     assert_eq!(timeout, 1200);
     assert!(automation);
     for argument in [
@@ -17,7 +17,7 @@ fn moved_automation_keeps_defaults_and_failure_detection() {
     ] {
         assert!(spark.iter().any(|value| value == argument));
     }
-    let (telemetry, _, _) = measurement("level-telemetry", &args).unwrap();
+    let (telemetry, _, _) = measurement_arguments("level-telemetry", &args).unwrap();
     assert!(telemetry.contains(&"-SandboxTelemetryBenchmarkSamples=7".into()));
     for log in [
         "Found 0 automation tests based on x",
@@ -25,9 +25,9 @@ fn moved_automation_keeps_defaults_and_failure_detection() {
         "Test Completed. Result={Error}",
         "TEST COMPLETE. EXIT CODE: -1",
     ] {
-        assert!(automation_succeeded(log).is_err(), "{log}");
+        assert!(validate_automation_log(log).is_err(), "{log}");
     }
-    automation_succeeded("TEST COMPLETE. EXIT CODE: 0").unwrap();
+    validate_automation_log("TEST COMPLETE. EXIT CODE: 0").unwrap();
 }
 
 #[test]
@@ -39,8 +39,9 @@ fn engine_failure_and_timeout_preserve_logs() {
         "-c",
         "print('failed engine', flush=True); raise SystemExit(23)",
     ]);
-    let error = succeeded(
-        run_logged(&mut command, &log, Instant::now() + Duration::from_secs(10)).unwrap(),
+    let error = require_process_success(
+        run_editor_with_timeout(&mut command, &log, Instant::now() + Duration::from_secs(10))
+            .unwrap(),
     )
     .unwrap_err();
     assert_eq!(error.downcast_ref::<ProcessFailure>().unwrap().0, 23);
@@ -51,7 +52,8 @@ fn engine_failure_and_timeout_preserve_logs() {
         "import time; print('hung engine', flush=True); time.sleep(20)",
     ]);
     let error =
-        run_logged(&mut command, &log, Instant::now() + Duration::from_secs(1)).unwrap_err();
+        run_editor_with_timeout(&mut command, &log, Instant::now() + Duration::from_secs(1))
+            .unwrap_err();
     assert!(error.to_string().contains("timed out"));
     assert!(fs::read_to_string(log).unwrap().contains("hung engine"));
 }
