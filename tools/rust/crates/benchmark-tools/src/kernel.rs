@@ -51,9 +51,6 @@ pub fn generate_kernel_report(root: &Path, arguments: &[String]) -> Result<()> {
     });
     let plots = directory.join("plots");
     fs::create_dir_all(&directory)?;
-    if !highway && plots.exists() {
-        fs::remove_dir_all(&plots)?;
-    }
     if results.exists() {
         fs::remove_file(&results)?;
     }
@@ -80,21 +77,12 @@ pub fn generate_kernel_report(root: &Path, arguments: &[String]) -> Result<()> {
     if !status.success() {
         return Err(Box::new(ProcessFailure(status.code().unwrap_or(1))));
     }
-    if !highway {
-        fs::create_dir_all(&plots)?;
-        let status = Command::new("uv")
-            .args(["run", "--locked"])
-            .arg(root.join("Scripts/plot-kernel-benchmarks.py"))
-            .arg(results)
-            .arg(format!("--output={}", plots.display()))
-            .arg("--format=png")
-            .env("UV_CACHE_DIR", root.join("out/uv-cache"))
-            .env("MPLCONFIGDIR", root.join("out/matplotlib-cache"))
-            .current_dir(root)
-            .status()?;
-        if !status.success() {
-            return Err(Box::new(ProcessFailure(status.code().unwrap_or(1))));
+    crate::plots::automatic(|| {
+        if plots.exists() {
+            fs::remove_dir_all(&plots)?;
         }
-    }
+        crate::plots::plot_kernel(&read_json(&results)?, &plots, "scalar")
+    });
+    println!("Results written to {}", results.display());
     Ok(())
 }

@@ -181,6 +181,10 @@ pub fn run_fighter_benchmark(root: &Path, args: &[String]) -> Result<()> {
     for (result, cap) in results.iter().zip(&caps) {
         validate_fighter_result(result, *cap, (seconds * 60.0).ceil() as u64)?;
     }
+    write_fighter_reports(&output, &results, &caps)
+}
+
+fn write_fighter_reports(output: &Path, results: &[Value], caps: &[u32]) -> Result<()> {
     let mut rows = vec![
         [
             "fighter_cap",
@@ -223,6 +227,9 @@ pub fn run_fighter_benchmark(root: &Path, args: &[String]) -> Result<()> {
     }
     write_json(&output.join("results.json"), &results)?;
     write_csv(&output.join("summary.csv"), &rows)?;
+    crate::plots::automatic(|| {
+        crate::plots::plot_fighters(&serde_json::to_value(&results)?, &output.join("plots"))
+    });
     println!("Results written to {}", output.display());
     Ok(())
 }

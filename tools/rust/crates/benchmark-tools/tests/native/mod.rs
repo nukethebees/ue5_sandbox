@@ -1,5 +1,27 @@
 use super::*;
 use serde_json::json;
+
+#[test]
+fn fighter_reports_generate_plots_and_survive_rendering_failure() {
+    let output = ioj_test_support::temp_dir("fighter report plots");
+    let results = [json!({
+        "fighter_stress":{"configured_cap":2000,"steady_state_fighters":2000,"lasers_spawned_during_measurement":20},
+        "workload":{"measured_ticks":600},
+        "timing":{"elapsed_seconds":10,"mean_tick_microseconds":120,"median_tick_microseconds":100,"p95_tick_microseconds":150,"p99_tick_microseconds":180,"ticks_per_second":8333,"realtime_factor":138}
+    })];
+    write_fighter_reports(output.path(), &results, &[2000]).unwrap();
+    assert!(output.path().join("plots/tick-latency.svg").is_file());
+    assert!(output.path().join("plots/throughput.svg").is_file());
+    let blocked = output.path().join("blocked");
+    std::fs::create_dir(&blocked).unwrap();
+    std::fs::write(blocked.join("plots"), "occupied").unwrap();
+    write_fighter_reports(&blocked, &results, &[2000]).unwrap();
+    assert_eq!(
+        read_json::<Vec<Value>>(&blocked.join("results.json")).unwrap(),
+        results
+    );
+    assert!(blocked.join("summary.csv").is_file());
+}
 #[test]
 fn fighter_caps_are_unique_positive_u32() {
     assert_eq!(parse_fighter_caps("2000, 4000").unwrap(), [2000, 4000]);

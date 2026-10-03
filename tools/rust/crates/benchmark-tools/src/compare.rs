@@ -589,7 +589,7 @@ fn prepare_native_benchmark(root: &Path, target: &Path) -> Result<()> {
     )
 }
 
-fn write_native_comparison_reports(run: &Run, captures: &[Capture]) -> Result<bool> {
+fn write_native_comparison_reports(run: &mut Run, captures: &[Capture]) -> Result<bool> {
     let comparison = results::compare_captures(captures)?;
     write_json(
         &run.path("comparison.json"),
@@ -675,6 +675,24 @@ fn write_native_comparison_reports(run: &Run, captures: &[Capture]) -> Result<bo
     }
     write_csv(&run.path("comparison.csv"), &rows)?;
     write_text(&run.path("comparison.md"), &text)?;
+    if comparison.comparable {
+        let paths = crate::plots::automatic(|| {
+            crate::plots::plot_comparison(&comparison, &run.path("plots"))
+        });
+        for path in paths {
+            let name = format!("plots/{}", path.file_name().unwrap().to_string_lossy());
+            run.expect_artifact(&name)?;
+            text.push_str(&format!(
+                "\n![{}]({name})\n",
+                path.file_stem().unwrap().to_string_lossy()
+            ));
+        }
+        write_text(&run.path("comparison.md"), &text)?;
+    }
     println!("{text}\nReport: {}", run.path("comparison.md").display());
     Ok(comparison.comparable)
 }
+
+#[cfg(test)]
+#[path = "../tests/plots/comparison.rs"]
+mod plots;

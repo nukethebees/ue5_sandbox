@@ -119,7 +119,7 @@ pub struct Capture {
     pub schema_version: u32,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Pair {
     repetition: u32,
@@ -128,7 +128,7 @@ pub struct Pair {
     delta: f64,
     delta_percent: Option<f64>,
 }
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PairedMetric {
     pub identity: Identity,
@@ -138,7 +138,7 @@ pub struct PairedMetric {
     pub delta_percent: Option<Summary>,
     pub pairs: Vec<Pair>,
 }
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Comparison {
     pub comparable: bool,
     pub errors: Vec<String>,

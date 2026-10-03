@@ -4,6 +4,7 @@ mod gpu;
 mod ismc;
 mod kernel;
 mod native;
+mod plots;
 mod results;
 mod revision;
 mod support;
@@ -18,6 +19,9 @@ use support::*;
 const USAGE: &str = "Usage: benchmark-tools <kernel-report|spark|heatmap|radar-3d|scatter-3d|volume-heatmap-3d|entity-overlay|native-simulation|fighter-simulation|frame-memory-level|frame-memory-revision-ab|level-telemetry|gpu-starfield|sandbox-ismc|sandbox-ismc-revision-ab|sandbox-ismc-report> [options]\nSee docs/benchmarks.md for workload options.";
 
 fn dispatch_benchmark_command(args: &[String]) -> Result<()> {
+    if args.first().is_some_and(|arg| arg == "plot") {
+        return plots::run(&args[1..]);
+    }
     if args.first().is_some_and(|arg| arg == "compare") {
         return compare::run_native_comparison(&args[1..]);
     }
@@ -26,7 +30,7 @@ fn dispatch_benchmark_command(args: &[String]) -> Result<()> {
     }
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!(
-            "{USAGE}\n  compare --baseline <ref> [--candidate <ref>] [options]  Native revision comparison\n  tracy-report --trace <capture.tracy> [options]  Offline zone statistics"
+            "{USAGE}\n  compare --baseline <ref> [--candidate <ref>] [options]  Native revision comparison\n  tracy-report --trace <capture.tracy> [options]  Offline zone statistics\n  plot --kind <kernel|fighter|comparison> --input <json> --output-dir <directory>  SVG plots"
         );
         return Ok(());
     }
