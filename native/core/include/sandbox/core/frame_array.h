@@ -77,6 +77,20 @@ class FrameArray {
         size_ = count;
     }
 
+    // Construct every added element before any operation that reads, moves, or destroys it.
+    void set_num_uninitialised(std::uint32_t const count) {
+        if (count <= size_) {
+            destroy_from(count);
+            return;
+        }
+
+        if (count > capacity_) {
+            reserve(growth_capacity(count));
+        }
+
+        size_ = count;
+    }
+
     void clear() noexcept { destroy_from(0); }
 
     void remove_at_swap(std::uint32_t const index)
@@ -97,6 +111,7 @@ class FrameArray {
 
     auto add(T&& value) -> T& { return emplace(std::move(value)); }
 
+    // Require source and indices to be disjoint from this array's storage.
     void add(std::span<T const> const source, std::span<std::uint32_t const> const indices)
         requires std::is_nothrow_copy_constructible_v<T>
     {
@@ -105,23 +120,18 @@ class FrameArray {
             return;
         }
 
-        auto const count{static_cast<std::uint32_t>(indices.size())};
-        auto const new_size{size_ + count};
-        auto const needs_storage{new_size > capacity_};
-        auto const new_capacity{needs_storage ? growth_capacity(new_size) : capacity_};
-        auto* const destination{needs_storage ? allocate(new_capacity) : data_};
+        assert(!overlaps_storage(std::as_bytes(source)));
+        assert(!overlaps_storage(std::as_bytes(indices)));
 
-        // Gather before relocation to preserve sources that refer to this array.
+        auto const count{static_cast<std::uint32_t>(indices.size())};
+        auto const first{size_};
+        set_num_uninitialised(first + count);
+
         for (std::uint32_t index{}; index < count; ++index) {
             auto const source_index{indices[index]};
             assert(source_index < source.size());
-            std::construct_at(destination + size_ + index, source[source_index]);
+            std::construct_at(data_ + first + index, source[source_index]);
         }
-
-        if (needs_storage) {
-            replace_storage(destination, new_capacity);
-        }
-        size_ = new_size;
     }
 
     template <typename... Args>
@@ -175,6 +185,18 @@ class FrameArray {
         {static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max()),
          std::numeric_limits<std::size_t>::max() / sizeof(T),
          static_cast<std::size_t>(std::numeric_limits<std::ptrdiff_t>::max()) / sizeof(T)}))};
+
+    auto overlaps_storage(std::span<std::byte const> const bytes) const noexcept -> bool {
+        if (bytes.empty() || capacity_ == 0) {
+            return false;
+        }
+
+        auto const storage_begin{reinterpret_cast<std::uintptr_t>(data_)};
+        auto const storage_end{storage_begin + static_cast<std::size_t>(capacity_) * sizeof(T)};
+        auto const source_begin{reinterpret_cast<std::uintptr_t>(bytes.data())};
+        auto const source_end{source_begin + bytes.size()};
+        return source_begin < storage_end && storage_begin < source_end;
+    }
 
     static void check_size(std::uint32_t const count) {
         if (count > max_supported_size) {
