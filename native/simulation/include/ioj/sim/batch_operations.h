@@ -14,6 +14,8 @@ class EntityLedger;
 namespace ioj::sim::batch {
 void sort_and_deduplicate_removal_indices(std::vector<std::uint32_t>& local_indices_to_remove);
 
+// Consume recipients validated by DamageQueue::prepare while the published rows remain stable.
+// Earlier events in this batch may already have killed a recipient.
 void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
                            EntityLookupTable const& lookup,
                            [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
