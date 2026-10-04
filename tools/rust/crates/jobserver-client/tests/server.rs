@@ -65,7 +65,11 @@ impl Drop for Fixture {
 #[test]
 #[ignore = "requires the CMake-built isolated test daemon; run via CTest"]
 fn request_check_start_end_cancel_and_status_round_trip() {
-    let fixture = Fixture::new();
+    let mut fixture = Fixture::new();
+    assert_eq!(
+        fixture.client.server_process_id().unwrap(),
+        Some(fixture.server.id())
+    );
     let a = fixture.ticket("shared", "build tools");
     assert_eq!(a["state"], "Ready");
     assert_eq!(a["owner"], "dev5");
@@ -148,6 +152,8 @@ fn request_check_start_end_cancel_and_status_round_trip() {
         fixture.client.request(json!({"type":"shutdown"})).unwrap()["type"],
         "accepted"
     );
+    fixture.server.wait().unwrap();
+    assert_eq!(fixture.client.server_process_id().unwrap(), None);
 }
 
 #[test]
