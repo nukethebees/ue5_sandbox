@@ -72,8 +72,8 @@ struct CollisionUniformGrid {
                              SpinnerReadView spinners,
                              std::optional<PlayerSpatialData> player = {});
     auto get_entity_world_bounds() const -> EntityCellData::ConstView;
-    auto bound_rows(EntityType const type) const -> std::span<std::uint32_t const> {
-        return entity_storage_.bound_rows[type];
+    auto entity_row_to_aabb_row(EntityType const type) const -> std::span<std::uint32_t const> {
+        return entity_storage_.entity_row_to_aabb_row[type];
     }
 #ifndef NDEBUG
     auto check_live_entity_membership() const -> bool;

@@ -35,7 +35,7 @@ void CollisionUniformGrid::reset() {
     storage.aabbs.reset();
     storage.cell_write_indices.clear();
     storage.rebuild_entity_data.reset();
-    storage.bound_rows = {};
+    storage.entity_row_to_aabb_row = {};
 
     static_storage_.reset();
 }
@@ -228,7 +228,7 @@ void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& ent
                                     Vectors3fConstView const locations,
                                     HealthConstView const healths,
                                     auto orientation_at) {
-            auto& rows{storage.bound_rows[type]};
+            auto& rows{storage.entity_row_to_aabb_row[type]};
             rows.assign(ids.size(), EntityInstanceHandle::invalid_value);
             auto const count{static_cast<std::uint32_t>(ids.size())};
             for (std::uint32_t row{}; row < count; ++row) {
@@ -241,7 +241,7 @@ void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& ent
                            entity_aabbs, type, locations[row], orientation_at(row)));
             }
         }};
-        auto& player_rows{storage.bound_rows[EntityType::PlayerShip]};
+        auto& player_rows{storage.entity_row_to_aabb_row[EntityType::PlayerShip]};
         player_rows.assign(player ? 1u : 0u, EntityInstanceHandle::invalid_value);
         if (player && is_alive(player->health)) {
             player_rows[0] = storage.rebuild_entity_data.num();

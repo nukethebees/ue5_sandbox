@@ -128,6 +128,12 @@ If a new issue invalidates previous validation or requires additional builds/tes
 * Prefer simple C++ over template metaprogramming.
 * Prefer SOA layouts for related performance-sensitive collections.
 * Save loop bounds as const locals.
+* State non-obvious API preconditions and missing-result semantics at the declaration. Treat
+  impossible internal inputs as contract violations, with assertions at the responsible boundary;
+  do not silently convert them into null/missing results. Handle legitimate optional sentinels
+  explicitly before entering stricter bulk operations. Reuse phase guarantees instead of repeating
+  validity checks in inner loops. Tests must respect these contracts except when explicitly testing
+  invariant detection; prefer normal commands and events for simulation scenarios.
 * Log warnings/errors when null checks fail rather than returning silently.
 * Visually separate blocks of related code with whitespace, including logical phases within
   functions and groups of declarations or data. Arrange long functions so their main control
