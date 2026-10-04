@@ -77,17 +77,18 @@ class EntityLookupTable {
         }
     }
 
-    void resolve(std::span<EntityUniqueId const> const ids,
-                 std::span<EntityInstanceHandle> const output) const {
+    void lookup_handles(std::span<EntityUniqueId const> const ids,
+                        std::span<EntityInstanceHandle> const output) const {
         assert(output.size() == ids.size());
         auto const count{ids.size()};
         auto const handles{std::span<EntityInstanceHandle const>{handles_}};
         auto const handle_count{handles.size()};
         for (std::size_t index{}; index < count; ++index) {
             auto const id{ids[index]};
-            assert(!id.is_valid() || id.entity_type() == type_);
-            output[index] = id.is_valid() && id.index() < handle_count ? handles[id.index()]
-                                                                       : EntityInstanceHandle{};
+            assert(id == EntityUniqueId{} || id.entity_type() == type_);
+            output[index] = id != EntityUniqueId{} && id.index() < handle_count
+                              ? handles[id.index()]
+                              : EntityInstanceHandle{};
         }
     }
 
@@ -134,11 +135,10 @@ class EntityLookupTables {
     }
 
     // Resolve each contiguous type run into the matching caller-owned output slice.
-    void resolve(std::span<EntityUniqueId const> const ids,
-                 std::span<EntityInstanceHandle> const output) const {
+    void lookup_handles(std::span<EntityUniqueId const> const ids,
+                        std::span<EntityInstanceHandle> const output) const {
         assert(permits_lookup());
         assert(output.size() == ids.size());
-        assert(std::ranges::is_sorted(ids, {}, &EntityUniqueId::entity_type));
 
         std::ranges::fill(output, EntityInstanceHandle{});
         auto const runs{entity_type_runs(ids)};
@@ -146,21 +146,21 @@ class EntityLookupTables {
             auto const offset{runs.offsets[run]};
             auto const count{runs.counts[run]};
             for_type(runs.types[run])
-                .resolve(ids.subspan(offset, count), output.subspan(offset, count));
+                .lookup_handles(ids.subspan(offset, count), output.subspan(offset, count));
         }
     }
 
     // Resolve arbitrary IDs without changing them; publish handles in caller order.
-    auto resolve(std::span<EntityUniqueId const> const ids,
-                 std::span<std::uint32_t> const order,
-                 std::span<EntityInstanceHandle> const output) const -> EntityTypeRuns {
+    auto lookup_handles(std::span<EntityUniqueId const> const ids,
+                        std::span<EntityTypeRuns::Offset> const order,
+                        std::span<EntityInstanceHandle> const output) const -> EntityTypeRuns {
         assert(permits_lookup());
         assert(output.size() == ids.size());
         std::ranges::fill(output, EntityInstanceHandle{});
         auto runs{group_entity_ids(ids, order)};
         for (std::uint32_t run{}; run < runs.num; ++run) {
             auto const handles{for_type(runs.types[run]).entries()};
-            auto const end{runs.offsets[run] + runs.counts[run]};
+            auto const end{runs.end(run)};
             for (auto index{runs.offsets[run]}; index < end; ++index) {
                 auto const row{order[index]};
                 auto const offset{ids[row].index()};

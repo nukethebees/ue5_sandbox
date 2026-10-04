@@ -76,7 +76,7 @@ void Sim::think(float const, ml::FrameMemoryResource* const scratch_resource) {
     ml::FrameArray<EntityInstanceHandle> targets{scratch_resource};
     order.set_num(target_count);
     targets.set_num(target_count);
-    entity_tables_.lookups.resolve(target_ids, order, targets);
+    entity_tables_.lookups.lookup_handles(target_ids, order, targets);
 
     for (std::uint32_t index{}; index < target_count; ++index) {
         if (!targets[index].is_valid()) {
@@ -412,7 +412,7 @@ void Sim::queue_fighter_orders(ml::FrameMemoryResource* const scratch_resource) 
     ml::FrameArray<EntityInstanceHandle> targets{scratch_resource};
     order.set_num(target_count);
     targets.set_num(target_count);
-    entity_tables_.lookups.resolve(fighter_targets, order, targets);
+    entity_tables_.lookups.lookup_handles(fighter_targets, order, targets);
     auto const handles{entity_tables_.lookups.for_type(EntityType::Fighter).entries()};
     auto const entities{this->entities.get_const_view()};
     fighter_order_queue.reset();

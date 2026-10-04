@@ -426,7 +426,7 @@ void MissionManager::gather_objective_health(std::span<EntityUniqueId const> con
     query_order_.resize(count);
     query_handles_.resize(count);
     query_health_.assign(count, 0);
-    auto const runs{entity_tables_.lookups.resolve(ids, query_order_, query_handles_)};
+    auto const runs{entity_tables_.lookups.lookup_handles(ids, query_order_, query_handles_)};
     for (std::uint32_t run{}; run < runs.num; ++run) {
         auto const type{runs.types[run]};
         auto const healths{entity_tables_.health.get_const_view(

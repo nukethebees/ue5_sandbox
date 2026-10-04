@@ -11,29 +11,31 @@
 
 namespace ioj::sim {
 struct EntityTypeRuns {
+    using Offset = std::uint32_t;
+    using Count = std::uint32_t;
     inline static constexpr std::uint32_t capacity{ml::enum_count<EntityType>()};
     ml::FixedArray<EntityType, capacity> types;
-    ml::FixedArray<std::uint32_t, capacity> offsets;
-    ml::FixedArray<std::uint32_t, capacity> counts;
-    std::uint32_t num{};
+    ml::FixedArray<Offset, capacity> offsets;
+    ml::FixedArray<Count, capacity> counts;
+    Count num{};
+
+    auto end(Count const run) const -> Offset { return offsets[run] + counts[run]; }
 };
 
-// Inputs must be grouped by type, directly or through the supplied permutation.
-inline auto entity_type_runs(std::span<EntityUniqueId const> const ids,
-                             std::span<std::uint32_t const> const order = {}) -> EntityTypeRuns {
-    assert(order.empty() || order.size() == ids.size());
-    assert(std::in_range<std::uint32_t>(ids.size()));
+namespace entity_type_run_detail {
+inline auto scan(EntityTypeRuns::Count const count, auto id_at) -> EntityTypeRuns {
     EntityTypeRuns runs;
-    auto const count{static_cast<std::uint32_t>(ids.size())};
-    std::uint32_t first{};
+    EntityTypeRuns::Offset first{};
     while (first < count) {
-        auto const type{ids[order.empty() ? first : order[first]].entity_type()};
-        if (std::to_underlying(type) >= EntityTypeRuns::capacity) {
+        auto const id{id_at(first)};
+        if (id == EntityUniqueId{}) {
             break;
         }
+        auto const type{id.entity_type()};
+        assert(std::to_underlying(type) < EntityTypeRuns::capacity);
         assert(runs.num == 0 || type > runs.types[runs.num - 1]);
         auto end{first + 1};
-        while (end < count && ids[order.empty() ? end : order[end]].entity_type() == type) {
+        while (end < count && id_at(end).entity_type() == type) {
             ++end;
         }
         runs.types.add(type);
@@ -44,12 +46,31 @@ inline auto entity_type_runs(std::span<EntityUniqueId const> const ids,
     }
     return runs;
 }
+}
+
+// IDs must be sorted by type, with empty IDs last.
+inline auto entity_type_runs(std::span<EntityUniqueId const> const ids) -> EntityTypeRuns {
+    assert(std::in_range<EntityTypeRuns::Count>(ids.size()));
+    return entity_type_run_detail::scan(static_cast<EntityTypeRuns::Count>(ids.size()),
+                                        [ids](EntityTypeRuns::Offset row) { return ids[row]; });
+}
+
+// The permutation must sort IDs by type, with empty IDs last.
+inline auto entity_type_runs(std::span<EntityUniqueId const> const ids,
+                             std::span<EntityTypeRuns::Offset const> const order)
+    -> EntityTypeRuns {
+    assert(order.size() == ids.size());
+    assert(std::in_range<EntityTypeRuns::Count>(ids.size()));
+    return entity_type_run_detail::scan(
+        static_cast<EntityTypeRuns::Count>(ids.size()),
+        [ids, order](EntityTypeRuns::Offset row) { return ids[order[row]]; });
+}
 
 inline auto group_entity_ids(std::span<EntityUniqueId const> const ids,
-                             std::span<std::uint32_t> const order) -> EntityTypeRuns {
+                             std::span<EntityTypeRuns::Offset> const order) -> EntityTypeRuns {
     assert(order.size() == ids.size());
-    std::iota(order.begin(), order.end(), 0u);
-    std::ranges::sort(order, {}, [&](std::uint32_t const row) { return ids[row]; });
+    std::iota(order.begin(), order.end(), EntityTypeRuns::Offset{});
+    std::ranges::sort(order, {}, [&](EntityTypeRuns::Offset const row) { return ids[row]; });
     return entity_type_runs(ids, order);
 }
 }

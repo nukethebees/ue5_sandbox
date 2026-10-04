@@ -78,19 +78,19 @@ TEST(EntityTables, RebuildsHandlesAfterOwnerReorderingAndMaximumHealthChanges) {
     tables.publish<EntityType::Fighter>(ids, teams, 100);
     auto& lookup{tables.lookups.for_type(EntityType::Fighter)};
     std::array<EntityInstanceHandle, 2> handles;
-    lookup.resolve(ids, handles);
+    lookup.lookup_handles(ids, handles);
     EXPECT_EQ(handles[0].health_state(), 1u);
     EXPECT_EQ(handles[1].health_state(), 3u);
 
     tables.health.get_view<EntityType::Fighter>(ids.size()).set_health(1, 25);
-    lookup.resolve(ids, handles);
+    lookup.lookup_handles(ids, handles);
     EXPECT_EQ(handles[1].health_state(), 3u);
 
     std::array<std::int32_t, 2> order{1, 0};
     tables.health.apply_permutation<EntityType::Fighter>(order);
     tables.publish<EntityType::Fighter>(
         std::array{ids[1], ids[0]}, std::array{teams[1], teams[0]}, 100);
-    lookup.resolve(ids, handles);
+    lookup.lookup_handles(ids, handles);
     EXPECT_EQ(handles[0].index(), 1u);
     EXPECT_EQ(handles[0].health_state(), 1u);
     EXPECT_EQ(handles[1].index(), 0u);
@@ -100,7 +100,7 @@ TEST(EntityTables, RebuildsHandlesAfterOwnerReorderingAndMaximumHealthChanges) {
     // Rebuild metadata even when the stored health values have not changed.
     tables.publish<EntityType::Fighter>(
         std::array{ids[1], ids[0]}, std::array{teams[1], teams[0]}, 50);
-    lookup.resolve(ids, handles);
+    lookup.lookup_handles(ids, handles);
     EXPECT_EQ(handles[0].health_state(), 3u);
     EXPECT_EQ(handles[1].health_state(), 1u);
 }

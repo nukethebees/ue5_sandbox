@@ -544,7 +544,7 @@ void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource)
     ml::FrameArray<EntityInstanceHandle> instigators{scratch_resource};
     order.set_num(damage_count);
     instigators.set_num(damage_count);
-    auto const runs{entity_tables_.lookups.resolve(damage_events.instigators, order, instigators)};
+    auto const runs{entity_tables_.lookups.lookup_handles(damage_events.instigators, order, instigators)};
     for (std::uint32_t run{}; run < runs.num; ++run) {
         auto const type{runs.types[run]};
         if (!has_health(type)) {
@@ -781,7 +781,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch,
 
         // Bind the varying result count returned by this fighter's scan.
         // NOLINTBEGIN(ioj-loop-view-construction,ioj-loop-view-accessor-call)
-        fighter_lookup.resolve(std::span{nearby_fighters}.first(n_nearby),
+        fighter_lookup.lookup_handles(std::span{nearby_fighters}.first(n_nearby),
                                std::span{nearby_handles}.first(n_nearby));
         // NOLINTEND(ioj-loop-view-construction,ioj-loop-view-accessor-call)
         std::uint32_t neighbour_count{};

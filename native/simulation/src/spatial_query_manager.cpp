@@ -475,7 +475,7 @@ void SpatialQueryManager::copy_entity_radii(std::span<EntityUniqueId const> cons
     ml::FrameArray<EntityInstanceHandle> handles{scratch_resource};
     order.set_num(count);
     handles.set_num(count);
-    auto const runs{entity_tables_.lookups.resolve(ids, order, handles)};
+    auto const runs{entity_tables_.lookups.lookup_handles(ids, order, handles)};
     std::ranges::fill(out_radii, 0.f);
     for (std::uint32_t run{}; run < runs.num; ++run) {
         auto const radius{entity_radii_[runs.types[run]]};
@@ -496,7 +496,7 @@ void SpatialQueryManager::copy_target_locations(
     ml::FrameArray<EntityInstanceHandle> handles{scratch_resource};
     order.set_num(output.num());
     handles.set_num(output.num());
-    auto const runs{entity_tables_.lookups.resolve(ids, order, handles)};
+    auto const runs{entity_tables_.lookups.lookup_handles(ids, order, handles)};
     for (std::uint32_t row{}; row < output.num(); ++row) {
         output.set(row, {});
     }
@@ -521,7 +521,7 @@ void SpatialQueryManager::refresh_targets(std::span<EntityUniqueId> const ids,
     ml::FrameArray<EntityInstanceHandle> handles{scratch_resource};
     order.set_num(count);
     handles.set_num(count);
-    auto const runs{entity_tables_.lookups.resolve(ids, order, handles)};
+    auto const runs{entity_tables_.lookups.lookup_handles(ids, order, handles)};
     for (std::uint32_t row{}; row < count; ++row) {
         output_locations.set(row, {});
         output_velocities.set(row, {});

@@ -9,12 +9,11 @@
 #include <array>
 
 namespace ioj::sim::tests {
-TEST(EntityTypeRuns, GroupsWithoutChangingIdsAndOmitsInvalidTypes) {
+TEST(EntityTypeRuns, GroupsWithoutChangingIdsAndOmitsEmptyIds) {
     std::array const ids{EntityUniqueId{3, EntityType::Fighter},
                          EntityUniqueId{},
                          EntityUniqueId{0, EntityType::PlayerShip},
-                         EntityUniqueId{3, EntityType::Fighter},
-                         EntityUniqueId::from_raw(0x06000000)};
+                         EntityUniqueId{3, EntityType::Fighter}};
     auto const original{ids};
     std::array<std::uint32_t, ids.size()> order;
     auto const runs{group_entity_ids(ids, order)};
@@ -36,6 +35,10 @@ TEST(EntityTypeRuns, GroupsWithoutChangingIdsAndOmitsInvalidTypes) {
         EXPECT_EQ(direct.counts[run], runs.counts[run]);
     }
     EXPECT_EQ(group_entity_ids({}, {}).num, 0u);
+#ifndef NDEBUG
+    std::array const malformed{EntityUniqueId::from_raw(0x06000000)};
+    EXPECT_DEATH(entity_type_runs(malformed), "EntityTypeRuns::capacity");
+#endif
 }
 
 TEST(EntityLookupTables, PublishedCountIncludesDeadRowsUntilRepublished) {
@@ -69,7 +72,7 @@ TEST(EntityLookupTables, ResolvesArbitraryIdsInCallerOrder) {
                          EntityUniqueId{999999, EntityType::Fighter}};
     std::array<std::uint32_t, ids.size()> order;
     std::array<EntityInstanceHandle, ids.size()> handles;
-    lookups.resolve(ids, order, handles);
+    lookups.lookup_handles(ids, order, handles);
     EXPECT_EQ(handles[0].team(), Team::Blue);
     EXPECT_FALSE(handles[1].is_valid());
     EXPECT_EQ(handles[2].team(), Team::Red);
@@ -94,7 +97,7 @@ TEST(EntityLookupTables, ResolvesTypeRunsAndPreservesDuplicateAndMissingSlots) {
                          EntityUniqueId{100, EntityType::Fighter},
                          EntityUniqueId{}};
     std::array<EntityInstanceHandle, ids.size()> handles;
-    lookups.resolve(ids, handles);
+    lookups.lookup_handles(ids, handles);
     EXPECT_EQ(handles[0].index(), 0u);
     EXPECT_EQ(handles[0].team(), Team::Green);
     EXPECT_EQ(handles[1].index(), 1u);
@@ -102,7 +105,7 @@ TEST(EntityLookupTables, ResolvesTypeRunsAndPreservesDuplicateAndMissingSlots) {
     EXPECT_EQ(handles[1], handles[3]);
     EXPECT_FALSE(handles[4].is_valid());
     EXPECT_FALSE(handles[5].is_valid());
-    lookups.resolve({}, {});
+    lookups.lookup_handles({}, {});
 }
 
 TEST(EntityLookupTables, RetirementAndReorderingCannotAliasStableIdentity) {
@@ -115,7 +118,7 @@ TEST(EntityLookupTables, RetirementAndReorderingCannotAliasStableIdentity) {
     std::array const reordered{ids[2], ids[1]};
     lookup.publish_rows(reordered, {});
     std::array<EntityInstanceHandle, ids.size()> handles;
-    lookup.resolve(ids, handles);
+    lookup.lookup_handles(ids, handles);
     EXPECT_FALSE(handles[0].is_valid());
     EXPECT_EQ(handles[1].index(), 1u);
     EXPECT_EQ(handles[2].index(), 0u);
@@ -201,7 +204,7 @@ TEST(EntityLookupTables, ResolutionHealthChangesBeforeHandlesRetire) {
     owners.remove(id);
     owners.publish();
     std::array<EntityInstanceHandle, 1> handles;
-    owners.entity_tables.lookups.resolve(ids, handles);
+    owners.entity_tables.lookups.lookup_handles(ids, handles);
     EXPECT_FALSE(handles[0].is_valid());
     EXPECT_TRUE(owners.ledger.is_valid_unique_id(id));
 }
