@@ -36,6 +36,10 @@ submodule synchronization/update, configures `native`, and builds the canonical
 `install-jobserver` target, stopping on failure. It does not repeat the remaining preparation
 steps. See [developer tools](../../../../README.md) for installation locations.
 
+Use `coj install jobserver` to select only jobserver. Both install commands accept `--force`
+to close active board tickets before replacement and report what was closed. Ticket processes
+keep running. See [jobserver installation](../../../../jobserver/docs/server.md).
+
 ## Formatting, presets, and analysis
 
 `coj format [--all|--changed|--staged] [--jobs N] [--verbose]` uses the worktree's

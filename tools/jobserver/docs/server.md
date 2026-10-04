@@ -5,10 +5,17 @@ requests sequentially. It never executes or monitors the work described by a tic
 
 ## Installation and startup
 
-The maintainer installs coj and runs `coj install central-tools` to install
+The maintainer installs coj and runs `coj install jobserver` (or `coj install central-tools`) to install
 jobserver under `%IOJ_ROOT%\tools\jobserver\bin` and register the
 `NukeTheBeesJobserver` logon task. Agents report missing tools to the maintainer rather than
 installing or updating them.
+
+Installation refuses to replace a running board with active tickets. Use
+`coj install jobserver --force` to close all existing tickets first. It reports each closed
+ticket's ID, mode, state, owner, description, and worktree, followed by the total.
+Closing tickets does not stop their processes. If clearing fails or new tickets prevent
+shutdown, installation stops before replacing the daemon and retains the closure reports.
+`coj install central-tools --force` applies the same behavior to jobserver.
 
 For a protocol upgrade, shut down the empty board using its existing matching client before
 replacing either component. Install coj, then update the daemon.

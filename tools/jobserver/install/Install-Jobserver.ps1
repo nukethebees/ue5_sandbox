@@ -4,7 +4,8 @@ param(
     [string]$InstallRoot,
     [Parameter(Mandatory)] [string]$RegisterScript,
     [Parameter(Mandatory)] [ValidateSet(0, 1)] [int]$AsanEnabled,
-    [string]$LinkDirectory
+    [string]$LinkDirectory,
+    [switch]$Force
 )
 
 $ErrorActionPreference = 'Stop'
@@ -28,9 +29,38 @@ if ($registeredTask) { $registeredPaths = @($registeredTask.Actions.Execute) }
 $running = Get-Process jobserverd -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -eq $installedDaemon -or $_.Path -in $registeredPaths }
 if ($running) {
+    if ($Force) {
+        $statusJson = & coj jobs status --json
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Could not read active tickets for forced installation. No tickets were cleared.'
+        }
+        $board = $statusJson | ConvertFrom-Json
+        if ($board.type -ne 'status' -or $null -eq $board.tickets) {
+            throw 'Invalid jobs-board status response. No tickets were cleared.'
+        }
+
+        $closedCount = 0
+        foreach ($ticket in $board.tickets) {
+            $clearedJson = & coj jobs clear $ticket.id --json
+            if ($LASTEXITCODE -ne 0) {
+                throw "Could not force-close ticket $($ticket.id). Already force-closed $closedCount tickets; installation stopped."
+            }
+            $cleared = $clearedJson | ConvertFrom-Json
+            if ($cleared.type -ne 'cleared' -or $null -eq $cleared.tickets) {
+                throw "Invalid response while force-closing ticket $($ticket.id); installation stopped."
+            }
+            foreach ($closed in $cleared.tickets) {
+                Write-Host ("Force-closed ticket {0}: {1}, {2}, owner '{3}', {4}  [{5}]" -f
+                    $closed.id, $closed.mode, $closed.state, $closed.owner, $closed.name, $closed.worktree)
+                $closedCount++
+            }
+        }
+        Write-Host "Force-closed $closedCount tickets. Their processes were not stopped."
+    }
+
     & coj jobs shutdown
     if ($LASTEXITCODE -ne 0) {
-        throw 'Could not shut down the installed board. Clear active tickets first. For a protocol upgrade, shut down the empty board with its matching client before replacing either component.'
+        throw 'Could not shut down the installed board. Clear active tickets or retry with coj install jobserver --force; new tickets may have arrived during installation. For a protocol upgrade, shut down the empty board with its matching client before replacing either component.'
     }
     foreach ($daemon in $running) {
         if (-not $daemon.WaitForExit(15000)) {

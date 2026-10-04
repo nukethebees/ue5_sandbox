@@ -1,4 +1,4 @@
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 use std::ffi::OsString;
 
 #[derive(Parser)]
@@ -14,9 +14,16 @@ struct Cli {
 #[derive(Subcommand)]
 enum Tool {
     /// Install all central tools (currently jobserver).
-    CentralTools,
+    CentralTools(InstallOptions),
     /// Install and register the per-user jobs board.
-    Jobserver,
+    Jobserver(InstallOptions),
+}
+
+#[derive(Args)]
+struct InstallOptions {
+    /// Close and report active jobserver tickets before replacement; leave their processes running.
+    #[arg(long)]
+    force: bool,
 }
 
 pub fn run(arguments: &[OsString]) -> Result<i32, String> {
@@ -32,12 +39,12 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
     };
 
     match cli.tool {
-        Tool::CentralTools | Tool::Jobserver => install_jobserver()?,
+        Tool::CentralTools(options) | Tool::Jobserver(options) => install_jobserver(options.force)?,
     }
     Ok(0)
 }
 
-fn install_jobserver() -> Result<(), String> {
+fn install_jobserver(force: bool) -> Result<(), String> {
     let root = crate::worktree_root()?;
 
     println!("[1/3] Preparing submodules");
@@ -47,15 +54,14 @@ fn install_jobserver() -> Result<(), String> {
     crate::run(&root, "cmake", &["--preset", "native"])?;
 
     println!("[3/3] Installing canonical jobserver");
+    let target = if force {
+        "install-jobserver-force"
+    } else {
+        "install-jobserver"
+    };
     crate::run(
         &root,
         "cmake",
-        &[
-            "--build",
-            "--preset",
-            "native",
-            "--target",
-            "install-jobserver",
-        ],
+        &["--build", "--preset", "native", "--target", target],
     )
 }
