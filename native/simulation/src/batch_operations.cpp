@@ -47,9 +47,6 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
     for (std::uint32_t event_index{}; event_index < n_direct_events; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
         auto const id{damaged_entities[element]};
-        if (id.index() >= handles.size() || !handles[id.index()].is_valid()) {
-            continue;
-        }
         auto const local_index{handles[id.index()].index()};
         assert(local_index < entity_ids.size());
         assert(entity_ids[local_index] == id);
