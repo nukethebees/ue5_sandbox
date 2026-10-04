@@ -1,7 +1,7 @@
 #include "ioj/sim/mission_manager.h"
 
 #include <ioj/sim/entity_ledger.h>
-#include <ioj/sim/entity_queries.h>
+#include <ioj/sim/entity_tables.h>
 #include <ioj/sim/levels/level_runtime_events.h>
 #include <ioj/sim/profiling.h>
 
@@ -242,6 +242,9 @@ void MissionManager::add_hero_entity(EntityUniqueId id) {
 }
 
 void MissionManager::add_entity_that_must_survive(EntityUniqueId id) {
+    if (!has_health(id.entity_type())) {
+        ml::fatal_error("Survival objectives require an entity with health");
+    }
     assert(mission_state == MissionState::NotStarted || mission_state == MissionState::Running);
     assert(entity_ledger.is_valid_unique_id(id));
     if (std::ranges::contains(entity_ids_that_must_survive, id)) {
@@ -252,6 +255,9 @@ void MissionManager::add_entity_that_must_survive(EntityUniqueId id) {
 }
 
 void MissionManager::add_entity_required_to_kill(EntityUniqueId id) {
+    if (!has_health(id.entity_type())) {
+        ml::fatal_error("Required-kill objectives require an entity with health");
+    }
     assert(mission_state == MissionState::NotStarted || mission_state == MissionState::Running);
     assert(entity_ledger.is_valid_unique_id(id));
     if (std::ranges::contains(entity_ids_required_to_kill, id)) {
@@ -422,8 +428,22 @@ void MissionManager::update_mission_kills() {
 void MissionManager::gather_objective_health(std::span<EntityUniqueId const> const ids) {
     auto const count{ids.size()};
     query_order_.resize(count);
-    query_health_.resize(count);
-    gather_entities(entity_tables_, ids, query_order_, {.healths = query_health_});
+    query_handles_.resize(count);
+    query_health_.assign(count, 0);
+    auto const runs{entity_tables_.lookups.resolve(ids, query_order_, query_handles_)};
+    for (std::uint32_t run{}; run < runs.num; ++run) {
+        auto const type{runs.types[run]};
+        auto const healths{entity_tables_.health.get_const_view(
+            type, entity_tables_.lookups.for_type(type).row_count())};
+        auto const end{runs.offsets[run] + runs.counts[run]};
+        for (auto index{runs.offsets[run]}; index < end; ++index) {
+            auto const row{query_order_[index]};
+            auto const handle{query_handles_[row]};
+            if (handle.is_valid()) {
+                query_health_[row] = healths.health(handle.index());
+            }
+        }
+    }
 }
 void MissionManager::prepare_objectives() {
     auto initialise_pending = [&](auto const& ids, auto& healths) {

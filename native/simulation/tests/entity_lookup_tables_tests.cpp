@@ -6,6 +6,74 @@
 #include <array>
 
 namespace ioj::sim::tests {
+TEST(EntityTypeRuns, GroupsWithoutChangingIdsAndOmitsInvalidTypes) {
+    std::array const ids{EntityUniqueId{3, EntityType::Fighter},
+                         EntityUniqueId{},
+                         EntityUniqueId{0, EntityType::PlayerShip},
+                         EntityUniqueId{3, EntityType::Fighter},
+                         EntityUniqueId::from_raw(0x06000000)};
+    auto const original{ids};
+    std::array<std::uint32_t, ids.size()> order;
+    auto const runs{group_entity_ids(ids, order)};
+    EXPECT_EQ(ids, original);
+    ASSERT_EQ(runs.num, 2u);
+    EXPECT_EQ(runs.types[0], EntityType::PlayerShip);
+    EXPECT_EQ(runs.types[1], EntityType::Fighter);
+    EXPECT_EQ(runs.offsets[1], 1u);
+    EXPECT_EQ(runs.counts[1], 2u);
+    std::array<EntityUniqueId, ids.size()> sorted;
+    for (std::size_t row{}; row < ids.size(); ++row) {
+        sorted[row] = ids[order[row]];
+    }
+    auto const direct{entity_type_runs(sorted)};
+    ASSERT_EQ(direct.num, runs.num);
+    for (std::uint32_t run{}; run < runs.num; ++run) {
+        EXPECT_EQ(direct.types[run], runs.types[run]);
+        EXPECT_EQ(direct.offsets[run], runs.offsets[run]);
+        EXPECT_EQ(direct.counts[run], runs.counts[run]);
+    }
+    EXPECT_EQ(group_entity_ids({}, {}).num, 0u);
+}
+
+TEST(EntityLookupTables, PublishedCountIncludesDeadRowsUntilRepublished) {
+    EntityLookupTable lookup{EntityType::Fighter};
+    std::array const ids{EntityUniqueId{0, EntityType::Fighter},
+                         EntityUniqueId{1, EntityType::Fighter}};
+    lookup.publish_rows(ids, {}, std::array<Health, 2>{0, 100}, 100);
+    EXPECT_EQ(lookup.row_count(), 2u);
+    EXPECT_FALSE(lookup.entries()[0].is_valid());
+    lookup.retire(std::span{ids}.last(1));
+    EXPECT_EQ(lookup.row_count(), 2u);
+    lookup.publish_rows(std::span{ids}.last(1), {});
+    EXPECT_EQ(lookup.row_count(), 1u);
+    EXPECT_EQ(lookup.entries()[1].index(), 0u);
+    lookup.publish_rows({}, {});
+    EXPECT_EQ(lookup.row_count(), 0u);
+}
+
+TEST(EntityLookupTables, ResolvesArbitraryIdsInCallerOrder) {
+    SimClock clock;
+    EntityLookupTables lookups{clock};
+    std::array const fighters{EntityUniqueId{2, EntityType::Fighter}};
+    std::array const capitals{EntityUniqueId{0, EntityType::CapitalShip}};
+    lookups.for_type(EntityType::Fighter).publish_rows(fighters, std::array{Team::Blue});
+    lookups.for_type(EntityType::CapitalShip).publish_rows(capitals, std::array{Team::Red});
+    SimClockTestAccess::set_phase(clock, SimulationPhase::Thinking);
+    std::array const ids{fighters[0],
+                         EntityUniqueId{},
+                         capitals[0],
+                         fighters[0],
+                         EntityUniqueId{999999, EntityType::Fighter}};
+    std::array<std::uint32_t, ids.size()> order;
+    std::array<EntityInstanceHandle, ids.size()> handles;
+    lookups.resolve(ids, order, handles);
+    EXPECT_EQ(handles[0].team(), Team::Blue);
+    EXPECT_FALSE(handles[1].is_valid());
+    EXPECT_EQ(handles[2].team(), Team::Red);
+    EXPECT_EQ(handles[0], handles[3]);
+    EXPECT_FALSE(handles[4].is_valid());
+}
+
 TEST(EntityLookupTables, ResolvesTypeRunsAndPreservesDuplicateAndMissingSlots) {
     SimClock clock;
     EntityLookupTables lookups{clock};

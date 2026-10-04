@@ -168,6 +168,7 @@ struct MissionManager {
     EntityLedger const& entity_ledger;
     void gather_objective_health(std::span<EntityUniqueId const> ids);
     std::vector<std::uint32_t> query_order_;
+    std::vector<EntityInstanceHandle> query_handles_;
     std::vector<Health> query_health_;
     EntityTables const& entity_tables_;
 

@@ -15,7 +15,7 @@ struct EntityTables {
                  Health const maximum) {
         auto& table{lookups.for_type(Type)};
         lookups.assert_preparation_mutation_allowed();
-        if constexpr (Type != EntityType::TubeSpinner) {
+        if constexpr (has_health(Type)) {
             auto const healths{health.get_const_view<Type>(ids.size()).values()};
             table.publish_rows(ids, teams, healths, maximum);
         } else {
