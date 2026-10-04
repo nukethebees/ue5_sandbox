@@ -64,12 +64,11 @@ TEST(EntityLookupTables, ResolvesArbitraryIdsInCallerOrder) {
     std::array const capitals{EntityUniqueId{0, EntityType::CapitalShip}};
     lookups.for_type(EntityType::Fighter).publish_rows(fighters, std::array{Team::Blue});
     lookups.for_type(EntityType::CapitalShip).publish_rows(capitals, std::array{Team::Red});
+    std::array const retired{EntityUniqueId{3, EntityType::Fighter}};
+    lookups.for_type(EntityType::Fighter).publish_rows(retired, std::array{Team::Blue});
+    lookups.for_type(EntityType::Fighter).retire(retired);
     SimClockTestAccess::set_phase(clock, SimulationPhase::Thinking);
-    std::array const ids{fighters[0],
-                         EntityUniqueId{},
-                         capitals[0],
-                         fighters[0],
-                         EntityUniqueId{999999, EntityType::Fighter}};
+    std::array const ids{fighters[0], EntityUniqueId{}, capitals[0], fighters[0], retired[0]};
     std::array<std::uint32_t, ids.size()> order;
     std::array<EntityInstanceHandle, ids.size()> handles;
     lookups.lookup_handles(ids, order, handles);
