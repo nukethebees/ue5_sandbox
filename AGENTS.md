@@ -12,6 +12,12 @@ Unreal Engine 5.8 project.
 # Feature Workflow
 
 * Use `coj git` for mutating Git operations. It intentionally supports a limited whitelist of git commands (documented by `coj git --help` and each subcommand's `--help`) that agents are free to use within their worktree. For unsupported commands, fall back on requesting permission to use git directly from the maintainer.
+* When unsure whether an action is permitted, run `coj git check <command> [arguments]`
+  (for example, `coj git check reset --soft dev`). It checks the same guardrails as execution
+  without performing the action: exit 0 means allowed through `coj git`, 1 means blocked,
+  2 means invalid syntax, and 3 means unsupported. Fix invalid input; resolve blocked conditions
+  or ask the maintainer to intervene rather than bypassing guards. Unsupported mutations require
+  explicit approval for direct Git; separately permitted read-only Git remains available.
 * Git stash is intentionally unsupported because it is repository-global. Use branches instead of stashing.
 * `dev`, `main`, and `master` are protected regardless of ASCII case. Read them freely, but do not
   mutate them or switch an agent worktree onto them through the ordinary Git path.

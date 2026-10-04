@@ -17,6 +17,11 @@ Typed Clap commands construct fresh Git arguments without a shell. Pathspecs and
 retain literal values, and Git inherits terminal streams. Git owns locks and recovery state;
 coj provides cooperative workflow guardrails, not a hostile-process security boundary.
 
+`coj git check` parses the requested action through the same typed command parser and prepares
+the same validated arguments as execution, then reports the outcome without running the action.
+Preparation also describes the affected branch or worktree. Unsupported commands/options are
+distinguished from invalid syntax and failed workspace checks; a check never grants a bypass.
+
 Local `dev`, `main`, `master`, and branches checked out by other registered worktrees may
 be revision inputs but cannot be mutation or switch targets. Protected names ignore ASCII case;
 ownership comparisons also ignore ASCII case on Windows. Ownership comes from

@@ -100,12 +100,37 @@ coj git commit -m "Implement feature"
 coj git rebase dev
 ```
 
-Supported commands are `status`, `add`, `commit`, `restore`, `reset`, `clean`, `rm`, `mv`,
+Supported commands are `check`, `status`, `add`, `commit`, `restore`, `reset`, `clean`, `rm`, `mv`,
 `switch`, `branch`, `merge`, `rebase`, `cherry-pick`, `revert`, and `worktree`.
 Run `coj git <command> --help` for exact options. Unknown commands, options, and abbreviated
 long options are rejected. There is no checkout, remote transfer, config, plumbing, force-create,
 explicit-branch rebase, or general worktree administration interface.
 Cherry-pick and revert accept individual commits, not revision ranges.
+
+### Checking permission before an action
+
+Use `coj git check <command> [arguments]` when unsure whether an action is permitted:
+
+```powershell
+coj git check reset --soft dev
+coj git check branch -D master
+coj git check push origin feature/my-change
+```
+
+The check uses the same command parser and workspace guardrails as execution, but does not
+perform the requested action. Allowed actions report the affected branch or worktree.
+
+| Exit code | Result | Next step |
+| --- | --- | --- |
+| 0 | Allowed | Run the action through `coj git`; its guardrails require no additional approval. |
+| 1 | Blocked | Resolve the reported condition or ask the maintainer to intervene. Do not bypass guards with direct Git. |
+| 2 | Invalid syntax | Correct missing or conflicting arguments and retry. |
+| 3 | Unsupported | The command or option is outside coj's interface. Request explicit maintainer approval for direct Git unless separately permitted as read-only. |
+
+Help also exits 0. Unsupported actions have not been validated as safe; this result never
+authorizes bypassing branch or worktree protections. A successful check confirms the current
+coj guardrails only: Git may still reject the action because of dirty files, conflicts,
+missing paths, or other execution conditions. Execution rechecks the guardrails.
 
 ### Cleaning up feature commits
 
