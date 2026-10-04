@@ -63,7 +63,7 @@ struct CapitalEntityDataSingleLayout {
 };
 
 template <bool Const>
-struct CapitalEntityDataSingleViewImpl {
+struct CapitalEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
     using soa_schema = CapitalEntityDataSchema;
     using size_type = std::uint32_t;
     using Layout = CapitalEntityDataSingleLayout;
@@ -84,95 +84,50 @@ struct CapitalEntityDataSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const {
+    auto entity_ids() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
+            state_, offset_, count_, Layout::EntityIdsColumn);
+    }
+    auto view_locations() const {
         using namespace ml::soa_storage_detail;
-        validate_view(state_, offset_, count_);
+        return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
+                                                                     offset_,
+                                                                     count_,
+                                                                     Layout::LocationsXsColumn,
+                                                                     Layout::LocationsYsColumn,
+                                                                     Layout::LocationsZsColumn);
     }
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto slice(this auto const& self, size_type offset, size_type count) {
+    auto view_rotations() const {
         using namespace ml::soa_storage_detail;
-        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
+        return three_column_view<std::conditional_t<Const,
+                                                    ml::native_soa::RotatorSoAConstView<float>,
+                                                    ml::native_soa::RotatorSoAView<float>>>(
+            state_,
+            offset_,
+            count_,
+            Layout::RotationsPitchesColumn,
+            Layout::RotationsYawsColumn,
+            Layout::RotationsRollsColumn);
     }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count >= 0 && count <= self.count_);
-        return self.slice(self.count_ - count, count);
+    auto fighter_spawn_timers() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
+            state_, offset_, count_, Layout::FighterSpawnTimersColumn);
     }
-    auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_, offset_, Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+    auto fighter_spawn_cooldowns() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
+            state_, offset_, count_, Layout::FighterSpawnCooldownsColumn);
     }
-    auto view_locations() const -> ml::Vector3SoAView<Element<float>> {
-        using namespace ml::soa_storage_detail;
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{view_capacity_blocks(state_)};
-        return {view_column_data_unchecked<float>(
-                    state_, offset_, Layout::LocationsXsColumn.offset(blocks)),
-                view_column_data_unchecked<float>(
-                    state_, offset_, Layout::LocationsYsColumn.offset(blocks)),
-                view_column_data_unchecked<float>(
-                    state_, offset_, Layout::LocationsZsColumn.offset(blocks)),
-                count_};
+    auto teams() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<Team>>>(
+            state_, offset_, count_, Layout::TeamsColumn);
     }
-    auto view_rotations() const -> std::conditional_t<Const,
-                                                      ml::native_soa::RotatorSoAConstView<float>,
-                                                      ml::native_soa::RotatorSoAView<float>> {
-        using namespace ml::soa_storage_detail;
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{view_capacity_blocks(state_)};
-        return {view_column_data_unchecked<float>(
-                    state_, offset_, Layout::RotationsPitchesColumn.offset(blocks)),
-                view_column_data_unchecked<float>(
-                    state_, offset_, Layout::RotationsYawsColumn.offset(blocks)),
-                view_column_data_unchecked<float>(
-                    state_, offset_, Layout::RotationsRollsColumn.offset(blocks)),
-                count_};
+    auto fighter_id_spans() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<IndexSpan>>>(
+            state_, offset_, count_, Layout::FighterIdSpansColumn);
     }
-    auto fighter_spawn_timers() const -> std::span<Element<float>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<float>(
-                    state_,
-                    offset_,
-                    Layout::FighterSpawnTimersColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto fighter_spawn_cooldowns() const -> std::span<Element<float>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<float>(
-                    state_,
-                    offset_,
-                    Layout::FighterSpawnCooldownsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto teams() const -> std::span<Element<Team>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<Team>(
-                    state_, offset_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto fighter_id_spans() const -> std::span<Element<IndexSpan>> {
-        using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<IndexSpan>(
-                state_, offset_, Layout::FighterIdSpansColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
-    }
-    auto target_ids() const -> std::span<Element<EntityUniqueId>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_, offset_, Layout::TargetIdsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+    auto target_ids() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
+            state_, offset_, count_, Layout::TargetIdsColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -192,6 +147,7 @@ struct CapitalEntityDataSingleViewImpl {
         func(target_ids());
     }
   private:
+    friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct CapitalEntityDataSingleViewImpl;
     State* state_{};
@@ -201,31 +157,13 @@ struct CapitalEntityDataSingleViewImpl {
 struct CapitalEntityDataSingleConstView : CapitalEntityDataSingleViewImpl<true> {
     using Base = CapitalEntityDataSingleViewImpl<true>;
     using Base::Base;
-    using View = CapitalEntityDataSingleView;
-    using ConstView = CapitalEntityDataSingleConstView;
-    CapitalEntityDataSingleConstView() = default;
-    CapitalEntityDataSingleConstView(CapitalEntityDataSingleView const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<CapitalEntityDataSingleConstView>());
 struct CapitalEntityDataSingleView : CapitalEntityDataSingleViewImpl<false> {
     using Base = CapitalEntityDataSingleViewImpl<false>;
     using Base::Base;
-    using View = CapitalEntityDataSingleView;
-    using ConstView = CapitalEntityDataSingleConstView;
-    CapitalEntityDataSingleView() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<CapitalEntityDataSingleView>());
-inline CapitalEntityDataSingleConstView::CapitalEntityDataSingleConstView(
-    CapitalEntityDataSingleView const& other)
-    : Base{other} {}
 struct CapitalEntityData
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
@@ -360,29 +298,27 @@ struct CapitalEntityData
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::soa_storage_detail::transfer_n<Overlapping>(
-            destination.entity_ids, source.entity_ids, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(destination.entity_ids, source.entity_ids, count);
+        ml::native_soa::transfer_n<Overlapping>(
             destination.locations_xs, source.locations_xs, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.locations_ys, source.locations_ys, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.locations_zs, source.locations_zs, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.rotations_pitches, source.rotations_pitches, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.rotations_yaws, source.rotations_yaws, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.rotations_rolls, source.rotations_rolls, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.fighter_spawn_timers, source.fighter_spawn_timers, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.fighter_spawn_cooldowns, source.fighter_spawn_cooldowns, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(destination.teams, source.teams, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(destination.teams, source.teams, count);
+        ml::native_soa::transfer_n<Overlapping>(
             destination.fighter_id_spans, source.fighter_id_spans, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
-            destination.target_ids, source.target_ids, count);
+        ml::native_soa::transfer_n<Overlapping>(destination.target_ids, source.target_ids, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

@@ -54,14 +54,45 @@ void validate_view([[maybe_unused]] StorageState<Size> const* state,
                  : offset == 0 && count == 0);
 }
 
-template <typename Self, typename State, typename Size>
-auto slice_view(
-    State* state, Size view_offset, [[maybe_unused]] Size view_count, Size offset, Size count)
-    -> std::remove_cvref_t<Self> {
-    using View = std::remove_cvref_t<Self>;
-    assert(offset >= 0 && offset <= view_count && count >= 0 && count <= view_count - offset);
-    return View{state, view_offset + offset, count};
-}
+// Keep the borrowed state in each named generated view; share only its operations.
+struct CompactViewOperations {
+    void validate(this auto const& self) { validate_view(self.state_, self.offset_, self.count_); }
+    auto num(this auto const& self) noexcept { return self.count_; }
+    auto is_empty(this auto const& self) noexcept -> bool { return self.count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    template <typename Self>
+    auto get_const_view(this Self const& self) -> typename Self::ConstView {
+        return self;
+    }
+    template <typename Self>
+    auto slice(this Self const& self,
+               typename Self::size_type offset,
+               typename Self::size_type count) -> Self {
+        assert(offset >= 0 && offset <= self.count_ && count >= 0 && count <= self.count_ - offset);
+        return Self{self.state_, self.offset_ + offset, count};
+    }
+    template <typename Self>
+    auto get_view(this Self const& self,
+                  typename Self::size_type offset,
+                  typename Self::size_type count) -> Self {
+        return self.slice(offset, count);
+    }
+    template <typename Self>
+    auto get_const_view(this Self const& self,
+                        typename Self::size_type offset,
+                        typename Self::size_type count) -> typename Self::ConstView {
+        return self.slice(offset, count);
+    }
+    template <typename Self>
+    auto left(this Self const& self, typename Self::size_type count) -> Self {
+        return self.slice(0, count);
+    }
+    template <typename Self>
+    auto right(this Self const& self, typename Self::size_type count) -> Self {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
+};
 
 template <typename Size>
 auto view_capacity_blocks(StorageState<Size> const* state) -> std::size_t {
@@ -84,6 +115,47 @@ auto view_column_data(State* state, Size offset, std::size_t byte_offset)
         return nullptr;
     }
     return view_column_data_unchecked<T>(state, offset, byte_offset);
+}
+
+template <typename View, typename State, typename Size, typename T>
+auto column_view(State* state,
+                 Size offset,
+                 Size count,
+                 single_allocation_layout::ColumnLayout<T> const& column) -> View {
+    return {view_column_data<T>(state, offset, column.offset(view_capacity_blocks(state))), count};
+}
+
+template <typename View, typename State, typename Size, typename T>
+auto three_column_view(State* state,
+                       Size offset,
+                       Size count,
+                       single_allocation_layout::ColumnLayout<T> const& first,
+                       single_allocation_layout::ColumnLayout<T> const& second,
+                       single_allocation_layout::ColumnLayout<T> const& third) -> View {
+    if (!state || !state->data_) {
+        return {};
+    }
+    auto const blocks{view_capacity_blocks(state)};
+    return {view_column_data_unchecked<T>(state, offset, first.offset(blocks)),
+            view_column_data_unchecked<T>(state, offset, second.offset(blocks)),
+            view_column_data_unchecked<T>(state, offset, third.offset(blocks)),
+            count};
+}
+
+template <typename View, typename State, typename Size, typename T>
+auto strided_vector_view(State* state,
+                         Size offset,
+                         Size count,
+                         single_allocation_layout::ColumnLayout<T> const& first,
+                         single_allocation_layout::ColumnLayout<T> const& second) -> View {
+    if (!state || !state->data_) {
+        return {};
+    }
+    auto const blocks{view_capacity_blocks(state)};
+    auto const first_offset{first.offset(blocks)};
+    return {view_column_data_unchecked<T>(state, offset, first_offset),
+            second.offset(blocks) - first_offset,
+            count};
 }
 
 }

@@ -230,11 +230,11 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
     EXPECT_NE(output.find("struct RowsSingleView_nested"), std::string::npos);
     EXPECT_NE(output.find("validate_compact_view<RowsSingleView>()"), std::string::npos);
     EXPECT_NE(output.find("validate_compact_view<RowsSingleConstView>()"), std::string::npos);
-    EXPECT_NE(output.find("view_column_data<Aligned256>"), std::string::npos);
-    EXPECT_NE(output.find("using namespace ml::soa_storage_detail;"), std::string::npos);
-    EXPECT_NE(output.find("using Layout = RowsSingleLayout;"), std::string::npos);
-    EXPECT_NE(output.find("Layout::NestedWideColumn.offset(view_capacity_blocks(state_))"),
+    EXPECT_NE(output.find("column_view<TArrayView<Element<Aligned256>>>"), std::string::npos);
+    EXPECT_NE(output.find("friend ml::soa_storage_detail::CompactViewOperations;"),
               std::string::npos);
+    EXPECT_NE(output.find("using Layout = RowsSingleLayout;"), std::string::npos);
+    EXPECT_NE(output.find("state_, offset_, count_, Layout::NestedWideColumn"), std::string::npos);
     EXPECT_EQ(output.find("ml::soa_storage_detail::view_column_data<"), std::string::npos);
     EXPECT_EQ(output.find("auto columns() const"), std::string::npos);
     EXPECT_NE(output.find("for_each_removal_run(num_, indices"), std::string::npos);
@@ -263,9 +263,10 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
     auto const rotations{render(input)};
     EXPECT_NE(rotations.find("ml::soa::RotatorSoAView<double>"), std::string::npos);
     EXPECT_NE(rotations.find("ml::soa::RotatorSoAConstView<double>"), std::string::npos);
-    EXPECT_NE(rotations.find("Layout::NestedPitchesColumn.offset(blocks)"), std::string::npos);
-    EXPECT_NE(rotations.find("Layout::NestedYawsColumn.offset(blocks)"), std::string::npos);
-    EXPECT_NE(rotations.find("Layout::NestedRollsColumn.offset(blocks)"), std::string::npos);
+    EXPECT_NE(rotations.find("Layout::NestedPitchesColumn"), std::string::npos);
+    EXPECT_NE(rotations.find("Layout::NestedYawsColumn"), std::string::npos);
+    EXPECT_NE(rotations.find("Layout::NestedRollsColumn"), std::string::npos);
+    EXPECT_NE(rotations.find("return three_column_view<"), std::string::npos);
     EXPECT_EQ(rotations.find("NestedYawsColumn.offset(blocks) - first"), std::string::npos);
     EXPECT_EQ(rotations.find("struct RowsSingleView_nested"), std::string::npos);
     input.front().members.back().type = TypeRef{"float"};
@@ -275,9 +276,10 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
 TEST(SingleAllocationSoa, OwnerBorrowingRequiresLvalues) {
     auto const output{render(schemas())};
     EXPECT_NE(output.find("auto operator=(SingleRows&& other) -> SingleRows&"), std::string::npos);
-    EXPECT_NE(
+    EXPECT_EQ(
         output.find("inline RowsSingleConstView::RowsSingleConstView(RowsSingleView const& other)"),
         std::string::npos);
+    EXPECT_NE(output.find("using Base::Base;"), std::string::npos);
     EXPECT_EQ(output.find("using Operations::"), std::string::npos);
     EXPECT_EQ(output.find("private ml::soa_storage::StorageOperations"), std::string::npos);
     EXPECT_EQ(output.find("get_view() && ->"), std::string::npos);

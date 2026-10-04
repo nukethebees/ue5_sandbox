@@ -48,7 +48,7 @@ struct DirectDamageEventsSingleLayout {
 };
 
 template <bool Const>
-struct DirectDamageEventsSingleViewImpl {
+struct DirectDamageEventsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
     using soa_schema = DirectDamageEventsSchema;
     using size_type = std::uint32_t;
     using Layout = DirectDamageEventsSingleLayout;
@@ -69,46 +69,17 @@ struct DirectDamageEventsSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const {
-        using namespace ml::soa_storage_detail;
-        validate_view(state_, offset_, count_);
+    auto damaged_entities() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
+            state_, offset_, count_, Layout::DamagedEntitiesColumn);
     }
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
+    auto damage_amounts() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
+            state_, offset_, count_, Layout::DamageAmountsColumn);
     }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        using namespace ml::soa_storage_detail;
-        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count >= 0 && count <= self.count_);
-        return self.slice(self.count_ - count, count);
-    }
-    auto damaged_entities() const -> std::span<Element<EntityUniqueId>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_,
-                    offset_,
-                    Layout::DamagedEntitiesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto damage_amounts() const -> std::span<Element<std::int32_t>> {
-        using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<std::int32_t>(
-                state_, offset_, Layout::DamageAmountsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
-    }
-    auto instigators() const -> std::span<Element<EntityUniqueId>> {
-        using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<EntityUniqueId>(
-                state_, offset_, Layout::InstigatorsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+    auto instigators() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
+            state_, offset_, count_, Layout::InstigatorsColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -117,6 +88,7 @@ struct DirectDamageEventsSingleViewImpl {
         func(instigators());
     }
   private:
+    friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct DirectDamageEventsSingleViewImpl;
     State* state_{};
@@ -126,31 +98,13 @@ struct DirectDamageEventsSingleViewImpl {
 struct DirectDamageEventsSingleConstView : DirectDamageEventsSingleViewImpl<true> {
     using Base = DirectDamageEventsSingleViewImpl<true>;
     using Base::Base;
-    using View = DirectDamageEventsSingleView;
-    using ConstView = DirectDamageEventsSingleConstView;
-    DirectDamageEventsSingleConstView() = default;
-    DirectDamageEventsSingleConstView(DirectDamageEventsSingleView const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<DirectDamageEventsSingleConstView>());
 struct DirectDamageEventsSingleView : DirectDamageEventsSingleViewImpl<false> {
     using Base = DirectDamageEventsSingleViewImpl<false>;
     using Base::Base;
-    using View = DirectDamageEventsSingleView;
-    using ConstView = DirectDamageEventsSingleConstView;
-    DirectDamageEventsSingleView() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<DirectDamageEventsSingleView>());
-inline DirectDamageEventsSingleConstView::DirectDamageEventsSingleConstView(
-    DirectDamageEventsSingleView const& other)
-    : Base{other} {}
 struct DirectDamageEvents
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
@@ -247,12 +201,11 @@ struct DirectDamageEvents
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.damaged_entities, source.damaged_entities, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.damage_amounts, source.damage_amounts, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
-            destination.instigators, source.instigators, count);
+        ml::native_soa::transfer_n<Overlapping>(destination.instigators, source.instigators, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

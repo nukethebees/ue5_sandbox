@@ -78,20 +78,17 @@ auto is_external_source(Destination const& destination, Source const& source) ->
     return address < begin || address >= begin + destination.size() * sizeof(*destination.data());
 }
 
-template <typename T>
-void copy_n(T* const destination, T const* const source, std::uint32_t const count) noexcept {
+template <bool Overlapping, typename T>
+void transfer_n(T* const destination, T const* const source, std::uint32_t const count) noexcept {
     if (count == 0) {
         return;
     }
-    std::memcpy(destination, source, static_cast<std::size_t>(count) * sizeof(T));
-}
-
-template <typename T>
-void move_n(T* const destination, T const* const source, std::uint32_t const count) noexcept {
-    if (count == 0) {
-        return;
+    auto const bytes{static_cast<std::size_t>(count) * sizeof(T)};
+    if constexpr (Overlapping) {
+        std::memmove(destination, source, bytes);
+    } else {
+        std::memcpy(destination, source, bytes);
     }
-    std::memmove(destination, source, static_cast<std::size_t>(count) * sizeof(T));
 }
 
 template <typename T>
@@ -146,8 +143,8 @@ using Vector3View = soa_storage_detail::VectorView<T, 3, std::span>;
 template <typename T>
 using Vector3ConstView = Vector3View<T const>;
 
-template <typename T>
-using RotatorSoAView = soa_storage_detail::RotatorSoAView<T, std::span>;
-template <typename T>
-using RotatorSoAConstView = RotatorSoAView<T const>;
+template <typename T, typename Value = std::array<std::remove_const_t<T>, 3>>
+using RotatorSoAView = soa_storage_detail::RotatorSoAView<T, std::span, std::uint32_t, Value>;
+template <typename T, typename Value = std::array<std::remove_const_t<T>, 3>>
+using RotatorSoAConstView = RotatorSoAView<T const, Value>;
 }

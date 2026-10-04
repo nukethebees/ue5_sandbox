@@ -8,13 +8,17 @@
 
 namespace ml::soa_storage_detail {
 
-template <typename T, template <typename> typename Span, typename Size = std::uint32_t>
+template <typename T,
+          template <typename> typename Span,
+          typename Size = std::uint32_t,
+          typename Value = std::array<std::remove_const_t<T>, 3>>
 class RotatorSoAView {
   public:
     using size_type = Size;
-    using View = RotatorSoAView<std::remove_const_t<T>, Span, Size>;
-    using ConstView = RotatorSoAView<std::add_const_t<T>, Span, Size>;
-    using value_type = std::array<std::remove_const_t<T>, 3>;
+    using View = RotatorSoAView<std::remove_const_t<T>, Span, Size, Value>;
+    using ConstView = RotatorSoAView<std::add_const_t<T>, Span, Size, Value>;
+    using value_type = Value;
+    using equivalent_type = Value;
 
     /* **************************************** */
     // Lifetime
@@ -30,7 +34,7 @@ class RotatorSoAView {
     }
     template <typename U>
         requires (std::is_const_v<T> && std::is_same_v<U, std::remove_const_t<T>>)
-    RotatorSoAView(RotatorSoAView<U, Span, Size> const& other)
+    RotatorSoAView(RotatorSoAView<U, Span, Size, Value> const& other)
         : pitches_{other.pitches_}
         , yaws_{other.yaws_}
         , rolls_{other.rolls_}
@@ -86,7 +90,7 @@ class RotatorSoAView {
         return slice(count_ - count, count);
     }
   private:
-    template <typename, template <typename> typename, typename>
+    template <typename, template <typename> typename, typename, typename>
     friend class RotatorSoAView;
     T* pitches_{};
     T* yaws_{};

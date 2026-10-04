@@ -53,7 +53,7 @@ struct LaserHitDetailsSingleLayout {
 };
 
 template <bool Const>
-struct LaserHitDetailsSingleViewImpl {
+struct LaserHitDetailsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
     using soa_schema = LaserHitDetailsSchema;
     using size_type = std::uint32_t;
     using Layout = LaserHitDetailsSingleLayout;
@@ -74,58 +74,28 @@ struct LaserHitDetailsSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const {
+    auto view_locations() const {
         using namespace ml::soa_storage_detail;
-        validate_view(state_, offset_, count_);
+        return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
+                                                                     offset_,
+                                                                     count_,
+                                                                     Layout::LocationsXsColumn,
+                                                                     Layout::LocationsYsColumn,
+                                                                     Layout::LocationsZsColumn);
     }
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto slice(this auto const& self, size_type offset, size_type count) {
+    auto view_emission_directions() const {
         using namespace ml::soa_storage_detail;
-        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
+        return three_column_view<ml::Vector3SoAView<Element<float>>>(
+            state_,
+            offset_,
+            count_,
+            Layout::EmissionDirectionsXsColumn,
+            Layout::EmissionDirectionsYsColumn,
+            Layout::EmissionDirectionsZsColumn);
     }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count >= 0 && count <= self.count_);
-        return self.slice(self.count_ - count, count);
-    }
-    auto view_locations() const -> ml::Vector3SoAView<Element<float>> {
-        using namespace ml::soa_storage_detail;
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{view_capacity_blocks(state_)};
-        return {view_column_data_unchecked<float>(
-                    state_, offset_, Layout::LocationsXsColumn.offset(blocks)),
-                view_column_data_unchecked<float>(
-                    state_, offset_, Layout::LocationsYsColumn.offset(blocks)),
-                view_column_data_unchecked<float>(
-                    state_, offset_, Layout::LocationsZsColumn.offset(blocks)),
-                count_};
-    }
-    auto view_emission_directions() const -> ml::Vector3SoAView<Element<float>> {
-        using namespace ml::soa_storage_detail;
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{view_capacity_blocks(state_)};
-        return {view_column_data_unchecked<float>(
-                    state_, offset_, Layout::EmissionDirectionsXsColumn.offset(blocks)),
-                view_column_data_unchecked<float>(
-                    state_, offset_, Layout::EmissionDirectionsYsColumn.offset(blocks)),
-                view_column_data_unchecked<float>(
-                    state_, offset_, Layout::EmissionDirectionsZsColumn.offset(blocks)),
-                count_};
-    }
-    auto sources() const -> std::span<Element<LaserSource>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<LaserSource>(
-                    state_, offset_, Layout::SourcesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+    auto sources() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<LaserSource>>>(
+            state_, offset_, count_, Layout::SourcesColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -140,6 +110,7 @@ struct LaserHitDetailsSingleViewImpl {
         func(sources());
     }
   private:
+    friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct LaserHitDetailsSingleViewImpl;
     State* state_{};
@@ -149,31 +120,13 @@ struct LaserHitDetailsSingleViewImpl {
 struct LaserHitDetailsSingleConstView : LaserHitDetailsSingleViewImpl<true> {
     using Base = LaserHitDetailsSingleViewImpl<true>;
     using Base::Base;
-    using View = LaserHitDetailsSingleView;
-    using ConstView = LaserHitDetailsSingleConstView;
-    LaserHitDetailsSingleConstView() = default;
-    LaserHitDetailsSingleConstView(LaserHitDetailsSingleView const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<LaserHitDetailsSingleConstView>());
 struct LaserHitDetailsSingleView : LaserHitDetailsSingleViewImpl<false> {
     using Base = LaserHitDetailsSingleViewImpl<false>;
     using Base::Base;
-    using View = LaserHitDetailsSingleView;
-    using ConstView = LaserHitDetailsSingleConstView;
-    LaserHitDetailsSingleView() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<LaserHitDetailsSingleView>());
-inline LaserHitDetailsSingleConstView::LaserHitDetailsSingleConstView(
-    LaserHitDetailsSingleView const& other)
-    : Base{other} {}
 struct LaserHitDetails
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
@@ -288,19 +241,19 @@ struct LaserHitDetails
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.locations_xs, source.locations_xs, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.locations_ys, source.locations_ys, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.locations_zs, source.locations_zs, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.emission_directions_xs, source.emission_directions_xs, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.emission_directions_ys, source.emission_directions_ys, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.emission_directions_zs, source.emission_directions_zs, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(destination.sources, source.sources, count);
+        ml::native_soa::transfer_n<Overlapping>(destination.sources, source.sources, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

@@ -128,7 +128,7 @@ struct HistoryRowsSingleLayout {
 };
 
 template <bool Const>
-struct HistoryRowsSingleViewImpl {
+struct HistoryRowsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
     using soa_schema = HistoryRowsSchema;
     using size_type = std::uint32_t;
     using Layout = HistoryRowsSingleLayout;
@@ -149,97 +149,45 @@ struct HistoryRowsSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const {
-        using namespace ml::soa_storage_detail;
-        validate_view(state_, offset_, count_);
+    auto completed_ticks() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<SimTick>>>(
+            state_, offset_, count_, Layout::CompletedTicksColumn);
     }
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
+    auto validity_masks() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<HistoryFieldMask>>>(
+            state_, offset_, count_, Layout::ValidityMasksColumn);
     }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        using namespace ml::soa_storage_detail;
-        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
+    auto active_entities() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
+            state_, offset_, count_, Layout::ActiveEntitiesColumn);
     }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count >= 0 && count <= self.count_);
-        return self.slice(self.count_ - count, count);
+    auto active_entities_by_type() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityTypeCounts>>>(
+            state_, offset_, count_, Layout::ActiveEntitiesByTypeColumn);
     }
-    auto completed_ticks() const -> std::span<Element<SimTick>> {
-        using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<SimTick>(
-                state_, offset_, Layout::CompletedTicksColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+    auto active_entities_by_team_and_type() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityCounts>>>(
+            state_, offset_, count_, Layout::ActiveEntitiesByTeamAndTypeColumn);
     }
-    auto validity_masks() const -> std::span<Element<HistoryFieldMask>> {
-        using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<HistoryFieldMask>(
-                state_, offset_, Layout::ValidityMasksColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+    auto spawned_entities() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
+            state_, offset_, count_, Layout::SpawnedEntitiesColumn);
     }
-    auto active_entities() const -> std::span<Element<std::int32_t>> {
-        using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<std::int32_t>(
-                state_, offset_, Layout::ActiveEntitiesColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+    auto destroyed_entities() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
+            state_, offset_, count_, Layout::DestroyedEntitiesColumn);
     }
-    auto active_entities_by_type() const -> std::span<Element<EntityTypeCounts>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityTypeCounts>(
-                    state_,
-                    offset_,
-                    Layout::ActiveEntitiesByTypeColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+    auto kills() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
+            state_, offset_, count_, Layout::KillsColumn);
     }
-    auto active_entities_by_team_and_type() const -> std::span<Element<EntityCounts>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityCounts>(
-                    state_,
-                    offset_,
-                    Layout::ActiveEntitiesByTeamAndTypeColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+    auto active_lasers() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
+            state_, offset_, count_, Layout::ActiveLasersColumn);
     }
-    auto spawned_entities() const -> std::span<Element<std::int32_t>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<std::int32_t>(
-                    state_,
-                    offset_,
-                    Layout::SpawnedEntitiesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto destroyed_entities() const -> std::span<Element<std::int32_t>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<std::int32_t>(
-                    state_,
-                    offset_,
-                    Layout::DestroyedEntitiesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto kills() const -> std::span<Element<std::int32_t>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<std::int32_t>(
-                    state_, offset_, Layout::KillsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto active_lasers() const -> std::span<Element<std::int32_t>> {
-        using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<std::int32_t>(
-                state_, offset_, Layout::ActiveLasersColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
-    }
-    auto lasers_fired() const -> std::span<Element<std::int32_t>> {
-        using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<std::int32_t>(
-                state_, offset_, Layout::LasersFiredColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+    auto lasers_fired() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
+            state_, offset_, count_, Layout::LasersFiredColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -255,6 +203,7 @@ struct HistoryRowsSingleViewImpl {
         func(lasers_fired());
     }
   private:
+    friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct HistoryRowsSingleViewImpl;
     State* state_{};
@@ -264,30 +213,13 @@ struct HistoryRowsSingleViewImpl {
 struct HistoryRowsSingleConstView : HistoryRowsSingleViewImpl<true> {
     using Base = HistoryRowsSingleViewImpl<true>;
     using Base::Base;
-    using View = HistoryRowsSingleView;
-    using ConstView = HistoryRowsSingleConstView;
-    HistoryRowsSingleConstView() = default;
-    HistoryRowsSingleConstView(HistoryRowsSingleView const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<HistoryRowsSingleConstView>());
 struct HistoryRowsSingleView : HistoryRowsSingleViewImpl<false> {
     using Base = HistoryRowsSingleViewImpl<false>;
     using Base::Base;
-    using View = HistoryRowsSingleView;
-    using ConstView = HistoryRowsSingleConstView;
-    HistoryRowsSingleView() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<HistoryRowsSingleView>());
-inline HistoryRowsSingleConstView::HistoryRowsSingleConstView(HistoryRowsSingleView const& other)
-    : Base{other} {}
 struct HistoryRows
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
@@ -414,26 +346,25 @@ struct HistoryRows
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.completed_ticks, source.completed_ticks, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.validity_masks, source.validity_masks, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.active_entities, source.active_entities, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.active_entities_by_type, source.active_entities_by_type, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
-            destination.active_entities_by_team_and_type,
-            source.active_entities_by_team_and_type,
-            count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(destination.active_entities_by_team_and_type,
+                                                source.active_entities_by_team_and_type,
+                                                count);
+        ml::native_soa::transfer_n<Overlapping>(
             destination.spawned_entities, source.spawned_entities, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.destroyed_entities, source.destroyed_entities, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(destination.kills, source.kills, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(destination.kills, source.kills, count);
+        ml::native_soa::transfer_n<Overlapping>(
             destination.active_lasers, source.active_lasers, count);
-        ml::soa_storage_detail::transfer_n<Overlapping>(
+        ml::native_soa::transfer_n<Overlapping>(
             destination.lasers_fired, source.lasers_fired, count);
     }
     void swap_remove_columns(size_type const index,
