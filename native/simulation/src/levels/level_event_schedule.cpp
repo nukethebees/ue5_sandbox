@@ -25,7 +25,12 @@ auto LevelEventSchedule::add_spawn_group(EntityType const type,
     }
 
     tick_counts.spawn_groups = group_count;
-    spawn_groups.add(type, offset, payload_count);
+    auto const index{spawn_groups.num()};
+    spawn_groups.add_uninitialised(1);
+    auto const groups{spawn_groups.get_view()};
+    groups.types()[index] = type;
+    groups.offsets()[index] = offset;
+    groups.counts()[index] = payload_count;
     return true;
 }
 
@@ -53,7 +58,12 @@ auto LevelEventSchedule::add_mission_group(LevelMissionEventType const type,
     auto& groups{mission_events.groups};
     assert(mission_events.values.size() <=
            static_cast<std::size_t>(std::numeric_limits<std::int32_t>::max()));
-    groups.add(type, static_cast<std::int32_t>(mission_events.values.size()), payload_count);
+    auto const index{groups.num()};
+    groups.add_uninitialised(1);
+    auto const events{groups.get_view()};
+    events.types()[index] = type;
+    events.offsets()[index] = static_cast<std::int32_t>(mission_events.values.size());
+    events.counts()[index] = payload_count;
     mission_events.values.insert(mission_events.values.end(), values.begin(), values.end());
     return true;
 }

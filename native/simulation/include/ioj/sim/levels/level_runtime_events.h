@@ -9,12 +9,10 @@
 #include "ioj/sim/team.h"
 
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/native_soa/vector_storage_ops.h"
 #include "sandbox/core/vector_soa_view.h"
 
 #include <cassert>
 #include <memory_resource>
-#include <utility>
 
 namespace ioj::sim {
 struct Vectors3fSchema;
@@ -23,244 +21,292 @@ struct Rotators3fSchema;
 
 struct LevelSpawnGroupsSchema;
 
-struct LevelSpawnGroupsView;
-struct LevelSpawnGroupsConstView;
-struct LevelSpawnGroupsConstView {
-    using View = LevelSpawnGroupsView;
-    using ConstView = LevelSpawnGroupsConstView;
+struct LevelSpawnGroupsSingleView;
+struct LevelSpawnGroupsSingleConstView;
+struct LevelSpawnGroupsSingleLayout {
     using size_type = std::uint32_t;
-    std::span<ioj::sim::EntityType const> types;
-    std::span<std::int32_t const> offsets;
-    std::span<LevelEventCount const> counts;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(types);
-        fn(offsets);
-        fn(counts);
+    using byte_size_type = std::size_t;
+
+    inline static constexpr size_type capacity_granularity{
+        ml::native_soa::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    inline static constexpr ColLayout<EntityType> TypesColumn{LayoutStart};
+    inline static constexpr ColLayout<std::int32_t> OffsetsColumn{TypesColumn};
+    inline static constexpr ColLayout<LevelEventCount> CountsColumn{OffsetsColumn};
+
+    inline static constexpr byte_size_type allocation_alignment{CountsColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::native_soa::capacity_block_bound(CountsColumn)};
+    inline static constexpr size_type max_capacity{
+        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : CountsColumn.data_end(blocks);
     }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    static_assert(max_capacity >= capacity_granularity);
+};
+
+template <bool Const>
+struct LevelSpawnGroupsSingleViewImpl {
+    using soa_schema = LevelSpawnGroupsSchema;
+    using size_type = std::uint32_t;
+    using Layout = LevelSpawnGroupsSingleLayout;
+    using Storage = ml::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = LevelSpawnGroupsSingleView;
+    using ConstView = LevelSpawnGroupsSingleConstView;
+    LevelSpawnGroupsSingleViewImpl() = default;
+    LevelSpawnGroupsSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    LevelSpawnGroupsSingleViewImpl(LevelSpawnGroupsSingleViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
     }
-    auto slice(size_type const offset, size_type const count) const -> LevelSpawnGroupsConstView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            offsets.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            counts.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
     }
-    auto get_view() const -> LevelSpawnGroupsConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> LevelSpawnGroupsConstView {
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
+    auto types() const -> std::span<Element<EntityType>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityType>(
+                    state_, offset_, Layout::TypesColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    auto offsets() const -> std::span<Element<std::int32_t>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::int32_t>(
+                    state_, offset_, Layout::OffsetsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    auto counts() const -> std::span<Element<LevelEventCount>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<LevelEventCount>(
+                    state_, offset_, Layout::CountsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(types());
+        func(offsets());
+        func(counts());
+    }
+  private:
+    template <bool>
+    friend struct LevelSpawnGroupsSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct LevelSpawnGroupsSingleConstView : LevelSpawnGroupsSingleViewImpl<true> {
+    using Base = LevelSpawnGroupsSingleViewImpl<true>;
+    using Base::Base;
+    using View = LevelSpawnGroupsSingleView;
+    using ConstView = LevelSpawnGroupsSingleConstView;
+    LevelSpawnGroupsSingleConstView() = default;
+    LevelSpawnGroupsSingleConstView(LevelSpawnGroupsSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto get_const_view() const -> ConstView {
-        return {
-            types,
-            offsets,
-            counts,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> LevelSpawnGroupsConstView { return slice(0, count); }
-    auto right(size_type const count) const -> LevelSpawnGroupsConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
 };
-struct LevelSpawnGroupsView {
-    using View = LevelSpawnGroupsView;
-    using ConstView = LevelSpawnGroupsConstView;
-    using size_type = std::uint32_t;
-    std::span<ioj::sim::EntityType> types;
-    std::span<std::int32_t> offsets;
-    std::span<LevelEventCount> counts;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(types);
-        fn(offsets);
-        fn(counts);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> LevelSpawnGroupsView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            offsets.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            counts.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> LevelSpawnGroupsView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> LevelSpawnGroupsView {
+static_assert(ml::soa_storage_detail::validate_compact_view<LevelSpawnGroupsSingleConstView>());
+struct LevelSpawnGroupsSingleView : LevelSpawnGroupsSingleViewImpl<false> {
+    using Base = LevelSpawnGroupsSingleViewImpl<false>;
+    using Base::Base;
+    using View = LevelSpawnGroupsSingleView;
+    using ConstView = LevelSpawnGroupsSingleConstView;
+    LevelSpawnGroupsSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return slice(offset, count);
     }
-    auto get_const_view() const -> ConstView {
-        return {
-            types,
-            offsets,
-            counts,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> LevelSpawnGroupsView { return slice(0, count); }
-    auto right(size_type const count) const -> LevelSpawnGroupsView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
-             ioj::sim::EntityType const new_types,
-             std::int32_t const new_offsets,
-             LevelEventCount const new_counts) const {
-        assert(index < num());
-        types[static_cast<std::size_t>(index)] = new_types;
-        offsets[static_cast<std::size_t>(index)] = new_offsets;
-        counts[static_cast<std::size_t>(index)] = new_counts;
-    }
 };
-struct LevelSpawnGroups {
-    using View = LevelSpawnGroupsView;
-    using ConstView = LevelSpawnGroupsConstView;
-    using size_type = std::uint32_t;
-    ml::native_soa::Vector<ioj::sim::EntityType> types;
-    ml::native_soa::Vector<std::int32_t> offsets;
-    ml::native_soa::Vector<LevelEventCount> counts;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(types);
-        fn(offsets);
-        fn(counts);
+static_assert(ml::soa_storage_detail::validate_compact_view<LevelSpawnGroupsSingleView>());
+inline LevelSpawnGroupsSingleConstView::LevelSpawnGroupsSingleConstView(
+    LevelSpawnGroupsSingleView const& other)
+    : Base{other} {}
+struct LevelSpawnGroups
+    : protected ml::native_soa::StorageState
+    , ml::native_soa::StorageOperations {
+    using soa_schema = LevelSpawnGroupsSchema;
+    using Operations = ml::native_soa::StorageOperations;
+    using Layout = LevelSpawnGroupsSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
     }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(types);
-        fn(offsets);
-        fn(counts);
+    using View = LevelSpawnGroupsSingleView;
+    using ConstView = LevelSpawnGroupsSingleConstView;
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    LevelSpawnGroups() noexcept
+        : LevelSpawnGroups{std::pmr::get_default_resource()} {}
+    explicit LevelSpawnGroups(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
     }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reset() { ml::native_soa::vector_storage_ops::reset(*this); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~LevelSpawnGroups() { Operations::release_storage(*this); }
+    LevelSpawnGroups(LevelSpawnGroups const&) = delete;
+    auto operator=(LevelSpawnGroups const&) -> LevelSpawnGroups& = delete;
+    LevelSpawnGroups(LevelSpawnGroups&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
     }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
+    auto operator=(LevelSpawnGroups&& other) -> LevelSpawnGroups& {
+        return Operations::move_assign(*this, other);
     }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             ioj::sim::EntityType const new_types,
-             std::int32_t const new_offsets,
-             LevelEventCount const new_counts) {
-        get_view().set(index, new_types, new_offsets, new_counts);
-    }
-    auto add(ioj::sim::EntityType const new_types,
-             std::int32_t const new_offsets,
-             LevelEventCount const new_counts) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            types.emplace_back(new_types);
-            offsets.emplace_back(new_offsets);
-            counts.emplace_back(new_counts);
-        });
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        assert(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<EntityType>* types{};
+        Element<std::int32_t>* offsets{};
+        Element<LevelEventCount>* counts{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (types == nullptr) {
+                return {};
+            }
+            return {types + offset, offsets + offset, counts + offset};
         }
-        assert(ml::native_soa::is_external_source(types, source.types));
-        assert(ml::native_soa::is_external_source(offsets, source.offsets));
-        assert(ml::native_soa::is_external_source(counts, source.counts));
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            types.insert(types.end(), source.types.data(), source.types.data() + count);
-            offsets.insert(offsets.end(), source.offsets.data(), source.offsets.data() + count);
-            counts.insert(counts.end(), source.counts.data(), source.counts.data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            types,
-            offsets,
-            counts,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            types,
-            offsets,
-            counts,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        auto const destination_index{static_cast<std::size_t>(dst_index)};
-        auto const source_index{static_cast<std::size_t>(src_index)};
-        types[destination_index] = other.types[source_index];
-        offsets[destination_index] = other.offsets[source_index];
-        counts[destination_index] = other.counts[source_index];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
         }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
     }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    std::pmr::memory_resource* resource_{};
+    friend Operations;
+    friend ::ml::soa_storage_detail::StorageRequirements;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ml::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::TypesColumn),
+                cursor.column_pointer(data, Layout::OffsetsColumn),
+                cursor.column_pointer(data, Layout::CountsColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        ml::native_soa::default_construct_n(columns.types, count);
+        ml::native_soa::default_construct_n(columns.offsets, count);
+        ml::native_soa::default_construct_n(columns.counts, count);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        ml::native_soa::copy_n(columns.types + index, columns.types + source, move_count);
+        ml::native_soa::copy_n(columns.offsets + index, columns.offsets + source, move_count);
+        ml::native_soa::copy_n(columns.counts + index, columns.counts + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_, indices, [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelSpawnGroups, size_type>
+    {
+        auto const destination{get_data(first)};
+        ml::native_soa::copy_n(
+            destination.types, ml::native_soa::source_data(source.types()) + source_first, count);
+        ml::native_soa::copy_n(destination.offsets,
+                               ml::native_soa::source_data(source.offsets()) + source_first,
+                               count);
+        ml::native_soa::copy_n(
+            destination.counts, ml::native_soa::source_data(source.counts()) + source_first, count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelSpawnGroups, size_type>
+    {
+        auto const destination{get_data(first)};
+        ml::native_soa::move_n(
+            destination.types, ml::native_soa::source_data(source.types()) + source_first, count);
+        ml::native_soa::move_n(destination.offsets,
+                               ml::native_soa::source_data(source.offsets()) + source_first,
+                               count);
+        ml::native_soa::move_n(
+            destination.counts, ml::native_soa::source_data(source.counts()) + source_first, count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        ml::native_soa::copy_n(destination.types, source.types, num_);
+        ml::native_soa::copy_n(destination.offsets, source.offsets, num_);
+        ml::native_soa::copy_n(destination.counts, source.counts, num_);
+    }
+  public:
 };
 
 struct LevelCapitalSpawnEventsSchema;
@@ -1584,250 +1630,292 @@ struct LevelSpinnerSpawnEvents
 
 struct LevelMissionEventGroupsSchema;
 
-struct LevelMissionEventGroupsView;
-struct LevelMissionEventGroupsConstView;
-struct LevelMissionEventGroupsConstView {
-    using View = LevelMissionEventGroupsView;
-    using ConstView = LevelMissionEventGroupsConstView;
+struct LevelMissionEventGroupsSingleView;
+struct LevelMissionEventGroupsSingleConstView;
+struct LevelMissionEventGroupsSingleLayout {
     using size_type = std::uint32_t;
-    std::span<LevelMissionEventType const> types;
-    std::span<std::int32_t const> offsets;
-    std::span<LevelEventCount const> counts;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(types);
-        fn(offsets);
-        fn(counts);
+    using byte_size_type = std::size_t;
+
+    inline static constexpr size_type capacity_granularity{
+        ml::native_soa::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    inline static constexpr ColLayout<LevelMissionEventType> TypesColumn{LayoutStart};
+    inline static constexpr ColLayout<std::int32_t> OffsetsColumn{TypesColumn};
+    inline static constexpr ColLayout<LevelEventCount> CountsColumn{OffsetsColumn};
+
+    inline static constexpr byte_size_type allocation_alignment{CountsColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::native_soa::capacity_block_bound(CountsColumn)};
+    inline static constexpr size_type max_capacity{
+        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : CountsColumn.data_end(blocks);
     }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const
-        -> LevelMissionEventGroupsConstView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            offsets.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            counts.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> LevelMissionEventGroupsConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> LevelMissionEventGroupsConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            types,
-            offsets,
-            counts,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> LevelMissionEventGroupsConstView {
-        return slice(0, count);
-    }
-    auto right(size_type const count) const -> LevelMissionEventGroupsConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-};
-struct LevelMissionEventGroupsView {
-    using View = LevelMissionEventGroupsView;
-    using ConstView = LevelMissionEventGroupsConstView;
-    using size_type = std::uint32_t;
-    std::span<LevelMissionEventType> types;
-    std::span<std::int32_t> offsets;
-    std::span<LevelEventCount> counts;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(types);
-        fn(offsets);
-        fn(counts);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> LevelMissionEventGroupsView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            types.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            offsets.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            counts.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> LevelMissionEventGroupsView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> LevelMissionEventGroupsView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            types,
-            offsets,
-            counts,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> LevelMissionEventGroupsView {
-        return slice(0, count);
-    }
-    auto right(size_type const count) const -> LevelMissionEventGroupsView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
-             LevelMissionEventType const new_types,
-             std::int32_t const new_offsets,
-             LevelEventCount const new_counts) const {
-        assert(index < num());
-        types[static_cast<std::size_t>(index)] = new_types;
-        offsets[static_cast<std::size_t>(index)] = new_offsets;
-        counts[static_cast<std::size_t>(index)] = new_counts;
-    }
-};
-struct LevelMissionEventGroups {
-    using View = LevelMissionEventGroupsView;
-    using ConstView = LevelMissionEventGroupsConstView;
-    using size_type = std::uint32_t;
-    ml::native_soa::Vector<LevelMissionEventType> types;
-    ml::native_soa::Vector<std::int32_t> offsets;
-    ml::native_soa::Vector<LevelEventCount> counts;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(types.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(types);
-        fn(offsets);
-        fn(counts);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(types);
-        fn(offsets);
-        fn(counts);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reset() { ml::native_soa::vector_storage_ops::reset(*this); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             LevelMissionEventType const new_types,
-             std::int32_t const new_offsets,
-             LevelEventCount const new_counts) {
-        get_view().set(index, new_types, new_offsets, new_counts);
-    }
-    auto add(LevelMissionEventType const new_types,
-             std::int32_t const new_offsets,
-             LevelEventCount const new_counts) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            types.emplace_back(new_types);
-            offsets.emplace_back(new_offsets);
-            counts.emplace_back(new_counts);
-        });
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        assert(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
-        }
-        assert(ml::native_soa::is_external_source(types, source.types));
-        assert(ml::native_soa::is_external_source(offsets, source.offsets));
-        assert(ml::native_soa::is_external_source(counts, source.counts));
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            types.insert(types.end(), source.types.data(), source.types.data() + count);
-            offsets.insert(offsets.end(), source.offsets.data(), source.offsets.data() + count);
-            counts.insert(counts.end(), source.counts.data(), source.counts.data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            types,
-            offsets,
-            counts,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            types,
-            offsets,
-            counts,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        auto const destination_index{static_cast<std::size_t>(dst_index)};
-        auto const source_index{static_cast<std::size_t>(src_index)};
-        types[destination_index] = other.types[source_index];
-        offsets[destination_index] = other.offsets[source_index];
-        counts[destination_index] = other.counts[source_index];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
-    }
+    static_assert(max_capacity >= capacity_granularity);
 };
 
+template <bool Const>
+struct LevelMissionEventGroupsSingleViewImpl {
+    using soa_schema = LevelMissionEventGroupsSchema;
+    using size_type = std::uint32_t;
+    using Layout = LevelMissionEventGroupsSingleLayout;
+    using Storage = ml::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = LevelMissionEventGroupsSingleView;
+    using ConstView = LevelMissionEventGroupsSingleConstView;
+    LevelMissionEventGroupsSingleViewImpl() = default;
+    LevelMissionEventGroupsSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    LevelMissionEventGroupsSingleViewImpl(LevelMissionEventGroupsSingleViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
+    auto types() const -> std::span<Element<LevelMissionEventType>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<LevelMissionEventType>(
+                    state_, offset_, Layout::TypesColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    auto offsets() const -> std::span<Element<std::int32_t>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<std::int32_t>(
+                    state_, offset_, Layout::OffsetsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    auto counts() const -> std::span<Element<LevelEventCount>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<LevelEventCount>(
+                    state_, offset_, Layout::CountsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(types());
+        func(offsets());
+        func(counts());
+    }
+  private:
+    template <bool>
+    friend struct LevelMissionEventGroupsSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct LevelMissionEventGroupsSingleConstView : LevelMissionEventGroupsSingleViewImpl<true> {
+    using Base = LevelMissionEventGroupsSingleViewImpl<true>;
+    using Base::Base;
+    using View = LevelMissionEventGroupsSingleView;
+    using ConstView = LevelMissionEventGroupsSingleConstView;
+    LevelMissionEventGroupsSingleConstView() = default;
+    LevelMissionEventGroupsSingleConstView(LevelMissionEventGroupsSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(
+    ml::soa_storage_detail::validate_compact_view<LevelMissionEventGroupsSingleConstView>());
+struct LevelMissionEventGroupsSingleView : LevelMissionEventGroupsSingleViewImpl<false> {
+    using Base = LevelMissionEventGroupsSingleViewImpl<false>;
+    using Base::Base;
+    using View = LevelMissionEventGroupsSingleView;
+    using ConstView = LevelMissionEventGroupsSingleConstView;
+    LevelMissionEventGroupsSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<LevelMissionEventGroupsSingleView>());
+inline LevelMissionEventGroupsSingleConstView::LevelMissionEventGroupsSingleConstView(
+    LevelMissionEventGroupsSingleView const& other)
+    : Base{other} {}
+struct LevelMissionEventGroups
+    : protected ml::native_soa::StorageState
+    , ml::native_soa::StorageOperations {
+    using soa_schema = LevelMissionEventGroupsSchema;
+    using Operations = ml::native_soa::StorageOperations;
+    using Layout = LevelMissionEventGroupsSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+    using View = LevelMissionEventGroupsSingleView;
+    using ConstView = LevelMissionEventGroupsSingleConstView;
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    LevelMissionEventGroups() noexcept
+        : LevelMissionEventGroups{std::pmr::get_default_resource()} {}
+    explicit LevelMissionEventGroups(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~LevelMissionEventGroups() { Operations::release_storage(*this); }
+    LevelMissionEventGroups(LevelMissionEventGroups const&) = delete;
+    auto operator=(LevelMissionEventGroups const&) -> LevelMissionEventGroups& = delete;
+    LevelMissionEventGroups(LevelMissionEventGroups&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(LevelMissionEventGroups&& other) -> LevelMissionEventGroups& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<LevelMissionEventType>* types{};
+        Element<std::int32_t>* offsets{};
+        Element<LevelEventCount>* counts{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (types == nullptr) {
+                return {};
+            }
+            return {types + offset, offsets + offset, counts + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    std::pmr::memory_resource* resource_{};
+    friend Operations;
+    friend ::ml::soa_storage_detail::StorageRequirements;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ml::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::TypesColumn),
+                cursor.column_pointer(data, Layout::OffsetsColumn),
+                cursor.column_pointer(data, Layout::CountsColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        ml::native_soa::default_construct_n(columns.types, count);
+        ml::native_soa::default_construct_n(columns.offsets, count);
+        ml::native_soa::default_construct_n(columns.counts, count);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        ml::native_soa::copy_n(columns.types + index, columns.types + source, move_count);
+        ml::native_soa::copy_n(columns.offsets + index, columns.offsets + source, move_count);
+        ml::native_soa::copy_n(columns.counts + index, columns.counts + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_, indices, [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelMissionEventGroups, size_type>
+    {
+        auto const destination{get_data(first)};
+        ml::native_soa::copy_n(
+            destination.types, ml::native_soa::source_data(source.types()) + source_first, count);
+        ml::native_soa::copy_n(destination.offsets,
+                               ml::native_soa::source_data(source.offsets()) + source_first,
+                               count);
+        ml::native_soa::copy_n(
+            destination.counts, ml::native_soa::source_data(source.counts()) + source_first, count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelMissionEventGroups, size_type>
+    {
+        auto const destination{get_data(first)};
+        ml::native_soa::move_n(
+            destination.types, ml::native_soa::source_data(source.types()) + source_first, count);
+        ml::native_soa::move_n(destination.offsets,
+                               ml::native_soa::source_data(source.offsets()) + source_first,
+                               count);
+        ml::native_soa::move_n(
+            destination.counts, ml::native_soa::source_data(source.counts()) + source_first, count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        ml::native_soa::copy_n(destination.types, source.types, num_);
+        ml::native_soa::copy_n(destination.offsets, source.offsets, num_);
+        ml::native_soa::copy_n(destination.counts, source.counts, num_);
+    }
+  public:
+};
 } // namespace ioj::sim
