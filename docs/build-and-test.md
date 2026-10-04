@@ -76,7 +76,7 @@ coj prepare-worktree
 
 The maintainer installs/updates `coj` with `pwsh -NoProfile -File PowerShell/InstallCoj.ps1`
 and manages PATH; agents assume it is available. On a fresh setup, run
-`coj prepare-worktree`, then `coj install-central-tools` for jobserver.
+`coj prepare-worktree`, then `coj install central-tools` for jobserver.
 The install command only configures native and runs the jobserver installation target.
 Agents report missing commands instead of installing them; `--version` allows manual diagnosis.
 Preparation does not install missing tools.

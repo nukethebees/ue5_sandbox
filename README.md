@@ -16,7 +16,7 @@ The maintainer runs `pwsh -NoProfile -File PowerShell/InstallCoj.ps1` and manage
 agents begin new tasks with `coj prepare-worktree`.
 This clears the worktree's build output, initializes/updates submodules, and regenerates presets
 and code. It does not run a broad project/test build; build only the task's relevant targets afterward.
-Install shared per-user build tools with `coj install-central-tools` when needed.
+Install shared per-user build tools with `coj install central-tools` when needed.
 Use `cmake --workflow --preset debug-game` to build the Editor and
 `debug-game-unit-tests` only for explicit Unreal-enabled integration validation.
 Native presets set `IOJ_WITH_UNREAL=OFF`.

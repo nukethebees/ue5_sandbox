@@ -8,7 +8,7 @@ The maintainer installs stable tools explicitly under
 | Central tool | Installation/update | Source version |
 | --- | --- | --- |
 | coj | `pwsh -NoProfile -File PowerShell/InstallCoj.ps1` from the repository root | Cargo.toml |
-| jobserverd | `coj install-central-tools` | Protocol header |
+| jobserverd | `coj install central-tools` | Protocol header |
 
 Installers publish literal symlinks in `%IOJ_ROOT%\tools\bin`.
 Add only that directory to PATH. Enable Windows Developer Mode before installing,
@@ -40,7 +40,7 @@ generates presets, disables Live Coding in existing
 `Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini`, and generates code.
 Missing settings are left absent. Preparation never installs tools or performs a broad build.
 See the [Rust guide](rust/README.md) for coj installation and feature Git operations.
-After preparation, `coj install-central-tools` configures native and installs jobserver.
+After preparation, `coj install central-tools` configures native and installs jobserver.
 
 `coj format [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` reads formatting roots,
 extensions, and exclusions from the current checkout's `.code-format.json`. Styling stays in

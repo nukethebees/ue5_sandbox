@@ -50,7 +50,7 @@ try {
 
 Write-Host "`nInstalled coj:`n  $installed_tool"
 Publish-ToolLinks (Split-Path -Parent $installed_tool) @('coj.exe') $links
-Write-Host "`nOn a fresh setup, install the shared project tools with:`n  coj install-central-tools"
+Write-Host "`nOn a fresh setup, install the shared project tools with:`n  coj install central-tools"
 Write-Host "`nPrepare tasks with 'coj prepare-worktree'; use 'coj git <args...>' for feature work."
 Write-Host "After validation and explicit user authorization, run 'coj integrate' for dev integration."
 Write-Host "`nRun 'coj --help' to see the available commands."

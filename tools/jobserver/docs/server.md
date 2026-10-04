@@ -5,7 +5,7 @@ requests sequentially. It never executes or monitors the work described by a tic
 
 ## Installation and startup
 
-The maintainer installs coj and runs `coj install-central-tools` to install
+The maintainer installs coj and runs `coj install central-tools` to install
 jobserver under `%IOJ_ROOT%\tools\jobserver\bin` and register the
 `NukeTheBeesJobserver` logon task. Agents report missing tools to the maintainer rather than
 installing or updating them.

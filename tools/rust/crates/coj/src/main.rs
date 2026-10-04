@@ -15,6 +15,8 @@ mod git_cli;
 
 mod integrate;
 
+mod install;
+
 mod jobs;
 
 mod live_coding;
@@ -29,7 +31,7 @@ mod workspace;
 
 mod codex;
 
-const USAGE: &str = "Usage: coj <command>\n\nCommands:\n  presets [--check]      Generate/check CMake presets\n  tidy [options]        Run LLVM analysis\n  unreal <operation>    Generate project files or authored assets\n  editor [options]      Build and launch the editor\n  run-staged [options]  Launch an existing staged game\n  benchmark <operation> Delegate to revision-local benchmark-tools\n  format [options]      Format sources using revision-local policy\n  unreal-build [options] Invoke the Unreal build script\n  prepare-worktree       Clean and initialize the current worktree\n  install-central-tools  Install/update canonical per-user build tools\n  codex <command>        Launch, inspect, or clean named Codex sessions\n  jobs <command>         Cooperative jobs board (coj jobs --help)\n  git <command>          Run supported feature Git operations (coj git --help)\n  integrate [--keep-branch]  Privileged dev transaction; explicit user authorization required";
+const USAGE: &str = "Usage: coj <command>\n\nCommands:\n  presets [--check]      Generate/check CMake presets\n  tidy [options]        Run LLVM analysis\n  unreal <operation>    Generate project files or authored assets\n  editor [options]      Build and launch the editor\n  run-staged [options]  Launch an existing staged game\n  benchmark <operation> Delegate to revision-local benchmark-tools\n  format [options]      Format sources using revision-local policy\n  unreal-build [options] Invoke the Unreal build script\n  prepare-worktree       Clean and initialize the current worktree\n  install <tool>         Install/update canonical per-user build tools\n  codex <command>        Launch, inspect, or clean named Codex sessions\n  jobs <command>         Cooperative jobs board (coj jobs --help)\n  git <command>          Run supported feature Git operations (coj git --help)\n  integrate [--keep-branch]  Privileged dev transaction; explicit user authorization required";
 
 fn worktree_root() -> Result<PathBuf, String> {
     let output = Command::new("git")
@@ -103,29 +105,6 @@ fn prepare_worktree() -> Result<(), String> {
     run(&root, "cmake", &["--workflow", "--preset", "generate-code"])
 }
 
-fn install_central_tools() -> Result<(), String> {
-    let root = worktree_root()?;
-
-    println!("[1/3] Preparing submodules");
-    update_submodules(&root)?;
-
-    println!("[2/3] Configuring native build (run prepare-worktree first)");
-    run(&root, "cmake", &["--preset", "native"])?;
-
-    println!("[3/3] Installing canonical jobserver");
-    run(
-        &root,
-        "cmake",
-        &[
-            "--build",
-            "--preset",
-            "native",
-            "--target",
-            "install-jobserver",
-        ],
-    )
-}
-
 fn main() -> ExitCode {
     let arguments = std::env::args_os().skip(1).collect::<Vec<_>>();
 
@@ -151,6 +130,7 @@ fn main() -> ExitCode {
                     | "editor"
                     | "run-staged"
                     | "benchmark"
+                    | "install"
             )
         )
     }) {
@@ -162,6 +142,7 @@ fn main() -> ExitCode {
             "editor" => unreal::editor(&arguments[1..]),
             "run-staged" => unreal::run_staged(&arguments[1..]),
             "benchmark" => benchmark::run(&arguments[1..]),
+            "install" => install::run(&arguments[1..]),
             _ => unreal_build::run(&arguments[1..]),
         };
         match result {
@@ -220,8 +201,6 @@ fn main() -> ExitCode {
 
     let result = if arguments[0] == "prepare-worktree" {
         prepare_worktree()
-    } else if arguments[0] == "install-central-tools" {
-        install_central_tools()
     } else {
         eprintln!("{USAGE}");
         return ExitCode::from(2);

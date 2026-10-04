@@ -31,7 +31,7 @@ It stops on the first failure, except a saved-settings failure warns and allows 
 to continue. Git, Python, CMake, and the repository build prerequisites must be available.
 It does not perform a broad project/test build.
 
-After preparation, the maintainer can run `coj install-central-tools`. This repeats
+After preparation, the maintainer can run `coj install central-tools`. This repeats
 submodule synchronization/update, configures `native`, and builds the canonical
 `install-jobserver` target, stopping on failure. It does not repeat the remaining preparation
 steps. See [developer tools](../../../../README.md) for installation locations.

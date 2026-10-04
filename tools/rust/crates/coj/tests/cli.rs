@@ -72,13 +72,13 @@ fn help_and_invalid_arguments_do_not_start_initialization() {
     assert!(help.status.success());
     let help = String::from_utf8_lossy(&help.stdout);
     assert!(help.contains("prepare-worktree"));
-    assert!(help.contains("install-central-tools"));
+    assert!(help.contains("install <tool>"));
     for arguments in [
         vec![],
         vec!["unknown"],
         vec!["start"],
         vec!["prepare-worktree", "--skip-build"],
-        vec!["install-central-tools", "--all"],
+        vec!["install", "central-tools", "--all"],
     ] {
         let output = invoke(&directory.0, &arguments);
         assert_eq!(output.status.code(), Some(2));
@@ -126,8 +126,8 @@ fn jobs_help_and_invalid_syntax_work_without_an_external_client() {
 fn outside_worktree_fails_without_removing_out() {
     let directory = TemporaryDirectory::new();
     fs::create_dir(directory.0.join("out")).unwrap();
-    for command in ["prepare-worktree", "install-central-tools"] {
-        let output = invoke(&directory.0, &[command]);
+    for arguments in [vec!["prepare-worktree"], vec!["install", "central-tools"]] {
+        let output = invoke(&directory.0, &arguments);
         assert!(!output.status.success());
         assert!(String::from_utf8_lossy(&output.stderr).contains("run inside a Git worktree"));
         assert!(directory.0.join("out").is_dir());
@@ -250,7 +250,7 @@ fn central_tool_installation_updates_submodules_and_installs_jobserver() {
         "file(APPEND \"${CMAKE_SOURCE_DIR}/phases.txt\" \"configure\\n\")\n",
         "add_custom_target(install-jobserver COMMAND \"${CMAKE_COMMAND}\" -E touch \"${CMAKE_SOURCE_DIR}/installed.txt\")\n"
     )).unwrap();
-    let output = invoke(&directory.0, &["install-central-tools"]);
+    let output = invoke(&directory.0, &["install", "central-tools"]);
     assert!(output.status.success(), "{output:?}");
     assert!(directory.0.join("installed.txt").is_file());
     assert_eq!(
