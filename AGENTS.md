@@ -36,7 +36,17 @@ Unreal Engine 5.8 project.
   `native-simulation-tests` is the ordinary-only workflow; `native-simulation-full-tests`
   adds the soak for final simulation validation. `native-tests` includes native soak/compile
   contracts but excludes standalone developer-tool tests.
-* Perform feature work on dedicated feature branches
+* Perform feature work on dedicated feature branches; `coj git switch -c feature/<task> dev`
+  creates one. The `feature/` prefix is a convention, not an ownership requirement.
+* Agents may clean up commits on their current feature branch using `coj git` without a
+  separate permission request. Use `commit --amend` for the latest commit or
+  `reset --soft HEAD~2` followed by `commit -m "..."` to combine the last two commits.
+  To squash the whole feature, commit work to retain, complete `rebase dev`, then run
+  `reset --soft dev` and commit the staged result. Reset moves only the current branch;
+  `dev` remains unchanged. `reset --mixed` keeps working files but unstages changes;
+  `reset --hard` discards tracked working changes, so use it only when that loss is intended.
+  Existing protected-branch and other-worktree guards still apply. See the
+  [cleanup workflow](tools/rust/crates/coj/docs/usage.md#cleaning-up-feature-commits).
 * Do not bypass instructions here unless explicitly told to
 * Use the CMake workflows described in [Builds](#builds).
 * **Fast default:** 
