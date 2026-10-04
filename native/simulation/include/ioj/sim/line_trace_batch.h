@@ -11,10 +11,12 @@ struct LineTraceBatch {
     LineTraceBatch(Vectors3fConstView starts, Vectors3fConstView ends)
         : starts{starts}
         , ends{ends} {}
-    LineTraceBatch(LineTraces::ConstView traces)
-        : LineTraceBatch{
-              {traces.view_starts().xs(), traces.view_starts().ys(), traces.view_starts().zs()},
-              {traces.view_ends().xs(), traces.view_ends().ys(), traces.view_ends().zs()}} {}
+    LineTraceBatch(LineTraces::ConstView traces) {
+        auto const start_columns{traces.view_starts()};
+        auto const end_columns{traces.view_ends()};
+        starts = {start_columns.xs(), start_columns.ys(), start_columns.zs()};
+        ends = {end_columns.xs(), end_columns.ys(), end_columns.zs()};
+    }
 
     auto num() const noexcept -> std::uint32_t { return starts.num(); }
     void validate() const {

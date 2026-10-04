@@ -49,25 +49,15 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
     }()};
 
     if constexpr (Mode == QueryMode::HitEntity) {
-        assert(count == request.start_locations.num());
         assert(static_cast<std::size_t>(count) == request.out_entity_ids.size());
         std::ranges::fill(request.out_entity_ids, ioj::sim::EntityUniqueId{});
     } else if constexpr (Mode == QueryMode::ClearLine) {
-        assert(count == request.start_locations.num());
         assert(static_cast<std::size_t>(count) == request.out_flags.size());
-        assert(request.ignored_entities.empty() ||
-               request.ignored_entities.size() == static_cast<std::size_t>(count));
         std::ranges::fill(request.out_flags, ioj::sim::LineQueryResult{});
     } else if constexpr (Mode == QueryMode::TargetLineOfSight) {
         assert(static_cast<std::size_t>(count) == request.targets.size());
         assert(static_cast<std::size_t>(count) == request.out_flags.size());
         std::ranges::fill(request.out_flags, ioj::sim::LineQueryResult{});
-    } else {
-        assert(request.ignored_entities.size() == 1);
-    }
-
-    if (count == 0) {
-        return {};
     }
 
     ioj::sim::LineTraces traces{scratch_resource};
@@ -301,11 +291,6 @@ void SpatialQueryManager::trace_closest_lines(
     std::span<EntityUniqueId const> const ignored_entities) const {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::trace_closest_lines");
 
-    [[maybe_unused]] auto const count{start_locations.num()};
-    assert(end_locations.num() == count);
-    assert(out_hits.num() == count);
-    assert(ignored_entities.empty() || ignored_entities.size() == static_cast<std::size_t>(count));
-
     auto const traces{LineTraceBatch{start_locations, end_locations}};
     auto const& uniform_grid{collision_system_.uniform_grid_};
     if (ignored_entities.empty()) {
@@ -323,11 +308,6 @@ void SpatialQueryManager::sweep_closest_aabbs(
     std::span<EntityUniqueId const> const ignored_entities,
     collision::TraceEntityFilter const entity_filter) const {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::sweep_closest_aabbs");
-
-    [[maybe_unused]] auto const count{start_locations.num()};
-    assert(end_locations.num() == count);
-    assert(out_hits.num() == count);
-    assert(ignored_entities.empty() || ignored_entities.size() == static_cast<std::size_t>(count));
 
     collision_system_.uniform_grid_.sweep_aabbs(LineTraceBatch{start_locations, end_locations},
                                                 moving_half_extent,

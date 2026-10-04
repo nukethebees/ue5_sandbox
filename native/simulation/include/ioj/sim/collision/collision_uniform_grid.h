@@ -40,6 +40,7 @@ struct CollisionUniformGrid {
     // Grid geometry
     /* **************************************** */
     auto is_configured() const noexcept -> bool;
+    // Rebuild entity and static grids after changing geometry, before querying them.
     void set_geometry(GridGeometry geometry) noexcept;
     auto get_grid_dims() const noexcept -> CellCoord;
     auto get_max_grid_coord() const noexcept -> CellCoord;
