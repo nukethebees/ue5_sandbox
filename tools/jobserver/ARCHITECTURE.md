@@ -8,6 +8,7 @@ when work starts and ends. It never executes, monitors, or terminates processes.
 | Component | Responsibility |
 | --- | --- |
 | [coj jobs](../rust/crates/coj/src/jobs.rs) | Parse commands, attach owner/worktree metadata, and format output. |
+| [coj install](../rust/crates/coj/src/install.rs) | Build jobserverd through CMake; install, register, and start it from Rust. |
 | [jobserver-client crate](../rust/crates/jobserver-client/src/lib.rs) | Exchange framed JSON requests with the per-user daemon and interpret errors. Linked into coj; no executable. |
 | [board.hpp](server/lib/include/jobserver/server/board.hpp) / [board.cpp](server/lib/src/board.cpp) | Store tickets, schedule admission, and apply transitions or explicit clearing. |
 | [server.cpp](server/lib/src/server.cpp) | Validate requests and dispatch board operations and daemon administration. |

@@ -13,14 +13,14 @@ The maintainer installs stable tools explicitly under
 Installers publish literal symlinks in `%IOJ_ROOT%\tools\bin`.
 Add only that directory to PATH. Enable Windows Developer Mode before installing,
 or grant your account the **Create symbolic links** right and sign out/in. Installers check
-link creation before building or updating tools and refuse to overwrite unrelated files.
-The two installers share only `install/ToolLinks.ps1`: destination selection, symlink preflight,
-and collision-safe publication. Revision-local Rust tools use the workspace's pinned Rust toolchain.
+link creation before updating tools and refuse to overwrite unrelated files.
+The coj bootstrap uses `install/ToolLinks.ps1`; jobserver installation is implemented in Rust
+inside coj. Revision-local Rust tools use the workspace's pinned Rust toolchain.
 
 `coj jobs` accesses the per-user jobs board. Its installer shuts down an empty board,
 copies the binaries, registers the logon task, and verifies startup. See [jobserver](jobserver/README.md).
-When migrating an existing installation, the installer also recognizes the daemon at the
-registered task's old path. It refuses to shut down a board with outstanding tickets.
+The installer identifies the running daemon through the current user's pipe, including an
+installation at an old path. Active tickets block replacement unless `--force` closes and reports them.
 Agents assume central tools are installed, report missing commands, and never install/update them
 or build local fallbacks. `--version` is for manual diagnosis; bump the source version when shipping changes.
 

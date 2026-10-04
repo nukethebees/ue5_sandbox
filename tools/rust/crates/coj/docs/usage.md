@@ -32,8 +32,9 @@ to continue. Git, Python, CMake, and the repository build prerequisites must be 
 It does not perform a broad project/test build.
 
 After preparation, the maintainer can run `coj install central-tools`. This repeats
-submodule synchronization/update, configures `native`, and builds the canonical
-`install-jobserver` target, stopping on failure. It does not repeat the remaining preparation
+submodule synchronization/update, configures `native`, and builds the C++ `jobserverd`
+target through CMake. Rust then replaces the installed daemon, registers its Windows logon
+task, and checks readiness. It stops on failure and does not repeat the remaining preparation
 steps. See [developer tools](../../../../README.md) for installation locations.
 
 Use `coj install jobserver` to select only jobserver. Both install commands accept `--force`

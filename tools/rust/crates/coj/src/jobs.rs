@@ -171,7 +171,7 @@ fn field<'a>(value: &'a Value, key: &str) -> Result<&'a str, String> {
         .ok_or_else(|| format!("Jobs-board response is missing '{key}'."))
 }
 
-fn ticket_line(ticket: &Value) -> Result<String, String> {
+pub(crate) fn ticket_line(ticket: &Value) -> Result<String, String> {
     let id = ticket["id"]
         .as_u64()
         .ok_or("Jobs-board response is missing ticket ID.")?;

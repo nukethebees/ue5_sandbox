@@ -236,41 +236,55 @@ fn invalid_saved_settings_warn_and_allow_code_generation() {
 }
 
 #[test]
-fn central_tool_installation_updates_submodules_and_installs_jobserver() {
-    let directory = fixture();
-    fs::create_dir(directory.0.join("out")).unwrap();
-    fs::write(directory.0.join("out/keep.txt"), "build output").unwrap();
-    fs::write(directory.0.join("CMakePresets.json"), r#"{
-        "version": 6,
-        "configurePresets": [{"name":"native", "generator":"Ninja", "binaryDir":"${sourceDir}/out/native", "cacheVariables":{"PHASE":"configure"}}],
-        "buildPresets": [{"name":"native", "configurePreset":"native"}]
-    }"#).unwrap();
-    fs::write(directory.0.join("CMakeLists.txt"), concat!(
-        "cmake_minimum_required(VERSION 3.25)\nproject(Fixture NONE)\n",
-        "file(APPEND \"${CMAKE_SOURCE_DIR}/phases.txt\" \"configure\\n\")\n",
-        "add_custom_target(install-jobserver COMMAND \"${CMAKE_COMMAND}\" -E touch \"${CMAKE_SOURCE_DIR}/installed.txt\")\n"
-    )).unwrap();
-    let output = invoke(&directory.0, &["install", "central-tools"]);
-    assert!(output.status.success(), "{output:?}");
-    assert!(directory.0.join("installed.txt").is_file());
-    assert_eq!(
-        fs::read_to_string(directory.0.join("phases.txt")).unwrap(),
-        if cfg!(windows) {
-            "configure\r\n"
-        } else {
-            "configure\n"
-        }
-    );
-    assert_eq!(
-        fs::read_to_string(directory.0.join("out/keep.txt")).unwrap(),
-        "build output"
-    );
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let sync = stdout.find("Synchronizing submodules").unwrap();
-    let update = stdout.find("Updating submodules").unwrap();
-    let configure = stdout.find("Configuring native build").unwrap();
-    let install = stdout.find("Installing canonical jobserver").unwrap();
-    assert!(sync < update && update < configure && configure < install);
+fn central_tool_installation_builds_jobserver_and_checks_artifacts() {
+    // Stop before deployment so this fixture cannot touch the installed board.
+    // Preserve the former PowerShell installer's ASAN rejection coverage here.
+    for asan in [false, true] {
+        let directory = fixture();
+        fs::create_dir(directory.0.join("out")).unwrap();
+        fs::write(directory.0.join("out/keep.txt"), "build output").unwrap();
+        fs::write(directory.0.join("CMakePresets.json"), r#"{
+            "version": 6,
+            "configurePresets": [{"name":"native", "generator":"Ninja", "binaryDir":"${sourceDir}/out/build/native"}],
+            "buildPresets": [{"name":"native", "configurePreset":"native"}]
+        }"#).unwrap();
+        fs::write(directory.0.join("CMakeLists.txt"), format!(r#"
+cmake_minimum_required(VERSION 3.25)
+project(Fixture NONE)
+file(APPEND "${{CMAKE_SOURCE_DIR}}/phases.txt" "configure\n")
+file(WRITE "${{CMAKE_BINARY_DIR}}/jobserver-install.json"
+  "{{\"daemon\":\"${{CMAKE_BINARY_DIR}}/jobserverd.exe\",\"asan_enabled\":{asan}}}")
+add_custom_target(jobserverd COMMAND "${{CMAKE_COMMAND}}" -E touch "${{CMAKE_SOURCE_DIR}}/built.txt")
+"#)).unwrap();
+        let output = invoke(&directory.0, &["install", "central-tools", "--force"]);
+        assert!(!output.status.success(), "{output:?}");
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains(if asan {
+                "ASAN jobserver build is for local validation"
+            } else {
+                "CMake did not produce the jobserver executable"
+            }),
+            "{output:?}"
+        );
+        assert_eq!(directory.0.join("built.txt").is_file(), !asan);
+        assert_eq!(
+            fs::read_to_string(directory.0.join("phases.txt"))
+                .unwrap()
+                .trim(),
+            "configure"
+        );
+        assert_eq!(
+            fs::read_to_string(directory.0.join("out/keep.txt")).unwrap(),
+            "build output"
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let sync = stdout.find("Synchronizing submodules").unwrap();
+        let update = stdout.find("Updating submodules").unwrap();
+        let configure = stdout.find("Configuring native build").unwrap();
+        assert!(sync < update && update < configure);
+        assert!(!stdout.contains("Installing canonical jobserver"));
+    }
 }
 
 #[test]

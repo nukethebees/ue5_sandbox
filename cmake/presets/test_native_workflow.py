@@ -360,16 +360,6 @@ class NativeWorkflowTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     @unittest.skipUnless(shutil.which("pwsh"), "requires PowerShell")
-    def test_jobserver_installer_rejects_asan_before_mutation(self) -> None:
-        cmake_source = (self.source_dir / "tools/jobserver/install/CMakeLists.txt").read_text()
-        self.assertIn('-AsanEnabled "$<BOOL:${IOJ_ENABLE_ASAN}>"', cmake_source)
-        result = subprocess.run([
-            "pwsh", "-NoProfile", "-File",
-            str(self.source_dir / "tools/jobserver/tests/Test-InstallerAsanGuard.ps1"),
-        ], capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    @unittest.skipUnless(shutil.which("pwsh"), "requires PowerShell")
     def test_tidy_presets_share_one_configure_tree(self) -> None:
         validate_preset_references(self.presets)
         configure_name = "win-x64-clangcl-debug-tidy"

@@ -10,6 +10,11 @@ jobserver under `%IOJ_ROOT%\tools\jobserver\bin` and register the
 `NukeTheBeesJobserver` logon task. Agents report missing tools to the maintainer rather than
 installing or updating them.
 
+CMake configures and builds the C++ `jobserverd` target. The Rust installer in coj handles
+ticket cleanup, daemon replacement, tool links, and task registration through `schtasks.exe`.
+It preserves interactive logon, battery operation, and unlimited runtime settings. CMake
+provides the executable path and ASAN setting; ASAN builds are rejected before installation.
+
 Installation refuses to replace a running board with active tickets. Use
 `coj install jobserver --force` to close all existing tickets first. It reports each closed
 ticket's ID, mode, state, owner, description, and worktree, followed by the total.
