@@ -395,6 +395,16 @@ void Sim::refresh_fighter_ids(ml::FrameMemoryResource* const scratch_resource) {
             fighter_ids[counts[owners[index]]++] = ids[index];
         }
     }
+#ifndef NDEBUG
+    std::uint32_t checked_offset{};
+    for (std::uint32_t index{}; index < capital_count; ++index) {
+        auto const span{fighter_spans[index]};
+        assert(span.offset == checked_offset && counts[index] == span.end());
+        checked_offset = span.end();
+    }
+    assert(checked_offset == fighter_ids.size());
+#endif
+
     fighter_membership_revision_ = membership_revision;
     fighter_layout_revision_ = layout_revision;
     fighter_ids_current_ = true;
@@ -423,7 +433,6 @@ void Sim::queue_fighter_orders(ml::FrameMemoryResource* const scratch_resource) 
         auto const capital_target{target_ids[capital_index]};
         auto const span{fighter_spans[capital_index]};
         auto const end{span.end()};
-        assert(static_cast<std::size_t>(end) <= fighter_ids.size());
 
         for (auto index{span.start()}; index < end; ++index) {
             auto const fighter_id{fighter_ids[static_cast<std::size_t>(index)]};

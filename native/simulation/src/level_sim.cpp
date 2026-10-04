@@ -370,7 +370,7 @@ void LevelSim::advance(time_type const dt) {
 
 #ifndef NDEBUG
             auto const thinking_state{capture_thinking_phase_state()};
-            assert(check_phase_invariants(thinking_state));
+            assert(check_thinking_entry_invariants(thinking_state));
 #endif
 
             // Run decision phases

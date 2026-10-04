@@ -406,9 +406,10 @@ void Sim::plan_movement(float const dt, ml::FrameMemoryResource* const scratch_r
 
     auto const locations{data.view_locations()};
     auto const destinations{data.view_desired_move_locations()};
-    ml::native_math::direction_and_distance(data.view_movement_directions().xs().data(),
-                                            data.view_movement_directions().ys().data(),
-                                            data.view_movement_directions().zs().data(),
+    auto const directions{data.view_movement_directions()};
+    ml::native_math::direction_and_distance(directions.xs().data(),
+                                            directions.ys().data(),
+                                            directions.zs().data(),
                                             data.move_distances().data(),
                                             locations.xs().data(),
                                             locations.ys().data(),
@@ -709,7 +710,6 @@ void Sim::collect_navigation_updates(NavigationScratch& scratch) {
 
     for (auto const span : active_spans) {
         auto const end{span.end()};
-        assert(span.offset >= 0 && span.count >= 0 && end <= count);
         for (auto index{span.offset}; index < end; ++index) {
             auto const element{static_cast<std::size_t>(index)};
             if (!countdowns.try_consume(element)) {
@@ -829,7 +829,6 @@ void Sim::apply_separation_steering() {
 
     for (auto const span : active_spans) {
         auto const end{span.end()};
-        assert(span.offset >= 0 && span.count >= 0 && end <= data.num());
         for (auto index{span.offset}; index < end; ++index) {
             auto const direction{
                 make_separation_steering_direction(vector_at(movement_directions, index),
@@ -1094,7 +1093,6 @@ void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
 
     for (auto const span : active_spans) {
         auto const end{span.end()};
-        assert(span.offset >= 0 && span.count >= 0 && end <= data.num());
         for (auto index{span.offset}; index < end; ++index) {
             auto const element{static_cast<std::size_t>(index)};
             auto const steering{vector_at(separation_steering, index)};
@@ -1201,7 +1199,6 @@ auto Sim::get_teams() const -> std::span<Team const> {
     return entity_buffers.current().get_const_view().teams();
 }
 auto Sim::get_task_spans() const -> TaskSpans {
-    check_fighter_tasks();
     return task_spans;
 }
 auto Sim::get_task_counts() const -> TaskCounts {
@@ -1279,15 +1276,16 @@ bool Sim::tasks_are_contiguous() const noexcept {
 
     auto const data{entity_buffers.current().get_const_view()};
     auto current_task{Task::Standby};
+    TaskCounts counts{};
     for (auto const task : data.tasks()) {
         if (task < current_task || std::to_underlying(task) >= ml::enum_count<Task>()) {
             return false;
         }
+        ++counts[std::to_underlying(task)];
         current_task = task;
     }
 
     std::uint32_t offset{};
-    auto const counts{get_task_counts()};
     for (std::size_t group{}; group < n_task_types; ++group) {
         if (task_spans[group] != IndexSpan{offset, counts[group]}) {
             return false;
@@ -1302,14 +1300,11 @@ void Sim::refresh_layout() {
 
     auto const task_counts{get_task_counts()};
     auto const n_fighters{get_num_instances()};
-    TaskCounts write_indices{};
     std::uint32_t offset{};
     for (std::size_t group{}; group < n_task_types; ++group) {
-        write_indices[group] = offset;
         task_spans[group] = {offset, task_counts[group]};
         offset += task_counts[group];
     }
-    assert(task_spans.back().end() == n_fighters);
 
     entity_buffers.cycle();
     auto const& old_data{entity_buffers.previous()};
@@ -1328,7 +1323,6 @@ void Sim::refresh_layout() {
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 new_data.append_from(old_data.slice(index, 1));
                 layout_order_.push_back(static_cast<std::int32_t>(index));
-                ++write_indices[group];
             }
         }
     }
@@ -1431,9 +1425,10 @@ void Sim::commit_spawns() {
     std::ranges::fill(new_data.navigation_update_countdowns_periods(), navigation_period);
 
     auto const aim_directions{new_data.view_aim_directions()};
-    auto const pitches{spawns.view_rotations().pitches()};
-    auto const yaws{spawns.view_rotations().yaws()};
-    auto const rolls{spawns.view_rotations().rolls()};
+    auto const rotations{spawns.view_rotations()};
+    auto const pitches{rotations.pitches()};
+    auto const yaws{rotations.yaws()};
+    auto const rolls{rotations.rolls()};
     for (std::uint32_t index{}; index < n_new; ++index) {
         set_vector(aim_directions,
                    index,
@@ -1530,13 +1525,15 @@ void Sim::handle_firing(TaskView data, ml::FrameMemoryResource* const scratch_re
     ml::TickCountdownView<std::int16_t> const cooldowns{
         std::span<std::int16_t>{data.attack_cooldowns()}, attack_retry_cooldown_tick_value};
     aiming_dot_products.set_num(n_ships);
+    auto const planned_aim_directions{data.view_planned_aim_directions()};
+    auto const desired_aiming_directions{data.view_desired_aiming_directions()};
     ml::native_math::dot_product_vector(aiming_dot_products.data(),
-                                        data.view_planned_aim_directions().xs().data(),
-                                        data.view_planned_aim_directions().ys().data(),
-                                        data.view_planned_aim_directions().zs().data(),
-                                        data.view_desired_aiming_directions().xs().data(),
-                                        data.view_desired_aiming_directions().ys().data(),
-                                        data.view_desired_aiming_directions().zs().data(),
+                                        planned_aim_directions.xs().data(),
+                                        planned_aim_directions.ys().data(),
+                                        planned_aim_directions.zs().data(),
+                                        desired_aiming_directions.xs().data(),
+                                        desired_aiming_directions.ys().data(),
+                                        desired_aiming_directions.zs().data(),
                                         n_ships);
 
     auto const target_distance_sq{data.target_distance_sq()};
@@ -1788,49 +1785,8 @@ void Sim::clear_tick_buffers() {
 void Sim::check_fighter_tasks() const {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::check_fighter_tasks");
 
-    auto current_task_group{Task::Standby};
-    TaskSpans checked_task_spans{};
-    auto const data{entity_buffers.current().get_const_view()};
-    auto const n_tasks{data.num()};
-    auto const tasks{data.tasks()};
-
-    for (std::uint32_t i{}; i < n_tasks; ++i) {
-        auto const task{tasks[i]};
-        auto const task_value{std::to_underlying(task)};
-        if (task == current_task_group) {
-            ++checked_task_spans[task_value].count;
-        } else if (task > current_task_group) {
-            current_task_group = task;
-            checked_task_spans[task_value].offset = i;
-            checked_task_spans[task_value].count = 1;
-        } else {
-            ml::fatal_error(std::format("Found task {} when current group was {}",
-                                        to_string_view(task),
-                                        to_string_view(current_task_group)));
-        }
-    }
-
-    for (std::size_t i{1}; i < n_task_types; ++i) {
-        auto const last_span{checked_task_spans[i - 1]};
-        auto const last_end{last_span.end()};
-        auto& current_span{checked_task_spans[i]};
-        if (current_span.offset < last_end) {
-            current_span.offset = last_end;
-            assert(current_span.count == 0);
-        }
-    }
-
-    if (checked_task_spans != task_spans) {
-        std::string message{"Incorrect task spans."};
-        for (std::size_t i{}; i < n_task_types; ++i) {
-            message += std::format("\\n    {}: expected ({}, {}), got ({}, {})",
-                                   to_string_view(static_cast<Task>(i)),
-                                   task_spans[i].offset,
-                                   task_spans[i].count,
-                                   checked_task_spans[i].offset,
-                                   checked_task_spans[i].count);
-        }
-        ml::fatal_error(message);
+    if (!tasks_are_contiguous()) {
+        ml::fatal_error("Fighter tasks must be valid, contiguous and match their published spans");
     }
 }
 #endif
