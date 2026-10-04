@@ -45,7 +45,7 @@ struct MovingViews {
             ("aggregate", "for (;;) { ioj::sim::LineTracesConstView v{}; }", 1),
             ("aggregate_parentheses", "std::span<int> s; for (;;) { ioj::sim::LineTracesConstView v(s, s); }", 1),
             ("hoisted", "View v; for (;;) { consume(v); }", 0),
-            ("ordinary", "for (;;) { OrdinaryView v; ioj::sim::PlayerReadView snapshot{}; }", 0),
+            ("ordinary", "for (;;) { OrdinaryView v; ioj::sim::ValueSnapshot snapshot{}; }", 0),
             ("copies", "View v; for (;;) { View copy(v); auto& ref = v; consume(v); }", 0),
             ("accessor", "for (;;) { auto v = resolve(); }", 0),
             ("braced_accessor", "for (;;) { auto const v{resolve()}; }", 0),
