@@ -38,12 +38,13 @@ struct Match {
 struct WorkerScratch {
     explicit WorkerScratch(std::pmr::memory_resource* const scratch_resource,
                            EntityCount const entity_count)
-        : query_buffers{scratch_resource}
+        : entity_stamps{scratch_resource}
         , matches{scratch_resource} {
-        query_buffers.ensure_entity_stamp_count(entity_count);
+        entity_stamps.resize(entity_count);
     }
 
-    QueryThreadBuffers query_buffers;
+    std::pmr::vector<std::uint32_t> entity_stamps;
+    std::uint32_t query_stamp{};
     std::pmr::vector<Match> matches;
 };
 
@@ -117,8 +118,12 @@ void collect_request_matches(collision::CollisionUniformGrid const& grid,
     max_coord = max_coord.component_min(max_grid_coord);
 
     // Start a fresh deduplication pass without clearing the stamp buffer.
-    auto& stamps{worker.query_buffers.range_query_entity_stamps};
-    auto const stamp{worker.query_buffers.advance_range_query_stamp()};
+    auto& stamps{worker.entity_stamps};
+    if (++worker.query_stamp == 0) {
+        std::ranges::fill(stamps, std::uint32_t{});
+        worker.query_stamp = 1;
+    }
+    auto const stamp{worker.query_stamp};
 
     // Rely on the Thinking phase invariants for live membership and valid entity indices.
     for (auto x{min_coord.x}; x <= max_coord.x; ++x) {
