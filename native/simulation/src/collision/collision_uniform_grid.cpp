@@ -161,14 +161,23 @@ void CollisionUniformGrid::rebuild_entity_grid(EntityAABBs const& entity_aabbs,
         auto& rows{storage.entity_row_to_aabb_row[type]};
         rows.assign(ids.size(), EntityInstanceHandle::invalid_value);
         auto const count{static_cast<std::uint32_t>(ids.size())};
-        for (std::uint32_t row{}; row < count; ++row) {
-            if (!healths.is_empty() && is_dead(healths.health(row))) {
-                continue;
-            }
+        auto const append_row{[&](std::uint32_t const row) {
             rows[row] = storage.rebuild_entity_data.num();
             append_entity_bounds(
                 ids[row],
                 make_entity_world_bounds(entity_aabbs, type, locations[row], orientation_at(row)));
+        }};
+        if (healths.is_empty()) {
+            for (std::uint32_t row{}; row < count; ++row) {
+                append_row(row);
+            }
+        } else {
+            for (std::uint32_t row{}; row < count; ++row) {
+                if (is_dead(healths.health(row))) {
+                    continue;
+                }
+                append_row(row);
+            }
         }
     }};
     auto& player_rows{storage.entity_row_to_aabb_row[EntityType::PlayerShip]};
