@@ -32,7 +32,7 @@ void run_worldless_spatial_query_empty(tests::SimulationFixture const& config) {
     auto const count{queries.collect_non_team_entities_in_range(
         ml::make_vector3f(0.f, 0.f, 0.f), Team::Blue, 1000.f, results, &query_memory)};
     EXPECT_EQ(count, 0) << "Empty range query has no results";
-    EXPECT_TRUE(!queries.get_any_non_team_entity(Team::Blue).is_valid())
+    EXPECT_TRUE(!queries.get_any_non_team_entity(Team::Blue, EntityType::CapitalShip).is_valid())
         << "Empty world has no arbitrary enemy";
 }
 
