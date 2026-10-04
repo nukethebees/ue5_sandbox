@@ -61,9 +61,7 @@ struct EntityEntityOverlapsSingleViewImpl {
     EntityEntityOverlapsSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     EntityEntityOverlapsSingleViewImpl(EntityEntityOverlapsSingleViewImpl<false> const& other)
         requires Enabled
@@ -91,21 +89,17 @@ struct EntityEntityOverlapsSingleViewImpl {
     }
     auto first_entities() const -> std::span<Element<EntityUniqueId>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::FirstEntitiesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<EntityUniqueId>(
+                state_, offset_, Layout::FirstEntitiesColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto second_entities() const -> std::span<Element<EntityUniqueId>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::SecondEntitiesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<EntityUniqueId>(
+                state_, offset_, Layout::SecondEntitiesColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -348,9 +342,7 @@ struct EntityStaticOverlapsSingleViewImpl {
     EntityStaticOverlapsSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     EntityStaticOverlapsSingleViewImpl(EntityStaticOverlapsSingleViewImpl<false> const& other)
         requires Enabled
@@ -379,10 +371,7 @@ struct EntityStaticOverlapsSingleViewImpl {
     auto entities() const -> std::span<Element<EntityUniqueId>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<EntityUniqueId>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::EntitiesColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::EntitiesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto static_geometry_indices() const -> std::span<Element<StaticGeometryIndex>> {
@@ -390,7 +379,6 @@ struct EntityStaticOverlapsSingleViewImpl {
         return {view_column_data<StaticGeometryIndex>(
                     state_,
                     offset_,
-                    count_,
                     Layout::StaticGeometryIndicesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }

@@ -60,9 +60,10 @@ void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_tra
     auto const entities{simulation().get_entities()};
     auto const count{static_cast<int32>(entities.num())};
     auto const locations{entities.view_locations()};
-    auto const pitches{entities.view_rotations().pitches()};
-    auto const yaws{entities.view_rotations().yaws()};
-    auto const rolls{entities.view_rotations().rolls()};
+    auto const rotations{entities.view_rotations()};
+    auto const pitches{rotations.pitches()};
+    auto const yaws{rotations.yaws()};
+    auto const rolls{rotations.rolls()};
     for (auto i{ismc_transforms.Num()}; i < count; ++i) {
         ismc_transforms.Emplace(
             FRotator{ml::to_unreal(::ioj::sim::Rotator3f{pitches[i], yaws[i], rolls[i]})},

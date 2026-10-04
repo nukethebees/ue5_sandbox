@@ -323,9 +323,7 @@ struct LevelCapitalSpawnEventsSingleViewImpl {
     LevelCapitalSpawnEventsSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     LevelCapitalSpawnEventsSingleViewImpl(LevelCapitalSpawnEventsSingleViewImpl<false> const& other)
         requires Enabled
@@ -353,25 +351,21 @@ struct LevelCapitalSpawnEventsSingleViewImpl {
     }
     auto entity_indices() const -> std::span<Element<std::uint32_t>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<std::uint32_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::EntityIndicesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<std::uint32_t>(
+                state_, offset_, Layout::EntityIndicesColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto target_entity_indices() const -> std::span<Element<std::uint32_t>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<std::uint32_t>(
                     state_,
                     offset_,
-                    count_,
                     Layout::TargetEntityIndicesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto view_locations() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
-        validate();
         if (!state_ || !state_->data_) {
             return {};
         }
@@ -388,7 +382,6 @@ struct LevelCapitalSpawnEventsSingleViewImpl {
                                                       ml::native_soa::RotatorSoAConstView<float>,
                                                       ml::native_soa::RotatorSoAView<float>> {
         using namespace ml::soa_storage_detail;
-        validate();
         if (!state_ || !state_->data_) {
             return {};
         }
@@ -403,26 +396,21 @@ struct LevelCapitalSpawnEventsSingleViewImpl {
     }
     auto teams() const -> std::span<Element<Team>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<Team>(
-                state_, offset_, count_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<Team>(
+                    state_, offset_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto healths() const -> std::span<Element<Health>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<Health>(state_,
-                                     offset_,
-                                     count_,
-                                     Layout::HealthsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<Health>(
+                    state_, offset_, Layout::HealthsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto initial_fighter_spawn_delays() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<float>(
                     state_,
                     offset_,
-                    count_,
                     Layout::InitialFighterSpawnDelaysColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
@@ -431,7 +419,6 @@ struct LevelCapitalSpawnEventsSingleViewImpl {
         return {view_column_data<float>(
                     state_,
                     offset_,
-                    count_,
                     Layout::FighterSpawnCooldownsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
@@ -439,12 +426,14 @@ struct LevelCapitalSpawnEventsSingleViewImpl {
     void each_column(Func&& func) const {
         func(entity_indices());
         func(target_entity_indices());
-        func(view_locations().xs());
-        func(view_locations().ys());
-        func(view_locations().zs());
-        func(view_rotations().pitches());
-        func(view_rotations().yaws());
-        func(view_rotations().rolls());
+        auto const& group_0{view_locations()};
+        func(group_0.xs());
+        func(group_0.ys());
+        func(group_0.zs());
+        auto const& group_1{view_rotations()};
+        func(group_1.pitches());
+        func(group_1.yaws());
+        func(group_1.rolls());
         func(teams());
         func(healths());
         func(initial_fighter_spawn_delays());
@@ -673,29 +662,25 @@ struct LevelCapitalSpawnEvents
                                ml::native_soa::source_data(source.target_entity_indices()) +
                                    source_first,
                                count);
+        auto const& group_0{source.view_locations()};
         ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
+        auto const& group_1{source.view_rotations()};
         ml::native_soa::copy_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(source.view_rotations().pitches()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.pitches()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(source.view_rotations().yaws()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.yaws()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(source.view_rotations().rolls()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.rolls()) + source_first,
                                count);
         ml::native_soa::copy_n(
             destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
@@ -726,29 +711,25 @@ struct LevelCapitalSpawnEvents
                                ml::native_soa::source_data(source.target_entity_indices()) +
                                    source_first,
                                count);
+        auto const& group_0{source.view_locations()};
         ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
+        auto const& group_1{source.view_rotations()};
         ml::native_soa::move_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(source.view_rotations().pitches()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.pitches()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(source.view_rotations().yaws()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.yaws()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(source.view_rotations().rolls()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.rolls()) + source_first,
                                count);
         ml::native_soa::move_n(
             destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
@@ -845,9 +826,7 @@ struct LevelTurretSpawnEventsSingleViewImpl {
     LevelTurretSpawnEventsSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     LevelTurretSpawnEventsSingleViewImpl(LevelTurretSpawnEventsSingleViewImpl<false> const& other)
         requires Enabled
@@ -875,16 +854,13 @@ struct LevelTurretSpawnEventsSingleViewImpl {
     }
     auto entity_indices() const -> std::span<Element<std::uint32_t>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<std::uint32_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::EntityIndicesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<std::uint32_t>(
+                state_, offset_, Layout::EntityIndicesColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto view_locations() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
-        validate();
         if (!state_ || !state_->data_) {
             return {};
         }
@@ -901,7 +877,6 @@ struct LevelTurretSpawnEventsSingleViewImpl {
                                                       ml::native_soa::RotatorSoAConstView<float>,
                                                       ml::native_soa::RotatorSoAView<float>> {
         using namespace ml::soa_storage_detail;
-        validate();
         if (!state_ || !state_->data_) {
             return {};
         }
@@ -916,38 +891,34 @@ struct LevelTurretSpawnEventsSingleViewImpl {
     }
     auto teams() const -> std::span<Element<Team>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<Team>(
-                state_, offset_, count_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<Team>(
+                    state_, offset_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto healths() const -> std::span<Element<Health>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<Health>(state_,
-                                     offset_,
-                                     count_,
-                                     Layout::HealthsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<Health>(
+                    state_, offset_, Layout::HealthsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto laser_damages() const -> std::span<Element<std::int32_t>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<std::int32_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::LaserDamagesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<std::int32_t>(
+                state_, offset_, Layout::LaserDamagesColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_indices());
-        func(view_locations().xs());
-        func(view_locations().ys());
-        func(view_locations().zs());
-        func(view_rotations().pitches());
-        func(view_rotations().yaws());
-        func(view_rotations().rolls());
+        auto const& group_0{view_locations()};
+        func(group_0.xs());
+        func(group_0.ys());
+        func(group_0.zs());
+        auto const& group_1{view_rotations()};
+        func(group_1.pitches());
+        func(group_1.yaws());
+        func(group_1.rolls());
         func(teams());
         func(healths());
         func(laser_damages());
@@ -1156,29 +1127,25 @@ struct LevelTurretSpawnEvents
         ml::native_soa::copy_n(destination.entity_indices,
                                ml::native_soa::source_data(source.entity_indices()) + source_first,
                                count);
+        auto const& group_0{source.view_locations()};
         ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
+        auto const& group_1{source.view_rotations()};
         ml::native_soa::copy_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(source.view_rotations().pitches()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.pitches()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(source.view_rotations().yaws()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.yaws()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(source.view_rotations().rolls()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.rolls()) + source_first,
                                count);
         ml::native_soa::copy_n(
             destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
@@ -1200,29 +1167,25 @@ struct LevelTurretSpawnEvents
         ml::native_soa::move_n(destination.entity_indices,
                                ml::native_soa::source_data(source.entity_indices()) + source_first,
                                count);
+        auto const& group_0{source.view_locations()};
         ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
+        auto const& group_1{source.view_rotations()};
         ml::native_soa::move_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(source.view_rotations().pitches()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.pitches()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(source.view_rotations().yaws()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.yaws()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(source.view_rotations().rolls()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.rolls()) + source_first,
                                count);
         ml::native_soa::move_n(
             destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
@@ -1305,9 +1268,7 @@ struct LevelSpinnerSpawnEventsSingleViewImpl {
     LevelSpinnerSpawnEventsSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     LevelSpinnerSpawnEventsSingleViewImpl(LevelSpinnerSpawnEventsSingleViewImpl<false> const& other)
         requires Enabled
@@ -1335,16 +1296,13 @@ struct LevelSpinnerSpawnEventsSingleViewImpl {
     }
     auto entity_indices() const -> std::span<Element<std::uint32_t>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<std::uint32_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::EntityIndicesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<std::uint32_t>(
+                state_, offset_, Layout::EntityIndicesColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto view_locations() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
-        validate();
         if (!state_ || !state_->data_) {
             return {};
         }
@@ -1359,26 +1317,25 @@ struct LevelSpinnerSpawnEventsSingleViewImpl {
     }
     auto yaws() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(
-                state_, offset_, count_, Layout::YawsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::YawsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto initial_fire_point_indices() const -> std::span<Element<std::int32_t>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<std::int32_t>(
                     state_,
                     offset_,
-                    count_,
                     Layout::InitialFirePointIndicesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_indices());
-        func(view_locations().xs());
-        func(view_locations().ys());
-        func(view_locations().zs());
+        auto const& group_0{view_locations()};
+        func(group_0.xs());
+        func(group_0.ys());
+        func(group_0.zs());
         func(yaws());
         func(initial_fire_point_indices());
     }
@@ -1564,17 +1521,15 @@ struct LevelSpinnerSpawnEvents
         ml::native_soa::copy_n(destination.entity_indices,
                                ml::native_soa::source_data(source.entity_indices()) + source_first,
                                count);
+        auto const& group_0{source.view_locations()};
         ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
         ml::native_soa::copy_n(
             destination.yaws, ml::native_soa::source_data(source.yaws()) + source_first, count);
@@ -1594,17 +1549,15 @@ struct LevelSpinnerSpawnEvents
         ml::native_soa::move_n(destination.entity_indices,
                                ml::native_soa::source_data(source.entity_indices()) + source_first,
                                count);
+        auto const& group_0{source.view_locations()};
         ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
         ml::native_soa::move_n(
             destination.yaws, ml::native_soa::source_data(source.yaws()) + source_first, count);

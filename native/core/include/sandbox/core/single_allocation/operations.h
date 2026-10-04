@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sandbox/core/single_allocation/concepts.h>
+#include <sandbox/core/single_allocation/view.h>
 
 #include <algorithm>
 #include <cassert>
@@ -230,6 +231,7 @@ struct StorageOperations {
     template <typename Self>
         requires BorrowableStorage<Self, Size>
     auto get_view(this Self&& self, Size offset, Size count) {
+        validate_view(&self, offset, count);
         return StorageView<Self>{&self, offset, count};
     }
     template <typename Self>
@@ -240,6 +242,7 @@ struct StorageOperations {
     template <typename Self>
         requires ConstBorrowableStorage<Self, Size>
     auto get_const_view(this Self&& self, Size offset, Size count) {
+        validate_view(&self, offset, count);
         return StorageConstView<Self>{&self, offset, count};
     }
     template <typename Self>

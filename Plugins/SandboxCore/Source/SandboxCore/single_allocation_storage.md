@@ -37,7 +37,7 @@ auto selected = rows.slice(32, 64);
 auto readonly = selected.get_const_view();
 ```
 
-Views capture a range, not a growing count. A top-level compact handle re-resolves columns through owner state, so it can survive growth while its owner stays in place and its captured range remains valid. Extracted spans, ordinary views and vector views retain allocation pointers and become stale after growth. Do not use outstanding views across either owner move or after destruction. Move construction leaves handles referring to the moved-from state; move assignment replaces the destination's state, so its old handles can silently observe the moved-in allocation and even pass validation. This invalidation is a logical API contract, not runtime-tracked. Shrinking/removal can invalidate a range or change which entities it denotes; views are not stable entity references.
+Views borrow a fixed range, and their owner must outlive them. Reallocation, owner move/reset, and removal or reordering of borrowed rows invalidate the view and any extracted spans or nested views. Reacquire views after these operations. Borrowing and slicing check range bounds; ordinary accessors do not detect stale borrows. Views are not stable entity references.
 
 Owner borrowing functions require an lvalue, preventing accidental views from temporary owners. Temporary non-owning views can still be sliced. Explicit pointer-based view construction remains the caller's responsibility: the owner and backing storage must outlive every use.
 
@@ -45,7 +45,7 @@ The explicit `:vector-components (xs ys)` or `(xs ys zs)` annotation marks the s
 
 Each vector view is 16 bytes: a first-component pointer, a 32-bit byte stride, and a 32-bit row count. The generated layout guarantees equally spaced component columns. `slice`, `left` and `right` advance the first pointer while retaining the component stride, including for empty end slices. Mutable views convert to const views, but not the reverse. The vector view has no owner pointer or field-specific layout type.
 
-For example, `view_locations()` and `view_velocities()` both return `ml::soa::Vector3View<float>`. Resolve `xs()`, `ys()` and `zs()` outside hot loops. Other nested shapes receive generated compact views rooted in the parent's owner state, so they can survive growth under the same range contract as the parent view.
+For example, `view_locations()` and `view_velocities()` both return `ml::soa::Vector3View<float>`. Bind each grouped view once and resolve `xs()`, `ys()` and `zs()` outside hot loops. Other nested shapes receive generated compact views with the same borrow contract as the parent view.
 
 Mutable vector views remain writable when the view object itself is const, like an ordinary span; const-view aliases expose only const elements. Constructor and slice range checks use standard assertions, disabled by `NDEBUG`. Direct construction requires sufficiently large, equally spaced component arrays and a byte stride that preserves element alignment and fits in uint32.
 
@@ -137,7 +137,7 @@ fixture's PMR resource. Small schemas in `native/lispb/native_soa` cover odd-siz
 native SoA suites exercise actual standard and mimalloc storage and alignment.
 
 For Unreal-dependent behavior, build the Editor and run the existing CQTest/Unreal Automation
-unit suite. The private SandboxCoreEngineTests fixture covers compact handles across growth,
+unit suite. The private SandboxCoreEngineTests fixture covers reacquiring views after growth,
 self-append, nested access, and move assignment:
 
 ```powershell

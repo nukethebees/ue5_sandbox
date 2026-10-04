@@ -71,9 +71,7 @@ struct SpinnerEntityDataSingleViewImpl {
     SpinnerEntityDataSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     SpinnerEntityDataSingleViewImpl(SpinnerEntityDataSingleViewImpl<false> const& other)
         requires Enabled
@@ -102,15 +100,11 @@ struct SpinnerEntityDataSingleViewImpl {
     auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<EntityUniqueId>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto view_locations() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
-        validate();
         if (!state_ || !state_->data_) {
             return {};
         }
@@ -125,35 +119,32 @@ struct SpinnerEntityDataSingleViewImpl {
     }
     auto yaws() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(
-                state_, offset_, count_, Layout::YawsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::YawsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto laser_cooldowns() const -> std::span<Element<std::int16_t>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<std::int16_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::LaserCooldownsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<std::int16_t>(
+                state_, offset_, Layout::LaserCooldownsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto next_fire_point_indices() const -> std::span<Element<std::int32_t>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<std::int32_t>(
                     state_,
                     offset_,
-                    count_,
                     Layout::NextFirePointIndicesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_ids());
-        func(view_locations().xs());
-        func(view_locations().ys());
-        func(view_locations().zs());
+        auto const& group_0{view_locations()};
+        func(group_0.xs());
+        func(group_0.ys());
+        func(group_0.zs());
         func(yaws());
         func(laser_cooldowns());
         func(next_fire_point_indices());
@@ -344,17 +335,15 @@ struct SpinnerEntityData
         ml::native_soa::copy_n(destination.entity_ids,
                                ml::native_soa::source_data(source.entity_ids()) + source_first,
                                count);
+        auto const& group_0{source.view_locations()};
         ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
         ml::native_soa::copy_n(
             destination.yaws, ml::native_soa::source_data(source.yaws()) + source_first, count);
@@ -377,17 +366,15 @@ struct SpinnerEntityData
         ml::native_soa::move_n(destination.entity_ids,
                                ml::native_soa::source_data(source.entity_ids()) + source_first,
                                count);
+        auto const& group_0{source.view_locations()};
         ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
         ml::native_soa::move_n(
             destination.yaws, ml::native_soa::source_data(source.yaws()) + source_first, count);

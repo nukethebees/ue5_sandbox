@@ -72,9 +72,7 @@ struct TraceHitsSingleView_locationsImpl {
     TraceHitsSingleView_locationsImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     TraceHitsSingleView_locationsImpl(TraceHitsSingleView_locationsImpl<false> const& other)
         requires Enabled
@@ -103,28 +101,22 @@ struct TraceHitsSingleView_locationsImpl {
     auto xs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::LocationsXsColumn.offset(view_capacity_blocks(state_))),
+            view_column_data<float>(
+                state_, offset_, Layout::LocationsXsColumn.offset(view_capacity_blocks(state_))),
             static_cast<std::size_t>(count_)};
     }
     auto ys() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::LocationsYsColumn.offset(view_capacity_blocks(state_))),
+            view_column_data<float>(
+                state_, offset_, Layout::LocationsYsColumn.offset(view_capacity_blocks(state_))),
             static_cast<std::size_t>(count_)};
     }
     auto zs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::LocationsZsColumn.offset(view_capacity_blocks(state_))),
+            view_column_data<float>(
+                state_, offset_, Layout::LocationsZsColumn.offset(view_capacity_blocks(state_))),
             static_cast<std::size_t>(count_)};
     }
     template <typename Func>
@@ -191,9 +183,7 @@ struct TraceHitsSingleViewImpl {
     TraceHitsSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     TraceHitsSingleViewImpl(TraceHitsSingleViewImpl<false> const& other)
         requires Enabled
@@ -226,10 +216,7 @@ struct TraceHitsSingleViewImpl {
     auto entities() const -> std::span<Element<EntityUniqueId>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<EntityUniqueId>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::EntitiesColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::EntitiesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto static_geometry_indices() const -> std::span<Element<collision::StaticGeometryIndex>> {
@@ -237,22 +224,21 @@ struct TraceHitsSingleViewImpl {
         return {view_column_data<collision::StaticGeometryIndex>(
                     state_,
                     offset_,
-                    count_,
                     Layout::StaticGeometryIndicesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto hits() const -> std::span<Element<TraceHit>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<TraceHit>(
-                state_, offset_, count_, Layout::HitsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<TraceHit>(
+                    state_, offset_, Layout::HitsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(view_locations().xs());
-        func(view_locations().ys());
-        func(view_locations().zs());
+        auto const& group_0{view_locations()};
+        func(group_0.xs());
+        func(group_0.ys());
+        func(group_0.zs());
         func(entities());
         func(static_geometry_indices());
         func(hits());
@@ -433,17 +419,15 @@ struct TraceHits
         requires ml::soa_storage_detail::SoaSourceFor<Columns, TraceHits, size_type>
     {
         auto const destination{get_data(first)};
+        auto const& group_0{source.view_locations()};
         ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.entities,
                                ml::native_soa::source_data(source.entities()) + source_first,
@@ -463,17 +447,15 @@ struct TraceHits
         requires ml::soa_storage_detail::SoaSourceFor<Columns, TraceHits, size_type>
     {
         auto const destination{get_data(first)};
+        auto const& group_0{source.view_locations()};
         ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.entities,
                                ml::native_soa::source_data(source.entities()) + source_first,

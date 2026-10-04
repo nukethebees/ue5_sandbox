@@ -67,9 +67,7 @@ struct EntityHistoryColumnsSingleViewImpl {
     EntityHistoryColumnsSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     EntityHistoryColumnsSingleViewImpl(EntityHistoryColumnsSingleViewImpl<false> const& other)
         requires Enabled
@@ -98,51 +96,38 @@ struct EntityHistoryColumnsSingleViewImpl {
     auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<EntityUniqueId>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto entity_types() const -> std::span<Element<EntityType>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityType>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::EntityTypesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<EntityType>(
+                state_, offset_, Layout::EntityTypesColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto teams() const -> std::span<Element<Team>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<Team>(
-                state_, offset_, count_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<Team>(
+                    state_, offset_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto kills() const -> std::span<Element<std::uint32_t>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<std::uint32_t>(
-                state_, offset_, count_, Layout::KillsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<std::uint32_t>(
+                    state_, offset_, Layout::KillsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto killed_by() const -> std::span<Element<EntityUniqueId>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<EntityUniqueId>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::KilledByColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::KilledByColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto life_state() const -> std::span<Element<LifeState>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<LifeState>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::LifeStateColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::LifeStateColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>

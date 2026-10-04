@@ -67,9 +67,7 @@ struct LineTracesSingleView_startsImpl {
     LineTracesSingleView_startsImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     LineTracesSingleView_startsImpl(LineTracesSingleView_startsImpl<false> const& other)
         requires Enabled
@@ -97,30 +95,21 @@ struct LineTracesSingleView_startsImpl {
     }
     auto xs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::StartsXsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::StartsXsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto ys() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::StartsYsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::StartsYsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto zs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::StartsZsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::StartsZsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -188,9 +177,7 @@ struct LineTracesSingleView_endsImpl {
     LineTracesSingleView_endsImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     LineTracesSingleView_endsImpl(LineTracesSingleView_endsImpl<false> const& other)
         requires Enabled
@@ -218,24 +205,21 @@ struct LineTracesSingleView_endsImpl {
     }
     auto xs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(
-                state_, offset_, count_, Layout::EndsXsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::EndsXsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto ys() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(
-                state_, offset_, count_, Layout::EndsYsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::EndsYsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto zs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(
-                state_, offset_, count_, Layout::EndsZsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::EndsZsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -301,9 +285,7 @@ struct LineTracesSingleViewImpl {
     LineTracesSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     LineTracesSingleViewImpl(LineTracesSingleViewImpl<false> const& other)
         requires Enabled
@@ -339,12 +321,14 @@ struct LineTracesSingleViewImpl {
     }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(view_starts().xs());
-        func(view_starts().ys());
-        func(view_starts().zs());
-        func(view_ends().xs());
-        func(view_ends().ys());
-        func(view_ends().zs());
+        auto const& group_0{view_starts()};
+        func(group_0.xs());
+        func(group_0.ys());
+        func(group_0.zs());
+        auto const& group_1{view_ends()};
+        func(group_1.xs());
+        func(group_1.ys());
+        func(group_1.zs());
     }
   private:
     template <bool>
@@ -517,27 +501,20 @@ struct LineTraces
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LineTraces, size_type>
     {
         auto const destination{get_data(first)};
-        ml::native_soa::copy_n(destination.starts_xs,
-                               ml::native_soa::source_data(source.view_starts().xs()) +
-                                   source_first,
-                               count);
-        ml::native_soa::copy_n(destination.starts_ys,
-                               ml::native_soa::source_data(source.view_starts().ys()) +
-                                   source_first,
-                               count);
-        ml::native_soa::copy_n(destination.starts_zs,
-                               ml::native_soa::source_data(source.view_starts().zs()) +
-                                   source_first,
-                               count);
-        ml::native_soa::copy_n(destination.ends_xs,
-                               ml::native_soa::source_data(source.view_ends().xs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.ends_ys,
-                               ml::native_soa::source_data(source.view_ends().ys()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.ends_zs,
-                               ml::native_soa::source_data(source.view_ends().zs()) + source_first,
-                               count);
+        auto const& group_0{source.view_starts()};
+        ml::native_soa::copy_n(
+            destination.starts_xs, ml::native_soa::source_data(group_0.xs()) + source_first, count);
+        ml::native_soa::copy_n(
+            destination.starts_ys, ml::native_soa::source_data(group_0.ys()) + source_first, count);
+        ml::native_soa::copy_n(
+            destination.starts_zs, ml::native_soa::source_data(group_0.zs()) + source_first, count);
+        auto const& group_1{source.view_ends()};
+        ml::native_soa::copy_n(
+            destination.ends_xs, ml::native_soa::source_data(group_1.xs()) + source_first, count);
+        ml::native_soa::copy_n(
+            destination.ends_ys, ml::native_soa::source_data(group_1.ys()) + source_first, count);
+        ml::native_soa::copy_n(
+            destination.ends_zs, ml::native_soa::source_data(group_1.zs()) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -547,27 +524,20 @@ struct LineTraces
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LineTraces, size_type>
     {
         auto const destination{get_data(first)};
-        ml::native_soa::move_n(destination.starts_xs,
-                               ml::native_soa::source_data(source.view_starts().xs()) +
-                                   source_first,
-                               count);
-        ml::native_soa::move_n(destination.starts_ys,
-                               ml::native_soa::source_data(source.view_starts().ys()) +
-                                   source_first,
-                               count);
-        ml::native_soa::move_n(destination.starts_zs,
-                               ml::native_soa::source_data(source.view_starts().zs()) +
-                                   source_first,
-                               count);
-        ml::native_soa::move_n(destination.ends_xs,
-                               ml::native_soa::source_data(source.view_ends().xs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.ends_ys,
-                               ml::native_soa::source_data(source.view_ends().ys()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.ends_zs,
-                               ml::native_soa::source_data(source.view_ends().zs()) + source_first,
-                               count);
+        auto const& group_0{source.view_starts()};
+        ml::native_soa::move_n(
+            destination.starts_xs, ml::native_soa::source_data(group_0.xs()) + source_first, count);
+        ml::native_soa::move_n(
+            destination.starts_ys, ml::native_soa::source_data(group_0.ys()) + source_first, count);
+        ml::native_soa::move_n(
+            destination.starts_zs, ml::native_soa::source_data(group_0.zs()) + source_first, count);
+        auto const& group_1{source.view_ends()};
+        ml::native_soa::move_n(
+            destination.ends_xs, ml::native_soa::source_data(group_1.xs()) + source_first, count);
+        ml::native_soa::move_n(
+            destination.ends_ys, ml::native_soa::source_data(group_1.ys()) + source_first, count);
+        ml::native_soa::move_n(
+            destination.ends_zs, ml::native_soa::source_data(group_1.zs()) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};

@@ -233,15 +233,13 @@ implementation declares its own private state pointer, offset, and count. Shared
 receive these values for range validation, slicing, and column-pointer calculations; they need no
 friend access. Mutable and const specializations are friends only for view conversion. Non-vector
 nested views share the same owner state and range. Column iteration calls individual accessors;
-there is no schema-wide `columns()` conversion. A retained compact handle survives allocation growth while the owner
-stays in place and its range remains valid; materialized spans and strided vector/rotation views
-do not. Moving an
-owner is outside the view lifetime contract: move construction leaves handles referring to the
-moved-from state, while move assignment replaces the destination's state and can make its old
-handles observe the moved-in allocation without failing validation. Do not use outstanding views
-across either move or after destruction; this is a logical contract, not runtime-tracked
-invalidation. Owner borrowing methods constrain explicit-object parameters to lvalues, including
-const lvalues; temporary owners cannot yield views.
+there is no schema-wide `columns()` conversion. All views are non-owning borrows: the owner must
+outlive them. Reallocation, owner moves, reset, and removal/reordering of borrowed rows invalidate
+them; reacquire views afterward. Owner borrowing methods validate the initial range, and slicing
+checks subrange bounds. Column and group accessors trust the established borrow and do not detect
+stale views. The state/range constructor is used internally with already established ranges.
+Owner borrowing methods constrain explicit-object parameters to lvalues, including const lvalues;
+temporary owners cannot yield views.
 
 Per-column generated code is intentional and inspectable. Do not replace it with a universal
 storage template or variadic copy mechanism. Native and Unreal share runtime PMR resource selection
