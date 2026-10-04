@@ -24,7 +24,7 @@ class BulkRangeQueries : public ::testing::Test {
 
     void rebuild() {
         owners.publish();
-        queries.refresh_spatial_index();
+        owners.refresh(queries);
     }
 
     void request(Vector3f const origin, Team const team) {
@@ -67,7 +67,7 @@ class BulkRangeQueries : public ::testing::Test {
             for (auto match{range.offset}; match < end; ++match) {
                 auto const id{output.entities[match]};
                 actual.push_back(id);
-                auto const state{observe_entity(owners.entity_tables, id)};
+                auto const state{observe_entity(owners, id)};
                 ASSERT_TRUE(state);
                 auto const delta{state->location - locations[index]};
                 EXPECT_FLOAT_EQ(output.distances[match], HMM_LenV3(delta));

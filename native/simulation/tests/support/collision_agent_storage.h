@@ -155,15 +155,6 @@ struct CollisionAgentStorage {
 
     void publish() {
         SimClockTestAccess::set_phase(clock, SimulationPhase::Preparation);
-        entity_tables.sources = {&capitals,
-                                 &fighters,
-                                 &turrets,
-                                 &spinners,
-                                 player_ids.empty() ? PlayerEntitySource{}
-                                                    : PlayerEntitySource{&player_transform,
-                                                                         &player_velocity,
-                                                                         &player_team,
-                                                                         player_ids[0]}};
         auto const capital_rows{capitals.get_const_view()};
         auto const fighter_rows{fighters.get_const_view()};
         auto const turret_rows{turrets.get_const_view()};
@@ -205,6 +196,45 @@ struct CollisionAgentStorage {
         return EntityInstanceHandle::invalid_value;
     }
 
+    auto get_read_view() const -> LevelReadView {
+        return {.capitals = {capitals.get_const_view(),
+                             health_table.get_const_view<EntityType::CapitalShip>(capitals.num()),
+                             {},
+                             {},
+                             {}},
+                .fighters = {fighters.get_const_view(),
+                             health_table.get_const_view<EntityType::Fighter>(fighters.num())},
+                .turrets = {turrets.get_const_view(),
+                            health_table.get_const_view<EntityType::Turret>(turrets.num()),
+                            {},
+                            {}},
+                .spinners = {spinners.get_const_view()},
+                .lasers = {},
+                .player = {},
+                .mission = nullptr};
+    }
+    auto player_spatial() const -> std::optional<PlayerSpatialData> {
+        if (player_ids.empty()) {
+            return {};
+        }
+        return PlayerSpatialData{player_ids[0],
+                                 to_float(player_transform.location),
+                                 to_float(player_velocity),
+                                 to_quaternion(to_float(player_transform.rotator())),
+                                 health_table.get_const_view<EntityType::PlayerShip>(1).health(0)};
+    }
+    void refresh(SpatialQueryManager& queries) const {
+        auto const view{get_read_view()};
+        queries.refresh_spatial_index(
+            view.capitals, view.fighters, view.turrets, view.spinners, player_spatial());
+    }
+    void rebuild(collision::CollisionUniformGrid& grid,
+                 collision::EntityAABBs const& bounds) const {
+        auto const view{get_read_view()};
+        grid.rebuild_entity_grid(
+            bounds, view.capitals, view.fighters, view.turrets, view.spinners, player_spatial());
+    }
+
     SimClock clock;
     EntityLedger ledger;
     CombatEvents combat_events{ledger};
@@ -219,4 +249,17 @@ struct CollisionAgentStorage {
     ml::Vector3d player_velocity{};
     Team player_team{};
 };
+
+inline auto observe_entity(CollisionAgentStorage const& owners, EntityUniqueId const id)
+    -> std::optional<EntityObservation> {
+    if (id.entity_type() == EntityType::PlayerShip) {
+        auto const player{owners.player_spatial()};
+        if (!player || player->id != id) {
+            return {};
+        }
+        return EntityObservation{
+            player->location, player->velocity, owners.player_team, player->health, 0};
+    }
+    return observe_entity(owners.get_read_view(), id);
+}
 }

@@ -94,7 +94,7 @@ struct LevelSimTestAccess {
         simulation.capital_ships_simulation_.remove_entities();
         simulation.fighters_simulation_.remove_entities();
         update_entity_lookup_tables(simulation);
-        simulation.query_manager_.refresh_spatial_index();
+        simulation.refresh_spatial_index();
         SimClockTestAccess::set_phase(simulation.clock_, previous_phase);
     }
     static void register_capitals(LevelSim& simulation, LevelCapitalSpawnEvents::ConstView spawns) {
@@ -114,7 +114,7 @@ struct LevelSimTestAccess {
         fighters.commit_spawns();
         fighters.prepare_tick(dt);
         update_entity_lookup_tables(simulation);
-        simulation.query_manager_.refresh_spatial_index();
+        simulation.refresh_spatial_index();
         SimClockTestAccess::set_phase(simulation.clock_, previous_phase);
     }
     static void set_fighter_target(LevelSim& simulation,
@@ -145,7 +145,7 @@ struct LevelSimTestAccess {
         auto const data{simulation.fighters_simulation_.entity_buffers.current().get_view()};
         set_vector(data.view_locations(), index, location);
         set_vector(data.view_velocities(), index, velocity);
-        simulation.query_manager_.refresh_spatial_index();
+        simulation.refresh_spatial_index();
     }
     static void resolve_fighter_damage(LevelSim& simulation,
                                        ml::FrameMemoryResource* const scratch_resource) {
@@ -163,7 +163,7 @@ struct LevelSimTestAccess {
         simulation.fighters_simulation_.remove_components();
         simulation.fighters_simulation_.remove_entities();
         update_entity_lookup_tables(simulation);
-        simulation.query_manager_.refresh_spatial_index();
+        simulation.refresh_spatial_index();
         SimClockTestAccess::set_phase(simulation.clock_, previous_phase);
     }
     static void refresh_fighter_targets_and_plan(LevelSim& simulation,

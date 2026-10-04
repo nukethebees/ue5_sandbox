@@ -41,14 +41,14 @@ struct FrameBacking {
     ml::FrameMemoryResource resource{bytes};
 };
 
-void initialise_queries(SpatialQueryManager& manager) {
+void initialise_queries(SpatialQueryManager& manager, CollisionAgentStorage const& owners) {
     collision::EntityAABBs bounds;
     for (auto const type : ml::EnumTraits<EntityType>::values) {
         bounds.set_centre(type, {});
         bounds.set_half_extents(type, Vector3f{{2.f, 2.f, 2.f}});
     }
     manager.initialise({{10, 10, 10}, {{10.f, 10.f, 10.f}}}, bounds);
-    manager.refresh_spatial_index();
+    owners.refresh(manager);
 }
 }
 
@@ -57,7 +57,7 @@ TEST(QueryScratch, ExhaustionDoesNotFallBackToHeap) {
     CollisionAgentStorage owners;
     owners.publish();
     SpatialQueryManager manager{owners.entity_tables};
-    query_scratch_detail::initialise_queries(manager);
+    query_scratch_detail::initialise_queries(manager, owners);
     alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64> backing{};
     ml::FrameMemoryResource frame{backing};
     {
@@ -73,7 +73,7 @@ TEST(QueryScratch, ConcurrentQueriesAllocateFromSharedFrameAndReleaseBeforeRecla
     auto const id{owners.spawn(EntityType::CapitalShip)};
     owners.publish();
     SpatialQueryManager manager{owners.entity_tables};
-    query_scratch_detail::initialise_queries(manager);
+    query_scratch_detail::initialise_queries(manager, owners);
     query_scratch_detail::FrameBacking frame;
     {
         ml::FrameScratchScope scope{frame.resource};
@@ -108,7 +108,7 @@ TEST(QueryScratch, ManagerUsesExplicitScratchAndReleasesQueriesWithinEachEpoch) 
     owners.publish();
     query_scratch_detail::CountingResource persistent;
     SpatialQueryManager manager{owners.entity_tables, &persistent};
-    query_scratch_detail::initialise_queries(manager);
+    query_scratch_detail::initialise_queries(manager, owners);
     query_scratch_detail::FrameBacking frame;
     for (int epoch{}; epoch < 3; ++epoch) {
         {
@@ -137,7 +137,7 @@ TEST(QueryScratch, PublishedOverlapBatchesSurviveScratchEpochs) {
     owners.publish();
     query_scratch_detail::CountingResource persistent;
     SpatialQueryManager manager{owners.entity_tables, &persistent};
-    query_scratch_detail::initialise_queries(manager);
+    query_scratch_detail::initialise_queries(manager, owners);
     query_scratch_detail::FrameBacking frame;
     // Resolve each epoch's outputs and each distinct batch.
     // NOLINTBEGIN(ioj-loop-view-accessor-call)

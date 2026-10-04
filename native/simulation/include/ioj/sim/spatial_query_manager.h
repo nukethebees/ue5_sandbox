@@ -126,6 +126,13 @@ struct SpatialQueryManager {
     void copy_entity_radii(std::span<EntityUniqueId const> ids,
                            std::span<float> out_radii,
                            ml::FrameMemoryResource* scratch_resource) const;
+    void copy_target_locations(std::span<EntityUniqueId const> ids,
+                               Vectors3fView locations,
+                               ml::FrameMemoryResource* scratch_resource) const;
+    void refresh_targets(std::span<EntityUniqueId> ids,
+                         Vectors3fView locations,
+                         Vectors3fView velocities,
+                         ml::FrameMemoryResource* scratch_resource) const;
 
     /* **************************************** */
     // Collision and spatial-index lifecycle
@@ -133,7 +140,11 @@ struct SpatialQueryManager {
     void set_static_collision(collision::WorldAABBs bounds);
     auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point)
         -> collision::StaticGeometryIndex;
-    void refresh_spatial_index();
+    void refresh_spatial_index(CapitalReadView capitals,
+                               FighterReadView fighters,
+                               TurretReadView turrets,
+                               SpinnerReadView spinners,
+                               std::optional<PlayerSpatialData> player = {});
     auto detect_overlaps(std::span<EntityUniqueId const> overlap_candidates,
                          ml::FrameMemoryResource* const scratch_resource)
         -> collision::DetectedOverlapsView;
@@ -156,5 +167,8 @@ struct SpatialQueryManager {
 
     collision::CollisionSystem collision_system_;
     EntityTypeRadii entity_radii_{};
+    ml::EnumArray<EntityType, Vectors3fConstView> locations_;
+    ml::EnumArray<EntityType, Vectors3fConstView> velocities_;
+    PlayerSpatialData player_spatial_;
 };
 }

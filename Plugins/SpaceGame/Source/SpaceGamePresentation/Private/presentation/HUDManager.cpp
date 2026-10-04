@@ -1,6 +1,5 @@
 #include "SpaceGamePresentation/presentation/HUDManager.h"
 
-#include "ioj/sim/entity_queries.h"
 #include "ioj/sim/mission_manager.h"
 #include "ioj/sim/player/sim.h"
 #include "ioj/sim/spatial_query_manager.h"
@@ -8,7 +7,11 @@
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/entity_types.h>
+#include <ioj/sim/fighters/sim.h>
+#include <ioj/sim/spinners/sim.h>
+#include <ioj/sim/turrets/sim.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/integration/TransformConversion.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
@@ -42,7 +45,10 @@ TRACE_DECLARE_INT_COUNTER(SandboxRadarUploadBytes, TEXT("Sandbox/Radar/UploadByt
 void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                              ::ioj::sim::MissionManager const& new_mission_manager,
                              ::ioj::sim::EntityLedger const& new_entity_ledger,
-                             ::ioj::sim::EntityTables const& new_entity_tables,
+                             ::ioj::sim::capital_ships::Sim const& new_capitals,
+                             ::ioj::sim::fighters::Sim const& new_fighters,
+                             ::ioj::sim::turrets::Sim const& new_turrets,
+                             ::ioj::sim::spinners::Sim const& new_spinners,
                              ::ioj::sim::SpatialQueryManager const& new_spatial_query_manager,
                              ::ioj::sim::player::Sim const* const new_player_ship,
                              FLevelVisualConfig const& level_config,
@@ -84,7 +90,10 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
 
     mission_manager = &new_mission_manager;
     entity_ledger = &new_entity_ledger;
-    entity_tables_ = &new_entity_tables;
+    capitals_ = &new_capitals;
+    fighters_ = &new_fighters;
+    turrets_ = &new_turrets;
+    spinners_ = &new_spinners;
     spatial_query_manager = &new_spatial_query_manager;
     player_ship = new_player_ship;
     entity_overlay_settings_ = entity_overlay_settings;
@@ -227,7 +236,10 @@ void FHUDManager::deactivate() {
     player_ship = nullptr;
     mission_manager = nullptr;
     entity_ledger = nullptr;
-    entity_tables_ = nullptr;
+    capitals_ = nullptr;
+    fighters_ = nullptr;
+    turrets_ = nullptr;
+    spinners_ = nullptr;
     spatial_query_manager = nullptr;
     mission_data_buffers = {};
     entity_count_data_buffers = {};
@@ -412,12 +424,46 @@ void FHUDManager::update_entity_overlays(float const delta_seconds) {
     }
 }
 
+auto FHUDManager::display_batches() const -> std::array<::ml::presentation::AgentDisplayBatch, 4> {
+    check(capitals_ && fighters_ && turrets_ && spinners_);
+    auto const capitals{capitals_->get_read_view()};
+    auto const fighters{fighters_->get_read_view()};
+    auto const turrets{turrets_->get_read_view()};
+    auto const spinners{spinners_->get_read_view()};
+    using ::ioj::sim::EntityType;
+    return {{
+        {EntityType::CapitalShip,
+         capitals.entities.entity_ids(),
+         capitals.entities.view_locations(),
+         {},
+         capitals.healths,
+         capitals.entities.teams()},
+        {EntityType::Fighter,
+         fighters.entities.entity_ids(),
+         fighters.entities.view_locations(),
+         fighters.entities.view_velocities(),
+         fighters.healths,
+         fighters.entities.teams()},
+        {EntityType::Turret,
+         turrets.entities.entity_ids(),
+         turrets.entities.view_locations(),
+         {},
+         turrets.healths,
+         turrets.entities.teams()},
+        {EntityType::TubeSpinner,
+         spinners.entities.entity_ids(),
+         spinners.entities.view_locations(),
+         {},
+         {},
+         {}},
+    }};
+}
+
 void FHUDManager::update_entity_overlay_objective_roles() {
     check(mission_manager);
-    check(entity_tables_);
-    auto const batches{::ioj::sim::display_batches(*entity_tables_)};
+    auto const batches{display_batches()};
     entity_overlay_objective_roles_.Init(EEntityOverlayObjectiveRole::None,
-                                         ::ioj::sim::display_entity_count(batches));
+                                         ::ml::presentation::display_entity_count(batches));
     if (!mission_manager->mission_running()) {
         return;
     }
@@ -489,7 +535,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
     controller->GetPlayerViewPoint(camera_location, camera_rotation);
 
     check(entity_ledger);
-    auto const batches{::ioj::sim::display_batches(*entity_tables_)};
+    auto const batches{display_batches()};
     FSoftTargetSelectionResult soft_target;
     if (registration.ship_hud.IsValid() && validate_player_ship_for_collection()) {
         auto const firing_transform{player_ship->get_middle_socket()};
@@ -806,7 +852,7 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
 
     check(entity_ledger);
     auto const result{
-        collect_radar_instances(::ioj::sim::display_batches(*entity_tables_),
+        collect_radar_instances(display_batches(),
                                 entity_overlay_objective_roles_,
                                 radar_contact_colours_,
                                 ml::to_unreal(player_ship->get_physical_state().transform),
@@ -841,20 +887,16 @@ void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) con
     auto& static_data{out.static_data};
     static_data.mission_mode = mission_manager->get_mission_mode();
     static_data.surviving_entity_ids.Reset();
+    static_data.surviving_entity_types.Reset();
     for (auto const value : mission_manager->get_entity_ids_that_must_survive()) {
         static_data.surviving_entity_ids.Add(value);
-    }
-    static_data.surviving_entity_types.Reset();
-    for (auto const value : mission_manager->get_entity_types_that_must_survive()) {
-        static_data.surviving_entity_types.Add(value);
+        static_data.surviving_entity_types.Add(value.entity_type());
     }
     static_data.required_kill_entity_ids.Reset();
+    static_data.required_kill_entity_types.Reset();
     for (auto const value : mission_manager->get_entity_ids_required_to_kill()) {
         static_data.required_kill_entity_ids.Add(value);
-    }
-    static_data.required_kill_entity_types.Reset();
-    for (auto const value : mission_manager->get_entity_types_required_to_kill()) {
-        static_data.required_kill_entity_types.Add(value);
+        static_data.required_kill_entity_types.Add(value.entity_type());
     }
 
     auto& status_data{out.status_data};

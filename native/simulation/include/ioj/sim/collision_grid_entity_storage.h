@@ -5,6 +5,8 @@
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/world_aabbs.h"
 
+#include <sandbox/core/enum_array.h>
+
 #include <cstdint>
 #include <vector>
 
@@ -27,5 +29,6 @@ struct CollisionGridEntityStorage {
     /* **************************************** */
     std::vector<CellEntryOffset> cell_write_indices;
     EntityCellData rebuild_entity_data;
+    ml::EnumArray<EntityType, std::vector<std::uint32_t>> bound_rows;
 };
 } // namespace ioj::sim::collision

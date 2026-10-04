@@ -114,14 +114,14 @@ auto team_colour(::ioj::sim::EntityType const type,
 }
 }
 
-auto select_soft_target(std::span<::ioj::sim::AgentDisplayBatch const> const batches,
+auto select_soft_target(std::span<::ml::presentation::AgentDisplayBatch const> const batches,
                         ::ioj::sim::EntityTypeRadii const& entity_type_radii,
                         TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                         FSoftTargetSelectionContext const& context,
                         FSoftTargetSelectionSettings const& settings,
                         ::ioj::sim::EntityUniqueId const current_target)
     -> FSoftTargetSelectionResult {
-    check(objective_roles.Num() == ::ioj::sim::display_entity_count(batches));
+    check(objective_roles.Num() == ::ml::presentation::display_entity_count(batches));
     if (!context.view.is_valid()) {
         return {};
     }
@@ -295,7 +295,7 @@ auto select_soft_target(std::span<::ioj::sim::AgentDisplayBatch const> const bat
 }
 
 auto collect_entity_overlay_instances(
-    std::span<::ioj::sim::AgentDisplayBatch const> const batches,
+    std::span<::ml::presentation::AgentDisplayBatch const> const batches,
     ::ioj::sim::EntityTypeRadii const& entity_type_radii,
     TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
     FEntityOverlayTeamColours const& team_colours,
@@ -305,10 +305,10 @@ auto collect_entity_overlay_instances(
     TArray<FEntityOverlayInstance>& output_instances,
     FEntityOverlayCollector& collector) -> FEntityOverlayCollectionResult {
     TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::CollectAgentSource);
-    check(objective_roles.Num() == ::ioj::sim::display_entity_count(batches));
+    check(objective_roles.Num() == ::ml::presentation::display_entity_count(batches));
     collector.begin(origin, FMath::Max(maximum_range, 0.0f), output_instances);
 
-    auto const count{::ioj::sim::display_entity_count(batches)};
+    auto const count{::ml::presentation::display_entity_count(batches)};
     output_instances.Reserve(count);
     int32 output_index{};
     for (auto const& batch : batches) {

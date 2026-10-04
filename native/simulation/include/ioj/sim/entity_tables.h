@@ -1,7 +1,6 @@
 #pragma once
 
 #include <ioj/sim/entity_lookup_table.h>
-#include <ioj/sim/entity_read_sources.h>
 #include <ioj/sim/health_table.h>
 
 namespace ioj::sim {
@@ -25,6 +24,5 @@ struct EntityTables {
 
     EntityLookupTables lookups;
     HealthTable health;
-    EntityReadSources sources;
 };
 }

@@ -217,7 +217,6 @@ void Sim::begin_play() {
     assert(config.attack_distance_band.values_are_valid());
 }
 void Sim::update_entity_lookup_table() {
-    entity_tables_.sources.fighters = &entity_buffers.current();
     auto const rows{entity_buffers.current().get_const_view()};
     entity_tables_.publish<EntityType::Fighter>(rows.entity_ids(), rows.teams(), config.health);
 }
@@ -1257,36 +1256,14 @@ void Sim::set_target_id(EntityUniqueId const fighter, EntityUniqueId const new_t
 void Sim::refresh_target_data(ml::FrameMemoryResource* const scratch_resource) {
     auto const data{entity_buffers.current().get_view()};
     auto const count{data.num()};
-    ml::FrameArray<std::uint32_t> order{scratch_resource};
-    ml::FrameArray<std::uint8_t> alive{scratch_resource};
-    order.set_num(count);
-    alive.set_num(count);
     auto const target_ids{data.target_ids()};
     auto const target_radii{data.target_radii()};
-
+    spatial_query_manager.refresh_targets(
+        target_ids, data.view_target_locations(), data.view_target_velocities(), scratch_resource);
     for (std::uint32_t index{}; index < count; ++index) {
-        auto const target_id{target_ids[index]};
+        auto const id{target_ids[index]};
         target_radii[index] =
-            target_id.is_valid()
-                ? spatial_query_manager.get_entity_type_radius(target_id.entity_type())
-                : 0.f;
-    }
-    gather_entities(entity_tables_,
-                    target_ids,
-                    order,
-                    {{data.view_target_locations().xs(),
-                      data.view_target_locations().ys(),
-                      data.view_target_locations().zs()},
-                     {data.view_target_velocities().xs(),
-                      data.view_target_velocities().ys(),
-                      data.view_target_velocities().zs()},
-                     {},
-                     alive});
-    for (std::uint32_t index{}; index < count; ++index) {
-        if (!alive[index]) {
-            target_ids[index] = {};
-            target_radii[index] = 0.f;
-        }
+            id.is_valid() ? spatial_query_manager.get_entity_type_radius(id.entity_type()) : 0.f;
     }
     distance_and_squared(data.target_distances(),
                          data.target_distance_sq(),
@@ -1359,7 +1336,6 @@ void Sim::refresh_layout() {
         }
     }
     entity_tables_.health.apply_permutation<EntityType::Fighter>(layout_order_);
-    entity_tables_.sources.fighters = &new_data;
     if (reordered) {
         ++layout_revision_;
     }

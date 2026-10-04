@@ -108,8 +108,6 @@ void Sim::begin_play() {
 }
 
 void Sim::update_entity_lookup_table() {
-    entity_tables_.sources.player = {
-        &state_.physical.transform, &state_.physical.velocity, &team, unique_entity_id};
     entity_tables_.publish<EntityType::PlayerShip>({&unique_entity_id, 1}, {&team, 1}, max_health_);
 }
 void Sim::prepare_tick(float const dt) {

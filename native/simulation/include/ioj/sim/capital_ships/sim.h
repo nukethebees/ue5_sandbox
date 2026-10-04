@@ -1,7 +1,6 @@
 #pragma once
 #include <ioj/sim/capital_entity_data.h>
 #include <ioj/sim/entity_death_info.h>
-#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/fighter_order_queue.h>

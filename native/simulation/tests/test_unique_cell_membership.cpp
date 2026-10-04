@@ -21,7 +21,7 @@ class UniqueCellMembership : public ::testing::Test {
 
     void rebuild() {
         owners.publish();
-        queries.refresh_spatial_index();
+        owners.refresh(queries);
     }
 
     CollisionAgentStorage owners;

@@ -1,13 +1,14 @@
 #pragma once
 #include <ioj/sim/capital_ships/phase_interface.h>
 #include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/team_list.h>
 #include <ioj/sim/entity_ledger.h>
-#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/fighters/phase_interface.h>
 #include <ioj/sim/fighters/sim.h>
+#include <ioj/sim/frame_vectors3f.h>
 #include <ioj/sim/lasers/phase_interface.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/level_read_view.h>
@@ -19,6 +20,7 @@
 #include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/phase_interface.h>
 #include <ioj/sim/player/sim.h>
+#include <ioj/sim/rotator_math.h>
 #include <ioj/sim/sim_state.h>
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/spinners/phase_interface.h>
@@ -154,6 +156,7 @@ struct LevelSim {
         return frame_memory_.get_stats();
     }
   private:
+    void refresh_spatial_index();
     friend struct LevelSimTestAccess;
 
     /* **************************************** */

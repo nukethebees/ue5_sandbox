@@ -43,7 +43,11 @@ class CollisionSystem {
     /* **************************************** */
     // Spatial-index lifecycle
     /* **************************************** */
-    void refresh_spatial_index();
+    void refresh_spatial_index(CapitalReadView capitals,
+                               FighterReadView fighters,
+                               TurretReadView turrets,
+                               SpinnerReadView spinners,
+                               std::optional<PlayerSpatialData> player);
 
     /* **************************************** */
     // Overlap detection

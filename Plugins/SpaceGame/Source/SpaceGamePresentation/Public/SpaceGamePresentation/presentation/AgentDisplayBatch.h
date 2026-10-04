@@ -7,7 +7,14 @@
 
 #include <span>
 
-namespace ioj::sim {
+namespace ml::presentation {
+using ::ioj::sim::EntityType;
+using ::ioj::sim::EntityUniqueId;
+using ::ioj::sim::Health;
+using ::ioj::sim::HealthConstView;
+using ::ioj::sim::Team;
+using ::ioj::sim::Vector3f;
+using ::ioj::sim::Vectors3fConstView;
 // Borrowed owner columns, valid only until the next structural mutation.
 // Static/indestructible owners omit columns whose values are constant.
 struct AgentDisplayBatch {
@@ -26,7 +33,7 @@ struct AgentDisplayBatch {
         return teams.empty() ? Team::White : teams[index];
     }
     auto velocity(std::uint32_t index) const -> Vector3f {
-        return velocities.num() == 0 ? Vector3f{} : vector_at(velocities, index);
+        return velocities.num() == 0 ? Vector3f{} : velocities[index];
     }
 };
 inline auto display_entity_count(std::span<AgentDisplayBatch const> batches) -> std::uint32_t {

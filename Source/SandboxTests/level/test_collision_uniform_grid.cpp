@@ -51,9 +51,7 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         config.omitted_collision_actor_classes.Add(
             ASandboxTestOmittedCollisionActor::StaticClass());
 
-        ::ioj::sim::SimClock clock;
-        ::ioj::sim::EntityTables tables{clock};
-        ::ioj::sim::collision::CollisionUniformGrid grid{tables};
+        ::ioj::sim::collision::CollisionUniformGrid grid;
         auto const configured_dims{config.calculate_grid_dimensions()};
         auto const grid_geometry{::ioj::sim::collision::GridGeometry{
             {configured_dims.X, configured_dims.Y, configured_dims.Z},

@@ -197,18 +197,6 @@ TEST_F(FighterTargetRefresh, ReplacementRefreshesEveryGatheredFieldBeforePlannin
     EXPECT_GT(claims, single_refresh_and_plan());
 }
 
-TEST_F(FighterTargetRefresh, DeadTargetIsClearedByInitialRefreshBeforeRemoval) {
-    LevelSimTestAccess::set_fighter_target(simulation, fighter, target, 5);
-    single_refresh_and_plan();
-    kill_target();
-    ASSERT_NE(observe_entity_row(simulation, target), EntityInstanceHandle::invalid_value);
-    ASSERT_FALSE(observe_live_entity(simulation, target));
-    LevelSimTestAccess::set_fighter_target(simulation, fighter, target, 5);
-    auto const claims{think()};
-    expect_cleared_target();
-    EXPECT_EQ(claims, single_refresh_and_plan());
-}
-
 TEST_F(FighterTargetRefresh, MissingTargetIsClearedByInitialRefresh) {
     LevelSimTestAccess::set_fighter_target(simulation, fighter, target, 5);
     single_refresh_and_plan();

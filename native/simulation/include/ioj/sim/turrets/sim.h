@@ -1,6 +1,5 @@
 #pragma once
 #include <ioj/sim/entity_death_info.h>
-#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/levels/level_runtime_events.h>

@@ -1,14 +1,12 @@
 target_sources(native-simulation PRIVATE
   entity_ledger.cpp
   ../include/ioj/sim/entity_ledger.h
-  entity_queries.cpp
   damage_queue.cpp
   ../include/ioj/sim/combat_events.h
   ../include/ioj/sim/damage_queue.h
   ../include/ioj/sim/entity_lookup_table.h
-  ../include/ioj/sim/agent_display_batch.h
-  ../include/ioj/sim/entity_queries.h
-  ../include/ioj/sim/entity_read_sources.h
+  ../include/ioj/sim/entity_type_runs.h
+  ../include/ioj/sim/player_spatial_data.h
   ../include/ioj/sim/attack_distance_band.h
   ../include/ioj/sim/base_sim_config.h
   ../include/ioj/sim/batch_operations.h
