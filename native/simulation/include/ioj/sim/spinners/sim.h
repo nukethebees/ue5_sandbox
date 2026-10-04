@@ -7,7 +7,6 @@
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/sim_config.h>
 #include <ioj/sim/spinner_entity_data.h>
-#include <ioj/sim/system_read_views.h>
 
 #include <sandbox/core/frame_memory_resource.h>
 
@@ -40,7 +39,7 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_read_view() const -> SpinnerReadView { return {entities.get_const_view()}; }
+    auto get_entities() const -> EntityStorage::ConstView { return entities.get_const_view(); }
     void set_config(SpinnerSimConfig const& new_config) noexcept;
 
     /* **************************************** */

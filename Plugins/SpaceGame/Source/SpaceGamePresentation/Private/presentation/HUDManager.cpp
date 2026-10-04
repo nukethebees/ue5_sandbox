@@ -426,36 +426,31 @@ void FHUDManager::update_entity_overlays(float const delta_seconds) {
 
 auto FHUDManager::display_batches() const -> std::array<::ml::presentation::AgentDisplayBatch, 4> {
     check(capitals_ && fighters_ && turrets_ && spinners_);
-    auto const capitals{capitals_->get_read_view()};
-    auto const fighters{fighters_->get_read_view()};
-    auto const turrets{turrets_->get_read_view()};
-    auto const spinners{spinners_->get_read_view()};
+    auto const capitals{capitals_->get_entities()};
+    auto const fighters{fighters_->get_entities()};
+    auto const turrets{turrets_->get_entities()};
+    auto const spinners{spinners_->get_entities()};
     using ::ioj::sim::EntityType;
     return {{
         {EntityType::CapitalShip,
-         capitals.entities.entity_ids(),
-         capitals.entities.view_locations(),
+         capitals.entity_ids(),
+         capitals.view_locations(),
          {},
-         capitals.healths,
-         capitals.entities.teams()},
+         capitals_->get_healths(),
+         capitals.teams()},
         {EntityType::Fighter,
-         fighters.entities.entity_ids(),
-         fighters.entities.view_locations(),
-         fighters.entities.view_velocities(),
-         fighters.healths,
-         fighters.entities.teams()},
+         fighters.entity_ids(),
+         fighters.view_locations(),
+         fighters.view_velocities(),
+         fighters_->get_healths(),
+         fighters.teams()},
         {EntityType::Turret,
-         turrets.entities.entity_ids(),
-         turrets.entities.view_locations(),
+         turrets.entity_ids(),
+         turrets.view_locations(),
          {},
-         turrets.healths,
-         turrets.entities.teams()},
-        {EntityType::TubeSpinner,
-         spinners.entities.entity_ids(),
-         spinners.entities.view_locations(),
-         {},
-         {},
-         {}},
+         turrets_->get_healths(),
+         turrets.teams()},
+        {EntityType::TubeSpinner, spinners.entity_ids(), spinners.view_locations(), {}, {}, {}},
     }};
 }
 

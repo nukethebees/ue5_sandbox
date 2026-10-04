@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/system_read_views.h>
+#include <ioj/sim/turrets/sim.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
 
@@ -18,7 +18,7 @@ struct SPACEGAMEPRESENTATION_API FTurretPresentation {
     explicit FTurretPresentation(UInstancedStaticMeshComponent& component);
     void set_actor_config(FTurretConfig const* new_config) noexcept;
   private:
-    auto view() const -> ::ioj::sim::TurretReadView const& { return view_; }
+    auto simulation() const -> ::ioj::sim::turrets::Sim const& { return *simulation_; }
     void ValidateOptionalAssets() const;
     void clear_runtime_state_presentation();
     void begin_play_presentation(TArray<FTransform> initial_transforms);
@@ -34,7 +34,7 @@ struct SPACEGAMEPRESENTATION_API FTurretPresentation {
     void validate_array_sizes() const;
 
     FTurretConfig const* actor_config{nullptr};
-    ::ioj::sim::TurretReadView view_{};
+    ::ioj::sim::turrets::Sim const* simulation_{};
 
     UInstancedStaticMeshComponent* instances{nullptr};
     TArray<FTransform> ismc_transforms;

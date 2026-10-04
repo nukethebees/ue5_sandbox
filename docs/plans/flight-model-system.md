@@ -32,7 +32,7 @@ The current command path is:
 3. `ATestSpaceShip` converts Unreal values and forwards through generated
    `ioj::sim::player::CommandInterface` methods.
 4. `ioj::sim::player::Sim` stores input fields and updates movement during its normal phased tick.
-5. `PlayerReadView` feeds Unreal presentation and HUD code.
+5. Read-only access to the player simulation feeds Unreal presentation and HUD code.
 
 Important current behavior and debt:
 

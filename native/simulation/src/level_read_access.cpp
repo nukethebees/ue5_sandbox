@@ -5,24 +5,23 @@
 #include <algorithm>
 
 namespace ioj::sim {
-auto LevelReadAccess::get_capitals() const -> CapitalReadView {
-    return level_.get_capital_ships().get_read_view();
+auto LevelReadAccess::get_capitals() const -> capital_ships::Sim const& {
+    return level_.get_capital_ships();
 }
-auto LevelReadAccess::get_fighters() const -> FighterReadView {
-    return level_.get_fighters().get_read_view();
+auto LevelReadAccess::get_fighters() const -> fighters::Sim const& {
+    return level_.get_fighters();
 }
-auto LevelReadAccess::get_turrets() const -> TurretReadView {
-    return level_.get_turrets().get_read_view();
+auto LevelReadAccess::get_turrets() const -> turrets::Sim const& {
+    return level_.get_turrets();
 }
-auto LevelReadAccess::get_spinners() const -> SpinnerReadView {
-    return level_.get_spinners().get_read_view();
+auto LevelReadAccess::get_spinners() const -> spinners::Sim const& {
+    return level_.get_spinners();
 }
-auto LevelReadAccess::get_lasers() const -> LaserReadView {
-    return level_.get_lasers().get_read_view();
+auto LevelReadAccess::get_lasers() const -> lasers::Sim const& {
+    return level_.get_lasers();
 }
-auto LevelReadAccess::get_player() const -> std::optional<PlayerReadView> {
-    auto const* player{level_.get_player_ship_simulation()};
-    return player ? std::optional{player->get_read_view()} : std::nullopt;
+auto LevelReadAccess::get_player() const -> player::Sim const* {
+    return level_.get_player_ship_simulation();
 }
 auto LevelReadAccess::get_clock() const -> SimClock const& {
     return level_.get_clock();

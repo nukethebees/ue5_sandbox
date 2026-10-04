@@ -65,7 +65,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     std::map<EntityUniqueId, FighterTransformSnapshot> previous_transforms;
     auto capture_current_transforms = [&](fighters::Sim const& fighters) {
         previous_transforms.clear();
-        auto const entities{fighters.get_read_view().entities};
+        auto const entities{fighters.get_entities()};
         auto const entity_count{entities.num()};
         auto const entity_ids{entities.entity_ids()};
         auto const locations{entities.view_locations()};
@@ -84,7 +84,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     std::int32_t observed_moved_fighters{};
     bool observed_empty_tick{};
     harness.on_end_tick = [&](LevelSim& level) {
-        auto const entities{level.get_fighters().get_read_view().entities};
+        auto const entities{level.get_fighters().get_entities()};
         std::set<EntityUniqueId> expected_moved;
         auto const entity_count{entities.num()};
         auto const entity_ids{entities.entity_ids()};

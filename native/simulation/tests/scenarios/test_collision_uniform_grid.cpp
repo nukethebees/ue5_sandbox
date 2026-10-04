@@ -268,12 +268,11 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
 
     ml::EnumArray<EntityType, EntityUniqueId> expected_ids{};
     expected_ids[EntityType::PlayerShip] = player->unique_entity_id;
-    expected_ids[EntityType::Turret] =
-        simulation.get_turrets().get_read_view().entities.entity_ids()[0];
+    expected_ids[EntityType::Turret] = simulation.get_turrets().get_entities().entity_ids()[0];
     expected_ids[EntityType::CapitalShip] = simulation.get_capital_ships().get_id(0);
     expected_ids[EntityType::Fighter] = fighter_ids[0];
     expected_ids[EntityType::TubeSpinner] =
-        simulation.get_spinners().get_read_view().entities.entity_ids()[0];
+        simulation.get_spinners().get_entities().entity_ids()[0];
     auto const& spatial_queries{simulation.get_spatial_query_manager()};
     auto const& grid{SpatialQueryManagerTestAccess::uniform_grid(spatial_queries)};
     auto const& entity_aabbs{SpatialQueryManagerTestAccess::entity_aabbs(spatial_queries)};

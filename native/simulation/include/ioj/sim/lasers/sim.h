@@ -4,7 +4,6 @@
 #include <ioj/sim/lasers/frame_scratch.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/sim_config.h>
-#include <ioj/sim/system_read_views.h>
 
 #include <sandbox/core/frame_memory_resource.h>
 #include <sandbox/core/single_allocation/concepts.h>
@@ -39,11 +38,13 @@ struct Sim {
     auto operator=(Sim const&) -> Sim& = delete;
     auto operator=(Sim&&) -> Sim& = delete;
 
-    auto get_read_view() const -> LaserReadView {
-        return {entities.get_const_view(),
-                frame_output_.hits.get_const_view(),
-                frame_output_.hit_ticks,
-                frame_output_.hit_ordinals};
+    auto get_entities() const -> EntityStorage::ConstView { return entities.get_const_view(); }
+    auto get_hits() const -> LaserHitDetails::ConstView {
+        return frame_output_.hits.get_const_view();
+    }
+    auto get_hit_ticks() const -> std::span<SimTick const> { return frame_output_.hit_ticks; }
+    auto get_hit_ordinals() const -> std::span<std::int32_t const> {
+        return frame_output_.hit_ordinals;
     }
     void reset_frame_output() { frame_output_.reset(); }
     auto get_num_instances() const noexcept -> std::uint32_t;

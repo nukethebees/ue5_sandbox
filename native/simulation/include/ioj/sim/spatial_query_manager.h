@@ -1,9 +1,10 @@
 #pragma once
-
 #include <ioj/sim/collision/collision_system.h>
+#include <ioj/sim/entity_instance_handle.h>
 #include <ioj/sim/entity_type_radii.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/line_traces.h>
+#include <ioj/sim/player_spatial_data.h>
 #include <ioj/sim/query_result_types.h>
 #include <ioj/sim/trace_hits.h>
 
@@ -14,6 +15,7 @@
 
 namespace ioj::sim {
 struct EntityTables;
+class LevelReadAccess;
 struct FrameRangeQueryResults;
 struct SpatialQueryManager;
 struct SpatialQueryManagerTestAccess;
@@ -137,11 +139,7 @@ struct SpatialQueryManager {
     void set_static_collision(collision::WorldAABBs bounds);
     auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point)
         -> collision::StaticGeometryIndex;
-    void refresh_spatial_index(CapitalReadView capitals,
-                               FighterReadView fighters,
-                               TurretReadView turrets,
-                               SpinnerReadView spinners,
-                               std::optional<PlayerSpatialData> player = {});
+    void refresh_spatial_index(LevelReadAccess const& level);
     auto detect_overlaps(std::span<EntityUniqueId const> overlap_candidates,
                          ml::FrameMemoryResource* const scratch_resource)
         -> collision::DetectedOverlapsView;

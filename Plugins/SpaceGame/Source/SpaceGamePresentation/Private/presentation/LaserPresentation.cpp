@@ -55,14 +55,16 @@ void FLaserPresentation::begin_play_presentation() {
     debug_drawer.world = instances->GetWorld();
 #endif
 
-    update_visual_data();
+    update_visual_data(false);
     validate_array_sizes();
 }
 
-void FLaserPresentation::update_visual_data() {
+void FLaserPresentation::update_visual_data(bool const consume_hits) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_visual_data);
     update_ismc();
-    queue_hit_sparks();
+    if (consume_hits) {
+        queue_hit_sparks();
+    }
 }
 
 void FLaserPresentation::end_tick_presentation() {
@@ -100,9 +102,10 @@ auto FLaserPresentation::source_colour(::ioj::sim::LaserSource const source) con
 }
 void FLaserPresentation::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_ismc);
-    auto const active{view().entities.active()};
-    auto const count{static_cast<int32>(view().entities.num())};
-    auto const locations{view().entities.view_locations()};
+    auto const entities{simulation().get_entities()};
+    auto const active{entities.active()};
+    auto const count{static_cast<int32>(entities.num())};
+    auto const locations{entities.view_locations()};
     FBox3f position_bounds{ForceInit};
     visible_indices_.Reset();
     for (int32 index{}; index < count; ++index) {
@@ -119,7 +122,7 @@ void FLaserPresentation::update_ismc() {
 }
 
 void FLaserPresentation::fill_chunk(FSandboxISMCInstanceChunkWriter& chunk) const {
-    auto const entities{view().entities};
+    auto const entities{simulation().get_entities()};
     auto const first_index{chunk.first_index()};
     auto const chunk_count{chunk.num()};
     auto const locations{entities.view_locations()};
@@ -160,7 +163,9 @@ void FLaserPresentation::queue_hit_sparks() {
         return;
     }
 
-    auto const& hit_details{view().hits};
+    auto const hit_details{simulation().get_hits()};
+    auto const hit_ticks{simulation().get_hit_ticks()};
+    auto const hit_ordinals{simulation().get_hit_ordinals()};
     auto const count{ml::num(hit_details)};
     auto const& style{actor_config->impact_sparks};
     auto const locations{hit_details.view_locations()};
@@ -177,7 +182,7 @@ void FLaserPresentation::queue_hit_sparks() {
                     .direction = ml::to_unreal(::ioj::sim::vector_at(directions, index)),
                     .colour = FVector3f{colour.R, colour.G, colour.B},
                     .seed = SpaceGame::LaserPresentation::Private::make_seed(
-                        view().hit_ticks[index], location, view().hit_ordinals[index]),
+                        hit_ticks[index], location, hit_ordinals[index]),
                 },
             .style = style,
         });
@@ -185,7 +190,7 @@ void FLaserPresentation::queue_hit_sparks() {
 }
 
 void FLaserPresentation::validate_array_sizes() const {
-    view().entities.validate();
+    simulation().get_entities().validate();
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(visible_indices_.Num()),
         SANDBOX_NAMED_NUM(instances->get_instance_count()),

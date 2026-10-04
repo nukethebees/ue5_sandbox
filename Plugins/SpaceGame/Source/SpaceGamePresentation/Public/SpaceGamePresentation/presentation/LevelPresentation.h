@@ -49,5 +49,4 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     uint64 last_frame_sequence_{};
     uint64 tick_count_{};
     ::ioj::sim::SimTick last_completed_tick_{};
-    void update_views(::ioj::sim::LevelReadAccess const& view, bool consume_changes);
 };

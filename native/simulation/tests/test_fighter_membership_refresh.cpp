@@ -69,20 +69,20 @@ class FighterMembershipRefresh : public ::testing::Test {
     }
 
     void expect_membership() {
-        auto const capitals{simulation.get_capital_ships().get_read_view()};
-        auto const fighter_view{simulation.get_fighters().get_read_view()};
-        auto const& entities{fighter_view.entities};
+        auto const& capitals{simulation.get_capital_ships()};
+        auto const& fighter_view{simulation.get_fighters()};
+        auto const& entities{fighter_view.get_entities()};
         std::vector<EntityUniqueId> flat;
         std::uint32_t offset{};
-        auto const capital_count{capitals.entities.num()};
+        auto const capital_count{capitals.get_entities().num()};
         auto const fighter_count{entities.num()};
         auto const parent_ids{entities.parent_ids()};
-        auto const capital_ids{capitals.entities.entity_ids()};
+        auto const capital_ids{capitals.get_entities().entity_ids()};
         auto const fighter_ids{entities.entity_ids()};
         for (std::uint32_t capital_index{}; capital_index < capital_count; ++capital_index) {
             std::vector<EntityUniqueId> expected;
             for (std::uint32_t fighter_index{}; fighter_index < fighter_count; ++fighter_index) {
-                if (is_alive(fighter_view.healths.health(fighter_index)) &&
+                if (is_alive(fighter_view.get_healths().health(fighter_index)) &&
                     parent_ids[fighter_index] == capital_ids[capital_index]) {
                     expected.push_back(fighter_ids[fighter_index]);
                 }
@@ -92,7 +92,7 @@ class FighterMembershipRefresh : public ::testing::Test {
             auto const actual{simulation.get_capital_ships().get_fighter_ids(capital_index)};
             EXPECT_TRUE(std::ranges::equal(actual, expected));
             EXPECT_TRUE(std::ranges::equal(capitals.get_fighter_ids(capital_index), expected));
-            EXPECT_EQ(capitals.entities.fighter_id_spans()[capital_index],
+            EXPECT_EQ(capitals.get_entities().fighter_id_spans()[capital_index],
                       (IndexSpan{offset, static_cast<std::uint32_t>(expected.size())}));
             offset += static_cast<std::uint32_t>(expected.size());
             flat.insert(flat.end(), expected.begin(), expected.end());

@@ -15,6 +15,7 @@ class FrameMemoryResource;
 
 namespace ioj::sim {
 struct EntityTables;
+class LevelReadAccess;
 struct SpatialQueryManager;
 struct SpatialQueryManagerTestAccess;
 }
@@ -43,11 +44,7 @@ class CollisionSystem {
     /* **************************************** */
     // Spatial-index lifecycle
     /* **************************************** */
-    void refresh_spatial_index(CapitalReadView capitals,
-                               FighterReadView fighters,
-                               TurretReadView turrets,
-                               SpinnerReadView spinners,
-                               std::optional<PlayerSpatialData> player);
+    void refresh_spatial_index(LevelReadAccess const& level);
 
     /* **************************************** */
     // Overlap detection

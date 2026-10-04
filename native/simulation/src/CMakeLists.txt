@@ -89,7 +89,7 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/spatial.h
   ../include/ioj/sim/spinner_entity_data.h
   ../include/ioj/sim/step_response.h
-  ../include/ioj/sim/system_read_views.h
+  ../include/ioj/sim/entity_frame_change.h
   ../include/ioj/sim/testing/level_sim_test_access.h
   ../include/ioj/sim/testing/laser_spawns.h
   ../include/ioj/sim/testing/spatial_query_manager_test_access.h
