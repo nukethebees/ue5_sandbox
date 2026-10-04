@@ -20,7 +20,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogEntityOverlayBenchmark, Log, All);
 namespace {
 auto make_view(::ioj::sim::TurretEntityData const& entities,
                ::ioj::sim::HealthTable const& health_table)
-    -> std::array<::ioj::sim::AgentDisplayBatch, 1> {
+    -> std::array<::ml::presentation::AgentDisplayBatch, 1> {
     auto const data{entities.get_const_view()};
     return {{{::ioj::sim::EntityType::Turret,
               data.entity_ids(),

@@ -138,7 +138,7 @@ void LevelSim::finish_initialisation() {
     fighters_simulation_.update_entity_lookup_table();
     turrets_simulation_.update_entity_lookup_table();
     spinners_simulation_.update_entity_lookup_table();
-    query_manager_.refresh_spatial_index();
+    refresh_spatial_index();
 
     clock_.transition_to(SimulationPhase::StableSetup);
 
@@ -348,7 +348,7 @@ void LevelSim::advance(time_type const dt) {
             turrets_phase_.prepare_tick(tick_period);
             spinners_phase_.prepare_tick(tick_period);
 
-            query_manager_.refresh_spatial_index();
+            refresh_spatial_index();
         }
 
         /* -------------------------------------------------------------------------------- */
@@ -443,7 +443,7 @@ void LevelSim::advance(time_type const dt) {
                 auto const duplicates{std::ranges::unique(overlap_candidates_)};
                 overlap_candidates_.erase(duplicates.begin(), duplicates.end());
 
-                query_manager_.refresh_spatial_index();
+                refresh_spatial_index();
                 ml::FrameScratchScope scratch_scope{frame_memory_};
                 auto const overlaps{
                     // Detection creates a new scratch-backed result for this tick.
@@ -509,7 +509,7 @@ void LevelSim::advance(time_type const dt) {
 
                 // Keep geometry-only queries valid between ticks after removing dead owners.
                 if (removed_entities) {
-                    query_manager_.refresh_spatial_index();
+                    refresh_spatial_index();
                 }
             }
 
@@ -536,6 +536,24 @@ void LevelSim::advance(time_type const dt) {
 /* **************************************** */
 // Read views
 /* **************************************** */
+
+void LevelSim::refresh_spatial_index() {
+    std::optional<PlayerSpatialData> player;
+    if (player_ship_simulation_) {
+        auto const& simulation{*player_ship_simulation_};
+        auto const& physical{simulation.get_physical_state()};
+        player = PlayerSpatialData{simulation.unique_entity_id,
+                                   to_float(physical.transform.location),
+                                   to_float(physical.velocity),
+                                   to_quaternion(to_float(physical.transform.rotator())),
+                                   simulation.get_health().health};
+    }
+    query_manager_.refresh_spatial_index(capital_ships_simulation_.get_read_view(),
+                                         fighters_simulation_.get_read_view(),
+                                         turrets_simulation_.get_read_view(),
+                                         spinners_simulation_.get_read_view(),
+                                         player);
+}
 
 auto LevelSim::get_read_view() const -> LevelReadView {
     return {frame_sequence_,

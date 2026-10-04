@@ -1,7 +1,9 @@
 #pragma once
 
-#include <ioj/sim/entity_queries.h>
+#include <ioj/sim/column_math.h>
+#include <ioj/sim/entity_tables.h>
 #include <ioj/sim/level_sim.h>
+#include <ioj/sim/rotator_math.h>
 
 #include <optional>
 
@@ -15,49 +17,72 @@ struct EntityObservation {
 };
 
 // Inspect current owner storage without extending a published frame handle's lifetime.
-inline auto observe_entity(EntityTables const& tables, EntityUniqueId const id)
+inline auto observe_entity(LevelReadView const& view, EntityUniqueId const id)
     -> std::optional<EntityObservation> {
     if (!id.is_valid()) {
         return {};
     }
-    if (id.entity_type() == EntityType::PlayerShip) {
-        auto const source{tables.sources.player};
-        if (source.transform == nullptr || source.id != id) {
+    auto const observe{[id](std::span<EntityUniqueId const> ids,
+                            Vectors3fConstView locations,
+                            Vectors3fConstView velocities,
+                            HealthConstView healths,
+                            std::span<Team const> teams) -> std::optional<EntityObservation> {
+        auto const found{std::ranges::find(ids, id)};
+        if (found == ids.end()) {
             return {};
         }
-        auto const health{tables.health.get_const_view<EntityType::PlayerShip>(1).health(0)};
-        if (is_dead(health)) {
-            return {};
-        }
-        return EntityObservation{to_float(source.transform->location),
-                                 to_float(*source.velocity),
-                                 *source.team,
-                                 health,
-                                 0};
-    }
-
-    auto const batches{display_batches(tables)};
-    for (auto const& batch : batches) {
-        if (batch.type != id.entity_type()) {
-            continue;
-        }
-        auto const found{std::ranges::find(batch.ids, id)};
-        if (found == batch.ids.end()) {
-            return {};
-        }
-        auto const row{static_cast<EntityFrameIndex>(found - batch.ids.begin())};
-        return EntityObservation{vector_at(batch.locations, row),
-                                 batch.velocity(row),
-                                 batch.team(row),
-                                 batch.health(row),
+        auto const row{static_cast<EntityFrameIndex>(found - ids.begin())};
+        return EntityObservation{locations[row],
+                                 velocities.is_empty() ? Vector3f{} : velocities[row],
+                                 teams.empty() ? Team::White : teams[row],
+                                 healths.is_empty() ? 1 : healths.health(row),
                                  row};
+    }};
+    switch (id.entity_type()) {
+        case EntityType::CapitalShip:
+            return observe(view.capitals.entities.entity_ids(),
+                           view.capitals.entities.view_locations(),
+                           {},
+                           view.capitals.healths,
+                           view.capitals.entities.teams());
+        case EntityType::Fighter:
+            return observe(view.fighters.entities.entity_ids(),
+                           view.fighters.entities.view_locations(),
+                           view.fighters.entities.view_velocities(),
+                           view.fighters.healths,
+                           view.fighters.entities.teams());
+        case EntityType::Turret:
+            return observe(view.turrets.entities.entity_ids(),
+                           view.turrets.entities.view_locations(),
+                           {},
+                           view.turrets.healths,
+                           view.turrets.entities.teams());
+        case EntityType::TubeSpinner:
+            return observe(view.spinners.entities.entity_ids(),
+                           view.spinners.entities.view_locations(),
+                           {},
+                           {},
+                           {});
+        default:
+            return {};
     }
-    return {};
 }
 
 inline auto observe_entity(LevelSim const& simulation, EntityUniqueId const id)
     -> std::optional<EntityObservation> {
-    return observe_entity(simulation.get_entity_tables(), id);
+    if (id.entity_type() == EntityType::PlayerShip) {
+        auto const* player{simulation.get_player_ship_simulation()};
+        if (!player || player->unique_entity_id != id || !player->is_alive()) {
+            return {};
+        }
+        auto const& state{player->get_physical_state()};
+        return EntityObservation{to_float(state.transform.location),
+                                 to_float(state.velocity),
+                                 player->team,
+                                 player->get_health().health,
+                                 0};
+    }
+    return observe_entity(simulation.get_read_view(), id);
 }
 
 inline auto observe_live_entity(auto const& source, EntityUniqueId const id)

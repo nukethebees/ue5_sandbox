@@ -7,6 +7,8 @@
 #include <ioj/sim/collision_types.h>
 #include <ioj/sim/entity_world_bounds.h>
 #include <ioj/sim/line_trace_batch.h>
+#include <ioj/sim/player_spatial_data.h>
+#include <ioj/sim/system_read_views.h>
 #include <ioj/sim/trace_hits.h>
 
 #include <sandbox/core/frame_array.h>
@@ -14,6 +16,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 
@@ -27,7 +30,7 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // Construction and lifecycle
     /* **************************************** */
-    explicit CollisionUniformGrid(EntityTables const& agents) noexcept;
+    CollisionUniformGrid() = default;
     CollisionUniformGrid(CollisionUniformGrid const&) = delete;
     CollisionUniformGrid(CollisionUniformGrid&&) = delete;
     auto operator=(CollisionUniformGrid const&) -> CollisionUniformGrid& = delete;
@@ -62,8 +65,16 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // Entity collision
     /* **************************************** */
-    void rebuild_entity_grid(EntityAABBs const& entity_aabbs);
+    void rebuild_entity_grid(EntityAABBs const& entity_aabbs,
+                             CapitalReadView capitals,
+                             FighterReadView fighters,
+                             TurretReadView turrets,
+                             SpinnerReadView spinners,
+                             std::optional<PlayerSpatialData> player = {});
     auto get_entity_world_bounds() const -> EntityCellData::ConstView;
+    auto bound_rows(EntityType const type) const -> std::span<std::uint32_t const> {
+        return entity_storage_.bound_rows[type];
+    }
 #ifndef NDEBUG
     auto check_live_entity_membership() const -> bool;
 #endif
@@ -151,7 +162,6 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // State
     /* **************************************** */
-    EntityTables const& entity_tables_;
     GridGeometry geometry_{};
     CollisionGridEntityStorage entity_storage_;
     CollisionGridStaticStorage static_storage_;

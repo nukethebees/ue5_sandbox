@@ -27,8 +27,8 @@ auto make_entity_type_radii() -> EntityTypeRadii {
 
 auto make_view(ml::tests::FDisplayEntityTestData const& entities,
                std::span<::ioj::sim::EntityUniqueId const> ids = {})
-    -> std::vector<::ioj::sim::AgentDisplayBatch> {
-    std::vector<::ioj::sim::AgentDisplayBatch> batches;
+    -> std::vector<::ml::presentation::AgentDisplayBatch> {
+    std::vector<::ml::presentation::AgentDisplayBatch> batches;
     auto const count{entities.num()};
     batches.reserve(count);
     for (int32 i{}; i < count; ++i) {

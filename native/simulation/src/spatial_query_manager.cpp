@@ -1,12 +1,9 @@
 #include "ioj/sim/spatial_query_manager.h"
 
 #include <ioj/sim/column_math.h>
-#include <ioj/sim/entity_queries.h>
-#include <ioj/sim/entity_world_bounds.h>
-#include <ioj/sim/frame_vectors3f.h>
+#include <ioj/sim/entity_tables.h>
 #include <ioj/sim/line_trace_batch.h>
 #include <ioj/sim/profiling.h>
-#include <ioj/sim/rotator_math.h>
 
 #include <sandbox/core/diagnostics.h>
 #include <sandbox/core/frame_memory_resource.h>
@@ -156,6 +153,7 @@ namespace {
 template <typename IncludeEntity>
 auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                                EntityTables const& agents,
+                               ml::EnumArray<EntityType, Vectors3fConstView> const& locations,
                                ml::FrameMemoryResource* const scratch_resource,
                                Vector3f const origin,
                                float const radius,
@@ -179,15 +177,13 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
     max_coord = max_coord.component_min(max_grid_coord);
 
     ml::FrameArray<std::uint8_t> visited{scratch_resource};
-    ml::FrameArray<EntityUniqueId> candidates{scratch_resource};
-    auto const counts{entity_counts(agents)};
     EntityTypeSizes offsets;
     std::uint32_t total_count{};
     auto const entity_type_count{EntityTypeSizes::size()};
     for (std::size_t i{}; i < entity_type_count; ++i) {
         auto const type{static_cast<EntityType>(i)};
         offsets[type] = total_count;
-        total_count += counts[type];
+        total_count += agents.lookups.for_type(type).row_count();
     }
     visited.set_num(total_count);
     auto const radius_squared{radius * radius};
@@ -205,10 +201,11 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                 // Each grid coordinate selects a different cell.
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 for (auto const id : grid.get_cell_entities({x, y, z})) {
-                    auto const local_index{
-                        // Select the already-bound span for this entity's type.
-                        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-                        handles[std::to_underlying(id.entity_type())][id.index()].index()};
+                    auto const handle{handles[std::to_underlying(id.entity_type())][id.index()]};
+                    if (!handle.is_valid() || !include_entity(id, handle.team())) {
+                        continue;
+                    }
+                    auto const local_index{handle.index()};
 
                     auto const entity_index{offsets[id.entity_type()] + local_index};
                     if (visited[entity_index]) {
@@ -216,39 +213,15 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                     }
                     visited[entity_index] = 1;
 
-                    candidates.add(id);
+                    if (HMM_LenSqrV3(locations[id.entity_type()][local_index] - origin) <=
+                        radius_squared) {
+                        out_entities[count++] = id;
+                        if (count == out_entities.size()) {
+                            return count;
+                        }
+                    }
                 }
             }
-        }
-    }
-
-    auto const candidate_count{candidates.num()};
-    ml::FrameArray<std::uint32_t> order{scratch_resource};
-    ml::FrameArray<Team> teams{scratch_resource};
-    ml::FrameArray<std::uint8_t> alive{scratch_resource};
-    FrameVectors3f candidate_locations{scratch_resource};
-    order.set_num(candidate_count);
-    teams.set_num(candidate_count);
-    alive.set_num(candidate_count);
-    candidate_locations.set_num(candidate_count);
-    gather_entities(agents,
-                    candidates,
-                    order,
-                    {.locations = candidate_locations.get_view(), .teams = teams, .alive = alive});
-
-    auto const locations{candidate_locations.get_const_view()};
-    for (std::uint32_t index{}; index < candidate_count; ++index) {
-        auto const id{candidates[index]};
-        if (!alive[index] || !include_entity(id, teams[index])) {
-            continue;
-        }
-        auto const delta{locations[index] - origin};
-        if (HMM_LenSqrV3(delta) > radius_squared) {
-            continue;
-        }
-        out_entities[count++] = id;
-        if (count == out_entities.size()) {
-            break;
         }
     }
 
@@ -257,13 +230,20 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
 auto find_any_non_team_entity(EntityTables const& agents,
                               Team const excluded_team,
                               std::optional<EntityType> const type = {}) -> EntityUniqueId {
-    EntityUniqueId result;
-    visit_live_entities(agents, [&](EntityUniqueId const id, Vector3f, Rotator3f, Team const team) {
-        if (team != excluded_team && (!type || id.entity_type() == *type) && id < result) {
-            result = id;
+    assert(agents.lookups.permits_lookup());
+    for (auto const candidate_type : ml::EnumTraits<EntityType>::values) {
+        if (type && candidate_type != *type) {
+            continue;
         }
-    });
-    return result;
+        auto const handles{agents.lookups.for_type(candidate_type).entries()};
+        auto const count{static_cast<std::uint32_t>(handles.size())};
+        for (std::uint32_t index{}; index < count; ++index) {
+            if (handles[index].is_valid() && handles[index].team() != excluded_team) {
+                return EntityUniqueId{index, candidate_type};
+            }
+        }
+    }
+    return {};
 }
 } // namespace
 
@@ -421,6 +401,7 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
         return collect_entities_in_range(
             grid,
             entity_tables_,
+            locations_,
             scratch_resource,
             origin,
             radius,
@@ -446,6 +427,7 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     validate_grid_for_range_query(grid, origin, radius);
     return collect_entities_in_range(grid,
                                      entity_tables_,
+                                     locations_,
                                      scratch_resource,
                                      origin,
                                      radius,
@@ -490,13 +472,77 @@ void SpatialQueryManager::copy_entity_radii(std::span<EntityUniqueId const> cons
 
     auto const count{static_cast<std::uint32_t>(ids.size())};
     ml::FrameArray<std::uint32_t> order{scratch_resource};
-    ml::FrameArray<std::uint8_t> alive{scratch_resource};
+    ml::FrameArray<EntityInstanceHandle> handles{scratch_resource};
     order.set_num(count);
-    alive.set_num(count);
-    gather_entities(entity_tables_, ids, order, {.alive = alive});
-    for (std::uint32_t index{}; index < count; ++index) {
-        auto const id{ids[index]};
-        out_radii[index] = alive[index] ? get_entity_type_radius(id.entity_type()) : 0.f;
+    handles.set_num(count);
+    auto const runs{entity_tables_.lookups.resolve(ids, order, handles)};
+    std::ranges::fill(out_radii, 0.f);
+    for (std::uint32_t run{}; run < runs.num; ++run) {
+        auto const radius{entity_radii_[runs.types[run]]};
+        auto const end{runs.offsets[run] + runs.counts[run]};
+        for (auto index{runs.offsets[run]}; index < end; ++index) {
+            auto const row{order[index]};
+            out_radii[row] = handles[row].is_valid() ? radius : 0.f;
+        }
+    }
+}
+
+void SpatialQueryManager::copy_target_locations(
+    std::span<EntityUniqueId const> const ids,
+    Vectors3fView const output,
+    ml::FrameMemoryResource* const scratch_resource) const {
+    assert(ids.size() == output.num());
+    ml::FrameArray<std::uint32_t> order{scratch_resource};
+    ml::FrameArray<EntityInstanceHandle> handles{scratch_resource};
+    order.set_num(output.num());
+    handles.set_num(output.num());
+    auto const runs{entity_tables_.lookups.resolve(ids, order, handles)};
+    for (std::uint32_t row{}; row < output.num(); ++row) {
+        output.set(row, {});
+    }
+    for (std::uint32_t run{}; run < runs.num; ++run) {
+        auto const locations{locations_[runs.types[run]]};
+        auto const end{runs.offsets[run] + runs.counts[run]};
+        for (auto index{runs.offsets[run]}; index < end; ++index) {
+            auto const row{order[index]};
+            if (handles[row].is_valid()) {
+                output.set(row, locations[handles[row].index()]);
+            }
+        }
+    }
+}
+void SpatialQueryManager::refresh_targets(std::span<EntityUniqueId> const ids,
+                                          Vectors3fView const output_locations,
+                                          Vectors3fView const output_velocities,
+                                          ml::FrameMemoryResource* const scratch_resource) const {
+    auto const count{output_locations.num()};
+    assert(ids.size() == count && output_velocities.num() == count);
+    ml::FrameArray<std::uint32_t> order{scratch_resource};
+    ml::FrameArray<EntityInstanceHandle> handles{scratch_resource};
+    order.set_num(count);
+    handles.set_num(count);
+    auto const runs{entity_tables_.lookups.resolve(ids, order, handles)};
+    for (std::uint32_t row{}; row < count; ++row) {
+        output_locations.set(row, {});
+        output_velocities.set(row, {});
+        if (!handles[row].is_valid()) {
+            ids[row] = {};
+        }
+    }
+    for (std::uint32_t run{}; run < runs.num; ++run) {
+        auto const locations{locations_[runs.types[run]]};
+        auto const velocities{velocities_[runs.types[run]]};
+        auto const end{runs.offsets[run] + runs.counts[run]};
+        for (auto index{runs.offsets[run]}; index < end; ++index) {
+            auto const row{order[index]};
+            auto const handle{handles[row]};
+            if (handle.is_valid()) {
+                output_locations.set(row, locations[handle.index()]);
+                if (!velocities.is_empty()) {
+                    output_velocities.set(row, velocities[handle.index()]);
+                }
+            }
+        }
     }
 }
 
@@ -511,9 +557,28 @@ auto SpatialQueryManager::add_static_collision_aabb(Vector3f const min_point,
     -> collision::StaticGeometryIndex {
     return collision_system_.add_static_collision_aabb(min_point, max_point);
 }
-void SpatialQueryManager::refresh_spatial_index() {
+void SpatialQueryManager::refresh_spatial_index(CapitalReadView const capitals,
+                                                FighterReadView const fighters,
+                                                TurretReadView const turrets,
+                                                SpinnerReadView const spinners,
+                                                std::optional<PlayerSpatialData> const player) {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::refresh_spatial_index");
-    collision_system_.refresh_spatial_index();
+    locations_ = {};
+    velocities_ = {};
+    locations_[EntityType::CapitalShip] = capitals.entities.view_locations();
+    locations_[EntityType::Fighter] = fighters.entities.view_locations();
+    locations_[EntityType::Turret] = turrets.entities.view_locations();
+    locations_[EntityType::TubeSpinner] = spinners.entities.view_locations();
+    velocities_[EntityType::Fighter] = fighters.entities.view_velocities();
+    if (player) {
+        player_spatial_ = *player;
+        auto const& location{player_spatial_.location};
+        auto const& velocity{player_spatial_.velocity};
+        locations_[EntityType::PlayerShip] = {{&location.X, 1}, {&location.Y, 1}, {&location.Z, 1}};
+        velocities_[EntityType::PlayerShip] = {
+            {&velocity.X, 1}, {&velocity.Y, 1}, {&velocity.Z, 1}};
+    }
+    collision_system_.refresh_spatial_index(capitals, fighters, turrets, spinners, player);
 }
 auto SpatialQueryManager::detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates,
                                           ml::FrameMemoryResource* const scratch_resource)

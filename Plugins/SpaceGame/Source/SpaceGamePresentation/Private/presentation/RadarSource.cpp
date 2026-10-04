@@ -147,7 +147,7 @@ auto sanitize_radar_settings(FRadarSettings settings) -> FRadarSettings {
     return settings;
 }
 
-auto collect_radar_instances(std::span<::ioj::sim::AgentDisplayBatch const> const batches,
+auto collect_radar_instances(std::span<::ml::presentation::AgentDisplayBatch const> const batches,
                              TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                              FRadarContactColours const& contact_colours,
                              FTransform const& player_transform,
@@ -156,7 +156,7 @@ auto collect_radar_instances(std::span<::ioj::sim::AgentDisplayBatch const> cons
                              FRadarSettings const& settings,
                              FRadarFrame& output_frame) -> FRadarCollectionResult {
     TRACE_CPUPROFILER_EVENT_SCOPE(Radar::CollectAgentSource);
-    check(objective_roles.Num() == ::ioj::sim::display_entity_count(batches));
+    check(objective_roles.Num() == ::ml::presentation::display_entity_count(batches));
     output_frame.instances.Reset();
 
     auto const rotation{player_transform.Rotator()};
@@ -168,7 +168,7 @@ auto collect_radar_instances(std::span<::ioj::sim::AgentDisplayBatch const> cons
     output_frame.tactical_display_radius =
         ml::radar_source::map_distance(settings.tactical_range / settings.maximum_range, curve);
     auto const range_squared{settings.maximum_range * settings.maximum_range};
-    auto const count{::ioj::sim::display_entity_count(batches)};
+    auto const count{::ml::presentation::display_entity_count(batches)};
     output_frame.instances.Reserve(count + 1);
 
     int32 candidate_count{0};

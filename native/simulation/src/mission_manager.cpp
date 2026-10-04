@@ -190,10 +190,8 @@ void MissionManager::reset_runtime_state() {
     pending_result_.reset();
     hero_entity_ids.clear();
     entity_ids_that_must_survive.clear();
-    entity_types_that_must_survive.clear();
     entity_health_that_must_survive.clear();
     entity_ids_required_to_kill.clear();
-    entity_types_required_to_kill.clear();
     entity_health_required_to_kill.clear();
 
     mission_state = MissionState::NotStarted;
@@ -251,7 +249,6 @@ void MissionManager::add_entity_that_must_survive(EntityUniqueId id) {
         return;
     }
     entity_ids_that_must_survive.push_back(id);
-    entity_types_that_must_survive.push_back(id.entity_type());
 }
 
 void MissionManager::add_entity_required_to_kill(EntityUniqueId id) {
@@ -264,7 +261,6 @@ void MissionManager::add_entity_required_to_kill(EntityUniqueId id) {
         return;
     }
     entity_ids_required_to_kill.push_back(id);
-    entity_types_required_to_kill.push_back(id.entity_type());
 }
 
 void MissionManager::increase_kill_target(std::int32_t const increase) {

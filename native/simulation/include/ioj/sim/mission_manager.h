@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/sim/entity_types.h>
+#include <ioj/sim/entity_instance_handle.h>
 #include <ioj/sim/entity_unique_id.h>
 #include <ioj/sim/levels/level_mission_initialisation_data.h>
 #include <ioj/sim/missions/mission_fail_reason.h>
@@ -114,17 +114,11 @@ struct MissionManager {
     auto get_entity_ids_that_must_survive() const noexcept -> std::span<EntityUniqueId const> {
         return entity_ids_that_must_survive;
     }
-    auto get_entity_types_that_must_survive() const noexcept -> std::span<EntityType const> {
-        return entity_types_that_must_survive;
-    }
     auto get_entity_health_required_to_kill() const noexcept -> std::span<ShipHealth const> {
         return entity_health_required_to_kill;
     }
     auto get_entity_ids_required_to_kill() const noexcept -> std::span<EntityUniqueId const> {
         return entity_ids_required_to_kill;
-    }
-    auto get_entity_types_required_to_kill() const noexcept -> std::span<EntityType const> {
-        return entity_types_required_to_kill;
     }
 
     auto get_mission_stopwatch() const noexcept -> float { return mission_elapsed_seconds; }
@@ -148,6 +142,7 @@ struct MissionManager {
     /* **************************************** */
     // Objective health tracking
     /* **************************************** */
+    void gather_objective_health(std::span<EntityUniqueId const> ids);
     void update_entity_health_that_must_survive();
     auto entities_that_must_survive_are_alive() const -> bool;
     void update_entity_health_required_to_kill();
@@ -166,7 +161,6 @@ struct MissionManager {
     /* **************************************** */
     std::optional<LevelMissionResult> pending_result_;
     EntityLedger const& entity_ledger;
-    void gather_objective_health(std::span<EntityUniqueId const> ids);
     std::vector<std::uint32_t> query_order_;
     std::vector<EntityInstanceHandle> query_handles_;
     std::vector<Health> query_health_;
@@ -174,10 +168,8 @@ struct MissionManager {
 
     std::vector<EntityUniqueId> hero_entity_ids{};
     std::vector<EntityUniqueId> entity_ids_that_must_survive{};
-    std::vector<EntityType> entity_types_that_must_survive{};
     std::vector<ShipHealth> entity_health_that_must_survive{};
     std::vector<EntityUniqueId> entity_ids_required_to_kill{};
-    std::vector<EntityType> entity_types_required_to_kill{};
     std::vector<ShipHealth> entity_health_required_to_kill{};
 
     MissionState mission_state{MissionState::NotStarted};

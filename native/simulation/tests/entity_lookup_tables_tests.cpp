@@ -1,5 +1,8 @@
 #include "support/collision_agent_storage.h"
-#include <ioj/sim/entity_queries.h>
+#include <ioj/sim/column_math.h>
+#include <ioj/sim/entity_tables.h>
+#include <ioj/sim/frame_vectors3f.h>
+#include <ioj/sim/rotator_math.h>
 
 #include <gtest/gtest.h>
 
@@ -118,47 +121,80 @@ TEST(EntityLookupTables, RetirementAndReorderingCannotAliasStableIdentity) {
     EXPECT_EQ(handles[2].index(), 0u);
 }
 
-TEST(EntityQueries, GathersMixedTypesInCallerOrderWithoutChangingInput) {
+TEST(TargetMotion, ResolvesMixedTypesAndClearsMissingTargets) {
     CollisionAgentStorage owners;
     auto const fighter{owners.spawn(EntityType::Fighter, {{10, 20, 30}}, {}, 80, Team::Blue)};
     auto const capital{owners.spawn(EntityType::CapitalShip, {{40, 50, 60}}, {}, 95, Team::Red)};
+    auto const player{owners.spawn(EntityType::PlayerShip, {{70, 80, 90}})};
+    auto const dead{owners.spawn(EntityType::Fighter, {}, {}, 0)};
+    owners.fighters.get_view().view_velocities().set(0, {{1, 2, 3}});
+    owners.player_velocity = {4, 5, 6};
     owners.publish();
-    std::array const ids{
-        fighter, EntityUniqueId{}, capital, fighter, EntityUniqueId{99, EntityType::Fighter}};
+    std::array ids{fighter,
+                   EntityUniqueId{},
+                   capital,
+                   fighter,
+                   EntityUniqueId{99, EntityType::Fighter},
+                   player,
+                   dead};
     auto const original{ids};
-    std::array<std::uint32_t, ids.size()> order;
-    std::array<Health, ids.size()> healths;
-    std::array<std::uint8_t, ids.size()> alive;
-    std::array<Team, ids.size()> teams;
     Vectors3f locations;
+    Vectors3f velocities;
     locations.set_num(static_cast<std::uint32_t>(ids.size()));
-    gather_entities(
-        owners.entity_tables,
-        ids,
-        order,
-        {.locations = locations.get_view(), .teams = teams, .alive = alive, .healths = healths});
+    velocities.set_num(locations.num());
+    SpatialQueryManager queries{owners.entity_tables};
+    queries.initialise({{10, 10, 10}, {{100, 100, 100}}}, {});
+    owners.refresh(queries);
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
+    ml::FrameMemoryResource scratch{backing};
+    queries.copy_target_locations(ids, locations.get_view(), &scratch);
     EXPECT_EQ(ids, original);
-    EXPECT_EQ(healths, (std::array<Health, 5>{80, 0, 95, 80, 0}));
-    EXPECT_EQ(alive, (std::array<std::uint8_t, 5>{1, 0, 1, 1, 0}));
+    queries.refresh_targets(ids, locations.get_view(), velocities.get_view(), &scratch);
+    EXPECT_EQ(ids[0], fighter);
+    EXPECT_FALSE(ids[1].is_valid());
+    EXPECT_EQ(ids[2], capital);
+    EXPECT_EQ(ids[3], fighter);
+    EXPECT_FALSE(ids[4].is_valid());
     EXPECT_FLOAT_EQ(locations[0].X, 10.f);
     EXPECT_FLOAT_EQ(locations[2].X, 40.f);
     EXPECT_FLOAT_EQ(locations[3].X, 10.f);
-    EXPECT_EQ(teams[2], Team::Red);
+    EXPECT_FLOAT_EQ(locations[4].X, 0.f);
+    EXPECT_FLOAT_EQ(velocities[2].X, 0.f);
+    EXPECT_FLOAT_EQ(velocities[0].X, 1.f);
+    EXPECT_FLOAT_EQ(locations[5].X, 70.f);
+    EXPECT_FLOAT_EQ(velocities[5].X, 4.f);
+    EXPECT_FALSE(ids[6].is_valid());
+    EXPECT_FLOAT_EQ(locations[6].X, 0.f);
+    EXPECT_FLOAT_EQ(velocities[6].X, 0.f);
+
+    owners.remove(fighter);
+    owners.publish();
+    owners.refresh(queries);
+    queries.refresh_targets(ids, locations.get_view(), velocities.get_view(), &scratch);
+    EXPECT_FALSE(ids[0].is_valid());
+    EXPECT_FALSE(ids[3].is_valid());
+    EXPECT_FLOAT_EQ(locations[0].X, 0.f);
+    EXPECT_FLOAT_EQ(velocities[0].X, 0.f);
 }
 
-TEST(EntityQueries, ReadsResolutionHealthBeforeCompactionAndRetiresAtCommit) {
+TEST(EntityLookupTables, ResolutionHealthChangesBeforeHandlesRetire) {
     CollisionAgentStorage owners;
     auto const id{owners.spawn(EntityType::Fighter, {{10, 0, 0}})};
     owners.publish();
+    MissionManager mission{owners.clock, owners.ledger, owners.entity_tables};
+    mission.set_mission_mode(MissionMode::SurviveTime);
+    mission.add_entity_that_must_survive(id);
+    mission.add_entity_required_to_kill(id);
+    mission.begin_play();
+    ASSERT_EQ(mission.get_entity_health_that_must_survive()[0].health, 100);
     SimClockTestAccess::set_phase(owners.clock, SimulationPhase::Resolution);
     owners.set(id, {{20, 0, 0}}, {}, 0);
+    mission.mission_tick();
+    EXPECT_EQ(mission.get_entity_health_that_must_survive()[0].health, 0);
+    EXPECT_EQ(mission.get_entity_health_required_to_kill()[0].health, 0);
+    EXPECT_EQ(mission.get_mission_state(), MissionState::Failed);
     std::array const ids{id};
-    std::array<std::uint32_t, 1> order;
-    std::array<Health, 1> healths;
-    std::array<std::uint8_t, 1> alive;
-    gather_entities(owners.entity_tables, ids, order, {.alive = alive, .healths = healths});
-    EXPECT_EQ(healths[0], 0);
-    EXPECT_FALSE(alive[0]);
+    EXPECT_EQ(owners.health_table.get_const_view<EntityType::Fighter>(1).health(0), 0);
     EXPECT_TRUE(owners.entity_tables.lookups.for_type(EntityType::Fighter)
                     .entries()[id.index()]
                     .is_valid());
@@ -168,5 +204,13 @@ TEST(EntityQueries, ReadsResolutionHealthBeforeCompactionAndRetiresAtCommit) {
     owners.entity_tables.lookups.resolve(ids, handles);
     EXPECT_FALSE(handles[0].is_valid());
     EXPECT_TRUE(owners.ledger.is_valid_unique_id(id));
+}
+
+TEST(MissionObjectives, RejectHealthlessSurvivalAndRequiredKillObjectives) {
+    CollisionAgentStorage owners;
+    auto const id{owners.spawn(EntityType::TubeSpinner)};
+    MissionManager mission{owners.clock, owners.ledger, owners.entity_tables};
+    EXPECT_DEATH(mission.add_entity_that_must_survive(id), "require an entity with health");
+    EXPECT_DEATH(mission.add_entity_required_to_kill(id), "require an entity with health");
 }
 } // namespace ioj::sim::tests

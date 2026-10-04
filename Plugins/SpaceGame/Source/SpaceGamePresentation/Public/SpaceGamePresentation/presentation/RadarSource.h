@@ -1,6 +1,6 @@
 #pragma once
-#include "ioj/sim/agent_display_batch.h"
 #include "ioj/sim/entity_unique_id.h"
+#include "SpaceGamePresentation/presentation/AgentDisplayBatch.h"
 #include "SpaceGamePresentation/presentation/LevelPresentationSettings.h"
 #include <SpaceGamePresentation/entities/TestTeam.h>
 
@@ -31,7 +31,7 @@ namespace ml::radar_source {
 }
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
-    collect_radar_instances(std::span<::ioj::sim::AgentDisplayBatch const> batches,
+    collect_radar_instances(std::span<::ml::presentation::AgentDisplayBatch const> batches,
                             TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                             FRadarContactColours const& contact_colours,
                             FTransform const& player_transform,

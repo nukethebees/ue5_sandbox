@@ -3,7 +3,6 @@
 #include <ioj/sim/collision_grid.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_cell_data_operations.h>
-#include <ioj/sim/entity_queries.h>
 #include <ioj/sim/health.h>
 #include <ioj/sim/line_trace_batch.h>
 #include <ioj/sim/profiling.h>
@@ -25,8 +24,6 @@ namespace ioj::sim::collision {
 /* **************************************** */
 // Construction and lifecycle
 /* **************************************** */
-CollisionUniformGrid::CollisionUniformGrid(EntityTables const& agents) noexcept
-    : entity_tables_{agents} {}
 void CollisionUniformGrid::reset() {
     geometry_ = {};
 
@@ -38,6 +35,7 @@ void CollisionUniformGrid::reset() {
     storage.aabbs.reset();
     storage.cell_write_indices.clear();
     storage.rebuild_entity_data.reset();
+    storage.bound_rows = {};
 
     static_storage_.reset();
 }
@@ -144,7 +142,12 @@ void CollisionUniformGrid::rebuild_static_grid() {
 /* **************************************** */
 // Entity collision
 /* **************************************** */
-void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& entity_aabbs) {
+void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& entity_aabbs,
+                                               CapitalReadView const capitals,
+                                               FighterReadView const fighters,
+                                               TurretReadView const turrets,
+                                               SpinnerReadView const spinners,
+                                               std::optional<PlayerSpatialData> const player) {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::rebuild_entity_grid");
     if (!is_configured()) {
         ml::fatal_error("Cannot rebuild an unconfigured collision grid");
@@ -179,52 +182,106 @@ void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& ent
     {
         SANDBOX_PROFILE_SCOPE("gather and count entities");
 
-        visit_live_entities(
-            entity_tables_,
-            [&](EntityUniqueId const id, Vector3f const location, Rotator3f const rotation, Team) {
-                auto const entity_type{id.entity_type()};
-                auto const bounds{collision::make_entity_world_bounds(
-                    entity_aabbs, entity_type, location, to_quaternion(rotation))};
-                auto const [min_coord, max_coord]{
-                    collision::to_cell_coord_bounds(geometry, bounds.min, bounds.max)};
-                if (!is_cell_coord_in_bounds(min_coord, max_coord)) {
-                    ml::fatal_error(std::format(
-                        "Collision-grid entity ID {} type {} has world AABB ({}, {}, {}) through "
-                        "({}, {}, {}), cell AABB {} through {}, outside grid dimensions {}",
-                        id.raw_value(),
-                        std::to_underlying(entity_type),
-                        bounds.min.X,
-                        bounds.min.Y,
-                        bounds.min.Z,
-                        bounds.max.X,
-                        bounds.max.Y,
-                        bounds.max.Z,
-                        to_string(min_coord),
-                        to_string(max_coord),
-                        to_string(geometry.dimensions)));
-                }
+        auto const append{[&](EntityUniqueId const id, WorldAABB const bounds) {
+            auto const entity_type{id.entity_type()};
+            auto const [min_coord, max_coord]{
+                collision::to_cell_coord_bounds(geometry, bounds.min, bounds.max)};
+            if (!is_cell_coord_in_bounds(min_coord, max_coord)) {
+                ml::fatal_error(std::format(
+                    "Collision-grid entity ID {} type {} has world AABB ({}, {}, {}) through "
+                    "({}, {}, {}), cell AABB {} through {}, outside grid dimensions {}",
+                    id.raw_value(),
+                    std::to_underlying(entity_type),
+                    bounds.min.X,
+                    bounds.min.Y,
+                    bounds.min.Z,
+                    bounds.max.X,
+                    bounds.max.Y,
+                    bounds.max.Z,
+                    to_string(min_coord),
+                    to_string(max_coord),
+                    to_string(geometry.dimensions)));
+            }
 
-                collision::add(
-                    storage.rebuild_entity_data, bounds.min, bounds.max, min_coord, max_coord, id);
+            collision::add(
+                storage.rebuild_entity_data, bounds.min, bounds.max, min_coord, max_coord, id);
 
-                auto plane_index{min_coord.x + min_coord.y * row_stride +
-                                 min_coord.z * plane_stride};
-                for (auto z{min_coord.z}; z <= max_coord.z; ++z) {
-                    auto row_index{plane_index};
-                    for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
-                        auto cell_index{row_index};
-                        for (auto x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
-                            auto& count{storage.cell_counts[static_cast<std::size_t>(cell_index)]};
-                            if (count == 0) {
-                                storage.non_empty_cell_indices.push_back(cell_index);
-                            }
-                            ++count;
+            auto plane_index{min_coord.x + min_coord.y * row_stride + min_coord.z * plane_stride};
+            for (auto z{min_coord.z}; z <= max_coord.z; ++z) {
+                auto row_index{plane_index};
+                for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
+                    auto cell_index{row_index};
+                    for (auto x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
+                        auto& count{storage.cell_counts[static_cast<std::size_t>(cell_index)]};
+                        if (count == 0) {
+                            storage.non_empty_cell_indices.push_back(cell_index);
                         }
-                        row_index += row_stride;
+                        ++count;
                     }
-                    plane_index += plane_stride;
+                    row_index += row_stride;
                 }
-            });
+                plane_index += plane_stride;
+            }
+        }};
+        auto const append_batch{[&](EntityType const type,
+                                    std::span<EntityUniqueId const> const ids,
+                                    Vectors3fConstView const locations,
+                                    HealthConstView const healths,
+                                    auto orientation_at) {
+            auto& rows{storage.bound_rows[type]};
+            rows.assign(ids.size(), EntityInstanceHandle::invalid_value);
+            auto const count{static_cast<std::uint32_t>(ids.size())};
+            for (std::uint32_t row{}; row < count; ++row) {
+                if (!healths.is_empty() && is_dead(healths.health(row))) {
+                    continue;
+                }
+                rows[row] = storage.rebuild_entity_data.num();
+                append(ids[row],
+                       make_entity_world_bounds(
+                           entity_aabbs, type, locations[row], orientation_at(row)));
+            }
+        }};
+        auto& player_rows{storage.bound_rows[EntityType::PlayerShip]};
+        player_rows.assign(player ? 1u : 0u, EntityInstanceHandle::invalid_value);
+        if (player && is_alive(player->health)) {
+            player_rows[0] = storage.rebuild_entity_data.num();
+            append(
+                player->id,
+                make_entity_world_bounds(
+                    entity_aabbs, EntityType::PlayerShip, player->location, player->orientation));
+        }
+        auto const capital_rotations{capitals.entities.view_rotations()};
+        append_batch(EntityType::CapitalShip,
+                     capitals.entities.entity_ids(),
+                     capitals.entities.view_locations(),
+                     capitals.healths,
+                     [capital_rotations](std::uint32_t row) {
+                         return to_quaternion(rotation_at(capital_rotations, row));
+                     });
+        auto const turret_rotations{turrets.entities.view_rotations()};
+        append_batch(EntityType::Turret,
+                     turrets.entities.entity_ids(),
+                     turrets.entities.view_locations(),
+                     turrets.healths,
+                     [turret_rotations](std::uint32_t row) {
+                         return to_quaternion(rotation_at(turret_rotations, row));
+                     });
+        auto const fighter_directions{fighters.entities.view_aim_directions()};
+        append_batch(EntityType::Fighter,
+                     fighters.entities.entity_ids(),
+                     fighters.entities.view_locations(),
+                     fighters.healths,
+                     [fighter_directions](std::uint32_t row) {
+                         return to_quaternion(direction_to_rotation(fighter_directions[row]));
+                     });
+        auto const spinner_yaws{spinners.entities.yaws()};
+        append_batch(EntityType::TubeSpinner,
+                     spinners.entities.entity_ids(),
+                     spinners.entities.view_locations(),
+                     {},
+                     [spinner_yaws](std::uint32_t row) {
+                         return to_quaternion(Rotator3f{.yaw = spinner_yaws[row]});
+                     });
     }
 
     {
@@ -324,10 +381,8 @@ auto CollisionUniformGrid::get_entity_world_bounds() const -> EntityCellData::Co
 }
 #ifndef NDEBUG
 auto CollisionUniformGrid::check_live_entity_membership() const -> bool {
-    std::vector<EntityUniqueId> live_ids;
-    visit_live_entities(entity_tables_, [&](EntityUniqueId const id, Vector3f, Rotator3f, Team) {
-        live_ids.push_back(id);
-    });
+    auto const built_ids{entity_storage_.rebuild_entity_data.get_const_view().entity_ids()};
+    std::vector<EntityUniqueId> live_ids{built_ids.begin(), built_ids.end()};
     std::ranges::sort(live_ids);
 
     // Check the cell entries consumed by queries, not just the rebuild's entity list.

@@ -48,7 +48,7 @@ struct TraceFixture {
 
         grid.set_geometry({fixture_grid_dims, fixture_cell_dims});
         owners.publish();
-        grid.rebuild_entity_grid(aabbs);
+        owners.rebuild(grid, aabbs);
     }
 
     void set_entity_aabb(EntityType const entity_type,
@@ -67,19 +67,19 @@ struct TraceFixture {
             owners.set(handles[i], locations[i], {}, alive[i] != 0 ? 1 : 0);
         }
         owners.publish();
-        grid.rebuild_entity_grid(aabbs);
+        owners.rebuild(grid, aabbs);
     }
 
     auto add_entity(Vector3f const location) -> EntityUniqueId {
         auto const id{owners.spawn(EntityType::CapitalShip, location, {}, 1, Team::Blue)};
         handles.push_back(id);
         owners.publish();
-        grid.rebuild_entity_grid(aabbs);
+        owners.rebuild(grid, aabbs);
         return id;
     }
 
     tests::CollisionAgentStorage owners;
-    collision::CollisionUniformGrid grid{owners.entity_tables};
+    collision::CollisionUniformGrid grid;
     std::vector<EntityUniqueId> handles{};
     collision::EntityAABBs aabbs;
 };
@@ -614,7 +614,7 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
     for (std::int32_t i{}; i < entity_type_count; ++i) {
         mixed_fixture.set_entity_aabb(entity_types[i], local_centres[i], half_extents[i]);
     }
-    mixed_fixture.grid.rebuild_entity_grid(mixed_fixture.aabbs);
+    mixed_fixture.owners.rebuild(mixed_fixture.grid, mixed_fixture.aabbs);
 
     std::vector<Vector3f> mixed_starts{};
     std::vector<Vector3f> mixed_ends{};
@@ -1246,7 +1246,7 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
     std::vector<Vector3f> const initial_locations{initial_location};
     TraceFixture fixture{initial_locations, aabb_half_extents};
     for (std::int32_t rebuild{}; rebuild < 4; ++rebuild) {
-        fixture.grid.rebuild_entity_grid(fixture.aabbs);
+        fixture.owners.rebuild(fixture.grid, fixture.aabbs);
     }
 
     std::vector<ExpectedTrace> const initial_cases{
@@ -1263,7 +1263,7 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
         auto owner{authoritative.owners.capitals.get_view()};
         set_vector(owner.view_locations(), 0, moved_location);
         check_traces(authoritative, initial_cases);
-        authoritative.grid.rebuild_entity_grid(authoritative.aabbs);
+        authoritative.owners.rebuild(authoritative.grid, authoritative.aabbs);
         std::vector<ExpectedTrace> const owner_cases{
             {"Rebuild uses owner location without intermediary publication",
              {{moved_location.X - trace_offset, 0.f, 0.f}},
@@ -1274,7 +1274,7 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
         check_traces(authoritative, owner_cases);
         authoritative.owners.health_table.get_view<EntityType::CapitalShip>(owner.num())
             .set_health(0, 0);
-        authoritative.grid.rebuild_entity_grid(authoritative.aabbs);
+        authoritative.owners.rebuild(authoritative.grid, authoritative.aabbs);
         std::vector<ExpectedTrace> const dead_owner_cases{
             {"Rebuild removes dead owners before subsequent queries",
              {{moved_location.X - trace_offset, 0.f, 0.f}},
@@ -1490,7 +1490,7 @@ void CollisionUniformGridTraceRunner::test_invariance_properties() {
     EXPECT_EQ(first_tied_hits.get_const_view().entities()[0], expected_id);
     tied.owners.capitals.get_view().each_column([](auto column) { std::ranges::reverse(column); });
     tied.owners.publish();
-    tied.grid.rebuild_entity_grid(tied.aabbs);
+    tied.owners.rebuild(tied.grid, tied.aabbs);
     auto const reordered_tied_hits{run_traces(tied, tied_starts, tied_ends)};
     EXPECT_EQ(reordered_tied_hits.get_const_view().entities()[0], expected_id);
     SpatialQueryManager const tied_queries{tied.owners.entity_tables};
@@ -1845,7 +1845,7 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
         << "Fighter exclusion keeps the static obstacle identity";
 
     set_static_aabb({{-60.f, -10.f, -10.f}}, {{-40.f, 10.f, 10.f}});
-    fixture.grid.rebuild_entity_grid(fixture.aabbs);
+    fixture.owners.rebuild(fixture.grid, fixture.aabbs);
     auto const rebuilt_static_hits{run_traces(fixture, starts, ends)};
     EXPECT_EQ(0, rebuilt_static_hits.get_const_view().static_geometry_indices()[0])
         << "Static geometry survives dynamic rebuild";
@@ -1879,7 +1879,7 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
               runtime_static_hits.get_const_view().static_geometry_indices()[0])
         << "Runtime static AABB is immediately traceable";
 
-    fixture.grid.rebuild_entity_grid(fixture.aabbs);
+    fixture.owners.rebuild(fixture.grid, fixture.aabbs);
     auto const rebuilt_runtime_static_hits{run_traces(fixture, starts, ends)};
     EXPECT_EQ(runtime_static_index,
               rebuilt_runtime_static_hits.get_const_view().static_geometry_indices()[0])

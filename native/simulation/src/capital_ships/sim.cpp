@@ -53,7 +53,6 @@ void Sim::begin_play() {
            config.fighter_spawn_slots_relative_transforms.size());
 }
 void Sim::update_entity_lookup_table() {
-    entity_tables_.sources.capitals = &entities;
     auto const rows{entities.get_const_view()};
     entity_tables_.publish<EntityType::CapitalShip>(
         rows.entity_ids(), rows.teams(), config.max_health);

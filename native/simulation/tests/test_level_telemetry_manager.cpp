@@ -1,8 +1,11 @@
+#include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entity_ledger.h>
-#include <ioj/sim/entity_queries.h>
+#include <ioj/sim/entity_tables.h>
+#include <ioj/sim/frame_vectors3f.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/level_telemetry_manager.h>
+#include <ioj/sim/rotator_math.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spatial_query_manager.h>
 

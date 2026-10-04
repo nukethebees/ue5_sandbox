@@ -1,5 +1,5 @@
 #include <ioj/sim/column_math.h>
-#include <ioj/sim/entity_queries.h>
+#include <ioj/sim/entity_tables.h>
 #include <ioj/sim/frame_range_query_results.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spatial_query_manager.h>
@@ -56,43 +56,8 @@ struct MatchSource {
 struct ScanSources {
     EntityTypeSizes offsets;
     ml::EnumArray<EntityType, std::span<EntityInstanceHandle const>> handles;
-    Vectors3fConstView locations;
-    std::span<Team const> teams;
+    ml::EnumArray<EntityType, Vectors3fConstView> locations;
 };
-
-void gather_scan_columns(EntityReadSources const& sources,
-                         EntityTypeSizes const& offsets,
-                         Vectors3fView const locations,
-                         std::span<Team> const teams) {
-    // Copy each owner's columns once for all requests in this batch.
-    auto const copy_ships{[&](EntityType const type, auto const* owner) {
-        if (owner == nullptr) {
-            return;
-        }
-
-        auto const rows{owner->get_const_view()};
-        auto const offset{offsets[type]};
-        copy_vectors(locations.slice(offset, rows.num()), rows.view_locations());
-        std::ranges::copy(rows.teams(), teams.begin() + offset);
-    }};
-
-    copy_ships(EntityType::CapitalShip, sources.capitals);
-    copy_ships(EntityType::Fighter, sources.fighters);
-    copy_ships(EntityType::Turret, sources.turrets);
-
-    if (sources.spinners != nullptr) {
-        auto const rows{sources.spinners->get_const_view()};
-        auto const offset{offsets[EntityType::TubeSpinner]};
-        copy_vectors(locations.slice(offset, rows.num()), rows.view_locations());
-        std::ranges::fill(teams.subspan(offset, rows.num()), Team::White);
-    }
-
-    if (sources.player.transform != nullptr) {
-        auto const offset{offsets[EntityType::PlayerShip]};
-        locations.set(offset, to_float(sources.player.transform->location));
-        teams[offset] = *sources.player.team;
-    }
-}
 
 void collect_request_matches(collision::CollisionUniformGrid const& grid,
                              ScanSources const& sources,
@@ -134,7 +99,8 @@ void collect_request_matches(collision::CollisionUniformGrid const& grid,
                 for (auto const id : grid.get_cell_entities({x, y, z})) {
                     // Select the already-bound span for this entity's type.
                     // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-                    auto const local_index{sources.handles[id.entity_type()][id.index()].index()};
+                    auto const handle{sources.handles[id.entity_type()][id.index()]};
+                    auto const local_index{handle.index()};
 
                     // Visit each entity once, even if it occupies several cells.
                     auto const entity_index{sources.offsets[id.entity_type()] + local_index};
@@ -145,11 +111,11 @@ void collect_request_matches(collision::CollisionUniformGrid const& grid,
                     stamps[entity_index] = stamp;
 
                     // Reject teammates before reading positions or computing distances.
-                    if (sources.teams[entity_index] == excluded_team) {
+                    if (handle.team() == excluded_team) {
                         continue;
                     }
 
-                    auto const delta{sources.locations[entity_index] - origin};
+                    auto const delta{sources.locations[id.entity_type()][local_index] - origin};
                     auto const distance_squared{HMM_LenSqrV3(delta)};
                     if (distance_squared > radius_squared) {
                         continue;
@@ -198,32 +164,21 @@ void SpatialQueryManager::collect_non_team_entities_in_range(
     tbb::task_arena arena{concurrency};
     ml::FrameArray<WorkerScratch> workers{scratch_resource};
     ml::FrameArray<MatchSource> match_sources{scratch_resource};
-    FrameVectors3f entity_locations{scratch_resource};
-    ml::FrameArray<Team> entity_teams{scratch_resource};
     ScanSources sources;
+    sources.locations = locations_;
 
     {
         SANDBOX_PROFILE_SCOPE("prepare workers");
 
         // Map each entity type into a shared stamp index space.
-        auto const counts{entity_counts(entity_tables_)};
         EntityCount entity_count{};
         for (auto const type : ml::EnumTraits<EntityType>::values) {
             sources.offsets[type] = entity_count;
-            entity_count += counts[type];
+            entity_count += entity_tables_.lookups.for_type(type).row_count();
             // Bind each type's lookup table once before distributing requests.
             // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
             sources.handles[type] = entity_tables_.lookups.for_type(type).entries();
         }
-
-        entity_locations.set_num(entity_count);
-        entity_teams.set_num(entity_count);
-        gather_scan_columns(entity_tables_.sources,
-                            sources.offsets,
-                            entity_locations.get_view(),
-                            entity_teams.view());
-        sources.locations = entity_locations.get_const_view();
-        sources.teams = entity_teams.view();
 
         // Give each worker independent deduplication and match storage.
         {

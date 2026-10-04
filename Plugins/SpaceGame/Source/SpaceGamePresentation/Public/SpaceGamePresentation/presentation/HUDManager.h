@@ -28,6 +28,8 @@
 #include <HAL/Platform.h>
 #include <UObject/WeakObjectPtrTemplates.h>
 
+#include <array>
+
 struct FLevelVisualConfig;
 class USimulationHudWidget;
 class UShipHudWidget;
@@ -36,9 +38,20 @@ class UInstancedStaticMeshComponent;
 namespace ioj::sim {
 struct MissionManager;
 struct SpatialQueryManager;
-struct EntityTables;
 }
 namespace ioj::sim::player {
+struct Sim;
+}
+namespace ioj::sim::capital_ships {
+struct Sim;
+}
+namespace ioj::sim::fighters {
+struct Sim;
+}
+namespace ioj::sim::turrets {
+struct Sim;
+}
+namespace ioj::sim::spinners {
 struct Sim;
 }
 enum class EHUDManagerState : uint8 {
@@ -161,7 +174,10 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     void initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                     ::ioj::sim::MissionManager const& new_mission_manager,
                     ::ioj::sim::EntityLedger const& new_entity_ledger,
-                    ::ioj::sim::EntityTables const& new_entity_tables,
+                    ::ioj::sim::capital_ships::Sim const& new_capitals,
+                    ::ioj::sim::fighters::Sim const& new_fighters,
+                    ::ioj::sim::turrets::Sim const& new_turrets,
+                    ::ioj::sim::spinners::Sim const& new_spinners,
                     ::ioj::sim::SpatialQueryManager const& new_spatial_query_manager,
                     ::ioj::sim::player::Sim const* new_player_ship,
                     FLevelVisualConfig const& level_config,
@@ -271,7 +287,11 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     ::ioj::sim::player::Sim const* player_ship{nullptr};
     ::ioj::sim::MissionManager const* mission_manager{nullptr};
     ::ioj::sim::EntityLedger const* entity_ledger{nullptr};
-    ::ioj::sim::EntityTables const* entity_tables_{nullptr};
+    auto display_batches() const -> std::array<::ml::presentation::AgentDisplayBatch, 4>;
+    ::ioj::sim::capital_ships::Sim const* capitals_{};
+    ::ioj::sim::fighters::Sim const* fighters_{};
+    ::ioj::sim::turrets::Sim const* turrets_{};
+    ::ioj::sim::spinners::Sim const* spinners_{};
     ::ioj::sim::SpatialQueryManager const* spatial_query_manager{nullptr};
     ::ioj::sim::FixedTickLoop tick_loop_{};
     ml::PeriodicTickCountdown8 update_timers;

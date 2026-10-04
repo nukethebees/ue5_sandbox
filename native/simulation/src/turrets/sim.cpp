@@ -173,7 +173,6 @@ void Sim::begin_play() {
     cooldown_cleaner_ = 0;
 }
 void Sim::update_entity_lookup_table() {
-    entity_tables_.sources.turrets = &entities;
     auto const rows{entities.get_const_view()};
     entity_tables_.publish<EntityType::Turret>(rows.entity_ids(), rows.teams(), config.max_health);
 }
@@ -189,27 +188,10 @@ void Sim::prepare_tick(float const) {
 }
 void Sim::refresh_target_data(ml::FrameMemoryResource* const scratch_resource) {
     auto const entities{this->entities.get_view()};
-    auto const count{entities.num()};
-    ml::FrameArray<std::uint32_t> order{scratch_resource};
-    ml::FrameArray<std::uint8_t> alive{scratch_resource};
-    order.set_num(count);
-    alive.set_num(count);
-    auto const target_ids{entities.target_ids()};
-    auto const target_locations{entities.view_target_locations()};
-    auto const target_velocities{entities.view_target_velocities()};
-
-    gather_entities(entity_tables_,
-                    target_ids,
-                    order,
-                    {{target_locations.xs(), target_locations.ys(), target_locations.zs()},
-                     {target_velocities.xs(), target_velocities.ys(), target_velocities.zs()},
-                     {},
-                     alive});
-    for (std::uint32_t index{}; index < count; ++index) {
-        if (!alive[index]) {
-            target_ids[index] = {};
-        }
-    }
+    spatial_query_manager.refresh_targets(entities.target_ids(),
+                                          entities.view_target_locations(),
+                                          entities.view_target_velocities(),
+                                          scratch_resource);
 }
 void Sim::think(float const, ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::think");
@@ -344,16 +326,8 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
             Vectors3fView const candidate_locations_view{std::span{candidate_xs}.first(count),
                                                          std::span{candidate_ys}.first(count),
                                                          std::span{candidate_zs}.first(count)};
-            std::array<std::uint32_t, 128> order{};
-            std::array<Team, 128> teams{};
-            std::array<std::uint8_t, 128> alive{};
-            gather_entities(entity_tables_,
-                            target_ids,
-                            std::span{order}.first(count),
-                            {candidate_locations_view,
-                             {},
-                             std::span{teams}.first(count),
-                             std::span{alive}.first(count)});
+            spatial_query_manager.copy_target_locations(
+                target_ids, candidate_locations_view, scratch_resource);
 
             spatial_query_manager.has_line_of_sight_to_targets(
                 vector_at(fire_point_locations, i),
@@ -377,10 +351,8 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
                         }
 
                         auto const candidate{target_ids[element]};
-                        if (alive[element] && teams[element] != this_team) {
-                            current_targets[i] = candidate;
-                            break;
-                        }
+                        current_targets[i] = candidate;
+                        break;
                     }
                     if (current_targets[i].is_valid()) {
                         break;
