@@ -17,7 +17,7 @@ struct EntityObservation {
 };
 
 // Inspect current owner storage without extending a published frame handle's lifetime.
-inline auto observe_entity(LevelReadView const& view, EntityUniqueId const id)
+inline auto observe_entity_storage(auto const& access, EntityUniqueId const id)
     -> std::optional<EntityObservation> {
     if (!id.is_valid()) {
         return {};
@@ -39,30 +39,34 @@ inline auto observe_entity(LevelReadView const& view, EntityUniqueId const id)
                                  row};
     }};
     switch (id.entity_type()) {
-        case EntityType::CapitalShip:
-            return observe(view.capitals.entities.entity_ids(),
-                           view.capitals.entities.view_locations(),
+        case EntityType::CapitalShip: {
+            auto const view{access.get_capitals()};
+            return observe(view.entities.entity_ids(),
+                           view.entities.view_locations(),
                            {},
-                           view.capitals.healths,
-                           view.capitals.entities.teams());
-        case EntityType::Fighter:
-            return observe(view.fighters.entities.entity_ids(),
-                           view.fighters.entities.view_locations(),
-                           view.fighters.entities.view_velocities(),
-                           view.fighters.healths,
-                           view.fighters.entities.teams());
-        case EntityType::Turret:
-            return observe(view.turrets.entities.entity_ids(),
-                           view.turrets.entities.view_locations(),
+                           view.healths,
+                           view.entities.teams());
+        }
+        case EntityType::Fighter: {
+            auto const view{access.get_fighters()};
+            return observe(view.entities.entity_ids(),
+                           view.entities.view_locations(),
+                           view.entities.view_velocities(),
+                           view.healths,
+                           view.entities.teams());
+        }
+        case EntityType::Turret: {
+            auto const view{access.get_turrets()};
+            return observe(view.entities.entity_ids(),
+                           view.entities.view_locations(),
                            {},
-                           view.turrets.healths,
-                           view.turrets.entities.teams());
-        case EntityType::TubeSpinner:
-            return observe(view.spinners.entities.entity_ids(),
-                           view.spinners.entities.view_locations(),
-                           {},
-                           {},
-                           {});
+                           view.healths,
+                           view.entities.teams());
+        }
+        case EntityType::TubeSpinner: {
+            auto const view{access.get_spinners()};
+            return observe(view.entities.entity_ids(), view.entities.view_locations(), {}, {}, {});
+        }
         default:
             return {};
     }
@@ -82,7 +86,7 @@ inline auto observe_entity(LevelSim const& simulation, EntityUniqueId const id)
                                  player->get_health().health,
                                  0};
     }
-    return observe_entity(simulation.get_read_view(), id);
+    return observe_entity_storage(simulation.get_read_access(), id);
 }
 
 inline auto observe_live_entity(auto const& source, EntityUniqueId const id)

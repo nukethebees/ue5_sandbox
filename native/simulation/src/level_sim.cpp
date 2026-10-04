@@ -561,17 +561,4 @@ void LevelSim::refresh_spatial_index() {
                                          player);
 }
 
-auto LevelSim::get_read_view() const -> LevelReadView {
-    return {frame_sequence_,
-            &clock_,
-            capital_ships_simulation_.get_read_view(),
-            fighters_simulation_.get_read_view(),
-            turrets_simulation_.get_read_view(),
-            spinners_simulation_.get_read_view(),
-            lasers_simulation_.get_read_view(),
-            player_ship_simulation_.has_value()
-                ? std::optional<PlayerReadView>{player_ship_simulation_->get_read_view()}
-                : std::nullopt,
-            &mission_manager_};
-}
 } // namespace ioj::sim

@@ -11,7 +11,7 @@
 #include <ioj/sim/frame_vectors3f.h>
 #include <ioj/sim/lasers/phase_interface.h>
 #include <ioj/sim/lasers/sim.h>
-#include <ioj/sim/level_read_view.h>
+#include <ioj/sim/level_read_access.h>
 #include <ioj/sim/level_telemetry_manager.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/memory/game_memory.h>
@@ -99,7 +99,7 @@ struct LevelSim {
     // Simulation
     /* **************************************** */
     void advance(time_type dt);
-    auto get_read_view() const -> LevelReadView;
+    auto get_read_access() const -> LevelReadAccess { return LevelReadAccess{*this}; }
 
     /* **************************************** */
     // Configuration and commands
@@ -158,6 +158,7 @@ struct LevelSim {
   private:
     void refresh_spatial_index();
     friend struct LevelSimTestAccess;
+    friend class LevelReadAccess;
 
     /* **************************************** */
     // Subsystem setup

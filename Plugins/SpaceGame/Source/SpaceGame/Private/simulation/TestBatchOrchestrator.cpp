@@ -628,7 +628,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
 
     if (presentation_enabled) {
         level_presentation_.Emplace(make_presentation_resources(),
-                                    level_simulation_->get_read_view(),
+                                    level_simulation_->get_read_access(),
                                     MoveTemp(initial_turret_transforms_));
     }
     update_collision_bounds_visualization();
@@ -859,7 +859,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     }
 
     if (level_presentation_.IsSet()) {
-        level_presentation_->tick(dt, level_simulation_->get_read_view());
+        level_presentation_->tick(dt, level_simulation_->get_read_access());
     }
 
     if (auto* player{level_simulation_->get_player_ship_commands()};

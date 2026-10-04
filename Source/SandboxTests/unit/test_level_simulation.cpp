@@ -309,7 +309,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
               ::ioj::sim::OrchestratorState::Uninitialised);
     headless.finish_initialisation();
     visible.finish_initialisation();
-    FLevelPresentation presentation{resources, visible.get_read_view(), {}};
+    FLevelPresentation presentation{resources, visible.get_read_access(), {}};
     struct FEntitySnapshot {
         std::vector<::ioj::sim::Health> healths;
         std::vector<::ioj::sim::Vector3f> locations;
@@ -357,7 +357,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
         auto const prior_presentations{presentation.get_tick_count()};
         TestEqual(
             TEXT("Advancing does not present"), prior_presentations, static_cast<uint64>(tick));
-        presentation.tick(dt, visible.get_read_view());
+        presentation.tick(dt, visible.get_read_access());
         TestEqual(TEXT("Exactly one presentation per frame"),
                   presentation.get_tick_count(),
                   prior_presentations + 1);
@@ -433,31 +433,31 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     scheduled_battle.overlap_response.damage_per_overlap_detection = 100;
     ::ioj::sim::LevelSim simulation{MoveTemp(scheduled_battle)};
     simulation.finish_initialisation();
-    FLevelPresentation presentation{resources, simulation.get_read_view(), {}};
+    FLevelPresentation presentation{resources, simulation.get_read_access(), {}};
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
     simulation.advance(dt * 4.25);
-    auto const frame{simulation.get_read_view()};
+    auto const frame{simulation.get_read_access()};
     TestEqual(TEXT("Four fixed ticks precede presentation"),
-              frame.clock->get_completed_ticks(),
+              frame.get_clock().get_completed_ticks(),
               uint64{4});
     TestEqual(
         TEXT("Simulation never ticks presentation"), presentation.get_tick_count(), uint64{0});
     TestEqual(TEXT("Spawn and death survive later fixed ticks"),
-              static_cast<int32>(frame.capitals.changes.size()),
+              static_cast<int32>(frame.get_capitals().changes.size()),
               2);
-    if (static_cast<int32>(frame.capitals.changes.size()) == 2) {
+    if (static_cast<int32>(frame.get_capitals().changes.size()) == 2) {
         TestEqual(TEXT("Spawn is recorded first"),
-                  frame.capitals.changes[0].kind,
+                  frame.get_capitals().changes[0].kind,
                   ::ioj::sim::EntityFrameChangeKind::Spawn);
         TestEqual(TEXT("Death follows spawn"),
-                  frame.capitals.changes[1].kind,
+                  frame.get_capitals().changes[1].kind,
                   ::ioj::sim::EntityFrameChangeKind::RemoveSwap);
         TestTrue(TEXT("Changes identify the same entity"),
-                 frame.capitals.changes[0].id == frame.capitals.changes[1].id);
+                 frame.get_capitals().changes[0].id == frame.get_capitals().changes[1].id);
     }
     TestEqual(TEXT("Death effect remains available"),
-              static_cast<int32>(frame.capitals.deaths.size()),
+              static_cast<int32>(frame.get_capitals().deaths.size()),
               1);
     presentation.tick(static_cast<float>(dt * 4.25), frame);
     TestEqual(
@@ -472,12 +472,12 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
              FMath::IsNearlyEqual(frame.interpolation_alpha(), 0.25));
 
     simulation.advance(0.0);
-    auto const idle_frame{simulation.get_read_view()};
+    auto const idle_frame{simulation.get_read_access()};
     TestEqual(TEXT("Zero-step frame has no previous changes"),
-              static_cast<int32>(idle_frame.capitals.changes.size()),
+              static_cast<int32>(idle_frame.get_capitals().changes.size()),
               0);
     TestEqual(TEXT("Zero-step frame has no previous deaths"),
-              static_cast<int32>(idle_frame.capitals.deaths.size()),
+              static_cast<int32>(idle_frame.get_capitals().deaths.size()),
               0);
     presentation.tick(0.f, idle_frame);
     TestEqual(
@@ -485,12 +485,12 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     TestEqual(
         TEXT("Zero-step frame preserves instances"), resources.capital_ships->GetNumInstances(), 1);
 
-    FLevelPresentation attached{resources, simulation.get_read_view(), {}};
+    FLevelPresentation attached{resources, simulation.get_read_access(), {}};
     TestEqual(TEXT("Late attachment starts from live state"),
               resources.capital_ships->GetNumInstances(),
               1);
     simulation.advance(dt);
-    attached.tick(static_cast<float>(dt), simulation.get_read_view());
+    attached.tick(static_cast<float>(dt), simulation.get_read_access());
     TestEqual(TEXT("Late attachment does not replay old spawns"),
               resources.capital_ships->GetNumInstances(),
               1);
@@ -504,7 +504,7 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     resources.config.capital_ships.main_death_explosion = NewObject<UNiagaraSystem>(owner);
     resources.config.capital_ships.time_between_explosions = 10.f;
     resources.config.capital_ships.large_explosion_delay = 100.f;
-    FLevelPresentation death_effects{resources, deaths.get_read_view(), {}};
+    FLevelPresentation death_effects{resources, deaths.get_read_access(), {}};
     ::ioj::sim::DirectDamageEvents damage;
     damage.add(
         deaths.get_capital_ships().get_id(0), MAX_int32, deaths.get_capital_ships().get_id(1));
@@ -523,15 +523,15 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     ::ioj::sim::LevelSimTestAccess::queue_laser_spawns(deaths, shot.get_const_view());
     deaths.start();
     deaths.advance(0.425);
-    auto const death_frame{deaths.get_read_view()};
+    auto const death_frame{deaths.get_read_access()};
     if (!TestEqual(TEXT("Deaths from two fixed ticks survive the frame"),
-                   static_cast<int32>(death_frame.capitals.deaths.size()),
+                   static_cast<int32>(death_frame.get_capitals().deaths.size()),
                    2)) {
         return false;
     }
     TestNotEqual(TEXT("Separate fixed ticks retain separate death batches"),
-                 death_frame.capitals.deaths[0].batch_index,
-                 death_frame.capitals.deaths[1].batch_index);
+                 death_frame.get_capitals().deaths[0].batch_index,
+                 death_frame.get_capitals().deaths[1].batch_index);
     death_effects.tick(0.f, death_frame);
     auto const delays{death_effects.effects.get_times_remaining()};
     TestEqual(
