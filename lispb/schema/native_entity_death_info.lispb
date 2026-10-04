@@ -6,4 +6,5 @@
     :operations (all)
     (member reasons array @native_death_reason)
     (member victims array @native_unique_id)
-    (member killers array @native_unique_id)))
+    (member killers array @native_unique_id)
+    (single-allocation EntityDeathInfo)))

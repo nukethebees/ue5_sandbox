@@ -2,6 +2,7 @@
 
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
+#include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spatial_query_manager.h>
 
@@ -240,7 +241,7 @@ void Sim::handle_collisions(float const dt, ml::FrameMemoryResource* const scrat
 
     ml::FrameArray<std::uint32_t> to_remove{scratch_resource};
     FrameHitDetails hit_details{scratch_resource};
-    FrameDirectDamageEvents collision_damage_events{scratch_resource};
+    DirectDamageEvents collision_damage_events{scratch_resource};
     auto const trace_hits{collision_scratch.trace_hits.get_const_view()};
     auto const hit_flags{trace_hits.hits()};
     auto const hit_entities{trace_hits.entities()};

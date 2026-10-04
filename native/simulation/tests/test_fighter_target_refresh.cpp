@@ -102,9 +102,7 @@ class FighterTargetRefresh : public ::testing::Test {
 
     void kill_target() {
         DirectDamageEvents damage;
-        damage.add_uninitialised(1);
-        damage.damaged_entities[0] = target;
-        damage.damage_amounts[0] = 100;
+        damage.add(target, 100, {});
         LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
         simulation.start();
         simulation.advance(simulation.get_clock().get_tick_period());

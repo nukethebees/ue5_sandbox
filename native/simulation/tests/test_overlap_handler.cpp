@@ -47,12 +47,12 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
     std::int32_t turret_count{};
     auto const damage_count{damage.num()};
     for (std::uint32_t index{}; index < damage_count; ++index) {
-        EXPECT_EQ(damage.damage_amounts[index], 37) << "Configured overlap damage is used";
-        EXPECT_TRUE(!damage.instigators[index].is_valid())
+        EXPECT_EQ(damage.damage_amounts()[index], 37) << "Configured overlap damage is used";
+        EXPECT_TRUE(!damage.instigators()[index].is_valid())
             << "Overlap damage has no combat instigator";
-        capital_count += damage.damaged_entities[index] == capital ? 1 : 0;
-        fighter_count += damage.damaged_entities[index] == fighter ? 1 : 0;
-        turret_count += damage.damaged_entities[index] == turret ? 1 : 0;
+        capital_count += damage.damaged_entities()[index] == capital ? 1 : 0;
+        fighter_count += damage.damaged_entities()[index] == fighter ? 1 : 0;
+        turret_count += damage.damaged_entities()[index] == turret ? 1 : 0;
     }
     EXPECT_EQ(capital_count, 1) << "Capital receives its pair contribution";
     EXPECT_EQ(fighter_count, 3) << "Fighter receives all three contributions";
@@ -103,7 +103,7 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
 
     auto const first_damage{owners.combat_events.all_events().get_const_view()};
     EXPECT_EQ(first_damage.num(), 3) << "Only the live supported endpoint is damaged per pair";
-    for (auto const recipient : first_damage.damaged_entities) {
+    for (auto const recipient : first_damage.damaged_entities()) {
         EXPECT_TRUE(recipient == fighter) << "Skipped endpoints never enter the damage queue";
     }
 
@@ -123,7 +123,7 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
     owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
     auto const second_damage{owners.combat_events.all_events().get_const_view()};
     EXPECT_EQ(second_damage.num(), 1) << "Retired endpoint is skipped independently";
-    EXPECT_TRUE(second_damage.damaged_entities[0] != replacement)
+    EXPECT_TRUE(second_damage.damaged_entities()[0] != replacement)
         << "Replacement is not accidentally damaged";
 
     owners.combat_events.reset();

@@ -41,7 +41,7 @@ TEST(DamageQueue, GroupsMixedOwnerEventsAndFiltersRetiredRecipients) {
     DamageQueue queue;
     queue.append(first.get_const_view());
     queue.append(second.get_const_view());
-    first.damage_amounts[0] = 999;
+    first.get_view().damage_amounts()[0] = 999;
 
     alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
     ml::FrameMemoryResource frame_memory{backing};
@@ -52,17 +52,17 @@ TEST(DamageQueue, GroupsMixedOwnerEventsAndFiltersRetiredRecipients) {
 
     auto const turret_events{queue.events_for(EntityType::Turret)};
     ASSERT_EQ(turret_events.num(), 1);
-    EXPECT_EQ(turret_events.damaged_entities[0], turret);
-    EXPECT_EQ(turret_events.damage_amounts[0], 8);
-    EXPECT_FALSE(turret_events.instigators[0].is_valid());
+    EXPECT_EQ(turret_events.damaged_entities()[0], turret);
+    EXPECT_EQ(turret_events.damage_amounts()[0], 8);
+    EXPECT_FALSE(turret_events.instigators()[0].is_valid());
 
     auto const capital_events{queue.events_for(EntityType::CapitalShip)};
     ASSERT_EQ(capital_events.num(), 2);
-    EXPECT_EQ(capital_events.damaged_entities[0], capital);
-    EXPECT_EQ(capital_events.damage_amounts[0], 5);
-    EXPECT_EQ(capital_events.damage_amounts[1], 13);
-    EXPECT_EQ(capital_events.instigators[0], turret);
-    EXPECT_EQ(capital_events.instigators[1], turret);
+    EXPECT_EQ(capital_events.damaged_entities()[0], capital);
+    EXPECT_EQ(capital_events.damage_amounts()[0], 5);
+    EXPECT_EQ(capital_events.damage_amounts()[1], 13);
+    EXPECT_EQ(capital_events.instigators()[0], turret);
+    EXPECT_EQ(capital_events.instigators()[1], turret);
 
     EXPECT_TRUE(queue.events_for(EntityType::Fighter).is_empty());
     EXPECT_EQ(queue.all_events().num(), 3);
@@ -123,8 +123,8 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     EXPECT_EQ(health_table.get_const_view<EntityType::Fighter>(ids.size()).health(0), -6);
     EXPECT_EQ(removals, std::vector<std::uint32_t>{0});
     ASSERT_EQ(deaths.num(), 1);
-    EXPECT_EQ(deaths.victims[0], victim);
-    EXPECT_EQ(deaths.killers[0], attacker);
+    EXPECT_EQ(deaths.get_view().victims()[0], victim);
+    EXPECT_EQ(deaths.get_view().killers()[0], attacker);
 
     auto const& telemetry{ledger.get_combat_telemetry()};
     EXPECT_EQ(telemetry.hits[red][turret_type], 2u);

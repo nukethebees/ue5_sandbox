@@ -5,7 +5,7 @@
 
 struct FTestBatchOrchestratorTestAccess {
     static void queue_direct_damage_events(ATestBatchOrchestrator& orchestrator,
-                                           ::ioj::sim::DirectDamageEventsConstView events) {
+                                           ::ioj::sim::DirectDamageEvents::ConstView events) {
         check(orchestrator.level_simulation_.IsSet());
         ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(
             orchestrator.level_simulation_.GetValue(), events);

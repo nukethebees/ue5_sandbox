@@ -17,7 +17,7 @@ void sort_and_deduplicate_removal_indices(std::vector<std::uint32_t>& local_indi
     local_indices_to_remove.erase(unique_end, local_indices_to_remove.end());
 }
 
-void resolve_damage_events(DirectDamageEventsConstView damage_events,
+void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
                            EntityLookupTable const& lookup,
                            [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
                            HealthView const healths,
@@ -37,9 +37,16 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
     auto current_death_count{death_count};
     auto const removal_storage{std::span{local_indices_to_remove}};
     auto const handles{lookup.entries()};
+    auto const damaged_entities{damage_events.damaged_entities()};
+    auto const damage_amounts{damage_events.damage_amounts()};
+    auto const instigators{damage_events.instigators()};
+    auto const deaths{entity_death_info.get_view()};
+    auto const death_reasons{deaths.reasons()};
+    auto const victims{deaths.victims()};
+    auto const killers{deaths.killers()};
     for (std::uint32_t event_index{}; event_index < n_direct_events; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
-        auto const id{damage_events.damaged_entities[element]};
+        auto const id{damaged_entities[element]};
         if (id.index() >= handles.size() || !handles[id.index()].is_valid()) {
             continue;
         }
@@ -49,7 +56,7 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
         if (is_dead(healths.health(local_index))) {
             continue;
         }
-        auto const requested_damage{damage_events.damage_amounts[element]};
+        auto const requested_damage{damage_amounts[element]};
         assert(requested_damage >= 0);
         if (requested_damage == 0) {
             continue;
@@ -58,7 +65,7 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
         auto const applied_damage{std::min(health, requested_damage)};
         health -= requested_damage;
         healths.set_health(local_index, health);
-        ledger.record_damage(id, damage_events.instigators[element], applied_damage);
+        ledger.record_damage(id, instigators[element], applied_damage);
         // The populated prefix grows as this loop discovers deaths.
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
         auto const removals{removal_storage.first(static_cast<std::size_t>(current_removal_count))};
@@ -67,9 +74,12 @@ void resolve_damage_events(DirectDamageEventsConstView damage_events,
         }
 
         local_indices_to_remove[static_cast<std::size_t>(current_removal_count++)] = local_index;
-        auto const instigator{damage_events.instigators[element]};
+        auto const instigator{instigators[element]};
         auto const reason{instigator.is_valid() ? DeathReason::Combat : DeathReason::Unknown};
-        entity_death_info.set(current_death_count++, reason, id, instigator);
+        death_reasons[current_death_count] = reason;
+        victims[current_death_count] = id;
+        killers[current_death_count] = instigator;
+        ++current_death_count;
     }
     local_indices_to_remove.resize(static_cast<std::size_t>(current_removal_count));
     entity_death_info.set_num(current_death_count);

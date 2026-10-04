@@ -6,4 +6,15 @@
     :operations (all)
     (member damaged_entities array @native_unique_id)
     (member damage_amounts array int32)
-    (member instigators array @native_unique_id)))
+    (member instigators array @native_unique_id)
+    (function add void
+      :body #cpp{auto const index{num()};
+add_uninitialised(1);
+auto const events{get_view()};
+events.damaged_entities()[index] = damaged_entity;
+events.damage_amounts()[index] = damage_amount;
+events.instigators()[index] = instigator;}cpp#
+      (parameter damaged_entity (type-ref @native_unique_id :suffix " const"))
+      (parameter damage_amount (type-ref int32 :suffix " const"))
+      (parameter instigator (type-ref @native_unique_id :suffix " const")))
+    (single-allocation DirectDamageEvents)))

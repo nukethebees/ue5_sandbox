@@ -159,14 +159,17 @@ void Sim::resolve_damage_events() {
     auto health{health_table_.get_const_view<EntityType::PlayerShip>(1).health(0)};
     EntityUniqueId killer{};
     auto const damage_count{damage_events.num()};
+    [[maybe_unused]] auto const damaged_entities{damage_events.damaged_entities()};
+    auto const damage_amounts{damage_events.damage_amounts()};
+    auto const instigators{damage_events.instigators()};
     for (std::uint32_t event_index{}; event_index < damage_count; ++event_index) {
         auto const element{static_cast<std::size_t>(event_index)};
-        assert(damage_events.damaged_entities[element] == unique_entity_id);
+        assert(damaged_entities[element] == unique_entity_id);
         if (is_dead(health)) {
             continue;
         }
 
-        auto const requested_damage{damage_events.damage_amounts[element]};
+        auto const requested_damage{damage_amounts[element]};
         assert(requested_damage >= 0);
         if (requested_damage == 0) {
             continue;
@@ -174,9 +177,9 @@ void Sim::resolve_damage_events() {
         auto const was_alive{sim::is_alive(health)};
         auto const applied_damage{std::min(health, requested_damage)};
         health -= requested_damage;
-        ledger_.record_damage(unique_entity_id, damage_events.instigators[element], applied_damage);
+        ledger_.record_damage(unique_entity_id, instigators[element], applied_damage);
         if (was_alive && is_dead(health)) {
-            killer = damage_events.instigators[element];
+            killer = instigators[element];
         }
     }
 

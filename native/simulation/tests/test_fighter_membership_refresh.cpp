@@ -102,9 +102,7 @@ class FighterMembershipRefresh : public ::testing::Test {
 
     void damage(EntityUniqueId const victim, Health const amount) {
         DirectDamageEvents events;
-        events.add_uninitialised(1);
-        events.damaged_entities[0] = victim;
-        events.damage_amounts[0] = amount;
+        events.add(victim, amount, {});
         LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
     }
 
