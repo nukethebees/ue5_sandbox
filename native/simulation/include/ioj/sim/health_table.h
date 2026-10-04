@@ -18,28 +18,17 @@ inline constexpr auto has_health(EntityType const type) -> bool {
            type == EntityType::Fighter || type == EntityType::Turret;
 }
 namespace health_storage {
-inline constexpr auto capacities{[] {
-    auto result{entity_lifetime_capacities};
+struct Layout {
+    EntityTypeSizes capacities{};
+    EntityTypeSizes offsets{};
+    std::uint32_t capacity{};
+};
+inline constexpr auto layout{[] {
+    Layout result;
     for (auto const type : ml::EnumTraits<EntityType>::values) {
-        if (!has_health(type)) {
-            result[type] = 0;
-        }
-    }
-    return result;
-}()};
-inline constexpr auto offsets{[] {
-    EntityTypeSizes result;
-    std::uint32_t next{};
-    for (auto const type : ml::EnumTraits<EntityType>::values) {
-        result[type] = next;
-        next += capacities[type];
-    }
-    return result;
-}()};
-inline constexpr auto capacity{[] {
-    std::uint32_t result{};
-    for (auto const type : ml::EnumTraits<EntityType>::values) {
-        result += capacities[type];
+        result.capacities[type] = has_health(type) ? entity_lifetime_capacities[type] : 0;
+        result.offsets[type] = result.capacity;
+        result.capacity += result.capacities[type];
     }
     return result;
 }()};
@@ -97,27 +86,28 @@ class HealthView {
 class HealthTable {
   public:
     HealthTable()
-        : values_(health_storage::capacity) {}
+        : values_(health_storage::layout.capacity) {}
 
     [[nodiscard]] auto get_const_view(EntityType const type, std::size_t const count) const
         -> HealthConstView {
-        assert(has_health(type) && count <= health_storage::capacities[type]);
-        return HealthConstView{std::span{values_}.subspan(health_storage::offsets[type], count)};
+        assert(has_health(type) && count <= health_storage::layout.capacities[type]);
+        return HealthConstView{
+            std::span{values_}.subspan(health_storage::layout.offsets[type], count)};
     }
 
     template <EntityType Type>
     [[nodiscard]] auto get_const_view(std::size_t const count) const -> HealthConstView {
         static_assert(has_health(Type));
-        assert(count <= health_storage::capacities[Type]);
-        constexpr auto base{health_storage::offsets[Type]};
+        assert(count <= health_storage::layout.capacities[Type]);
+        constexpr auto base{health_storage::layout.offsets[Type]};
         return HealthConstView{std::span{values_}.subspan(base, count)};
     }
 
     template <EntityType Type>
     [[nodiscard]] auto get_view(std::size_t const count) -> HealthView {
         static_assert(has_health(Type));
-        assert(count <= health_storage::capacities[Type]);
-        constexpr auto base{health_storage::offsets[Type]};
+        assert(count <= health_storage::layout.capacities[Type]);
+        constexpr auto base{health_storage::layout.offsets[Type]};
         return HealthView{std::span{values_}.subspan(base, count)};
     }
 
@@ -129,8 +119,8 @@ class HealthTable {
                               count,
                               EntityInstanceHandle::index_minimum,
                               EntityInstanceHandle::index_maximum));
-        assert(first + count <= health_storage::capacities[Type]);
-        constexpr auto base{health_storage::offsets[Type]};
+        assert(first + count <= health_storage::layout.capacities[Type]);
+        constexpr auto base{health_storage::layout.offsets[Type]};
         std::ranges::copy(initial_values, values_.begin() + base + first);
     }
 
@@ -142,15 +132,15 @@ class HealthTable {
                               count,
                               EntityInstanceHandle::index_minimum,
                               EntityInstanceHandle::index_maximum));
-        assert(first + count <= health_storage::capacities[Type]);
-        constexpr auto base{health_storage::offsets[Type]};
+        assert(first + count <= health_storage::layout.capacities[Type]);
+        constexpr auto base{health_storage::layout.offsets[Type]};
         std::fill_n(values_.begin() + base + first, count, initial_value);
     }
 
     template <EntityType Type>
     void remove_rows(std::size_t count, std::span<EntityFrameIndex const> const rows) {
-        assert(count <= health_storage::capacities[Type]);
-        constexpr auto base{health_storage::offsets[Type]};
+        assert(count <= health_storage::layout.capacities[Type]);
+        constexpr auto base{health_storage::layout.offsets[Type]};
         [[maybe_unused]] auto previous{count};
         for (auto const row : rows) {
             assert(row < previous && row < count);
@@ -161,8 +151,8 @@ class HealthTable {
 
     template <EntityType Type>
     void apply_permutation(std::span<std::int32_t> const order) {
-        assert(order.size() <= health_storage::capacities[Type]);
-        constexpr auto base{health_storage::offsets[Type]};
+        assert(order.size() <= health_storage::layout.capacities[Type]);
+        constexpr auto base{health_storage::layout.offsets[Type]};
         ml::apply_permutation(std::span{values_}.subspan(base, order.size()), order);
     }
   private:
