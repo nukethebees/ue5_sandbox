@@ -184,9 +184,10 @@ struct EntityEntityOverlaps
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.first_entities, count);
-        ml::native_soa::default_construct_n(columns.second_entities, count);
+        default_construct_n(columns.first_entities, count);
+        default_construct_n(columns.second_entities, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -220,8 +221,8 @@ struct EntityEntityOverlaps
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityEntityOverlaps, size_type>
     {
-        return {ml::native_soa::source_data(source.first_entities()),
-                ml::native_soa::source_data(source.second_entities())};
+        using ml::native_soa::source_data;
+        return {source_data(source.first_entities()), source_data(source.second_entities())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,
@@ -424,9 +425,10 @@ struct EntityStaticOverlaps
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.entities, count);
-        ml::native_soa::default_construct_n(columns.static_geometry_indices, count);
+        default_construct_n(columns.entities, count);
+        default_construct_n(columns.static_geometry_indices, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -460,8 +462,8 @@ struct EntityStaticOverlaps
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityStaticOverlaps, size_type>
     {
-        return {ml::native_soa::source_data(source.entities()),
-                ml::native_soa::source_data(source.static_geometry_indices())};
+        using ml::native_soa::source_data;
+        return {source_data(source.entities()), source_data(source.static_geometry_indices())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

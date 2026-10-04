@@ -45,9 +45,10 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
     EXPECT_EQ(output.find("TArray"), std::string::npos);
     EXPECT_EQ(output.find("FMemory"), std::string::npos);
     EXPECT_EQ(output.find("CoreMinimal"), std::string::npos);
-    EXPECT_NE(output.find("ml::native_soa::default_construct_n(columns.nested_xs, count);"),
-              std::string::npos);
-    EXPECT_NE(output.find("ml::native_soa::source_data(nested_view.xs())"), std::string::npos);
+    EXPECT_NE(output.find("using ml::native_soa::default_construct_n;"), std::string::npos);
+    EXPECT_NE(output.find("default_construct_n(columns.nested_xs, count);"), std::string::npos);
+    EXPECT_NE(output.find("using ml::native_soa::source_data;"), std::string::npos);
+    EXPECT_NE(output.find("source_data(nested_view.xs())"), std::string::npos);
     EXPECT_NE(output.find("Operations::release_storage(*this);"), std::string::npos);
     EXPECT_NE(output.find("transfer_columns<false>(destination, source, num_);"),
               std::string::npos);
@@ -108,17 +109,17 @@ TEST(SingleAllocationSoa, TypedColumnOperationsUseLayoutCursorAndPreserveNestedP
     auto input{schemas()};
     input.front().members = {{"values", SoaMemberKind::array, TypeRef{"int32"}}};
     auto const output{render(input)};
-    EXPECT_NE(output.find("ml::soa_storage::default_construct_n(columns.ids, count);"),
-              std::string::npos);
-    EXPECT_NE(output.find("ml::soa_storage::default_construct_n(columns.nested_values, count);"),
-              std::string::npos);
+    EXPECT_NE(output.find("using ml::soa_storage::default_construct_n;"), std::string::npos);
+    EXPECT_NE(output.find("default_construct_n(columns.ids, count);"), std::string::npos);
+    EXPECT_NE(output.find("default_construct_n(columns.nested_values, count);"), std::string::npos);
     EXPECT_NE(output.find("transfer_columns<false>(columns + index, columns + source, move_count)"),
               std::string::npos);
     EXPECT_NE(output.find("ml::soa_storage::LayoutCursor cursor{blocks};"), std::string::npos);
     EXPECT_NE(output.find("cursor.column_pointer(data, Layout::IdsColumn)"), std::string::npos);
     EXPECT_NE(output.find("cursor.column_pointer(data, Layout::NestedValuesColumn)"),
               std::string::npos);
-    EXPECT_NE(output.find("ml::soa_storage::source_data(nested_view.values())"), std::string::npos);
+    EXPECT_NE(output.find("using ml::soa_storage::source_data;"), std::string::npos);
+    EXPECT_NE(output.find("source_data(nested_view.values())"), std::string::npos);
     EXPECT_EQ(output.find("_bytes{elements_to_"), std::string::npos);
     auto const start{output.find("void copy_live_columns(")};
     ASSERT_NE(start, std::string::npos);
@@ -239,7 +240,7 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
     EXPECT_EQ(output.find("ml::soa_storage_detail::view_column_data<"), std::string::npos);
     EXPECT_EQ(output.find("auto columns() const"), std::string::npos);
     EXPECT_NE(output.find("for_each_removal_run(num_, indices"), std::string::npos);
-    EXPECT_NE(output.find("ml::soa_storage::source_data(nested_view.wide())"), std::string::npos);
+    EXPECT_NE(output.find("source_data(nested_view.wide())"), std::string::npos);
     EXPECT_NE(output.find("SingleRows(SingleRows const&) = delete"), std::string::npos);
     input.front().members = {{"xs", SoaMemberKind::array, TypeRef{"double"}},
                              {"ys", SoaMemberKind::array, TypeRef{"double"}}};
@@ -268,6 +269,9 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
     EXPECT_NE(rotations.find("Layout::NestedYawsColumn"), std::string::npos);
     EXPECT_NE(rotations.find("Layout::NestedRollsColumn"), std::string::npos);
     EXPECT_NE(rotations.find("return three_column_view<"), std::string::npos);
+    EXPECT_NE(rotations.find("using ml::soa_storage_detail::three_column_view;"),
+              std::string::npos);
+    EXPECT_EQ(rotations.find("using namespace ml::soa_storage_detail;"), std::string::npos);
     EXPECT_EQ(rotations.find("NestedYawsColumn.offset(blocks) - first"), std::string::npos);
     EXPECT_EQ(rotations.find("struct RowsSingleView_nested"), std::string::npos);
     input.front().members.back().type = TypeRef{"float"};

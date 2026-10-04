@@ -106,7 +106,7 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
             state_, offset_, count_, Layout::IntegralBiasesColumn);
     }
     auto view_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -115,7 +115,7 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
                                                                      Layout::LocationsZsColumn);
     }
     auto view_fire_point_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
@@ -125,7 +125,7 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
             Layout::FirePointLocationsZsColumn);
     }
     auto view_rotations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<std::conditional_t<Const,
                                                     ml::native_soa::RotatorSoAConstView<float>,
                                                     ml::native_soa::RotatorSoAView<float>>>(
@@ -161,7 +161,7 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
             state_, offset_, count_, Layout::TargetIdsColumn);
     }
     auto view_target_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
@@ -171,7 +171,7 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
             Layout::TargetLocationsZsColumn);
     }
     auto view_target_velocities() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
@@ -378,31 +378,31 @@ struct TurretEntityData
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.entity_ids, count);
-        ml::native_soa::default_construct_n(columns.integral_biases, count);
-        ml::native_soa::default_construct_n(columns.locations_xs, count);
-        ml::native_soa::default_construct_n(columns.locations_ys, count);
-        ml::native_soa::default_construct_n(columns.locations_zs, count);
-        ml::native_soa::default_construct_n(columns.fire_point_locations_xs, count);
-        ml::native_soa::default_construct_n(columns.fire_point_locations_ys, count);
-        ml::native_soa::default_construct_n(columns.fire_point_locations_zs, count);
-        ml::native_soa::default_construct_n(columns.rotations_pitches, count);
-        ml::native_soa::default_construct_n(columns.rotations_yaws, count);
-        ml::native_soa::default_construct_n(columns.rotations_rolls, count);
-        ml::native_soa::default_construct_n(columns.teams, count);
-        ml::native_soa::default_construct_n(columns.laser_cooldowns, count);
-        ml::native_soa::default_construct_n(columns.laser_damages, count);
-        ml::native_soa::default_construct_n(columns.target_refresh_countdowns_periods, count);
-        ml::native_soa::default_construct_n(columns.target_refresh_countdowns_remaining_ticks,
-                                            count);
-        ml::native_soa::default_construct_n(columns.target_ids, count);
-        ml::native_soa::default_construct_n(columns.target_locations_xs, count);
-        ml::native_soa::default_construct_n(columns.target_locations_ys, count);
-        ml::native_soa::default_construct_n(columns.target_locations_zs, count);
-        ml::native_soa::default_construct_n(columns.target_velocities_xs, count);
-        ml::native_soa::default_construct_n(columns.target_velocities_ys, count);
-        ml::native_soa::default_construct_n(columns.target_velocities_zs, count);
+        default_construct_n(columns.entity_ids, count);
+        default_construct_n(columns.integral_biases, count);
+        default_construct_n(columns.locations_xs, count);
+        default_construct_n(columns.locations_ys, count);
+        default_construct_n(columns.locations_zs, count);
+        default_construct_n(columns.fire_point_locations_xs, count);
+        default_construct_n(columns.fire_point_locations_ys, count);
+        default_construct_n(columns.fire_point_locations_zs, count);
+        default_construct_n(columns.rotations_pitches, count);
+        default_construct_n(columns.rotations_yaws, count);
+        default_construct_n(columns.rotations_rolls, count);
+        default_construct_n(columns.teams, count);
+        default_construct_n(columns.laser_cooldowns, count);
+        default_construct_n(columns.laser_damages, count);
+        default_construct_n(columns.target_refresh_countdowns_periods, count);
+        default_construct_n(columns.target_refresh_countdowns_remaining_ticks, count);
+        default_construct_n(columns.target_ids, count);
+        default_construct_n(columns.target_locations_xs, count);
+        default_construct_n(columns.target_locations_ys, count);
+        default_construct_n(columns.target_locations_zs, count);
+        default_construct_n(columns.target_velocities_xs, count);
+        default_construct_n(columns.target_velocities_ys, count);
+        default_construct_n(columns.target_velocities_zs, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -459,34 +459,35 @@ struct TurretEntityData
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, TurretEntityData, size_type>
     {
+        using ml::native_soa::source_data;
         auto const& locations_view{source.view_locations()};
         auto const& fire_point_locations_view{source.view_fire_point_locations()};
         auto const& rotations_view{source.view_rotations()};
         auto const& target_locations_view{source.view_target_locations()};
         auto const& target_velocities_view{source.view_target_velocities()};
-        return {ml::native_soa::source_data(source.entity_ids()),
-                ml::native_soa::source_data(source.integral_biases()),
-                ml::native_soa::source_data(locations_view.xs()),
-                ml::native_soa::source_data(locations_view.ys()),
-                ml::native_soa::source_data(locations_view.zs()),
-                ml::native_soa::source_data(fire_point_locations_view.xs()),
-                ml::native_soa::source_data(fire_point_locations_view.ys()),
-                ml::native_soa::source_data(fire_point_locations_view.zs()),
-                ml::native_soa::source_data(rotations_view.pitches()),
-                ml::native_soa::source_data(rotations_view.yaws()),
-                ml::native_soa::source_data(rotations_view.rolls()),
-                ml::native_soa::source_data(source.teams()),
-                ml::native_soa::source_data(source.laser_cooldowns()),
-                ml::native_soa::source_data(source.laser_damages()),
-                ml::native_soa::source_data(source.target_refresh_countdowns_periods()),
-                ml::native_soa::source_data(source.target_refresh_countdowns_remaining_ticks()),
-                ml::native_soa::source_data(source.target_ids()),
-                ml::native_soa::source_data(target_locations_view.xs()),
-                ml::native_soa::source_data(target_locations_view.ys()),
-                ml::native_soa::source_data(target_locations_view.zs()),
-                ml::native_soa::source_data(target_velocities_view.xs()),
-                ml::native_soa::source_data(target_velocities_view.ys()),
-                ml::native_soa::source_data(target_velocities_view.zs())};
+        return {source_data(source.entity_ids()),
+                source_data(source.integral_biases()),
+                source_data(locations_view.xs()),
+                source_data(locations_view.ys()),
+                source_data(locations_view.zs()),
+                source_data(fire_point_locations_view.xs()),
+                source_data(fire_point_locations_view.ys()),
+                source_data(fire_point_locations_view.zs()),
+                source_data(rotations_view.pitches()),
+                source_data(rotations_view.yaws()),
+                source_data(rotations_view.rolls()),
+                source_data(source.teams()),
+                source_data(source.laser_cooldowns()),
+                source_data(source.laser_damages()),
+                source_data(source.target_refresh_countdowns_periods()),
+                source_data(source.target_refresh_countdowns_remaining_ticks()),
+                source_data(source.target_ids()),
+                source_data(target_locations_view.xs()),
+                source_data(target_locations_view.ys()),
+                source_data(target_locations_view.zs()),
+                source_data(target_velocities_view.xs()),
+                source_data(target_velocities_view.ys()),
+                source_data(target_velocities_view.zs())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

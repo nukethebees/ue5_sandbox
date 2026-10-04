@@ -78,7 +78,7 @@ struct TraceHitsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
         , offset_{other.offset_}
         , count_{other.count_} {}
     auto view_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -225,13 +225,14 @@ struct TraceHits
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.locations_xs, count);
-        ml::native_soa::default_construct_n(columns.locations_ys, count);
-        ml::native_soa::default_construct_n(columns.locations_zs, count);
-        ml::native_soa::default_construct_n(columns.entities, count);
-        ml::native_soa::default_construct_n(columns.static_geometry_indices, count);
-        ml::native_soa::default_construct_n(columns.hits, count);
+        default_construct_n(columns.locations_xs, count);
+        default_construct_n(columns.locations_ys, count);
+        default_construct_n(columns.locations_zs, count);
+        default_construct_n(columns.entities, count);
+        default_construct_n(columns.static_geometry_indices, count);
+        default_construct_n(columns.hits, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -269,13 +270,14 @@ struct TraceHits
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, TraceHits, size_type>
     {
+        using ml::native_soa::source_data;
         auto const& locations_view{source.view_locations()};
-        return {ml::native_soa::source_data(locations_view.xs()),
-                ml::native_soa::source_data(locations_view.ys()),
-                ml::native_soa::source_data(locations_view.zs()),
-                ml::native_soa::source_data(source.entities()),
-                ml::native_soa::source_data(source.static_geometry_indices()),
-                ml::native_soa::source_data(source.hits())};
+        return {source_data(locations_view.xs()),
+                source_data(locations_view.ys()),
+                source_data(locations_view.zs()),
+                source_data(source.entities()),
+                source_data(source.static_geometry_indices()),
+                source_data(source.hits())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

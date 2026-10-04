@@ -284,20 +284,21 @@ struct EntityCellData
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.min_point_xs, count);
-        ml::native_soa::default_construct_n(columns.min_point_ys, count);
-        ml::native_soa::default_construct_n(columns.min_point_zs, count);
-        ml::native_soa::default_construct_n(columns.max_point_xs, count);
-        ml::native_soa::default_construct_n(columns.max_point_ys, count);
-        ml::native_soa::default_construct_n(columns.max_point_zs, count);
-        ml::native_soa::default_construct_n(columns.min_cell_xs, count);
-        ml::native_soa::default_construct_n(columns.min_cell_ys, count);
-        ml::native_soa::default_construct_n(columns.min_cell_zs, count);
-        ml::native_soa::default_construct_n(columns.max_cell_xs, count);
-        ml::native_soa::default_construct_n(columns.max_cell_ys, count);
-        ml::native_soa::default_construct_n(columns.max_cell_zs, count);
-        ml::native_soa::default_construct_n(columns.entity_ids, count);
+        default_construct_n(columns.min_point_xs, count);
+        default_construct_n(columns.min_point_ys, count);
+        default_construct_n(columns.min_point_zs, count);
+        default_construct_n(columns.max_point_xs, count);
+        default_construct_n(columns.max_point_ys, count);
+        default_construct_n(columns.max_point_zs, count);
+        default_construct_n(columns.min_cell_xs, count);
+        default_construct_n(columns.min_cell_ys, count);
+        default_construct_n(columns.min_cell_zs, count);
+        default_construct_n(columns.max_cell_xs, count);
+        default_construct_n(columns.max_cell_ys, count);
+        default_construct_n(columns.max_cell_zs, count);
+        default_construct_n(columns.entity_ids, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -342,19 +343,20 @@ struct EntityCellData
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityCellData, size_type>
     {
-        return {ml::native_soa::source_data(source.min_point_xs()),
-                ml::native_soa::source_data(source.min_point_ys()),
-                ml::native_soa::source_data(source.min_point_zs()),
-                ml::native_soa::source_data(source.max_point_xs()),
-                ml::native_soa::source_data(source.max_point_ys()),
-                ml::native_soa::source_data(source.max_point_zs()),
-                ml::native_soa::source_data(source.min_cell_xs()),
-                ml::native_soa::source_data(source.min_cell_ys()),
-                ml::native_soa::source_data(source.min_cell_zs()),
-                ml::native_soa::source_data(source.max_cell_xs()),
-                ml::native_soa::source_data(source.max_cell_ys()),
-                ml::native_soa::source_data(source.max_cell_zs()),
-                ml::native_soa::source_data(source.entity_ids())};
+        using ml::native_soa::source_data;
+        return {source_data(source.min_point_xs()),
+                source_data(source.min_point_ys()),
+                source_data(source.min_point_zs()),
+                source_data(source.max_point_xs()),
+                source_data(source.max_point_ys()),
+                source_data(source.max_point_zs()),
+                source_data(source.min_cell_xs()),
+                source_data(source.min_cell_ys()),
+                source_data(source.min_cell_zs()),
+                source_data(source.max_cell_xs()),
+                source_data(source.max_cell_ys()),
+                source_data(source.max_cell_zs()),
+                source_data(source.entity_ids())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

@@ -259,7 +259,7 @@ struct RowsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
             state_, offset_, count_, Layout::BytesColumn);
     }
     auto view_nested() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::strided_vector_view;
         return strided_vector_view<std::conditional_t<Const,
                                                       ml::soa::Vector3ConstView<float>,
                                                       ml::soa::Vector3View<float>>>(
@@ -381,11 +381,12 @@ struct SingleRows
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::soa_storage::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::soa_storage::default_construct_n(columns.bytes, count);
-        ml::soa_storage::default_construct_n(columns.nested_xs, count);
-        ml::soa_storage::default_construct_n(columns.nested_ys, count);
-        ml::soa_storage::default_construct_n(columns.nested_zs, count);
+        default_construct_n(columns.bytes, count);
+        default_construct_n(columns.nested_xs, count);
+        default_construct_n(columns.nested_ys, count);
+        default_construct_n(columns.nested_zs, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -421,11 +422,12 @@ struct SingleRows
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleRows, size_type>
     {
+        using ml::soa_storage::source_data;
         auto const& nested_view{source.view_nested()};
-        return {ml::soa_storage::source_data(source.bytes()),
-                ml::soa_storage::source_data(nested_view.xs()),
-                ml::soa_storage::source_data(nested_view.ys()),
-                ml::soa_storage::source_data(nested_view.zs())};
+        return {source_data(source.bytes()),
+                source_data(nested_view.xs()),
+                source_data(nested_view.ys()),
+                source_data(nested_view.zs())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,
@@ -767,11 +769,12 @@ struct SANDBOXCOREENGINETESTS_API ApiOwner
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::soa_storage::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::soa_storage::default_construct_n(columns.values, count);
-        ml::soa_storage::default_construct_n(columns.masks, count);
-        ml::soa_storage::default_construct_n(columns.positions_xs, count);
-        ml::soa_storage::default_construct_n(columns.positions_ys, count);
+        default_construct_n(columns.values, count);
+        default_construct_n(columns.masks, count);
+        default_construct_n(columns.positions_xs, count);
+        default_construct_n(columns.positions_ys, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -807,11 +810,12 @@ struct SANDBOXCOREENGINETESTS_API ApiOwner
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
     {
+        using ml::soa_storage::source_data;
         auto const& positions_view{source.view_positions()};
-        return {ml::soa_storage::source_data(source.values()),
-                ml::soa_storage::source_data(source.masks()),
-                ml::soa_storage::source_data(positions_view.xs()),
-                ml::soa_storage::source_data(positions_view.ys())};
+        return {source_data(source.values()),
+                source_data(source.masks()),
+                source_data(positions_view.xs()),
+                source_data(positions_view.ys())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,
@@ -1024,9 +1028,10 @@ struct EquivalentOwner
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::soa_storage::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::soa_storage::default_construct_n(columns.xs, count);
-        ml::soa_storage::default_construct_n(columns.ys, count);
+        default_construct_n(columns.xs, count);
+        default_construct_n(columns.ys, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -1060,8 +1065,8 @@ struct EquivalentOwner
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
     {
-        return {ml::soa_storage::source_data(source.xs()),
-                ml::soa_storage::source_data(source.ys())};
+        using ml::soa_storage::source_data;
+        return {source_data(source.xs()), source_data(source.ys())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

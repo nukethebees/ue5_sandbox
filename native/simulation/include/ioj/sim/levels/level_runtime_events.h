@@ -198,10 +198,11 @@ struct LevelSpawnGroups
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.types, count);
-        ml::native_soa::default_construct_n(columns.offsets, count);
-        ml::native_soa::default_construct_n(columns.counts, count);
+        default_construct_n(columns.types, count);
+        default_construct_n(columns.offsets, count);
+        default_construct_n(columns.counts, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -236,9 +237,10 @@ struct LevelSpawnGroups
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelSpawnGroups, size_type>
     {
-        return {ml::native_soa::source_data(source.types()),
-                ml::native_soa::source_data(source.offsets()),
-                ml::native_soa::source_data(source.counts())};
+        using ml::native_soa::source_data;
+        return {source_data(source.types()),
+                source_data(source.offsets()),
+                source_data(source.counts())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,
@@ -344,7 +346,7 @@ struct LevelCapitalSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVi
             state_, offset_, count_, Layout::TargetEntityIndicesColumn);
     }
     auto view_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -353,7 +355,7 @@ struct LevelCapitalSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVi
                                                                      Layout::LocationsZsColumn);
     }
     auto view_rotations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<std::conditional_t<Const,
                                                     ml::native_soa::RotatorSoAConstView<float>,
                                                     ml::native_soa::RotatorSoAView<float>>>(
@@ -532,19 +534,20 @@ struct LevelCapitalSpawnEvents
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.entity_indices, count);
-        ml::native_soa::default_construct_n(columns.target_entity_indices, count);
-        ml::native_soa::default_construct_n(columns.locations_xs, count);
-        ml::native_soa::default_construct_n(columns.locations_ys, count);
-        ml::native_soa::default_construct_n(columns.locations_zs, count);
-        ml::native_soa::default_construct_n(columns.rotations_pitches, count);
-        ml::native_soa::default_construct_n(columns.rotations_yaws, count);
-        ml::native_soa::default_construct_n(columns.rotations_rolls, count);
-        ml::native_soa::default_construct_n(columns.teams, count);
-        ml::native_soa::default_construct_n(columns.healths, count);
-        ml::native_soa::default_construct_n(columns.initial_fighter_spawn_delays, count);
-        ml::native_soa::default_construct_n(columns.fighter_spawn_cooldowns, count);
+        default_construct_n(columns.entity_indices, count);
+        default_construct_n(columns.target_entity_indices, count);
+        default_construct_n(columns.locations_xs, count);
+        default_construct_n(columns.locations_ys, count);
+        default_construct_n(columns.locations_zs, count);
+        default_construct_n(columns.rotations_pitches, count);
+        default_construct_n(columns.rotations_yaws, count);
+        default_construct_n(columns.rotations_rolls, count);
+        default_construct_n(columns.teams, count);
+        default_construct_n(columns.healths, count);
+        default_construct_n(columns.initial_fighter_spawn_delays, count);
+        default_construct_n(columns.fighter_spawn_cooldowns, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -588,20 +591,21 @@ struct LevelCapitalSpawnEvents
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelCapitalSpawnEvents, size_type>
     {
+        using ml::native_soa::source_data;
         auto const& locations_view{source.view_locations()};
         auto const& rotations_view{source.view_rotations()};
-        return {ml::native_soa::source_data(source.entity_indices()),
-                ml::native_soa::source_data(source.target_entity_indices()),
-                ml::native_soa::source_data(locations_view.xs()),
-                ml::native_soa::source_data(locations_view.ys()),
-                ml::native_soa::source_data(locations_view.zs()),
-                ml::native_soa::source_data(rotations_view.pitches()),
-                ml::native_soa::source_data(rotations_view.yaws()),
-                ml::native_soa::source_data(rotations_view.rolls()),
-                ml::native_soa::source_data(source.teams()),
-                ml::native_soa::source_data(source.healths()),
-                ml::native_soa::source_data(source.initial_fighter_spawn_delays()),
-                ml::native_soa::source_data(source.fighter_spawn_cooldowns())};
+        return {source_data(source.entity_indices()),
+                source_data(source.target_entity_indices()),
+                source_data(locations_view.xs()),
+                source_data(locations_view.ys()),
+                source_data(locations_view.zs()),
+                source_data(rotations_view.pitches()),
+                source_data(rotations_view.yaws()),
+                source_data(rotations_view.rolls()),
+                source_data(source.teams()),
+                source_data(source.healths()),
+                source_data(source.initial_fighter_spawn_delays()),
+                source_data(source.fighter_spawn_cooldowns())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,
@@ -700,7 +704,7 @@ struct LevelTurretSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVie
             state_, offset_, count_, Layout::EntityIndicesColumn);
     }
     auto view_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -709,7 +713,7 @@ struct LevelTurretSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVie
                                                                      Layout::LocationsZsColumn);
     }
     auto view_rotations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<std::conditional_t<Const,
                                                     ml::native_soa::RotatorSoAConstView<float>,
                                                     ml::native_soa::RotatorSoAView<float>>>(
@@ -876,17 +880,18 @@ struct LevelTurretSpawnEvents
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.entity_indices, count);
-        ml::native_soa::default_construct_n(columns.locations_xs, count);
-        ml::native_soa::default_construct_n(columns.locations_ys, count);
-        ml::native_soa::default_construct_n(columns.locations_zs, count);
-        ml::native_soa::default_construct_n(columns.rotations_pitches, count);
-        ml::native_soa::default_construct_n(columns.rotations_yaws, count);
-        ml::native_soa::default_construct_n(columns.rotations_rolls, count);
-        ml::native_soa::default_construct_n(columns.teams, count);
-        ml::native_soa::default_construct_n(columns.healths, count);
-        ml::native_soa::default_construct_n(columns.laser_damages, count);
+        default_construct_n(columns.entity_indices, count);
+        default_construct_n(columns.locations_xs, count);
+        default_construct_n(columns.locations_ys, count);
+        default_construct_n(columns.locations_zs, count);
+        default_construct_n(columns.rotations_pitches, count);
+        default_construct_n(columns.rotations_yaws, count);
+        default_construct_n(columns.rotations_rolls, count);
+        default_construct_n(columns.teams, count);
+        default_construct_n(columns.healths, count);
+        default_construct_n(columns.laser_damages, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -928,18 +933,19 @@ struct LevelTurretSpawnEvents
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelTurretSpawnEvents, size_type>
     {
+        using ml::native_soa::source_data;
         auto const& locations_view{source.view_locations()};
         auto const& rotations_view{source.view_rotations()};
-        return {ml::native_soa::source_data(source.entity_indices()),
-                ml::native_soa::source_data(locations_view.xs()),
-                ml::native_soa::source_data(locations_view.ys()),
-                ml::native_soa::source_data(locations_view.zs()),
-                ml::native_soa::source_data(rotations_view.pitches()),
-                ml::native_soa::source_data(rotations_view.yaws()),
-                ml::native_soa::source_data(rotations_view.rolls()),
-                ml::native_soa::source_data(source.teams()),
-                ml::native_soa::source_data(source.healths()),
-                ml::native_soa::source_data(source.laser_damages())};
+        return {source_data(source.entity_indices()),
+                source_data(locations_view.xs()),
+                source_data(locations_view.ys()),
+                source_data(locations_view.zs()),
+                source_data(rotations_view.pitches()),
+                source_data(rotations_view.yaws()),
+                source_data(rotations_view.rolls()),
+                source_data(source.teams()),
+                source_data(source.healths()),
+                source_data(source.laser_damages())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,
@@ -1034,7 +1040,7 @@ struct LevelSpinnerSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVi
             state_, offset_, count_, Layout::EntityIndicesColumn);
     }
     auto view_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -1177,13 +1183,14 @@ struct LevelSpinnerSpawnEvents
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.entity_indices, count);
-        ml::native_soa::default_construct_n(columns.locations_xs, count);
-        ml::native_soa::default_construct_n(columns.locations_ys, count);
-        ml::native_soa::default_construct_n(columns.locations_zs, count);
-        ml::native_soa::default_construct_n(columns.yaws, count);
-        ml::native_soa::default_construct_n(columns.initial_fire_point_indices, count);
+        default_construct_n(columns.entity_indices, count);
+        default_construct_n(columns.locations_xs, count);
+        default_construct_n(columns.locations_ys, count);
+        default_construct_n(columns.locations_zs, count);
+        default_construct_n(columns.yaws, count);
+        default_construct_n(columns.initial_fire_point_indices, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -1221,13 +1228,14 @@ struct LevelSpinnerSpawnEvents
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelSpinnerSpawnEvents, size_type>
     {
+        using ml::native_soa::source_data;
         auto const& locations_view{source.view_locations()};
-        return {ml::native_soa::source_data(source.entity_indices()),
-                ml::native_soa::source_data(locations_view.xs()),
-                ml::native_soa::source_data(locations_view.ys()),
-                ml::native_soa::source_data(locations_view.zs()),
-                ml::native_soa::source_data(source.yaws()),
-                ml::native_soa::source_data(source.initial_fire_point_indices())};
+        return {source_data(source.entity_indices()),
+                source_data(locations_view.xs()),
+                source_data(locations_view.ys()),
+                source_data(locations_view.zs()),
+                source_data(source.yaws()),
+                source_data(source.initial_fire_point_indices())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,
@@ -1437,10 +1445,11 @@ struct LevelMissionEventGroups
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.types, count);
-        ml::native_soa::default_construct_n(columns.offsets, count);
-        ml::native_soa::default_construct_n(columns.counts, count);
+        default_construct_n(columns.types, count);
+        default_construct_n(columns.offsets, count);
+        default_construct_n(columns.counts, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -1475,9 +1484,10 @@ struct LevelMissionEventGroups
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelMissionEventGroups, size_type>
     {
-        return {ml::native_soa::source_data(source.types()),
-                ml::native_soa::source_data(source.offsets()),
-                ml::native_soa::source_data(source.counts())};
+        using ml::native_soa::source_data;
+        return {source_data(source.types()),
+                source_data(source.offsets()),
+                source_data(source.counts())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

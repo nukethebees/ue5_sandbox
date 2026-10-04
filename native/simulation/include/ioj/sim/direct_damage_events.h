@@ -192,10 +192,11 @@ struct DirectDamageEvents
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.damaged_entities, count);
-        ml::native_soa::default_construct_n(columns.damage_amounts, count);
-        ml::native_soa::default_construct_n(columns.instigators, count);
+        default_construct_n(columns.damaged_entities, count);
+        default_construct_n(columns.damage_amounts, count);
+        default_construct_n(columns.instigators, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -230,9 +231,10 @@ struct DirectDamageEvents
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, DirectDamageEvents, size_type>
     {
-        return {ml::native_soa::source_data(source.damaged_entities()),
-                ml::native_soa::source_data(source.damage_amounts()),
-                ml::native_soa::source_data(source.instigators())};
+        using ml::native_soa::source_data;
+        return {source_data(source.damaged_entities()),
+                source_data(source.damage_amounts()),
+                source_data(source.instigators())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

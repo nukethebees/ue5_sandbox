@@ -239,6 +239,7 @@ auto column_pointer_nodes(SingleAllocationModel const& model) -> Nodes {
 
 auto default_construction_node(SingleAllocationModel const& model) -> Node {
     NodeListBuilder body;
+    body.add(raw("using " + model.dialect.runtime_namespace + "default_construct_n;"));
     body.add(VariableDeclarationStmt{
         "auto const",
         "columns",
@@ -247,8 +248,7 @@ auto default_construction_node(SingleAllocationModel const& model) -> Node {
                named("first"))});
     for (auto const& column : model.columns) {
         body.add(ExpressionStmt{
-            call(named(model.dialect.runtime_namespace + "default_construct_n",
-                       column.type.dependencies),
+            call(named("default_construct_n", column.type.dependencies),
                  {member_access(named("columns"), column.flattened_identifier), named("count")})});
     }
     return inline_function(FunctionSpec{
@@ -319,10 +319,11 @@ auto column_copying_nodes(SingleAllocationModel const& model) -> Nodes {
 
 auto source_pointers_node(SingleAllocationModel const& model) -> Node {
     NodeListBuilder body;
+    body.add(raw("using " + model.dialect.runtime_namespace + "source_data;"));
     std::map<std::string, std::string> groups;
     std::vector<Expr> pointers;
     for (auto const& column : model.columns) {
-        pointers.push_back(call(named(model.dialect.runtime_namespace + "source_data"),
+        pointers.push_back(call(named("source_data"),
                                 {column_access(column.member_path, "source", groups, body)}));
     }
     body.add(ReturnStmt{init_list(std::move(pointers))});
@@ -477,7 +478,8 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
             children.new_lines(1).add(compact_function(FunctionSpec{
                 .name = "view_" + member.name,
                 .return_type = "auto",
-                .body = {raw("using namespace ml::soa_storage_detail;"),
+                .body = {raw(std::string{"using ml::soa_storage_detail::"} +
+                             (pointer_view ? "three_column_view;" : "strided_vector_view;")),
                          ReturnStmt{call(named(std::string{pointer_view ? "three_column_view<"
                                                                         : "strided_vector_view<"} +
                                                    view_type.spelling + ">",

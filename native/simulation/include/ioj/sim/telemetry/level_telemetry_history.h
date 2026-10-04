@@ -330,17 +330,18 @@ struct HistoryRows
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.completed_ticks, count);
-        ml::native_soa::default_construct_n(columns.validity_masks, count);
-        ml::native_soa::default_construct_n(columns.active_entities, count);
-        ml::native_soa::default_construct_n(columns.active_entities_by_type, count);
-        ml::native_soa::default_construct_n(columns.active_entities_by_team_and_type, count);
-        ml::native_soa::default_construct_n(columns.spawned_entities, count);
-        ml::native_soa::default_construct_n(columns.destroyed_entities, count);
-        ml::native_soa::default_construct_n(columns.kills, count);
-        ml::native_soa::default_construct_n(columns.active_lasers, count);
-        ml::native_soa::default_construct_n(columns.lasers_fired, count);
+        default_construct_n(columns.completed_ticks, count);
+        default_construct_n(columns.validity_masks, count);
+        default_construct_n(columns.active_entities, count);
+        default_construct_n(columns.active_entities_by_type, count);
+        default_construct_n(columns.active_entities_by_team_and_type, count);
+        default_construct_n(columns.spawned_entities, count);
+        default_construct_n(columns.destroyed_entities, count);
+        default_construct_n(columns.kills, count);
+        default_construct_n(columns.active_lasers, count);
+        default_construct_n(columns.lasers_fired, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -383,16 +384,17 @@ struct HistoryRows
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, HistoryRows, size_type>
     {
-        return {ml::native_soa::source_data(source.completed_ticks()),
-                ml::native_soa::source_data(source.validity_masks()),
-                ml::native_soa::source_data(source.active_entities()),
-                ml::native_soa::source_data(source.active_entities_by_type()),
-                ml::native_soa::source_data(source.active_entities_by_team_and_type()),
-                ml::native_soa::source_data(source.spawned_entities()),
-                ml::native_soa::source_data(source.destroyed_entities()),
-                ml::native_soa::source_data(source.kills()),
-                ml::native_soa::source_data(source.active_lasers()),
-                ml::native_soa::source_data(source.lasers_fired())};
+        using ml::native_soa::source_data;
+        return {source_data(source.completed_ticks()),
+                source_data(source.validity_masks()),
+                source_data(source.active_entities()),
+                source_data(source.active_entities_by_type()),
+                source_data(source.active_entities_by_team_and_type()),
+                source_data(source.spawned_entities()),
+                source_data(source.destroyed_entities()),
+                source_data(source.kills()),
+                source_data(source.active_lasers()),
+                source_data(source.lasers_fired())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

@@ -191,10 +191,11 @@ struct EntityDeathInfo
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.reasons, count);
-        ml::native_soa::default_construct_n(columns.victims, count);
-        ml::native_soa::default_construct_n(columns.killers, count);
+        default_construct_n(columns.reasons, count);
+        default_construct_n(columns.victims, count);
+        default_construct_n(columns.killers, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -229,9 +230,10 @@ struct EntityDeathInfo
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityDeathInfo, size_type>
     {
-        return {ml::native_soa::source_data(source.reasons()),
-                ml::native_soa::source_data(source.victims()),
-                ml::native_soa::source_data(source.killers())};
+        using ml::native_soa::source_data;
+        return {source_data(source.reasons()),
+                source_data(source.victims()),
+                source_data(source.killers())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

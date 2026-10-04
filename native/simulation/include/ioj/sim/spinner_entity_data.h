@@ -83,7 +83,7 @@ struct SpinnerEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             state_, offset_, count_, Layout::EntityIdsColumn);
     }
     auto view_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -233,14 +233,15 @@ struct SpinnerEntityData
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.entity_ids, count);
-        ml::native_soa::default_construct_n(columns.locations_xs, count);
-        ml::native_soa::default_construct_n(columns.locations_ys, count);
-        ml::native_soa::default_construct_n(columns.locations_zs, count);
-        ml::native_soa::default_construct_n(columns.yaws, count);
-        ml::native_soa::default_construct_n(columns.laser_cooldowns, count);
-        ml::native_soa::default_construct_n(columns.next_fire_point_indices, count);
+        default_construct_n(columns.entity_ids, count);
+        default_construct_n(columns.locations_xs, count);
+        default_construct_n(columns.locations_ys, count);
+        default_construct_n(columns.locations_zs, count);
+        default_construct_n(columns.yaws, count);
+        default_construct_n(columns.laser_cooldowns, count);
+        default_construct_n(columns.next_fire_point_indices, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -279,14 +280,15 @@ struct SpinnerEntityData
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, SpinnerEntityData, size_type>
     {
+        using ml::native_soa::source_data;
         auto const& locations_view{source.view_locations()};
-        return {ml::native_soa::source_data(source.entity_ids()),
-                ml::native_soa::source_data(locations_view.xs()),
-                ml::native_soa::source_data(locations_view.ys()),
-                ml::native_soa::source_data(locations_view.zs()),
-                ml::native_soa::source_data(source.yaws()),
-                ml::native_soa::source_data(source.laser_cooldowns()),
-                ml::native_soa::source_data(source.next_fire_point_indices())};
+        return {source_data(source.entity_ids()),
+                source_data(locations_view.xs()),
+                source_data(locations_view.ys()),
+                source_data(locations_view.zs()),
+                source_data(source.yaws()),
+                source_data(source.laser_cooldowns()),
+                source_data(source.next_fire_point_indices())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

@@ -199,11 +199,12 @@ struct FighterOrderQueue
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.entity_ids, count);
-        ml::native_soa::default_construct_n(columns.orders, count);
-        ml::native_soa::default_construct_n(columns.tasks, count);
-        ml::native_soa::default_construct_n(columns.targets, count);
+        default_construct_n(columns.entity_ids, count);
+        default_construct_n(columns.orders, count);
+        default_construct_n(columns.tasks, count);
+        default_construct_n(columns.targets, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -239,10 +240,11 @@ struct FighterOrderQueue
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, FighterOrderQueue, size_type>
     {
-        return {ml::native_soa::source_data(source.entity_ids()),
-                ml::native_soa::source_data(source.orders()),
-                ml::native_soa::source_data(source.tasks()),
-                ml::native_soa::source_data(source.targets())};
+        using ml::native_soa::source_data;
+        return {source_data(source.entity_ids()),
+                source_data(source.orders()),
+                source_data(source.tasks()),
+                source_data(source.targets())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

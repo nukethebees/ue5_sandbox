@@ -217,13 +217,14 @@ struct WorldAABBs
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.min_xs, count);
-        ml::native_soa::default_construct_n(columns.min_ys, count);
-        ml::native_soa::default_construct_n(columns.min_zs, count);
-        ml::native_soa::default_construct_n(columns.max_xs, count);
-        ml::native_soa::default_construct_n(columns.max_ys, count);
-        ml::native_soa::default_construct_n(columns.max_zs, count);
+        default_construct_n(columns.min_xs, count);
+        default_construct_n(columns.min_ys, count);
+        default_construct_n(columns.min_zs, count);
+        default_construct_n(columns.max_xs, count);
+        default_construct_n(columns.max_ys, count);
+        default_construct_n(columns.max_zs, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -261,12 +262,13 @@ struct WorldAABBs
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, WorldAABBs, size_type>
     {
-        return {ml::native_soa::source_data(source.min_xs()),
-                ml::native_soa::source_data(source.min_ys()),
-                ml::native_soa::source_data(source.min_zs()),
-                ml::native_soa::source_data(source.max_xs()),
-                ml::native_soa::source_data(source.max_ys()),
-                ml::native_soa::source_data(source.max_zs())};
+        using ml::native_soa::source_data;
+        return {source_data(source.min_xs()),
+                source_data(source.min_ys()),
+                source_data(source.min_zs()),
+                source_data(source.max_xs()),
+                source_data(source.max_ys()),
+                source_data(source.max_zs())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

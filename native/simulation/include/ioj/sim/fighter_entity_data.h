@@ -162,7 +162,7 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             state_, offset_, count_, Layout::TasksColumn);
     }
     auto view_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -171,7 +171,7 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
                                                                      Layout::LocationsZsColumn);
     }
     auto view_desired_move_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
@@ -181,7 +181,7 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::DesiredMoveLocationsZsColumn);
     }
     auto view_aim_directions() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -190,7 +190,7 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
                                                                      Layout::AimDirectionsZsColumn);
     }
     auto view_planned_aim_directions() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
@@ -200,7 +200,7 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::PlannedAimDirectionsZsColumn);
     }
     auto view_desired_aiming_directions() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
@@ -210,7 +210,7 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::DesiredAimingDirectionsZsColumn);
     }
     auto view_movement_directions() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
@@ -220,7 +220,7 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::MovementDirectionsZsColumn);
     }
     auto view_velocities() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -257,7 +257,7 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             state_, offset_, count_, Layout::NavigationUpdateCountdownsPeriodsColumn);
     }
     auto view_separation_steering() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
@@ -298,7 +298,7 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             state_, offset_, count_, Layout::TargetIdsColumn);
     }
     auto view_target_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
@@ -308,7 +308,7 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::TargetLocationsZsColumn);
     }
     auto view_target_velocities() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
@@ -318,7 +318,7 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             Layout::TargetVelocitiesZsColumn);
     }
     auto view_target_directions() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
@@ -675,63 +675,63 @@ struct FighterEntityData
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.entity_ids, count);
-        ml::native_soa::default_construct_n(columns.integral_biases, count);
-        ml::native_soa::default_construct_n(columns.float_biases, count);
-        ml::native_soa::default_construct_n(columns.tasks, count);
-        ml::native_soa::default_construct_n(columns.locations_xs, count);
-        ml::native_soa::default_construct_n(columns.locations_ys, count);
-        ml::native_soa::default_construct_n(columns.locations_zs, count);
-        ml::native_soa::default_construct_n(columns.desired_move_locations_xs, count);
-        ml::native_soa::default_construct_n(columns.desired_move_locations_ys, count);
-        ml::native_soa::default_construct_n(columns.desired_move_locations_zs, count);
-        ml::native_soa::default_construct_n(columns.aim_directions_xs, count);
-        ml::native_soa::default_construct_n(columns.aim_directions_ys, count);
-        ml::native_soa::default_construct_n(columns.aim_directions_zs, count);
-        ml::native_soa::default_construct_n(columns.planned_aim_directions_xs, count);
-        ml::native_soa::default_construct_n(columns.planned_aim_directions_ys, count);
-        ml::native_soa::default_construct_n(columns.planned_aim_directions_zs, count);
-        ml::native_soa::default_construct_n(columns.desired_aiming_directions_xs, count);
-        ml::native_soa::default_construct_n(columns.desired_aiming_directions_ys, count);
-        ml::native_soa::default_construct_n(columns.desired_aiming_directions_zs, count);
-        ml::native_soa::default_construct_n(columns.movement_directions_xs, count);
-        ml::native_soa::default_construct_n(columns.movement_directions_ys, count);
-        ml::native_soa::default_construct_n(columns.movement_directions_zs, count);
-        ml::native_soa::default_construct_n(columns.velocities_xs, count);
-        ml::native_soa::default_construct_n(columns.velocities_ys, count);
-        ml::native_soa::default_construct_n(columns.velocities_zs, count);
-        ml::native_soa::default_construct_n(columns.move_distances, count);
-        ml::native_soa::default_construct_n(columns.speeds, count);
-        ml::native_soa::default_construct_n(columns.teams, count);
-        ml::native_soa::default_construct_n(columns.parent_ids, count);
-        ml::native_soa::default_construct_n(columns.awareness_scan_countdowns, count);
-        ml::native_soa::default_construct_n(columns.navigation_update_countdowns_remaining_ticks,
-                                            count);
-        ml::native_soa::default_construct_n(columns.navigation_update_countdowns_periods, count);
-        ml::native_soa::default_construct_n(columns.separation_steering_xs, count);
-        ml::native_soa::default_construct_n(columns.separation_steering_ys, count);
-        ml::native_soa::default_construct_n(columns.separation_steering_zs, count);
-        ml::native_soa::default_construct_n(columns.navigation_risk_tiers, count);
-        ml::native_soa::default_construct_n(columns.navigation_lower_risk_scan_counts, count);
-        ml::native_soa::default_construct_n(columns.avoidance_choice_indices, count);
-        ml::native_soa::default_construct_n(columns.avoidance_clear_scan_counts, count);
-        ml::native_soa::default_construct_n(columns.attack_reposition_countdowns, count);
-        ml::native_soa::default_construct_n(columns.attack_cooldowns, count);
-        ml::native_soa::default_construct_n(columns.target_ids, count);
-        ml::native_soa::default_construct_n(columns.target_locations_xs, count);
-        ml::native_soa::default_construct_n(columns.target_locations_ys, count);
-        ml::native_soa::default_construct_n(columns.target_locations_zs, count);
-        ml::native_soa::default_construct_n(columns.target_velocities_xs, count);
-        ml::native_soa::default_construct_n(columns.target_velocities_ys, count);
-        ml::native_soa::default_construct_n(columns.target_velocities_zs, count);
-        ml::native_soa::default_construct_n(columns.target_directions_xs, count);
-        ml::native_soa::default_construct_n(columns.target_directions_ys, count);
-        ml::native_soa::default_construct_n(columns.target_directions_zs, count);
-        ml::native_soa::default_construct_n(columns.intercept_times, count);
-        ml::native_soa::default_construct_n(columns.target_distance_sq, count);
-        ml::native_soa::default_construct_n(columns.target_distances, count);
-        ml::native_soa::default_construct_n(columns.target_radii, count);
+        default_construct_n(columns.entity_ids, count);
+        default_construct_n(columns.integral_biases, count);
+        default_construct_n(columns.float_biases, count);
+        default_construct_n(columns.tasks, count);
+        default_construct_n(columns.locations_xs, count);
+        default_construct_n(columns.locations_ys, count);
+        default_construct_n(columns.locations_zs, count);
+        default_construct_n(columns.desired_move_locations_xs, count);
+        default_construct_n(columns.desired_move_locations_ys, count);
+        default_construct_n(columns.desired_move_locations_zs, count);
+        default_construct_n(columns.aim_directions_xs, count);
+        default_construct_n(columns.aim_directions_ys, count);
+        default_construct_n(columns.aim_directions_zs, count);
+        default_construct_n(columns.planned_aim_directions_xs, count);
+        default_construct_n(columns.planned_aim_directions_ys, count);
+        default_construct_n(columns.planned_aim_directions_zs, count);
+        default_construct_n(columns.desired_aiming_directions_xs, count);
+        default_construct_n(columns.desired_aiming_directions_ys, count);
+        default_construct_n(columns.desired_aiming_directions_zs, count);
+        default_construct_n(columns.movement_directions_xs, count);
+        default_construct_n(columns.movement_directions_ys, count);
+        default_construct_n(columns.movement_directions_zs, count);
+        default_construct_n(columns.velocities_xs, count);
+        default_construct_n(columns.velocities_ys, count);
+        default_construct_n(columns.velocities_zs, count);
+        default_construct_n(columns.move_distances, count);
+        default_construct_n(columns.speeds, count);
+        default_construct_n(columns.teams, count);
+        default_construct_n(columns.parent_ids, count);
+        default_construct_n(columns.awareness_scan_countdowns, count);
+        default_construct_n(columns.navigation_update_countdowns_remaining_ticks, count);
+        default_construct_n(columns.navigation_update_countdowns_periods, count);
+        default_construct_n(columns.separation_steering_xs, count);
+        default_construct_n(columns.separation_steering_ys, count);
+        default_construct_n(columns.separation_steering_zs, count);
+        default_construct_n(columns.navigation_risk_tiers, count);
+        default_construct_n(columns.navigation_lower_risk_scan_counts, count);
+        default_construct_n(columns.avoidance_choice_indices, count);
+        default_construct_n(columns.avoidance_clear_scan_counts, count);
+        default_construct_n(columns.attack_reposition_countdowns, count);
+        default_construct_n(columns.attack_cooldowns, count);
+        default_construct_n(columns.target_ids, count);
+        default_construct_n(columns.target_locations_xs, count);
+        default_construct_n(columns.target_locations_ys, count);
+        default_construct_n(columns.target_locations_zs, count);
+        default_construct_n(columns.target_velocities_xs, count);
+        default_construct_n(columns.target_velocities_ys, count);
+        default_construct_n(columns.target_velocities_zs, count);
+        default_construct_n(columns.target_directions_xs, count);
+        default_construct_n(columns.target_directions_ys, count);
+        default_construct_n(columns.target_directions_zs, count);
+        default_construct_n(columns.intercept_times, count);
+        default_construct_n(columns.target_distance_sq, count);
+        default_construct_n(columns.target_distances, count);
+        default_construct_n(columns.target_radii, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -821,6 +821,7 @@ struct FighterEntityData
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, FighterEntityData, size_type>
     {
+        using ml::native_soa::source_data;
         auto const& locations_view{source.view_locations()};
         auto const& desired_move_locations_view{source.view_desired_move_locations()};
         auto const& aim_directions_view{source.view_aim_directions()};
@@ -832,61 +833,61 @@ struct FighterEntityData
         auto const& target_locations_view{source.view_target_locations()};
         auto const& target_velocities_view{source.view_target_velocities()};
         auto const& target_directions_view{source.view_target_directions()};
-        return {ml::native_soa::source_data(source.entity_ids()),
-                ml::native_soa::source_data(source.integral_biases()),
-                ml::native_soa::source_data(source.float_biases()),
-                ml::native_soa::source_data(source.tasks()),
-                ml::native_soa::source_data(locations_view.xs()),
-                ml::native_soa::source_data(locations_view.ys()),
-                ml::native_soa::source_data(locations_view.zs()),
-                ml::native_soa::source_data(desired_move_locations_view.xs()),
-                ml::native_soa::source_data(desired_move_locations_view.ys()),
-                ml::native_soa::source_data(desired_move_locations_view.zs()),
-                ml::native_soa::source_data(aim_directions_view.xs()),
-                ml::native_soa::source_data(aim_directions_view.ys()),
-                ml::native_soa::source_data(aim_directions_view.zs()),
-                ml::native_soa::source_data(planned_aim_directions_view.xs()),
-                ml::native_soa::source_data(planned_aim_directions_view.ys()),
-                ml::native_soa::source_data(planned_aim_directions_view.zs()),
-                ml::native_soa::source_data(desired_aiming_directions_view.xs()),
-                ml::native_soa::source_data(desired_aiming_directions_view.ys()),
-                ml::native_soa::source_data(desired_aiming_directions_view.zs()),
-                ml::native_soa::source_data(movement_directions_view.xs()),
-                ml::native_soa::source_data(movement_directions_view.ys()),
-                ml::native_soa::source_data(movement_directions_view.zs()),
-                ml::native_soa::source_data(velocities_view.xs()),
-                ml::native_soa::source_data(velocities_view.ys()),
-                ml::native_soa::source_data(velocities_view.zs()),
-                ml::native_soa::source_data(source.move_distances()),
-                ml::native_soa::source_data(source.speeds()),
-                ml::native_soa::source_data(source.teams()),
-                ml::native_soa::source_data(source.parent_ids()),
-                ml::native_soa::source_data(source.awareness_scan_countdowns()),
-                ml::native_soa::source_data(source.navigation_update_countdowns_remaining_ticks()),
-                ml::native_soa::source_data(source.navigation_update_countdowns_periods()),
-                ml::native_soa::source_data(separation_steering_view.xs()),
-                ml::native_soa::source_data(separation_steering_view.ys()),
-                ml::native_soa::source_data(separation_steering_view.zs()),
-                ml::native_soa::source_data(source.navigation_risk_tiers()),
-                ml::native_soa::source_data(source.navigation_lower_risk_scan_counts()),
-                ml::native_soa::source_data(source.avoidance_choice_indices()),
-                ml::native_soa::source_data(source.avoidance_clear_scan_counts()),
-                ml::native_soa::source_data(source.attack_reposition_countdowns()),
-                ml::native_soa::source_data(source.attack_cooldowns()),
-                ml::native_soa::source_data(source.target_ids()),
-                ml::native_soa::source_data(target_locations_view.xs()),
-                ml::native_soa::source_data(target_locations_view.ys()),
-                ml::native_soa::source_data(target_locations_view.zs()),
-                ml::native_soa::source_data(target_velocities_view.xs()),
-                ml::native_soa::source_data(target_velocities_view.ys()),
-                ml::native_soa::source_data(target_velocities_view.zs()),
-                ml::native_soa::source_data(target_directions_view.xs()),
-                ml::native_soa::source_data(target_directions_view.ys()),
-                ml::native_soa::source_data(target_directions_view.zs()),
-                ml::native_soa::source_data(source.intercept_times()),
-                ml::native_soa::source_data(source.target_distance_sq()),
-                ml::native_soa::source_data(source.target_distances()),
-                ml::native_soa::source_data(source.target_radii())};
+        return {source_data(source.entity_ids()),
+                source_data(source.integral_biases()),
+                source_data(source.float_biases()),
+                source_data(source.tasks()),
+                source_data(locations_view.xs()),
+                source_data(locations_view.ys()),
+                source_data(locations_view.zs()),
+                source_data(desired_move_locations_view.xs()),
+                source_data(desired_move_locations_view.ys()),
+                source_data(desired_move_locations_view.zs()),
+                source_data(aim_directions_view.xs()),
+                source_data(aim_directions_view.ys()),
+                source_data(aim_directions_view.zs()),
+                source_data(planned_aim_directions_view.xs()),
+                source_data(planned_aim_directions_view.ys()),
+                source_data(planned_aim_directions_view.zs()),
+                source_data(desired_aiming_directions_view.xs()),
+                source_data(desired_aiming_directions_view.ys()),
+                source_data(desired_aiming_directions_view.zs()),
+                source_data(movement_directions_view.xs()),
+                source_data(movement_directions_view.ys()),
+                source_data(movement_directions_view.zs()),
+                source_data(velocities_view.xs()),
+                source_data(velocities_view.ys()),
+                source_data(velocities_view.zs()),
+                source_data(source.move_distances()),
+                source_data(source.speeds()),
+                source_data(source.teams()),
+                source_data(source.parent_ids()),
+                source_data(source.awareness_scan_countdowns()),
+                source_data(source.navigation_update_countdowns_remaining_ticks()),
+                source_data(source.navigation_update_countdowns_periods()),
+                source_data(separation_steering_view.xs()),
+                source_data(separation_steering_view.ys()),
+                source_data(separation_steering_view.zs()),
+                source_data(source.navigation_risk_tiers()),
+                source_data(source.navigation_lower_risk_scan_counts()),
+                source_data(source.avoidance_choice_indices()),
+                source_data(source.avoidance_clear_scan_counts()),
+                source_data(source.attack_reposition_countdowns()),
+                source_data(source.attack_cooldowns()),
+                source_data(source.target_ids()),
+                source_data(target_locations_view.xs()),
+                source_data(target_locations_view.ys()),
+                source_data(target_locations_view.zs()),
+                source_data(target_velocities_view.xs()),
+                source_data(target_velocities_view.ys()),
+                source_data(target_velocities_view.zs()),
+                source_data(target_directions_view.xs()),
+                source_data(target_directions_view.ys()),
+                source_data(target_directions_view.zs()),
+                source_data(source.intercept_times()),
+                source_data(source.target_distance_sq()),
+                source_data(source.target_distances()),
+                source_data(source.target_radii())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,
