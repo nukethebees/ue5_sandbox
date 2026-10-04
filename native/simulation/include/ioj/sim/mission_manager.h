@@ -1,6 +1,7 @@
 #pragma once
 #include <ioj/sim/entity_unique_id.h>
 #include <ioj/sim/levels/level_mission_initialisation_data.h>
+#include <ioj/sim/levels/level_runtime_events.h>
 #include <ioj/sim/missions/mission_fail_reason.h>
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>
@@ -19,7 +20,6 @@
 namespace ioj::sim {
 class EntityLedger;
 struct EntityTables;
-struct LevelMissionEventGroupsConstView;
 
 struct LevelMissionResult {
     std::string level_id{};
@@ -60,7 +60,7 @@ struct MissionManager {
                                   std::span<EntityUniqueId const> level_entity_ids);
     void bind_level_event_data(std::span<std::int32_t const> values,
                                std::span<EntityUniqueId const> level_entity_ids);
-    void consume_level_events(LevelMissionEventGroupsConstView groups);
+    void consume_level_events(LevelMissionEventGroups::ConstView groups);
 
     /* **************************************** */
     // Mission configuration and objectives

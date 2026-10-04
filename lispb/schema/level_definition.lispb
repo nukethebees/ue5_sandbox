@@ -34,7 +34,8 @@
     :operations (all)
     (member types array @native_entity_type)
     (member offsets array int32)
-    (member counts array @native_level_event_count))
+    (member counts array @native_level_event_count)
+    (single-allocation LevelSpawnGroups))
   (struct LevelCapitalSpawnEvents
     :operations (all)
     (member entity_indices array uint32)
@@ -66,4 +67,5 @@
     :operations (all)
     (member types array @native_level_mission_event_type)
     (member offsets array int32)
-    (member counts array @native_level_event_count)))
+    (member counts array @native_level_event_count)
+    (single-allocation LevelMissionEventGroups)))

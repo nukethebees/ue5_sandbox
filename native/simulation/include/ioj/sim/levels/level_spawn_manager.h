@@ -37,7 +37,7 @@ class LevelSpawnManager {
     void spawn_initial(LevelCapitalSpawnEvents::ConstView capital_events,
                        LevelTurretSpawnEvents::ConstView turret_events,
                        LevelSpinnerSpawnEvents::ConstView spinner_events);
-    void spawn(LevelSpawnGroupsConstView groups);
+    void spawn(LevelSpawnGroups::ConstView groups);
     void reset_tick_output() { spawned_ids_this_tick_.clear(); }
     auto get_spawned_ids() const -> std::span<EntityUniqueId const> {
         return spawned_ids_this_tick_;

@@ -55,12 +55,15 @@ void LevelSpawnManager::spawn_initial(LevelCapitalSpawnEvents::ConstView const c
     }
 }
 
-void LevelSpawnManager::spawn(LevelSpawnGroupsConstView const groups) {
+void LevelSpawnManager::spawn(LevelSpawnGroups::ConstView const groups) {
     auto const group_count{groups.num()};
+    auto const types{groups.types()};
+    auto const offsets{groups.offsets()};
+    auto const counts{groups.counts()};
     for (std::uint32_t index{}; index < group_count; ++index) {
-        auto const offset{groups.offsets[index]};
-        auto const count{groups.counts[index]};
-        switch (groups.types[index]) {
+        auto const offset{offsets[index]};
+        auto const count{counts[index]};
+        switch (types[index]) {
             case EntityType::CapitalShip: {
                 // Spawn groups select distinct payload ranges.
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
@@ -74,15 +77,15 @@ void LevelSpawnManager::spawn(LevelSpawnGroupsConstView const groups) {
             }
             default: {
                 ml::fatal_error(std::format("Unsupported level spawn entity type: {}",
-                                            std::to_underlying(groups.types[index])));
+                                            std::to_underlying(types[index])));
             }
         }
     }
     for (std::uint32_t index{}; index < group_count; ++index) {
-        if (groups.types[index] == EntityType::CapitalShip) {
+        if (types[index] == EntityType::CapitalShip) {
             resolve_capital_targets(
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- per-group payload.
-                capital_payloads_.get_const_view(groups.offsets[index], groups.counts[index]));
+                capital_payloads_.get_const_view(offsets[index], counts[index]));
         }
     }
 }

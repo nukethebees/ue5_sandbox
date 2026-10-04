@@ -143,13 +143,16 @@ void MissionManager::bind_level_event_data(std::span<std::int32_t const> const v
     level_entity_ids_ = level_entity_ids;
 }
 
-void MissionManager::consume_level_events(LevelMissionEventGroupsConstView const groups) {
+void MissionManager::consume_level_events(LevelMissionEventGroups::ConstView const groups) {
     auto const group_count{groups.num()};
+    auto const types{groups.types()};
+    auto const offsets{groups.offsets()};
+    auto const counts{groups.counts()};
     for (std::uint32_t index{}; index < group_count; ++index) {
         // Each event group selects a different payload range.
         // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-        auto const values{level_event_values_.subspan(groups.offsets[index], groups.counts[index])};
-        switch (groups.types[index]) {
+        auto const values{level_event_values_.subspan(offsets[index], counts[index])};
+        switch (types[index]) {
             case LevelMissionEventType::MustSurvive: {
                 for (auto const entity_index : values) {
                     add_entity_that_must_survive(
@@ -175,7 +178,7 @@ void MissionManager::consume_level_events(LevelMissionEventGroupsConstView const
             }
             default: {
                 ml::fatal_error(std::format("Unsupported level mission event type: {}",
-                                            static_cast<std::int32_t>(groups.types[index])));
+                                            static_cast<std::int32_t>(types[index])));
             }
         }
     }
