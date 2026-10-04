@@ -259,7 +259,10 @@ pub fn run_native_comparison(args: &CompareOptions, arguments: &[String]) -> Res
     .into_iter()
     .flatten()
     {
-        revision::validate_owned_path(&resolve_absolute_path(&root, path)?, &root)?;
+        let path = resolve_absolute_path(&root, path)?;
+        if !revision::paths_equal(&path, &root) {
+            revision::validate_owned_path(&path, &root)?;
+        }
     }
     let mut run = Run::new(
         &root,

@@ -47,6 +47,16 @@ fn fingerprint_tracks_dirty_and_untracked_files_but_excludes_artifacts() {
 fn owned_baselines_are_detached_and_cleaned_and_supplied_ones_retained() {
     let directory = repository_fixture();
     let root = directory.path();
+    for supplied in [None, Some(".")] {
+        let revisions =
+            Revisions::new(root, "HEAD", supplied, false, &root.join(".local/results")).unwrap();
+        assert_eq!(revisions.baseline.root, root);
+        assert!(!revisions.owned);
+        revisions.cleanup_worktrees(Ok(())).unwrap();
+        assert!(root.join(".git").exists());
+    }
+    fs::write(root.join("source.txt"), "working copy").unwrap();
+    assert!(Revisions::new(root, "HEAD", Some("."), false, &root.join(".local/results")).is_err());
     let revisions =
         Revisions::new(root, "HEAD", None, false, &root.join(".local/results")).unwrap();
     let baseline = revisions.baseline.root.clone();
@@ -91,7 +101,7 @@ fn owned_baselines_are_detached_and_cleaned_and_supplied_ones_retained() {
     );
     assert_eq!(
         fs::read_to_string(root.join("source.txt")).unwrap(),
-        "original"
+        "working copy"
     );
     run_git_capture(
         root,

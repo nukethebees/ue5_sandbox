@@ -62,6 +62,11 @@ your current checkout, including local edits. Repeat the same workload options i
 and measurement. Supplied worktrees must be clean, at the requested commits, and inside the
 invoking workspace; they remain available afterward.
 
+An explicit revision matching the clean current checkout reuses that checkout instead of
+creating another worktree. For a dirty checkout or a different commit, preparation creates
+a detached input. The printed paths remain valid for `--skip-build`, including the current
+checkout when it was reused.
+
 The default workload uses 2,000 and 4,000 fighters, a five-second warmup, a ten-second measurement,
 and two repetitions per side in ABBA order. Adjust `--fighter-caps`, `--seconds`,
 `--warmup-seconds`, or `--repetitions`. To compare an S7 level, add these options to both commands:
