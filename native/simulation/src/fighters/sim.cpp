@@ -541,12 +541,13 @@ void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource)
     }
 
     auto const damage_count{damage_events.num()};
+    auto const damaged_entities{damage_events.damaged_entities()};
+    auto const instigator_ids{damage_events.instigators()};
     ml::FrameArray<std::uint32_t> order{scratch_resource};
     ml::FrameArray<EntityInstanceHandle> instigators{scratch_resource};
     order.set_num(damage_count);
     instigators.set_num(damage_count);
-    auto const runs{
-        entity_tables_.lookups.lookup_handles(damage_events.instigators, order, instigators)};
+    auto const runs{entity_tables_.lookups.lookup_handles(instigator_ids, order, instigators)};
     for (std::uint32_t run{}; run < runs.num; ++run) {
         auto const type{runs.types[run]};
         if (!has_health(type)) {
@@ -569,7 +570,7 @@ void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource)
 
     for (std::uint32_t event_index{}; event_index < damage_count; ++event_index) {
         auto const event_element{static_cast<std::size_t>(event_index)};
-        auto const damaged_id{damage_events.damaged_entities[event_element]};
+        auto const damaged_id{damaged_entities[event_element]};
         auto const handle{handles[damaged_id.index()]};
         assert(handle.is_valid());
         auto const fighter_index{handle.index()};
@@ -577,7 +578,7 @@ void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource)
             continue;
         }
 
-        auto const instigator{damage_events.instigators[event_element]};
+        auto const instigator{instigator_ids[event_element]};
         if (!instigators[event_index].is_valid()) {
             continue;
         }
@@ -589,8 +590,11 @@ void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource)
 void Sim::publish_deaths() {
     auto const deaths{entity_death_info.get_const_view()};
     auto const death_count{deaths.num()};
+    auto const victims{deaths.victims()};
+    auto const killers{deaths.killers()};
+    auto const reasons{deaths.reasons()};
     for (std::uint32_t i{}; i < death_count; ++i) {
-        ledger_.record_death(deaths.victims[i], deaths.killers[i], deaths.reasons[i]);
+        ledger_.record_death(victims[i], killers[i], reasons[i]);
     }
 }
 void Sim::remove_components() {
@@ -1703,7 +1707,11 @@ void Sim::commit_orders() {
     }
 
     auto const orders{order_queue.get_const_view()};
-    assert(check_valid_ids(orders.entity_ids, EntityType::Fighter));
+    auto const order_entity_ids{orders.entity_ids()};
+    auto const order_flags{orders.orders()};
+    auto const order_tasks{orders.tasks()};
+    auto const order_targets{orders.targets()};
+    assert(check_valid_ids(order_entity_ids, EntityType::Fighter));
 
     auto const tasks{data.tasks()};
     auto const desired_move_locations{data.view_desired_move_locations()};
@@ -1739,7 +1747,7 @@ void Sim::commit_orders() {
         }};
 
     for (std::uint32_t index{}; index < n_orders; ++index) {
-        auto const id{orders.entity_ids[index]};
+        auto const id{order_entity_ids[index]};
         auto const handle{id.index() < handles.size() ? handles[id.index()]
                                                       : EntityInstanceHandle{}};
         auto const fighter_index{handle.index()};
@@ -1747,10 +1755,10 @@ void Sim::commit_orders() {
             continue;
         }
 
-        auto const order{orders.orders[index]};
+        auto const order{order_flags[index]};
         if (order.task()) {
             auto const old_task{tasks[fighter_index]};
-            auto const new_task{orders.tasks[index]};
+            auto const new_task{order_tasks[index]};
             tasks[fighter_index] = new_task;
             auto const initial_tier{new_task == FighterTask::Standby ? NavigationRiskTier::Clear
                                                                      : NavigationRiskTier::Nearby};
@@ -1763,7 +1771,7 @@ void Sim::commit_orders() {
             }
         }
         if (order.target()) {
-            target_ids[fighter_index] = orders.targets[index];
+            target_ids[fighter_index] = order_targets[index];
         }
     }
     order_queue.reset();

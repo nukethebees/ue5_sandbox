@@ -41,7 +41,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/fixed_tick_loop.h
   ../include/ioj/sim/fixed_tick.h
   ../include/ioj/sim/frame_collision_scratch.h
-  ../include/ioj/sim/frame_direct_damage_events.h
   ../include/ioj/sim/frame_hit_details.h
   ../include/ioj/sim/frame_laser_spawn_requests.h
   ../include/ioj/sim/frame_rotators3f.h
@@ -114,7 +113,6 @@ target_sources(native-simulation PRIVATE
   fighter_navigation.cpp
   fixed_tick.cpp
   frame_collision_scratch.cpp
-  frame_direct_damage_events.cpp
   frame_hit_details.cpp
   frame_laser_spawn_requests.cpp
   frame_rotators3f.cpp

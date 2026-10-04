@@ -7,4 +7,17 @@
     (member entity_ids array @native_unique_id)
     (member orders array @native_fighter_order)
     (member tasks array @native_fighter_task)
-    (member targets array @native_unique_id)))
+    (member targets array @native_unique_id)
+    (function add void
+      :body #cpp{auto const index{num()};
+add_uninitialised(1);
+auto const queue{get_view()};
+queue.entity_ids()[index] = entity_id;
+queue.orders()[index] = order;
+queue.tasks()[index] = task;
+queue.targets()[index] = target;}cpp#
+      (parameter entity_id (type-ref @native_unique_id :suffix " const"))
+      (parameter order (type-ref @native_fighter_order :suffix " const"))
+      (parameter task (type-ref @native_fighter_task :suffix " const"))
+      (parameter target (type-ref @native_unique_id :suffix " const")))
+    (single-allocation FighterOrderQueue)))

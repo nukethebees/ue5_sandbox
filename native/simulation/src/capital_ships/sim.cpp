@@ -123,8 +123,11 @@ void Sim::resolve_damage_events() {
 void Sim::publish_deaths() {
     auto const deaths{entity_death_info.get_const_view()};
     auto const death_count{deaths.num()};
+    auto const victims{deaths.victims()};
+    auto const killers{deaths.killers()};
+    auto const reasons{deaths.reasons()};
     for (std::uint32_t i{}; i < death_count; ++i) {
-        ledger_.record_death(deaths.victims[i], deaths.killers[i], deaths.reasons[i]);
+        ledger_.record_death(victims[i], killers[i], reasons[i]);
     }
 }
 void Sim::remove_components() {

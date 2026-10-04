@@ -7,274 +7,329 @@
 #include "ioj/sim/fighter_types.h"
 
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/native_soa/vector_storage_ops.h"
 
 #include <cassert>
-#include <utility>
+#include <memory_resource>
 
 namespace ioj::sim {
 struct FighterOrderQueueSchema;
 
-struct FighterOrderQueueView;
-struct FighterOrderQueueConstView;
-struct FighterOrderQueueConstView {
-    using View = FighterOrderQueueView;
-    using ConstView = FighterOrderQueueConstView;
+struct FighterOrderQueueSingleView;
+struct FighterOrderQueueSingleConstView;
+struct FighterOrderQueueSingleLayout {
     using size_type = std::uint32_t;
-    std::span<EntityUniqueId const> entity_ids;
-    std::span<FighterOrder const> orders;
-    std::span<FighterTask const> tasks;
-    std::span<EntityUniqueId const> targets;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entity_ids);
-        fn(orders);
-        fn(tasks);
-        fn(targets);
+    using byte_size_type = std::size_t;
+
+    inline static constexpr size_type capacity_granularity{
+        ml::native_soa::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    inline static constexpr ColLayout<EntityUniqueId> EntityIdsColumn{LayoutStart};
+    inline static constexpr ColLayout<FighterOrder> OrdersColumn{EntityIdsColumn};
+    inline static constexpr ColLayout<FighterTask> TasksColumn{OrdersColumn};
+    inline static constexpr ColLayout<EntityUniqueId> TargetsColumn{TasksColumn};
+
+    inline static constexpr byte_size_type allocation_alignment{TargetsColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::native_soa::capacity_block_bound(TargetsColumn)};
+    inline static constexpr size_type max_capacity{
+        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : TargetsColumn.data_end(blocks);
     }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> FighterOrderQueueConstView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            orders.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            tasks.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            targets.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> FighterOrderQueueConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> FighterOrderQueueConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            entity_ids,
-            orders,
-            tasks,
-            targets,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> FighterOrderQueueConstView { return slice(0, count); }
-    auto right(size_type const count) const -> FighterOrderQueueConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-};
-struct FighterOrderQueueView {
-    using View = FighterOrderQueueView;
-    using ConstView = FighterOrderQueueConstView;
-    using size_type = std::uint32_t;
-    std::span<EntityUniqueId> entity_ids;
-    std::span<FighterOrder> orders;
-    std::span<FighterTask> tasks;
-    std::span<EntityUniqueId> targets;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entity_ids);
-        fn(orders);
-        fn(tasks);
-        fn(targets);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> FighterOrderQueueView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            entity_ids.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            orders.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            tasks.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            targets.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> FighterOrderQueueView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> FighterOrderQueueView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            entity_ids,
-            orders,
-            tasks,
-            targets,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> FighterOrderQueueView { return slice(0, count); }
-    auto right(size_type const count) const -> FighterOrderQueueView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
-             EntityUniqueId const new_entity_ids,
-             FighterOrder const new_orders,
-             FighterTask const new_tasks,
-             EntityUniqueId const new_targets) const {
-        assert(index < num());
-        entity_ids[static_cast<std::size_t>(index)] = new_entity_ids;
-        orders[static_cast<std::size_t>(index)] = new_orders;
-        tasks[static_cast<std::size_t>(index)] = new_tasks;
-        targets[static_cast<std::size_t>(index)] = new_targets;
-    }
-};
-struct FighterOrderQueue {
-    using View = FighterOrderQueueView;
-    using ConstView = FighterOrderQueueConstView;
-    using size_type = std::uint32_t;
-    ml::native_soa::Vector<EntityUniqueId> entity_ids;
-    ml::native_soa::Vector<FighterOrder> orders;
-    ml::native_soa::Vector<FighterTask> tasks;
-    ml::native_soa::Vector<EntityUniqueId> targets;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(entity_ids.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(entity_ids);
-        fn(orders);
-        fn(tasks);
-        fn(targets);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(entity_ids);
-        fn(orders);
-        fn(tasks);
-        fn(targets);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reset() { ml::native_soa::vector_storage_ops::reset(*this); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             EntityUniqueId const new_entity_ids,
-             FighterOrder const new_orders,
-             FighterTask const new_tasks,
-             EntityUniqueId const new_targets) {
-        get_view().set(index, new_entity_ids, new_orders, new_tasks, new_targets);
-    }
-    auto add(EntityUniqueId const new_entity_ids,
-             FighterOrder const new_orders,
-             FighterTask const new_tasks,
-             EntityUniqueId const new_targets) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            entity_ids.emplace_back(new_entity_ids);
-            orders.emplace_back(new_orders);
-            tasks.emplace_back(new_tasks);
-            targets.emplace_back(new_targets);
-        });
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        assert(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
-        }
-        assert(ml::native_soa::is_external_source(entity_ids, source.entity_ids));
-        assert(ml::native_soa::is_external_source(orders, source.orders));
-        assert(ml::native_soa::is_external_source(tasks, source.tasks));
-        assert(ml::native_soa::is_external_source(targets, source.targets));
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            entity_ids.insert(
-                entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
-            orders.insert(orders.end(), source.orders.data(), source.orders.data() + count);
-            tasks.insert(tasks.end(), source.tasks.data(), source.tasks.data() + count);
-            targets.insert(targets.end(), source.targets.data(), source.targets.data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            entity_ids,
-            orders,
-            tasks,
-            targets,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            entity_ids,
-            orders,
-            tasks,
-            targets,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        auto const destination_index{static_cast<std::size_t>(dst_index)};
-        auto const source_index{static_cast<std::size_t>(src_index)};
-        entity_ids[destination_index] = other.entity_ids[source_index];
-        orders[destination_index] = other.orders[source_index];
-        tasks[destination_index] = other.tasks[source_index];
-        targets[destination_index] = other.targets[source_index];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
-    }
+    static_assert(max_capacity >= capacity_granularity);
 };
 
+template <bool Const>
+struct FighterOrderQueueSingleViewImpl {
+    using soa_schema = FighterOrderQueueSchema;
+    using size_type = std::uint32_t;
+    using Layout = FighterOrderQueueSingleLayout;
+    using Storage = ml::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = FighterOrderQueueSingleView;
+    using ConstView = FighterOrderQueueSingleConstView;
+    FighterOrderQueueSingleViewImpl() = default;
+    FighterOrderQueueSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    FighterOrderQueueSingleViewImpl(FighterOrderQueueSingleViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
+    auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
+                    state_, offset_, Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    auto orders() const -> std::span<Element<FighterOrder>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<FighterOrder>(
+                    state_, offset_, Layout::OrdersColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    auto tasks() const -> std::span<Element<FighterTask>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<FighterTask>(
+                    state_, offset_, Layout::TasksColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    auto targets() const -> std::span<Element<EntityUniqueId>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
+                    state_, offset_, Layout::TargetsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(entity_ids());
+        func(orders());
+        func(tasks());
+        func(targets());
+    }
+  private:
+    template <bool>
+    friend struct FighterOrderQueueSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct FighterOrderQueueSingleConstView : FighterOrderQueueSingleViewImpl<true> {
+    using Base = FighterOrderQueueSingleViewImpl<true>;
+    using Base::Base;
+    using View = FighterOrderQueueSingleView;
+    using ConstView = FighterOrderQueueSingleConstView;
+    FighterOrderQueueSingleConstView() = default;
+    FighterOrderQueueSingleConstView(FighterOrderQueueSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<FighterOrderQueueSingleConstView>());
+struct FighterOrderQueueSingleView : FighterOrderQueueSingleViewImpl<false> {
+    using Base = FighterOrderQueueSingleViewImpl<false>;
+    using Base::Base;
+    using View = FighterOrderQueueSingleView;
+    using ConstView = FighterOrderQueueSingleConstView;
+    FighterOrderQueueSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<FighterOrderQueueSingleView>());
+inline FighterOrderQueueSingleConstView::FighterOrderQueueSingleConstView(
+    FighterOrderQueueSingleView const& other)
+    : Base{other} {}
+struct FighterOrderQueue
+    : protected ml::native_soa::StorageState
+    , ml::native_soa::StorageOperations {
+    using soa_schema = FighterOrderQueueSchema;
+    using Operations = ml::native_soa::StorageOperations;
+    using Layout = FighterOrderQueueSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+    using View = FighterOrderQueueSingleView;
+    using ConstView = FighterOrderQueueSingleConstView;
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    FighterOrderQueue() noexcept
+        : FighterOrderQueue{std::pmr::get_default_resource()} {}
+    explicit FighterOrderQueue(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~FighterOrderQueue() { Operations::release_storage(*this); }
+    FighterOrderQueue(FighterOrderQueue const&) = delete;
+    auto operator=(FighterOrderQueue const&) -> FighterOrderQueue& = delete;
+    FighterOrderQueue(FighterOrderQueue&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(FighterOrderQueue&& other) -> FighterOrderQueue& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<EntityUniqueId>* entity_ids{};
+        Element<FighterOrder>* orders{};
+        Element<FighterTask>* tasks{};
+        Element<EntityUniqueId>* targets{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (entity_ids == nullptr) {
+                return {};
+            }
+            return {entity_ids + offset, orders + offset, tasks + offset, targets + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    std::pmr::memory_resource* resource_{};
+    friend Operations;
+    friend ::ml::soa_storage_detail::StorageRequirements;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ml::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::EntityIdsColumn),
+                cursor.column_pointer(data, Layout::OrdersColumn),
+                cursor.column_pointer(data, Layout::TasksColumn),
+                cursor.column_pointer(data, Layout::TargetsColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        ml::native_soa::default_construct_n(columns.entity_ids, count);
+        ml::native_soa::default_construct_n(columns.orders, count);
+        ml::native_soa::default_construct_n(columns.tasks, count);
+        ml::native_soa::default_construct_n(columns.targets, count);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        ml::native_soa::copy_n(columns.entity_ids + index, columns.entity_ids + source, move_count);
+        ml::native_soa::copy_n(columns.orders + index, columns.orders + source, move_count);
+        ml::native_soa::copy_n(columns.tasks + index, columns.tasks + source, move_count);
+        ml::native_soa::copy_n(columns.targets + index, columns.targets + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_, indices, [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, FighterOrderQueue, size_type>
+    {
+        auto const destination{get_data(first)};
+        ml::native_soa::copy_n(destination.entity_ids,
+                               ml::native_soa::source_data(source.entity_ids()) + source_first,
+                               count);
+        ml::native_soa::copy_n(
+            destination.orders, ml::native_soa::source_data(source.orders()) + source_first, count);
+        ml::native_soa::copy_n(
+            destination.tasks, ml::native_soa::source_data(source.tasks()) + source_first, count);
+        ml::native_soa::copy_n(destination.targets,
+                               ml::native_soa::source_data(source.targets()) + source_first,
+                               count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, FighterOrderQueue, size_type>
+    {
+        auto const destination{get_data(first)};
+        ml::native_soa::move_n(destination.entity_ids,
+                               ml::native_soa::source_data(source.entity_ids()) + source_first,
+                               count);
+        ml::native_soa::move_n(
+            destination.orders, ml::native_soa::source_data(source.orders()) + source_first, count);
+        ml::native_soa::move_n(
+            destination.tasks, ml::native_soa::source_data(source.tasks()) + source_first, count);
+        ml::native_soa::move_n(destination.targets,
+                               ml::native_soa::source_data(source.targets()) + source_first,
+                               count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        ml::native_soa::copy_n(destination.entity_ids, source.entity_ids, num_);
+        ml::native_soa::copy_n(destination.orders, source.orders, num_);
+        ml::native_soa::copy_n(destination.tasks, source.tasks, num_);
+        ml::native_soa::copy_n(destination.targets, source.targets, num_);
+    }
+  public:
+    void add(EntityUniqueId const entity_id,
+             FighterOrder const order,
+             FighterTask const task,
+             EntityUniqueId const target) {
+        auto const index{num()};
+        add_uninitialised(1);
+        auto const queue{get_view()};
+        queue.entity_ids()[index] = entity_id;
+        queue.orders()[index] = order;
+        queue.tasks()[index] = task;
+        queue.targets()[index] = target;
+    }
+};
 } // namespace ioj::sim

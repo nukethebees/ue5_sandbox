@@ -12,10 +12,7 @@ class CombatEvents {
     explicit CombatEvents(EntityLedger& ledger) noexcept
         : ledger_{ledger} {}
     void reset() { damage_.reset(); }
-    void queue_damage(DirectDamageEventsConstView events) {
-        events.validate_array_sizes();
-        damage_.append(events);
-    }
+    void queue_damage(DirectDamageEvents::ConstView events) { damage_.append(events); }
     void queue_damage(DirectDamageEvents const& events) { queue_damage(events.get_const_view()); }
     void record_shots(std::span<EntityUniqueId const> instigators) {
         ledger_.record_shots(instigators);
@@ -24,7 +21,7 @@ class CombatEvents {
                  ml::FrameMemoryResource* const scratch_resource) {
         damage_.prepare(indexes, scratch_resource);
     }
-    auto events_for(EntityType type) const -> DirectDamageEventsConstView {
+    auto events_for(EntityType type) const -> DirectDamageEvents::ConstView {
         return damage_.events_for(type);
     }
     auto all_events() const -> DirectDamageEvents const& { return damage_.all_events(); }

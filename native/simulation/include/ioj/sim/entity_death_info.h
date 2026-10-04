@@ -7,251 +7,302 @@
 #include "ioj/sim/entity_unique_id.h"
 
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/native_soa/vector_storage_ops.h"
 
 #include <cassert>
-#include <utility>
+#include <memory_resource>
 
 namespace ioj::sim {
 struct EntityDeathInfoSchema;
 
-struct EntityDeathInfoView;
-struct EntityDeathInfoConstView;
-struct EntityDeathInfoConstView {
-    using View = EntityDeathInfoView;
-    using ConstView = EntityDeathInfoConstView;
+struct EntityDeathInfoSingleView;
+struct EntityDeathInfoSingleConstView;
+struct EntityDeathInfoSingleLayout {
     using size_type = std::uint32_t;
-    std::span<DeathReason const> reasons;
-    std::span<EntityUniqueId const> victims;
-    std::span<EntityUniqueId const> killers;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(reasons.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(reasons);
-        fn(victims);
-        fn(killers);
+    using byte_size_type = std::size_t;
+
+    inline static constexpr size_type capacity_granularity{
+        ml::native_soa::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    inline static constexpr ColLayout<DeathReason> ReasonsColumn{LayoutStart};
+    inline static constexpr ColLayout<EntityUniqueId> VictimsColumn{ReasonsColumn};
+    inline static constexpr ColLayout<EntityUniqueId> KillersColumn{VictimsColumn};
+
+    inline static constexpr byte_size_type allocation_alignment{KillersColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::native_soa::capacity_block_bound(KillersColumn)};
+    inline static constexpr size_type max_capacity{
+        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : KillersColumn.data_end(blocks);
     }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> EntityDeathInfoConstView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            reasons.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            victims.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            killers.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> EntityDeathInfoConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> EntityDeathInfoConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            reasons,
-            victims,
-            killers,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> EntityDeathInfoConstView { return slice(0, count); }
-    auto right(size_type const count) const -> EntityDeathInfoConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-};
-struct EntityDeathInfoView {
-    using View = EntityDeathInfoView;
-    using ConstView = EntityDeathInfoConstView;
-    using size_type = std::uint32_t;
-    std::span<DeathReason> reasons;
-    std::span<EntityUniqueId> victims;
-    std::span<EntityUniqueId> killers;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(reasons.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(reasons);
-        fn(victims);
-        fn(killers);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> EntityDeathInfoView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            reasons.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            victims.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-            killers.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> EntityDeathInfoView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> EntityDeathInfoView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            reasons,
-            victims,
-            killers,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> EntityDeathInfoView { return slice(0, count); }
-    auto right(size_type const count) const -> EntityDeathInfoView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
-             DeathReason const new_reasons,
-             EntityUniqueId const new_victims,
-             EntityUniqueId const new_killers) const {
-        assert(index < num());
-        reasons[static_cast<std::size_t>(index)] = new_reasons;
-        victims[static_cast<std::size_t>(index)] = new_victims;
-        killers[static_cast<std::size_t>(index)] = new_killers;
-    }
-};
-struct EntityDeathInfo {
-    using View = EntityDeathInfoView;
-    using ConstView = EntityDeathInfoConstView;
-    using size_type = std::uint32_t;
-    ml::native_soa::Vector<DeathReason> reasons;
-    ml::native_soa::Vector<EntityUniqueId> victims;
-    ml::native_soa::Vector<EntityUniqueId> killers;
-    auto num() const noexcept -> size_type { return static_cast<size_type>(reasons.size()); }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(reasons);
-        fn(victims);
-        fn(killers);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(reasons);
-        fn(victims);
-        fn(killers);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reset() { ml::native_soa::vector_storage_ops::reset(*this); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             DeathReason const new_reasons,
-             EntityUniqueId const new_victims,
-             EntityUniqueId const new_killers) {
-        get_view().set(index, new_reasons, new_victims, new_killers);
-    }
-    auto add(DeathReason const new_reasons,
-             EntityUniqueId const new_victims,
-             EntityUniqueId const new_killers) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            reasons.emplace_back(new_reasons);
-            victims.emplace_back(new_victims);
-            killers.emplace_back(new_killers);
-        });
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        assert(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
-        }
-        assert(ml::native_soa::is_external_source(reasons, source.reasons));
-        assert(ml::native_soa::is_external_source(victims, source.victims));
-        assert(ml::native_soa::is_external_source(killers, source.killers));
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            reasons.insert(reasons.end(), source.reasons.data(), source.reasons.data() + count);
-            victims.insert(victims.end(), source.victims.data(), source.victims.data() + count);
-            killers.insert(killers.end(), source.killers.data(), source.killers.data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            reasons,
-            victims,
-            killers,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            reasons,
-            victims,
-            killers,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        auto const destination_index{static_cast<std::size_t>(dst_index)};
-        auto const source_index{static_cast<std::size_t>(src_index)};
-        reasons[destination_index] = other.reasons[source_index];
-        victims[destination_index] = other.victims[source_index];
-        killers[destination_index] = other.killers[source_index];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
-    }
+    static_assert(max_capacity >= capacity_granularity);
 };
 
+template <bool Const>
+struct EntityDeathInfoSingleViewImpl {
+    using soa_schema = EntityDeathInfoSchema;
+    using size_type = std::uint32_t;
+    using Layout = EntityDeathInfoSingleLayout;
+    using Storage = ml::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = EntityDeathInfoSingleView;
+    using ConstView = EntityDeathInfoSingleConstView;
+    EntityDeathInfoSingleViewImpl() = default;
+    EntityDeathInfoSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    EntityDeathInfoSingleViewImpl(EntityDeathInfoSingleViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
+    auto reasons() const -> std::span<Element<DeathReason>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<DeathReason>(
+                    state_, offset_, Layout::ReasonsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    auto victims() const -> std::span<Element<EntityUniqueId>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
+                    state_, offset_, Layout::VictimsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    auto killers() const -> std::span<Element<EntityUniqueId>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
+                    state_, offset_, Layout::KillersColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(reasons());
+        func(victims());
+        func(killers());
+    }
+  private:
+    template <bool>
+    friend struct EntityDeathInfoSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct EntityDeathInfoSingleConstView : EntityDeathInfoSingleViewImpl<true> {
+    using Base = EntityDeathInfoSingleViewImpl<true>;
+    using Base::Base;
+    using View = EntityDeathInfoSingleView;
+    using ConstView = EntityDeathInfoSingleConstView;
+    EntityDeathInfoSingleConstView() = default;
+    EntityDeathInfoSingleConstView(EntityDeathInfoSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<EntityDeathInfoSingleConstView>());
+struct EntityDeathInfoSingleView : EntityDeathInfoSingleViewImpl<false> {
+    using Base = EntityDeathInfoSingleViewImpl<false>;
+    using Base::Base;
+    using View = EntityDeathInfoSingleView;
+    using ConstView = EntityDeathInfoSingleConstView;
+    EntityDeathInfoSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<EntityDeathInfoSingleView>());
+inline EntityDeathInfoSingleConstView::EntityDeathInfoSingleConstView(
+    EntityDeathInfoSingleView const& other)
+    : Base{other} {}
+struct EntityDeathInfo
+    : protected ml::native_soa::StorageState
+    , ml::native_soa::StorageOperations {
+    using soa_schema = EntityDeathInfoSchema;
+    using Operations = ml::native_soa::StorageOperations;
+    using Layout = EntityDeathInfoSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+    using View = EntityDeathInfoSingleView;
+    using ConstView = EntityDeathInfoSingleConstView;
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    EntityDeathInfo() noexcept
+        : EntityDeathInfo{std::pmr::get_default_resource()} {}
+    explicit EntityDeathInfo(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~EntityDeathInfo() { Operations::release_storage(*this); }
+    EntityDeathInfo(EntityDeathInfo const&) = delete;
+    auto operator=(EntityDeathInfo const&) -> EntityDeathInfo& = delete;
+    EntityDeathInfo(EntityDeathInfo&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(EntityDeathInfo&& other) -> EntityDeathInfo& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<DeathReason>* reasons{};
+        Element<EntityUniqueId>* victims{};
+        Element<EntityUniqueId>* killers{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (reasons == nullptr) {
+                return {};
+            }
+            return {reasons + offset, victims + offset, killers + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    std::pmr::memory_resource* resource_{};
+    friend Operations;
+    friend ::ml::soa_storage_detail::StorageRequirements;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ml::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::ReasonsColumn),
+                cursor.column_pointer(data, Layout::VictimsColumn),
+                cursor.column_pointer(data, Layout::KillersColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        ml::native_soa::default_construct_n(columns.reasons, count);
+        ml::native_soa::default_construct_n(columns.victims, count);
+        ml::native_soa::default_construct_n(columns.killers, count);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        ml::native_soa::copy_n(columns.reasons + index, columns.reasons + source, move_count);
+        ml::native_soa::copy_n(columns.victims + index, columns.victims + source, move_count);
+        ml::native_soa::copy_n(columns.killers + index, columns.killers + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_, indices, [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityDeathInfo, size_type>
+    {
+        auto const destination{get_data(first)};
+        ml::native_soa::copy_n(destination.reasons,
+                               ml::native_soa::source_data(source.reasons()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.victims,
+                               ml::native_soa::source_data(source.victims()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.killers,
+                               ml::native_soa::source_data(source.killers()) + source_first,
+                               count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityDeathInfo, size_type>
+    {
+        auto const destination{get_data(first)};
+        ml::native_soa::move_n(destination.reasons,
+                               ml::native_soa::source_data(source.reasons()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.victims,
+                               ml::native_soa::source_data(source.victims()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.killers,
+                               ml::native_soa::source_data(source.killers()) + source_first,
+                               count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        ml::native_soa::copy_n(destination.reasons, source.reasons, num_);
+        ml::native_soa::copy_n(destination.victims, source.victims, num_);
+        ml::native_soa::copy_n(destination.killers, source.killers, num_);
+    }
+  public:
+};
 } // namespace ioj::sim

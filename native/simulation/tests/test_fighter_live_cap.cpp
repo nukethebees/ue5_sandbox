@@ -91,9 +91,7 @@ auto count_team(LevelSim const& simulation, Team const team) -> std::int32_t {
 
 void queue_damage(LevelSim& simulation, EntityUniqueId const target, std::int32_t const damage) {
     DirectDamageEvents events;
-    events.add_uninitialised(1);
-    events.damaged_entities[0] = target;
-    events.damage_amounts[0] = damage;
+    events.add(target, damage, {});
     LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
 }
 
@@ -170,11 +168,11 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
     parent_death_simulation.start();
     DirectDamageEvents capital_damage;
     capital_damage.add_uninitialised(1);
-    capital_damage.damaged_entities[0] =
+    capital_damage.get_view().damaged_entities()[0] =
         parent_death_simulation.get_read_access().get_capitals().get_entities().entity_ids()[0];
-    capital_damage.instigators[0] =
+    capital_damage.get_view().instigators()[0] =
         parent_death_simulation.get_read_access().get_capitals().get_entities().entity_ids()[1];
-    capital_damage.damage_amounts[0] = 100;
+    capital_damage.get_view().damage_amounts()[0] = 100;
     LevelSimTestAccess::queue_direct_damage_events(parent_death_simulation,
                                                    capital_damage.get_const_view());
     parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
@@ -311,12 +309,12 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
 
     DirectDamageEvents damage;
     damage.add_uninitialised(1);
-    damage.damaged_entities[0] = simulation.get_fighters().get_entity_ids()[0];
+    damage.get_view().damaged_entities()[0] = simulation.get_fighters().get_entity_ids()[0];
     auto const original_id{
         simulation.get_read_access().get_fighters().get_entities().entity_ids()[0]};
-    damage.instigators[0] =
+    damage.get_view().instigators()[0] =
         simulation.get_read_access().get_capitals().get_entities().entity_ids()[0];
-    damage.damage_amounts[0] = 100000;
+    damage.get_view().damage_amounts()[0] = 100000;
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0)

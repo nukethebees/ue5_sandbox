@@ -14,7 +14,7 @@ class EntityLedger;
 namespace ioj::sim::batch {
 void sort_and_deduplicate_removal_indices(std::vector<std::uint32_t>& local_indices_to_remove);
 
-void resolve_damage_events(DirectDamageEventsConstView damage_events,
+void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
                            EntityLookupTable const& lookup,
                            [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
                            HealthView healths,

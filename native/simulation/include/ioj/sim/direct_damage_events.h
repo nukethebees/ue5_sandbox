@@ -6,269 +6,323 @@
 #include "ioj/sim/entity_unique_id.h"
 
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/native_soa/vector_storage_ops.h"
 
 #include <cassert>
-#include <utility>
+#include <cstdint>
+#include <memory_resource>
 
 namespace ioj::sim {
 struct DirectDamageEventsSchema;
 
-struct DirectDamageEventsView;
-struct DirectDamageEventsConstView;
-struct DirectDamageEventsConstView {
-    using View = DirectDamageEventsView;
-    using ConstView = DirectDamageEventsConstView;
+struct DirectDamageEventsSingleView;
+struct DirectDamageEventsSingleConstView;
+struct DirectDamageEventsSingleLayout {
     using size_type = std::uint32_t;
-    std::span<EntityUniqueId const> damaged_entities;
-    std::span<std::int32_t const> damage_amounts;
-    std::span<EntityUniqueId const> instigators;
-    auto num() const noexcept -> size_type {
-        return static_cast<size_type>(damaged_entities.size());
+    using byte_size_type = std::size_t;
+
+    inline static constexpr size_type capacity_granularity{
+        ml::native_soa::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+
+    template <typename T>
+    using ColLayout = ml::native_soa::ColumnLayout<T>;
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+
+    inline static constexpr ColLayout<EntityUniqueId> DamagedEntitiesColumn{LayoutStart};
+    inline static constexpr ColLayout<std::int32_t> DamageAmountsColumn{DamagedEntitiesColumn};
+    inline static constexpr ColLayout<EntityUniqueId> InstigatorsColumn{DamageAmountsColumn};
+
+    inline static constexpr byte_size_type allocation_alignment{
+        InstigatorsColumn.allocation_alignment};
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::native_soa::capacity_block_bound(InstigatorsColumn)};
+    inline static constexpr size_type max_capacity{
+        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0 ? 0 : InstigatorsColumn.data_end(blocks);
     }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(damaged_entities);
-        fn(damage_amounts);
-        fn(instigators);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> DirectDamageEventsConstView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            damaged_entities.subspan(static_cast<std::size_t>(offset),
-                                     static_cast<std::size_t>(count)),
-            damage_amounts.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-            instigators.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> DirectDamageEventsConstView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const
-        -> DirectDamageEventsConstView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            damaged_entities,
-            damage_amounts,
-            instigators,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> DirectDamageEventsConstView {
-        return slice(0, count);
-    }
-    auto right(size_type const count) const -> DirectDamageEventsConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-};
-struct DirectDamageEventsView {
-    using View = DirectDamageEventsView;
-    using ConstView = DirectDamageEventsConstView;
-    using size_type = std::uint32_t;
-    std::span<EntityUniqueId> damaged_entities;
-    std::span<std::int32_t> damage_amounts;
-    std::span<EntityUniqueId> instigators;
-    auto num() const noexcept -> size_type {
-        return static_cast<size_type>(damaged_entities.size());
-    }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(damaged_entities);
-        fn(damage_amounts);
-        fn(instigators);
-    }
-    void validate_array_sizes() const {
-        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
-    }
-    auto slice(size_type const offset, size_type const count) const -> DirectDamageEventsView {
-        assert(offset <= num() && count <= num() - offset);
-        return {
-            damaged_entities.subspan(static_cast<std::size_t>(offset),
-                                     static_cast<std::size_t>(count)),
-            damage_amounts.subspan(static_cast<std::size_t>(offset),
-                                   static_cast<std::size_t>(count)),
-            instigators.subspan(static_cast<std::size_t>(offset), static_cast<std::size_t>(count)),
-        };
-    }
-    auto get_view() const -> DirectDamageEventsView { return *this; }
-    auto get_view(size_type const offset, size_type const count) const -> DirectDamageEventsView {
-        return slice(offset, count);
-    }
-    auto get_const_view() const -> ConstView {
-        return {
-            damaged_entities,
-            damage_amounts,
-            instigators,
-        };
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto left(size_type const count) const -> DirectDamageEventsView { return slice(0, count); }
-    auto right(size_type const count) const -> DirectDamageEventsView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    void set(size_type const index,
-             EntityUniqueId const new_damaged_entities,
-             std::int32_t const new_damage_amounts,
-             EntityUniqueId const new_instigators) const {
-        assert(index < num());
-        damaged_entities[static_cast<std::size_t>(index)] = new_damaged_entities;
-        damage_amounts[static_cast<std::size_t>(index)] = new_damage_amounts;
-        instigators[static_cast<std::size_t>(index)] = new_instigators;
-    }
-};
-struct DirectDamageEvents {
-    using View = DirectDamageEventsView;
-    using ConstView = DirectDamageEventsConstView;
-    using size_type = std::uint32_t;
-    ml::native_soa::Vector<EntityUniqueId> damaged_entities;
-    ml::native_soa::Vector<std::int32_t> damage_amounts;
-    ml::native_soa::Vector<EntityUniqueId> instigators;
-    auto num() const noexcept -> size_type {
-        return static_cast<size_type>(damaged_entities.size());
-    }
-    auto is_empty() const noexcept -> bool { return num() == 0; }
-    template <typename Fn>
-    void each_column(Fn&& fn) {
-        fn(damaged_entities);
-        fn(damage_amounts);
-        fn(instigators);
-    }
-    template <typename Fn>
-    void each_column(Fn&& fn) const {
-        fn(damaged_entities);
-        fn(damage_amounts);
-        fn(instigators);
-    }
-    void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reset() { ml::native_soa::vector_storage_ops::reset(*this); }
-    void reserve(size_type const count) {
-        ml::native_soa::vector_storage_ops::reserve(*this, count);
-    }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
-    }
-    void add_defaulted(size_type const count) {
-        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::vector_storage_ops::set_num(*this, count);
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        ml::native_soa::vector_storage_ops::sort(
-            *this, std::forward<Compare>(compare), scratch_indices);
-    }
-    void set(size_type const index,
-             EntityUniqueId const new_damaged_entities,
-             std::int32_t const new_damage_amounts,
-             EntityUniqueId const new_instigators) {
-        get_view().set(index, new_damaged_entities, new_damage_amounts, new_instigators);
-    }
-    auto add(EntityUniqueId const new_damaged_entities,
-             std::int32_t const new_damage_amounts,
-             EntityUniqueId const new_instigators) -> size_type {
-        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
-            damaged_entities.emplace_back(new_damaged_entities);
-            damage_amounts.emplace_back(new_damage_amounts);
-            instigators.emplace_back(new_instigators);
-        });
-    }
-    void append_from(ConstView source) {
-        auto const count{source.num()};
-        assert(count <= std::numeric_limits<size_type>::max() - num());
-        source.validate_array_sizes();
-        if (count == 0) {
-            return;
-        }
-        assert(ml::native_soa::is_external_source(damaged_entities, source.damaged_entities));
-        assert(ml::native_soa::is_external_source(damage_amounts, source.damage_amounts));
-        assert(ml::native_soa::is_external_source(instigators, source.instigators));
-        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
-            damaged_entities.insert(damaged_entities.end(),
-                                    source.damaged_entities.data(),
-                                    source.damaged_entities.data() + count);
-            damage_amounts.insert(damage_amounts.end(),
-                                  source.damage_amounts.data(),
-                                  source.damage_amounts.data() + count);
-            instigators.insert(
-                instigators.end(), source.instigators.data(), source.instigators.data() + count);
-        });
-    }
-    auto get_view() -> View {
-        return {
-            damaged_entities,
-            damage_amounts,
-            instigators,
-        };
-    }
-    auto get_view() const -> ConstView {
-        return {
-            damaged_entities,
-            damage_amounts,
-            instigators,
-        };
-    }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        return get_view().slice(offset, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_view().slice(offset, count);
-    }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view().slice(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
-        return get_view(offset, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_const_view(offset, count);
-    }
-    auto left(size_type const count) -> View { return slice(0, count); }
-    auto right(size_type const count) -> View {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    auto left(size_type const count) const -> ConstView { return slice(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        assert(count <= num());
-        return slice(num() - count, count);
-    }
-    template <typename Other>
-    void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {
-        auto const destination_index{static_cast<std::size_t>(dst_index)};
-        auto const source_index{static_cast<std::size_t>(src_index)};
-        damaged_entities[destination_index] = other.damaged_entities[source_index];
-        damage_amounts[destination_index] = other.damage_amounts[source_index];
-        instigators[destination_index] = other.instigators[source_index];
-    }
-    template <typename Other>
-    void copy_elements(size_type const dst_index,
-                       Other const& other,
-                       size_type const src_index,
-                       size_type const count) {
-        for (size_type i{}; i < count; ++i) {
-            copy_element(dst_index + i, other, src_index + i);
-        }
-    }
+    static_assert(max_capacity >= capacity_granularity);
 };
 
+template <bool Const>
+struct DirectDamageEventsSingleViewImpl {
+    using soa_schema = DirectDamageEventsSchema;
+    using size_type = std::uint32_t;
+    using Layout = DirectDamageEventsSingleLayout;
+    using Storage = ml::native_soa::StorageState;
+    using State = std::conditional_t<Const, Storage const, Storage>;
+    template <typename T>
+    using Element = std::conditional_t<Const, T const, T>;
+    using View = DirectDamageEventsSingleView;
+    using ConstView = DirectDamageEventsSingleConstView;
+    DirectDamageEventsSingleViewImpl() = default;
+    DirectDamageEventsSingleViewImpl(State* state, size_type offset, size_type count)
+        : state_{state}
+        , offset_{offset}
+        , count_{count} {}
+    template <bool Enabled = Const>
+    DirectDamageEventsSingleViewImpl(DirectDamageEventsSingleViewImpl<false> const& other)
+        requires Enabled
+        : state_{other.state_}
+        , offset_{other.offset_}
+        , count_{other.count_} {}
+    void validate() const {
+        using namespace ml::soa_storage_detail;
+        validate_view(state_, offset_, count_);
+    }
+    auto num() const noexcept -> size_type { return count_; }
+    auto is_empty() const noexcept -> bool { return count_ == 0; }
+    auto get_view(this auto const& self) { return self; }
+    auto get_view(this auto const& self, size_type offset, size_type count) {
+        return self.slice(offset, count);
+    }
+    auto slice(this auto const& self, size_type offset, size_type count) {
+        using namespace ml::soa_storage_detail;
+        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
+    }
+    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
+    auto right(this auto const& self, size_type count) {
+        assert(count >= 0 && count <= self.count_);
+        return self.slice(self.count_ - count, count);
+    }
+    auto damaged_entities() const -> std::span<Element<EntityUniqueId>> {
+        using namespace ml::soa_storage_detail;
+        return {view_column_data<EntityUniqueId>(
+                    state_,
+                    offset_,
+                    Layout::DamagedEntitiesColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
+    }
+    auto damage_amounts() const -> std::span<Element<std::int32_t>> {
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<std::int32_t>(
+                state_, offset_, Layout::DamageAmountsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
+    }
+    auto instigators() const -> std::span<Element<EntityUniqueId>> {
+        using namespace ml::soa_storage_detail;
+        return {
+            view_column_data<EntityUniqueId>(
+                state_, offset_, Layout::InstigatorsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        func(damaged_entities());
+        func(damage_amounts());
+        func(instigators());
+    }
+  private:
+    template <bool>
+    friend struct DirectDamageEventsSingleViewImpl;
+    State* state_{};
+    size_type offset_{};
+    size_type count_{};
+};
+struct DirectDamageEventsSingleConstView : DirectDamageEventsSingleViewImpl<true> {
+    using Base = DirectDamageEventsSingleViewImpl<true>;
+    using Base::Base;
+    using View = DirectDamageEventsSingleView;
+    using ConstView = DirectDamageEventsSingleConstView;
+    DirectDamageEventsSingleConstView() = default;
+    DirectDamageEventsSingleConstView(DirectDamageEventsSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<DirectDamageEventsSingleConstView>());
+struct DirectDamageEventsSingleView : DirectDamageEventsSingleViewImpl<false> {
+    using Base = DirectDamageEventsSingleViewImpl<false>;
+    using Base::Base;
+    using View = DirectDamageEventsSingleView;
+    using ConstView = DirectDamageEventsSingleConstView;
+    DirectDamageEventsSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(ml::soa_storage_detail::validate_compact_view<DirectDamageEventsSingleView>());
+inline DirectDamageEventsSingleConstView::DirectDamageEventsSingleConstView(
+    DirectDamageEventsSingleView const& other)
+    : Base{other} {}
+struct DirectDamageEvents
+    : protected ml::native_soa::StorageState
+    , ml::native_soa::StorageOperations {
+    using soa_schema = DirectDamageEventsSchema;
+    using Operations = ml::native_soa::StorageOperations;
+    using Layout = DirectDamageEventsSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
+    using View = DirectDamageEventsSingleView;
+    using ConstView = DirectDamageEventsSingleConstView;
+    /* **************************************** */
+    // Lifetime
+    /* **************************************** */
+    DirectDamageEvents() noexcept
+        : DirectDamageEvents{std::pmr::get_default_resource()} {}
+    explicit DirectDamageEvents(std::pmr::memory_resource* resource) noexcept
+        : resource_{resource} {
+        assert(resource != nullptr);
+    }
+    auto get_memory_resource() const noexcept -> std::pmr::memory_resource* { return resource_; }
+    ~DirectDamageEvents() { Operations::release_storage(*this); }
+    DirectDamageEvents(DirectDamageEvents const&) = delete;
+    auto operator=(DirectDamageEvents const&) -> DirectDamageEvents& = delete;
+    DirectDamageEvents(DirectDamageEvents&& other) noexcept
+        : resource_{other.resource_} {
+        Operations::take_storage(*this, other);
+    }
+    auto operator=(DirectDamageEvents&& other) -> DirectDamageEvents& {
+        return Operations::move_assign(*this, other);
+    }
+  protected:
+    template <typename Byte>
+    struct DataPointers {
+        template <typename T>
+        using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
+        Element<EntityUniqueId>* damaged_entities{};
+        Element<std::int32_t>* damage_amounts{};
+        Element<EntityUniqueId>* instigators{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (damaged_entities == nullptr) {
+                return {};
+            }
+            return {damaged_entities + offset, damage_amounts + offset, instigators + offset};
+        }
+    };
+    template <typename Self>
+    auto get_data(this Self& self) noexcept {
+        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
+        if (self.data_ == nullptr) {
+            return DataPointers<Byte>{};
+        }
+        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks());
+    }
+    template <typename Self>
+    auto get_data(this Self& self, size_type const offset) noexcept {
+        return self.get_data() + offset;
+    }
+  private:
+    std::pmr::memory_resource* resource_{};
+    friend Operations;
+    friend ::ml::soa_storage_detail::StorageRequirements;
+    /* **************************************** */
+    // Column pointers
+    /* **************************************** */
+    template <typename Byte>
+    static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
+        -> DataPointers<Byte> {
+        ml::native_soa::LayoutCursor cursor{blocks};
+        return {cursor.column_pointer(data, Layout::DamagedEntitiesColumn),
+                cursor.column_pointer(data, Layout::DamageAmountsColumn),
+                cursor.column_pointer(data, Layout::InstigatorsColumn)};
+    }
+    auto capacity_blocks() const noexcept -> byte_size_type {
+        return static_cast<byte_size_type>(capacity_ / capacity_granularity);
+    }
+
+    /* **************************************** */
+    // Typed mutations and growth
+    /* **************************************** */
+    void default_construct_columns(size_type const first, size_type const count) {
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
+        ml::native_soa::default_construct_n(columns.damaged_entities, count);
+        ml::native_soa::default_construct_n(columns.damage_amounts, count);
+        ml::native_soa::default_construct_n(columns.instigators, count);
+    }
+    void swap_remove_columns(size_type const index,
+                             size_type const source,
+                             size_type const move_count) {
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
+        ml::native_soa::copy_n(
+            columns.damaged_entities + index, columns.damaged_entities + source, move_count);
+        ml::native_soa::copy_n(
+            columns.damage_amounts + index, columns.damage_amounts + source, move_count);
+        ml::native_soa::copy_n(
+            columns.instigators + index, columns.instigators + source, move_count);
+    }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_, indices, [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source,
+                        size_type source_first,
+                        size_type first,
+                        size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, DirectDamageEvents, size_type>
+    {
+        auto const destination{get_data(first)};
+        ml::native_soa::copy_n(destination.damaged_entities,
+                               ml::native_soa::source_data(source.damaged_entities()) +
+                                   source_first,
+                               count);
+        ml::native_soa::copy_n(destination.damage_amounts,
+                               ml::native_soa::source_data(source.damage_amounts()) + source_first,
+                               count);
+        ml::native_soa::copy_n(destination.instigators,
+                               ml::native_soa::source_data(source.instigators()) + source_first,
+                               count);
+    }
+    template <typename Columns>
+    void copy_columns_from(Columns const& source,
+                           size_type source_first,
+                           size_type first,
+                           size_type count)
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, DirectDamageEvents, size_type>
+    {
+        auto const destination{get_data(first)};
+        ml::native_soa::move_n(destination.damaged_entities,
+                               ml::native_soa::source_data(source.damaged_entities()) +
+                                   source_first,
+                               count);
+        ml::native_soa::move_n(destination.damage_amounts,
+                               ml::native_soa::source_data(source.damage_amounts()) + source_first,
+                               count);
+        ml::native_soa::move_n(destination.instigators,
+                               ml::native_soa::source_data(source.instigators()) + source_first,
+                               count);
+    }
+    void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
+        auto const old_blocks{capacity_blocks()};
+        auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
+        auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
+        auto const destination{make_data_unchecked(new_data, new_blocks)};
+        ml::native_soa::copy_n(destination.damaged_entities, source.damaged_entities, num_);
+        ml::native_soa::copy_n(destination.damage_amounts, source.damage_amounts, num_);
+        ml::native_soa::copy_n(destination.instigators, source.instigators, num_);
+    }
+  public:
+    void add(EntityUniqueId const damaged_entity,
+             std::int32_t const damage_amount,
+             EntityUniqueId const instigator) {
+        auto const index{num()};
+        add_uninitialised(1);
+        auto const events{get_view()};
+        events.damaged_entities()[index] = damaged_entity;
+        events.damage_amounts()[index] = damage_amount;
+        events.instigators()[index] = instigator;
+    }
+};
 } // namespace ioj::sim
