@@ -21,6 +21,11 @@ Agents assume the CLI is installed and report missing tools to the maintainer.
 Use `-SkipTests` to retry installation after tests have already passed, for example after
 fixing a file-access error. Installation and the executable smoke check still run.
 
+Updates stage and check the new executable before renaming the installed copy, so active
+`coj codex start` sessions can continue running. The installer ends with the old and renamed
+paths and whether the renamed file was retained or removed. Later installations retry cleanup
+of retained copies. Failed replacement restores the previous executable.
+
 Use `coj prepare-worktree` to begin tasks and `coj git` for feature Git operations.
 After validation and explicit user authorization, run `coj integrate`; use
 `--keep-branch` to retain the feature branch. See [coj usage](../tools/rust/crates/coj/docs/usage.md).

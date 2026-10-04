@@ -22,6 +22,10 @@ pwsh -NoProfile -File PowerShell/InstallCoj.ps1 -SkipTests
 
 The install, executable `--version` check, and tool-link publication still run.
 
+The installer stages the update before renaming the previous executable, allowing existing
+`coj codex start` sessions to continue. It prints the rename and retained-file status at the
+end; subsequent installs remove retired copies once they are no longer in use.
+
 ## Worktree preparation and central tools
 
 Run `coj prepare-worktree` from anywhere inside the current worktree. It removes the
