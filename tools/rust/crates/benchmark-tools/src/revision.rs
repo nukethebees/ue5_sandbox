@@ -329,10 +329,24 @@ impl Revisions {
         )?
         .trim()
         .to_owned();
+        let supplied = supplied
+            .map(|path| resolve_absolute_path(root, path))
+            .transpose()?;
+        if supplied.as_ref().is_none_or(|path| paths_equal(path, root))
+            && candidate.commit == commit
+            && !candidate.dirty
+        {
+            return Ok(Self {
+                baseline: candidate.clone(),
+                candidate,
+                owned: false,
+                keep,
+            });
+        }
         let parent = root.join(".local/benchmarks/wt");
         let owned = supplied.is_none();
         let path = if let Some(supplied) = supplied {
-            resolve_absolute_path(root, supplied)?
+            supplied
         } else {
             validate_owned_path(&parent.join("0"), &parent)?;
             fs::create_dir_all(&parent)?;
@@ -348,7 +362,7 @@ impl Revisions {
         };
         let prepare = (|| -> Result<Source> {
             if paths_equal(&path, root) {
-                return Err("The baseline must be a separate worktree from the candidate.".into());
+                return Err("Reusing the current worktree requires it to be clean and at the requested commit.".into());
             }
             if owned {
                 run_git_capture(
@@ -422,7 +436,7 @@ impl Revisions {
     }
 }
 
-fn paths_equal(a: &Path, b: &Path) -> bool {
+pub fn paths_equal(a: &Path, b: &Path) -> bool {
     a.to_string_lossy()
         .replace('\\', "/")
         .eq_ignore_ascii_case(&b.to_string_lossy().replace('\\', "/"))
