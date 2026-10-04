@@ -248,32 +248,32 @@ struct TurretEntityDataSingleViewImpl {
     void each_column(Func&& func) const {
         func(entity_ids());
         func(integral_biases());
-        auto const& group_0{view_locations()};
-        func(group_0.xs());
-        func(group_0.ys());
-        func(group_0.zs());
-        auto const& group_1{view_fire_point_locations()};
-        func(group_1.xs());
-        func(group_1.ys());
-        func(group_1.zs());
-        auto const& group_2{view_rotations()};
-        func(group_2.pitches());
-        func(group_2.yaws());
-        func(group_2.rolls());
+        auto const& locations_view{view_locations()};
+        func(locations_view.xs());
+        func(locations_view.ys());
+        func(locations_view.zs());
+        auto const& fire_point_locations_view{view_fire_point_locations()};
+        func(fire_point_locations_view.xs());
+        func(fire_point_locations_view.ys());
+        func(fire_point_locations_view.zs());
+        auto const& rotations_view{view_rotations()};
+        func(rotations_view.pitches());
+        func(rotations_view.yaws());
+        func(rotations_view.rolls());
         func(teams());
         func(laser_cooldowns());
         func(laser_damages());
         func(target_refresh_countdowns_periods());
         func(target_refresh_countdowns_remaining_ticks());
         func(target_ids());
-        auto const& group_3{view_target_locations()};
-        func(group_3.xs());
-        func(group_3.ys());
-        func(group_3.zs());
-        auto const& group_4{view_target_velocities()};
-        func(group_4.xs());
-        func(group_4.ys());
-        func(group_4.zs());
+        auto const& target_locations_view{view_target_locations()};
+        func(target_locations_view.xs());
+        func(target_locations_view.ys());
+        func(target_locations_view.zs());
+        auto const& target_velocities_view{view_target_velocities()};
+        func(target_velocities_view.xs());
+        func(target_velocities_view.ys());
+        func(target_velocities_view.zs());
     }
   private:
     template <bool>
@@ -567,35 +567,38 @@ struct TurretEntityData
         ml::native_soa::copy_n(destination.integral_biases,
                                ml::native_soa::source_data(source.integral_biases()) + source_first,
                                count);
-        auto const& group_0{source.view_locations()};
+        auto const& locations_view{source.view_locations()};
         ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(group_0.xs()) + source_first,
+                               ml::native_soa::source_data(locations_view.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(group_0.ys()) + source_first,
+                               ml::native_soa::source_data(locations_view.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(group_0.zs()) + source_first,
+                               ml::native_soa::source_data(locations_view.zs()) + source_first,
                                count);
-        auto const& group_1{source.view_fire_point_locations()};
+        auto const& fire_point_locations_view{source.view_fire_point_locations()};
         ml::native_soa::copy_n(destination.fire_point_locations_xs,
-                               ml::native_soa::source_data(group_1.xs()) + source_first,
+                               ml::native_soa::source_data(fire_point_locations_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.fire_point_locations_ys,
-                               ml::native_soa::source_data(group_1.ys()) + source_first,
+                               ml::native_soa::source_data(fire_point_locations_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.fire_point_locations_zs,
-                               ml::native_soa::source_data(group_1.zs()) + source_first,
+                               ml::native_soa::source_data(fire_point_locations_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_2{source.view_rotations()};
+        auto const& rotations_view{source.view_rotations()};
         ml::native_soa::copy_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(group_2.pitches()) + source_first,
+                               ml::native_soa::source_data(rotations_view.pitches()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(group_2.yaws()) + source_first,
+                               ml::native_soa::source_data(rotations_view.yaws()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(group_2.rolls()) + source_first,
+                               ml::native_soa::source_data(rotations_view.rolls()) + source_first,
                                count);
         ml::native_soa::copy_n(
             destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
@@ -617,25 +620,31 @@ struct TurretEntityData
         ml::native_soa::copy_n(destination.target_ids,
                                ml::native_soa::source_data(source.target_ids()) + source_first,
                                count);
-        auto const& group_3{source.view_target_locations()};
+        auto const& target_locations_view{source.view_target_locations()};
         ml::native_soa::copy_n(destination.target_locations_xs,
-                               ml::native_soa::source_data(group_3.xs()) + source_first,
+                               ml::native_soa::source_data(target_locations_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_locations_ys,
-                               ml::native_soa::source_data(group_3.ys()) + source_first,
+                               ml::native_soa::source_data(target_locations_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_locations_zs,
-                               ml::native_soa::source_data(group_3.zs()) + source_first,
+                               ml::native_soa::source_data(target_locations_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_4{source.view_target_velocities()};
+        auto const& target_velocities_view{source.view_target_velocities()};
         ml::native_soa::copy_n(destination.target_velocities_xs,
-                               ml::native_soa::source_data(group_4.xs()) + source_first,
+                               ml::native_soa::source_data(target_velocities_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_velocities_ys,
-                               ml::native_soa::source_data(group_4.ys()) + source_first,
+                               ml::native_soa::source_data(target_velocities_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_velocities_zs,
-                               ml::native_soa::source_data(group_4.zs()) + source_first,
+                               ml::native_soa::source_data(target_velocities_view.zs()) +
+                                   source_first,
                                count);
     }
     template <typename Columns>
@@ -652,35 +661,38 @@ struct TurretEntityData
         ml::native_soa::move_n(destination.integral_biases,
                                ml::native_soa::source_data(source.integral_biases()) + source_first,
                                count);
-        auto const& group_0{source.view_locations()};
+        auto const& locations_view{source.view_locations()};
         ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(group_0.xs()) + source_first,
+                               ml::native_soa::source_data(locations_view.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(group_0.ys()) + source_first,
+                               ml::native_soa::source_data(locations_view.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(group_0.zs()) + source_first,
+                               ml::native_soa::source_data(locations_view.zs()) + source_first,
                                count);
-        auto const& group_1{source.view_fire_point_locations()};
+        auto const& fire_point_locations_view{source.view_fire_point_locations()};
         ml::native_soa::move_n(destination.fire_point_locations_xs,
-                               ml::native_soa::source_data(group_1.xs()) + source_first,
+                               ml::native_soa::source_data(fire_point_locations_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.fire_point_locations_ys,
-                               ml::native_soa::source_data(group_1.ys()) + source_first,
+                               ml::native_soa::source_data(fire_point_locations_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.fire_point_locations_zs,
-                               ml::native_soa::source_data(group_1.zs()) + source_first,
+                               ml::native_soa::source_data(fire_point_locations_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_2{source.view_rotations()};
+        auto const& rotations_view{source.view_rotations()};
         ml::native_soa::move_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(group_2.pitches()) + source_first,
+                               ml::native_soa::source_data(rotations_view.pitches()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(group_2.yaws()) + source_first,
+                               ml::native_soa::source_data(rotations_view.yaws()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(group_2.rolls()) + source_first,
+                               ml::native_soa::source_data(rotations_view.rolls()) + source_first,
                                count);
         ml::native_soa::move_n(
             destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
@@ -702,25 +714,31 @@ struct TurretEntityData
         ml::native_soa::move_n(destination.target_ids,
                                ml::native_soa::source_data(source.target_ids()) + source_first,
                                count);
-        auto const& group_3{source.view_target_locations()};
+        auto const& target_locations_view{source.view_target_locations()};
         ml::native_soa::move_n(destination.target_locations_xs,
-                               ml::native_soa::source_data(group_3.xs()) + source_first,
+                               ml::native_soa::source_data(target_locations_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.target_locations_ys,
-                               ml::native_soa::source_data(group_3.ys()) + source_first,
+                               ml::native_soa::source_data(target_locations_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.target_locations_zs,
-                               ml::native_soa::source_data(group_3.zs()) + source_first,
+                               ml::native_soa::source_data(target_locations_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_4{source.view_target_velocities()};
+        auto const& target_velocities_view{source.view_target_velocities()};
         ml::native_soa::move_n(destination.target_velocities_xs,
-                               ml::native_soa::source_data(group_4.xs()) + source_first,
+                               ml::native_soa::source_data(target_velocities_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.target_velocities_ys,
-                               ml::native_soa::source_data(group_4.ys()) + source_first,
+                               ml::native_soa::source_data(target_velocities_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.target_velocities_zs,
-                               ml::native_soa::source_data(group_4.zs()) + source_first,
+                               ml::native_soa::source_data(target_velocities_view.zs()) +
+                                   source_first,
                                count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {

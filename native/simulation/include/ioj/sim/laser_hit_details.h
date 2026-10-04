@@ -129,14 +129,14 @@ struct LaserHitDetailsSingleViewImpl {
     }
     template <typename Func>
     void each_column(Func&& func) const {
-        auto const& group_0{view_locations()};
-        func(group_0.xs());
-        func(group_0.ys());
-        func(group_0.zs());
-        auto const& group_1{view_emission_directions()};
-        func(group_1.xs());
-        func(group_1.ys());
-        func(group_1.zs());
+        auto const& locations_view{view_locations()};
+        func(locations_view.xs());
+        func(locations_view.ys());
+        func(locations_view.zs());
+        auto const& emission_directions_view{view_emission_directions()};
+        func(emission_directions_view.xs());
+        func(emission_directions_view.ys());
+        func(emission_directions_view.zs());
         func(sources());
     }
   private:
@@ -325,25 +325,28 @@ struct LaserHitDetails
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LaserHitDetails, size_type>
     {
         auto const destination{get_data(first)};
-        auto const& group_0{source.view_locations()};
+        auto const& locations_view{source.view_locations()};
         ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(group_0.xs()) + source_first,
+                               ml::native_soa::source_data(locations_view.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(group_0.ys()) + source_first,
+                               ml::native_soa::source_data(locations_view.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(group_0.zs()) + source_first,
+                               ml::native_soa::source_data(locations_view.zs()) + source_first,
                                count);
-        auto const& group_1{source.view_emission_directions()};
+        auto const& emission_directions_view{source.view_emission_directions()};
         ml::native_soa::copy_n(destination.emission_directions_xs,
-                               ml::native_soa::source_data(group_1.xs()) + source_first,
+                               ml::native_soa::source_data(emission_directions_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.emission_directions_ys,
-                               ml::native_soa::source_data(group_1.ys()) + source_first,
+                               ml::native_soa::source_data(emission_directions_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.emission_directions_zs,
-                               ml::native_soa::source_data(group_1.zs()) + source_first,
+                               ml::native_soa::source_data(emission_directions_view.zs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.sources,
                                ml::native_soa::source_data(source.sources()) + source_first,
@@ -357,25 +360,28 @@ struct LaserHitDetails
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LaserHitDetails, size_type>
     {
         auto const destination{get_data(first)};
-        auto const& group_0{source.view_locations()};
+        auto const& locations_view{source.view_locations()};
         ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(group_0.xs()) + source_first,
+                               ml::native_soa::source_data(locations_view.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(group_0.ys()) + source_first,
+                               ml::native_soa::source_data(locations_view.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(group_0.zs()) + source_first,
+                               ml::native_soa::source_data(locations_view.zs()) + source_first,
                                count);
-        auto const& group_1{source.view_emission_directions()};
+        auto const& emission_directions_view{source.view_emission_directions()};
         ml::native_soa::move_n(destination.emission_directions_xs,
-                               ml::native_soa::source_data(group_1.xs()) + source_first,
+                               ml::native_soa::source_data(emission_directions_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.emission_directions_ys,
-                               ml::native_soa::source_data(group_1.ys()) + source_first,
+                               ml::native_soa::source_data(emission_directions_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.emission_directions_zs,
-                               ml::native_soa::source_data(group_1.zs()) + source_first,
+                               ml::native_soa::source_data(emission_directions_view.zs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.sources,
                                ml::native_soa::source_data(source.sources()) + source_first,
