@@ -152,6 +152,10 @@ void check_single_static_overlap(collision::EntityStaticOverlaps::ConstView cons
 }
 
 TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
+        query_backing{};
+    ml::FrameMemoryResource query_memory{query_backing};
+    ml::FrameScratchScope query_scope{query_memory};
 
     OverlapFixture fixture;
     auto const stationary{fixture.spawn({{0.f, 0.f, 0.f}})};
@@ -176,26 +180,30 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     owner.teams()[0] = Team::Green;
     auto const& queries{fixture.query_manager};
     std::array<EntityUniqueId, 2> nearby{};
-    EXPECT_EQ(
-        queries.collect_non_team_entities_in_range({{300.f, 0.f, 0.f}}, Team::Blue, 10.f, nearby),
-        1);
+    EXPECT_EQ(queries.collect_non_team_entities_in_range(
+                  {{300.f, 0.f, 0.f}}, Team::Blue, 10.f, nearby, &query_memory),
+              1);
     EXPECT_EQ(nearby[0], stationary);
     EXPECT_EQ(queries.get_any_non_team_entity(Team::Blue), stationary);
     EXPECT_EQ(queries.get_any_non_team_entity(Team::Blue, EntityType::CapitalShip), stationary);
     EXPECT_TRUE(!queries.get_any_non_team_entity(Team::Blue, EntityType::Turret).is_valid());
     std::array<EntityUniqueId, 2> nearby_ids{};
-    EXPECT_EQ(queries.collect_entities_of_type_in_range(
-                  {{300.f, 0.f, 0.f}}, EntityType::CapitalShip, 20.f, stationary, nearby_ids),
+    EXPECT_EQ(queries.collect_entities_of_type_in_range({{300.f, 0.f, 0.f}},
+                                                        EntityType::CapitalShip,
+                                                        20.f,
+                                                        stationary,
+                                                        nearby_ids,
+                                                        &query_memory),
               1);
     EXPECT_EQ(nearby_ids[0], moved);
     fixture.owners.health_table.get_view<EntityType::CapitalShip>(owner.num()).set_health(0, 0);
-    EXPECT_EQ(
-        queries.collect_non_team_entities_in_range({{300.f, 0.f, 0.f}}, Team::Blue, 20.f, nearby),
-        0);
+    EXPECT_EQ(queries.collect_non_team_entities_in_range(
+                  {{300.f, 0.f, 0.f}}, Team::Blue, 20.f, nearby, &query_memory),
+              0);
     EXPECT_TRUE(!queries.get_any_non_team_entity(Team::Blue).is_valid());
     std::array const radius_ids{stationary, moved, EntityUniqueId{}};
     std::array<float, 3> radii{};
-    queries.copy_entity_radii(radius_ids, radii);
+    queries.copy_entity_radii(radius_ids, radii, &query_memory);
     EXPECT_EQ(radii[0], 0.f);
     EXPECT_GT(radii[1], 0.f);
     EXPECT_EQ(radii[2], 0.f);
@@ -274,6 +282,11 @@ TEST(EntityAABBOverlaps, SelfAndQuietTicksProduceNoPairs) {
 }
 
 TEST(EntityAABBOverlaps, RefreshSpatialIndexDoesNotDetectOrAppendEvents) {
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
+        query_backing{};
+    ml::FrameMemoryResource query_memory{query_backing};
+    ml::FrameScratchScope query_scope{query_memory};
+
     OverlapFixture fixture;
     auto const entity{fixture.spawn({{0.f, 0.f, 0.f}})};
     fixture.finish_spawning();
@@ -282,7 +295,8 @@ TEST(EntityAABBOverlaps, RefreshSpatialIndexDoesNotDetectOrAppendEvents) {
         fixture.query_manager.refresh_spatial_index();
     }
 
-    auto const hit{fixture.query_manager.trace_closest({{-20.f, 0.f, 0.f}}, {{20.f, 0.f, 0.f}})};
+    auto const hit{fixture.query_manager.trace_closest(
+        {{-20.f, 0.f, 0.f}}, {{20.f, 0.f, 0.f}}, &query_memory)};
     EXPECT_TRUE(hit.hit && hit.entity == entity)
         << "Refresh-only updates make entities available to queries";
 

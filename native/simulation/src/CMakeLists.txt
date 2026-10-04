@@ -75,8 +75,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/entity_unique_id_checks.h
   ../include/ioj/sim/team_checks.h
   ../include/ioj/sim/profiling.h
-  ../include/ioj/sim/query_thread_buffer_pool.h
-  ../include/ioj/sim/query_thread_buffers.h
   ../include/ioj/sim/reference_level_simulation_data.h
   ../include/ioj/sim/rotator_math.h
   ../include/ioj/sim/rotator_types.h
@@ -130,8 +128,6 @@ target_sources(native-simulation PRIVATE
   level_telemetry_manager.cpp
   mission_manager.cpp
   overlap_handler.cpp
-  query_thread_buffer_pool.cpp
-  query_thread_buffers.cpp
   reference_level_simulation_data.cpp
   rotator_math.cpp
   rotator3d.cpp

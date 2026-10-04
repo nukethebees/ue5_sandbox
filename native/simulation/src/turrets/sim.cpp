@@ -214,7 +214,7 @@ void Sim::refresh_target_data(ml::FrameMemoryResource* const scratch_resource) {
 void Sim::think(float const, ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::think");
     refresh_target_data(scratch_resource);
-    perform_search();
+    perform_search(scratch_resource);
     refresh_target_data(scratch_resource);
 }
 void Sim::generate_fire_commands(ml::FrameMemoryResource* const scratch_resource) {
@@ -284,7 +284,7 @@ auto Sim::get_target_ids() const -> std::span<EntityUniqueId const> {
 /* **************************************** */
 // Searching
 /* **************************************** */
-void Sim::perform_search() {
+void Sim::perform_search(ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::perform_search");
 
     auto const n_turrets{get_num_instances()};
@@ -294,13 +294,16 @@ void Sim::perform_search() {
 
     auto const radius{config.detection_radius};
 
-    ml::parallel_for(n_turrets, [this, radius](std::uint32_t const begin, std::uint32_t const end) {
-        perform_search_on_slice(begin, end, radius);
-    });
+    ml::parallel_for(
+        n_turrets,
+        [this, radius, scratch_resource](std::uint32_t const begin, std::uint32_t const end) {
+            perform_search_on_slice(begin, end, radius, scratch_resource);
+        });
 }
 void Sim::perform_search_on_slice(std::uint32_t const begin,
                                   std::uint32_t const end,
-                                  float const radius) {
+                                  float const radius,
+                                  ml::FrameMemoryResource* const scratch_resource) {
     std::array<float, 128> candidate_xs;
     std::array<float, 128> candidate_ys;
     std::array<float, 128> candidate_zs;
@@ -329,7 +332,7 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
 
             target_ids.set_num_uninitialised(
                 spatial_query_manager.collect_non_team_entities_in_range(
-                    turret_location, this_team, radius, target_capacity));
+                    turret_location, this_team, radius, target_capacity, scratch_resource));
 
             current_targets[i] = EntityUniqueId{};
 
@@ -356,7 +359,8 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
                 vector_at(fire_point_locations, i),
                 candidate_locations_view.get_const_view(),
                 target_ids,
-                has_line_of_sight);
+                has_line_of_sight,
+                scratch_resource);
             // NOLINTEND(ioj-loop-view-construction,ioj-loop-view-accessor-call)
 
             if (target_count > 0) {
@@ -442,7 +446,8 @@ void Sim::fire_at_enemies(ml::FrameMemoryResource* const scratch_resource) {
     spatial_query_manager.trace_line_of_sight(
         starts.get_const_view(),
         ends.get_const_view(),
-        {hit_ids.data(), static_cast<std::size_t>(candidate_count)});
+        {hit_ids.data(), static_cast<std::size_t>(candidate_count)},
+        scratch_resource);
 
     lasers::FrameSpawnRequests new_lasers{scratch_resource};
     new_lasers.reserve(candidate_count);

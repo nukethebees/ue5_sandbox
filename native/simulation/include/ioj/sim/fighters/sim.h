@@ -173,7 +173,8 @@ struct Sim {
     void move(float dt, TaskView fighters, ml::FrameMemoryResource* const scratch_resource);
     void update_navigation_steering(ml::FrameMemoryResource* const scratch_resource);
     void collect_navigation_updates(NavigationScratch& scratch);
-    void update_separation_observations(NavigationScratch& scratch);
+    void update_separation_observations(NavigationScratch& scratch,
+                                        ml::FrameMemoryResource* scratch_resource);
     void apply_separation_steering();
     void scan_preferred_navigation(NavigationScratch& scratch,
                                    float clearance,

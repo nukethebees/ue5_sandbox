@@ -5,7 +5,10 @@
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <ioj/sim/world_aabb_operations.h>
 
+#include <sandbox/core/frame_memory_resource.h>
+
 #include <algorithm>
+#include <array>
 #include <type_traits>
 #include <utility>
 
@@ -121,8 +124,7 @@ TEST(NativeSimulation, LevelSimFrameMemoryUsesAndReturnsGameMemoryBlock) {
         auto const stats{memory.get_stats()};
         EXPECT_EQ(stats.live_block_count, 1);
         EXPECT_EQ(stats.live_block_bytes, frame_capacity);
-        EXPECT_GT(stats.claimed_bytes, frame_capacity)
-            << "Query pool bookkeeping also uses persistent game memory";
+        EXPECT_EQ(stats.claimed_bytes, frame_capacity);
         EXPECT_EQ(simulation.get_frame_memory_stats().capacity_bytes, frame_capacity);
     }
 
@@ -245,6 +247,11 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
 }
 
 TEST(NativeSimulation, LevelSimInitialQueriesTest) {
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
+        query_backing{};
+    ml::FrameMemoryResource query_memory{query_backing};
+    ml::FrameScratchScope query_scope{query_memory};
+
     auto data{make_battle()};
     collision::WorldAABBs static_bounds;
     collision::add(static_bounds, {{-10.f, 490.f, -10.f}}, {{10.f, 510.f, 10.f}});
@@ -252,15 +259,18 @@ TEST(NativeSimulation, LevelSimInitialQueriesTest) {
     simulation.set_static_collision(std::move(static_bounds));
     simulation.finish_initialisation();
     auto const& queries{simulation.get_spatial_query_manager()};
-    auto const dynamic_hit{queries.trace_closest({{-1100.f, 0.f, 0.f}}, {{-900.f, 0.f, 0.f}})};
+    auto const dynamic_hit{
+        queries.trace_closest({{-1100.f, 0.f, 0.f}}, {{-900.f, 0.f, 0.f}}, &query_memory)};
     EXPECT_TRUE(dynamic_hit.hit && dynamic_hit.entity == simulation.get_capital_ships().get_id(0))
         << "Initial capital is queryable before the first tick";
-    auto const static_hit{queries.trace_closest({{-100.f, 500.f, 0.f}}, {{100.f, 500.f, 0.f}})};
+    auto const static_hit{
+        queries.trace_closest({{-100.f, 500.f, 0.f}}, {{100.f, 500.f, 0.f}}, &query_memory)};
     EXPECT_TRUE(static_hit.hit && static_hit.static_geometry_index == 0)
         << "Initial static collision is queryable before the first tick";
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period());
-    EXPECT_TRUE(queries.trace_closest({{-100.f, 500.f, 0.f}}, {{100.f, 500.f, 0.f}}).hit)
+    EXPECT_TRUE(
+        queries.trace_closest({{-100.f, 500.f, 0.f}}, {{100.f, 500.f, 0.f}}, &query_memory).hit)
         << "Static collision survives the first dynamic rebuild";
 }
 

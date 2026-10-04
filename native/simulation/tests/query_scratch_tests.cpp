@@ -1,5 +1,4 @@
 #include "support/collision_agent_storage.h"
-#include <ioj/sim/query_thread_buffer_pool.h>
 #include <ioj/sim/spatial_query_manager.h>
 
 #include <sandbox/core/frame_memory_resource.h>
@@ -42,20 +41,6 @@ struct FrameBacking {
     ml::FrameMemoryResource resource{bytes};
 };
 
-void fill_buffers(QueryThreadBuffers& buffers, std::uint32_t const count) {
-    buffers.line_traces.set_num(count);
-    buffers.trace_hits.set_num(count);
-    buffers.ensure_entity_stamp_count(count);
-}
-
-void expect_frame_storage(QueryThreadBuffers const& buffers, ml::FrameMemoryResource const& frame) {
-    auto const traces{buffers.line_traces.get_const_view()};
-    auto const hits{buffers.trace_hits.get_const_view()};
-    traces.each_column([&](auto column) { EXPECT_TRUE(frame.owns(column.data())); });
-    hits.each_column([&](auto column) { EXPECT_TRUE(frame.owns(column.data())); });
-    EXPECT_TRUE(frame.owns(buffers.range_query_entity_stamps.data()));
-}
-
 void initialise_queries(SpatialQueryManager& manager) {
     collision::EntityAABBs bounds;
     for (auto const type : ml::EnumTraits<EntityType>::values) {
@@ -69,145 +54,80 @@ void initialise_queries(SpatialQueryManager& manager) {
 
 namespace ioj::sim::tests {
 TEST(QueryScratch, ExhaustionDoesNotFallBackToHeap) {
+    CollisionAgentStorage owners;
+    owners.publish();
+    SpatialQueryManager manager{owners.entity_tables};
+    query_scratch_detail::initialise_queries(manager);
     alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64> backing{};
     ml::FrameMemoryResource frame{backing};
     {
         ml::FrameScratchScope scope{frame};
-        QueryThreadBuffers buffers{&frame};
-        EXPECT_THROW(buffers.line_traces.set_num(64), std::bad_alloc);
-        EXPECT_TRUE(buffers.line_traces.is_empty());
+        EXPECT_THROW(manager.trace_closest({}, {}, &frame), std::bad_alloc);
         EXPECT_EQ(frame.get_stats().overflow_count, 1u);
         EXPECT_EQ(frame.get_stats().outstanding_allocation_count, 0u);
     }
 }
 
-TEST(QueryScratch, PoolPropagatesResourcesThroughGrowthAndReleasesStorage) {
-    query_scratch_detail::CountingResource bookkeeping;
-    query_scratch_detail::CountingResource buffers;
-    {
-        QueryThreadBufferPool pool{&bookkeeping, &buffers};
-        ASSERT_EQ(pool.reserve(1), QueryThreadBufferReserveResult::reserved);
-        auto const index{pool.try_acquire()};
-        ASSERT_TRUE(index.has_value());
-        query_scratch_detail::fill_buffers(pool.get(*index), 4);
-        pool.get(*index).trace_hits.get_view().hits()[0] = 1;
-        EXPECT_TRUE(pool.release(*index));
-
-        ASSERT_EQ(pool.reserve(4), QueryThreadBufferReserveResult::reserved);
-        EXPECT_EQ(pool.get(*index).trace_hits.get_const_view().hits()[0], 1);
-        for (std::uint32_t i{}; i < 4; ++i) {
-            auto& slot{pool.get(i)};
-            EXPECT_EQ(slot.line_traces.get_memory_resource(), &buffers);
-            EXPECT_EQ(slot.trace_hits.get_memory_resource(), &buffers);
-            EXPECT_EQ(slot.range_query_entity_stamps.get_allocator().resource(), &buffers);
-            query_scratch_detail::fill_buffers(slot, 128);
-        }
-        EXPECT_GT(bookkeeping.allocations.load(), 0u);
-        EXPECT_GT(buffers.allocations.load(), 0u);
-    }
-    EXPECT_EQ(bookkeeping.outstanding.load(), 0u);
-    EXPECT_EQ(buffers.outstanding.load(), 0u);
-}
-
-TEST(QueryScratch, RejectsResourceChangesWhileLeasedAndReusesScratchWithinScope) {
-    QueryThreadBufferPool pool;
-    ASSERT_EQ(pool.reserve(1), QueryThreadBufferReserveResult::reserved);
+TEST(QueryScratch, ConcurrentQueriesAllocateFromSharedFrameAndReleaseBeforeReclaim) {
+    CollisionAgentStorage owners;
+    auto const id{owners.spawn(EntityType::CapitalShip)};
+    owners.publish();
+    SpatialQueryManager manager{owners.entity_tables};
+    query_scratch_detail::initialise_queries(manager);
     query_scratch_detail::FrameBacking frame;
     {
         ml::FrameScratchScope scope{frame.resource};
-        auto const first{pool.try_acquire()};
-        ASSERT_TRUE(first.has_value());
-        EXPECT_FALSE(pool.set_buffer_resource(&frame.resource));
-        EXPECT_EQ(pool.reserve(2), QueryThreadBufferReserveResult::active_queries);
-        EXPECT_TRUE(pool.release(*first));
-
-        ASSERT_TRUE(pool.set_buffer_resource(&frame.resource));
-        auto const index{pool.try_acquire()};
-        ASSERT_TRUE(index.has_value());
-        query_scratch_detail::fill_buffers(pool.get(*index), 64);
-        query_scratch_detail::expect_frame_storage(pool.get(*index), frame.resource);
-        auto const claimed{frame.resource.get_stats().current_claimed_bytes};
-        EXPECT_TRUE(pool.release(*index));
-
-        auto const reused{pool.try_acquire()};
-        ASSERT_TRUE(reused.has_value());
-        query_scratch_detail::fill_buffers(pool.get(*reused), 32);
-        EXPECT_EQ(frame.resource.get_stats().current_claimed_bytes, claimed);
-        EXPECT_TRUE(pool.release(*reused));
-        EXPECT_EQ(pool.reserve(3), QueryThreadBufferReserveResult::reserved);
-        query_scratch_detail::fill_buffers(pool.get(2), 128);
-        query_scratch_detail::expect_frame_storage(pool.get(2), frame.resource);
-        EXPECT_TRUE(pool.set_buffer_resource(pool.get_buffer_memory_resource()));
-        EXPECT_EQ(frame.resource.get_stats().outstanding_allocation_count, 0u);
-    }
-    EXPECT_EQ(frame.resource.get_stats().current_claimed_bytes, 0u);
-}
-
-TEST(QueryScratch, ConcurrentLeasesAllocateFromSharedFrameAndReleaseBeforeReclaim) {
-    QueryThreadBufferPool pool;
-    ASSERT_EQ(pool.reserve(4), QueryThreadBufferReserveResult::reserved);
-    query_scratch_detail::FrameBacking frame;
-    {
-        ml::FrameScratchScope scope{frame.resource};
-        ASSERT_TRUE(pool.set_buffer_resource(&frame.resource));
         std::barrier start{4};
         std::array<std::jthread, 4> workers;
         for (auto& worker : workers) {
             worker = std::jthread{[&] {
-                auto const index{pool.try_acquire()};
                 start.arrive_and_wait();
-                ASSERT_TRUE(index.has_value());
-                auto& buffers{pool.get(*index)};
-                query_scratch_detail::fill_buffers(buffers, 64);
-                query_scratch_detail::fill_buffers(buffers, 257);
-                query_scratch_detail::expect_frame_storage(buffers, frame.resource);
-                EXPECT_TRUE(pool.release(*index));
+                auto const hit{manager.trace_closest(
+                    {{-10.f, 0.f, 0.f}}, {{10.f, 0.f, 0.f}}, &frame.resource)};
+                EXPECT_EQ(hit.entity, id);
+                std::array<EntityUniqueId, 4> nearby;
+                EXPECT_EQ(manager.collect_non_team_entities_in_range(
+                              {}, Team::Green, 20.f, nearby, &frame.resource),
+                          1u);
+                EXPECT_EQ(nearby[0], id);
             }};
         }
         for (auto& worker : workers) {
             worker.join();
         }
-        EXPECT_TRUE(pool.set_buffer_resource(pool.get_buffer_memory_resource()));
+        EXPECT_GT(frame.resource.get_stats().current_claimed_bytes, 0u);
         EXPECT_EQ(frame.resource.get_stats().outstanding_allocation_count, 0u);
     }
     EXPECT_EQ(frame.resource.get_stats().current_claimed_bytes, 0u);
     EXPECT_EQ(frame.resource.get_stats().overflow_count, 0u);
 }
 
-TEST(QueryScratch, ManagerBindsQueriesToEachEpochAndRestoresOutsideQueries) {
+TEST(QueryScratch, ManagerUsesExplicitScratchAndReleasesQueriesWithinEachEpoch) {
     CollisionAgentStorage owners;
     auto const id{owners.spawn(EntityType::CapitalShip)};
     owners.publish();
-    query_scratch_detail::CountingResource bookkeeping;
     query_scratch_detail::CountingResource persistent;
-    SpatialQueryManager manager{owners.entity_tables, &bookkeeping, &persistent};
+    SpatialQueryManager manager{owners.entity_tables, &persistent};
     query_scratch_detail::initialise_queries(manager);
-    auto const trace{[&] {
-        return manager.trace_closest(Vector3f{{-10.f, 0.f, 0.f}}, Vector3f{{10.f, 0.f, 0.f}});
-    }};
-    ASSERT_EQ(trace().entity, id);
-    EXPECT_GT(persistent.outstanding.load(), 0u);
-
     query_scratch_detail::FrameBacking frame;
     for (int epoch{}; epoch < 3; ++epoch) {
         {
             ml::FrameScratchScope scratch_scope{frame.resource};
-            query_manager::ScratchScope query_scope{manager, &frame.resource};
             auto const persistent_allocations{persistent.allocations.load()};
-            auto const bookkeeping_allocations{bookkeeping.allocations.load()};
-            EXPECT_EQ(persistent.outstanding.load(), 0u);
-            EXPECT_EQ(trace().entity, id);
+            auto const hit{
+                manager.trace_closest({{-10.f, 0.f, 0.f}}, {{10.f, 0.f, 0.f}}, &frame.resource)};
+            EXPECT_EQ(hit.entity, id);
             std::array<EntityUniqueId, 4> nearby;
-            ASSERT_EQ(manager.collect_non_team_entities_in_range({}, Team::Green, 20.f, nearby),
+            ASSERT_EQ(manager.collect_non_team_entities_in_range(
+                          {}, Team::Green, 20.f, nearby, &frame.resource),
                       1u);
             EXPECT_EQ(nearby[0], id);
-            EXPECT_GT(frame.resource.get_stats().outstanding_allocation_count, 0u);
+            EXPECT_GT(frame.resource.get_stats().current_claimed_bytes, 0u);
+            EXPECT_EQ(frame.resource.get_stats().outstanding_allocation_count, 0u);
             EXPECT_EQ(persistent.allocations.load(), persistent_allocations);
-            EXPECT_EQ(bookkeeping.allocations.load(), bookkeeping_allocations);
         }
         EXPECT_EQ(frame.resource.get_stats().outstanding_allocation_count, 0u);
         EXPECT_EQ(frame.resource.get_stats().current_claimed_bytes, 0u);
-        EXPECT_EQ(trace().entity, id);
     }
 }
 

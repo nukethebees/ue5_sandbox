@@ -677,7 +677,7 @@ void Sim::update_navigation_steering(ml::FrameMemoryResource* const scratch_reso
 
     // Only expired countdowns observe the world. Held steering is applied to every mover.
     collect_navigation_updates(scratch);
-    update_separation_observations(scratch);
+    update_separation_observations(scratch, scratch_resource);
     apply_separation_steering();
 
     // Hard sweeps have final authority over the traffic-biased preferred direction.
@@ -717,7 +717,8 @@ void Sim::collect_navigation_updates(NavigationScratch& scratch) {
         }
     }
 }
-void Sim::update_separation_observations(NavigationScratch& scratch) {
+void Sim::update_separation_observations(NavigationScratch& scratch,
+                                         ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::update_separation_observations");
 
     auto const data{entity_buffers.current().get_view()};
@@ -758,8 +759,13 @@ void Sim::update_separation_observations(NavigationScratch& scratch) {
 
         auto const fighter_location{vector_at(locations, fighter_index)};
         auto const fighter_id{entity_ids[fighter_index]};
-        auto const n_nearby{spatial_query_manager.collect_entities_of_type_in_range(
-            fighter_location, EntityType::Fighter, separation_radius, fighter_id, nearby_fighters)};
+        auto const n_nearby{
+            spatial_query_manager.collect_entities_of_type_in_range(fighter_location,
+                                                                    EntityType::Fighter,
+                                                                    separation_radius,
+                                                                    fighter_id,
+                                                                    nearby_fighters,
+                                                                    scratch_resource)};
         ++navigation_telemetry.separation_query_count;
         navigation_telemetry.separation_candidate_count += n_nearby;
 
@@ -1599,6 +1605,7 @@ void Sim::handle_firing(TaskView data, ml::FrameMemoryResource* const scratch_re
         line_of_sight_starts.get_const_view(),
         line_of_sight_ends.get_const_view(),
         {line_of_sight_results.data(), static_cast<std::size_t>(line_of_sight_results.num())},
+        scratch_resource,
         {firing_ignored_entities.data(), static_cast<std::size_t>(firing_ignored_entities.num())});
 
     auto const desired_move_locations{data.view_desired_move_locations()};
@@ -1658,6 +1665,7 @@ void Sim::handle_firing(TaskView data, ml::FrameMemoryResource* const scratch_re
             line_of_sight_starts.get_const_view(),
             line_of_sight_ends.get_const_view(),
             {line_of_sight_results.data(), static_cast<std::size_t>(line_of_sight_results.num())},
+            scratch_resource,
             {firing_ignored_entities.data(),
              static_cast<std::size_t>(firing_ignored_entities.num())});
         auto const candidate_locations{firing_position_candidates.get_const_view()};

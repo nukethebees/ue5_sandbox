@@ -5,7 +5,6 @@
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/line_traces.h>
 #include <ioj/sim/query_result_types.h>
-#include <ioj/sim/query_thread_buffer_pool.h>
 #include <ioj/sim/trace_hits.h>
 
 #include <cstddef>
@@ -24,51 +23,15 @@ namespace ml {
 class FrameMemoryResource;
 }
 
-namespace ioj::sim::query_manager {
-using ThreadBuffers = QueryThreadBuffers;
-
-class ThreadBufferLease {
-  public:
-    explicit ThreadBufferLease(SpatialQueryManager const& manager);
-    ~ThreadBufferLease();
-
-    ThreadBufferLease(ThreadBufferLease const&) = delete;
-    ThreadBufferLease(ThreadBufferLease&&) = delete;
-    auto operator=(ThreadBufferLease const&) -> ThreadBufferLease& = delete;
-    auto operator=(ThreadBufferLease&&) -> ThreadBufferLease& = delete;
-
-    auto get() const -> ThreadBuffers&;
-  private:
-    SpatialQueryManager const& manager;
-    std::uint32_t index;
-};
-
-// Enclose synchronous query work inside its owning FrameScratchScope.
-class ScratchScope {
-  public:
-    ScratchScope(SpatialQueryManager& manager, ml::FrameMemoryResource* const scratch_resource);
-    ~ScratchScope();
-
-    ScratchScope(ScratchScope const&) = delete;
-    ScratchScope(ScratchScope&&) = delete;
-    auto operator=(ScratchScope const&) -> ScratchScope& = delete;
-    auto operator=(ScratchScope&&) -> ScratchScope& = delete;
-  private:
-    SpatialQueryManager& manager_;
-};
-}
-
 namespace ioj::sim {
 struct SpatialQueryManager {
   public:
     /* **************************************** */
     // Construction and setup
     /* **************************************** */
-    // Keep persistent bookkeeping separate from concurrently allocated query contents.
     explicit SpatialQueryManager(
         EntityTables const& agents,
-        std::pmr::memory_resource* resource = std::pmr::get_default_resource(),
-        std::pmr::memory_resource* query_resource = std::pmr::get_default_resource());
+        std::pmr::memory_resource* resource = std::pmr::get_default_resource());
     SpatialQueryManager(SpatialQueryManager const&) = delete;
     SpatialQueryManager(SpatialQueryManager&&) = delete;
     auto operator=(SpatialQueryManager const&) -> SpatialQueryManager& = delete;
@@ -81,21 +44,22 @@ struct SpatialQueryManager {
         return {grid.get_grid_dims(), grid.get_cell_dims()};
     }
 
-    void reserve_thread_buffers(std::uint32_t count);
-
     /* **************************************** */
     // Batched line queries
     /* **************************************** */
     void trace_line_of_sight(Vectors3fConstView start_locations,
                              Vectors3fConstView end_locations,
-                             std::span<EntityUniqueId> out_entity_ids) const;
+                             std::span<EntityUniqueId> out_entity_ids,
+                             ml::FrameMemoryResource* scratch_resource) const;
     void has_line_of_sight_to_targets(Vector3f const& start_location,
                                       Vectors3fConstView end_locations,
                                       std::span<EntityUniqueId const> targets,
-                                      std::span<LineQueryResult> has_los) const;
+                                      std::span<LineQueryResult> has_los,
+                                      ml::FrameMemoryResource* scratch_resource) const;
     void have_clear_lines(Vectors3fConstView start_locations,
                           Vectors3fConstView end_locations,
                           std::span<LineQueryResult> clear_lines,
+                          ml::FrameMemoryResource* scratch_resource,
                           std::span<EntityUniqueId const> ignored_entities = {}) const;
     void trace_closest_lines(Vectors3fConstView start_locations,
                              Vectors3fConstView end_locations,
@@ -131,21 +95,25 @@ struct SpatialQueryManager {
 
     auto has_clear_line(Vector3f start_location,
                         Vector3f end_location,
+                        ml::FrameMemoryResource* scratch_resource,
                         EntityUniqueId ignored_entity = {}) const -> bool;
     auto trace_closest(Vector3f start_location,
                        Vector3f end_location,
+                       ml::FrameMemoryResource* scratch_resource,
                        EntityUniqueId ignored_entity = {}) const -> LineTraceResult;
 
     auto collect_non_team_entities_in_range(Vector3f const& origin,
                                             Team const team,
                                             float const radius,
-                                            std::span<EntityUniqueId> const out_entities) const
+                                            std::span<EntityUniqueId> const out_entities,
+                                            ml::FrameMemoryResource* scratch_resource) const
         -> std::uint32_t;
     auto collect_entities_of_type_in_range(Vector3f const& origin,
                                            EntityType entity_type,
                                            float radius,
                                            EntityUniqueId ignored_entity,
-                                           std::span<EntityUniqueId> out_entities) const
+                                           std::span<EntityUniqueId> out_entities,
+                                           ml::FrameMemoryResource* scratch_resource) const
         -> std::uint32_t;
     auto get_any_non_team_entity(Team const team) const -> EntityUniqueId;
     auto get_any_non_team_entity(Team const team, EntityType const entity_type) const
@@ -155,7 +123,9 @@ struct SpatialQueryManager {
                                std::span<collision::SphereInBoundsResult> out_results) const;
     auto get_entity_type_radius(EntityType entity_type) const noexcept -> float;
     auto get_entity_type_radii() const noexcept -> EntityTypeRadii const&;
-    void copy_entity_radii(std::span<EntityUniqueId const> ids, std::span<float> out_radii) const;
+    void copy_entity_radii(std::span<EntityUniqueId const> ids,
+                           std::span<float> out_radii,
+                           ml::FrameMemoryResource* scratch_resource) const;
 
     /* **************************************** */
     // Collision and spatial-index lifecycle
@@ -177,25 +147,12 @@ struct SpatialQueryManager {
     }
 #endif
   private:
-    /* **************************************** */
-    // Thread buffer leasing
-    /* **************************************** */
-    friend class query_manager::ThreadBufferLease;
-    friend class query_manager::ScratchScope;
     friend struct SpatialQueryManagerTestAccess;
-
-    using ThreadBuffers = query_manager::ThreadBuffers;
-
-    auto acquire_thread_buffer() const -> std::uint32_t;
-    void release_thread_buffer(std::uint32_t index) const;
 
     /* **************************************** */
     // State
     /* **************************************** */
     EntityTables const& entity_tables_;
-
-    mutable QueryThreadBufferPool thread_buffer_pool_;
-    bool scratch_active_{};
 
     collision::CollisionSystem collision_system_;
     EntityTypeRadii entity_radii_{};

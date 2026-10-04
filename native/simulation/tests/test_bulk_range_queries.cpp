@@ -45,17 +45,21 @@ class BulkRangeQueries : public ::testing::Test {
         auto const locations{origins.get_const_view()};
         auto const directions{output.directions.get_const_view()};
         std::array<EntityUniqueId, 512> reference;
+        alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
+            reference_backing{};
+        ml::FrameMemoryResource reference_memory{reference_backing};
         auto const reference_view{std::span{reference}};
         std::uint32_t offset{};
         auto const request_count{origins.num()};
         for (std::uint32_t index{}; index < request_count; ++index) {
+            ml::FrameScratchScope reference_scope{reference_memory};
             SCOPED_TRACE(index);
             auto const range{output.ranges[index]};
             ASSERT_EQ(range.offset, offset);
             ASSERT_LE(range.end(), output.entities.num());
             offset = range.end();
             auto const count{queries.collect_non_team_entities_in_range(
-                locations[index], teams[index], radius, reference)};
+                locations[index], teams[index], radius, reference, &reference_memory)};
             // NOLINTNEXTLINE(ioj-loop-view-accessor-call) -- result count depends on this request.
             auto const expected{reference_view.first(count)};
             std::vector<EntityUniqueId> actual;

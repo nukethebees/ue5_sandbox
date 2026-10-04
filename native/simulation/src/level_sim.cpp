@@ -11,7 +11,6 @@
 #include <format>
 #include <optional>
 #include <span>
-#include <thread>
 #include <vector>
 
 namespace ioj::sim {
@@ -200,7 +199,6 @@ void LevelSim::configure_player(player::PlayerSpawnData const& spawn) {
 void LevelSim::initialise_spatial_queries(LevelSimInitData& data) {
     // Configure collision queries and buffers
     query_manager_.initialise(data.grid_geometry, data.entity_bounds);
-    query_manager_.reserve_thread_buffers(std::max(1u, std::thread::hardware_concurrency()));
 
     // Install static bounds
     query_manager_.set_static_collision(std::move(data.static_bounds));
@@ -361,7 +359,6 @@ void LevelSim::advance(time_type const dt) {
             auto* const scratch_resource{&frame_memory_};
 
             SANDBOX_PROFILE_SCOPE("Thinking");
-            query_manager::ScratchScope query_scratch{query_manager_, scratch_resource};
             clock_.transition_to(SimulationPhase::Thinking);
 
             // Resolve dependent reads after every entity type has updated its lookup table.
@@ -403,7 +400,6 @@ void LevelSim::advance(time_type const dt) {
             // Simulate projectiles
             {
                 ml::FrameScratchScope scratch_scope{frame_memory_};
-                query_manager::ScratchScope query_scratch{query_manager_, &frame_memory_};
                 lasers_phase_.simulate(tick_period, &frame_memory_);
             }
 

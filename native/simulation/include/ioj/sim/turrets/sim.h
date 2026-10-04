@@ -95,9 +95,12 @@ struct Sim {
     /* **************************************** */
     // Searching
     /* **************************************** */
-    void perform_search();
+    void perform_search(ml::FrameMemoryResource* scratch_resource);
     void refresh_target_data(ml::FrameMemoryResource* const scratch_resource);
-    void perform_search_on_slice(std::uint32_t begin, std::uint32_t end, float radius);
+    void perform_search_on_slice(std::uint32_t begin,
+                                 std::uint32_t end,
+                                 float radius,
+                                 ml::FrameMemoryResource* scratch_resource);
 
     /* **************************************** */
     // Attacking

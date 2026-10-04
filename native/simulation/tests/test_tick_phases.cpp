@@ -4,6 +4,10 @@
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 
+#include <sandbox/core/frame_memory_resource.h>
+
+#include <array>
+
 namespace ioj::sim::tests::tick_phases {
 auto make_world() -> LevelSimInitData {
     LevelSimInitData data{};
@@ -137,6 +141,11 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
 }
 
 TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
+        query_backing{};
+    ml::FrameMemoryResource query_memory{query_backing};
+    ml::FrameScratchScope query_scope{query_memory};
+
     auto data{make_world()};
 
     auto const first{
@@ -173,7 +182,8 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
 
     auto const& queries{simulation.get_spatial_query_manager()};
 
-    auto const hit{queries.trace_closest({{-20.f, 0.f, 0.f}}, {{20.f, 0.f, 0.f}}, parent)};
+    auto const hit{
+        queries.trace_closest({{-20.f, 0.f, 0.f}}, {{20.f, 0.f, 0.f}}, &query_memory, parent)};
     EXPECT_TRUE(hit.hit);
     EXPECT_EQ(hit.entity, fighter);
     EXPECT_EQ(queries.get_aabb_overlap_events().entity_entity_overlaps.num(), 1);
@@ -232,6 +242,11 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
 }
 
 TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
+        query_backing{};
+    ml::FrameMemoryResource query_memory{query_backing};
+    ml::FrameScratchScope query_scope{query_memory};
+
     auto data{make_world()};
     add_capital_spawn(
         data, {{-2000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
@@ -263,7 +278,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
     EXPECT_EQ(observe_entity(simulation, turret)->health, 75);
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 0);
     EXPECT_EQ(simulation.get_spatial_query_manager()
-                  .trace_closest({{480.f, 100.f, 0.f}}, {{520.f, 100.f, 0.f}})
+                  .trace_closest({{480.f, 100.f, 0.f}}, {{520.f, 100.f, 0.f}}, &query_memory)
                   .entity,
               turret);
 
@@ -273,6 +288,11 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
 }
 
 TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverlaps) {
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
+        query_backing{};
+    ml::FrameMemoryResource query_memory{query_backing};
+    ml::FrameScratchScope query_scope{query_memory};
+
     auto data{make_world()};
     data.overlap_response.damage_per_overlap_detection = 100;
     auto const capital_index{
@@ -315,7 +335,7 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
 
     auto const& queries{simulation.get_spatial_query_manager()};
     EXPECT_EQ(queries.get_aabb_overlap_events().entity_entity_overlaps.num(), 1);
-    EXPECT_EQ(queries.trace_closest({{-20.f, 0.f, 0.f}}, {{20.f, 0.f, 0.f}}).entity,
+    EXPECT_EQ(queries.trace_closest({{-20.f, 0.f, 0.f}}, {{20.f, 0.f, 0.f}}, &query_memory).entity,
               capitals.get_id(0));
 
     simulation.advance(simulation.get_clock().get_tick_period());
@@ -325,6 +345,11 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
 }
 
 TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndQueriesAdvanceAfterward) {
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
+        query_backing{};
+    ml::FrameMemoryResource query_memory{query_backing};
+    ml::FrameScratchScope query_scope{query_memory};
+
     auto data{make_world()};
     add_moving_player(data, {500.0, 0.0, 0.0});
     add_capital_spawn(
@@ -366,10 +391,12 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndQueriesAdvanceAfterw
 
     auto const& queries{simulation.get_spatial_query_manager()};
 
-    auto const moved_hit{queries.trace_closest({{480.f, 200.f, 0.f}}, {{520.f, 200.f, 0.f}})};
+    auto const moved_hit{
+        queries.trace_closest({{480.f, 200.f, 0.f}}, {{520.f, 200.f, 0.f}}, &query_memory)};
     EXPECT_TRUE(moved_hit.hit);
     EXPECT_EQ(moved_hit.entity, player->unique_entity_id);
-    EXPECT_FALSE(queries.trace_closest({{480.f, 100.f, 0.f}}, {{520.f, 100.f, 0.f}}).hit);
+    EXPECT_FALSE(
+        queries.trace_closest({{480.f, 100.f, 0.f}}, {{520.f, 100.f, 0.f}}, &query_memory).hit);
 }
 
 TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
@@ -417,6 +444,11 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
 }
 
 TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
+        query_backing{};
+    ml::FrameMemoryResource query_memory{query_backing};
+    ml::FrameScratchScope query_scope{query_memory};
+
     // Independent scenario worlds mutate storage and publish new views during each run.
     // NOLINTBEGIN(ioj-loop-view-accessor-call)
     for (auto const kill_tick : {1, 2}) {
@@ -469,7 +501,8 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
 
         EXPECT_TRUE(entity_is_alive(simulation, victim));
         EXPECT_EQ(observe_entity(simulation, victim)->health, 100);
-        EXPECT_TRUE(queries.trace_closest({{-2020.f, 0.f, 0.f}}, {{-1980.f, 0.f, 0.f}}).hit);
+        EXPECT_TRUE(
+            queries.trace_closest({{-2020.f, 0.f, 0.f}}, {{-1980.f, 0.f, 0.f}}, &query_memory).hit);
 
         simulation.advance(period);
 
@@ -485,9 +518,12 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         EXPECT_EQ(observe_entity_row(simulation, killer), 0);
         EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 3);
         EXPECT_EQ(simulation.get_mission_manager().get_mission_state(), MissionState::Succeeded);
-        EXPECT_FALSE(queries.trace_closest({{-2020.f, 0.f, 0.f}}, {{-1980.f, 0.f, 0.f}}).hit);
-        EXPECT_EQ(queries.trace_closest({{-2020.f, 500.f, 0.f}}, {{-1980.f, 500.f, 0.f}}).hit,
-                  kill_tick == 2);
+        EXPECT_FALSE(
+            queries.trace_closest({{-2020.f, 0.f, 0.f}}, {{-1980.f, 0.f, 0.f}}, &query_memory).hit);
+        EXPECT_EQ(
+            queries.trace_closest({{-2020.f, 500.f, 0.f}}, {{-1980.f, 500.f, 0.f}}, &query_memory)
+                .hit,
+            kill_tick == 2);
         if (kill_tick == 2) {
             auto const fighter_ids{fighter_sim.get_entity_ids()};
             auto const fighter_parents{fighter_sim.get_parent_ids()};
