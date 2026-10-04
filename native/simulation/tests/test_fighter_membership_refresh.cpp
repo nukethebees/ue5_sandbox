@@ -316,20 +316,42 @@ TEST_F(FighterMembershipRefresh, CapitalRemovalWithoutOwnedFightersInvalidatesSp
     EXPECT_EQ(refresh(), 0u);
 }
 
-TEST_F(FighterMembershipRefresh, CapitalRegistrationInitializesNewEmptySpan) {
-    LevelCapitalSpawnEvents spawns;
-    spawns.add_defaulted(1);
-    auto const data{spawns.get_view()};
-    set_vector(data.view_locations(), 0, {{3000.f, 0.f, 0.f}});
-    data.teams()[0] = Team::Green;
-    data.healths()[0] = 100;
+TEST(FighterMembership, CapitalRegistrationInitializesNewEmptySpan) {
+    auto data{make_world()};
+    data.capital_ships.fighter_spawn_slots = 1;
+    data.capital_ships.fighter_spawn_slots_relative_transforms = {{.location = {0.0, 100.0, 0.0}}};
+    std::ranges::fill(
+        data.level_events.initial_spawns.capital_spawns.get_view().initial_fighter_spawn_delays(),
+        0.f);
+
+    auto& schedule{data.level_events.schedule};
+    schedule.execution_ticks = {3};
+    schedule.event_group_counts = {{}};
+    schedule.capital_spawns.add_defaulted(1);
+    auto const spawn{schedule.capital_spawns.get_view()};
+    spawn.entity_indices()[0] = data.level_events.initialisation.entity_count++;
+    spawn.target_entity_indices()[0] = invalid_level_entity_index;
+    set_vector(spawn.view_locations(), 0, {{3000.f, 0.f, 0.f}});
+    spawn.teams()[0] = Team::Green;
+    spawn.healths()[0] = 100;
+    spawn.initial_fighter_spawn_delays()[0] = 60.f;
+    ASSERT_TRUE(schedule.add_spawn_group(EntityType::CapitalShip, 0, 1));
+
+    LevelSim simulation{std::move(data)};
+    simulation.finish_initialisation();
+    simulation.start();
+    auto const period{simulation.get_clock().get_tick_period()};
+    simulation.advance(period * 2);
+    ASSERT_EQ(simulation.get_fighters().get_num_instances(), 3);
     auto const revision{simulation.get_fighters().get_membership_revision()};
-    LevelSimTestAccess::register_capitals(simulation, spawns.get_const_view());
+    simulation.advance(period);
+
+    ASSERT_EQ(simulation.get_capital_ships().get_num_instances(), 4);
     EXPECT_EQ(simulation.get_fighters().get_membership_revision(), revision);
-    EXPECT_GT(refresh(), 0u);
-    expect_membership();
-    EXPECT_EQ(simulation.get_capital_ships().get_fighter_id_span(3), (IndexSpan{4, 0}));
-    EXPECT_EQ(refresh(), 0u);
+    EXPECT_EQ(simulation.get_capital_ships().get_fighter_id_span(3), (IndexSpan{3, 0}));
+    for (std::uint32_t row{}; row < 3; ++row) {
+        EXPECT_EQ(simulation.get_capital_ships().get_fighter_id_span(row), (IndexSpan{row, 1}));
+    }
 }
 
 TEST_F(FighterMembershipRefresh, ReconstructedSimulationBuildsItsOwnEmptyCache) {

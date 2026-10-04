@@ -106,8 +106,9 @@ class FighterTargetRefresh : public ::testing::Test {
         damage.damaged_entities[0] = target;
         damage.damage_amounts[0] = 100;
         LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
-        ml::FrameScratchScope scope{memory};
-        LevelSimTestAccess::resolve_fighter_damage(simulation, &memory);
+        simulation.start();
+        simulation.advance(simulation.get_clock().get_tick_period());
+        simulation.pause();
     }
 
     void expect_cleared_target() {
@@ -201,7 +202,6 @@ TEST_F(FighterTargetRefresh, MissingTargetIsClearedByInitialRefresh) {
     LevelSimTestAccess::set_fighter_target(simulation, fighter, target, 5);
     single_refresh_and_plan();
     kill_target();
-    LevelSimTestAccess::remove_dead_fighters(simulation);
     ASSERT_EQ(observe_entity_row(simulation, target), EntityInstanceHandle::invalid_value);
     LevelSimTestAccess::set_fighter_target(simulation, fighter, target, 5);
     auto const claims{think()};
