@@ -11,9 +11,6 @@
 namespace ioj::sim {
 
 struct LevelSimTestAccess {
-    static void enter_thinking_phase(LevelSim& simulation) {
-        SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Thinking);
-    }
     static void update_entity_lookup_tables(LevelSim& simulation) {
         auto const previous{simulation.clock_.phase()};
         SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Preparation);
@@ -97,13 +94,6 @@ struct LevelSimTestAccess {
         simulation.refresh_spatial_index();
         SimClockTestAccess::set_phase(simulation.clock_, previous_phase);
     }
-    static void register_capitals(LevelSim& simulation, LevelCapitalSpawnEvents::ConstView spawns) {
-        auto const previous_phase{simulation.clock_.phase()};
-        SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Preparation);
-        simulation.capital_ships_simulation_.register_ships(spawns);
-        update_entity_lookup_tables(simulation);
-        SimClockTestAccess::set_phase(simulation.clock_, previous_phase);
-    }
     static void commit_fighter_spawns(LevelSim& simulation, FighterSpawnQueue::ConstView spawns) {
         auto const previous_phase{simulation.clock_.phase()};
         SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Preparation);
@@ -146,25 +136,6 @@ struct LevelSimTestAccess {
         set_vector(data.view_locations(), index, location);
         set_vector(data.view_velocities(), index, velocity);
         simulation.refresh_spatial_index();
-    }
-    static void resolve_fighter_damage(LevelSim& simulation,
-                                       ml::FrameMemoryResource* const scratch_resource) {
-        auto const previous_phase{simulation.clock_.phase()};
-        SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::Resolution);
-        simulation.combat_events_.prepare(simulation.entity_tables_.lookups, scratch_resource);
-        simulation.fighters_simulation_.resolve_damage_events(scratch_resource);
-        simulation.fighters_simulation_.publish_deaths();
-        simulation.combat_events_.reset();
-        SimClockTestAccess::set_phase(simulation.clock_, previous_phase);
-    }
-    static void remove_dead_fighters(LevelSim& simulation) {
-        auto const previous_phase{simulation.clock_.phase()};
-        SimClockTestAccess::set_phase(simulation.clock_, SimulationPhase::ResolutionCommit);
-        simulation.fighters_simulation_.remove_components();
-        simulation.fighters_simulation_.remove_entities();
-        update_entity_lookup_tables(simulation);
-        simulation.refresh_spatial_index();
-        SimClockTestAccess::set_phase(simulation.clock_, previous_phase);
     }
     static void refresh_fighter_targets_and_plan(LevelSim& simulation,
                                                  ml::FrameMemoryResource* const scratch_resource) {
