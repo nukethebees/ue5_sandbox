@@ -26,6 +26,8 @@ class FrameMemoryResource;
 }
 
 namespace ioj::sim {
+// Entity queries require published lookup rows and a current grid: StableSetup, Thinking,
+// Action, or pre-compaction Resolution. Neither is valid between ticks.
 struct SpatialQueryManager {
   public:
     /* **************************************** */
@@ -145,6 +147,7 @@ struct SpatialQueryManager {
         -> collision::DetectedOverlapsView;
     void reset_frame_collision_events();
     auto get_aabb_overlap_events() const -> collision::AABBOverlapEventsView;
+    // Debug snapshot of the last rebuild; may include entities removed later in Resolution.
     auto get_entity_collision_bounds() const -> collision::EntityCellData::ConstView;
     auto get_static_collision_bounds() const -> collision::WorldAABBs::ConstView;
 #ifndef NDEBUG

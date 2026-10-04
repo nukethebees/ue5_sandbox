@@ -495,12 +495,6 @@ void LevelSim::advance(time_type const dt) {
                 SANDBOX_PROFILE_SCOPE("ResolutionCommit");
                 clock_.transition_to(SimulationPhase::ResolutionCommit);
 
-                auto const removed_entities{
-                    !capital_ships_simulation_.local_indices_to_remove.empty() ||
-                    !fighters_simulation_.local_indices_to_remove.empty() ||
-                    !turrets_simulation_.local_indices_to_remove.empty() ||
-                    (player_active && !player_ship_simulation_->is_alive())};
-
                 // Apply the same removals to fixed health ranges and their owning rows.
                 capital_ships_phase_.remove_components();
                 fighters_phase_.remove_components();
@@ -512,11 +506,6 @@ void LevelSim::advance(time_type const dt) {
                 turrets_phase_.remove_entities();
                 lasers_phase_.cleanup_entities();
                 capital_ships_simulation_.refresh_fighter_ids(&frame_memory_);
-
-                // Keep geometry-only queries valid between ticks after removing dead owners.
-                if (removed_entities) {
-                    refresh_spatial_index();
-                }
             }
 
             // Finish tick and reset frame state

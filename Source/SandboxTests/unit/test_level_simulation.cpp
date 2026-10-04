@@ -23,8 +23,6 @@
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 
-#include <sandbox/core/frame_memory_resource.h>
-
 #include <Dom/JsonObject.h>
 #include <Engine/StaticMesh.h>
 #include <Engine/World.h>
@@ -208,10 +206,6 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
-    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
-        query_backing{};
-    ml::FrameMemoryResource query_memory{query_backing};
-    ml::FrameScratchScope query_scope{query_memory};
     auto data{make_scheduled_battle()};
     data.frame_memory_capacity_bytes = 16 * 1024 * 1024;
     data.turrets.target_refresh_frequency = 10.f;
@@ -250,11 +244,6 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Thinking acquires the entity created in Preparation"),
               simulation.get_turrets().get_target_ids()[0],
               simulation.get_capital_ships().get_id(1));
-    auto const spawned_id{simulation.get_capital_ships().get_id(1)};
-    auto const spawn_hit{simulation.get_spatial_query_manager().trace_closest(
-        ml::make_vector3f(980.f, 0.f, 0.f), ml::make_vector3f(1020.f, 0.f, 0.f), &query_memory)};
-    TestTrue(TEXT("Preparation publishes the new entity to spatial queries"),
-             spawn_hit.hit && spawn_hit.entity == spawned_id);
     simulation.advance(dt);
     TestTrue(TEXT("Thinking retains the spawned enemy on the following tick"),
              simulation.get_turrets().get_target_ids()[0] ==
