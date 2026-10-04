@@ -1,6 +1,7 @@
-use crate::git_cli::{Cli, Operation, Worktree};
+use crate::git_cli::{Cli, GitCommand, Operation, Worktree};
 use crate::workspace::{self, query};
 use clap::Parser;
+use clap::error::ErrorKind;
 use std::ffi::OsString;
 use std::path::Path;
 use std::process::Command;
@@ -44,6 +45,11 @@ fn push_operands(args: &mut Vec<OsString>, operands: impl IntoIterator<Item = Os
     args.extend(operands);
 }
 
+struct Prepared {
+    arguments: Vec<OsString>,
+    effect: String,
+}
+
 impl Operation {
     fn read_only(&self) -> bool {
         matches!(
@@ -55,8 +61,9 @@ impl Operation {
         ) || matches!(self, Self::Branch(b) if b.name.is_none() && b.delete.is_none() && b.force_delete.is_none() && b.rename.is_none())
     }
 
-    fn arguments(self, root: &Path, cwd: &Path) -> Result<Vec<OsString>, String> {
+    fn prepare(self, root: &Path, cwd: &Path) -> Result<Prepared, String> {
         let worktrees = workspace::worktrees(root)?;
+        let mut effect = String::from("Read-only operation; no branches are changed.");
 
         if !self.read_only() {
             let mut current = workspace::branch(root)?;
@@ -78,6 +85,11 @@ impl Operation {
             }
 
             workspace::check_branch_target(&current, root, &worktrees)?;
+            effect = if current.is_empty() {
+                "Affects the current worktree with detached HEAD.".into()
+            } else {
+                format!("Affects the current branch '{current}' and its worktree.")
+            };
         }
 
         let mut args: Vec<OsString> = Vec::new();
@@ -127,6 +139,17 @@ impl Operation {
                 push_operands(&mut args, paths);
             }
             Self::Reset(r) => {
+                let target = r.revision.as_deref().unwrap_or("HEAD");
+                effect.push_str(&format!(
+                    " Resets HEAD to '{target}'; other branches are unchanged."
+                ));
+                effect.push_str(if r.soft {
+                    " Preserves the index and working files."
+                } else if r.hard {
+                    " Discards tracked working changes."
+                } else {
+                    " Preserves working files and resets the index."
+                });
                 args.push("reset".into());
                 args.push(
                     (if r.soft {
@@ -138,11 +161,7 @@ impl Operation {
                     })
                     .into(),
                 );
-                args.push(revision(
-                    root,
-                    r.revision.as_deref().unwrap_or("HEAD"),
-                    "commit",
-                )?);
+                args.push(revision(root, target, "commit")?);
 
                 args.push("--".into());
             }
@@ -175,6 +194,7 @@ impl Operation {
                 args.push("switch".into());
                 if let Some(name) = s.create {
                     branch_name(root, &name, &worktrees)?;
+                    effect = format!("Creates and switches this worktree to branch '{name}'.");
                     args.push("--no-track".into());
                     args.push("-c".into());
                     args.push(name.into());
@@ -182,6 +202,7 @@ impl Operation {
                         args.push(revision(root, &start, "commit")?);
                     }
                 } else if s.detach {
+                    effect = "Detaches HEAD in this worktree; no branch refs are moved.".into();
                     args.push("--detach".into());
                     args.push(revision(
                         root,
@@ -197,6 +218,7 @@ impl Operation {
                     }
 
                     branch_name(root, &name, &worktrees)?;
+                    effect = format!("Switches this worktree to branch '{name}'.");
                     query(
                         root,
                         &["show-ref", "--verify", &format!("refs/heads/{name}")],
@@ -211,16 +233,19 @@ impl Operation {
                 args.push("branch".into());
                 if let Some(name) = b.delete.or(b.force_delete.clone()) {
                     branch_name(root, &name, &worktrees)?;
+                    effect = format!("Deletes branch '{name}'.");
                     args.push((if b.force_delete.is_some() { "-D" } else { "-d" }).into());
 
                     push_operands(&mut args, [name.into()]);
                 } else if let Some(name) = b.rename {
                     branch_name(root, &name, &worktrees)?;
+                    effect.push_str(&format!(" Renames the current branch to '{name}'."));
                     args.push("-m".into());
 
                     push_operands(&mut args, [name.into()]);
                 } else if let Some(name) = b.name {
                     branch_name(root, &name, &worktrees)?;
+                    effect = format!("Creates branch '{name}'; the current branch is unchanged.");
                     args.push("--no-track".into());
 
                     push_operands(&mut args, [name.into()]);
@@ -240,6 +265,9 @@ impl Operation {
                 }
             }
             Self::Rebase(r) => {
+                effect.push_str(
+                    " Rebase is limited to the current branch; other refs are not updated.",
+                );
                 args.push("rebase".into());
                 push_flags(
                     &mut args,
@@ -291,6 +319,10 @@ impl Operation {
                     Worktree::Add { branch, start } => {
                         branch_name(root, &branch, &worktrees)?;
                         let path = workspace::managed_worktree_path(root, &branch)?;
+                        effect = format!(
+                            "Creates branch '{branch}' and its worktree at '{}'.",
+                            path.display()
+                        );
                         let ignored = Command::new("git")
                             .args(["check-ignore", "--quiet", "--"])
                             .arg(&path)
@@ -328,6 +360,11 @@ impl Operation {
                             return Err("Removal is limited to coj-owned worktrees beneath this workspace's .local/worktrees/. Ask the maintainer to manage other worktrees.".into());
                         }
 
+                        effect = format!(
+                            "Removes the managed worktree for branch '{branch}' at '{}'; retains the branch.",
+                            destination.display()
+                        );
+
                         args.push("remove".into());
 
                         push_operands(&mut args, [destination.into_os_string()]);
@@ -336,14 +373,75 @@ impl Operation {
             }
         }
 
-        Ok(args)
+        Ok(Prepared {
+            arguments: args,
+            effect,
+        })
+    }
+}
+
+fn parse(arguments: &[OsString]) -> Result<Cli, clap::Error> {
+    Cli::try_parse_from(std::iter::once(OsString::from("coj git")).chain(arguments.iter().cloned()))
+}
+
+fn prepare(operation: Operation) -> Result<Prepared, String> {
+    workspace::check_environment()?;
+    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+    let root = workspace::root(&cwd)?;
+    operation.prepare(&root, &cwd)
+}
+
+fn check(arguments: &[OsString]) -> Result<i32, String> {
+    let operation = match parse(arguments) {
+        Ok(Cli {
+            command: GitCommand::Run(operation),
+        }) => operation,
+        Ok(_) => {
+            eprintln!("Invalid: check expects a Git action, not another check command.");
+            return Ok(2);
+        }
+        Err(error) => {
+            let unsupported = matches!(
+                error.kind(),
+                ErrorKind::InvalidSubcommand | ErrorKind::UnknownArgument
+            );
+            if unsupported {
+                eprintln!(
+                    "Unsupported: this action is outside coj git's supported interface. Direct Git requires explicit maintainer approval unless separately permitted as read-only. This check does not authorize bypassing branch or worktree protections."
+                );
+            } else if error.exit_code() != 0 {
+                eprintln!(
+                    "Invalid: correct the command syntax and retry; approval is not a syntax fix."
+                );
+            }
+            error.print().map_err(|e| e.to_string())?;
+            return Ok(if unsupported { 3 } else { error.exit_code() });
+        }
+    };
+
+    match prepare(operation) {
+        Ok(prepared) => {
+            println!(
+                "Allowed: run this action through coj git. No additional approval is required by coj's guardrails."
+            );
+            println!("{}", prepared.effect);
+            println!(
+                "The requested action was not executed. Git may still reject it; execution rechecks the guardrails."
+            );
+            Ok(0)
+        }
+        Err(error) => {
+            eprintln!("Blocked: {error}");
+            eprintln!(
+                "Resolve the reported condition or ask the maintainer to intervene. Do not bypass the check with direct Git."
+            );
+            Ok(1)
+        }
     }
 }
 
 pub fn run(arguments: &[OsString]) -> Result<i32, String> {
-    let cli = match Cli::try_parse_from(
-        std::iter::once(OsString::from("coj git")).chain(arguments.iter().cloned()),
-    ) {
+    let cli = match parse(arguments) {
         Ok(cli) => cli,
         Err(error) => {
             error.print().map_err(|e| e.to_string())?;
@@ -351,13 +449,14 @@ pub fn run(arguments: &[OsString]) -> Result<i32, String> {
         }
     };
 
-    workspace::check_environment()?;
-    let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
-    let root = workspace::root(&cwd)?;
-    let args = cli.operation.arguments(&root, &cwd)?;
+    let operation = match cli.command {
+        GitCommand::Check { arguments } => return check(&arguments),
+        GitCommand::Run(operation) => operation,
+    };
+    let prepared = prepare(operation)?;
 
     Command::new("git")
-        .args(args)
+        .args(prepared.arguments)
         .status()
         .map(|s| s.code().unwrap_or(1))
         .map_err(|e| format!("Could not run Git: {e}"))

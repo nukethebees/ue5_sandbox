@@ -8,7 +8,22 @@ use std::ffi::OsString;
 )]
 pub struct Cli {
     #[command(subcommand)]
-    pub operation: Operation,
+    pub command: GitCommand,
+}
+
+#[derive(Subcommand)]
+pub enum GitCommand {
+    /// Check an action against coj's guardrails without executing it.
+    #[command(
+        after_help = "Exit codes: 0 allowed, 1 blocked, 2 invalid syntax, 3 unsupported.\nUnsupported actions require explicit maintainer approval for direct Git unless separately permitted as read-only.\nA successful check is not a guarantee that Git will succeed; execution rechecks the guardrails."
+    )]
+    Check {
+        /// Git command and arguments to check, for example: reset --soft dev.
+        #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
+        arguments: Vec<OsString>,
+    },
+    #[command(flatten)]
+    Run(Operation),
 }
 
 #[derive(Subcommand)]
