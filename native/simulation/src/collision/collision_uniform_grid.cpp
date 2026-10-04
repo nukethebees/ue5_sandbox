@@ -375,17 +375,33 @@ void CollisionUniformGrid::finish_entity_grid() {
         }
     }
 
+#ifndef NDEBUG
     {
         SANDBOX_PROFILE_SCOPE("validate entity grid");
+        assert(is_configured());
+        auto const cell_count{static_cast<std::size_t>(num_cells())};
+        assert(storage.cell_counts.size() == cell_count);
+        assert(storage.cell_offsets.size() == cell_count);
+        assert(storage.cell_write_indices.size() == cell_count);
+        auto const membership_count{storage.entities.size()};
+        auto const aabbs{storage.aabbs.get_const_view()};
+        aabbs.validate();
+        assert(aabbs.num() == membership_count);
 
+        // Preparation clears previously populated cells; only these cells own ranges now.
+        std::size_t offset{};
         for (auto const cell_index : storage.non_empty_cell_indices) {
             auto const element{static_cast<std::size_t>(cell_index)};
-            if (storage.cell_write_indices[element] !=
-                storage.cell_offsets[element] + storage.cell_counts[element]) {
-                ml::fatal_error("Collision grid entity membership index is inconsistent");
-            }
+            assert(element < cell_count && storage.cell_counts[element] > 0);
+            assert(storage.cell_offsets[element] == offset);
+            auto const count{storage.cell_counts[element]};
+            assert(offset <= membership_count && count <= membership_count - offset);
+            offset += count;
+            assert(storage.cell_write_indices[element] == offset);
         }
+        assert(offset == membership_count);
     }
+#endif
 }
 auto CollisionUniformGrid::get_entity_world_bounds() const -> EntityCellData::ConstView {
     return entity_storage_.rebuild_entity_data.get_const_view();
@@ -500,7 +516,6 @@ auto CollisionUniformGrid::overlaps_impl(
         for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
             auto cell_index{row_index};
             for (auto x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
-                assert(static_cast<std::size_t>(cell_index) < entity_storage_.cell_counts.size());
                 auto const element{static_cast<std::size_t>(cell_index)};
                 auto const count{entity_storage_.cell_counts[element]};
                 auto const entity_count{static_cast<std::uint32_t>(count)};
@@ -623,6 +638,10 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
         assert(ignored_entities.size() == static_cast<std::size_t>(traces.num()));
     }
 
+    if (traces.num() == 0) {
+        return;
+    }
+
     auto const geometry{geometry_};
     auto const max_cell_coord{get_max_grid_coord()};
     auto const static_aabbs{static_storage_.aabbs().get_const_view()};
@@ -685,7 +704,6 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
         }
 
         auto const trace_cell{[&](CellIndex const cell_index) {
-            assert(static_cast<std::size_t>(cell_index) < entity_storage_.cell_counts.size());
             auto const element{static_cast<std::size_t>(cell_index)};
             auto const count{entity_storage_.cell_counts[element]};
             auto const entity_count{static_cast<std::uint32_t>(count)};
