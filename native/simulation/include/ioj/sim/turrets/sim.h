@@ -1,11 +1,11 @@
 #pragma once
 #include <ioj/sim/entity_death_info.h>
+#include <ioj/sim/entity_frame_change.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/levels/level_runtime_events.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/sim_config.h>
-#include <ioj/sim/system_read_views.h>
 #include <ioj/sim/turret_entity_data.h>
 
 #include <sandbox/core/frame_memory_resource.h>
@@ -43,13 +43,12 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_read_view() const -> TurretReadView {
-        auto const entity_data{entities.get_const_view()};
-        return {entity_data,
-                entity_tables_.health.get_const_view<EntityType::Turret>(entity_data.num()),
-                frame_changes_,
-                death_locations_};
+    auto get_entities() const -> EntityStorage::ConstView { return entities.get_const_view(); }
+    auto get_healths() const -> HealthConstView {
+        return entity_tables_.health.get_const_view<EntityType::Turret>(entities.num());
     }
+    auto get_frame_changes() const -> std::span<EntityFrameChange const> { return frame_changes_; }
+    auto get_death_locations() const -> std::span<Vector3f const> { return death_locations_; }
     void reset_frame_output() {
         frame_changes_.clear();
         death_locations_.clear();

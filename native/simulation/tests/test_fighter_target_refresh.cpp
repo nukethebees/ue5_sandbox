@@ -73,7 +73,7 @@ class FighterTargetRefresh : public ::testing::Test {
     }
 
     void expect_target_state(EntityUniqueId const expected) {
-        auto const entities{simulation.get_fighters().get_read_view().entities};
+        auto const entities{simulation.get_fighters().get_entities()};
         auto const index{observe_entity_row(simulation, fighter)};
         auto const state{observe_live_entity(simulation, expected)};
         ASSERT_TRUE(state);
@@ -112,7 +112,7 @@ class FighterTargetRefresh : public ::testing::Test {
     }
 
     void expect_cleared_target() {
-        auto const entities{simulation.get_fighters().get_read_view().entities};
+        auto const entities{simulation.get_fighters().get_entities()};
         auto const index{observe_entity_row(simulation, fighter)};
         EXPECT_FALSE(entities.target_ids()[index].is_valid());
         expect_vector(vector_at(entities.view_target_locations(), index), {});
@@ -144,14 +144,14 @@ TEST_F(FighterTargetRefresh, UnchangedTargetUsesOneRefreshAndReadsCurrentKinemat
     auto const claims{think()};
     expect_target_state(target);
     EXPECT_EQ(claims, single_refresh_and_plan());
-    EXPECT_EQ(simulation.get_fighters().get_read_view().entities.awareness_scan_countdowns()[0], 5);
+    EXPECT_EQ(simulation.get_fighters().get_entities().awareness_scan_countdowns()[0], 5);
 }
 
 TEST_F(FighterTargetRefresh, AwarenessSelectingSameIdPreservesTargetState) {
     LevelSimTestAccess::set_fighter_target(simulation, fighter, target);
     think();
     expect_target_state(target);
-    EXPECT_GT(simulation.get_fighters().get_read_view().entities.awareness_scan_countdowns()[0], 0);
+    EXPECT_GT(simulation.get_fighters().get_entities().awareness_scan_countdowns()[0], 0);
 }
 
 TEST_F(FighterTargetRefresh, AwarenessFindsForwardTargetAmongMoreThan128Enemies) {
@@ -177,7 +177,7 @@ TEST_F(FighterTargetRefresh, AwarenessFindsForwardTargetAmongMoreThan128Enemies)
     think();
 
     expect_target_state(target);
-    EXPECT_GT(simulation.get_fighters().get_read_view().entities.awareness_scan_countdowns()[0], 0);
+    EXPECT_GT(simulation.get_fighters().get_entities().awareness_scan_countdowns()[0], 0);
 }
 
 TEST_F(FighterTargetRefresh, AcquisitionRefreshesBeforePlanning) {

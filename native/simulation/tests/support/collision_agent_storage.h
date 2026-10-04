@@ -5,8 +5,29 @@
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/testing/entity_observations.h>
+#include <ioj/sim/testing/spatial_query_manager_test_access.h>
 
 #include <array>
+
+namespace ioj::sim {
+struct CollisionGridTestAccess {
+    static void begin(collision::CollisionUniformGrid& grid) { grid.begin_entity_grid(); }
+    static void finish(collision::CollisionUniformGrid& grid) { grid.finish_entity_grid(); }
+    static void
+        size_rows(collision::CollisionUniformGrid& grid, EntityType type, std::size_t count) {
+        grid.entity_storage_.entity_row_to_aabb_row[type].assign(
+            count, EntityInstanceHandle::invalid_value);
+    }
+    static void append(collision::CollisionUniformGrid& grid,
+                       EntityUniqueId id,
+                       std::uint32_t row,
+                       collision::WorldAABB bounds) {
+        grid.entity_storage_.entity_row_to_aabb_row[id.entity_type()][row] =
+            grid.entity_storage_.rebuild_entity_data.num();
+        grid.append_entity_bounds(id, bounds);
+    }
+};
+}
 
 namespace ioj::sim::tests {
 struct CollisionAgentStorage {
@@ -196,24 +217,6 @@ struct CollisionAgentStorage {
         return EntityInstanceHandle::invalid_value;
     }
 
-    auto get_capitals() const -> CapitalReadView {
-        return {capitals.get_const_view(),
-                health_table.get_const_view<EntityType::CapitalShip>(capitals.num()),
-                {},
-                {},
-                {}};
-    }
-    auto get_fighters() const -> FighterReadView {
-        return {fighters.get_const_view(),
-                health_table.get_const_view<EntityType::Fighter>(fighters.num())};
-    }
-    auto get_turrets() const -> TurretReadView {
-        return {turrets.get_const_view(),
-                health_table.get_const_view<EntityType::Turret>(turrets.num()),
-                {},
-                {}};
-    }
-    auto get_spinners() const -> SpinnerReadView { return {spinners.get_const_view()}; }
     auto player_spatial() const -> std::optional<PlayerSpatialData> {
         if (player_ids.empty()) {
             return {};
@@ -225,17 +228,74 @@ struct CollisionAgentStorage {
                                  health_table.get_const_view<EntityType::PlayerShip>(1).health(0)};
     }
     void refresh(SpatialQueryManager& queries) const {
-        queries.refresh_spatial_index(
-            get_capitals(), get_fighters(), get_turrets(), get_spinners(), player_spatial());
+        SpatialQueryManagerTestAccess::set_motion(
+            queries, EntityType::CapitalShip, capitals.get_const_view().view_locations());
+        SpatialQueryManagerTestAccess::set_motion(queries,
+                                                  EntityType::Fighter,
+                                                  fighters.get_const_view().view_locations(),
+                                                  fighters.get_const_view().view_velocities());
+        SpatialQueryManagerTestAccess::set_motion(
+            queries, EntityType::Turret, turrets.get_const_view().view_locations());
+        SpatialQueryManagerTestAccess::set_motion(
+            queries, EntityType::TubeSpinner, spinners.get_const_view().view_locations());
+        SpatialQueryManagerTestAccess::set_player(queries, player_spatial());
+        rebuild(SpatialQueryManagerTestAccess::uniform_grid(queries),
+                SpatialQueryManagerTestAccess::entity_aabbs(queries));
     }
     void rebuild(collision::CollisionUniformGrid& grid,
                  collision::EntityAABBs const& bounds) const {
-        grid.rebuild_entity_grid(bounds,
-                                 get_capitals(),
-                                 get_fighters(),
-                                 get_turrets(),
-                                 get_spinners(),
-                                 player_spatial());
+        CollisionGridTestAccess::begin(grid);
+        auto const append{
+            [&](EntityUniqueId id, std::uint32_t row, Vector3f location, Quaternion4f orientation) {
+                CollisionGridTestAccess::append(
+                    grid,
+                    id,
+                    row,
+                    collision::make_entity_world_bounds(
+                        bounds, id.entity_type(), location, orientation));
+            }};
+        auto const add_batch{
+            [&](EntityType type, auto entities, HealthConstView healths, auto orientation_at) {
+                auto const count{entities.num()};
+                auto const ids{entities.entity_ids()};
+                auto const locations{entities.view_locations()};
+                CollisionGridTestAccess::size_rows(grid, type, count);
+                for (std::uint32_t row{}; row < count; ++row) {
+                    if (healths.is_empty() || is_alive(healths.health(row))) {
+                        append(ids[row], row, locations[row], orientation_at(row));
+                    }
+                }
+            }};
+        CollisionGridTestAccess::size_rows(grid, EntityType::PlayerShip, player_ids.size());
+        if (auto const player{player_spatial()}; player && is_alive(player->health)) {
+            append(player->id, 0, player->location, player->orientation);
+        }
+        auto const capital_rotations{capitals.get_const_view().view_rotations()};
+        add_batch(EntityType::CapitalShip,
+                  capitals.get_const_view(),
+                  health_table.get_const_view<EntityType::CapitalShip>(capitals.num()),
+                  [capital_rotations](auto row) {
+                      return to_quaternion(rotation_at(capital_rotations, row));
+                  });
+        auto const turret_rotations{turrets.get_const_view().view_rotations()};
+        add_batch(EntityType::Turret,
+                  turrets.get_const_view(),
+                  health_table.get_const_view<EntityType::Turret>(turrets.num()),
+                  [turret_rotations](auto row) {
+                      return to_quaternion(rotation_at(turret_rotations, row));
+                  });
+        auto const directions{fighters.get_const_view().view_aim_directions()};
+        add_batch(EntityType::Fighter,
+                  fighters.get_const_view(),
+                  health_table.get_const_view<EntityType::Fighter>(fighters.num()),
+                  [directions](auto row) {
+                      return to_quaternion(direction_to_rotation(directions[row]));
+                  });
+        auto const yaws{spinners.get_const_view().yaws()};
+        add_batch(EntityType::TubeSpinner, spinners.get_const_view(), {}, [yaws](auto row) {
+            return to_quaternion(Rotator3f{.yaw = yaws[row]});
+        });
+        CollisionGridTestAccess::finish(grid);
     }
 
     SimClock clock;
@@ -263,6 +323,64 @@ inline auto observe_entity(CollisionAgentStorage const& owners, EntityUniqueId c
         return EntityObservation{
             player->location, player->velocity, owners.player_team, player->health, 0};
     }
-    return observe_entity_storage(owners, id);
+    switch (id.entity_type()) {
+        case EntityType::CapitalShip: {
+            auto const entities{owners.capitals.get_const_view()};
+            return observe_entity_columns(
+                id,
+                entities.entity_ids(),
+                entities.view_locations(),
+                {},
+                owners.health_table.get_const_view<EntityType::CapitalShip>(entities.num()),
+                entities.teams());
+        }
+        case EntityType::Fighter: {
+            auto const entities{owners.fighters.get_const_view()};
+            return observe_entity_columns(
+                id,
+                entities.entity_ids(),
+                entities.view_locations(),
+                entities.view_velocities(),
+                owners.health_table.get_const_view<EntityType::Fighter>(entities.num()),
+                entities.teams());
+        }
+        case EntityType::Turret: {
+            auto const entities{owners.turrets.get_const_view()};
+            return observe_entity_columns(
+                id,
+                entities.entity_ids(),
+                entities.view_locations(),
+                {},
+                owners.health_table.get_const_view<EntityType::Turret>(entities.num()),
+                entities.teams());
+        }
+        case EntityType::TubeSpinner: {
+            auto const entities{owners.spinners.get_const_view()};
+            return observe_entity_columns(
+                id, entities.entity_ids(), entities.view_locations(), {}, {}, {});
+        }
+        default:
+            return {};
+    }
 }
+
+inline auto observe_live_entity(CollisionAgentStorage const& source, EntityUniqueId const id)
+    -> std::optional<EntityObservation> {
+    auto result{observe_entity(source, id)};
+    if (result && is_dead(result->health)) {
+        result.reset();
+    }
+    return result;
+}
+
+inline auto entity_is_alive(CollisionAgentStorage const& source, EntityUniqueId const id) -> bool {
+    return observe_live_entity(source, id).has_value();
+}
+
+inline auto observe_entity_row(CollisionAgentStorage const& source, EntityUniqueId const id)
+    -> EntityFrameIndex {
+    auto const entity{observe_entity(source, id)};
+    return entity ? entity->row : EntityInstanceHandle::invalid_value;
+}
+
 }

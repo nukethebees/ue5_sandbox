@@ -335,9 +335,9 @@ void LevelSim::advance(time_type const dt) {
 
             // Commits in this tick can invalidate the previous tick's entity views.
             // NOLINTBEGIN(ioj-loop-view-accessor-call)
-            collect_new(capital_ships_simulation_.get_read_view().entities);
-            collect_new(fighters_simulation_.get_read_view().entities);
-            collect_new(turrets_simulation_.get_read_view().entities);
+            collect_new(capital_ships_simulation_.get_entities());
+            collect_new(fighters_simulation_.get_entities());
+            collect_new(turrets_simulation_.get_entities());
             // NOLINTEND(ioj-loop-view-accessor-call)
 
             // Prepare phases and indexes
@@ -544,21 +544,6 @@ void LevelSim::advance(time_type const dt) {
 /* **************************************** */
 
 void LevelSim::refresh_spatial_index() {
-    std::optional<PlayerSpatialData> player;
-    if (player_ship_simulation_) {
-        auto const& simulation{*player_ship_simulation_};
-        auto const& physical{simulation.get_physical_state()};
-        player = PlayerSpatialData{simulation.unique_entity_id,
-                                   to_float(physical.transform.location),
-                                   to_float(physical.velocity),
-                                   to_quaternion(to_float(physical.transform.rotator())),
-                                   simulation.get_health().health};
-    }
-    query_manager_.refresh_spatial_index(capital_ships_simulation_.get_read_view(),
-                                         fighters_simulation_.get_read_view(),
-                                         turrets_simulation_.get_read_view(),
-                                         spinners_simulation_.get_read_view(),
-                                         player);
+    query_manager_.refresh_spatial_index(get_read_access());
 }
-
 } // namespace ioj::sim

@@ -12,10 +12,10 @@
 
 FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
                                          FPlayerShipConfig const& config,
-                                         ::ioj::sim::PlayerReadView const& initial_state)
+                                         ::ioj::sim::player::Sim const& initial_state)
     : resources_{MoveTemp(resources)}
     , config_{config}
-    , boost_start_sequence_{initial_state.boost_start_sequence} {
+    , boost_start_sequence_{initial_state.get_presentation_state().boost_start_sequence} {
     if (!resources_.pulse.IsValid() || !resources_.engine.IsValid() || !resources_.mesh.IsValid() ||
         !resources_.space_dust.IsValid()) {
         UE_LOG(LogSandbox, Error, TEXT("Player visual resources are incomplete"));
@@ -32,27 +32,30 @@ FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
     resources_.space_dust->apply_settings(config.space_dust);
     tick(initial_state);
 }
-void FPlayerPresentation::tick(::ioj::sim::PlayerReadView const& state) {
+void FPlayerPresentation::tick(::ioj::sim::player::Sim const& state) {
+    auto const& physical{state.get_physical_state()};
+    auto const& presentation{state.get_presentation_state()};
+    auto const action{state.get_controller_state().effective_action};
     if (!resources_.root.IsValid() || !resources_.mesh.IsValid() || !resources_.pulse.IsValid() ||
         !resources_.engine.IsValid() || !resources_.space_dust.IsValid()) {
         return;
     }
     resources_.root->SetWorldTransform(
-        ml::to_unreal(state.transform), false, nullptr, ETeleportType::TeleportPhysics);
-    resources_.mesh->SetRelativeTransform(ml::to_unreal(state.body_transform));
-    resources_.engine->SetVectorParameter(TEXT("ship_velocity"), ml::to_unreal(state.velocity));
-    resources_.space_dust->update_motion(ml::to_unreal(state.velocity));
-    if (boost_start_sequence_ != state.boost_start_sequence) {
+        ml::to_unreal(physical.transform), false, nullptr, ETeleportType::TeleportPhysics);
+    resources_.mesh->SetRelativeTransform(ml::to_unreal(presentation.body_transform));
+    resources_.engine->SetVectorParameter(TEXT("ship_velocity"), ml::to_unreal(physical.velocity));
+    resources_.space_dust->update_motion(ml::to_unreal(physical.velocity));
+    if (boost_start_sequence_ != presentation.boost_start_sequence) {
         resources_.pulse->Activate();
-        boost_start_sequence_ = state.boost_start_sequence;
+        boost_start_sequence_ = presentation.boost_start_sequence;
     }
-    if (boost_brake_state_ != state.boost_brake_state) {
-        if (state.boost_brake_state == ::ioj::sim::player::BoostBrakeState::Boost) {
+    if (boost_brake_state_ != action) {
+        if (action == ::ioj::sim::player::BoostBrakeState::Boost) {
             resources_.engine->Activate();
         } else {
             resources_.engine->Deactivate();
         }
-        boost_brake_state_ = state.boost_brake_state;
+        boost_brake_state_ = action;
     }
 #if WITH_EDITORONLY_DATA
     auto* const world{resources_.root->GetWorld()};
@@ -63,10 +66,10 @@ void FPlayerPresentation::tick(::ioj::sim::PlayerReadView const& state) {
         return end;
     };
     if (resources_.debug_forward_socket_direction) {
-        draw_direction(ml::to_unreal(state.middle_socket), 5000.f);
+        draw_direction(ml::to_unreal(state.get_middle_socket()), 5000.f);
     }
     if (resources_.debug_forward_direction) {
-        draw_direction(ml::to_unreal(state.transform), 5000.f);
+        draw_direction(ml::to_unreal(physical.transform), 5000.f);
     }
 #endif
 }

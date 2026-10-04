@@ -1,6 +1,8 @@
 #pragma once
+#include <ioj/sim/capital_death_event.h>
 #include <ioj/sim/capital_entity_data.h>
 #include <ioj/sim/entity_death_info.h>
+#include <ioj/sim/entity_frame_change.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/fighter_order_queue.h>
@@ -8,7 +10,6 @@
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/levels/level_runtime_events.h>
 #include <ioj/sim/sim_config.h>
-#include <ioj/sim/system_read_views.h>
 
 #include <sandbox/core/frame_memory_resource.h>
 
@@ -49,14 +50,12 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_read_view() const -> CapitalReadView {
-        auto const entity_data{entities.get_const_view()};
-        return {entity_data,
-                entity_tables_.health.get_const_view<EntityType::CapitalShip>(entity_data.num()),
-                get_fighter_ids(),
-                frame_changes_,
-                deaths_};
+    auto get_entities() const -> EntityStorage::ConstView { return entities.get_const_view(); }
+    auto get_healths() const -> HealthConstView {
+        return entity_tables_.health.get_const_view<EntityType::CapitalShip>(entities.num());
     }
+    auto get_frame_changes() const -> std::span<EntityFrameChange const> { return frame_changes_; }
+    auto get_deaths() const -> std::span<CapitalDeathEvent const> { return deaths_; }
     void reset_frame_output() {
         frame_changes_.clear();
         deaths_.clear();

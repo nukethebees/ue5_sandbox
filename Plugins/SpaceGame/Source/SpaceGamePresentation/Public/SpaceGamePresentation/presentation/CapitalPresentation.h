@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/system_read_views.h>
+#include <ioj/sim/capital_ships/sim.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
 
@@ -20,7 +20,7 @@ struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
 
     void set_actor_config(FCapitalShipConfig const* new_config) noexcept;
   private:
-    auto view() const -> ::ioj::sim::CapitalReadView const& { return view_; }
+    auto simulation() const -> ::ioj::sim::capital_ships::Sim const& { return *simulation_; }
     void set_niagara_spawner(FDelayedNiagaraSpawns& spawner);
     void ValidateOptionalAssets() const;
 
@@ -41,5 +41,5 @@ struct SPACEGAMEPRESENTATION_API FCapitalPresentation {
     UInstancedStaticMeshComponent* instances{nullptr};
     FDelayedNiagaraSpawns* niagara_spawner{nullptr};
 
-    ::ioj::sim::CapitalReadView view_{};
+    ::ioj::sim::capital_ships::Sim const* simulation_{};
 };

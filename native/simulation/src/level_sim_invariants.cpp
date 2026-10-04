@@ -17,10 +17,10 @@ auto LevelSim::check_phase_invariants(std::span<ThinkingEntityState const> const
     return check_thinking_entry_invariants(state) && check_thinking_phase_invariants(state);
 }
 auto LevelSim::capture_thinking_phase_state() const -> std::vector<ThinkingEntityState> {
-    auto const capitals{capital_ships_simulation_.get_read_view().entities};
-    auto const fighters{fighters_simulation_.get_read_view().entities};
-    auto const turrets{turrets_simulation_.get_read_view().entities};
-    auto const spinners{spinners_simulation_.get_read_view().entities};
+    auto const capitals{capital_ships_simulation_.get_entities()};
+    auto const fighters{fighters_simulation_.get_entities()};
+    auto const turrets{turrets_simulation_.get_entities()};
+    auto const spinners{spinners_simulation_.get_entities()};
     std::vector<ThinkingEntityState> state;
     state.reserve(static_cast<std::size_t>(capitals.num()) + fighters.num() + turrets.num() +
                   spinners.num() + player_ship_simulation_.has_value());

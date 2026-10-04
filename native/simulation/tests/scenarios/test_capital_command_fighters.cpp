@@ -49,7 +49,7 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
                         << "Fighter follows the replacement capital target";
                 }
                 std::vector<EntityUniqueId> enemies;
-                auto const entities{capitals.get_read_view().entities};
+                auto const entities{capitals.get_entities()};
                 auto const entity_count{entities.num()};
                 auto const teams{entities.teams()};
                 auto const entity_ids{entities.entity_ids()};

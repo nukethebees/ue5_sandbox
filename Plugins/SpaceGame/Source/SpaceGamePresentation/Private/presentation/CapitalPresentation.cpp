@@ -71,7 +71,7 @@ void FCapitalPresentation::begin_play_presentation() {
 void FCapitalPresentation::update_visual_data() {
     auto const colours{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
-    for (auto const& change : view().changes) {
+    for (auto const& change : simulation().get_frame_changes()) {
         if (change.kind == ::ioj::sim::EntityFrameChangeKind::RemoveSwap) {
             instances->RemoveInstance(change.index);
         } else {
@@ -108,13 +108,13 @@ void FCapitalPresentation::configure_ismc() {
 }
 
 void FCapitalPresentation::add_initial_visual_instances() {
-    auto const entities{view().entities};
+    auto const entities{simulation().get_entities()};
     auto const n_to_add{static_cast<int32>(entities.num())};
     add_visual_instances(0, n_to_add);
 }
 
 void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 const n_to_add) {
-    auto const entities{view().entities};
+    auto const entities{simulation().get_entities()};
     if (n_to_add == 0) {
         return;
     }
@@ -153,7 +153,7 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
 }
 
 void FCapitalPresentation::trigger_death_effects() {
-    auto const deaths{view().deaths};
+    auto const deaths{simulation().get_deaths()};
     auto const n{static_cast<int32>(deaths.size())};
     auto* const small_death_explosion{actor_config->small_death_explosion.Get()};
     auto* const main_death_explosion{actor_config->main_death_explosion.Get()};
@@ -223,9 +223,9 @@ void FCapitalPresentation::trigger_death_effects() {
 }
 
 void FCapitalPresentation::validate_array_sizes() const {
-    view().entities.validate();
+    simulation().get_entities().validate();
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(static_cast<int32>(view().get_num_instances())),
+        SANDBOX_NAMED_NUM(static_cast<int32>(simulation().get_num_instances())),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }

@@ -5,7 +5,6 @@
 #include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/flight_model_runtime.h>
 #include <ioj/sim/player/laser_firing_state.h>
-#include <ioj/sim/player/player_read_view.h>
 #include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/player/space_ship_common.h>
 #include <ioj/sim/ship_health.h>
@@ -67,15 +66,6 @@ struct Sim {
     auto operator=(Sim const&) -> Sim& = delete;
     auto operator=(Sim&&) -> Sim& = delete;
 
-    auto get_read_view() const -> PlayerReadView {
-        return {state_.physical.transform,
-                state_.presentation.body_transform,
-                get_middle_socket(),
-                state_.physical.velocity,
-                state_.controller.effective_action,
-                laser_firing_mode,
-                state_.presentation.boost_start_sequence};
-    }
     auto get_physical_state() const noexcept -> PhysicalMovementState const& {
         return state_.physical;
     }

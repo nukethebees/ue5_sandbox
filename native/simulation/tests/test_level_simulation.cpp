@@ -36,15 +36,17 @@ static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_player_ship_
 static_assert(std::is_same_v<decltype(std::declval<LevelSim&>().get_player_ship_commands()),
                              player::CommandInterface*>);
 
-static_assert(std::is_const_v<std::remove_reference_t<
-                  decltype(std::declval<CapitalReadView>().entities.view_locations().xs()[0])>>);
 static_assert(
-    std::is_const_v<
-        std::remove_reference_t<decltype(std::declval<FighterReadView>().entities.teams()[0])>>);
-static_assert(
-    std::is_const_v<std::remove_reference_t<decltype(std::declval<TurretReadView>().changes[0])>>);
+    std::is_const_v<std::remove_reference_t<
+        decltype(std::declval<capital_ships::Sim const&>().get_entities().view_locations().xs()
+                     [0])>>);
 static_assert(std::is_const_v<std::remove_reference_t<
-                  decltype(std::declval<LaserReadView>().entities.lifetimes_remaining()[0])>>);
+                  decltype(std::declval<fighters::Sim const&>().get_entities().teams()[0])>>);
+static_assert(std::is_const_v<std::remove_reference_t<
+                  decltype(std::declval<turrets::Sim const&>().get_frame_changes()[0])>>);
+static_assert(
+    std::is_const_v<std::remove_reference_t<
+        decltype(std::declval<lasers::Sim const&>().get_entities().lifetimes_remaining()[0])>>);
 
 namespace {
 auto make_battle() -> LevelSimInitData {
@@ -101,12 +103,12 @@ void expect_health_mappings(LevelSim const& simulation) {
         EXPECT_EQ(direct.num(), healths.num());
     };
 
-    validate.operator()<EntityType::CapitalShip>(world.get_capitals().entities,
-                                                 world.get_capitals().healths);
-    validate.operator()<EntityType::Fighter>(world.get_fighters().entities,
-                                             world.get_fighters().healths);
-    validate.operator()<EntityType::Turret>(world.get_turrets().entities,
-                                            world.get_turrets().healths);
+    validate.operator()<EntityType::CapitalShip>(world.get_capitals().get_entities(),
+                                                 world.get_capitals().get_healths());
+    validate.operator()<EntityType::Fighter>(world.get_fighters().get_entities(),
+                                             world.get_fighters().get_healths());
+    validate.operator()<EntityType::Turret>(world.get_turrets().get_entities(),
+                                            world.get_turrets().get_healths());
     if (auto const* const player{simulation.get_player_ship_simulation()}) {
         EXPECT_EQ(table.get_const_view<EntityType::PlayerShip>(1).health(0),
                   player->get_health().health);
@@ -233,21 +235,21 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
     auto const frame{simulation.get_read_access()};
     EXPECT_EQ(frame.get_lasers().get_num_instances(), 0)
         << "Impacted lasers leave authoritative storage";
-    EXPECT_EQ(frame.get_lasers().hits.num(), 2)
+    EXPECT_EQ(frame.get_lasers().get_hits().num(), 2)
         << "Both impacts survive the final empty fixed tick";
-    EXPECT_EQ(frame.get_lasers().hit_ticks.size(), std::size_t{2})
+    EXPECT_EQ(frame.get_lasers().get_hit_ticks().size(), std::size_t{2})
         << "Impact tick indices remain aligned";
-    if (frame.get_lasers().hit_ticks.size() == 2) {
-        EXPECT_EQ(frame.get_lasers().hit_ticks[0], std::uint64_t{1})
+    if (frame.get_lasers().get_hit_ticks().size() == 2) {
+        EXPECT_EQ(frame.get_lasers().get_hit_ticks()[0], std::uint64_t{1})
             << "First impact keeps its deterministic tick";
-        EXPECT_EQ(frame.get_lasers().hit_ticks[1], std::uint64_t{2})
+        EXPECT_EQ(frame.get_lasers().get_hit_ticks()[1], std::uint64_t{2})
             << "Second impact keeps its deterministic tick";
-        EXPECT_TRUE(
-            (frame.get_lasers().hits.sources()[0] == LaserSource{Team::Green, EntityType::Fighter}))
+        EXPECT_TRUE((frame.get_lasers().get_hits().sources()[0] ==
+                     LaserSource{Team::Green, EntityType::Fighter}))
             << "Neutral source is retained after removal";
     }
     simulation.advance(0.0);
-    EXPECT_EQ(simulation.get_read_access().get_lasers().hits.num(), 0)
+    EXPECT_EQ(simulation.get_read_access().get_lasers().get_hits().num(), 0)
         << "Next frame does not repeat consumed impacts";
 }
 
@@ -301,16 +303,16 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     EXPECT_EQ(health_table.get_const_view<EntityType::PlayerShip>(1).health(0),
               player->get_health().health)
         << "Player health is stored in the world health table";
-    auto const turret_view{simulation.get_turrets().get_read_view()};
-    auto const turrets{turret_view.entities};
+    auto const& turret_view{simulation.get_turrets()};
+    auto const turrets{turret_view.get_entities()};
     auto const turret_count{turrets.num()};
     auto const turret_teams{turrets.teams()};
     auto const turret_healths{health_table.get_const_view<EntityType::Turret>(turret_count)};
     for (std::uint32_t i{}; i < turret_count; ++i) {
         auto const rotated{turret_teams[i] == Team::Green};
-        EXPECT_EQ(turret_healths.health(i), turret_view.healths.health(i))
+        EXPECT_EQ(turret_healths.health(i), turret_view.get_healths().health(i))
             << "Turret health is allocated in the world health table";
-        EXPECT_EQ(turret_view.healths.health(i), rotated ? 20 : 30)
+        EXPECT_EQ(turret_view.get_healths().health(i), rotated ? 20 : 30)
             << "Compiled turret health is retained";
         EXPECT_EQ(turrets.view_rotations().yaws()[i], rotated ? 90.f : 0.f)
             << "Compiled turret rotation is retained";
@@ -378,15 +380,19 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     std::array<EntityUniqueId, 6> victims{};
     {
         auto const before{simulation.get_read_access()};
-        ASSERT_GE(before.get_fighters().entities.num(), 4);
-        ASSERT_EQ(before.get_turrets().entities.num(), 3);
-        fighter_count_before = before.get_fighters().entities.num();
+        ASSERT_GE(before.get_fighters().get_entities().num(), 4);
+        ASSERT_EQ(before.get_turrets().get_entities().num(), 3);
+        fighter_count_before = before.get_fighters().get_entities().num();
         victims = {
             simulation.get_capital_ships().get_id(0),
-            before.get_fighters().entities.entity_ids()[0],
-            before.get_fighters().entities.entity_ids()[before.get_fighters().entities.num() - 1],
-            before.get_turrets().entities.entity_ids()[0],
-            before.get_turrets().entities.entity_ids()[before.get_turrets().entities.num() - 1],
+            before.get_fighters().get_entities().entity_ids()[0],
+            before.get_fighters()
+                .get_entities()
+                .entity_ids()[before.get_fighters().get_entities().num() - 1],
+            before.get_turrets().get_entities().entity_ids()[0],
+            before.get_turrets()
+                .get_entities()
+                .entity_ids()[before.get_turrets().get_entities().num() - 1],
             player->unique_entity_id,
         };
     }

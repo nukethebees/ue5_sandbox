@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/system_read_views.h>
+#include <ioj/sim/spinners/sim.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
@@ -16,7 +16,7 @@ struct SPACEGAMEPRESENTATION_API FSpinnerPresentation {
     explicit FSpinnerPresentation(UInstancedStaticMeshComponent& component);
     void set_actor_config(FTubeSpinnerConfig const* new_config) noexcept;
   private:
-    auto view() const -> ::ioj::sim::SpinnerReadView const& { return view_; }
+    auto simulation() const -> ::ioj::sim::spinners::Sim const& { return *simulation_; }
 
     void clear_runtime_state_presentation();
     void begin_play_presentation();
@@ -30,7 +30,7 @@ struct SPACEGAMEPRESENTATION_API FSpinnerPresentation {
     void validate_array_sizes() const;
 
     FTubeSpinnerConfig const* actor_config{nullptr};
-    ::ioj::sim::SpinnerReadView view_{};
+    ::ioj::sim::spinners::Sim const* simulation_{};
 
     UInstancedStaticMeshComponent* instances{nullptr};
     TArray<FTransform> ismc_transforms;

@@ -70,7 +70,7 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     auto const player_id{player->unique_entity_id};
     auto const initial_alive_count{harness.get_ledger().count_alive()};
     std::vector<EntityUniqueId> available_targets;
-    auto const capitals{harness.get_simulation().get_capital_ships().get_read_view().entities};
+    auto const capitals{harness.get_simulation().get_capital_ships().get_entities()};
     auto const capital_count{capitals.num()};
     auto const teams{capitals.teams()};
     auto const entity_ids{capitals.entity_ids()};

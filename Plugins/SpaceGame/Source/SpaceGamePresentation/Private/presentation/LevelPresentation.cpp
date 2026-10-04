@@ -23,9 +23,9 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     auto const& config{config_};
     resources.sparks->initialise(config.sparks);
     sparks.clear();
-    auto const player_view{view.get_player()};
-    if (resources.player.IsSet() && player_view.has_value()) {
-        player_.Emplace(resources.player.GetValue(), config.player_ship, player_view.value());
+    auto const* player{view.get_player()};
+    if (resources.player.IsSet() && player != nullptr) {
+        player_.Emplace(resources.player.GetValue(), config.player_ship, *player);
     }
 #if WITH_EDITORONLY_DATA
     lasers.debug_drawer = config.laser_debug_drawer;
@@ -46,7 +46,11 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
         [](auto const&... systems) { (systems.ValidateOptionalAssets(), ...); }};
     ValidateOptionalAssets(capital_ships, turrets);
 
-    update_views(view, false);
+    capital_ships.simulation_ = &view.get_capitals();
+    capital_ship_fighters.simulation_ = &view.get_fighters();
+    turrets.simulation_ = &view.get_turrets();
+    spinners.simulation_ = &view.get_spinners();
+    lasers.simulation_ = &view.get_lasers();
     last_frame_sequence_ = view.frame_sequence();
     lasers.player_colours_ =
         UTestTeamVisualData::build_team_colour_cache(config.player_ship.team_visual_data);
@@ -67,37 +71,22 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     lasers.begin_play_presentation();
 }
 
-void FLevelPresentation::update_views(::ioj::sim::LevelReadAccess const& view,
-                                      bool const consume_changes) {
-    capital_ships.view_ = view.get_capitals();
-    capital_ship_fighters.view_ = view.get_fighters();
-    turrets.view_ = view.get_turrets();
-    spinners.view_ = view.get_spinners();
-    lasers.view_ = view.get_lasers();
-    if (!consume_changes) {
-        capital_ships.view_.changes = {};
-        capital_ships.view_.deaths = {};
-        turrets.view_.changes = {};
-        turrets.view_.death_locations = {};
-        lasers.view_.hits = {};
-        lasers.view_.hit_ticks = {};
-        lasers.view_.hit_ordinals = {};
-    }
-}
 void FLevelPresentation::tick(float const dt, ::ioj::sim::LevelReadAccess const& view) {
-    update_views(view, last_frame_sequence_ != view.frame_sequence());
+    auto const consume_changes{last_frame_sequence_ != view.frame_sequence()};
     last_frame_sequence_ = view.frame_sequence();
     last_completed_tick_ = view.get_clock().get_completed_ticks();
     ++tick_count_;
-    auto const player_view{view.get_player()};
-    if (player_.IsSet() && player_view.has_value()) {
-        player_->tick(player_view.value());
+    auto const* player{view.get_player()};
+    if (player_.IsSet() && player != nullptr) {
+        player_->tick(*player);
     }
-    capital_ships.update_visual_data();
+    if (consume_changes) {
+        capital_ships.update_visual_data();
+        turrets.update_visual_data();
+    }
     capital_ship_fighters.update_visual_data();
-    turrets.update_visual_data();
     spinners.update_visual_data();
-    lasers.update_visual_data();
+    lasers.update_visual_data(consume_changes);
     capital_ships.end_tick_presentation();
     capital_ship_fighters.end_tick_presentation();
     turrets.end_tick_presentation();

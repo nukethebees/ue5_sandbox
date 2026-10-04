@@ -2,6 +2,7 @@
 
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_tables.h>
+#include <ioj/sim/level_read_access.h>
 #include <ioj/sim/line_trace_batch.h>
 #include <ioj/sim/profiling.h>
 
@@ -517,28 +518,26 @@ auto SpatialQueryManager::add_static_collision_aabb(Vector3f const min_point,
     -> collision::StaticGeometryIndex {
     return collision_system_.add_static_collision_aabb(min_point, max_point);
 }
-void SpatialQueryManager::refresh_spatial_index(CapitalReadView const capitals,
-                                                FighterReadView const fighters,
-                                                TurretReadView const turrets,
-                                                SpinnerReadView const spinners,
-                                                std::optional<PlayerSpatialData> const player) {
+void SpatialQueryManager::refresh_spatial_index(LevelReadAccess const& level) {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::refresh_spatial_index");
     locations_ = {};
     velocities_ = {};
-    locations_[EntityType::CapitalShip] = capitals.entities.view_locations();
-    locations_[EntityType::Fighter] = fighters.entities.view_locations();
-    locations_[EntityType::Turret] = turrets.entities.view_locations();
-    locations_[EntityType::TubeSpinner] = spinners.entities.view_locations();
-    velocities_[EntityType::Fighter] = fighters.entities.view_velocities();
-    if (player) {
-        player_spatial_ = *player;
+    locations_[EntityType::CapitalShip] = level.get_capitals().get_entities().view_locations();
+    locations_[EntityType::Fighter] = level.get_fighters().get_entities().view_locations();
+    locations_[EntityType::Turret] = level.get_turrets().get_entities().view_locations();
+    locations_[EntityType::TubeSpinner] = level.get_spinners().get_entities().view_locations();
+    velocities_[EntityType::Fighter] = level.get_fighters().get_entities().view_velocities();
+    if (auto const* player{level.get_player()}) {
+        auto const& physical{player->get_physical_state()};
+        player_spatial_.location = to_float(physical.transform.location);
+        player_spatial_.velocity = to_float(physical.velocity);
         auto const& location{player_spatial_.location};
         auto const& velocity{player_spatial_.velocity};
         locations_[EntityType::PlayerShip] = {{&location.X, 1}, {&location.Y, 1}, {&location.Z, 1}};
         velocities_[EntityType::PlayerShip] = {
             {&velocity.X, 1}, {&velocity.Y, 1}, {&velocity.Z, 1}};
     }
-    collision_system_.refresh_spatial_index(capitals, fighters, turrets, spinners, player);
+    collision_system_.refresh_spatial_index(level);
 }
 auto SpatialQueryManager::detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates,
                                           ml::FrameMemoryResource* const scratch_resource)

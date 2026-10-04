@@ -191,18 +191,18 @@ namespace ml {
 auto FProxyLevelSimBuild::bind_proxy_entities(::ioj::sim::LevelSim const& simulation) const
     -> FProxyEntityMap {
     auto const capital_count{capital_proxies.Num()};
-    auto const capital_entities{simulation.get_capital_ships().get_read_view().entities};
+    auto const capital_entities{simulation.get_capital_ships().get_entities()};
     for (int32 i{}; i < capital_count; ++i) {
         capital_proxies[i]->set_unique_id(capital_entities.entity_ids()[i]);
     }
 
-    auto const turret_entities{simulation.get_turrets().get_read_view().entities};
+    auto const turret_entities{simulation.get_turrets().get_entities()};
     auto const turret_count{turret_proxies.Num()};
     for (int32 i{}; i < turret_count; ++i) {
         turret_proxies[i]->set_unique_id(turret_entities.entity_ids()[i]);
     }
 
-    auto const spinner_entities{simulation.get_spinners().get_read_view().entities};
+    auto const spinner_entities{simulation.get_spinners().get_entities()};
     auto const spinner_count{spinner_proxies.Num()};
     for (int32 i{}; i < spinner_count; ++i) {
         spinner_proxies[i]->set_unique_id(spinner_entities.entity_ids()[i]);

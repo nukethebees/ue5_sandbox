@@ -52,7 +52,7 @@ auto TestSimulationDriver::get_capital_ships() const -> ::ioj::sim::capital_ship
     return *simulation;
 }
 auto TestSimulationDriver::get_fighters() const -> ::ioj::sim::fighters::Sim const& {
-    auto const simulation{orchestrator.get_fighters()};
+    auto const& simulation{orchestrator.get_fighters()};
     check(simulation);
     return *simulation;
 }

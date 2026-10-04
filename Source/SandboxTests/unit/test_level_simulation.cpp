@@ -42,17 +42,21 @@
 #include <array>
 #include <type_traits>
 
+static_assert(std::is_const_v<
+              std::remove_reference_t<decltype(std::declval<::ioj::sim::capital_ships::Sim const&>()
+                                                   .get_entities()
+                                                   .view_locations()
+                                                   .xs()[0])>>);
 static_assert(
     std::is_const_v<std::remove_reference_t<
-        decltype(std::declval<::ioj::sim::CapitalReadView>().entities.view_locations().xs()[0])>>);
-static_assert(std::is_const_v<std::remove_reference_t<
-                  decltype(std::declval<::ioj::sim::FighterReadView>().entities.teams()[0])>>);
-static_assert(
-    std::is_const_v<
-        std::remove_reference_t<decltype(std::declval<::ioj::sim::TurretReadView>().changes[0])>>);
+        decltype(std::declval<::ioj::sim::fighters::Sim const&>().get_entities().teams()[0])>>);
 static_assert(
     std::is_const_v<std::remove_reference_t<
-        decltype(std::declval<::ioj::sim::LaserReadView>().entities.lifetimes_remaining()[0])>>);
+        decltype(std::declval<::ioj::sim::turrets::Sim const&>().get_frame_changes()[0])>>);
+static_assert(
+    std::is_const_v<std::remove_reference_t<decltype(std::declval<::ioj::sim::lasers::Sim const&>()
+                                                         .get_entities()
+                                                         .lifetimes_remaining()[0])>>);
 
 namespace {
 auto make_battle() -> ::ioj::sim::LevelSimInitData {
@@ -322,19 +326,19 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     auto record{[](Samples& samples, ::ioj::sim::LevelSim& simulation) {
         FEntitySnapshot snapshot;
         auto append = [&snapshot](auto const& view, ::ioj::sim::EntityType const type) {
-            auto const entities{view.entities};
+            auto const entities{view.get_entities()};
             auto const entity_count{entities.num()};
             for (uint32 index{}; index < entity_count; ++index) {
-                snapshot.healths.push_back(view.healths.health(index));
+                snapshot.healths.push_back(view.get_healths().health(index));
                 snapshot.locations.push_back(
                     ::ioj::sim::vector_at(entities.view_locations(), index));
                 snapshot.teams.push_back(entities.teams()[index]);
                 snapshot.types.push_back(type);
             }
         };
-        append(simulation.get_capital_ships().get_read_view(), ::ioj::sim::EntityType::CapitalShip);
-        append(simulation.get_fighters().get_read_view(), ::ioj::sim::EntityType::Fighter);
-        append(simulation.get_turrets().get_read_view(), ::ioj::sim::EntityType::Turret);
+        append(simulation.get_capital_ships(), ::ioj::sim::EntityType::CapitalShip);
+        append(simulation.get_fighters(), ::ioj::sim::EntityType::Fighter);
+        append(simulation.get_turrets(), ::ioj::sim::EntityType::Turret);
         samples.add(simulation.get_clock().get_simulation_time(), std::move(snapshot));
     }};
     headless_harness.on_end_tick = [&](::ioj::sim::LevelSim& simulation) {
@@ -444,20 +448,21 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     TestEqual(
         TEXT("Simulation never ticks presentation"), presentation.get_tick_count(), uint64{0});
     TestEqual(TEXT("Spawn and death survive later fixed ticks"),
-              static_cast<int32>(frame.get_capitals().changes.size()),
+              static_cast<int32>(frame.get_capitals().get_frame_changes().size()),
               2);
-    if (static_cast<int32>(frame.get_capitals().changes.size()) == 2) {
+    if (static_cast<int32>(frame.get_capitals().get_frame_changes().size()) == 2) {
         TestEqual(TEXT("Spawn is recorded first"),
-                  frame.get_capitals().changes[0].kind,
+                  frame.get_capitals().get_frame_changes()[0].kind,
                   ::ioj::sim::EntityFrameChangeKind::Spawn);
         TestEqual(TEXT("Death follows spawn"),
-                  frame.get_capitals().changes[1].kind,
+                  frame.get_capitals().get_frame_changes()[1].kind,
                   ::ioj::sim::EntityFrameChangeKind::RemoveSwap);
         TestTrue(TEXT("Changes identify the same entity"),
-                 frame.get_capitals().changes[0].id == frame.get_capitals().changes[1].id);
+                 frame.get_capitals().get_frame_changes()[0].id ==
+                     frame.get_capitals().get_frame_changes()[1].id);
     }
     TestEqual(TEXT("Death effect remains available"),
-              static_cast<int32>(frame.get_capitals().deaths.size()),
+              static_cast<int32>(frame.get_capitals().get_deaths().size()),
               1);
     presentation.tick(static_cast<float>(dt * 4.25), frame);
     TestEqual(
@@ -474,10 +479,10 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     simulation.advance(0.0);
     auto const idle_frame{simulation.get_read_access()};
     TestEqual(TEXT("Zero-step frame has no previous changes"),
-              static_cast<int32>(idle_frame.get_capitals().changes.size()),
+              static_cast<int32>(idle_frame.get_capitals().get_frame_changes().size()),
               0);
     TestEqual(TEXT("Zero-step frame has no previous deaths"),
-              static_cast<int32>(idle_frame.get_capitals().deaths.size()),
+              static_cast<int32>(idle_frame.get_capitals().get_deaths().size()),
               0);
     presentation.tick(0.f, idle_frame);
     TestEqual(
@@ -525,13 +530,13 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     deaths.advance(0.425);
     auto const death_frame{deaths.get_read_access()};
     if (!TestEqual(TEXT("Deaths from two fixed ticks survive the frame"),
-                   static_cast<int32>(death_frame.get_capitals().deaths.size()),
+                   static_cast<int32>(death_frame.get_capitals().get_deaths().size()),
                    2)) {
         return false;
     }
     TestNotEqual(TEXT("Separate fixed ticks retain separate death batches"),
-                 death_frame.get_capitals().deaths[0].batch_index,
-                 death_frame.get_capitals().deaths[1].batch_index);
+                 death_frame.get_capitals().get_deaths()[0].batch_index,
+                 death_frame.get_capitals().get_deaths()[1].batch_index);
     death_effects.tick(0.f, death_frame);
     auto const delays{death_effects.effects.get_times_remaining()};
     TestEqual(
@@ -592,15 +597,15 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     auto* engine{NewObject<UTestNiagaraComponent>(actor)};
     resources.pulse = pulse;
     resources.engine = engine;
-    FPlayerPresentation presentation{resources, config->player_ship, player->get_read_view()};
+    FPlayerPresentation presentation{resources, config->player_ship, *player};
     simulation.get_player_ship_commands()->start_boost();
     simulation.advance(0.325);
-    auto const frame{player->get_read_view()};
+    auto const& frame{*player};
     TestEqual(TEXT("Boost has already ended after multiple fixed ticks"),
-              frame.boost_brake_state,
+              frame.get_controller_state().effective_action,
               ::ioj::sim::player::BoostBrakeState::None);
     TestEqual(TEXT("Boost start remains observable without a consumer"),
-              frame.boost_start_sequence,
+              frame.get_presentation_state().boost_start_sequence,
               uint64{1});
     presentation.tick(frame);
     TestEqual(TEXT("Completed boost still triggers its pulse"), pulse->activation_count, uint64{1});
@@ -616,7 +621,7 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
               uint64{1});
     simulation.advance(0.0);
     TestEqual(TEXT("Zero-step frame preserves the boost sequence"),
-              player->get_read_view().boost_start_sequence,
+              player->get_presentation_state().boost_start_sequence,
               uint64{1});
     return true;
 }
@@ -695,11 +700,11 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
         if ((tick % 3) != 2 && tick + 1 != tick_count) {
             continue;
         }
-        presentation.view_ = lasers.get_read_view();
+        presentation.simulation_ = &lasers;
         presentation.update_visual_data();
 
         auto const live_count{lasers.get_num_instances()};
-        auto const active{lasers.get_read_view().entities.active()};
+        auto const active{lasers.get_entities().active()};
         int32 active_count{0};
         for (uint32 index{}; index < live_count; ++index) {
             active_count += active[index] != 0;
@@ -724,8 +729,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
         presentation.fill_chunk(writer);
         for (int32 index{}; index < active_count; ++index) {
             auto const source_index{presentation.visible_indices_[index]};
-            auto const source_y{
-                lasers.get_read_view().entities.view_locations().ys()[source_index]};
+            auto const source_y{lasers.get_entities().view_locations().ys()[source_index]};
             auto const decoded_y{packed[index].position[1] * ml::sandbox_ismc::position_quantum};
             TestTrue(TEXT("Packed laser position matches its source within half a quantum"),
                      FMath::Abs(decoded_y - source_y) <= ml::sandbox_ismc::position_quantum * 0.5f);

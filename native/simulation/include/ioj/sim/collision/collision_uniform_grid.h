@@ -7,8 +7,6 @@
 #include <ioj/sim/collision_types.h>
 #include <ioj/sim/entity_world_bounds.h>
 #include <ioj/sim/line_trace_batch.h>
-#include <ioj/sim/player_spatial_data.h>
-#include <ioj/sim/system_read_views.h>
 #include <ioj/sim/trace_hits.h>
 
 #include <sandbox/core/frame_array.h>
@@ -21,7 +19,8 @@
 #include <string>
 
 namespace ioj::sim {
-struct EntityTables;
+class LevelReadAccess;
+struct CollisionGridTestAccess;
 }
 
 namespace ioj::sim::collision {
@@ -65,12 +64,7 @@ struct CollisionUniformGrid {
     /* **************************************** */
     // Entity collision
     /* **************************************** */
-    void rebuild_entity_grid(EntityAABBs const& entity_aabbs,
-                             CapitalReadView capitals,
-                             FighterReadView fighters,
-                             TurretReadView turrets,
-                             SpinnerReadView spinners,
-                             std::optional<PlayerSpatialData> player = {});
+    void rebuild_entity_grid(EntityAABBs const& entity_aabbs, LevelReadAccess const& level);
     auto get_entity_world_bounds() const -> EntityCellData::ConstView;
     auto entity_row_to_aabb_row(EntityType const type) const -> std::span<std::uint32_t const> {
         return entity_storage_.entity_row_to_aabb_row[type];
@@ -128,6 +122,11 @@ struct CollisionUniformGrid {
                      std::span<EntityUniqueId const> ignored_entities = {},
                      TraceEntityFilter entity_filter = TraceEntityFilter::None) const;
   private:
+    friend struct ::ioj::sim::CollisionGridTestAccess;
+    void begin_entity_grid();
+    void append_entity_bounds(EntityUniqueId id, WorldAABB bounds);
+    void finish_entity_grid();
+
     /* **************************************** */
     // Static-grid building
     /* **************************************** */

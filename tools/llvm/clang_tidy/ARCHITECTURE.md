@@ -13,7 +13,7 @@ declarations: `std::span`, compact SoA views deriving from
 `ml::soa_storage_detail::CompactViewState`, vector/countdown templates and an explicit
 set of legacy SoA, health, borrowed read and collision view records. Extend that set
 intentionally for new families. Aliases and cv/ref qualification do not hide identity.
-Owning containers and value snapshots such as `PlayerReadView` are not views.
+Owning containers and value snapshots such as `ValueSnapshot` are not views.
 
 Policy diagnostics follow the existing translation-unit audit boundary: source
 spelled in the main file, excluding macros and system headers. Included generated,

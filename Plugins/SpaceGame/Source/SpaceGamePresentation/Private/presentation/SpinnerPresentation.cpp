@@ -66,8 +66,8 @@ void FSpinnerPresentation::configure_ismc() {
 void FSpinnerPresentation::update_ismc_transforms() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpinnerPresentation::update_ismc_transforms);
 
-    auto const& spinner_simulation{view()};
-    auto const& entities{spinner_simulation.entities};
+    auto const& spinner_simulation{simulation()};
+    auto const& entities{spinner_simulation.get_entities()};
     auto const n{static_cast<int32>(spinner_simulation.get_num_instances())};
     ismc_transforms.Reset();
     ismc_transforms.AddUninitialized(n);
@@ -94,9 +94,9 @@ void FSpinnerPresentation::update_ismc() {
 }
 
 void FSpinnerPresentation::validate_array_sizes() const {
-    view().entities.validate();
+    simulation().get_entities().validate();
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(static_cast<int32>(view().get_num_instances())),
+        SANDBOX_NAMED_NUM(static_cast<int32>(simulation().get_num_instances())),
         SANDBOX_NAMED_NUM(ismc_transforms),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });

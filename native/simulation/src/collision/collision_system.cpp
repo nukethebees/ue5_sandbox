@@ -40,13 +40,9 @@ auto CollisionSystem::add_static_collision_aabb(Vector3f const min_point, Vector
 /* **************************************** */
 // Spatial-index lifecycle
 /* **************************************** */
-void CollisionSystem::refresh_spatial_index(CapitalReadView const capitals,
-                                            FighterReadView const fighters,
-                                            TurretReadView const turrets,
-                                            SpinnerReadView const spinners,
-                                            std::optional<PlayerSpatialData> const player) {
+void CollisionSystem::refresh_spatial_index(LevelReadAccess const& level) {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::refresh_spatial_index");
-    uniform_grid_.rebuild_entity_grid(entity_aabbs_, capitals, fighters, turrets, spinners, player);
+    uniform_grid_.rebuild_entity_grid(entity_aabbs_, level);
 }
 
 /* **************************************** */

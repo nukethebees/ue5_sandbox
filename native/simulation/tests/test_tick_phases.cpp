@@ -122,7 +122,7 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     simulation.advance(simulation.get_clock().get_tick_period());
 
     auto const view{simulation.get_read_access()};
-    auto const& turrets{view.get_turrets().entities};
+    auto const& turrets{view.get_turrets().get_entities()};
     ASSERT_EQ(turrets.num(), 1);
     auto const turret{turrets.entity_ids()[0]};
     EXPECT_EQ(observe_entity(simulation, turret)->health, 75);
@@ -171,7 +171,7 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     simulation.advance(simulation.get_clock().get_tick_period());
 
     auto const view{simulation.get_read_access()};
-    auto const& fighters{view.get_fighters().entities};
+    auto const& fighters{view.get_fighters().get_entities()};
     ASSERT_EQ(fighters.num(), 1);
     auto const fighter{fighters.entity_ids()[0]};
     EXPECT_TRUE(entity_is_alive(simulation, fighter));
@@ -210,10 +210,10 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
 
     EXPECT_NEAR(player.get_physical_state().transform.location.y, 100.0, 0.001);
 
-    EXPECT_EQ(simulation.get_read_access().get_lasers().entities.num(), 0);
+    EXPECT_EQ(simulation.get_read_access().get_lasers().get_entities().num(), 0);
     simulation.advance(simulation.get_clock().get_tick_period());
 
-    auto const lasers{simulation.get_read_access().get_lasers().entities};
+    auto const lasers{simulation.get_read_access().get_lasers().get_entities()};
     ASSERT_EQ(lasers.num(), 1);
     EXPECT_NEAR(lasers.view_locations().ys()[0], 200.f, 0.001f);
     EXPECT_FLOAT_EQ(lasers.view_velocities().ys()[0], 1000.f);
@@ -274,7 +274,7 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
     simulation.advance(period * 2.0);
 
     ASSERT_EQ(simulation.get_turrets().get_num_instances(), 1);
-    auto const turret{simulation.get_read_access().get_turrets().entities.entity_ids()[0]};
+    auto const turret{simulation.get_read_access().get_turrets().get_entities().entity_ids()[0]};
     EXPECT_EQ(observe_entity(simulation, turret)->health, 75);
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 0);
     EXPECT_EQ(simulation.get_spatial_query_manager()
@@ -319,13 +319,13 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
     simulation.advance(simulation.get_clock().get_tick_period());
 
     EXPECT_EQ(simulation.get_turrets().get_num_instances(), 0);
-    auto const turret_view{simulation.get_read_access().get_turrets()};
-    ASSERT_EQ(turret_view.changes.size(), 2);
-    EXPECT_EQ(turret_view.changes[0].kind, EntityFrameChangeKind::Spawn);
-    EXPECT_EQ(turret_view.changes[1].kind, EntityFrameChangeKind::RemoveSwap);
-    EXPECT_EQ(turret_view.changes[0].id, turret_view.changes[1].id);
-    EXPECT_EQ(turret_view.death_locations.size(), 1);
-    auto const dead_id{turret_view.changes[1].id};
+    auto const& turret_view{simulation.get_read_access().get_turrets()};
+    ASSERT_EQ(turret_view.get_frame_changes().size(), 2);
+    EXPECT_EQ(turret_view.get_frame_changes()[0].kind, EntityFrameChangeKind::Spawn);
+    EXPECT_EQ(turret_view.get_frame_changes()[1].kind, EntityFrameChangeKind::RemoveSwap);
+    EXPECT_EQ(turret_view.get_frame_changes()[0].id, turret_view.get_frame_changes()[1].id);
+    EXPECT_EQ(turret_view.get_death_locations().size(), 1);
+    auto const dead_id{turret_view.get_frame_changes()[1].id};
     EXPECT_EQ(observe_entity_row(simulation, dead_id), EntityInstanceHandle::invalid_value);
     EXPECT_FALSE(observe_entity(simulation, dead_id));
     EXPECT_FALSE(observe_live_entity(simulation, dead_id));
@@ -436,11 +436,11 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     LevelSimTestAccess::queue_laser_spawns(simulation, shot.get_const_view());
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period());
-    EXPECT_EQ(simulation.get_read_access().get_capitals().healths.health(0), 75);
+    EXPECT_EQ(simulation.get_read_access().get_capitals().get_healths().health(0), 75);
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 0);
-    EXPECT_EQ(simulation.get_read_access().get_lasers().entities.num(), 0);
+    EXPECT_EQ(simulation.get_read_access().get_lasers().get_entities().num(), 0);
     simulation.advance(simulation.get_clock().get_tick_period());
-    EXPECT_EQ(simulation.get_read_access().get_lasers().entities.num(), 0);
+    EXPECT_EQ(simulation.get_read_access().get_lasers().get_entities().num(), 0);
 }
 
 TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
@@ -509,11 +509,11 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         EXPECT_FALSE(entity_is_alive(simulation, victim));
         EXPECT_EQ(fighter_sim.get_num_instances(), kill_tick == 1 ? 0 : 2);
         EXPECT_EQ(capitals.get_num_instances(), 1);
-        auto const capital_view{simulation.get_read_access().get_capitals()};
-        ASSERT_FALSE(capital_view.changes.empty());
-        EXPECT_EQ(capital_view.changes.back().kind, EntityFrameChangeKind::RemoveSwap);
-        EXPECT_EQ(capital_view.changes.back().id, victim);
-        ASSERT_EQ(capital_view.deaths.size(), 1);
+        auto const& capital_view{simulation.get_read_access().get_capitals()};
+        ASSERT_FALSE(capital_view.get_frame_changes().empty());
+        EXPECT_EQ(capital_view.get_frame_changes().back().kind, EntityFrameChangeKind::RemoveSwap);
+        EXPECT_EQ(capital_view.get_frame_changes().back().id, victim);
+        ASSERT_EQ(capital_view.get_deaths().size(), 1);
         EXPECT_EQ(observe_entity_row(simulation, victim), EntityInstanceHandle::invalid_value);
         EXPECT_EQ(observe_entity_row(simulation, killer), 0);
         EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 3);
@@ -543,7 +543,7 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
     }
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
-    auto const initial{simulation.get_read_access().get_capitals().entities};
+    auto const initial{simulation.get_read_access().get_capitals().get_entities()};
     std::vector<EntityUniqueId> visual_ids{initial.entity_ids().begin(),
                                            initial.entity_ids().end()};
     auto const survivor_id{initial.entity_ids()[2]};
@@ -553,10 +553,10 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period() * 2.0);
-    auto const final{simulation.get_read_access().get_capitals()};
-    ASSERT_EQ(final.changes.size(), 2);
-    EXPECT_EQ(final.deaths.size(), 2);
-    for (auto const& change : final.changes) {
+    auto const& final{simulation.get_read_access().get_capitals()};
+    ASSERT_EQ(final.get_frame_changes().size(), 2);
+    EXPECT_EQ(final.get_deaths().size(), 2);
+    for (auto const& change : final.get_frame_changes()) {
         EXPECT_EQ(change.kind, EntityFrameChangeKind::RemoveSwap);
         ASSERT_LT(static_cast<std::size_t>(change.index), visual_ids.size());
         EXPECT_EQ(visual_ids[change.index], change.id);
@@ -564,8 +564,8 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         visual_ids.pop_back();
     }
     ASSERT_EQ(visual_ids.size(), 1);
-    ASSERT_EQ(final.entities.num(), 1);
-    EXPECT_EQ(visual_ids[0], final.entities.entity_ids()[0]);
+    ASSERT_EQ(final.get_entities().num(), 1);
+    EXPECT_EQ(visual_ids[0], final.get_entities().entity_ids()[0]);
     EXPECT_EQ(observe_entity_row(simulation, survivor_id), 0);
     EXPECT_TRUE(observe_live_entity(simulation, survivor_id));
 }

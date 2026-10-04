@@ -12,7 +12,7 @@ captures, and ray tracing.  The normal player pawn view therefore sees dust,
 while playerless observer, battle-viewer, editor, cinematic, and capture views
 do not implicitly acquire it.
 
-`FPlayerPresentation` supplies `PlayerReadView::velocity` every presentation
+`FPlayerPresentation` supplies the player physical state’s velocity every presentation
 tick.  This is the native simulation's authoritative world-space translational
 velocity; it is not inferred from an Unreal transform or reconstructed from
 the ship's forward vector.  A sideways slide remains sideways after the ship

@@ -12,7 +12,6 @@
 #include <ioj/sim/navigation_telemetry.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/sim_config.h>
-#include <ioj/sim/system_read_views.h>
 #include <ioj/sim/trace_hits.h>
 
 #include <sandbox/core/frame_memory_resource.h>
@@ -68,10 +67,8 @@ struct Sim {
     /* **************************************** */
     // Configuration
     /* **************************************** */
-    auto get_read_view() const -> FighterReadView {
-        auto const entities{entity_buffers.current().get_const_view()};
-        return {entities,
-                entity_tables_.health.get_const_view<EntityType::Fighter>(entities.num())};
+    auto get_entities() const -> EntityStorage::ConstView {
+        return entity_buffers.current().get_const_view();
     }
     void set_config(FighterSimConfig const& new_config, FighterLevelData level_data) noexcept;
     void set_diagnostics_enabled(bool enabled) noexcept { diagnostics_enabled_ = enabled; }

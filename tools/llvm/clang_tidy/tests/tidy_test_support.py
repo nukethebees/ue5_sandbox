@@ -18,7 +18,7 @@ namespace soa_storage_detail { template<bool Const, auto Require> struct Compact
 namespace ioj::sim {
 struct Compact : ml::soa_storage_detail::CompactViewState<false, 0> { Compact(); };
 struct LineTracesConstView { std::span<int> starts; std::span<int> ends; };
-struct PlayerReadView { int snapshot; };
+struct ValueSnapshot { int snapshot; };
 }
 using View = ml::Vector3SoAView<float>;
 struct OrdinaryView { OrdinaryView(); };
