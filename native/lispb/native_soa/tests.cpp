@@ -183,6 +183,8 @@ TEST(NativeSoa, LogicalApiSurvivesCompactOnlyStorageAndNestedLayouts) {
     EXPECT_TRUE(view.masks()[0].has(ApiField::Values));
 
     owner.reserve(owner.capacity() + 1);
+    view = owner.get_view();
+    positions = view.view_positions();
     EXPECT_EQ(view.first_x(), 6.0f);
     EXPECT_EQ(positions.x_at(0), 6.0f);
     EXPECT_EQ(owner.append_from(view.slice(0, 1)), 2);

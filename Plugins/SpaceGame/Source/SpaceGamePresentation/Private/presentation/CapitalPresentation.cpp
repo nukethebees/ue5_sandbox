@@ -136,9 +136,10 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
     auto const locations{entities.view_locations()};
     TArray<FTransform> transforms;
     transforms.Reserve(n_to_add);
-    auto const pitches{entities.view_rotations().pitches()};
-    auto const yaws{entities.view_rotations().yaws()};
-    auto const rolls{entities.view_rotations().rolls()};
+    auto const rotations{entities.view_rotations()};
+    auto const pitches{rotations.pitches()};
+    auto const yaws{rotations.yaws()};
+    auto const rolls{rotations.rolls()};
     for (int32 index{first_index}; index < first_index + n_to_add; ++index) {
         transforms.Emplace(FRotator{ml::to_unreal(
                                ::ioj::sim::Rotator3f{pitches[index], yaws[index], rolls[index]})},

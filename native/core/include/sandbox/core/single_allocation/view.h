@@ -10,6 +10,10 @@
 
 namespace ml::soa_storage_detail {
 
+// Views borrow their owner and range. The owner must outlive them; reallocation, owner moves,
+// reset, and removal/reordering of borrowed rows invalidate them. Reacquire after invalidation.
+// Accessors trust this contract; they do not detect stale borrows.
+
 template <typename Source>
     requires (
         std::is_pointer_v<std::remove_cvref_t<Source>> ||
@@ -51,10 +55,10 @@ void validate_view([[maybe_unused]] StorageState<Size> const* state,
 }
 
 template <typename Self, typename State, typename Size>
-auto slice_view(State* state, Size view_offset, Size view_count, Size offset, Size count)
+auto slice_view(
+    State* state, Size view_offset, [[maybe_unused]] Size view_count, Size offset, Size count)
     -> std::remove_cvref_t<Self> {
     using View = std::remove_cvref_t<Self>;
-    validate_view(state, view_offset, view_count);
     assert(offset >= 0 && offset <= view_count && count >= 0 && count <= view_count - offset);
     return View{state, view_offset + offset, count};
 }
@@ -74,9 +78,8 @@ auto view_column_data_unchecked(State* state, Size offset, std::size_t byte_offs
 }
 
 template <typename T, typename State, typename Size>
-auto view_column_data(State* state, Size offset, Size count, std::size_t byte_offset)
+auto view_column_data(State* state, Size offset, std::size_t byte_offset)
     -> std::conditional_t<std::is_const_v<State>, T const, T>* {
-    validate_view(state, offset, count);
     if (!state || !state->data_) {
         return nullptr;
     }

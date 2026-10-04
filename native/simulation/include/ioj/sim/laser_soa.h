@@ -80,9 +80,7 @@ struct SpawnRequestsSingleView_locationsImpl {
     SpawnRequestsSingleView_locationsImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     SpawnRequestsSingleView_locationsImpl(SpawnRequestsSingleView_locationsImpl<false> const& other)
         requires Enabled
@@ -111,28 +109,22 @@ struct SpawnRequestsSingleView_locationsImpl {
     auto xs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::LocationsXsColumn.offset(view_capacity_blocks(state_))),
+            view_column_data<float>(
+                state_, offset_, Layout::LocationsXsColumn.offset(view_capacity_blocks(state_))),
             static_cast<std::size_t>(count_)};
     }
     auto ys() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::LocationsYsColumn.offset(view_capacity_blocks(state_))),
+            view_column_data<float>(
+                state_, offset_, Layout::LocationsYsColumn.offset(view_capacity_blocks(state_))),
             static_cast<std::size_t>(count_)};
     }
     auto zs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::LocationsZsColumn.offset(view_capacity_blocks(state_))),
+            view_column_data<float>(
+                state_, offset_, Layout::LocationsZsColumn.offset(view_capacity_blocks(state_))),
             static_cast<std::size_t>(count_)};
     }
     template <typename Func>
@@ -202,9 +194,7 @@ struct SpawnRequestsSingleView_rotationsImpl {
     SpawnRequestsSingleView_rotationsImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     SpawnRequestsSingleView_rotationsImpl(SpawnRequestsSingleView_rotationsImpl<false> const& other)
         requires Enabled
@@ -235,27 +225,22 @@ struct SpawnRequestsSingleView_rotationsImpl {
         return {view_column_data<float>(
                     state_,
                     offset_,
-                    count_,
                     Layout::RotationsPitchesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto yaws() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::RotationsYawsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<float>(
+                state_, offset_, Layout::RotationsYawsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto rolls() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::RotationsRollsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<float>(
+                state_, offset_, Layout::RotationsRollsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -324,9 +309,7 @@ struct SpawnRequestsSingleView_base_velocitiesImpl {
     SpawnRequestsSingleView_base_velocitiesImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     SpawnRequestsSingleView_base_velocitiesImpl(
         SpawnRequestsSingleView_base_velocitiesImpl<false> const& other)
@@ -358,7 +341,6 @@ struct SpawnRequestsSingleView_base_velocitiesImpl {
         return {view_column_data<float>(
                     state_,
                     offset_,
-                    count_,
                     Layout::BaseVelocitiesXsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
@@ -367,7 +349,6 @@ struct SpawnRequestsSingleView_base_velocitiesImpl {
         return {view_column_data<float>(
                     state_,
                     offset_,
-                    count_,
                     Layout::BaseVelocitiesYsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
@@ -376,7 +357,6 @@ struct SpawnRequestsSingleView_base_velocitiesImpl {
         return {view_column_data<float>(
                     state_,
                     offset_,
-                    count_,
                     Layout::BaseVelocitiesZsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
@@ -449,9 +429,7 @@ struct SpawnRequestsSingleViewImpl {
     SpawnRequestsSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     SpawnRequestsSingleViewImpl(SpawnRequestsSingleViewImpl<false> const& other)
         requires Enabled
@@ -496,57 +474,49 @@ struct SpawnRequestsSingleViewImpl {
     auto damages() const -> std::span<Element<std::int32_t>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<std::int32_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::DamagesColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::DamagesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto speeds() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(
-                state_, offset_, count_, Layout::SpeedsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::SpeedsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto max_distances() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::MaxDistancesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<float>(
+                state_, offset_, Layout::MaxDistancesColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto instigator_ids() const -> std::span<Element<EntityUniqueId>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::InstigatorIdsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<EntityUniqueId>(
+                state_, offset_, Layout::InstigatorIdsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto sources() const -> std::span<Element<ioj::sim::LaserSource>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<ioj::sim::LaserSource>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::SourcesColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::SourcesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
-        func(view_locations().xs());
-        func(view_locations().ys());
-        func(view_locations().zs());
-        func(view_rotations().pitches());
-        func(view_rotations().yaws());
-        func(view_rotations().rolls());
-        func(view_base_velocities().xs());
-        func(view_base_velocities().ys());
-        func(view_base_velocities().zs());
+        auto const& group_0{view_locations()};
+        func(group_0.xs());
+        func(group_0.ys());
+        func(group_0.zs());
+        auto const& group_1{view_rotations()};
+        func(group_1.pitches());
+        func(group_1.yaws());
+        func(group_1.rolls());
+        auto const& group_2{view_base_velocities()};
+        func(group_2.xs());
+        func(group_2.ys());
+        func(group_2.zs());
         func(damages());
         func(speeds());
         func(max_distances());
@@ -776,41 +746,35 @@ struct LaserSpawnRequests
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LaserSpawnRequests, size_type>
     {
         auto const destination{get_data(first)};
+        auto const& group_0{source.view_locations()};
         ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
+        auto const& group_1{source.view_rotations()};
         ml::native_soa::copy_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(source.view_rotations().pitches()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.pitches()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(source.view_rotations().yaws()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.yaws()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(source.view_rotations().rolls()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.rolls()) + source_first,
                                count);
+        auto const& group_2{source.view_base_velocities()};
         ml::native_soa::copy_n(destination.base_velocities_xs,
-                               ml::native_soa::source_data(source.view_base_velocities().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_2.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.base_velocities_ys,
-                               ml::native_soa::source_data(source.view_base_velocities().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_2.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.base_velocities_zs,
-                               ml::native_soa::source_data(source.view_base_velocities().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_2.zs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.damages,
                                ml::native_soa::source_data(source.damages()) + source_first,
@@ -835,41 +799,35 @@ struct LaserSpawnRequests
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LaserSpawnRequests, size_type>
     {
         auto const destination{get_data(first)};
+        auto const& group_0{source.view_locations()};
         ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
+        auto const& group_1{source.view_rotations()};
         ml::native_soa::move_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(source.view_rotations().pitches()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.pitches()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(source.view_rotations().yaws()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.yaws()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(source.view_rotations().rolls()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.rolls()) + source_first,
                                count);
+        auto const& group_2{source.view_base_velocities()};
         ml::native_soa::move_n(destination.base_velocities_xs,
-                               ml::native_soa::source_data(source.view_base_velocities().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_2.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.base_velocities_ys,
-                               ml::native_soa::source_data(source.view_base_velocities().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_2.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.base_velocities_zs,
-                               ml::native_soa::source_data(source.view_base_velocities().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_2.zs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.damages,
                                ml::native_soa::source_data(source.damages()) + source_first,
@@ -974,9 +932,7 @@ struct EntitiesSingleView_locationsImpl {
     EntitiesSingleView_locationsImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     EntitiesSingleView_locationsImpl(EntitiesSingleView_locationsImpl<false> const& other)
         requires Enabled
@@ -1005,28 +961,22 @@ struct EntitiesSingleView_locationsImpl {
     auto xs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::LocationsXsColumn.offset(view_capacity_blocks(state_))),
+            view_column_data<float>(
+                state_, offset_, Layout::LocationsXsColumn.offset(view_capacity_blocks(state_))),
             static_cast<std::size_t>(count_)};
     }
     auto ys() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::LocationsYsColumn.offset(view_capacity_blocks(state_))),
+            view_column_data<float>(
+                state_, offset_, Layout::LocationsYsColumn.offset(view_capacity_blocks(state_))),
             static_cast<std::size_t>(count_)};
     }
     auto zs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::LocationsZsColumn.offset(view_capacity_blocks(state_))),
+            view_column_data<float>(
+                state_, offset_, Layout::LocationsZsColumn.offset(view_capacity_blocks(state_))),
             static_cast<std::size_t>(count_)};
     }
     template <typename Func>
@@ -1095,9 +1045,7 @@ struct EntitiesSingleView_rotationsImpl {
     EntitiesSingleView_rotationsImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     EntitiesSingleView_rotationsImpl(EntitiesSingleView_rotationsImpl<false> const& other)
         requires Enabled
@@ -1128,27 +1076,22 @@ struct EntitiesSingleView_rotationsImpl {
         return {view_column_data<float>(
                     state_,
                     offset_,
-                    count_,
                     Layout::RotationsPitchesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto yaws() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::RotationsYawsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<float>(
+                state_, offset_, Layout::RotationsYawsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto rolls() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::RotationsRollsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<float>(
+                state_, offset_, Layout::RotationsRollsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -1216,9 +1159,7 @@ struct EntitiesSingleView_velocitiesImpl {
     EntitiesSingleView_velocitiesImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     EntitiesSingleView_velocitiesImpl(EntitiesSingleView_velocitiesImpl<false> const& other)
         requires Enabled
@@ -1246,30 +1187,24 @@ struct EntitiesSingleView_velocitiesImpl {
     }
     auto xs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::VelocitiesXsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<float>(
+                state_, offset_, Layout::VelocitiesXsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto ys() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::VelocitiesYsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<float>(
+                state_, offset_, Layout::VelocitiesYsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto zs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<float>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::VelocitiesZsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<float>(
+                state_, offset_, Layout::VelocitiesZsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -1335,9 +1270,7 @@ struct EntitiesSingleViewImpl {
     EntitiesSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     EntitiesSingleViewImpl(EntitiesSingleViewImpl<false> const& other)
         requires Enabled
@@ -1365,18 +1298,14 @@ struct EntitiesSingleViewImpl {
     }
     auto active() const -> std::span<Element<std::uint8_t>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<std::uint8_t>(
-                state_, offset_, count_, Layout::ActiveColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<std::uint8_t>(
+                    state_, offset_, Layout::ActiveColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto sources() const -> std::span<Element<ioj::sim::LaserSource>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<ioj::sim::LaserSource>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::SourcesColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::SourcesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto view_locations() const -> std::
@@ -1394,10 +1323,7 @@ struct EntitiesSingleViewImpl {
     auto damages() const -> std::span<Element<std::int32_t>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<std::int32_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::DamagesColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::DamagesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto lifetimes_remaining() const -> std::span<Element<float>> {
@@ -1405,50 +1331,46 @@ struct EntitiesSingleViewImpl {
         return {view_column_data<float>(
                     state_,
                     offset_,
-                    count_,
                     Layout::LifetimesRemainingColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto instigator_ids() const -> std::span<Element<EntityUniqueId>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::InstigatorIdsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<EntityUniqueId>(
+                state_, offset_, Layout::InstigatorIdsColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto initial_lifetimes() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<float>(
                     state_,
                     offset_,
-                    count_,
                     Layout::InitialLifetimesColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto spawn_times() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::SpawnTimesColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::SpawnTimesColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
         func(active());
         func(sources());
-        func(view_locations().xs());
-        func(view_locations().ys());
-        func(view_locations().zs());
-        func(view_rotations().pitches());
-        func(view_rotations().yaws());
-        func(view_rotations().rolls());
-        func(view_velocities().xs());
-        func(view_velocities().ys());
-        func(view_velocities().zs());
+        auto const& group_0{view_locations()};
+        func(group_0.xs());
+        func(group_0.ys());
+        func(group_0.zs());
+        auto const& group_1{view_rotations()};
+        func(group_1.pitches());
+        func(group_1.yaws());
+        func(group_1.rolls());
+        auto const& group_2{view_velocities()};
+        func(group_2.xs());
+        func(group_2.ys());
+        func(group_2.zs());
         func(damages());
         func(lifetimes_remaining());
         func(instigator_ids());
@@ -1694,41 +1616,35 @@ struct LaserEntities
         ml::native_soa::copy_n(destination.sources,
                                ml::native_soa::source_data(source.sources()) + source_first,
                                count);
+        auto const& group_0{source.view_locations()};
         ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
+        auto const& group_1{source.view_rotations()};
         ml::native_soa::copy_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(source.view_rotations().pitches()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.pitches()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(source.view_rotations().yaws()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.yaws()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(source.view_rotations().rolls()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.rolls()) + source_first,
                                count);
+        auto const& group_2{source.view_velocities()};
         ml::native_soa::copy_n(destination.velocities_xs,
-                               ml::native_soa::source_data(source.view_velocities().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_2.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.velocities_ys,
-                               ml::native_soa::source_data(source.view_velocities().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_2.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.velocities_zs,
-                               ml::native_soa::source_data(source.view_velocities().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_2.zs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.damages,
                                ml::native_soa::source_data(source.damages()) + source_first,
@@ -1761,41 +1677,35 @@ struct LaserEntities
         ml::native_soa::move_n(destination.sources,
                                ml::native_soa::source_data(source.sources()) + source_first,
                                count);
+        auto const& group_0{source.view_locations()};
         ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
+        auto const& group_1{source.view_rotations()};
         ml::native_soa::move_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(source.view_rotations().pitches()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.pitches()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(source.view_rotations().yaws()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.yaws()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(source.view_rotations().rolls()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.rolls()) + source_first,
                                count);
+        auto const& group_2{source.view_velocities()};
         ml::native_soa::move_n(destination.velocities_xs,
-                               ml::native_soa::source_data(source.view_velocities().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_2.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.velocities_ys,
-                               ml::native_soa::source_data(source.view_velocities().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_2.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.velocities_zs,
-                               ml::native_soa::source_data(source.view_velocities().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_2.zs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.damages,
                                ml::native_soa::source_data(source.damages()) + source_first,

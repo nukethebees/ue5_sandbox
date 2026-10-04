@@ -46,8 +46,7 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
     EXPECT_EQ(output.find("CoreMinimal"), std::string::npos);
     EXPECT_NE(output.find("ml::native_soa::default_construct_n(columns.nested_xs, count);"),
               std::string::npos);
-    EXPECT_NE(output.find(
-                  "ml::native_soa::source_data(source.view_nested().xs()) + source_first, count);"),
+    EXPECT_NE(output.find("ml::native_soa::source_data(group_0.xs()) + source_first, count);"),
               std::string::npos);
     EXPECT_NE(output.find("Operations::release_storage(*this);"), std::string::npos);
     EXPECT_NE(output.find("ml::native_soa::copy_n(destination.nested_xs, source.nested_xs, num_);"),
@@ -120,10 +119,8 @@ TEST(SingleAllocationSoa, TypedColumnOperationsUseLayoutCursorAndPreserveNestedP
     EXPECT_NE(output.find("cursor.column_pointer(data, Layout::IdsColumn)"), std::string::npos);
     EXPECT_NE(output.find("cursor.column_pointer(data, Layout::NestedValuesColumn)"),
               std::string::npos);
-    EXPECT_NE(
-        output.find(
-            "ml::soa_storage::source_data(source.view_nested().values()) + source_first, count"),
-        std::string::npos);
+    EXPECT_NE(output.find("ml::soa_storage::source_data(group_0.values()) + source_first, count"),
+              std::string::npos);
     EXPECT_EQ(output.find("_bytes{elements_to_"), std::string::npos);
     auto const start{output.find("void copy_live_columns(")};
     ASSERT_NE(start, std::string::npos);
@@ -141,7 +138,7 @@ TEST(SingleAllocationSoa, SchemaTaggedSourcesNeedNoOrdinaryView) {
     auto const output{render(schemas())};
     EXPECT_NE(output.find("SoaSourceFor<Columns, SingleRows, size_type>"), std::string::npos);
     EXPECT_NE(output.find("using soa_schema = RowsSchema;"), std::string::npos);
-    EXPECT_NE(output.find("source.view_nested().wide()"), std::string::npos);
+    EXPECT_NE(output.find("group_0.wide()"), std::string::npos);
     EXPECT_EQ(output.find("SchemaConstView"), std::string::npos);
     EXPECT_EQ(output.find("ordinary_source_aliases_storage"), std::string::npos);
     EXPECT_EQ(output.find("auto columns()"), std::string::npos);
@@ -250,8 +247,7 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
     EXPECT_EQ(output.find("ml::soa_storage_detail::view_column_data<"), std::string::npos);
     EXPECT_EQ(output.find("auto columns() const"), std::string::npos);
     EXPECT_NE(output.find("for_each_removal_run(num_, indices"), std::string::npos);
-    EXPECT_NE(output.find("ml::soa_storage::source_data(source.view_nested().wide())"),
-              std::string::npos);
+    EXPECT_NE(output.find("ml::soa_storage::source_data(group_0.wide())"), std::string::npos);
     EXPECT_NE(output.find("SingleRows(SingleRows const&) = delete"), std::string::npos);
     input.front().members = {{"xs", SoaMemberKind::array, TypeRef{"double"}},
                              {"ys", SoaMemberKind::array, TypeRef{"double"}}};
@@ -333,7 +329,7 @@ TEST(SingleAllocationSoa, EmitsOrderedAlignedBlocksAndExplicitBulkRelocation) {
     EXPECT_NE(output.find("ColumnLayoutStart LayoutStart{}"), std::string::npos);
     EXPECT_NE(output.find("capacity_block_bound(NestedWideColumn)"), std::string::npos);
     EXPECT_NE(output.find("destination.nested_wide"), std::string::npos);
-    EXPECT_NE(output.find("source_data(source.view_nested().wide())"), std::string::npos);
+    EXPECT_NE(output.find("source_data(group_0.wide())"), std::string::npos);
     EXPECT_NE(output.find("LayoutCursor cursor{blocks}"), std::string::npos);
     EXPECT_EQ(output.find("nested_wide_bytes"), std::string::npos);
 }
@@ -424,7 +420,7 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
               std::string::npos);
     EXPECT_NE(output.find("GrandparentSingleView_first"), std::string::npos);
     EXPECT_NE(output.find("GrandparentSingleView_second_nested"), std::string::npos);
-    EXPECT_NE(output.find("source.view_second().view_nested().wide()"), std::string::npos);
+    EXPECT_NE(output.find("group_3.wide()"), std::string::npos);
 }
 
 TEST(SingleAllocationSoa, CommonApiIsEmittedForEveryRequestedRepresentation) {

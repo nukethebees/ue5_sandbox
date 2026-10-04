@@ -40,16 +40,24 @@ auto copy_function(SingleAllocationModel const& model) -> Expr {
     return named(model.dialect.runtime_namespace + "copy_n");
 }
 
-auto source_member_expression(SingleAllocationModel const& model,
-                              SingleAllocationColumn const& column) -> Expr {
-    return named(logical_column_access(
-        *model.schema, column.member_path, SoaRepresentation::compact, "source", model.schemas));
-}
-
-auto source_data_expression(SingleAllocationModel const& model,
-                            SingleAllocationColumn const& column) -> Expr {
-    return call(named(model.dialect.runtime_namespace + "source_data"),
-                {source_member_expression(model, column)});
+auto column_access(std::span<std::string const> path,
+                   std::string receiver,
+                   std::map<std::string, std::string>& groups,
+                   NodeListBuilder& body) -> Expr {
+    std::string group_path;
+    auto const group_count{path.size() - 1};
+    for (std::size_t index{}; index < group_count; ++index) {
+        group_path += "." + path[index];
+        auto const [group, inserted]{
+            groups.try_emplace(group_path, "group_" + std::to_string(groups.size()))};
+        if (inserted) {
+            auto const accessor{receiver.empty() ? "view_" + path[index]
+                                                 : receiver + ".view_" + path[index]};
+            body.add(VariableDeclarationStmt{"auto const&", group->second, call(named(accessor))});
+        }
+        receiver = group->second;
+    }
+    return call(named(receiver.empty() ? path.back() : receiver + "." + path.back()));
 }
 
 auto storage_lifetime_nodes(SingleAllocationModel const& model) -> Nodes {
@@ -302,13 +310,15 @@ auto source_copy_node(SingleAllocationModel const& model, bool const overlapping
     NodeListBuilder body;
     body.add(VariableDeclarationStmt{
         "auto const", "destination", call(named("get_data"), {named("first")})});
+    std::map<std::string, std::string> groups;
     for (auto const& column : model.columns) {
-        body.add(ExpressionStmt{call(
-            named(model.dialect.runtime_namespace + (overlapping ? "move_n" : "copy_n")),
-            {member_access(named("destination"), column.flattened_identifier),
-             binary(
-                 BinaryOperator::add, source_data_expression(model, column), named("source_first")),
-             named("count")})});
+        auto const source{call(named(model.dialect.runtime_namespace + "source_data"),
+                               {column_access(column.member_path, "source", groups, body)})};
+        body.add(ExpressionStmt{
+            call(named(model.dialect.runtime_namespace + (overlapping ? "move_n" : "copy_n")),
+                 {member_access(named("destination"), column.flattened_identifier),
+                  binary(BinaryOperator::add, source, named("source_first")),
+                  named("count")})});
     }
     return inline_function(FunctionSpec{
         .name = overlapping ? "copy_columns_from" : "append_columns",
@@ -393,7 +403,6 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
              .parameters = {FunctionParameter{"State*", "state"},
                             FunctionParameter{"size_type", "offset"},
                             FunctionParameter{"size_type", "count"}},
-             .body = {ExpressionStmt{call(named("validate"))}},
              .member_initializers =
                  {{"state_", "state"}, {"offset_", "offset"}, {"count_", "count"}},
          }),
@@ -529,7 +538,6 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
                     .name = "view_" + member.name,
                     .return_type = "auto",
                     .body = {raw("using namespace ml::soa_storage_detail;"),
-                             ExpressionStmt{call(named("validate"))},
                              IfStmt{binary(BinaryOperator::logical_or,
                                            unary(UnaryOperator::logical_not, named("state_")),
                                            unary(UnaryOperator::logical_not,
@@ -559,7 +567,6 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
                 .name = "view_" + member.name,
                 .return_type = "auto",
                 .body = {raw("using namespace ml::soa_storage_detail;"),
-                         ExpressionStmt{call(named("validate"))},
                          IfStmt{binary(BinaryOperator::logical_or,
                                        unary(UnaryOperator::logical_not, named("state_")),
                                        unary(UnaryOperator::logical_not,
@@ -604,7 +611,6 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
                                         column.type.dependencies),
                                   {named("state_"),
                                    named("offset_"),
-                                   named("count_"),
                                    call(member_access(named("Layout::" + column.layout_identifier),
                                                       "offset"),
                                         {call(named("view_capacity_blocks"), {named("state_")})})}),
@@ -616,7 +622,8 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
             }));
         }
     }
-    Nodes body;
+    NodeListBuilder body;
+    std::map<std::string, std::string> groups;
     std::vector<Expr> arguments;
     for (auto const& column : model.columns) {
         if (!std::equal(model.member_prefix.begin(),
@@ -626,24 +633,18 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
                             std::min(model.member_prefix.size(), column.member_path.size()))) {
             continue;
         }
-        auto accessor{named("this")};
-        for (auto index{model.member_prefix.size()}; index < column.member_path.size(); ++index) {
-            auto const& member{column.member_path[index]};
-            auto const name{index + 1 == column.member_path.size() ? member : "view_" + member};
-            accessor = index == model.member_prefix.size()
-                         ? call(named(name))
-                         : call(member_access(std::move(accessor), name));
-        }
+        auto const accessor{column_access(
+            std::span{column.member_path}.subspan(model.member_prefix.size()), "", groups, body)};
         if (model.dialect.column_iteration_returns_result) {
             auto const name{"column_" + std::to_string(arguments.size())};
-            body.push_back(VariableDeclarationStmt{"auto", name, accessor});
+            body.add(VariableDeclarationStmt{"auto", name, accessor});
             arguments.push_back(named(name));
         } else {
-            body.push_back(ExpressionStmt{call(named("func"), {accessor})});
+            body.add(ExpressionStmt{call(named("func"), {accessor})});
         }
     }
     if (model.dialect.column_iteration_returns_result) {
-        body.push_back(
+        body.add(
             ReturnStmt{call(named("std::forward<Func>(func)", {{"std::forward", "utility", {}}}),
                             std::move(arguments))});
     }
@@ -651,7 +652,7 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
         .name = model.dialect.column_iteration_function,
         .return_type = model.dialect.column_iteration_returns_result ? "auto" : "void",
         .parameters = {FunctionParameter{"Func&&", "func"}},
-        .body = std::move(body),
+        .body = body.build(),
         .qualifiers = {.trailing_return_type = model.dialect.column_iteration_returns_result
                                                  ? std::optional<CppType>{"decltype(auto)"}
                                                  : std::nullopt,

@@ -135,9 +135,7 @@ struct ApiView_positionsImpl {
     ApiView_positionsImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     ApiView_positionsImpl(ApiView_positionsImpl<false> const& other)
         requires Enabled
@@ -166,19 +164,15 @@ struct ApiView_positionsImpl {
     auto xs() const -> TArrayView<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::PositionsXsColumn.offset(view_capacity_blocks(state_))),
+            view_column_data<float>(
+                state_, offset_, Layout::PositionsXsColumn.offset(view_capacity_blocks(state_))),
             count_};
     }
     auto ys() const -> TArrayView<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::PositionsYsColumn.offset(view_capacity_blocks(state_))),
+            view_column_data<float>(
+                state_, offset_, Layout::PositionsYsColumn.offset(view_capacity_blocks(state_))),
             count_};
     }
     template <typename Func>
@@ -253,9 +247,7 @@ struct ApiViewImpl {
     ApiViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     ApiViewImpl(ApiViewImpl<false> const& other)
         requires Enabled
@@ -283,17 +275,15 @@ struct ApiViewImpl {
     }
     auto values() const -> TArrayView<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(
-                state_, offset_, count_, Layout::ValuesColumn.offset(view_capacity_blocks(state_))),
-            count_};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::ValuesColumn.offset(view_capacity_blocks(state_))),
+                count_};
     }
     auto masks() const -> TArrayView<Element<ApiMask>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<ApiMask>(
-                state_, offset_, count_, Layout::MasksColumn.offset(view_capacity_blocks(state_))),
-            count_};
+        return {view_column_data<ApiMask>(
+                    state_, offset_, Layout::MasksColumn.offset(view_capacity_blocks(state_))),
+                count_};
     }
     auto view_positions() const
         -> std::conditional_t<Const, ApiConstView_positions, ApiView_positions> {
@@ -303,8 +293,9 @@ struct ApiViewImpl {
     auto apply_arrays(Func&& func) const -> decltype(auto) {
         auto column_0{values()};
         auto column_1{masks()};
-        auto column_2{view_positions().xs()};
-        auto column_3{view_positions().ys()};
+        auto const& group_0{view_positions()};
+        auto column_2{group_0.xs()};
+        auto column_3{group_0.ys()};
         return std::forward<Func>(func)(column_0, column_1, column_2, column_3);
     }
   private:
@@ -478,13 +469,12 @@ struct COMPILE_FIXTURE_API ApiOwner
                                 count);
         ml::soa_storage::copy_n(
             destination.masks, ml::soa_storage::source_data(source.masks()) + source_first, count);
+        auto const& group_0{source.view_positions()};
         ml::soa_storage::copy_n(destination.positions_xs,
-                                ml::soa_storage::source_data(source.view_positions().xs()) +
-                                    source_first,
+                                ml::soa_storage::source_data(group_0.xs()) + source_first,
                                 count);
         ml::soa_storage::copy_n(destination.positions_ys,
-                                ml::soa_storage::source_data(source.view_positions().ys()) +
-                                    source_first,
+                                ml::soa_storage::source_data(group_0.ys()) + source_first,
                                 count);
     }
     template <typename Columns>
@@ -500,13 +490,12 @@ struct COMPILE_FIXTURE_API ApiOwner
                                 count);
         ml::soa_storage::move_n(
             destination.masks, ml::soa_storage::source_data(source.masks()) + source_first, count);
+        auto const& group_0{source.view_positions()};
         ml::soa_storage::move_n(destination.positions_xs,
-                                ml::soa_storage::source_data(source.view_positions().xs()) +
-                                    source_first,
+                                ml::soa_storage::source_data(group_0.xs()) + source_first,
                                 count);
         ml::soa_storage::move_n(destination.positions_ys,
-                                ml::soa_storage::source_data(source.view_positions().ys()) +
-                                    source_first,
+                                ml::soa_storage::source_data(group_0.ys()) + source_first,
                                 count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
@@ -580,9 +569,7 @@ struct EquivalentRowsSingleViewImpl {
     EquivalentRowsSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     EquivalentRowsSingleViewImpl(EquivalentRowsSingleViewImpl<false> const& other)
         requires Enabled
@@ -611,13 +598,13 @@ struct EquivalentRowsSingleViewImpl {
     auto xs() const -> TArrayView<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<float>(
-                    state_, offset_, count_, Layout::XsColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::XsColumn.offset(view_capacity_blocks(state_))),
                 count_};
     }
     auto ys() const -> TArrayView<Element<float>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<float>(
-                    state_, offset_, count_, Layout::YsColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::YsColumn.offset(view_capacity_blocks(state_))),
                 count_};
     }
     template <typename Func>
@@ -1365,9 +1352,7 @@ struct FParentsSingleView_childrenImpl {
     FParentsSingleView_childrenImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     FParentsSingleView_childrenImpl(FParentsSingleView_childrenImpl<false> const& other)
         requires Enabled
@@ -1395,12 +1380,10 @@ struct FParentsSingleView_childrenImpl {
     }
     auto values() const -> TArrayView<Element<int32>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<int32>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::ChildrenValuesColumn.offset(view_capacity_blocks(state_))),
-                count_};
+        return {
+            view_column_data<int32>(
+                state_, offset_, Layout::ChildrenValuesColumn.offset(view_capacity_blocks(state_))),
+            count_};
     }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
@@ -1457,9 +1440,7 @@ struct FParentsSingleViewImpl {
     FParentsSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     FParentsSingleViewImpl(FParentsSingleViewImpl<false> const& other)
         requires Enabled
@@ -1487,10 +1468,9 @@ struct FParentsSingleViewImpl {
     }
     auto keys() const -> TArrayView<Element<int32>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<int32>(
-                state_, offset_, count_, Layout::KeysColumn.offset(view_capacity_blocks(state_))),
-            count_};
+        return {view_column_data<int32>(
+                    state_, offset_, Layout::KeysColumn.offset(view_capacity_blocks(state_))),
+                count_};
     }
     auto view_children() const -> std::
         conditional_t<Const, FParentsSingleConstView_children, FParentsSingleView_children> {
@@ -1499,7 +1479,8 @@ struct FParentsSingleViewImpl {
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
         auto column_0{keys()};
-        auto column_1{view_children().values()};
+        auto const& group_0{view_children()};
+        auto column_1{group_0.values()};
         return std::forward<Func>(func)(column_0, column_1);
     }
   private:
@@ -1655,9 +1636,9 @@ struct SingleParents
         auto const destination{get_data(first)};
         ml::soa_storage::copy_n(
             destination.keys, ml::soa_storage::source_data(source.keys()) + source_first, count);
+        auto const& group_0{source.view_children()};
         ml::soa_storage::copy_n(destination.children_values,
-                                ml::soa_storage::source_data(source.view_children().values()) +
-                                    source_first,
+                                ml::soa_storage::source_data(group_0.values()) + source_first,
                                 count);
     }
     template <typename Columns>
@@ -1670,9 +1651,9 @@ struct SingleParents
         auto const destination{get_data(first)};
         ml::soa_storage::move_n(
             destination.keys, ml::soa_storage::source_data(source.keys()) + source_first, count);
+        auto const& group_0{source.view_children()};
         ml::soa_storage::move_n(destination.children_values,
-                                ml::soa_storage::source_data(source.view_children().values()) +
-                                    source_first,
+                                ml::soa_storage::source_data(group_0.values()) + source_first,
                                 count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
@@ -2732,9 +2713,7 @@ struct RestrictionRowsSingleViewImpl {
     RestrictionRowsSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     RestrictionRowsSingleViewImpl(RestrictionRowsSingleViewImpl<false> const& other)
         requires Enabled
@@ -2763,10 +2742,7 @@ struct RestrictionRowsSingleViewImpl {
     auto restricted() const -> TArrayView<Element<RestrictedLeaf>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<RestrictedLeaf>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::RestrictedColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::RestrictedColumn.offset(view_capacity_blocks(state_))),
                 count_};
     }
     template <typename Func>

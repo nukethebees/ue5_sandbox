@@ -77,9 +77,7 @@ struct CapitalEntityDataSingleViewImpl {
     CapitalEntityDataSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     CapitalEntityDataSingleViewImpl(CapitalEntityDataSingleViewImpl<false> const& other)
         requires Enabled
@@ -108,15 +106,11 @@ struct CapitalEntityDataSingleViewImpl {
     auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<EntityUniqueId>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto view_locations() const -> ml::Vector3SoAView<Element<float>> {
         using namespace ml::soa_storage_detail;
-        validate();
         if (!state_ || !state_->data_) {
             return {};
         }
@@ -133,7 +127,6 @@ struct CapitalEntityDataSingleViewImpl {
                                                       ml::native_soa::RotatorSoAConstView<float>,
                                                       ml::native_soa::RotatorSoAView<float>> {
         using namespace ml::soa_storage_detail;
-        validate();
         if (!state_ || !state_->data_) {
             return {};
         }
@@ -151,7 +144,6 @@ struct CapitalEntityDataSingleViewImpl {
         return {view_column_data<float>(
                     state_,
                     offset_,
-                    count_,
                     Layout::FighterSpawnTimersColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
@@ -160,44 +152,39 @@ struct CapitalEntityDataSingleViewImpl {
         return {view_column_data<float>(
                     state_,
                     offset_,
-                    count_,
                     Layout::FighterSpawnCooldownsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto teams() const -> std::span<Element<Team>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<Team>(
-                state_, offset_, count_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<Team>(
+                    state_, offset_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto fighter_id_spans() const -> std::span<Element<IndexSpan>> {
         using namespace ml::soa_storage_detail;
-        return {view_column_data<IndexSpan>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::FighterIdSpansColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+        return {
+            view_column_data<IndexSpan>(
+                state_, offset_, Layout::FighterIdSpansColumn.offset(view_capacity_blocks(state_))),
+            static_cast<std::size_t>(count_)};
     }
     auto target_ids() const -> std::span<Element<EntityUniqueId>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<EntityUniqueId>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::TargetIdsColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::TargetIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>
     void each_column(Func&& func) const {
         func(entity_ids());
-        func(view_locations().xs());
-        func(view_locations().ys());
-        func(view_locations().zs());
-        func(view_rotations().pitches());
-        func(view_rotations().yaws());
-        func(view_rotations().rolls());
+        auto const& group_0{view_locations()};
+        func(group_0.xs());
+        func(group_0.ys());
+        func(group_0.zs());
+        auto const& group_1{view_rotations()};
+        func(group_1.pitches());
+        func(group_1.yaws());
+        func(group_1.rolls());
         func(fighter_spawn_timers());
         func(fighter_spawn_cooldowns());
         func(teams());
@@ -420,29 +407,25 @@ struct CapitalEntityData
         ml::native_soa::copy_n(destination.entity_ids,
                                ml::native_soa::source_data(source.entity_ids()) + source_first,
                                count);
+        auto const& group_0{source.view_locations()};
         ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
+        auto const& group_1{source.view_rotations()};
         ml::native_soa::copy_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(source.view_rotations().pitches()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.pitches()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(source.view_rotations().yaws()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.yaws()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(source.view_rotations().rolls()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.rolls()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.fighter_spawn_timers,
                                ml::native_soa::source_data(source.fighter_spawn_timers()) +
@@ -473,29 +456,25 @@ struct CapitalEntityData
         ml::native_soa::move_n(destination.entity_ids,
                                ml::native_soa::source_data(source.entity_ids()) + source_first,
                                count);
+        auto const& group_0{source.view_locations()};
         ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(source.view_locations().xs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(source.view_locations().ys()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(source.view_locations().zs()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_0.zs()) + source_first,
                                count);
+        auto const& group_1{source.view_rotations()};
         ml::native_soa::move_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(source.view_rotations().pitches()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.pitches()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(source.view_rotations().yaws()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.yaws()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(source.view_rotations().rolls()) +
-                                   source_first,
+                               ml::native_soa::source_data(group_1.rolls()) + source_first,
                                count);
         ml::native_soa::move_n(destination.fighter_spawn_timers,
                                ml::native_soa::source_data(source.fighter_spawn_timers()) +

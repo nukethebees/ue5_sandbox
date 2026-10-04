@@ -71,9 +71,7 @@ struct EntityCellDataColumnsSingleViewImpl {
     EntityCellDataColumnsSingleViewImpl(State* state, size_type offset, size_type count)
         : state_{state}
         , offset_{offset}
-        , count_{count} {
-        validate();
-    }
+        , count_{count} {}
     template <bool Enabled = Const>
     EntityCellDataColumnsSingleViewImpl(EntityCellDataColumnsSingleViewImpl<false> const& other)
         requires Enabled
@@ -101,119 +99,80 @@ struct EntityCellDataColumnsSingleViewImpl {
     }
     auto min_point_xs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::MinPointXsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::MinPointXsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto min_point_ys() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::MinPointYsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::MinPointYsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto min_point_zs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::MinPointZsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::MinPointZsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto max_point_xs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::MaxPointXsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::MaxPointXsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto max_point_ys() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::MaxPointYsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::MaxPointYsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto max_point_zs() const -> std::span<Element<float>> {
         using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(state_,
-                                    offset_,
-                                    count_,
-                                    Layout::MaxPointZsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
+        return {view_column_data<float>(
+                    state_, offset_, Layout::MaxPointZsColumn.offset(view_capacity_blocks(state_))),
+                static_cast<std::size_t>(count_)};
     }
     auto min_cell_xs() const -> std::span<Element<std::int32_t>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<std::int32_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::MinCellXsColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::MinCellXsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto min_cell_ys() const -> std::span<Element<std::int32_t>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<std::int32_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::MinCellYsColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::MinCellYsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto min_cell_zs() const -> std::span<Element<std::int32_t>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<std::int32_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::MinCellZsColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::MinCellZsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto max_cell_xs() const -> std::span<Element<std::int32_t>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<std::int32_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::MaxCellXsColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::MaxCellXsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto max_cell_ys() const -> std::span<Element<std::int32_t>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<std::int32_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::MaxCellYsColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::MaxCellYsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto max_cell_zs() const -> std::span<Element<std::int32_t>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<std::int32_t>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::MaxCellZsColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::MaxCellZsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
         using namespace ml::soa_storage_detail;
         return {view_column_data<EntityUniqueId>(
-                    state_,
-                    offset_,
-                    count_,
-                    Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
+                    state_, offset_, Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
                 static_cast<std::size_t>(count_)};
     }
     template <typename Func>

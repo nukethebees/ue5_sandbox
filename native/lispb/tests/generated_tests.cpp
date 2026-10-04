@@ -370,12 +370,13 @@ TEST(GeneratedSingleAllocationSoa, BulkMutationAndAliasing) {
     }
 }
 
-TEST(GeneratedSingleAllocationSoa, NestedViewsFollowReallocation) {
+TEST(GeneratedSingleAllocationSoa, NestedViewsAfterReallocation) {
     SingleParents rows;
     rows.set_num(SingleParents::capacity_granularity);
     auto children{rows.get_view().view_children().slice(1, 2)};
     children.values()[0] = 42;
     rows.reserve(rows.capacity() + 1);
+    children = rows.get_view().view_children().slice(1, 2);
     EXPECT_EQ(children.values()[0], 42);
     children.values()[1] = 43;
     EXPECT_EQ(rows.get_const_view().view_children().values()[2], 43);
