@@ -11,31 +11,21 @@ Unreal Engine 5.8 project.
 
 # Feature Workflow
 
-* Use `coj git` for mutating Git operations. It intentionally supports a limited whitelist of git commands (documented by `coj git --help` and each subcommand's `--help`) that agents are free to use within their worktree. For unsupported commands, fall back on requesting permission to use git directly from the maintainer.
-* When unsure whether an action is permitted, run `coj git check <command> [arguments]`
-  (for example, `coj git check reset --soft dev`). It checks the same guardrails as execution
-  without performing the action: exit 0 means allowed through `coj git`, 1 means blocked,
-  2 means invalid syntax, and 3 means unsupported. Fix invalid input; resolve blocked conditions
-  or ask the maintainer to intervene rather than bypassing guards. Unsupported mutations require
-  explicit approval for direct Git; separately permitted read-only Git remains available.
+* `coj` is the project CLI for automating and controlling the development workflow.
+  * At the start of a task, run `coj --help` to discover available functionality, then inspect `coj <command> --help` for commands relevant to the work. Prefer `coj` over manually reproducing workflows it already supports.
+  * Do not exhaustively inspect unrelated commands.
+* Use `coj git` for mutating Git operations. For unsupported commands, request permission from the maintainer to use git directly.
 * Git stash is intentionally unsupported because it is repository-global. Use branches instead of stashing.
 * `dev`, `main`, and `master` are protected regardless of ASCII case. Read them freely, but do not
   mutate them or switch an agent worktree onto them through the ordinary Git path.
 * The worktree containing the current CWD is the workspace boundary. Do not access or modify
-  another worktree outside that boundary. Git owns index/ref locking and operation state.
-  Never mutate or attach to a branch checked out by another worktree; it may be a revision input.
-  coj-created worktrees live only under this workspace's ignored `.local/worktrees/` and
-  are created/removed by branch name through `coj git worktree`.
+  another worktree outside that boundary. 
 * coj is a cooperative guardrail, not a hostile-process security sandbox. Do not bypass it
   with raw mutating Git, direct `.git` edits, environment overrides, aliases, alternate Git
-  executables, shell tricks, or other workarounds. Explicitly permitted read-only raw Git is fine.
-  If blocked, report the reason; operations requiring an exception need maintainer intervention.
+  executables, shell tricks, or other workarounds. 
 * `dev` is the integration branch
-* Begin a new task with `coj prepare-worktree` from anywhere in the current Git worktree. It clears
-  that worktree's `out`, initializes/updates submodules, regenerates presets and code, and disables
-  Live Coding once if saved Editor settings exist.
-  It does not perform a broad project/test build; build only the targets needed for the task afterward.
-  The maintainer installs/updates `coj` and manages PATH; agents invoke it by name from PATH. If it cannot be found or launched, halt and report the problem so the maintainer can fix it; do not use an absolute-path fallback or install it automatically.
+* Begin a new task with `coj prepare-worktree` in the current Git worktree. 
+  The maintainer installs/updates `coj` and manages PATH; agents invoke it by name from PATH. If it cannot be found or launched, halt and report the problem so the maintainer can fix it.
 * After worktree preparation, build only affected targets and execute relevant CTest labels.
   Use `ctest --test-dir out/build/native -L <subsystem> -LE "soak|compile-contract"` for the
   fast loop. Include the applicable expensive categories once for final validation.
@@ -44,15 +34,6 @@ Unreal Engine 5.8 project.
   contracts but excludes standalone developer-tool tests.
 * Perform feature work on dedicated feature branches; `coj git switch -c feature/<task> dev`
   creates one. The `feature/` prefix is a convention, not an ownership requirement.
-* Agents may clean up commits on their current feature branch using `coj git` without a
-  separate permission request. Use `commit --amend` for the latest commit or
-  `reset --soft HEAD~2` followed by `commit -m "..."` to combine the last two commits.
-  To squash the whole feature, commit work to retain, complete `rebase dev`, then run
-  `reset --soft dev` and commit the staged result. Reset moves only the current branch;
-  `dev` remains unchanged. `reset --mixed` keeps working files but unstages changes;
-  `reset --hard` discards tracked working changes, so use it only when that loss is intended.
-  Existing protected-branch and other-worktree guards still apply. See the
-  [cleanup workflow](tools/rust/crates/coj/docs/usage.md#cleaning-up-feature-commits).
 * Do not bypass instructions here unless explicitly told to
 * Use the CMake workflows described in [Builds](#builds).
 * **Fast default:** 
@@ -70,23 +51,10 @@ Unreal Engine 5.8 project.
   queued/ready tickets with `jobs cancel <id>`. These are all `coj jobs` commands.
   Inspect `jobs status`; never jump a queued exclusive ticket.
   This is voluntary coordination: tools do not enforce it. Follow the protocol and report missing tools.
-* For jobs-board contention, wait generously: 10+ minutes between checks of your own ticket is
-  acceptable. Do not repeatedly poll another agent's ticket. If one appears stuck, report its ID
-  and your concern to the maintainer once, then wait for instructions. Without explicit maintainer
-  direction, do not inspect, kill, or interfere with another agent's work, or end/cancel their ticket.
-  Do not independently investigate whether their work is stale.
-* After explicit integration authorization, run `coj integrate` from the feature worktree.
 * Run light, relevant tests after implementation and expensive relevant gates once against
   the final candidate. Tooling/native work must not build Unreal without a dependency reason.
-* Integration performs a cheap final Git transaction. Complete affected builds, focused tests, and review before requesting integration authorization.
-* A final-rebase conflict is aborted. Resolve with `coj git rebase dev` before integration,
-  validate the resolution, then retry integration.
-  Report the stopped stage, blocker, required action, and retained state.
-* `coj integrate` is privileged and is not part of the unconditional Git permission surface.
-  Invoke it only after explicit user authorization.
 * If coj is broken, report it once and follow an explicit maintainer instruction for any
   minimal alternative; do not repeatedly retry or deliberately bypass it.
-* You have permission to kill stale/hung processes that you spawned or were spawned in your worktree
 * Use one simple shell command per tool invocation for routine agent work. Do not combine commands with `;`, `&&`, `||`, pipelines, or script blocks, even when each command is individually approved or cheap.
   * Run inspections as separate tool calls and read their output directly. Independent calls may be batched through the tool API, without combining their shell command strings.
   * Cheap inspections need no ticket. Request tickets separately from the commands they coordinate.
