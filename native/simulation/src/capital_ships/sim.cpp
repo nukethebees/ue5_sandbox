@@ -423,7 +423,6 @@ void Sim::queue_fighter_orders(ml::FrameMemoryResource* const scratch_resource) 
         auto const capital_target{target_ids[capital_index]};
         auto const span{fighter_spans[capital_index]};
         auto const end{span.end()};
-        assert(span.offset >= 0 && span.count >= 0);
         assert(static_cast<std::size_t>(end) <= fighter_ids.size());
 
         for (auto index{span.start()}; index < end; ++index) {
@@ -456,8 +455,6 @@ void Sim::set_target_id(EntityUniqueId const ship_id, EntityUniqueId const targe
     assert(found != ids.end());
     auto const entity_index{static_cast<EntityFrameIndex>(found - ids.begin())};
     auto const entities{this->entities.get_view()};
-    assert(entity_index < static_cast<std::uint32_t>(entities.num()));
-    assert(entities.entity_ids()[entity_index] == ship_id);
     entities.target_ids()[entity_index] = target_id;
 }
 

@@ -124,7 +124,7 @@ TEST(EntityLookupTables, RetirementAndReorderingCannotAliasStableIdentity) {
     EXPECT_EQ(handles[2].index(), 0u);
 }
 
-TEST(TargetMotion, ResolvesMixedTypesAndClearsMissingTargets) {
+TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) {
     CollisionAgentStorage owners;
     auto const fighter{owners.spawn(EntityType::Fighter, {{10, 20, 30}}, {}, 80, Team::Blue)};
     auto const capital{owners.spawn(EntityType::CapitalShip, {{40, 50, 60}}, {}, 95, Team::Red)};
@@ -150,14 +150,16 @@ TEST(TargetMotion, ResolvesMixedTypesAndClearsMissingTargets) {
     owners.refresh(queries);
     alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
     ml::FrameMemoryResource scratch{backing};
-    queries.copy_target_locations(ids, locations.get_view(), &scratch);
+    queries.copy_entity_locations(ids, locations.get_view(), &scratch);
     EXPECT_EQ(ids, original);
-    queries.refresh_targets(ids, locations.get_view(), velocities.get_view(), &scratch);
-    EXPECT_EQ(ids[0], fighter);
-    EXPECT_FALSE(ids[1].is_valid());
-    EXPECT_EQ(ids[2], capital);
-    EXPECT_EQ(ids[3], fighter);
-    EXPECT_FALSE(ids[4].is_valid());
+    std::array<EntityInstanceHandle, ids.size()> handles;
+    queries.copy_entity_motion(ids, locations.get_view(), velocities.get_view(), handles, &scratch);
+    EXPECT_EQ(ids, original);
+    EXPECT_TRUE(handles[0].is_valid());
+    EXPECT_FALSE(handles[1].is_valid());
+    EXPECT_TRUE(handles[2].is_valid());
+    EXPECT_TRUE(handles[3].is_valid());
+    EXPECT_FALSE(handles[4].is_valid());
     EXPECT_FLOAT_EQ(locations[0].X, 10.f);
     EXPECT_FLOAT_EQ(locations[2].X, 40.f);
     EXPECT_FLOAT_EQ(locations[3].X, 10.f);
@@ -166,21 +168,25 @@ TEST(TargetMotion, ResolvesMixedTypesAndClearsMissingTargets) {
     EXPECT_FLOAT_EQ(velocities[0].X, 1.f);
     EXPECT_FLOAT_EQ(locations[5].X, 70.f);
     EXPECT_FLOAT_EQ(velocities[5].X, 4.f);
-    EXPECT_FALSE(ids[6].is_valid());
+    EXPECT_FALSE(handles[6].is_valid());
     EXPECT_FLOAT_EQ(locations[6].X, 0.f);
     EXPECT_FLOAT_EQ(velocities[6].X, 0.f);
 
     owners.remove(fighter);
     owners.publish();
     owners.refresh(queries);
-    queries.refresh_targets(ids, locations.get_view(), velocities.get_view(), &scratch);
-    EXPECT_FALSE(ids[0].is_valid());
-    EXPECT_FALSE(ids[3].is_valid());
+    queries.copy_entity_motion(ids, locations.get_view(), velocities.get_view(), handles, &scratch);
+    EXPECT_EQ(ids, original);
+    EXPECT_FALSE(handles[0].is_valid());
+    EXPECT_FALSE(handles[3].is_valid());
     EXPECT_FLOAT_EQ(locations[0].X, 0.f);
     EXPECT_FLOAT_EQ(velocities[0].X, 0.f);
 }
 
 TEST(EntityLookupTables, ResolutionHealthChangesBeforeHandlesRetire) {
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
+    ml::FrameMemoryResource scratch{backing};
+    ml::FrameScratchScope scratch_scope{scratch};
     CollisionAgentStorage owners;
     auto const id{owners.spawn(EntityType::Fighter, {{10, 0, 0}})};
     owners.publish();
@@ -188,11 +194,11 @@ TEST(EntityLookupTables, ResolutionHealthChangesBeforeHandlesRetire) {
     mission.set_mission_mode(MissionMode::SurviveTime);
     mission.add_entity_that_must_survive(id);
     mission.add_entity_required_to_kill(id);
-    mission.begin_play();
+    mission.begin_play(&scratch);
     ASSERT_EQ(mission.get_entity_health_that_must_survive()[0].health, 100);
     SimClockTestAccess::set_phase(owners.clock, SimulationPhase::Resolution);
     owners.set(id, {{20, 0, 0}}, {}, 0);
-    mission.mission_tick();
+    mission.mission_tick(&scratch);
     EXPECT_EQ(mission.get_entity_health_that_must_survive()[0].health, 0);
     EXPECT_EQ(mission.get_entity_health_required_to_kill()[0].health, 0);
     EXPECT_EQ(mission.get_mission_state(), MissionState::Failed);

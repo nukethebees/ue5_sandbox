@@ -145,7 +145,10 @@ void LevelSim::finish_initialisation() {
     // Start telemetry and mission
     initialise_telemetry();
     event_manager_.configure_mission();
-    mission_manager_.begin_play();
+    {
+        ml::FrameScratchScope scratch_scope{frame_memory_};
+        mission_manager_.begin_play(&frame_memory_);
+    }
 
     state_ = OrchestratorState::Paused;
     clock_.transition_to(SimulationPhase::BetweenTicks);
@@ -362,7 +365,7 @@ void LevelSim::advance(time_type const dt) {
             clock_.transition_to(SimulationPhase::Thinking);
 
             // Resolve dependent reads after every entity type has updated its lookup table.
-            mission_manager_.prepare_objectives();
+            mission_manager_.prepare_objectives(scratch_resource);
             capital_ships_simulation_.refresh_fighter_ids(scratch_resource);
 
 #ifndef NDEBUG
@@ -480,7 +483,10 @@ void LevelSim::advance(time_type const dt) {
             }
 
             // Evaluate final health and deaths before invalidating row mappings.
-            mission_manager_.mission_tick();
+            {
+                ml::FrameScratchScope scratch_scope{frame_memory_};
+                mission_manager_.mission_tick(&frame_memory_);
+            }
 
             // Clean up entities and indexes
             {

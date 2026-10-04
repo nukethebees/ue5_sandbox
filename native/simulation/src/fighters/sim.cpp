@@ -544,7 +544,8 @@ void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource)
     ml::FrameArray<EntityInstanceHandle> instigators{scratch_resource};
     order.set_num(damage_count);
     instigators.set_num(damage_count);
-    auto const runs{entity_tables_.lookups.lookup_handles(damage_events.instigators, order, instigators)};
+    auto const runs{
+        entity_tables_.lookups.lookup_handles(damage_events.instigators, order, instigators)};
     for (std::uint32_t run{}; run < runs.num; ++run) {
         auto const type{runs.types[run]};
         if (!has_health(type)) {
@@ -552,7 +553,7 @@ void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource)
         }
         auto const current_health{entity_tables_.health.get_const_view(
             type, entity_tables_.lookups.for_type(type).row_count())};
-        auto const end{runs.offsets[run] + runs.counts[run]};
+        auto const end{runs.end(run)};
         for (auto index{runs.offsets[run]}; index < end; ++index) {
             auto& handle{instigators[order[index]]};
             // Resolution can kill an instigator before its published handle is retired.
@@ -562,21 +563,15 @@ void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource)
         }
     }
     auto const handles{entity_tables_.lookups.for_type(EntityType::Fighter).entries()};
-    [[maybe_unused]] auto const entity_ids{data.entity_ids()};
     auto const teams{data.teams()};
     auto const target_ids{data.target_ids()};
 
     for (std::uint32_t event_index{}; event_index < damage_count; ++event_index) {
         auto const event_element{static_cast<std::size_t>(event_index)};
         auto const damaged_id{damage_events.damaged_entities[event_element]};
-        assert(damaged_id.is_valid() && damaged_id.entity_type() == EntityType::Fighter);
         auto const handle{handles[damaged_id.index()]};
-        if (!handle.is_valid()) {
-            continue;
-        }
+        assert(handle.is_valid());
         auto const fighter_index{handle.index()};
-        assert(fighter_index < static_cast<std::uint32_t>(data.num()));
-        assert(entity_ids[fighter_index] == damaged_id);
         if (is_dead(healths.health(fighter_index))) {
             continue;
         }
@@ -732,7 +727,6 @@ void Sim::update_separation_observations(NavigationScratch& scratch,
     SANDBOX_PROFILE_SCOPE("fighters::Sim::update_separation_observations");
 
     auto const data{entity_buffers.current().get_view()};
-    auto const healths{entity_tables_.health.get_const_view<EntityType::Fighter>(data.num())};
     // Fixed capacity bounds scoring work and keeps neighbour storage off the heap.
     std::array<EntityUniqueId, max_separation_neighbours> nearby_fighters;
     std::array<SeparationNeighbour, max_separation_neighbours> neighbours;
@@ -782,16 +776,11 @@ void Sim::update_separation_observations(NavigationScratch& scratch,
         // Bind the varying result count returned by this fighter's scan.
         // NOLINTBEGIN(ioj-loop-view-construction,ioj-loop-view-accessor-call)
         fighter_lookup.lookup_handles(std::span{nearby_fighters}.first(n_nearby),
-                               std::span{nearby_handles}.first(n_nearby));
+                                      std::span{nearby_handles}.first(n_nearby));
         // NOLINTEND(ioj-loop-view-construction,ioj-loop-view-accessor-call)
-        std::uint32_t neighbour_count{};
         for (std::uint32_t index{}; index < n_nearby; ++index) {
-            auto const handle{nearby_handles[index]};
-            auto const local_index{handle.index()};
-            if (handle.is_valid() && is_alive(healths.health(local_index))) {
-                neighbours[neighbour_count++] = {entity_ids[local_index],
-                                                 vector_at(locations, local_index)};
-            }
+            auto const local_index{nearby_handles[index].index()};
+            neighbours[index] = {entity_ids[local_index], vector_at(locations, local_index)};
         }
 
         auto const previous_memory{vector_at(separation_steering, fighter_index)};
@@ -810,7 +799,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch,
             previous_memory,
             // Each scan produces its own neighbour set.
             // NOLINTNEXTLINE(ioj-loop-view-construction)
-            {neighbours.data(), static_cast<std::size_t>(neighbour_count)},
+            {neighbours.data(), static_cast<std::size_t>(n_nearby)},
             {
                 .separation_radius = separation_radius,
                 .immediate_distance_squared = immediate_distance_sq,
@@ -1258,9 +1247,17 @@ void Sim::refresh_target_data(ml::FrameMemoryResource* const scratch_resource) {
     auto const count{data.num()};
     auto const target_ids{data.target_ids()};
     auto const target_radii{data.target_radii()};
-    spatial_query_manager.refresh_targets(
-        target_ids, data.view_target_locations(), data.view_target_velocities(), scratch_resource);
+    ml::FrameArray<EntityInstanceHandle> targets{scratch_resource};
+    targets.set_num(count);
+    spatial_query_manager.copy_entity_motion(target_ids,
+                                             data.view_target_locations(),
+                                             data.view_target_velocities(),
+                                             targets,
+                                             scratch_resource);
     for (std::uint32_t index{}; index < count; ++index) {
+        if (!targets[index].is_valid()) {
+            target_ids[index] = {};
+        }
         auto const id{target_ids[index]};
         target_radii[index] =
             id.is_valid() ? spatial_query_manager.get_entity_type_radius(id.entity_type()) : 0.f;
@@ -1703,7 +1700,6 @@ void Sim::commit_orders() {
     auto const handles{lookup.entries()};
 
     auto const data{entity_buffers.current().get_view()};
-    auto const healths{entity_tables_.health.get_const_view<EntityType::Fighter>(data.num())};
     auto const n_orders{order_queue.num()};
     if (n_orders < 1) {
         return;
@@ -1747,12 +1743,10 @@ void Sim::commit_orders() {
 
     for (std::uint32_t index{}; index < n_orders; ++index) {
         auto const id{orders.entity_ids[index]};
-        auto const handle{id.is_valid() && id.entity_type() == EntityType::Fighter &&
-                                  id.index() < handles.size()
-                              ? handles[id.index()]
-                              : EntityInstanceHandle{}};
+        auto const handle{id.index() < handles.size() ? handles[id.index()]
+                                                      : EntityInstanceHandle{}};
         auto const fighter_index{handle.index()};
-        if (!handle.is_valid() || is_dead(healths.health(fighter_index))) {
+        if (!handle.is_valid()) {
             continue;
         }
 

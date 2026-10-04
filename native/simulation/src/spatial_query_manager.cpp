@@ -202,7 +202,7 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 for (auto const id : grid.get_cell_entities({x, y, z})) {
                     auto const handle{handles[std::to_underlying(id.entity_type())][id.index()]};
-                    if (!handle.is_valid() || !include_entity(id, handle.team())) {
+                    if (!include_entity(id, handle.team())) {
                         continue;
                     }
                     auto const local_index{handle.index()};
@@ -464,30 +464,7 @@ auto SpatialQueryManager::get_entity_type_radii() const noexcept -> EntityTypeRa
     return entity_radii_;
 }
 
-void SpatialQueryManager::copy_entity_radii(std::span<EntityUniqueId const> const ids,
-                                            std::span<float> const out_radii,
-                                            ml::FrameMemoryResource* const scratch_resource) const {
-    assert(ids.size() == out_radii.size());
-    assert(std::in_range<std::uint32_t>(ids.size()));
-
-    auto const count{static_cast<std::uint32_t>(ids.size())};
-    ml::FrameArray<std::uint32_t> order{scratch_resource};
-    ml::FrameArray<EntityInstanceHandle> handles{scratch_resource};
-    order.set_num(count);
-    handles.set_num(count);
-    auto const runs{entity_tables_.lookups.lookup_handles(ids, order, handles)};
-    std::ranges::fill(out_radii, 0.f);
-    for (std::uint32_t run{}; run < runs.num; ++run) {
-        auto const radius{entity_radii_[runs.types[run]]};
-        auto const end{runs.offsets[run] + runs.counts[run]};
-        for (auto index{runs.offsets[run]}; index < end; ++index) {
-            auto const row{order[index]};
-            out_radii[row] = handles[row].is_valid() ? radius : 0.f;
-        }
-    }
-}
-
-void SpatialQueryManager::copy_target_locations(
+void SpatialQueryManager::copy_entity_locations(
     std::span<EntityUniqueId const> const ids,
     Vectors3fView const output,
     ml::FrameMemoryResource* const scratch_resource) const {
@@ -502,7 +479,7 @@ void SpatialQueryManager::copy_target_locations(
     }
     for (std::uint32_t run{}; run < runs.num; ++run) {
         auto const locations{locations_[runs.types[run]]};
-        auto const end{runs.offsets[run] + runs.counts[run]};
+        auto const end{runs.end(run)};
         for (auto index{runs.offsets[run]}; index < end; ++index) {
             auto const row{order[index]};
             if (handles[row].is_valid()) {
@@ -511,28 +488,25 @@ void SpatialQueryManager::copy_target_locations(
         }
     }
 }
-void SpatialQueryManager::refresh_targets(std::span<EntityUniqueId> const ids,
-                                          Vectors3fView const output_locations,
-                                          Vectors3fView const output_velocities,
-                                          ml::FrameMemoryResource* const scratch_resource) const {
+void
+    SpatialQueryManager::copy_entity_motion(std::span<EntityUniqueId const> const ids,
+                                            Vectors3fView const output_locations,
+                                            Vectors3fView const output_velocities,
+                                            std::span<EntityInstanceHandle> const handles,
+                                            ml::FrameMemoryResource* const scratch_resource) const {
     auto const count{output_locations.num()};
     assert(ids.size() == count && output_velocities.num() == count);
     ml::FrameArray<std::uint32_t> order{scratch_resource};
-    ml::FrameArray<EntityInstanceHandle> handles{scratch_resource};
     order.set_num(count);
-    handles.set_num(count);
     auto const runs{entity_tables_.lookups.lookup_handles(ids, order, handles)};
     for (std::uint32_t row{}; row < count; ++row) {
         output_locations.set(row, {});
         output_velocities.set(row, {});
-        if (!handles[row].is_valid()) {
-            ids[row] = {};
-        }
     }
     for (std::uint32_t run{}; run < runs.num; ++run) {
         auto const locations{locations_[runs.types[run]]};
         auto const velocities{velocities_[runs.types[run]]};
-        auto const end{runs.offsets[run] + runs.counts[run]};
+        auto const end{runs.end(run)};
         for (auto index{runs.offsets[run]}; index < end; ++index) {
             auto const row{order[index]};
             auto const handle{handles[row]};

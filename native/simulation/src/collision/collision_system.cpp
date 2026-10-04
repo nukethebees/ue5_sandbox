@@ -100,7 +100,7 @@ void CollisionSystem::collect_overlaps_for_candidates(
     auto const built_ids{built.entity_ids()};
     for (std::uint32_t run{}; run < runs.num; ++run) {
         auto const rows{uniform_grid_.bound_rows(runs.types[run])};
-        auto const end{runs.offsets[run] + runs.counts[run]};
+        auto const end{runs.end(run)};
         for (auto index{runs.offsets[run]}; index < end; ++index) {
             auto const candidate{order[index]};
             auto const handle{handles[candidate]};

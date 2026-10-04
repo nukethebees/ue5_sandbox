@@ -198,16 +198,11 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     EXPECT_EQ(nearby_ids[0], moved);
     fixture.owners.health_table.get_view<EntityType::CapitalShip>(owner.num()).set_health(0, 0);
     fixture.owners.publish();
+    fixture.owners.refresh(fixture.query_manager);
     EXPECT_EQ(queries.collect_non_team_entities_in_range(
                   {{300.f, 0.f, 0.f}}, Team::Blue, 20.f, nearby, &query_memory),
               0);
     EXPECT_TRUE(!queries.get_any_non_team_entity(Team::Blue).is_valid());
-    std::array const radius_ids{stationary, moved, EntityUniqueId{}};
-    std::array<float, 3> radii{};
-    queries.copy_entity_radii(radius_ids, radii, &query_memory);
-    EXPECT_EQ(radii[0], 0.f);
-    EXPECT_GT(radii[1], 0.f);
-    EXPECT_EQ(radii[2], 0.f);
     fixture.query_manager.reset_frame_collision_events();
     fixture.refresh_and_detect_overlaps(fixture.ids(handles));
     EXPECT_EQ(fixture.get_entity_overlaps().num(), 0)
