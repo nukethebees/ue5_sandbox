@@ -94,6 +94,7 @@ Use the repository's [CMake workflows](../../../../../cmake/README.md) for build
 ## Feature Git operations
 
 ```powershell
+coj git switch -c feature/my-change dev
 coj git add -A
 coj git commit -m "Implement feature"
 coj git rebase dev
@@ -105,6 +106,31 @@ Run `coj git <command> --help` for exact options. Unknown commands, options, and
 long options are rejected. There is no checkout, remote transfer, config, plumbing, force-create,
 explicit-branch rebase, or general worktree administration interface.
 Cherry-pick and revert accept individual commits, not revision ranges.
+
+### Cleaning up feature commits
+
+To combine all commits since the feature branch diverged from `dev`, first commit any work
+you want to retain and rebase onto `dev`, resolving conflicts before continuing:
+
+```powershell
+coj git rebase dev
+coj git reset --soft dev
+coj git commit -m "Implement feature"
+```
+
+The soft reset moves only the current branch back to `dev` and keeps the combined changes
+staged for the replacement commit. For a smaller cleanup, use `coj git reset --soft HEAD~2`
+to combine the last two commits, or `coj git commit --amend` to update the latest commit.
+`reset --mixed` retains working files but unstages changes; `reset --hard` discards tracked
+working changes as well as moving the current branch.
+
+Branch ownership comes from the current worktree, not an agent identity or naming prefix.
+`feature/` is a useful naming convention, but is not required. `dev`, `main`, and `master`
+are protected regardless of ASCII case. Branches checked out in another worktree cannot be
+modified or checked out here. In `coj git reset --soft dev`, `dev` is only the destination
+revision: its branch is unchanged. Rebasing also disables updates to other branch refs.
+
+### Managing worktrees and parked work
 
 Create managed worktrees with `coj git worktree add -b <branch> [start-point]`; remove
 them with `coj git worktree remove <branch>`. coj chooses a location under the
