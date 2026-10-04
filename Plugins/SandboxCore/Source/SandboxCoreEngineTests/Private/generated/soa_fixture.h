@@ -293,10 +293,10 @@ struct RowsSingleViewImpl {
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
         auto column_0{bytes()};
-        auto const& group_0{view_nested()};
-        auto column_1{group_0.xs()};
-        auto column_2{group_0.ys()};
-        auto column_3{group_0.zs()};
+        auto const& nested_view{view_nested()};
+        auto column_1{nested_view.xs()};
+        auto column_2{nested_view.ys()};
+        auto column_3{nested_view.zs()};
         return std::forward<Func>(func)(column_0, column_1, column_2, column_3);
     }
   private:
@@ -459,15 +459,15 @@ struct SingleRows
         auto const destination{get_data(first)};
         ml::soa_storage::copy_n(
             destination.bytes, ml::soa_storage::source_data(source.bytes()) + source_first, count);
-        auto const& group_0{source.view_nested()};
+        auto const& nested_view{source.view_nested()};
         ml::soa_storage::copy_n(destination.nested_xs,
-                                ml::soa_storage::source_data(group_0.xs()) + source_first,
+                                ml::soa_storage::source_data(nested_view.xs()) + source_first,
                                 count);
         ml::soa_storage::copy_n(destination.nested_ys,
-                                ml::soa_storage::source_data(group_0.ys()) + source_first,
+                                ml::soa_storage::source_data(nested_view.ys()) + source_first,
                                 count);
         ml::soa_storage::copy_n(destination.nested_zs,
-                                ml::soa_storage::source_data(group_0.zs()) + source_first,
+                                ml::soa_storage::source_data(nested_view.zs()) + source_first,
                                 count);
     }
     template <typename Columns>
@@ -480,15 +480,15 @@ struct SingleRows
         auto const destination{get_data(first)};
         ml::soa_storage::move_n(
             destination.bytes, ml::soa_storage::source_data(source.bytes()) + source_first, count);
-        auto const& group_0{source.view_nested()};
+        auto const& nested_view{source.view_nested()};
         ml::soa_storage::move_n(destination.nested_xs,
-                                ml::soa_storage::source_data(group_0.xs()) + source_first,
+                                ml::soa_storage::source_data(nested_view.xs()) + source_first,
                                 count);
         ml::soa_storage::move_n(destination.nested_ys,
-                                ml::soa_storage::source_data(group_0.ys()) + source_first,
+                                ml::soa_storage::source_data(nested_view.ys()) + source_first,
                                 count);
         ml::soa_storage::move_n(destination.nested_zs,
-                                ml::soa_storage::source_data(group_0.zs()) + source_first,
+                                ml::soa_storage::source_data(nested_view.zs()) + source_first,
                                 count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
@@ -765,9 +765,9 @@ struct ApiViewImpl {
     auto apply_arrays(Func&& func) const -> decltype(auto) {
         auto column_0{values()};
         auto column_1{masks()};
-        auto const& group_0{view_positions()};
-        auto column_2{group_0.xs()};
-        auto column_3{group_0.ys()};
+        auto const& positions_view{view_positions()};
+        auto column_2{positions_view.xs()};
+        auto column_3{positions_view.ys()};
         return std::forward<Func>(func)(column_0, column_1, column_2, column_3);
     }
   private:
@@ -938,12 +938,12 @@ struct SANDBOXCOREENGINETESTS_API ApiOwner
                                 count);
         ml::soa_storage::copy_n(
             destination.masks, ml::soa_storage::source_data(source.masks()) + source_first, count);
-        auto const& group_0{source.view_positions()};
+        auto const& positions_view{source.view_positions()};
         ml::soa_storage::copy_n(destination.positions_xs,
-                                ml::soa_storage::source_data(group_0.xs()) + source_first,
+                                ml::soa_storage::source_data(positions_view.xs()) + source_first,
                                 count);
         ml::soa_storage::copy_n(destination.positions_ys,
-                                ml::soa_storage::source_data(group_0.ys()) + source_first,
+                                ml::soa_storage::source_data(positions_view.ys()) + source_first,
                                 count);
     }
     template <typename Columns>
@@ -959,12 +959,12 @@ struct SANDBOXCOREENGINETESTS_API ApiOwner
                                 count);
         ml::soa_storage::move_n(
             destination.masks, ml::soa_storage::source_data(source.masks()) + source_first, count);
-        auto const& group_0{source.view_positions()};
+        auto const& positions_view{source.view_positions()};
         ml::soa_storage::move_n(destination.positions_xs,
-                                ml::soa_storage::source_data(group_0.xs()) + source_first,
+                                ml::soa_storage::source_data(positions_view.xs()) + source_first,
                                 count);
         ml::soa_storage::move_n(destination.positions_ys,
-                                ml::soa_storage::source_data(group_0.ys()) + source_first,
+                                ml::soa_storage::source_data(positions_view.ys()) + source_first,
                                 count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {

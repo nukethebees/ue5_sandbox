@@ -487,34 +487,34 @@ struct FighterEntityDataSingleViewImpl {
         func(integral_biases());
         func(float_biases());
         func(tasks());
-        auto const& group_0{view_locations()};
-        func(group_0.xs());
-        func(group_0.ys());
-        func(group_0.zs());
-        auto const& group_1{view_desired_move_locations()};
-        func(group_1.xs());
-        func(group_1.ys());
-        func(group_1.zs());
-        auto const& group_2{view_aim_directions()};
-        func(group_2.xs());
-        func(group_2.ys());
-        func(group_2.zs());
-        auto const& group_3{view_planned_aim_directions()};
-        func(group_3.xs());
-        func(group_3.ys());
-        func(group_3.zs());
-        auto const& group_4{view_desired_aiming_directions()};
-        func(group_4.xs());
-        func(group_4.ys());
-        func(group_4.zs());
-        auto const& group_5{view_movement_directions()};
-        func(group_5.xs());
-        func(group_5.ys());
-        func(group_5.zs());
-        auto const& group_6{view_velocities()};
-        func(group_6.xs());
-        func(group_6.ys());
-        func(group_6.zs());
+        auto const& locations_view{view_locations()};
+        func(locations_view.xs());
+        func(locations_view.ys());
+        func(locations_view.zs());
+        auto const& desired_move_locations_view{view_desired_move_locations()};
+        func(desired_move_locations_view.xs());
+        func(desired_move_locations_view.ys());
+        func(desired_move_locations_view.zs());
+        auto const& aim_directions_view{view_aim_directions()};
+        func(aim_directions_view.xs());
+        func(aim_directions_view.ys());
+        func(aim_directions_view.zs());
+        auto const& planned_aim_directions_view{view_planned_aim_directions()};
+        func(planned_aim_directions_view.xs());
+        func(planned_aim_directions_view.ys());
+        func(planned_aim_directions_view.zs());
+        auto const& desired_aiming_directions_view{view_desired_aiming_directions()};
+        func(desired_aiming_directions_view.xs());
+        func(desired_aiming_directions_view.ys());
+        func(desired_aiming_directions_view.zs());
+        auto const& movement_directions_view{view_movement_directions()};
+        func(movement_directions_view.xs());
+        func(movement_directions_view.ys());
+        func(movement_directions_view.zs());
+        auto const& velocities_view{view_velocities()};
+        func(velocities_view.xs());
+        func(velocities_view.ys());
+        func(velocities_view.zs());
         func(move_distances());
         func(speeds());
         func(teams());
@@ -522,10 +522,10 @@ struct FighterEntityDataSingleViewImpl {
         func(awareness_scan_countdowns());
         func(navigation_update_countdowns_remaining_ticks());
         func(navigation_update_countdowns_periods());
-        auto const& group_7{view_separation_steering()};
-        func(group_7.xs());
-        func(group_7.ys());
-        func(group_7.zs());
+        auto const& separation_steering_view{view_separation_steering()};
+        func(separation_steering_view.xs());
+        func(separation_steering_view.ys());
+        func(separation_steering_view.zs());
         func(navigation_risk_tiers());
         func(navigation_lower_risk_scan_counts());
         func(avoidance_choice_indices());
@@ -533,18 +533,18 @@ struct FighterEntityDataSingleViewImpl {
         func(attack_reposition_countdowns());
         func(attack_cooldowns());
         func(target_ids());
-        auto const& group_8{view_target_locations()};
-        func(group_8.xs());
-        func(group_8.ys());
-        func(group_8.zs());
-        auto const& group_9{view_target_velocities()};
-        func(group_9.xs());
-        func(group_9.ys());
-        func(group_9.zs());
-        auto const& group_10{view_target_directions()};
-        func(group_10.xs());
-        func(group_10.ys());
-        func(group_10.zs());
+        auto const& target_locations_view{view_target_locations()};
+        func(target_locations_view.xs());
+        func(target_locations_view.ys());
+        func(target_locations_view.zs());
+        auto const& target_velocities_view{view_target_velocities()};
+        func(target_velocities_view.xs());
+        func(target_velocities_view.ys());
+        func(target_velocities_view.zs());
+        auto const& target_directions_view{view_target_directions()};
+        func(target_directions_view.xs());
+        func(target_directions_view.ys());
+        func(target_directions_view.zs());
         func(intercept_times());
         func(target_distance_sq());
         func(target_distances());
@@ -1057,75 +1057,87 @@ struct FighterEntityData
                                count);
         ml::native_soa::copy_n(
             destination.tasks, ml::native_soa::source_data(source.tasks()) + source_first, count);
-        auto const& group_0{source.view_locations()};
+        auto const& locations_view{source.view_locations()};
         ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(group_0.xs()) + source_first,
+                               ml::native_soa::source_data(locations_view.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(group_0.ys()) + source_first,
+                               ml::native_soa::source_data(locations_view.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(group_0.zs()) + source_first,
+                               ml::native_soa::source_data(locations_view.zs()) + source_first,
                                count);
-        auto const& group_1{source.view_desired_move_locations()};
+        auto const& desired_move_locations_view{source.view_desired_move_locations()};
         ml::native_soa::copy_n(destination.desired_move_locations_xs,
-                               ml::native_soa::source_data(group_1.xs()) + source_first,
+                               ml::native_soa::source_data(desired_move_locations_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.desired_move_locations_ys,
-                               ml::native_soa::source_data(group_1.ys()) + source_first,
+                               ml::native_soa::source_data(desired_move_locations_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.desired_move_locations_zs,
-                               ml::native_soa::source_data(group_1.zs()) + source_first,
+                               ml::native_soa::source_data(desired_move_locations_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_2{source.view_aim_directions()};
+        auto const& aim_directions_view{source.view_aim_directions()};
         ml::native_soa::copy_n(destination.aim_directions_xs,
-                               ml::native_soa::source_data(group_2.xs()) + source_first,
+                               ml::native_soa::source_data(aim_directions_view.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.aim_directions_ys,
-                               ml::native_soa::source_data(group_2.ys()) + source_first,
+                               ml::native_soa::source_data(aim_directions_view.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.aim_directions_zs,
-                               ml::native_soa::source_data(group_2.zs()) + source_first,
+                               ml::native_soa::source_data(aim_directions_view.zs()) + source_first,
                                count);
-        auto const& group_3{source.view_planned_aim_directions()};
+        auto const& planned_aim_directions_view{source.view_planned_aim_directions()};
         ml::native_soa::copy_n(destination.planned_aim_directions_xs,
-                               ml::native_soa::source_data(group_3.xs()) + source_first,
+                               ml::native_soa::source_data(planned_aim_directions_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.planned_aim_directions_ys,
-                               ml::native_soa::source_data(group_3.ys()) + source_first,
+                               ml::native_soa::source_data(planned_aim_directions_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.planned_aim_directions_zs,
-                               ml::native_soa::source_data(group_3.zs()) + source_first,
+                               ml::native_soa::source_data(planned_aim_directions_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_4{source.view_desired_aiming_directions()};
+        auto const& desired_aiming_directions_view{source.view_desired_aiming_directions()};
         ml::native_soa::copy_n(destination.desired_aiming_directions_xs,
-                               ml::native_soa::source_data(group_4.xs()) + source_first,
+                               ml::native_soa::source_data(desired_aiming_directions_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.desired_aiming_directions_ys,
-                               ml::native_soa::source_data(group_4.ys()) + source_first,
+                               ml::native_soa::source_data(desired_aiming_directions_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.desired_aiming_directions_zs,
-                               ml::native_soa::source_data(group_4.zs()) + source_first,
+                               ml::native_soa::source_data(desired_aiming_directions_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_5{source.view_movement_directions()};
+        auto const& movement_directions_view{source.view_movement_directions()};
         ml::native_soa::copy_n(destination.movement_directions_xs,
-                               ml::native_soa::source_data(group_5.xs()) + source_first,
+                               ml::native_soa::source_data(movement_directions_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.movement_directions_ys,
-                               ml::native_soa::source_data(group_5.ys()) + source_first,
+                               ml::native_soa::source_data(movement_directions_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.movement_directions_zs,
-                               ml::native_soa::source_data(group_5.zs()) + source_first,
+                               ml::native_soa::source_data(movement_directions_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_6{source.view_velocities()};
+        auto const& velocities_view{source.view_velocities()};
         ml::native_soa::copy_n(destination.velocities_xs,
-                               ml::native_soa::source_data(group_6.xs()) + source_first,
+                               ml::native_soa::source_data(velocities_view.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.velocities_ys,
-                               ml::native_soa::source_data(group_6.ys()) + source_first,
+                               ml::native_soa::source_data(velocities_view.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.velocities_zs,
-                               ml::native_soa::source_data(group_6.zs()) + source_first,
+                               ml::native_soa::source_data(velocities_view.zs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.move_distances,
                                ml::native_soa::source_data(source.move_distances()) + source_first,
@@ -1151,15 +1163,18 @@ struct FighterEntityData
             ml::native_soa::source_data(source.navigation_update_countdowns_periods()) +
                 source_first,
             count);
-        auto const& group_7{source.view_separation_steering()};
+        auto const& separation_steering_view{source.view_separation_steering()};
         ml::native_soa::copy_n(destination.separation_steering_xs,
-                               ml::native_soa::source_data(group_7.xs()) + source_first,
+                               ml::native_soa::source_data(separation_steering_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.separation_steering_ys,
-                               ml::native_soa::source_data(group_7.ys()) + source_first,
+                               ml::native_soa::source_data(separation_steering_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.separation_steering_zs,
-                               ml::native_soa::source_data(group_7.zs()) + source_first,
+                               ml::native_soa::source_data(separation_steering_view.zs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.navigation_risk_tiers,
                                ml::native_soa::source_data(source.navigation_risk_tiers()) +
@@ -1188,35 +1203,44 @@ struct FighterEntityData
         ml::native_soa::copy_n(destination.target_ids,
                                ml::native_soa::source_data(source.target_ids()) + source_first,
                                count);
-        auto const& group_8{source.view_target_locations()};
+        auto const& target_locations_view{source.view_target_locations()};
         ml::native_soa::copy_n(destination.target_locations_xs,
-                               ml::native_soa::source_data(group_8.xs()) + source_first,
+                               ml::native_soa::source_data(target_locations_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_locations_ys,
-                               ml::native_soa::source_data(group_8.ys()) + source_first,
+                               ml::native_soa::source_data(target_locations_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_locations_zs,
-                               ml::native_soa::source_data(group_8.zs()) + source_first,
+                               ml::native_soa::source_data(target_locations_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_9{source.view_target_velocities()};
+        auto const& target_velocities_view{source.view_target_velocities()};
         ml::native_soa::copy_n(destination.target_velocities_xs,
-                               ml::native_soa::source_data(group_9.xs()) + source_first,
+                               ml::native_soa::source_data(target_velocities_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_velocities_ys,
-                               ml::native_soa::source_data(group_9.ys()) + source_first,
+                               ml::native_soa::source_data(target_velocities_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_velocities_zs,
-                               ml::native_soa::source_data(group_9.zs()) + source_first,
+                               ml::native_soa::source_data(target_velocities_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_10{source.view_target_directions()};
+        auto const& target_directions_view{source.view_target_directions()};
         ml::native_soa::copy_n(destination.target_directions_xs,
-                               ml::native_soa::source_data(group_10.xs()) + source_first,
+                               ml::native_soa::source_data(target_directions_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_directions_ys,
-                               ml::native_soa::source_data(group_10.ys()) + source_first,
+                               ml::native_soa::source_data(target_directions_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.target_directions_zs,
-                               ml::native_soa::source_data(group_10.zs()) + source_first,
+                               ml::native_soa::source_data(target_directions_view.zs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.intercept_times,
                                ml::native_soa::source_data(source.intercept_times()) + source_first,
@@ -1252,75 +1276,87 @@ struct FighterEntityData
                                count);
         ml::native_soa::move_n(
             destination.tasks, ml::native_soa::source_data(source.tasks()) + source_first, count);
-        auto const& group_0{source.view_locations()};
+        auto const& locations_view{source.view_locations()};
         ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(group_0.xs()) + source_first,
+                               ml::native_soa::source_data(locations_view.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(group_0.ys()) + source_first,
+                               ml::native_soa::source_data(locations_view.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(group_0.zs()) + source_first,
+                               ml::native_soa::source_data(locations_view.zs()) + source_first,
                                count);
-        auto const& group_1{source.view_desired_move_locations()};
+        auto const& desired_move_locations_view{source.view_desired_move_locations()};
         ml::native_soa::move_n(destination.desired_move_locations_xs,
-                               ml::native_soa::source_data(group_1.xs()) + source_first,
+                               ml::native_soa::source_data(desired_move_locations_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.desired_move_locations_ys,
-                               ml::native_soa::source_data(group_1.ys()) + source_first,
+                               ml::native_soa::source_data(desired_move_locations_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.desired_move_locations_zs,
-                               ml::native_soa::source_data(group_1.zs()) + source_first,
+                               ml::native_soa::source_data(desired_move_locations_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_2{source.view_aim_directions()};
+        auto const& aim_directions_view{source.view_aim_directions()};
         ml::native_soa::move_n(destination.aim_directions_xs,
-                               ml::native_soa::source_data(group_2.xs()) + source_first,
+                               ml::native_soa::source_data(aim_directions_view.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.aim_directions_ys,
-                               ml::native_soa::source_data(group_2.ys()) + source_first,
+                               ml::native_soa::source_data(aim_directions_view.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.aim_directions_zs,
-                               ml::native_soa::source_data(group_2.zs()) + source_first,
+                               ml::native_soa::source_data(aim_directions_view.zs()) + source_first,
                                count);
-        auto const& group_3{source.view_planned_aim_directions()};
+        auto const& planned_aim_directions_view{source.view_planned_aim_directions()};
         ml::native_soa::move_n(destination.planned_aim_directions_xs,
-                               ml::native_soa::source_data(group_3.xs()) + source_first,
+                               ml::native_soa::source_data(planned_aim_directions_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.planned_aim_directions_ys,
-                               ml::native_soa::source_data(group_3.ys()) + source_first,
+                               ml::native_soa::source_data(planned_aim_directions_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.planned_aim_directions_zs,
-                               ml::native_soa::source_data(group_3.zs()) + source_first,
+                               ml::native_soa::source_data(planned_aim_directions_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_4{source.view_desired_aiming_directions()};
+        auto const& desired_aiming_directions_view{source.view_desired_aiming_directions()};
         ml::native_soa::move_n(destination.desired_aiming_directions_xs,
-                               ml::native_soa::source_data(group_4.xs()) + source_first,
+                               ml::native_soa::source_data(desired_aiming_directions_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.desired_aiming_directions_ys,
-                               ml::native_soa::source_data(group_4.ys()) + source_first,
+                               ml::native_soa::source_data(desired_aiming_directions_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.desired_aiming_directions_zs,
-                               ml::native_soa::source_data(group_4.zs()) + source_first,
+                               ml::native_soa::source_data(desired_aiming_directions_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_5{source.view_movement_directions()};
+        auto const& movement_directions_view{source.view_movement_directions()};
         ml::native_soa::move_n(destination.movement_directions_xs,
-                               ml::native_soa::source_data(group_5.xs()) + source_first,
+                               ml::native_soa::source_data(movement_directions_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.movement_directions_ys,
-                               ml::native_soa::source_data(group_5.ys()) + source_first,
+                               ml::native_soa::source_data(movement_directions_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.movement_directions_zs,
-                               ml::native_soa::source_data(group_5.zs()) + source_first,
+                               ml::native_soa::source_data(movement_directions_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_6{source.view_velocities()};
+        auto const& velocities_view{source.view_velocities()};
         ml::native_soa::move_n(destination.velocities_xs,
-                               ml::native_soa::source_data(group_6.xs()) + source_first,
+                               ml::native_soa::source_data(velocities_view.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.velocities_ys,
-                               ml::native_soa::source_data(group_6.ys()) + source_first,
+                               ml::native_soa::source_data(velocities_view.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.velocities_zs,
-                               ml::native_soa::source_data(group_6.zs()) + source_first,
+                               ml::native_soa::source_data(velocities_view.zs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.move_distances,
                                ml::native_soa::source_data(source.move_distances()) + source_first,
@@ -1346,15 +1382,18 @@ struct FighterEntityData
             ml::native_soa::source_data(source.navigation_update_countdowns_periods()) +
                 source_first,
             count);
-        auto const& group_7{source.view_separation_steering()};
+        auto const& separation_steering_view{source.view_separation_steering()};
         ml::native_soa::move_n(destination.separation_steering_xs,
-                               ml::native_soa::source_data(group_7.xs()) + source_first,
+                               ml::native_soa::source_data(separation_steering_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.separation_steering_ys,
-                               ml::native_soa::source_data(group_7.ys()) + source_first,
+                               ml::native_soa::source_data(separation_steering_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.separation_steering_zs,
-                               ml::native_soa::source_data(group_7.zs()) + source_first,
+                               ml::native_soa::source_data(separation_steering_view.zs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.navigation_risk_tiers,
                                ml::native_soa::source_data(source.navigation_risk_tiers()) +
@@ -1383,35 +1422,44 @@ struct FighterEntityData
         ml::native_soa::move_n(destination.target_ids,
                                ml::native_soa::source_data(source.target_ids()) + source_first,
                                count);
-        auto const& group_8{source.view_target_locations()};
+        auto const& target_locations_view{source.view_target_locations()};
         ml::native_soa::move_n(destination.target_locations_xs,
-                               ml::native_soa::source_data(group_8.xs()) + source_first,
+                               ml::native_soa::source_data(target_locations_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.target_locations_ys,
-                               ml::native_soa::source_data(group_8.ys()) + source_first,
+                               ml::native_soa::source_data(target_locations_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.target_locations_zs,
-                               ml::native_soa::source_data(group_8.zs()) + source_first,
+                               ml::native_soa::source_data(target_locations_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_9{source.view_target_velocities()};
+        auto const& target_velocities_view{source.view_target_velocities()};
         ml::native_soa::move_n(destination.target_velocities_xs,
-                               ml::native_soa::source_data(group_9.xs()) + source_first,
+                               ml::native_soa::source_data(target_velocities_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.target_velocities_ys,
-                               ml::native_soa::source_data(group_9.ys()) + source_first,
+                               ml::native_soa::source_data(target_velocities_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.target_velocities_zs,
-                               ml::native_soa::source_data(group_9.zs()) + source_first,
+                               ml::native_soa::source_data(target_velocities_view.zs()) +
+                                   source_first,
                                count);
-        auto const& group_10{source.view_target_directions()};
+        auto const& target_directions_view{source.view_target_directions()};
         ml::native_soa::move_n(destination.target_directions_xs,
-                               ml::native_soa::source_data(group_10.xs()) + source_first,
+                               ml::native_soa::source_data(target_directions_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.target_directions_ys,
-                               ml::native_soa::source_data(group_10.ys()) + source_first,
+                               ml::native_soa::source_data(target_directions_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.target_directions_zs,
-                               ml::native_soa::source_data(group_10.zs()) + source_first,
+                               ml::native_soa::source_data(target_directions_view.zs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.intercept_times,
                                ml::native_soa::source_data(source.intercept_times()) + source_first,

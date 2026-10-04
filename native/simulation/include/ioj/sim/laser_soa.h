@@ -505,18 +505,18 @@ struct SpawnRequestsSingleViewImpl {
     }
     template <typename Func>
     void each_column(Func&& func) const {
-        auto const& group_0{view_locations()};
-        func(group_0.xs());
-        func(group_0.ys());
-        func(group_0.zs());
-        auto const& group_1{view_rotations()};
-        func(group_1.pitches());
-        func(group_1.yaws());
-        func(group_1.rolls());
-        auto const& group_2{view_base_velocities()};
-        func(group_2.xs());
-        func(group_2.ys());
-        func(group_2.zs());
+        auto const& locations_view{view_locations()};
+        func(locations_view.xs());
+        func(locations_view.ys());
+        func(locations_view.zs());
+        auto const& rotations_view{view_rotations()};
+        func(rotations_view.pitches());
+        func(rotations_view.yaws());
+        func(rotations_view.rolls());
+        auto const& base_velocities_view{view_base_velocities()};
+        func(base_velocities_view.xs());
+        func(base_velocities_view.ys());
+        func(base_velocities_view.zs());
         func(damages());
         func(speeds());
         func(max_distances());
@@ -746,35 +746,38 @@ struct LaserSpawnRequests
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LaserSpawnRequests, size_type>
     {
         auto const destination{get_data(first)};
-        auto const& group_0{source.view_locations()};
+        auto const& locations_view{source.view_locations()};
         ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(group_0.xs()) + source_first,
+                               ml::native_soa::source_data(locations_view.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(group_0.ys()) + source_first,
+                               ml::native_soa::source_data(locations_view.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(group_0.zs()) + source_first,
+                               ml::native_soa::source_data(locations_view.zs()) + source_first,
                                count);
-        auto const& group_1{source.view_rotations()};
+        auto const& rotations_view{source.view_rotations()};
         ml::native_soa::copy_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(group_1.pitches()) + source_first,
+                               ml::native_soa::source_data(rotations_view.pitches()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(group_1.yaws()) + source_first,
+                               ml::native_soa::source_data(rotations_view.yaws()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(group_1.rolls()) + source_first,
+                               ml::native_soa::source_data(rotations_view.rolls()) + source_first,
                                count);
-        auto const& group_2{source.view_base_velocities()};
+        auto const& base_velocities_view{source.view_base_velocities()};
         ml::native_soa::copy_n(destination.base_velocities_xs,
-                               ml::native_soa::source_data(group_2.xs()) + source_first,
+                               ml::native_soa::source_data(base_velocities_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.base_velocities_ys,
-                               ml::native_soa::source_data(group_2.ys()) + source_first,
+                               ml::native_soa::source_data(base_velocities_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.base_velocities_zs,
-                               ml::native_soa::source_data(group_2.zs()) + source_first,
+                               ml::native_soa::source_data(base_velocities_view.zs()) +
+                                   source_first,
                                count);
         ml::native_soa::copy_n(destination.damages,
                                ml::native_soa::source_data(source.damages()) + source_first,
@@ -799,35 +802,38 @@ struct LaserSpawnRequests
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LaserSpawnRequests, size_type>
     {
         auto const destination{get_data(first)};
-        auto const& group_0{source.view_locations()};
+        auto const& locations_view{source.view_locations()};
         ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(group_0.xs()) + source_first,
+                               ml::native_soa::source_data(locations_view.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(group_0.ys()) + source_first,
+                               ml::native_soa::source_data(locations_view.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(group_0.zs()) + source_first,
+                               ml::native_soa::source_data(locations_view.zs()) + source_first,
                                count);
-        auto const& group_1{source.view_rotations()};
+        auto const& rotations_view{source.view_rotations()};
         ml::native_soa::move_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(group_1.pitches()) + source_first,
+                               ml::native_soa::source_data(rotations_view.pitches()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(group_1.yaws()) + source_first,
+                               ml::native_soa::source_data(rotations_view.yaws()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(group_1.rolls()) + source_first,
+                               ml::native_soa::source_data(rotations_view.rolls()) + source_first,
                                count);
-        auto const& group_2{source.view_base_velocities()};
+        auto const& base_velocities_view{source.view_base_velocities()};
         ml::native_soa::move_n(destination.base_velocities_xs,
-                               ml::native_soa::source_data(group_2.xs()) + source_first,
+                               ml::native_soa::source_data(base_velocities_view.xs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.base_velocities_ys,
-                               ml::native_soa::source_data(group_2.ys()) + source_first,
+                               ml::native_soa::source_data(base_velocities_view.ys()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.base_velocities_zs,
-                               ml::native_soa::source_data(group_2.zs()) + source_first,
+                               ml::native_soa::source_data(base_velocities_view.zs()) +
+                                   source_first,
                                count);
         ml::native_soa::move_n(destination.damages,
                                ml::native_soa::source_data(source.damages()) + source_first,
@@ -1359,18 +1365,18 @@ struct EntitiesSingleViewImpl {
     void each_column(Func&& func) const {
         func(active());
         func(sources());
-        auto const& group_0{view_locations()};
-        func(group_0.xs());
-        func(group_0.ys());
-        func(group_0.zs());
-        auto const& group_1{view_rotations()};
-        func(group_1.pitches());
-        func(group_1.yaws());
-        func(group_1.rolls());
-        auto const& group_2{view_velocities()};
-        func(group_2.xs());
-        func(group_2.ys());
-        func(group_2.zs());
+        auto const& locations_view{view_locations()};
+        func(locations_view.xs());
+        func(locations_view.ys());
+        func(locations_view.zs());
+        auto const& rotations_view{view_rotations()};
+        func(rotations_view.pitches());
+        func(rotations_view.yaws());
+        func(rotations_view.rolls());
+        auto const& velocities_view{view_velocities()};
+        func(velocities_view.xs());
+        func(velocities_view.ys());
+        func(velocities_view.zs());
         func(damages());
         func(lifetimes_remaining());
         func(instigator_ids());
@@ -1616,35 +1622,35 @@ struct LaserEntities
         ml::native_soa::copy_n(destination.sources,
                                ml::native_soa::source_data(source.sources()) + source_first,
                                count);
-        auto const& group_0{source.view_locations()};
+        auto const& locations_view{source.view_locations()};
         ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(group_0.xs()) + source_first,
+                               ml::native_soa::source_data(locations_view.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(group_0.ys()) + source_first,
+                               ml::native_soa::source_data(locations_view.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(group_0.zs()) + source_first,
+                               ml::native_soa::source_data(locations_view.zs()) + source_first,
                                count);
-        auto const& group_1{source.view_rotations()};
+        auto const& rotations_view{source.view_rotations()};
         ml::native_soa::copy_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(group_1.pitches()) + source_first,
+                               ml::native_soa::source_data(rotations_view.pitches()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(group_1.yaws()) + source_first,
+                               ml::native_soa::source_data(rotations_view.yaws()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(group_1.rolls()) + source_first,
+                               ml::native_soa::source_data(rotations_view.rolls()) + source_first,
                                count);
-        auto const& group_2{source.view_velocities()};
+        auto const& velocities_view{source.view_velocities()};
         ml::native_soa::copy_n(destination.velocities_xs,
-                               ml::native_soa::source_data(group_2.xs()) + source_first,
+                               ml::native_soa::source_data(velocities_view.xs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.velocities_ys,
-                               ml::native_soa::source_data(group_2.ys()) + source_first,
+                               ml::native_soa::source_data(velocities_view.ys()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.velocities_zs,
-                               ml::native_soa::source_data(group_2.zs()) + source_first,
+                               ml::native_soa::source_data(velocities_view.zs()) + source_first,
                                count);
         ml::native_soa::copy_n(destination.damages,
                                ml::native_soa::source_data(source.damages()) + source_first,
@@ -1677,35 +1683,35 @@ struct LaserEntities
         ml::native_soa::move_n(destination.sources,
                                ml::native_soa::source_data(source.sources()) + source_first,
                                count);
-        auto const& group_0{source.view_locations()};
+        auto const& locations_view{source.view_locations()};
         ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(group_0.xs()) + source_first,
+                               ml::native_soa::source_data(locations_view.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(group_0.ys()) + source_first,
+                               ml::native_soa::source_data(locations_view.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(group_0.zs()) + source_first,
+                               ml::native_soa::source_data(locations_view.zs()) + source_first,
                                count);
-        auto const& group_1{source.view_rotations()};
+        auto const& rotations_view{source.view_rotations()};
         ml::native_soa::move_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(group_1.pitches()) + source_first,
+                               ml::native_soa::source_data(rotations_view.pitches()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(group_1.yaws()) + source_first,
+                               ml::native_soa::source_data(rotations_view.yaws()) + source_first,
                                count);
         ml::native_soa::move_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(group_1.rolls()) + source_first,
+                               ml::native_soa::source_data(rotations_view.rolls()) + source_first,
                                count);
-        auto const& group_2{source.view_velocities()};
+        auto const& velocities_view{source.view_velocities()};
         ml::native_soa::move_n(destination.velocities_xs,
-                               ml::native_soa::source_data(group_2.xs()) + source_first,
+                               ml::native_soa::source_data(velocities_view.xs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.velocities_ys,
-                               ml::native_soa::source_data(group_2.ys()) + source_first,
+                               ml::native_soa::source_data(velocities_view.ys()) + source_first,
                                count);
         ml::native_soa::move_n(destination.velocities_zs,
-                               ml::native_soa::source_data(group_2.zs()) + source_first,
+                               ml::native_soa::source_data(velocities_view.zs()) + source_first,
                                count);
         ml::native_soa::move_n(destination.damages,
                                ml::native_soa::source_data(source.damages()) + source_first,

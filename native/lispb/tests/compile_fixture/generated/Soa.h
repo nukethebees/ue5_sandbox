@@ -293,9 +293,9 @@ struct ApiViewImpl {
     auto apply_arrays(Func&& func) const -> decltype(auto) {
         auto column_0{values()};
         auto column_1{masks()};
-        auto const& group_0{view_positions()};
-        auto column_2{group_0.xs()};
-        auto column_3{group_0.ys()};
+        auto const& positions_view{view_positions()};
+        auto column_2{positions_view.xs()};
+        auto column_3{positions_view.ys()};
         return std::forward<Func>(func)(column_0, column_1, column_2, column_3);
     }
   private:
@@ -469,12 +469,12 @@ struct COMPILE_FIXTURE_API ApiOwner
                                 count);
         ml::soa_storage::copy_n(
             destination.masks, ml::soa_storage::source_data(source.masks()) + source_first, count);
-        auto const& group_0{source.view_positions()};
+        auto const& positions_view{source.view_positions()};
         ml::soa_storage::copy_n(destination.positions_xs,
-                                ml::soa_storage::source_data(group_0.xs()) + source_first,
+                                ml::soa_storage::source_data(positions_view.xs()) + source_first,
                                 count);
         ml::soa_storage::copy_n(destination.positions_ys,
-                                ml::soa_storage::source_data(group_0.ys()) + source_first,
+                                ml::soa_storage::source_data(positions_view.ys()) + source_first,
                                 count);
     }
     template <typename Columns>
@@ -490,12 +490,12 @@ struct COMPILE_FIXTURE_API ApiOwner
                                 count);
         ml::soa_storage::move_n(
             destination.masks, ml::soa_storage::source_data(source.masks()) + source_first, count);
-        auto const& group_0{source.view_positions()};
+        auto const& positions_view{source.view_positions()};
         ml::soa_storage::move_n(destination.positions_xs,
-                                ml::soa_storage::source_data(group_0.xs()) + source_first,
+                                ml::soa_storage::source_data(positions_view.xs()) + source_first,
                                 count);
         ml::soa_storage::move_n(destination.positions_ys,
-                                ml::soa_storage::source_data(group_0.ys()) + source_first,
+                                ml::soa_storage::source_data(positions_view.ys()) + source_first,
                                 count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
@@ -1479,8 +1479,8 @@ struct FParentsSingleViewImpl {
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
         auto column_0{keys()};
-        auto const& group_0{view_children()};
-        auto column_1{group_0.values()};
+        auto const& children_view{view_children()};
+        auto column_1{children_view.values()};
         return std::forward<Func>(func)(column_0, column_1);
     }
   private:
@@ -1636,9 +1636,9 @@ struct SingleParents
         auto const destination{get_data(first)};
         ml::soa_storage::copy_n(
             destination.keys, ml::soa_storage::source_data(source.keys()) + source_first, count);
-        auto const& group_0{source.view_children()};
+        auto const& children_view{source.view_children()};
         ml::soa_storage::copy_n(destination.children_values,
-                                ml::soa_storage::source_data(group_0.values()) + source_first,
+                                ml::soa_storage::source_data(children_view.values()) + source_first,
                                 count);
     }
     template <typename Columns>
@@ -1651,9 +1651,9 @@ struct SingleParents
         auto const destination{get_data(first)};
         ml::soa_storage::move_n(
             destination.keys, ml::soa_storage::source_data(source.keys()) + source_first, count);
-        auto const& group_0{source.view_children()};
+        auto const& children_view{source.view_children()};
         ml::soa_storage::move_n(destination.children_values,
-                                ml::soa_storage::source_data(group_0.values()) + source_first,
+                                ml::soa_storage::source_data(children_view.values()) + source_first,
                                 count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
