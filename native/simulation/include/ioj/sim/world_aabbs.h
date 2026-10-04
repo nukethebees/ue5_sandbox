@@ -273,6 +273,20 @@ struct WorldAABBs
         ml::native_soa::default_construct_n(columns.max_ys, count);
         ml::native_soa::default_construct_n(columns.max_zs, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.min_xs, source.min_xs);
+        transfer(destination.min_ys, source.min_ys);
+        transfer(destination.min_zs, source.min_zs);
+        transfer(destination.max_xs, source.max_xs);
+        transfer(destination.max_ys, source.max_ys);
+        transfer(destination.max_zs, source.max_zs);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -282,12 +296,7 @@ struct WorldAABBs
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(columns.min_xs + index, columns.min_xs + source, move_count);
-        ml::native_soa::copy_n(columns.min_ys + index, columns.min_ys + source, move_count);
-        ml::native_soa::copy_n(columns.min_zs + index, columns.min_zs + source, move_count);
-        ml::native_soa::copy_n(columns.max_xs + index, columns.max_xs + source, move_count);
-        ml::native_soa::copy_n(columns.max_ys + index, columns.max_ys + source, move_count);
-        ml::native_soa::copy_n(columns.max_zs + index, columns.max_zs + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -297,25 +306,24 @@ struct WorldAABBs
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, WorldAABBs, size_type>
+    {
+        return {ml::native_soa::source_data(source.min_xs()),
+                ml::native_soa::source_data(source.min_ys()),
+                ml::native_soa::source_data(source.min_zs()),
+                ml::native_soa::source_data(source.max_xs()),
+                ml::native_soa::source_data(source.max_ys()),
+                ml::native_soa::source_data(source.max_zs())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, WorldAABBs, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::copy_n(
-            destination.min_xs, ml::native_soa::source_data(source.min_xs()) + source_first, count);
-        ml::native_soa::copy_n(
-            destination.min_ys, ml::native_soa::source_data(source.min_ys()) + source_first, count);
-        ml::native_soa::copy_n(
-            destination.min_zs, ml::native_soa::source_data(source.min_zs()) + source_first, count);
-        ml::native_soa::copy_n(
-            destination.max_xs, ml::native_soa::source_data(source.max_xs()) + source_first, count);
-        ml::native_soa::copy_n(
-            destination.max_ys, ml::native_soa::source_data(source.max_ys()) + source_first, count);
-        ml::native_soa::copy_n(
-            destination.max_zs, ml::native_soa::source_data(source.max_zs()) + source_first, count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -324,31 +332,14 @@ struct WorldAABBs
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, WorldAABBs, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::move_n(
-            destination.min_xs, ml::native_soa::source_data(source.min_xs()) + source_first, count);
-        ml::native_soa::move_n(
-            destination.min_ys, ml::native_soa::source_data(source.min_ys()) + source_first, count);
-        ml::native_soa::move_n(
-            destination.min_zs, ml::native_soa::source_data(source.min_zs()) + source_first, count);
-        ml::native_soa::move_n(
-            destination.max_xs, ml::native_soa::source_data(source.max_xs()) + source_first, count);
-        ml::native_soa::move_n(
-            destination.max_ys, ml::native_soa::source_data(source.max_ys()) + source_first, count);
-        ml::native_soa::move_n(
-            destination.max_zs, ml::native_soa::source_data(source.max_zs()) + source_first, count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.min_xs, source.min_xs, num_);
-        ml::native_soa::copy_n(destination.min_ys, source.min_ys, num_);
-        ml::native_soa::copy_n(destination.min_zs, source.min_zs, num_);
-        ml::native_soa::copy_n(destination.max_xs, source.max_xs, num_);
-        ml::native_soa::copy_n(destination.max_ys, source.max_ys, num_);
-        ml::native_soa::copy_n(destination.max_zs, source.max_zs, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };

@@ -284,6 +284,21 @@ struct LaserHitDetails
         ml::native_soa::default_construct_n(columns.emission_directions_zs, count);
         ml::native_soa::default_construct_n(columns.sources, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.emission_directions_xs, source.emission_directions_xs);
+        transfer(destination.emission_directions_ys, source.emission_directions_ys);
+        transfer(destination.emission_directions_zs, source.emission_directions_zs);
+        transfer(destination.sources, source.sources);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -293,22 +308,7 @@ struct LaserHitDetails
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(
-            columns.locations_xs + index, columns.locations_xs + source, move_count);
-        ml::native_soa::copy_n(
-            columns.locations_ys + index, columns.locations_ys + source, move_count);
-        ml::native_soa::copy_n(
-            columns.locations_zs + index, columns.locations_zs + source, move_count);
-        ml::native_soa::copy_n(columns.emission_directions_xs + index,
-                               columns.emission_directions_xs + source,
-                               move_count);
-        ml::native_soa::copy_n(columns.emission_directions_ys + index,
-                               columns.emission_directions_ys + source,
-                               move_count);
-        ml::native_soa::copy_n(columns.emission_directions_zs + index,
-                               columns.emission_directions_zs + source,
-                               move_count);
-        ml::native_soa::copy_n(columns.sources + index, columns.sources + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -318,39 +318,27 @@ struct LaserHitDetails
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, LaserHitDetails, size_type>
+    {
+        auto const& locations_view{source.view_locations()};
+        auto const& emission_directions_view{source.view_emission_directions()};
+        return {ml::native_soa::source_data(locations_view.xs()),
+                ml::native_soa::source_data(locations_view.ys()),
+                ml::native_soa::source_data(locations_view.zs()),
+                ml::native_soa::source_data(emission_directions_view.xs()),
+                ml::native_soa::source_data(emission_directions_view.ys()),
+                ml::native_soa::source_data(emission_directions_view.zs()),
+                ml::native_soa::source_data(source.sources())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LaserHitDetails, size_type>
     {
-        auto const destination{get_data(first)};
-        auto const& locations_view{source.view_locations()};
-        ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(locations_view.xs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(locations_view.ys()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(locations_view.zs()) + source_first,
-                               count);
-        auto const& emission_directions_view{source.view_emission_directions()};
-        ml::native_soa::copy_n(destination.emission_directions_xs,
-                               ml::native_soa::source_data(emission_directions_view.xs()) +
-                                   source_first,
-                               count);
-        ml::native_soa::copy_n(destination.emission_directions_ys,
-                               ml::native_soa::source_data(emission_directions_view.ys()) +
-                                   source_first,
-                               count);
-        ml::native_soa::copy_n(destination.emission_directions_zs,
-                               ml::native_soa::source_data(emission_directions_view.zs()) +
-                                   source_first,
-                               count);
-        ml::native_soa::copy_n(destination.sources,
-                               ml::native_soa::source_data(source.sources()) + source_first,
-                               count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -359,49 +347,14 @@ struct LaserHitDetails
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LaserHitDetails, size_type>
     {
-        auto const destination{get_data(first)};
-        auto const& locations_view{source.view_locations()};
-        ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(locations_view.xs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(locations_view.ys()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(locations_view.zs()) + source_first,
-                               count);
-        auto const& emission_directions_view{source.view_emission_directions()};
-        ml::native_soa::move_n(destination.emission_directions_xs,
-                               ml::native_soa::source_data(emission_directions_view.xs()) +
-                                   source_first,
-                               count);
-        ml::native_soa::move_n(destination.emission_directions_ys,
-                               ml::native_soa::source_data(emission_directions_view.ys()) +
-                                   source_first,
-                               count);
-        ml::native_soa::move_n(destination.emission_directions_zs,
-                               ml::native_soa::source_data(emission_directions_view.zs()) +
-                                   source_first,
-                               count);
-        ml::native_soa::move_n(destination.sources,
-                               ml::native_soa::source_data(source.sources()) + source_first,
-                               count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.locations_xs, source.locations_xs, num_);
-        ml::native_soa::copy_n(destination.locations_ys, source.locations_ys, num_);
-        ml::native_soa::copy_n(destination.locations_zs, source.locations_zs, num_);
-        ml::native_soa::copy_n(
-            destination.emission_directions_xs, source.emission_directions_xs, num_);
-        ml::native_soa::copy_n(
-            destination.emission_directions_ys, source.emission_directions_ys, num_);
-        ml::native_soa::copy_n(
-            destination.emission_directions_zs, source.emission_directions_zs, num_);
-        ml::native_soa::copy_n(destination.sources, source.sources, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };

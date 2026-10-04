@@ -243,6 +243,17 @@ struct DirectDamageEvents
         ml::native_soa::default_construct_n(columns.damage_amounts, count);
         ml::native_soa::default_construct_n(columns.instigators, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.damaged_entities, source.damaged_entities);
+        transfer(destination.damage_amounts, source.damage_amounts);
+        transfer(destination.instigators, source.instigators);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -252,12 +263,7 @@ struct DirectDamageEvents
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(
-            columns.damaged_entities + index, columns.damaged_entities + source, move_count);
-        ml::native_soa::copy_n(
-            columns.damage_amounts + index, columns.damage_amounts + source, move_count);
-        ml::native_soa::copy_n(
-            columns.instigators + index, columns.instigators + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -267,23 +273,21 @@ struct DirectDamageEvents
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, DirectDamageEvents, size_type>
+    {
+        return {ml::native_soa::source_data(source.damaged_entities()),
+                ml::native_soa::source_data(source.damage_amounts()),
+                ml::native_soa::source_data(source.instigators())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, DirectDamageEvents, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::copy_n(destination.damaged_entities,
-                               ml::native_soa::source_data(source.damaged_entities()) +
-                                   source_first,
-                               count);
-        ml::native_soa::copy_n(destination.damage_amounts,
-                               ml::native_soa::source_data(source.damage_amounts()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.instigators,
-                               ml::native_soa::source_data(source.instigators()) + source_first,
-                               count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -292,26 +296,14 @@ struct DirectDamageEvents
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, DirectDamageEvents, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::move_n(destination.damaged_entities,
-                               ml::native_soa::source_data(source.damaged_entities()) +
-                                   source_first,
-                               count);
-        ml::native_soa::move_n(destination.damage_amounts,
-                               ml::native_soa::source_data(source.damage_amounts()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.instigators,
-                               ml::native_soa::source_data(source.instigators()) + source_first,
-                               count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.damaged_entities, source.damaged_entities, num_);
-        ml::native_soa::copy_n(destination.damage_amounts, source.damage_amounts, num_);
-        ml::native_soa::copy_n(destination.instigators, source.instigators, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
     void add(EntityUniqueId const damaged_entity,

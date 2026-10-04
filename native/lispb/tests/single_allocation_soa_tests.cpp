@@ -40,16 +40,16 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
     EXPECT_EQ(output.find("this->count_"), std::string::npos);
     EXPECT_EQ(output.find("CompactViewState"), std::string::npos);
     EXPECT_NE(output.find("State* state_{};"), std::string::npos);
-    EXPECT_NE(output.find("ml::native_soa::copy_n(destination.nested_xs"), std::string::npos);
+    EXPECT_NE(output.find("transfer_n<Overlapping>(dst, src, count);"), std::string::npos);
+    EXPECT_NE(output.find("transfer(destination.nested_xs, source.nested_xs);"), std::string::npos);
     EXPECT_EQ(output.find("TArray"), std::string::npos);
     EXPECT_EQ(output.find("FMemory"), std::string::npos);
     EXPECT_EQ(output.find("CoreMinimal"), std::string::npos);
     EXPECT_NE(output.find("ml::native_soa::default_construct_n(columns.nested_xs, count);"),
               std::string::npos);
-    EXPECT_NE(output.find("ml::native_soa::source_data(nested_view.xs()) + source_first, count);"),
-              std::string::npos);
+    EXPECT_NE(output.find("ml::native_soa::source_data(nested_view.xs())"), std::string::npos);
     EXPECT_NE(output.find("Operations::release_storage(*this);"), std::string::npos);
-    EXPECT_NE(output.find("ml::native_soa::copy_n(destination.nested_xs, source.nested_xs, num_);"),
+    EXPECT_NE(output.find("transfer_columns<false>(destination, source, num_);"),
               std::string::npos);
 }
 
@@ -112,27 +112,19 @@ TEST(SingleAllocationSoa, TypedColumnOperationsUseLayoutCursorAndPreserveNestedP
               std::string::npos);
     EXPECT_NE(output.find("ml::soa_storage::default_construct_n(columns.nested_values, count);"),
               std::string::npos);
-    EXPECT_NE(output.find("columns.nested_values + index, columns.nested_values + source, "
-                          "move_count"),
+    EXPECT_NE(output.find("transfer_columns<false>(columns + index, columns + source, move_count)"),
               std::string::npos);
     EXPECT_NE(output.find("ml::soa_storage::LayoutCursor cursor{blocks};"), std::string::npos);
     EXPECT_NE(output.find("cursor.column_pointer(data, Layout::IdsColumn)"), std::string::npos);
     EXPECT_NE(output.find("cursor.column_pointer(data, Layout::NestedValuesColumn)"),
               std::string::npos);
-    EXPECT_NE(
-        output.find("ml::soa_storage::source_data(nested_view.values()) + source_first, count"),
-        std::string::npos);
+    EXPECT_NE(output.find("ml::soa_storage::source_data(nested_view.values())"), std::string::npos);
     EXPECT_EQ(output.find("_bytes{elements_to_"), std::string::npos);
     auto const start{output.find("void copy_live_columns(")};
     ASSERT_NE(start, std::string::npos);
     auto const body{output.substr(start)};
-    auto const typed_copy{body.find("ml::soa_storage::copy_n(")};
-    auto const copy{
-        body.find("ml::soa_storage::copy_n(destination.nested_values, source.nested_values, "
-                  "num_);")};
-    ASSERT_NE(typed_copy, std::string::npos);
-    ASSERT_NE(copy, std::string::npos);
-    EXPECT_LE(typed_copy, copy);
+    EXPECT_NE(body.find("transfer_columns<false>(destination, source, num_);"), std::string::npos);
+    EXPECT_EQ(body.find("destination.nested_values"), std::string::npos);
 }
 
 TEST(SingleAllocationSoa, SchemaTaggedSourcesNeedNoOrdinaryView) {
@@ -168,11 +160,10 @@ TEST(SingleAllocationSoa, OverlappingCopyUsesMoveWithoutChangingAppend) {
         ASSERT_LT(copy_begin, live_copy_begin);
         auto const append{output.substr(append_begin, copy_begin - append_begin)};
         auto const copy{output.substr(copy_begin, live_copy_begin - copy_begin)};
-        EXPECT_NE(append.find("::copy_n("), std::string::npos);
-        EXPECT_EQ(append.find("::move_n("), std::string::npos);
-        EXPECT_NE(copy.find("::move_n(destination.ids"), std::string::npos);
-        EXPECT_NE(copy.find("::move_n(destination.nested_wide"), std::string::npos);
-        EXPECT_EQ(copy.find("::copy_n("), std::string::npos);
+        EXPECT_NE(append.find("transfer_columns<false>"), std::string::npos);
+        EXPECT_EQ(append.find("source.ids()"), std::string::npos);
+        EXPECT_NE(copy.find("transfer_columns<true>"), std::string::npos);
+        EXPECT_EQ(copy.find("source.ids()"), std::string::npos);
     }
     EXPECT_NE(render(schemas()).find("void copy_columns_from("), std::string::npos);
 }
@@ -363,8 +354,9 @@ TEST(SingleAllocationSoa, SharesTypeChecksAlignmentAndCopySizesAcrossNestedLeave
     };
     EXPECT_EQ(occurrences("supported_leaf<float>"), 0);
     EXPECT_EQ(occurrences("sizeof(float)"), 0);
-    EXPECT_EQ(occurrences("columns.ys + source, move_count)"), 1);
-    EXPECT_EQ(occurrences("source_data(source.ys())"), 2);
+    EXPECT_EQ(occurrences("transfer_n<Overlapping>(dst, src, count)"), 1);
+    EXPECT_EQ(occurrences("transfer(destination.ys, source.ys)"), 1);
+    EXPECT_EQ(occurrences("source_data(source.ys())"), 1);
     EXPECT_EQ(occurrences("_maximum_alignment"), 0);
     EXPECT_NE(owner.find("ColLayout<float> YsColumn{NestedXsColumn}"), std::string::npos);
     EXPECT_NE(owner.find("capacity_block_bound(YsColumn)"), std::string::npos);

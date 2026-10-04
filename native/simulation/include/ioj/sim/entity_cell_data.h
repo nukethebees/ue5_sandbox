@@ -361,6 +361,27 @@ struct EntityCellData
         ml::native_soa::default_construct_n(columns.max_cell_zs, count);
         ml::native_soa::default_construct_n(columns.entity_ids, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.min_point_xs, source.min_point_xs);
+        transfer(destination.min_point_ys, source.min_point_ys);
+        transfer(destination.min_point_zs, source.min_point_zs);
+        transfer(destination.max_point_xs, source.max_point_xs);
+        transfer(destination.max_point_ys, source.max_point_ys);
+        transfer(destination.max_point_zs, source.max_point_zs);
+        transfer(destination.min_cell_xs, source.min_cell_xs);
+        transfer(destination.min_cell_ys, source.min_cell_ys);
+        transfer(destination.min_cell_zs, source.min_cell_zs);
+        transfer(destination.max_cell_xs, source.max_cell_xs);
+        transfer(destination.max_cell_ys, source.max_cell_ys);
+        transfer(destination.max_cell_zs, source.max_cell_zs);
+        transfer(destination.entity_ids, source.entity_ids);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -370,31 +391,7 @@ struct EntityCellData
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(
-            columns.min_point_xs + index, columns.min_point_xs + source, move_count);
-        ml::native_soa::copy_n(
-            columns.min_point_ys + index, columns.min_point_ys + source, move_count);
-        ml::native_soa::copy_n(
-            columns.min_point_zs + index, columns.min_point_zs + source, move_count);
-        ml::native_soa::copy_n(
-            columns.max_point_xs + index, columns.max_point_xs + source, move_count);
-        ml::native_soa::copy_n(
-            columns.max_point_ys + index, columns.max_point_ys + source, move_count);
-        ml::native_soa::copy_n(
-            columns.max_point_zs + index, columns.max_point_zs + source, move_count);
-        ml::native_soa::copy_n(
-            columns.min_cell_xs + index, columns.min_cell_xs + source, move_count);
-        ml::native_soa::copy_n(
-            columns.min_cell_ys + index, columns.min_cell_ys + source, move_count);
-        ml::native_soa::copy_n(
-            columns.min_cell_zs + index, columns.min_cell_zs + source, move_count);
-        ml::native_soa::copy_n(
-            columns.max_cell_xs + index, columns.max_cell_xs + source, move_count);
-        ml::native_soa::copy_n(
-            columns.max_cell_ys + index, columns.max_cell_ys + source, move_count);
-        ml::native_soa::copy_n(
-            columns.max_cell_zs + index, columns.max_cell_zs + source, move_count);
-        ml::native_soa::copy_n(columns.entity_ids + index, columns.entity_ids + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -404,52 +401,31 @@ struct EntityCellData
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityCellData, size_type>
+    {
+        return {ml::native_soa::source_data(source.min_point_xs()),
+                ml::native_soa::source_data(source.min_point_ys()),
+                ml::native_soa::source_data(source.min_point_zs()),
+                ml::native_soa::source_data(source.max_point_xs()),
+                ml::native_soa::source_data(source.max_point_ys()),
+                ml::native_soa::source_data(source.max_point_zs()),
+                ml::native_soa::source_data(source.min_cell_xs()),
+                ml::native_soa::source_data(source.min_cell_ys()),
+                ml::native_soa::source_data(source.min_cell_zs()),
+                ml::native_soa::source_data(source.max_cell_xs()),
+                ml::native_soa::source_data(source.max_cell_ys()),
+                ml::native_soa::source_data(source.max_cell_zs()),
+                ml::native_soa::source_data(source.entity_ids())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityCellData, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::copy_n(destination.min_point_xs,
-                               ml::native_soa::source_data(source.min_point_xs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.min_point_ys,
-                               ml::native_soa::source_data(source.min_point_ys()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.min_point_zs,
-                               ml::native_soa::source_data(source.min_point_zs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.max_point_xs,
-                               ml::native_soa::source_data(source.max_point_xs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.max_point_ys,
-                               ml::native_soa::source_data(source.max_point_ys()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.max_point_zs,
-                               ml::native_soa::source_data(source.max_point_zs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.min_cell_xs,
-                               ml::native_soa::source_data(source.min_cell_xs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.min_cell_ys,
-                               ml::native_soa::source_data(source.min_cell_ys()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.min_cell_zs,
-                               ml::native_soa::source_data(source.min_cell_zs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.max_cell_xs,
-                               ml::native_soa::source_data(source.max_cell_xs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.max_cell_ys,
-                               ml::native_soa::source_data(source.max_cell_ys()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.max_cell_zs,
-                               ml::native_soa::source_data(source.max_cell_zs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.entity_ids,
-                               ml::native_soa::source_data(source.entity_ids()) + source_first,
-                               count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -458,65 +434,14 @@ struct EntityCellData
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityCellData, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::move_n(destination.min_point_xs,
-                               ml::native_soa::source_data(source.min_point_xs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.min_point_ys,
-                               ml::native_soa::source_data(source.min_point_ys()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.min_point_zs,
-                               ml::native_soa::source_data(source.min_point_zs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.max_point_xs,
-                               ml::native_soa::source_data(source.max_point_xs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.max_point_ys,
-                               ml::native_soa::source_data(source.max_point_ys()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.max_point_zs,
-                               ml::native_soa::source_data(source.max_point_zs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.min_cell_xs,
-                               ml::native_soa::source_data(source.min_cell_xs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.min_cell_ys,
-                               ml::native_soa::source_data(source.min_cell_ys()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.min_cell_zs,
-                               ml::native_soa::source_data(source.min_cell_zs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.max_cell_xs,
-                               ml::native_soa::source_data(source.max_cell_xs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.max_cell_ys,
-                               ml::native_soa::source_data(source.max_cell_ys()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.max_cell_zs,
-                               ml::native_soa::source_data(source.max_cell_zs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.entity_ids,
-                               ml::native_soa::source_data(source.entity_ids()) + source_first,
-                               count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.min_point_xs, source.min_point_xs, num_);
-        ml::native_soa::copy_n(destination.min_point_ys, source.min_point_ys, num_);
-        ml::native_soa::copy_n(destination.min_point_zs, source.min_point_zs, num_);
-        ml::native_soa::copy_n(destination.max_point_xs, source.max_point_xs, num_);
-        ml::native_soa::copy_n(destination.max_point_ys, source.max_point_ys, num_);
-        ml::native_soa::copy_n(destination.max_point_zs, source.max_point_zs, num_);
-        ml::native_soa::copy_n(destination.min_cell_xs, source.min_cell_xs, num_);
-        ml::native_soa::copy_n(destination.min_cell_ys, source.min_cell_ys, num_);
-        ml::native_soa::copy_n(destination.min_cell_zs, source.min_cell_zs, num_);
-        ml::native_soa::copy_n(destination.max_cell_xs, source.max_cell_xs, num_);
-        ml::native_soa::copy_n(destination.max_cell_ys, source.max_cell_ys, num_);
-        ml::native_soa::copy_n(destination.max_cell_zs, source.max_cell_zs, num_);
-        ml::native_soa::copy_n(destination.entity_ids, source.entity_ids, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };

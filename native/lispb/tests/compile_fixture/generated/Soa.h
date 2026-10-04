@@ -433,6 +433,18 @@ struct COMPILE_FIXTURE_API ApiOwner
         ml::soa_storage::default_construct_n(columns.positions_xs, count);
         ml::soa_storage::default_construct_n(columns.positions_ys, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.values, source.values);
+        transfer(destination.masks, source.masks);
+        transfer(destination.positions_xs, source.positions_xs);
+        transfer(destination.positions_ys, source.positions_ys);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -442,12 +454,7 @@ struct COMPILE_FIXTURE_API ApiOwner
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::soa_storage::copy_n(columns.values + index, columns.values + source, move_count);
-        ml::soa_storage::copy_n(columns.masks + index, columns.masks + source, move_count);
-        ml::soa_storage::copy_n(
-            columns.positions_xs + index, columns.positions_xs + source, move_count);
-        ml::soa_storage::copy_n(
-            columns.positions_ys + index, columns.positions_ys + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -457,25 +464,23 @@ struct COMPILE_FIXTURE_API ApiOwner
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
+    {
+        auto const& positions_view{source.view_positions()};
+        return {ml::soa_storage::source_data(source.values()),
+                ml::soa_storage::source_data(source.masks()),
+                ml::soa_storage::source_data(positions_view.xs()),
+                ml::soa_storage::source_data(positions_view.ys())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::soa_storage::copy_n(destination.values,
-                                ml::soa_storage::source_data(source.values()) + source_first,
-                                count);
-        ml::soa_storage::copy_n(
-            destination.masks, ml::soa_storage::source_data(source.masks()) + source_first, count);
-        auto const& positions_view{source.view_positions()};
-        ml::soa_storage::copy_n(destination.positions_xs,
-                                ml::soa_storage::source_data(positions_view.xs()) + source_first,
-                                count);
-        ml::soa_storage::copy_n(destination.positions_ys,
-                                ml::soa_storage::source_data(positions_view.ys()) + source_first,
-                                count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -484,29 +489,14 @@ struct COMPILE_FIXTURE_API ApiOwner
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, ApiOwner, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::soa_storage::move_n(destination.values,
-                                ml::soa_storage::source_data(source.values()) + source_first,
-                                count);
-        ml::soa_storage::move_n(
-            destination.masks, ml::soa_storage::source_data(source.masks()) + source_first, count);
-        auto const& positions_view{source.view_positions()};
-        ml::soa_storage::move_n(destination.positions_xs,
-                                ml::soa_storage::source_data(positions_view.xs()) + source_first,
-                                count);
-        ml::soa_storage::move_n(destination.positions_ys,
-                                ml::soa_storage::source_data(positions_view.ys()) + source_first,
-                                count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::soa_storage::copy_n(destination.values, source.values, num_);
-        ml::soa_storage::copy_n(destination.masks, source.masks, num_);
-        ml::soa_storage::copy_n(destination.positions_xs, source.positions_xs, num_);
-        ml::soa_storage::copy_n(destination.positions_ys, source.positions_ys, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
     using Value = float;
@@ -745,6 +735,16 @@ struct EquivalentOwner
         ml::soa_storage::default_construct_n(columns.xs, count);
         ml::soa_storage::default_construct_n(columns.ys, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.xs, source.xs);
+        transfer(destination.ys, source.ys);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -754,8 +754,7 @@ struct EquivalentOwner
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::soa_storage::copy_n(columns.xs + index, columns.xs + source, move_count);
-        ml::soa_storage::copy_n(columns.ys + index, columns.ys + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -765,17 +764,20 @@ struct EquivalentOwner
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
+    {
+        return {ml::soa_storage::source_data(source.xs()),
+                ml::soa_storage::source_data(source.ys())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::soa_storage::copy_n(
-            destination.xs, ml::soa_storage::source_data(source.xs()) + source_first, count);
-        ml::soa_storage::copy_n(
-            destination.ys, ml::soa_storage::source_data(source.ys()) + source_first, count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -784,19 +786,14 @@ struct EquivalentOwner
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EquivalentOwner, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::soa_storage::move_n(
-            destination.xs, ml::soa_storage::source_data(source.xs()) + source_first, count);
-        ml::soa_storage::move_n(
-            destination.ys, ml::soa_storage::source_data(source.ys()) + source_first, count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::soa_storage::copy_n(destination.xs, source.xs, num_);
-        ml::soa_storage::copy_n(destination.ys, source.ys, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
     using equivalent_type = ApiPair;
@@ -1606,6 +1603,16 @@ struct SingleParents
         ml::soa_storage::default_construct_n(columns.keys, count);
         ml::soa_storage::default_construct_n(columns.children_values, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.keys, source.keys);
+        transfer(destination.children_values, source.children_values);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -1615,9 +1622,7 @@ struct SingleParents
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::soa_storage::copy_n(columns.keys + index, columns.keys + source, move_count);
-        ml::soa_storage::copy_n(
-            columns.children_values + index, columns.children_values + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -1627,19 +1632,21 @@ struct SingleParents
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleParents, size_type>
+    {
+        auto const& children_view{source.view_children()};
+        return {ml::soa_storage::source_data(source.keys()),
+                ml::soa_storage::source_data(children_view.values())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleParents, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::soa_storage::copy_n(
-            destination.keys, ml::soa_storage::source_data(source.keys()) + source_first, count);
-        auto const& children_view{source.view_children()};
-        ml::soa_storage::copy_n(destination.children_values,
-                                ml::soa_storage::source_data(children_view.values()) + source_first,
-                                count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -1648,21 +1655,14 @@ struct SingleParents
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleParents, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::soa_storage::move_n(
-            destination.keys, ml::soa_storage::source_data(source.keys()) + source_first, count);
-        auto const& children_view{source.view_children()};
-        ml::soa_storage::move_n(destination.children_values,
-                                ml::soa_storage::source_data(children_view.values()) + source_first,
-                                count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::soa_storage::copy_n(destination.keys, source.keys, num_);
-        ml::soa_storage::copy_n(destination.children_values, source.children_values, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };
@@ -2871,6 +2871,15 @@ struct SingleRestrictionRows
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         ml::soa_storage::default_construct_n(columns.restricted, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.restricted, source.restricted);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -2880,8 +2889,7 @@ struct SingleRestrictionRows
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::soa_storage::copy_n(
-            columns.restricted + index, columns.restricted + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -2891,16 +2899,19 @@ struct SingleRestrictionRows
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleRestrictionRows, size_type>
+    {
+        return {ml::soa_storage::source_data(source.restricted())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleRestrictionRows, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::soa_storage::copy_n(destination.restricted,
-                                ml::soa_storage::source_data(source.restricted()) + source_first,
-                                count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -2909,17 +2920,14 @@ struct SingleRestrictionRows
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, SingleRestrictionRows, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::soa_storage::move_n(destination.restricted,
-                                ml::soa_storage::source_data(source.restricted()) + source_first,
-                                count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::soa_storage::copy_n(destination.restricted, source.restricted, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };

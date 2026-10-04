@@ -230,6 +230,16 @@ struct EntityEntityOverlaps
         ml::native_soa::default_construct_n(columns.first_entities, count);
         ml::native_soa::default_construct_n(columns.second_entities, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.first_entities, source.first_entities);
+        transfer(destination.second_entities, source.second_entities);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -239,10 +249,7 @@ struct EntityEntityOverlaps
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(
-            columns.first_entities + index, columns.first_entities + source, move_count);
-        ml::native_soa::copy_n(
-            columns.second_entities + index, columns.second_entities + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -252,19 +259,20 @@ struct EntityEntityOverlaps
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityEntityOverlaps, size_type>
+    {
+        return {ml::native_soa::source_data(source.first_entities()),
+                ml::native_soa::source_data(source.second_entities())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityEntityOverlaps, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::copy_n(destination.first_entities,
-                               ml::native_soa::source_data(source.first_entities()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.second_entities,
-                               ml::native_soa::source_data(source.second_entities()) + source_first,
-                               count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -273,21 +281,14 @@ struct EntityEntityOverlaps
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityEntityOverlaps, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::move_n(destination.first_entities,
-                               ml::native_soa::source_data(source.first_entities()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.second_entities,
-                               ml::native_soa::source_data(source.second_entities()) + source_first,
-                               count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.first_entities, source.first_entities, num_);
-        ml::native_soa::copy_n(destination.second_entities, source.second_entities, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };
@@ -511,6 +512,16 @@ struct EntityStaticOverlaps
         ml::native_soa::default_construct_n(columns.entities, count);
         ml::native_soa::default_construct_n(columns.static_geometry_indices, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.entities, source.entities);
+        transfer(destination.static_geometry_indices, source.static_geometry_indices);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -520,10 +531,7 @@ struct EntityStaticOverlaps
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(columns.entities + index, columns.entities + source, move_count);
-        ml::native_soa::copy_n(columns.static_geometry_indices + index,
-                               columns.static_geometry_indices + source,
-                               move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -533,20 +541,20 @@ struct EntityStaticOverlaps
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityStaticOverlaps, size_type>
+    {
+        return {ml::native_soa::source_data(source.entities()),
+                ml::native_soa::source_data(source.static_geometry_indices())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityStaticOverlaps, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::copy_n(destination.entities,
-                               ml::native_soa::source_data(source.entities()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.static_geometry_indices,
-                               ml::native_soa::source_data(source.static_geometry_indices()) +
-                                   source_first,
-                               count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -555,23 +563,14 @@ struct EntityStaticOverlaps
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityStaticOverlaps, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::move_n(destination.entities,
-                               ml::native_soa::source_data(source.entities()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.static_geometry_indices,
-                               ml::native_soa::source_data(source.static_geometry_indices()) +
-                                   source_first,
-                               count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.entities, source.entities, num_);
-        ml::native_soa::copy_n(
-            destination.static_geometry_indices, source.static_geometry_indices, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };

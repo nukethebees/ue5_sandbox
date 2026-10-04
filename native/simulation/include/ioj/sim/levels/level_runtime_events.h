@@ -245,6 +245,17 @@ struct LevelSpawnGroups
         ml::native_soa::default_construct_n(columns.offsets, count);
         ml::native_soa::default_construct_n(columns.counts, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.types, source.types);
+        transfer(destination.offsets, source.offsets);
+        transfer(destination.counts, source.counts);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -254,9 +265,7 @@ struct LevelSpawnGroups
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(columns.types + index, columns.types + source, move_count);
-        ml::native_soa::copy_n(columns.offsets + index, columns.offsets + source, move_count);
-        ml::native_soa::copy_n(columns.counts + index, columns.counts + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -266,20 +275,21 @@ struct LevelSpawnGroups
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelSpawnGroups, size_type>
+    {
+        return {ml::native_soa::source_data(source.types()),
+                ml::native_soa::source_data(source.offsets()),
+                ml::native_soa::source_data(source.counts())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelSpawnGroups, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::copy_n(
-            destination.types, ml::native_soa::source_data(source.types()) + source_first, count);
-        ml::native_soa::copy_n(destination.offsets,
-                               ml::native_soa::source_data(source.offsets()) + source_first,
-                               count);
-        ml::native_soa::copy_n(
-            destination.counts, ml::native_soa::source_data(source.counts()) + source_first, count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -288,23 +298,14 @@ struct LevelSpawnGroups
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelSpawnGroups, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::move_n(
-            destination.types, ml::native_soa::source_data(source.types()) + source_first, count);
-        ml::native_soa::move_n(destination.offsets,
-                               ml::native_soa::source_data(source.offsets()) + source_first,
-                               count);
-        ml::native_soa::move_n(
-            destination.counts, ml::native_soa::source_data(source.counts()) + source_first, count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.types, source.types, num_);
-        ml::native_soa::copy_n(destination.offsets, source.offsets, num_);
-        ml::native_soa::copy_n(destination.counts, source.counts, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };
@@ -651,6 +652,26 @@ struct LevelCapitalSpawnEvents
         ml::native_soa::default_construct_n(columns.initial_fighter_spawn_delays, count);
         ml::native_soa::default_construct_n(columns.fighter_spawn_cooldowns, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.entity_indices, source.entity_indices);
+        transfer(destination.target_entity_indices, source.target_entity_indices);
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.rotations_pitches, source.rotations_pitches);
+        transfer(destination.rotations_yaws, source.rotations_yaws);
+        transfer(destination.rotations_rolls, source.rotations_rolls);
+        transfer(destination.teams, source.teams);
+        transfer(destination.healths, source.healths);
+        transfer(destination.initial_fighter_spawn_delays, source.initial_fighter_spawn_delays);
+        transfer(destination.fighter_spawn_cooldowns, source.fighter_spawn_cooldowns);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -660,31 +681,7 @@ struct LevelCapitalSpawnEvents
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(
-            columns.entity_indices + index, columns.entity_indices + source, move_count);
-        ml::native_soa::copy_n(columns.target_entity_indices + index,
-                               columns.target_entity_indices + source,
-                               move_count);
-        ml::native_soa::copy_n(
-            columns.locations_xs + index, columns.locations_xs + source, move_count);
-        ml::native_soa::copy_n(
-            columns.locations_ys + index, columns.locations_ys + source, move_count);
-        ml::native_soa::copy_n(
-            columns.locations_zs + index, columns.locations_zs + source, move_count);
-        ml::native_soa::copy_n(
-            columns.rotations_pitches + index, columns.rotations_pitches + source, move_count);
-        ml::native_soa::copy_n(
-            columns.rotations_yaws + index, columns.rotations_yaws + source, move_count);
-        ml::native_soa::copy_n(
-            columns.rotations_rolls + index, columns.rotations_rolls + source, move_count);
-        ml::native_soa::copy_n(columns.teams + index, columns.teams + source, move_count);
-        ml::native_soa::copy_n(columns.healths + index, columns.healths + source, move_count);
-        ml::native_soa::copy_n(columns.initial_fighter_spawn_delays + index,
-                               columns.initial_fighter_spawn_delays + source,
-                               move_count);
-        ml::native_soa::copy_n(columns.fighter_spawn_cooldowns + index,
-                               columns.fighter_spawn_cooldowns + source,
-                               move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -694,53 +691,32 @@ struct LevelCapitalSpawnEvents
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelCapitalSpawnEvents, size_type>
+    {
+        auto const& locations_view{source.view_locations()};
+        auto const& rotations_view{source.view_rotations()};
+        return {ml::native_soa::source_data(source.entity_indices()),
+                ml::native_soa::source_data(source.target_entity_indices()),
+                ml::native_soa::source_data(locations_view.xs()),
+                ml::native_soa::source_data(locations_view.ys()),
+                ml::native_soa::source_data(locations_view.zs()),
+                ml::native_soa::source_data(rotations_view.pitches()),
+                ml::native_soa::source_data(rotations_view.yaws()),
+                ml::native_soa::source_data(rotations_view.rolls()),
+                ml::native_soa::source_data(source.teams()),
+                ml::native_soa::source_data(source.healths()),
+                ml::native_soa::source_data(source.initial_fighter_spawn_delays()),
+                ml::native_soa::source_data(source.fighter_spawn_cooldowns())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelCapitalSpawnEvents, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::copy_n(destination.entity_indices,
-                               ml::native_soa::source_data(source.entity_indices()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.target_entity_indices,
-                               ml::native_soa::source_data(source.target_entity_indices()) +
-                                   source_first,
-                               count);
-        auto const& locations_view{source.view_locations()};
-        ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(locations_view.xs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(locations_view.ys()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(locations_view.zs()) + source_first,
-                               count);
-        auto const& rotations_view{source.view_rotations()};
-        ml::native_soa::copy_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(rotations_view.pitches()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(rotations_view.yaws()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(rotations_view.rolls()) + source_first,
-                               count);
-        ml::native_soa::copy_n(
-            destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
-        ml::native_soa::copy_n(destination.healths,
-                               ml::native_soa::source_data(source.healths()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.initial_fighter_spawn_delays,
-                               ml::native_soa::source_data(source.initial_fighter_spawn_delays()) +
-                                   source_first,
-                               count);
-        ml::native_soa::copy_n(destination.fighter_spawn_cooldowns,
-                               ml::native_soa::source_data(source.fighter_spawn_cooldowns()) +
-                                   source_first,
-                               count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -749,68 +725,14 @@ struct LevelCapitalSpawnEvents
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelCapitalSpawnEvents, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::move_n(destination.entity_indices,
-                               ml::native_soa::source_data(source.entity_indices()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.target_entity_indices,
-                               ml::native_soa::source_data(source.target_entity_indices()) +
-                                   source_first,
-                               count);
-        auto const& locations_view{source.view_locations()};
-        ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(locations_view.xs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(locations_view.ys()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(locations_view.zs()) + source_first,
-                               count);
-        auto const& rotations_view{source.view_rotations()};
-        ml::native_soa::move_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(rotations_view.pitches()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(rotations_view.yaws()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(rotations_view.rolls()) + source_first,
-                               count);
-        ml::native_soa::move_n(
-            destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
-        ml::native_soa::move_n(destination.healths,
-                               ml::native_soa::source_data(source.healths()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.initial_fighter_spawn_delays,
-                               ml::native_soa::source_data(source.initial_fighter_spawn_delays()) +
-                                   source_first,
-                               count);
-        ml::native_soa::move_n(destination.fighter_spawn_cooldowns,
-                               ml::native_soa::source_data(source.fighter_spawn_cooldowns()) +
-                                   source_first,
-                               count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.entity_indices, source.entity_indices, num_);
-        ml::native_soa::copy_n(
-            destination.target_entity_indices, source.target_entity_indices, num_);
-        ml::native_soa::copy_n(destination.locations_xs, source.locations_xs, num_);
-        ml::native_soa::copy_n(destination.locations_ys, source.locations_ys, num_);
-        ml::native_soa::copy_n(destination.locations_zs, source.locations_zs, num_);
-        ml::native_soa::copy_n(destination.rotations_pitches, source.rotations_pitches, num_);
-        ml::native_soa::copy_n(destination.rotations_yaws, source.rotations_yaws, num_);
-        ml::native_soa::copy_n(destination.rotations_rolls, source.rotations_rolls, num_);
-        ml::native_soa::copy_n(destination.teams, source.teams, num_);
-        ml::native_soa::copy_n(destination.healths, source.healths, num_);
-        ml::native_soa::copy_n(
-            destination.initial_fighter_spawn_delays, source.initial_fighter_spawn_delays, num_);
-        ml::native_soa::copy_n(
-            destination.fighter_spawn_cooldowns, source.fighter_spawn_cooldowns, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };
@@ -1127,6 +1049,24 @@ struct LevelTurretSpawnEvents
         ml::native_soa::default_construct_n(columns.healths, count);
         ml::native_soa::default_construct_n(columns.laser_damages, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.entity_indices, source.entity_indices);
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.rotations_pitches, source.rotations_pitches);
+        transfer(destination.rotations_yaws, source.rotations_yaws);
+        transfer(destination.rotations_rolls, source.rotations_rolls);
+        transfer(destination.teams, source.teams);
+        transfer(destination.healths, source.healths);
+        transfer(destination.laser_damages, source.laser_damages);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -1136,24 +1076,7 @@ struct LevelTurretSpawnEvents
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(
-            columns.entity_indices + index, columns.entity_indices + source, move_count);
-        ml::native_soa::copy_n(
-            columns.locations_xs + index, columns.locations_xs + source, move_count);
-        ml::native_soa::copy_n(
-            columns.locations_ys + index, columns.locations_ys + source, move_count);
-        ml::native_soa::copy_n(
-            columns.locations_zs + index, columns.locations_zs + source, move_count);
-        ml::native_soa::copy_n(
-            columns.rotations_pitches + index, columns.rotations_pitches + source, move_count);
-        ml::native_soa::copy_n(
-            columns.rotations_yaws + index, columns.rotations_yaws + source, move_count);
-        ml::native_soa::copy_n(
-            columns.rotations_rolls + index, columns.rotations_rolls + source, move_count);
-        ml::native_soa::copy_n(columns.teams + index, columns.teams + source, move_count);
-        ml::native_soa::copy_n(columns.healths + index, columns.healths + source, move_count);
-        ml::native_soa::copy_n(
-            columns.laser_damages + index, columns.laser_damages + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -1163,44 +1086,30 @@ struct LevelTurretSpawnEvents
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelTurretSpawnEvents, size_type>
+    {
+        auto const& locations_view{source.view_locations()};
+        auto const& rotations_view{source.view_rotations()};
+        return {ml::native_soa::source_data(source.entity_indices()),
+                ml::native_soa::source_data(locations_view.xs()),
+                ml::native_soa::source_data(locations_view.ys()),
+                ml::native_soa::source_data(locations_view.zs()),
+                ml::native_soa::source_data(rotations_view.pitches()),
+                ml::native_soa::source_data(rotations_view.yaws()),
+                ml::native_soa::source_data(rotations_view.rolls()),
+                ml::native_soa::source_data(source.teams()),
+                ml::native_soa::source_data(source.healths()),
+                ml::native_soa::source_data(source.laser_damages())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelTurretSpawnEvents, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::copy_n(destination.entity_indices,
-                               ml::native_soa::source_data(source.entity_indices()) + source_first,
-                               count);
-        auto const& locations_view{source.view_locations()};
-        ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(locations_view.xs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(locations_view.ys()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(locations_view.zs()) + source_first,
-                               count);
-        auto const& rotations_view{source.view_rotations()};
-        ml::native_soa::copy_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(rotations_view.pitches()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(rotations_view.yaws()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(rotations_view.rolls()) + source_first,
-                               count);
-        ml::native_soa::copy_n(
-            destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
-        ml::native_soa::copy_n(destination.healths,
-                               ml::native_soa::source_data(source.healths()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.laser_damages,
-                               ml::native_soa::source_data(source.laser_damages()) + source_first,
-                               count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -1209,54 +1118,14 @@ struct LevelTurretSpawnEvents
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelTurretSpawnEvents, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::move_n(destination.entity_indices,
-                               ml::native_soa::source_data(source.entity_indices()) + source_first,
-                               count);
-        auto const& locations_view{source.view_locations()};
-        ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(locations_view.xs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(locations_view.ys()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(locations_view.zs()) + source_first,
-                               count);
-        auto const& rotations_view{source.view_rotations()};
-        ml::native_soa::move_n(destination.rotations_pitches,
-                               ml::native_soa::source_data(rotations_view.pitches()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.rotations_yaws,
-                               ml::native_soa::source_data(rotations_view.yaws()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.rotations_rolls,
-                               ml::native_soa::source_data(rotations_view.rolls()) + source_first,
-                               count);
-        ml::native_soa::move_n(
-            destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
-        ml::native_soa::move_n(destination.healths,
-                               ml::native_soa::source_data(source.healths()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.laser_damages,
-                               ml::native_soa::source_data(source.laser_damages()) + source_first,
-                               count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.entity_indices, source.entity_indices, num_);
-        ml::native_soa::copy_n(destination.locations_xs, source.locations_xs, num_);
-        ml::native_soa::copy_n(destination.locations_ys, source.locations_ys, num_);
-        ml::native_soa::copy_n(destination.locations_zs, source.locations_zs, num_);
-        ml::native_soa::copy_n(destination.rotations_pitches, source.rotations_pitches, num_);
-        ml::native_soa::copy_n(destination.rotations_yaws, source.rotations_yaws, num_);
-        ml::native_soa::copy_n(destination.rotations_rolls, source.rotations_rolls, num_);
-        ml::native_soa::copy_n(destination.teams, source.teams, num_);
-        ml::native_soa::copy_n(destination.healths, source.healths, num_);
-        ml::native_soa::copy_n(destination.laser_damages, source.laser_damages, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };
@@ -1527,6 +1396,20 @@ struct LevelSpinnerSpawnEvents
         ml::native_soa::default_construct_n(columns.yaws, count);
         ml::native_soa::default_construct_n(columns.initial_fire_point_indices, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.entity_indices, source.entity_indices);
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.yaws, source.yaws);
+        transfer(destination.initial_fire_point_indices, source.initial_fire_point_indices);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -1536,18 +1419,7 @@ struct LevelSpinnerSpawnEvents
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(
-            columns.entity_indices + index, columns.entity_indices + source, move_count);
-        ml::native_soa::copy_n(
-            columns.locations_xs + index, columns.locations_xs + source, move_count);
-        ml::native_soa::copy_n(
-            columns.locations_ys + index, columns.locations_ys + source, move_count);
-        ml::native_soa::copy_n(
-            columns.locations_zs + index, columns.locations_zs + source, move_count);
-        ml::native_soa::copy_n(columns.yaws + index, columns.yaws + source, move_count);
-        ml::native_soa::copy_n(columns.initial_fire_point_indices + index,
-                               columns.initial_fire_point_indices + source,
-                               move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -1557,32 +1429,25 @@ struct LevelSpinnerSpawnEvents
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelSpinnerSpawnEvents, size_type>
+    {
+        auto const& locations_view{source.view_locations()};
+        return {ml::native_soa::source_data(source.entity_indices()),
+                ml::native_soa::source_data(locations_view.xs()),
+                ml::native_soa::source_data(locations_view.ys()),
+                ml::native_soa::source_data(locations_view.zs()),
+                ml::native_soa::source_data(source.yaws()),
+                ml::native_soa::source_data(source.initial_fire_point_indices())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelSpinnerSpawnEvents, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::copy_n(destination.entity_indices,
-                               ml::native_soa::source_data(source.entity_indices()) + source_first,
-                               count);
-        auto const& locations_view{source.view_locations()};
-        ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(locations_view.xs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(locations_view.ys()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(locations_view.zs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(
-            destination.yaws, ml::native_soa::source_data(source.yaws()) + source_first, count);
-        ml::native_soa::copy_n(destination.initial_fire_point_indices,
-                               ml::native_soa::source_data(source.initial_fire_point_indices()) +
-                                   source_first,
-                               count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -1591,39 +1456,14 @@ struct LevelSpinnerSpawnEvents
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelSpinnerSpawnEvents, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::move_n(destination.entity_indices,
-                               ml::native_soa::source_data(source.entity_indices()) + source_first,
-                               count);
-        auto const& locations_view{source.view_locations()};
-        ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(locations_view.xs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(locations_view.ys()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(locations_view.zs()) + source_first,
-                               count);
-        ml::native_soa::move_n(
-            destination.yaws, ml::native_soa::source_data(source.yaws()) + source_first, count);
-        ml::native_soa::move_n(destination.initial_fire_point_indices,
-                               ml::native_soa::source_data(source.initial_fire_point_indices()) +
-                                   source_first,
-                               count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.entity_indices, source.entity_indices, num_);
-        ml::native_soa::copy_n(destination.locations_xs, source.locations_xs, num_);
-        ml::native_soa::copy_n(destination.locations_ys, source.locations_ys, num_);
-        ml::native_soa::copy_n(destination.locations_zs, source.locations_zs, num_);
-        ml::native_soa::copy_n(destination.yaws, source.yaws, num_);
-        ml::native_soa::copy_n(
-            destination.initial_fire_point_indices, source.initial_fire_point_indices, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };
@@ -1855,6 +1695,17 @@ struct LevelMissionEventGroups
         ml::native_soa::default_construct_n(columns.offsets, count);
         ml::native_soa::default_construct_n(columns.counts, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.types, source.types);
+        transfer(destination.offsets, source.offsets);
+        transfer(destination.counts, source.counts);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -1864,9 +1715,7 @@ struct LevelMissionEventGroups
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(columns.types + index, columns.types + source, move_count);
-        ml::native_soa::copy_n(columns.offsets + index, columns.offsets + source, move_count);
-        ml::native_soa::copy_n(columns.counts + index, columns.counts + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -1876,20 +1725,21 @@ struct LevelMissionEventGroups
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelMissionEventGroups, size_type>
+    {
+        return {ml::native_soa::source_data(source.types()),
+                ml::native_soa::source_data(source.offsets()),
+                ml::native_soa::source_data(source.counts())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelMissionEventGroups, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::copy_n(
-            destination.types, ml::native_soa::source_data(source.types()) + source_first, count);
-        ml::native_soa::copy_n(destination.offsets,
-                               ml::native_soa::source_data(source.offsets()) + source_first,
-                               count);
-        ml::native_soa::copy_n(
-            destination.counts, ml::native_soa::source_data(source.counts()) + source_first, count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -1898,23 +1748,14 @@ struct LevelMissionEventGroups
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LevelMissionEventGroups, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::move_n(
-            destination.types, ml::native_soa::source_data(source.types()) + source_first, count);
-        ml::native_soa::move_n(destination.offsets,
-                               ml::native_soa::source_data(source.offsets()) + source_first,
-                               count);
-        ml::native_soa::move_n(
-            destination.counts, ml::native_soa::source_data(source.counts()) + source_first, count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.types, source.types, num_);
-        ml::native_soa::copy_n(destination.offsets, source.offsets, num_);
-        ml::native_soa::copy_n(destination.counts, source.counts, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };

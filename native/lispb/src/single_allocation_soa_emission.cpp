@@ -36,10 +36,6 @@ auto compact_function(FunctionSpec spec) -> Node {
     return inline_function(std::move(spec));
 }
 
-auto copy_function(SingleAllocationModel const& model) -> Expr {
-    return named(model.dialect.runtime_namespace + "copy_n");
-}
-
 auto column_access(std::span<std::string const> path,
                    std::string receiver,
                    std::map<std::string, std::string>& groups,
@@ -277,21 +273,32 @@ auto column_copying_nodes(SingleAllocationModel const& model) -> Nodes {
     })};
 
     NodeListBuilder copy_body;
+    copy_body.add(raw("auto transfer = [count](auto* dst, auto const* src) {\n    "
+                      "ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);\n};"));
     for (auto const& column : model.columns) {
-        auto const pointer{member_access(named("columns"), column.flattened_identifier)};
-        copy_body.add(ExpressionStmt{call(copy_function(model),
-                                          {binary(BinaryOperator::add, pointer, named("index")),
-                                           binary(BinaryOperator::add, pointer, named("source")),
-                                           named("move_count")})});
+        copy_body.add(
+            ExpressionStmt{call(named("transfer"),
+                                {member_access(named("destination"), column.flattened_identifier),
+                                 member_access(named("source"), column.flattened_identifier)})});
     }
-    auto copy{inline_function(FunctionSpec{
+    auto transfer{inline_function(FunctionSpec{
+        .name = "transfer_columns",
+        .return_type = "void",
+        .parameters = {FunctionParameter{"DataPointers<std::byte> const&", "destination"},
+                       FunctionParameter{"DataPointers<Byte> const&", "source"},
+                       FunctionParameter{"size_type", "count"}},
+        .body = copy_body.build(),
+        .is_static = true,
+        .template_parameters = "bool Overlapping, typename Byte",
+    })};
+    auto copy{compact_function(FunctionSpec{
         .name = "copy_columns",
         .return_type = "void",
         .parameters = {FunctionParameter{"DataPointers<std::byte> const&", "columns"},
                        FunctionParameter{"size_type", "index"},
                        FunctionParameter{"size_type", "source"},
                        FunctionParameter{"size_type", "move_count"}},
-        .body = copy_body.build(),
+        .body = {raw("transfer_columns<false>(columns + index, columns + source, move_count);")},
         .is_static = true,
     })};
 
@@ -305,23 +312,33 @@ auto column_copying_nodes(SingleAllocationModel const& model) -> Nodes {
                              "[&](size_type index, size_type source, size_type count) { "
                              "copy_columns(columns, index, source, count); })"}}},
     })};
-    return adjacent({std::move(swap_remove), std::move(copy), std::move(remove_indices)});
+    return adjacent(
+        {std::move(transfer), std::move(swap_remove), std::move(copy), std::move(remove_indices)});
+}
+
+auto source_pointers_node(SingleAllocationModel const& model) -> Node {
+    NodeListBuilder body;
+    std::map<std::string, std::string> groups;
+    std::vector<Expr> pointers;
+    for (auto const& column : model.columns) {
+        pointers.push_back(call(named(model.dialect.runtime_namespace + "source_data"),
+                                {column_access(column.member_path, "source", groups, body)}));
+    }
+    body.add(ReturnStmt{init_list(std::move(pointers))});
+    return inline_function(FunctionSpec{
+        .name = "source_pointers",
+        .return_type = "auto",
+        .parameters = {FunctionParameter{"Columns const&", "source"}},
+        .body = body.build(),
+        .qualifiers = {.trailing_return_type = CppType{"DataPointers<std::byte const>"}},
+        .is_static = true,
+        .template_parameters = "typename Columns",
+        .requires_clause =
+            "ml::soa_storage_detail::SoaSourceFor<Columns, " + model.owner_name + ", size_type>",
+    });
 }
 
 auto source_copy_node(SingleAllocationModel const& model, bool const overlapping) -> Node {
-    NodeListBuilder body;
-    body.add(VariableDeclarationStmt{
-        "auto const", "destination", call(named("get_data"), {named("first")})});
-    std::map<std::string, std::string> groups;
-    for (auto const& column : model.columns) {
-        auto const source{call(named(model.dialect.runtime_namespace + "source_data"),
-                               {column_access(column.member_path, "source", groups, body)})};
-        body.add(ExpressionStmt{
-            call(named(model.dialect.runtime_namespace + (overlapping ? "move_n" : "copy_n")),
-                 {member_access(named("destination"), column.flattened_identifier),
-                  binary(BinaryOperator::add, source, named("source_first")),
-                  named("count")})});
-    }
     return inline_function(FunctionSpec{
         .name = overlapping ? "copy_columns_from" : "append_columns",
         .return_type = "void",
@@ -329,14 +346,15 @@ auto source_copy_node(SingleAllocationModel const& model, bool const overlapping
                        FunctionParameter{"size_type", "source_first"},
                        FunctionParameter{"size_type", "first"},
                        FunctionParameter{"size_type", "count"}},
-        .body = body.build(),
+        .body = {raw(std::string{"transfer_columns<"} + (overlapping ? "true" : "false") +
+                     ">(get_data(first), source_pointers(source) + source_first, count);")},
         .template_parameters = "typename Columns",
         .requires_clause =
             "ml::soa_storage_detail::SoaSourceFor<Columns, " + model.owner_name + ", size_type>",
     });
 }
 
-auto live_column_copy_node(SingleAllocationModel const& model) -> Node {
+auto live_column_copy_node() -> Node {
     NodeListBuilder copy_live;
     copy_live.add(
         VariableDeclarationStmt{"auto const", "old_blocks", call(named("capacity_blocks"))});
@@ -355,13 +373,7 @@ auto live_column_copy_node(SingleAllocationModel const& model) -> Node {
         "auto const",
         "destination",
         call(named("make_data_unchecked"), {named("new_data"), named("new_blocks")})});
-    for (auto const& column : model.columns) {
-        copy_live.add(
-            ExpressionStmt{call(copy_function(model),
-                                {member_access(named("destination"), column.flattened_identifier),
-                                 member_access(named("source"), column.flattened_identifier),
-                                 named("num_")})});
-    }
+    copy_live.add(raw("transfer_columns<false>(destination, source, num_);"));
 
     return inline_function(FunctionSpec{
         .name = "copy_live_columns",
@@ -786,11 +798,13 @@ auto storage_implementation_nodes(SingleAllocationModel const& model) -> Nodes {
         .new_lines(1)
         .append(std::move(copying))
         .new_lines(1)
+        .add(source_pointers_node(model))
+        .new_lines(1)
         .add(source_copy_node(model, false))
         .new_lines(1)
         .add(source_copy_node(model, true))
         .new_lines(1)
-        .add(live_column_copy_node(model));
+        .add(live_column_copy_node());
 
     return children.build();
 }
