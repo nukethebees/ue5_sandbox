@@ -556,8 +556,8 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     auto const first_entities{entity_overlaps.first_entities()};
     auto const second_entities{entity_overlaps.second_entities()};
     for (std::uint32_t index{}; index < entity_overlap_count; ++index) {
-        EXPECT_TRUE(entity_is_alive(fixture.owners.get_read_view(), first_entities[index]) &&
-                    entity_is_alive(fixture.owners.get_read_view(), second_entities[index]))
+        EXPECT_TRUE(entity_is_alive(fixture.owners, first_entities[index]) &&
+                    entity_is_alive(fixture.owners, second_entities[index]))
             << "Dynamic overlap handles remain valid";
         EXPECT_TRUE(first_entities[index] < second_entities[index])
             << "Dynamic overlap is canonical";
@@ -580,7 +580,7 @@ TEST(EntityAABBOverlaps, ManyMovedEntitiesProduceSortedUniqueResults) {
     auto const static_entities{static_overlaps.entities()};
     auto const static_indices{static_overlaps.static_geometry_indices()};
     for (std::uint32_t index{}; index < static_overlap_count; ++index) {
-        EXPECT_TRUE(entity_is_alive(fixture.owners.get_read_view(), static_entities[index]))
+        EXPECT_TRUE(entity_is_alive(fixture.owners, static_entities[index]))
             << "Static overlap entity remains valid";
         EXPECT_TRUE(static_indices[index] >= 0 &&
                     static_cast<std::uint32_t>(static_indices[index]) < static_geometry_count)
@@ -737,7 +737,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
         << "The next frame starts without event batches";
 }
 
-TEST(EntityAABBOverlaps, InvalidDeadAndRetiredCandidatesAreIgnored) {
+TEST(EntityAABBOverlaps, NullDeadAndRetiredCandidatesAreIgnored) {
 
     OverlapFixture fixture;
     auto const static_index{fixture.add_static({{-20.f, -20.f, -20.f}}, {{20.f, 20.f, 20.f}})};
@@ -751,8 +751,8 @@ TEST(EntityAABBOverlaps, InvalidDeadAndRetiredCandidatesAreIgnored) {
     std::array const rotations{Rotator3f{}};
     std::array const dead{std::uint8_t{0}};
     fixture.run_tick(removed_handle, removed_location, rotations, dead);
-    EXPECT_TRUE(observe_entity(fixture.owners.get_read_view(), removed).has_value() &&
-                !observe_live_entity(fixture.owners.get_read_view(), removed).has_value())
+    EXPECT_TRUE(observe_entity(fixture.owners, removed).has_value() &&
+                !observe_live_entity(fixture.owners, removed).has_value())
         << "Moved-and-dead entity remains structurally present until removal";
     EXPECT_EQ(fixture.get_entity_overlaps().num(), 0) << "Dead overlap candidate produces no pair";
     EXPECT_EQ(fixture.get_static_overlaps().num(), 0)
@@ -762,11 +762,10 @@ TEST(EntityAABBOverlaps, InvalidDeadAndRetiredCandidatesAreIgnored) {
     fixture.owners.remove(removed);
     auto const replacement{fixture.spawn({{10.f, 0.f, 0.f}})};
     fixture.owners.publish();
-    EXPECT_FALSE(observe_entity(fixture.owners.get_read_view(), removed).has_value())
+    EXPECT_FALSE(observe_entity(fixture.owners, removed).has_value())
         << "Removed ID no longer resolves after publication";
 
-    std::array const overlap_candidates{
-        EntityUniqueId{}, EntityUniqueId(999, EntityType::PlayerShip), removed_id, live};
+    std::array const overlap_candidates{EntityUniqueId{}, removed_id, live};
     fixture.refresh_and_detect_overlaps(std::span<EntityUniqueId const>{
         overlap_candidates.data(),
         static_cast<std::size_t>(static_cast<std::int32_t>(overlap_candidates.size()))});

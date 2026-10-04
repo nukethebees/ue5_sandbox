@@ -55,7 +55,7 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/laser_soa.h
   ../include/ioj/sim/laser_source.h
   ../include/ioj/sim/level_event_types.h
-  ../include/ioj/sim/level_read_view.h
+  ../include/ioj/sim/level_read_access.h
   ../include/ioj/sim/level_sim.h
   ../include/ioj/sim/level_telemetry_block_history_types.h
   ../include/ioj/sim/level_telemetry_current_state.h

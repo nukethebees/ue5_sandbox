@@ -1,5 +1,6 @@
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 
+#include <ioj/sim/sim_clock.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 
@@ -10,7 +11,7 @@ auto FLevelPresentationResources::is_valid() const -> bool {
            IsValid(spinners) && IsValid(sparks);
 }
 FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resources,
-                                       ::ioj::sim::LevelReadView const& view,
+                                       ::ioj::sim::LevelReadAccess const& view,
                                        TArray<FTransform> turret_transforms)
     : config_{resources.config}
     , sparks{*resources.sparks}
@@ -22,8 +23,9 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     auto const& config{config_};
     resources.sparks->initialise(config.sparks);
     sparks.clear();
-    if (resources.player.IsSet() && view.player.has_value()) {
-        player_.Emplace(resources.player.GetValue(), config.player_ship, view.player.value());
+    auto const player_view{view.get_player()};
+    if (resources.player.IsSet() && player_view.has_value()) {
+        player_.Emplace(resources.player.GetValue(), config.player_ship, player_view.value());
     }
 #if WITH_EDITORONLY_DATA
     lasers.debug_drawer = config.laser_debug_drawer;
@@ -45,7 +47,7 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     ValidateOptionalAssets(capital_ships, turrets);
 
     update_views(view, false);
-    last_frame_sequence_ = view.frame_sequence;
+    last_frame_sequence_ = view.frame_sequence();
     lasers.player_colours_ =
         UTestTeamVisualData::build_team_colour_cache(config.player_ship.team_visual_data);
     lasers.fighter_colours_ =
@@ -65,13 +67,13 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     lasers.begin_play_presentation();
 }
 
-void FLevelPresentation::update_views(::ioj::sim::LevelReadView const& view,
+void FLevelPresentation::update_views(::ioj::sim::LevelReadAccess const& view,
                                       bool const consume_changes) {
-    capital_ships.view_ = view.capitals;
-    capital_ship_fighters.view_ = view.fighters;
-    turrets.view_ = view.turrets;
-    spinners.view_ = view.spinners;
-    lasers.view_ = view.lasers;
+    capital_ships.view_ = view.get_capitals();
+    capital_ship_fighters.view_ = view.get_fighters();
+    turrets.view_ = view.get_turrets();
+    spinners.view_ = view.get_spinners();
+    lasers.view_ = view.get_lasers();
     if (!consume_changes) {
         capital_ships.view_.changes = {};
         capital_ships.view_.deaths = {};
@@ -82,13 +84,14 @@ void FLevelPresentation::update_views(::ioj::sim::LevelReadView const& view,
         lasers.view_.hit_ordinals = {};
     }
 }
-void FLevelPresentation::tick(float const dt, ::ioj::sim::LevelReadView const& view) {
-    update_views(view, last_frame_sequence_ != view.frame_sequence);
-    last_frame_sequence_ = view.frame_sequence;
-    last_completed_tick_ = view.clock->get_completed_ticks();
+void FLevelPresentation::tick(float const dt, ::ioj::sim::LevelReadAccess const& view) {
+    update_views(view, last_frame_sequence_ != view.frame_sequence());
+    last_frame_sequence_ = view.frame_sequence();
+    last_completed_tick_ = view.get_clock().get_completed_ticks();
     ++tick_count_;
-    if (player_.IsSet() && view.player.has_value()) {
-        player_->tick(view.player.value());
+    auto const player_view{view.get_player()};
+    if (player_.IsSet() && player_view.has_value()) {
+        player_->tick(player_view.value());
     }
     capital_ships.update_visual_data();
     capital_ship_fighters.update_visual_data();

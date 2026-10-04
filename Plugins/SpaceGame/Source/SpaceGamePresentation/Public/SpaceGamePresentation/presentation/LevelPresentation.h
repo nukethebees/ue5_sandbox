@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/sim/level_read_view.h>
+#include <ioj/sim/level_read_access.h>
 #include <SpaceGamePresentation/presentation/CapitalPresentation.h>
 #include <SpaceGamePresentation/presentation/DelayedNiagaraSpawns.h>
 #include <SpaceGamePresentation/presentation/FighterPresentation.h>
@@ -24,14 +24,14 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentationResources {
 
 struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     FLevelPresentation(FLevelPresentationResources const& resources,
-                       ::ioj::sim::LevelReadView const& view,
+                       ::ioj::sim::LevelReadAccess const& view,
                        TArray<FTransform> turret_transforms);
     FLevelPresentation(FLevelPresentation const&) = delete;
     FLevelPresentation(FLevelPresentation&&) = delete;
     auto operator=(FLevelPresentation const&) -> FLevelPresentation& = delete;
     auto operator=(FLevelPresentation&&) -> FLevelPresentation& = delete;
 
-    void tick(float dt, ::ioj::sim::LevelReadView const& view);
+    void tick(float dt, ::ioj::sim::LevelReadAccess const& view);
     auto get_tick_count() const -> uint64 { return tick_count_; }
     auto get_last_completed_tick() const -> ::ioj::sim::SimTick { return last_completed_tick_; }
   private:
@@ -49,5 +49,5 @@ struct SPACEGAMEPRESENTATION_API FLevelPresentation {
     uint64 last_frame_sequence_{};
     uint64 tick_count_{};
     ::ioj::sim::SimTick last_completed_tick_{};
-    void update_views(::ioj::sim::LevelReadView const& view, bool consume_changes);
+    void update_views(::ioj::sim::LevelReadAccess const& view, bool consume_changes);
 };
