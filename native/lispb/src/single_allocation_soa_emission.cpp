@@ -48,7 +48,7 @@ auto column_access(std::span<std::string const> path,
     auto const group_count{path.size() - 1};
     for (std::size_t index{}; index < group_count; ++index) {
         if (index > 0) {
-            group_path += "_";
+            group_path += '_';
         }
         group_path += path[index];
         auto const [group, inserted]{groups.try_emplace(group_path, group_path + "_view")};
