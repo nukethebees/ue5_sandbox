@@ -24,6 +24,7 @@ struct FrameVectors3f {
     void set_num(size_type count);
     void clear() noexcept;
     void add(Vector3f value);
+    // Require source and indices to be disjoint from this container's storage.
     void add(Vectors3fConstView source, std::span<size_type const> indices);
     void set(size_type index, Vector3f value);
 
