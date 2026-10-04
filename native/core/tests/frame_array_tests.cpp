@@ -7,6 +7,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <memory_resource>
 #include <new>
 #include <span>
@@ -394,6 +395,136 @@ TEST(NativeCoreFrameArray, ShrinksAndRemovesExactlyTheActiveElements) {
     scalars.set_num(3);
     EXPECT_EQ(scalars[1], 0);
     EXPECT_EQ(scalars[2], 0);
+}
+
+TEST(NativeCoreFrameArray, UninitialisedGrowthLeavesNewElementsForCallerConstruction) {
+    for (bool const reserve_spare : {false, true}) {
+        TrackedValue::reset_counts();
+        RecordingResource resource;
+        {
+            ml::FrameArray<TrackedValue> values{&resource};
+            values.reserve(reserve_spare ? 3 : 1);
+            values.emplace(42);
+            auto const allocation_count{resource.allocations.size()};
+
+            values.set_num_uninitialised(3);
+            EXPECT_EQ(values.num(), 3);
+            EXPECT_EQ(TrackedValue::live_count, 1);
+            EXPECT_EQ(values[0].value, 42);
+            EXPECT_EQ(resource.allocations.size(), allocation_count + (reserve_spare ? 0 : 1));
+
+            std::construct_at(values.data() + 1, 17);
+            std::construct_at(values.data() + 2, 99);
+            EXPECT_EQ(values[1].value, 17);
+            EXPECT_EQ(values[2].value, 99);
+            EXPECT_EQ(TrackedValue::live_count, 3);
+        }
+        EXPECT_EQ(TrackedValue::live_count, 0);
+        EXPECT_EQ(resource.outstanding, 0);
+    }
+}
+
+TEST(NativeCoreFrameArray, UninitialisedResizeShrinksAndReusesStorage) {
+    TrackedValue::reset_counts();
+    RecordingResource resource;
+    {
+        ml::FrameArray<TrackedValue> values{&resource};
+        values.set_num_uninitialised(0);
+        EXPECT_TRUE(values.is_empty());
+        EXPECT_EQ(values.data(), nullptr);
+        EXPECT_TRUE(resource.allocations.empty());
+
+        values.reserve(3);
+        values.emplace(10);
+        values.emplace(20);
+        values.emplace(30);
+        auto* const storage{values.data()};
+
+        values.set_num_uninitialised(3);
+        EXPECT_EQ(values.num(), 3);
+        EXPECT_EQ(TrackedValue::live_count, 3);
+        EXPECT_EQ(TrackedValue::destruction_count, 0);
+        EXPECT_EQ(values[1].value, 20);
+        EXPECT_EQ(values[2].value, 30);
+
+        values.set_num_uninitialised(1);
+        EXPECT_EQ(values.num(), 1);
+        EXPECT_EQ(values[0].value, 10);
+        EXPECT_EQ(TrackedValue::live_count, 1);
+        EXPECT_EQ(TrackedValue::destruction_count, 2);
+
+        values.set_num_uninitialised(3);
+        EXPECT_EQ(TrackedValue::live_count, 1);
+        std::construct_at(values.data() + 1, 40);
+        std::construct_at(values.data() + 2, 50);
+        EXPECT_EQ(values[0].value, 10);
+        EXPECT_EQ(values[1].value, 40);
+        EXPECT_EQ(values[2].value, 50);
+
+        values.set_num_uninitialised(0);
+        EXPECT_TRUE(values.is_empty());
+        EXPECT_EQ(TrackedValue::live_count, 0);
+        EXPECT_EQ(TrackedValue::destruction_count, 5);
+        EXPECT_EQ(values.data(), storage);
+        EXPECT_EQ(resource.allocations.size(), 1);
+        EXPECT_EQ(resource.outstanding, 1);
+    }
+    EXPECT_EQ(TrackedValue::destruction_count, 5);
+    EXPECT_EQ(resource.outstanding, 0);
+}
+
+TEST(NativeCoreFrameArray, UninitialisedResizeSupportsNonDefaultConstructibleMoveOnlyElements) {
+    RecordingResource resource;
+    {
+        ml::FrameArray<MoveOnlyValue> values{&resource};
+        values.set_num_uninitialised(1);
+        EXPECT_EQ(values.num(), 1);
+        std::construct_at(values.data(), 42);
+
+        values.set_num_uninitialised(3);
+        EXPECT_EQ(values.num(), 3);
+        EXPECT_EQ(values[0].value, 42);
+        std::construct_at(values.data() + 1, 17);
+        std::construct_at(values.data() + 2, 99);
+        EXPECT_EQ(values[1].value, 17);
+        EXPECT_EQ(values[2].value, 99);
+    }
+    EXPECT_EQ(resource.outstanding, 0);
+}
+
+TEST(NativeCoreFrameArray, UninitialisedResizePreservesStateWhenAllocationFails) {
+    TrackedValue::reset_counts();
+    RecordingResource resource;
+    {
+        ml::FrameArray<TrackedValue> values{&resource};
+        resource.fail_next = true;
+        EXPECT_THROW(values.set_num_uninitialised(1), std::bad_alloc);
+        EXPECT_TRUE(values.is_empty());
+        EXPECT_EQ(values.data(), nullptr);
+        EXPECT_EQ(resource.outstanding, 0);
+
+        values.reserve(1);
+        values.emplace(42);
+        auto* const storage{values.data()};
+        resource.fail_next = true;
+        EXPECT_THROW(values.set_num_uninitialised(3), std::bad_alloc);
+        EXPECT_EQ(values.num(), 1);
+        EXPECT_EQ(values.data(), storage);
+        EXPECT_EQ(values[0].value, 42);
+        EXPECT_EQ(TrackedValue::live_count, 1);
+        EXPECT_EQ(TrackedValue::move_count, 0);
+        EXPECT_EQ(TrackedValue::destruction_count, 0);
+        EXPECT_EQ(resource.outstanding, 1);
+
+        values.set_num_uninitialised(3);
+        std::construct_at(values.data() + 1, 17);
+        std::construct_at(values.data() + 2, 99);
+        EXPECT_EQ(values.num(), 3);
+        EXPECT_EQ(values[0].value, 42);
+        EXPECT_EQ(TrackedValue::live_count, 3);
+    }
+    EXPECT_EQ(TrackedValue::live_count, 0);
+    EXPECT_EQ(resource.outstanding, 0);
 }
 
 TEST(NativeCoreFrameArray, ConsumesAliasedArgumentsBeforeGrowingStorage) {
