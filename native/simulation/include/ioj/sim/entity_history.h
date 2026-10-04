@@ -235,13 +235,15 @@ struct EntityHistory
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(destination.entity_ids, source.entity_ids, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.entity_types, source.entity_types, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.teams, source.teams, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.kills, source.kills, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.killed_by, source.killed_by, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.life_state, source.life_state, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.entity_ids, source.entity_ids);
+        transfer(destination.entity_types, source.entity_types);
+        transfer(destination.teams, source.teams);
+        transfer(destination.kills, source.kills);
+        transfer(destination.killed_by, source.killed_by);
+        transfer(destination.life_state, source.life_state);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

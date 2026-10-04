@@ -40,7 +40,8 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
     EXPECT_EQ(output.find("this->count_"), std::string::npos);
     EXPECT_EQ(output.find("CompactViewState"), std::string::npos);
     EXPECT_NE(output.find("State* state_{};"), std::string::npos);
-    EXPECT_NE(output.find("transfer_n<Overlapping>(destination.nested_xs"), std::string::npos);
+    EXPECT_NE(output.find("transfer_n<Overlapping>(dst, src, count);"), std::string::npos);
+    EXPECT_NE(output.find("transfer(destination.nested_xs, source.nested_xs);"), std::string::npos);
     EXPECT_EQ(output.find("TArray"), std::string::npos);
     EXPECT_EQ(output.find("FMemory"), std::string::npos);
     EXPECT_EQ(output.find("CoreMinimal"), std::string::npos);
@@ -355,7 +356,8 @@ TEST(SingleAllocationSoa, SharesTypeChecksAlignmentAndCopySizesAcrossNestedLeave
     };
     EXPECT_EQ(occurrences("supported_leaf<float>"), 0);
     EXPECT_EQ(occurrences("sizeof(float)"), 0);
-    EXPECT_EQ(occurrences("destination.ys, source.ys, count)"), 1);
+    EXPECT_EQ(occurrences("transfer_n<Overlapping>(dst, src, count)"), 1);
+    EXPECT_EQ(occurrences("transfer(destination.ys, source.ys)"), 1);
     EXPECT_EQ(occurrences("source_data(source.ys())"), 1);
     EXPECT_EQ(occurrences("_maximum_alignment"), 0);
     EXPECT_NE(owner.find("ColLayout<float> YsColumn{NestedXsColumn}"), std::string::npos);

@@ -229,12 +229,15 @@ struct WorldAABBs
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(destination.min_xs, source.min_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.min_ys, source.min_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.min_zs, source.min_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.max_xs, source.max_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.max_ys, source.max_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.max_zs, source.max_zs, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.min_xs, source.min_xs);
+        transfer(destination.min_ys, source.min_ys);
+        transfer(destination.min_zs, source.min_zs);
+        transfer(destination.max_xs, source.max_xs);
+        transfer(destination.max_ys, source.max_ys);
+        transfer(destination.max_zs, source.max_zs);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

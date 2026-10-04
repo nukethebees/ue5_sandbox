@@ -346,26 +346,20 @@ struct HistoryRows
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.completed_ticks, source.completed_ticks, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.validity_masks, source.validity_masks, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.active_entities, source.active_entities, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.active_entities_by_type, source.active_entities_by_type, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.active_entities_by_team_and_type,
-                                                source.active_entities_by_team_and_type,
-                                                count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.spawned_entities, source.spawned_entities, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.destroyed_entities, source.destroyed_entities, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.kills, source.kills, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.active_lasers, source.active_lasers, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.lasers_fired, source.lasers_fired, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.completed_ticks, source.completed_ticks);
+        transfer(destination.validity_masks, source.validity_masks);
+        transfer(destination.active_entities, source.active_entities);
+        transfer(destination.active_entities_by_type, source.active_entities_by_type);
+        transfer(destination.active_entities_by_team_and_type,
+                 source.active_entities_by_team_and_type);
+        transfer(destination.spawned_entities, source.spawned_entities);
+        transfer(destination.destroyed_entities, source.destroyed_entities);
+        transfer(destination.kills, source.kills);
+        transfer(destination.active_lasers, source.active_lasers);
+        transfer(destination.lasers_fired, source.lasers_fired);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

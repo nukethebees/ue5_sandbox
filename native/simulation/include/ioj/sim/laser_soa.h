@@ -317,31 +317,23 @@ struct LaserSpawnRequests
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_xs, source.locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_ys, source.locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_zs, source.locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_pitches, source.rotations_pitches, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_yaws, source.rotations_yaws, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_rolls, source.rotations_rolls, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.base_velocities_xs, source.base_velocities_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.base_velocities_ys, source.base_velocities_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.base_velocities_zs, source.base_velocities_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.damages, source.damages, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.speeds, source.speeds, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.max_distances, source.max_distances, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.instigator_ids, source.instigator_ids, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.sources, source.sources, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.rotations_pitches, source.rotations_pitches);
+        transfer(destination.rotations_yaws, source.rotations_yaws);
+        transfer(destination.rotations_rolls, source.rotations_rolls);
+        transfer(destination.base_velocities_xs, source.base_velocities_xs);
+        transfer(destination.base_velocities_ys, source.base_velocities_ys);
+        transfer(destination.base_velocities_zs, source.base_velocities_zs);
+        transfer(destination.damages, source.damages);
+        transfer(destination.speeds, source.speeds);
+        transfer(destination.max_distances, source.max_distances);
+        transfer(destination.instigator_ids, source.instigator_ids);
+        transfer(destination.sources, source.sources);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -730,34 +722,25 @@ struct LaserEntities
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(destination.active, source.active, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.sources, source.sources, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_xs, source.locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_ys, source.locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_zs, source.locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_pitches, source.rotations_pitches, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_yaws, source.rotations_yaws, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_rolls, source.rotations_rolls, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.velocities_xs, source.velocities_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.velocities_ys, source.velocities_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.velocities_zs, source.velocities_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.damages, source.damages, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.lifetimes_remaining, source.lifetimes_remaining, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.instigator_ids, source.instigator_ids, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.initial_lifetimes, source.initial_lifetimes, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.spawn_times, source.spawn_times, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.active, source.active);
+        transfer(destination.sources, source.sources);
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.rotations_pitches, source.rotations_pitches);
+        transfer(destination.rotations_yaws, source.rotations_yaws);
+        transfer(destination.rotations_rolls, source.rotations_rolls);
+        transfer(destination.velocities_xs, source.velocities_xs);
+        transfer(destination.velocities_ys, source.velocities_ys);
+        transfer(destination.velocities_zs, source.velocities_zs);
+        transfer(destination.damages, source.damages);
+        transfer(destination.lifetimes_remaining, source.lifetimes_remaining);
+        transfer(destination.instigator_ids, source.instigator_ids);
+        transfer(destination.initial_lifetimes, source.initial_lifetimes);
+        transfer(destination.spawn_times, source.spawn_times);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

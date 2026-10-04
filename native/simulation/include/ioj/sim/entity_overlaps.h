@@ -192,10 +192,11 @@ struct EntityEntityOverlaps
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.first_entities, source.first_entities, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.second_entities, source.second_entities, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.first_entities, source.first_entities);
+        transfer(destination.second_entities, source.second_entities);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -431,9 +432,11 @@ struct EntityStaticOverlaps
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(destination.entities, source.entities, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.static_geometry_indices, source.static_geometry_indices, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.entities, source.entities);
+        transfer(destination.static_geometry_indices, source.static_geometry_indices);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

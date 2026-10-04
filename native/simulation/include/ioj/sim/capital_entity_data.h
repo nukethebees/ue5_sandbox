@@ -298,27 +298,21 @@ struct CapitalEntityData
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(destination.entity_ids, source.entity_ids, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_xs, source.locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_ys, source.locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_zs, source.locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_pitches, source.rotations_pitches, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_yaws, source.rotations_yaws, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_rolls, source.rotations_rolls, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.fighter_spawn_timers, source.fighter_spawn_timers, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.fighter_spawn_cooldowns, source.fighter_spawn_cooldowns, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.teams, source.teams, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.fighter_id_spans, source.fighter_id_spans, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.target_ids, source.target_ids, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.entity_ids, source.entity_ids);
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.rotations_pitches, source.rotations_pitches);
+        transfer(destination.rotations_yaws, source.rotations_yaws);
+        transfer(destination.rotations_rolls, source.rotations_rolls);
+        transfer(destination.fighter_spawn_timers, source.fighter_spawn_timers);
+        transfer(destination.fighter_spawn_cooldowns, source.fighter_spawn_cooldowns);
+        transfer(destination.teams, source.teams);
+        transfer(destination.fighter_id_spans, source.fighter_id_spans);
+        transfer(destination.target_ids, source.target_ids);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

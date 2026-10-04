@@ -266,21 +266,18 @@ struct FighterSpawnQueue
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_xs, source.locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_ys, source.locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_zs, source.locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_pitches, source.rotations_pitches, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_yaws, source.rotations_yaws, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_rolls, source.rotations_rolls, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.teams, source.teams, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.parents, source.parents, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.targets, source.targets, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.rotations_pitches, source.rotations_pitches);
+        transfer(destination.rotations_yaws, source.rotations_yaws);
+        transfer(destination.rotations_rolls, source.rotations_rolls);
+        transfer(destination.teams, source.teams);
+        transfer(destination.parents, source.parents);
+        transfer(destination.targets, source.targets);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

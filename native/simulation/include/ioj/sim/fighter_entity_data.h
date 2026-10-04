@@ -737,114 +737,67 @@ struct FighterEntityData
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(destination.entity_ids, source.entity_ids, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.integral_biases, source.integral_biases, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.float_biases, source.float_biases, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.tasks, source.tasks, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_xs, source.locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_ys, source.locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_zs, source.locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.desired_move_locations_xs, source.desired_move_locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.desired_move_locations_ys, source.desired_move_locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.desired_move_locations_zs, source.desired_move_locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.aim_directions_xs, source.aim_directions_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.aim_directions_ys, source.aim_directions_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.aim_directions_zs, source.aim_directions_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.planned_aim_directions_xs, source.planned_aim_directions_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.planned_aim_directions_ys, source.planned_aim_directions_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.planned_aim_directions_zs, source.planned_aim_directions_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.desired_aiming_directions_xs, source.desired_aiming_directions_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.desired_aiming_directions_ys, source.desired_aiming_directions_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.desired_aiming_directions_zs, source.desired_aiming_directions_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.movement_directions_xs, source.movement_directions_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.movement_directions_ys, source.movement_directions_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.movement_directions_zs, source.movement_directions_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.velocities_xs, source.velocities_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.velocities_ys, source.velocities_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.velocities_zs, source.velocities_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.move_distances, source.move_distances, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.speeds, source.speeds, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.teams, source.teams, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.parent_ids, source.parent_ids, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.awareness_scan_countdowns, source.awareness_scan_countdowns, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.navigation_update_countdowns_remaining_ticks,
-            source.navigation_update_countdowns_remaining_ticks,
-            count);
-        ml::native_soa::transfer_n<Overlapping>(destination.navigation_update_countdowns_periods,
-                                                source.navigation_update_countdowns_periods,
-                                                count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.separation_steering_xs, source.separation_steering_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.separation_steering_ys, source.separation_steering_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.separation_steering_zs, source.separation_steering_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.navigation_risk_tiers, source.navigation_risk_tiers, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.navigation_lower_risk_scan_counts,
-                                                source.navigation_lower_risk_scan_counts,
-                                                count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.avoidance_choice_indices, source.avoidance_choice_indices, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.avoidance_clear_scan_counts, source.avoidance_clear_scan_counts, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.attack_reposition_countdowns, source.attack_reposition_countdowns, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.attack_cooldowns, source.attack_cooldowns, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.target_ids, source.target_ids, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_locations_xs, source.target_locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_locations_ys, source.target_locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_locations_zs, source.target_locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_velocities_xs, source.target_velocities_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_velocities_ys, source.target_velocities_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_velocities_zs, source.target_velocities_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_directions_xs, source.target_directions_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_directions_ys, source.target_directions_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_directions_zs, source.target_directions_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.intercept_times, source.intercept_times, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_distance_sq, source.target_distance_sq, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_distances, source.target_distances, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_radii, source.target_radii, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.entity_ids, source.entity_ids);
+        transfer(destination.integral_biases, source.integral_biases);
+        transfer(destination.float_biases, source.float_biases);
+        transfer(destination.tasks, source.tasks);
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.desired_move_locations_xs, source.desired_move_locations_xs);
+        transfer(destination.desired_move_locations_ys, source.desired_move_locations_ys);
+        transfer(destination.desired_move_locations_zs, source.desired_move_locations_zs);
+        transfer(destination.aim_directions_xs, source.aim_directions_xs);
+        transfer(destination.aim_directions_ys, source.aim_directions_ys);
+        transfer(destination.aim_directions_zs, source.aim_directions_zs);
+        transfer(destination.planned_aim_directions_xs, source.planned_aim_directions_xs);
+        transfer(destination.planned_aim_directions_ys, source.planned_aim_directions_ys);
+        transfer(destination.planned_aim_directions_zs, source.planned_aim_directions_zs);
+        transfer(destination.desired_aiming_directions_xs, source.desired_aiming_directions_xs);
+        transfer(destination.desired_aiming_directions_ys, source.desired_aiming_directions_ys);
+        transfer(destination.desired_aiming_directions_zs, source.desired_aiming_directions_zs);
+        transfer(destination.movement_directions_xs, source.movement_directions_xs);
+        transfer(destination.movement_directions_ys, source.movement_directions_ys);
+        transfer(destination.movement_directions_zs, source.movement_directions_zs);
+        transfer(destination.velocities_xs, source.velocities_xs);
+        transfer(destination.velocities_ys, source.velocities_ys);
+        transfer(destination.velocities_zs, source.velocities_zs);
+        transfer(destination.move_distances, source.move_distances);
+        transfer(destination.speeds, source.speeds);
+        transfer(destination.teams, source.teams);
+        transfer(destination.parent_ids, source.parent_ids);
+        transfer(destination.awareness_scan_countdowns, source.awareness_scan_countdowns);
+        transfer(destination.navigation_update_countdowns_remaining_ticks,
+                 source.navigation_update_countdowns_remaining_ticks);
+        transfer(destination.navigation_update_countdowns_periods,
+                 source.navigation_update_countdowns_periods);
+        transfer(destination.separation_steering_xs, source.separation_steering_xs);
+        transfer(destination.separation_steering_ys, source.separation_steering_ys);
+        transfer(destination.separation_steering_zs, source.separation_steering_zs);
+        transfer(destination.navigation_risk_tiers, source.navigation_risk_tiers);
+        transfer(destination.navigation_lower_risk_scan_counts,
+                 source.navigation_lower_risk_scan_counts);
+        transfer(destination.avoidance_choice_indices, source.avoidance_choice_indices);
+        transfer(destination.avoidance_clear_scan_counts, source.avoidance_clear_scan_counts);
+        transfer(destination.attack_reposition_countdowns, source.attack_reposition_countdowns);
+        transfer(destination.attack_cooldowns, source.attack_cooldowns);
+        transfer(destination.target_ids, source.target_ids);
+        transfer(destination.target_locations_xs, source.target_locations_xs);
+        transfer(destination.target_locations_ys, source.target_locations_ys);
+        transfer(destination.target_locations_zs, source.target_locations_zs);
+        transfer(destination.target_velocities_xs, source.target_velocities_xs);
+        transfer(destination.target_velocities_ys, source.target_velocities_ys);
+        transfer(destination.target_velocities_zs, source.target_velocities_zs);
+        transfer(destination.target_directions_xs, source.target_directions_xs);
+        transfer(destination.target_directions_ys, source.target_directions_ys);
+        transfer(destination.target_directions_zs, source.target_directions_zs);
+        transfer(destination.intercept_times, source.intercept_times);
+        transfer(destination.target_distance_sq, source.target_distance_sq);
+        transfer(destination.target_distances, source.target_distances);
+        transfer(destination.target_radii, source.target_radii);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

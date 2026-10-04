@@ -246,18 +246,16 @@ struct SpinnerEntityData
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(destination.entity_ids, source.entity_ids, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_xs, source.locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_ys, source.locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_zs, source.locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.yaws, source.yaws, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.laser_cooldowns, source.laser_cooldowns, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.next_fire_point_indices, source.next_fire_point_indices, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.entity_ids, source.entity_ids);
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.yaws, source.yaws);
+        transfer(destination.laser_cooldowns, source.laser_cooldowns);
+        transfer(destination.next_fire_point_indices, source.next_fire_point_indices);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

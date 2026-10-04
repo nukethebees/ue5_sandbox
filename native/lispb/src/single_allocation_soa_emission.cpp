@@ -273,12 +273,14 @@ auto column_copying_nodes(SingleAllocationModel const& model) -> Nodes {
     })};
 
     NodeListBuilder copy_body;
+    copy_body.add(raw("auto transfer = [count](auto* dst, auto const* src) {\n    " +
+                      model.dialect.runtime_namespace +
+                      "transfer_n<Overlapping>(dst, src, count);\n};"));
     for (auto const& column : model.columns) {
         copy_body.add(
-            ExpressionStmt{call(named(model.dialect.runtime_namespace + "transfer_n<Overlapping>"),
+            ExpressionStmt{call(named("transfer"),
                                 {member_access(named("destination"), column.flattened_identifier),
-                                 member_access(named("source"), column.flattened_identifier),
-                                 named("count")})});
+                                 member_access(named("source"), column.flattened_identifier)})});
     }
     auto transfer{inline_function(FunctionSpec{
         .name = "transfer_columns",

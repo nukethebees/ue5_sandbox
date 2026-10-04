@@ -209,10 +209,13 @@ struct FighterOrderQueue
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(destination.entity_ids, source.entity_ids, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.orders, source.orders, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.tasks, source.tasks, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.targets, source.targets, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.entity_ids, source.entity_ids);
+        transfer(destination.orders, source.orders);
+        transfer(destination.tasks, source.tasks);
+        transfer(destination.targets, source.targets);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

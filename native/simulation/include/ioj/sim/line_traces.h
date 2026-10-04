@@ -228,12 +228,15 @@ struct LineTraces
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(destination.starts_xs, source.starts_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.starts_ys, source.starts_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.starts_zs, source.starts_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.ends_xs, source.ends_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.ends_ys, source.ends_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.ends_zs, source.ends_zs, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.starts_xs, source.starts_xs);
+        transfer(destination.starts_ys, source.starts_ys);
+        transfer(destination.starts_zs, source.starts_zs);
+        transfer(destination.ends_xs, source.ends_xs);
+        transfer(destination.ends_ys, source.ends_ys);
+        transfer(destination.ends_zs, source.ends_zs);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

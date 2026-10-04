@@ -200,9 +200,12 @@ struct EntityDeathInfo
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(destination.reasons, source.reasons, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.victims, source.victims, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.killers, source.killers, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.reasons, source.reasons);
+        transfer(destination.victims, source.victims);
+        transfer(destination.killers, source.killers);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

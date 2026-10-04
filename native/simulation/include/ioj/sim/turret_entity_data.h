@@ -408,52 +408,34 @@ struct TurretEntityData
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(destination.entity_ids, source.entity_ids, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.integral_biases, source.integral_biases, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_xs, source.locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_ys, source.locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_zs, source.locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.fire_point_locations_xs, source.fire_point_locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.fire_point_locations_ys, source.fire_point_locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.fire_point_locations_zs, source.fire_point_locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_pitches, source.rotations_pitches, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_yaws, source.rotations_yaws, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_rolls, source.rotations_rolls, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.teams, source.teams, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.laser_cooldowns, source.laser_cooldowns, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.laser_damages, source.laser_damages, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.target_refresh_countdowns_periods,
-                                                source.target_refresh_countdowns_periods,
-                                                count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_refresh_countdowns_remaining_ticks,
-            source.target_refresh_countdowns_remaining_ticks,
-            count);
-        ml::native_soa::transfer_n<Overlapping>(destination.target_ids, source.target_ids, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_locations_xs, source.target_locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_locations_ys, source.target_locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_locations_zs, source.target_locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_velocities_xs, source.target_velocities_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_velocities_ys, source.target_velocities_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_velocities_zs, source.target_velocities_zs, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.entity_ids, source.entity_ids);
+        transfer(destination.integral_biases, source.integral_biases);
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.fire_point_locations_xs, source.fire_point_locations_xs);
+        transfer(destination.fire_point_locations_ys, source.fire_point_locations_ys);
+        transfer(destination.fire_point_locations_zs, source.fire_point_locations_zs);
+        transfer(destination.rotations_pitches, source.rotations_pitches);
+        transfer(destination.rotations_yaws, source.rotations_yaws);
+        transfer(destination.rotations_rolls, source.rotations_rolls);
+        transfer(destination.teams, source.teams);
+        transfer(destination.laser_cooldowns, source.laser_cooldowns);
+        transfer(destination.laser_damages, source.laser_damages);
+        transfer(destination.target_refresh_countdowns_periods,
+                 source.target_refresh_countdowns_periods);
+        transfer(destination.target_refresh_countdowns_remaining_ticks,
+                 source.target_refresh_countdowns_remaining_ticks);
+        transfer(destination.target_ids, source.target_ids);
+        transfer(destination.target_locations_xs, source.target_locations_xs);
+        transfer(destination.target_locations_ys, source.target_locations_ys);
+        transfer(destination.target_locations_zs, source.target_locations_zs);
+        transfer(destination.target_velocities_xs, source.target_velocities_xs);
+        transfer(destination.target_velocities_ys, source.target_velocities_ys);
+        transfer(destination.target_velocities_zs, source.target_velocities_zs);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

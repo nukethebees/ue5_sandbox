@@ -201,11 +201,12 @@ struct DirectDamageEvents
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.damaged_entities, source.damaged_entities, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.damage_amounts, source.damage_amounts, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.instigators, source.instigators, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.damaged_entities, source.damaged_entities);
+        transfer(destination.damage_amounts, source.damage_amounts);
+        transfer(destination.instigators, source.instigators);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

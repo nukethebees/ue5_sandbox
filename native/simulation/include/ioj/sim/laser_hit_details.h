@@ -241,19 +241,16 @@ struct LaserHitDetails
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_xs, source.locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_ys, source.locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_zs, source.locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.emission_directions_xs, source.emission_directions_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.emission_directions_ys, source.emission_directions_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.emission_directions_zs, source.emission_directions_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.sources, source.sources, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.emission_directions_xs, source.emission_directions_xs);
+        transfer(destination.emission_directions_ys, source.emission_directions_ys);
+        transfer(destination.emission_directions_zs, source.emission_directions_zs);
+        transfer(destination.sources, source.sources);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

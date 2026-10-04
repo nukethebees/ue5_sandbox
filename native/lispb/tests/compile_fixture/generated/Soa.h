@@ -357,12 +357,13 @@ struct COMPILE_FIXTURE_API ApiOwner
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::soa_storage::transfer_n<Overlapping>(destination.values, source.values, count);
-        ml::soa_storage::transfer_n<Overlapping>(destination.masks, source.masks, count);
-        ml::soa_storage::transfer_n<Overlapping>(
-            destination.positions_xs, source.positions_xs, count);
-        ml::soa_storage::transfer_n<Overlapping>(
-            destination.positions_ys, source.positions_ys, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.values, source.values);
+        transfer(destination.masks, source.masks);
+        transfer(destination.positions_xs, source.positions_xs);
+        transfer(destination.positions_ys, source.positions_ys);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -618,8 +619,11 @@ struct EquivalentOwner
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::soa_storage::transfer_n<Overlapping>(destination.xs, source.xs, count);
-        ml::soa_storage::transfer_n<Overlapping>(destination.ys, source.ys, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.xs, source.xs);
+        transfer(destination.ys, source.ys);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -1407,9 +1411,11 @@ struct SingleParents
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::soa_storage::transfer_n<Overlapping>(destination.keys, source.keys, count);
-        ml::soa_storage::transfer_n<Overlapping>(
-            destination.children_values, source.children_values, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.keys, source.keys);
+        transfer(destination.children_values, source.children_values);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -2635,7 +2641,10 @@ struct SingleRestrictionRows
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::soa_storage::transfer_n<Overlapping>(destination.restricted, source.restricted, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::soa_storage::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.restricted, source.restricted);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

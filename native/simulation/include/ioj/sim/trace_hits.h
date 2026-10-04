@@ -237,16 +237,15 @@ struct TraceHits
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_xs, source.locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_ys, source.locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_zs, source.locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.entities, source.entities, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.static_geometry_indices, source.static_geometry_indices, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.hits, source.hits, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.entities, source.entities);
+        transfer(destination.static_geometry_indices, source.static_geometry_indices);
+        transfer(destination.hits, source.hits);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

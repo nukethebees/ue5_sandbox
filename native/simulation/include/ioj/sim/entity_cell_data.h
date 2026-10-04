@@ -303,25 +303,22 @@ struct EntityCellData
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.min_point_xs, source.min_point_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.min_point_ys, source.min_point_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.min_point_zs, source.min_point_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.max_point_xs, source.max_point_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.max_point_ys, source.max_point_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.max_point_zs, source.max_point_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.min_cell_xs, source.min_cell_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.min_cell_ys, source.min_cell_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.min_cell_zs, source.min_cell_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.max_cell_xs, source.max_cell_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.max_cell_ys, source.max_cell_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.max_cell_zs, source.max_cell_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.entity_ids, source.entity_ids, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.min_point_xs, source.min_point_xs);
+        transfer(destination.min_point_ys, source.min_point_ys);
+        transfer(destination.min_point_zs, source.min_point_zs);
+        transfer(destination.max_point_xs, source.max_point_xs);
+        transfer(destination.max_point_ys, source.max_point_ys);
+        transfer(destination.max_point_zs, source.max_point_zs);
+        transfer(destination.min_cell_xs, source.min_cell_xs);
+        transfer(destination.min_cell_ys, source.min_cell_ys);
+        transfer(destination.min_cell_zs, source.min_cell_zs);
+        transfer(destination.max_cell_xs, source.max_cell_xs);
+        transfer(destination.max_cell_ys, source.max_cell_ys);
+        transfer(destination.max_cell_zs, source.max_cell_zs);
+        transfer(destination.entity_ids, source.entity_ids);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,

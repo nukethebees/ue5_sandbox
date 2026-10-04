@@ -207,9 +207,12 @@ struct LevelSpawnGroups
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(destination.types, source.types, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.offsets, source.offsets, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.counts, source.counts, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.types, source.types);
+        transfer(destination.offsets, source.offsets);
+        transfer(destination.counts, source.counts);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -547,28 +550,21 @@ struct LevelCapitalSpawnEvents
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.entity_indices, source.entity_indices, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.target_entity_indices, source.target_entity_indices, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_xs, source.locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_ys, source.locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_zs, source.locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_pitches, source.rotations_pitches, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_yaws, source.rotations_yaws, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_rolls, source.rotations_rolls, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.teams, source.teams, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.healths, source.healths, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.initial_fighter_spawn_delays, source.initial_fighter_spawn_delays, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.fighter_spawn_cooldowns, source.fighter_spawn_cooldowns, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.entity_indices, source.entity_indices);
+        transfer(destination.target_entity_indices, source.target_entity_indices);
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.rotations_pitches, source.rotations_pitches);
+        transfer(destination.rotations_yaws, source.rotations_yaws);
+        transfer(destination.rotations_rolls, source.rotations_rolls);
+        transfer(destination.teams, source.teams);
+        transfer(destination.healths, source.healths);
+        transfer(destination.initial_fighter_spawn_delays, source.initial_fighter_spawn_delays);
+        transfer(destination.fighter_spawn_cooldowns, source.fighter_spawn_cooldowns);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -896,24 +892,19 @@ struct LevelTurretSpawnEvents
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.entity_indices, source.entity_indices, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_xs, source.locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_ys, source.locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_zs, source.locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_pitches, source.rotations_pitches, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_yaws, source.rotations_yaws, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.rotations_rolls, source.rotations_rolls, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.teams, source.teams, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.healths, source.healths, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.laser_damages, source.laser_damages, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.entity_indices, source.entity_indices);
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.rotations_pitches, source.rotations_pitches);
+        transfer(destination.rotations_yaws, source.rotations_yaws);
+        transfer(destination.rotations_rolls, source.rotations_rolls);
+        transfer(destination.teams, source.teams);
+        transfer(destination.healths, source.healths);
+        transfer(destination.laser_damages, source.laser_damages);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -1198,17 +1189,15 @@ struct LevelSpinnerSpawnEvents
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.entity_indices, source.entity_indices, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_xs, source.locations_xs, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_ys, source.locations_ys, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.locations_zs, source.locations_zs, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.yaws, source.yaws, count);
-        ml::native_soa::transfer_n<Overlapping>(
-            destination.initial_fire_point_indices, source.initial_fire_point_indices, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.entity_indices, source.entity_indices);
+        transfer(destination.locations_xs, source.locations_xs);
+        transfer(destination.locations_ys, source.locations_ys);
+        transfer(destination.locations_zs, source.locations_zs);
+        transfer(destination.yaws, source.yaws);
+        transfer(destination.initial_fire_point_indices, source.initial_fire_point_indices);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -1457,9 +1446,12 @@ struct LevelMissionEventGroups
     static void transfer_columns(DataPointers<std::byte> const& destination,
                                  DataPointers<Byte> const& source,
                                  size_type count) {
-        ml::native_soa::transfer_n<Overlapping>(destination.types, source.types, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.offsets, source.offsets, count);
-        ml::native_soa::transfer_n<Overlapping>(destination.counts, source.counts, count);
+        auto transfer = [count](auto* dst, auto const* src) {
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
+        };
+        transfer(destination.types, source.types);
+        transfer(destination.offsets, source.offsets);
+        transfer(destination.counts, source.counts);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
