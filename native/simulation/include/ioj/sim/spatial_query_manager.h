@@ -127,7 +127,7 @@ struct SpatialQueryManager {
     auto get_entity_type_radius(EntityType entity_type) const noexcept -> float;
     auto get_entity_type_radii() const noexcept -> EntityTypeRadii const&;
     void copy_entity_locations(std::span<EntityUniqueId const> ids,
-                               Vectors3fView locations,
+                               Vectors3fView output,
                                ml::FrameMemoryResource* scratch_resource) const;
     void copy_entity_motion(std::span<EntityUniqueId const> ids,
                             Vectors3fView locations,

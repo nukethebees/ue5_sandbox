@@ -46,13 +46,15 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
     std::int32_t fighter_count{};
     std::int32_t turret_count{};
     auto const damage_count{damage.num()};
+    auto const damaged_entities{damage.damaged_entities()};
+    auto const damage_amounts{damage.damage_amounts()};
+    auto const instigators{damage.instigators()};
     for (std::uint32_t index{}; index < damage_count; ++index) {
-        EXPECT_EQ(damage.damage_amounts()[index], 37) << "Configured overlap damage is used";
-        EXPECT_TRUE(!damage.instigators()[index].is_valid())
-            << "Overlap damage has no combat instigator";
-        capital_count += damage.damaged_entities()[index] == capital ? 1 : 0;
-        fighter_count += damage.damaged_entities()[index] == fighter ? 1 : 0;
-        turret_count += damage.damaged_entities()[index] == turret ? 1 : 0;
+        EXPECT_EQ(damage_amounts[index], 37) << "Configured overlap damage is used";
+        EXPECT_TRUE(!instigators[index].is_valid()) << "Overlap damage has no combat instigator";
+        capital_count += damaged_entities[index] == capital ? 1 : 0;
+        fighter_count += damaged_entities[index] == fighter ? 1 : 0;
+        turret_count += damaged_entities[index] == turret ? 1 : 0;
     }
     EXPECT_EQ(capital_count, 1) << "Capital receives its pair contribution";
     EXPECT_EQ(fighter_count, 3) << "Fighter receives all three contributions";

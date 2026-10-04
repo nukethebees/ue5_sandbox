@@ -49,8 +49,9 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
     auto const initial_entities{initial_view.get_entities()};
     auto const initial_count{initial_entities.num()};
     initial_healths.reserve(initial_count);
+    auto const healths{initial_view.get_healths()};
     for (std::uint32_t i{}; i < initial_count; ++i) {
-        initial_healths.push_back(initial_view.get_healths().health(i));
+        initial_healths.push_back(healths.health(i));
     }
     harness.timeline.finish_at(3.0);
     EXPECT_TRUE(harness.run_until_timeline_finished(3.5)) << "Turret combat timeline completes";

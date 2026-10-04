@@ -24,7 +24,8 @@ TEST(EntityTypeRuns, GroupsWithoutChangingIdsAndOmitsEmptyIds) {
     EXPECT_EQ(runs.offsets[1], 1u);
     EXPECT_EQ(runs.counts[1], 2u);
     std::array<EntityUniqueId, ids.size()> sorted;
-    for (std::size_t row{}; row < ids.size(); ++row) {
+    auto const count{ids.size()};
+    for (std::size_t row{}; row < count; ++row) {
         sorted[row] = ids[order[row]];
     }
     auto const direct{entity_type_runs(sorted)};

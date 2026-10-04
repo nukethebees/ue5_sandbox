@@ -115,6 +115,8 @@ void collect_request_matches(collision::CollisionUniformGrid const& grid,
                         continue;
                     }
 
+                    // Select the candidate type's already-bound location view.
+                    // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                     auto const delta{sources.locations[id.entity_type()][local_index] - origin};
                     auto const distance_squared{HMM_LenSqrV3(delta)};
                     if (distance_squared > radius_squared) {
