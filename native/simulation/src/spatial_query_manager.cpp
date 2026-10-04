@@ -227,24 +227,6 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
 
     return count;
 }
-auto find_any_non_team_entity(EntityTables const& agents,
-                              Team const excluded_team,
-                              std::optional<EntityType> const type = {}) -> EntityUniqueId {
-    assert(agents.lookups.permits_lookup());
-    for (auto const candidate_type : ml::EnumTraits<EntityType>::values) {
-        if (type && candidate_type != *type) {
-            continue;
-        }
-        auto const handles{agents.lookups.for_type(candidate_type).entries()};
-        auto const count{static_cast<std::uint32_t>(handles.size())};
-        for (std::uint32_t index{}; index < count; ++index) {
-            if (handles[index].is_valid() && handles[index].team() != excluded_team) {
-                return EntityUniqueId{index, candidate_type};
-            }
-        }
-    }
-    return {};
-}
 } // namespace
 
 /* **************************************** */
@@ -438,14 +420,18 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
                                      });
 }
 
-auto SpatialQueryManager::get_any_non_team_entity(Team const team) const -> EntityUniqueId {
-    return find_any_non_team_entity(entity_tables_, team);
-}
-
 auto SpatialQueryManager::get_any_non_team_entity(Team const team,
                                                   EntityType const entity_type) const
     -> EntityUniqueId {
-    return find_any_non_team_entity(entity_tables_, team, entity_type);
+    assert(entity_tables_.lookups.permits_lookup());
+    auto const handles{entity_tables_.lookups.for_type(entity_type).entries()};
+    auto const count{static_cast<std::uint32_t>(handles.size())};
+    for (std::uint32_t index{}; index < count; ++index) {
+        if (handles[index].is_valid() && handles[index].team() != team) {
+            return EntityUniqueId{index, entity_type};
+        }
+    }
+    return {};
 }
 
 void SpatialQueryManager::are_spheres_in_bounds(

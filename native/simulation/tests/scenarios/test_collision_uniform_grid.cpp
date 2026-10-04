@@ -1494,7 +1494,8 @@ void CollisionUniformGridTraceRunner::test_invariance_properties() {
     auto const reordered_tied_hits{run_traces(tied, tied_starts, tied_ends)};
     EXPECT_EQ(reordered_tied_hits.get_const_view().entities()[0], expected_id);
     SpatialQueryManager const tied_queries{tied.owners.entity_tables};
-    EXPECT_EQ(tied_queries.get_any_non_team_entity(Team::Green), expected_id);
+    EXPECT_EQ(tied_queries.get_any_non_team_entity(Team::Green, EntityType::CapitalShip),
+              expected_id);
 
     Vector3f const aabb_half_extents{{18.f, 22.f, 15.f}};
     Vector3f const local_aabb_centre{{4.f, -3.f, 5.f}};

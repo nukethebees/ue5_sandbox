@@ -115,7 +115,6 @@ struct SpatialQueryManager {
                                            std::span<EntityUniqueId> out_entities,
                                            ml::FrameMemoryResource* scratch_resource) const
         -> std::uint32_t;
-    auto get_any_non_team_entity(Team const team) const -> EntityUniqueId;
     auto get_any_non_team_entity(Team const team, EntityType const entity_type) const
         -> EntityUniqueId;
     void are_spheres_in_bounds(Vectors3fConstView centres,

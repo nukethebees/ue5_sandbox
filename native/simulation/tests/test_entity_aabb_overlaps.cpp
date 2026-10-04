@@ -184,7 +184,6 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
                   {{300.f, 0.f, 0.f}}, Team::Blue, 10.f, nearby, &query_memory),
               1);
     EXPECT_EQ(nearby[0], stationary);
-    EXPECT_EQ(queries.get_any_non_team_entity(Team::Blue), stationary);
     EXPECT_EQ(queries.get_any_non_team_entity(Team::Blue, EntityType::CapitalShip), stationary);
     EXPECT_TRUE(!queries.get_any_non_team_entity(Team::Blue, EntityType::Turret).is_valid());
     std::array<EntityUniqueId, 2> nearby_ids{};
@@ -202,7 +201,7 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     EXPECT_EQ(queries.collect_non_team_entities_in_range(
                   {{300.f, 0.f, 0.f}}, Team::Blue, 20.f, nearby, &query_memory),
               0);
-    EXPECT_TRUE(!queries.get_any_non_team_entity(Team::Blue).is_valid());
+    EXPECT_TRUE(!queries.get_any_non_team_entity(Team::Blue, EntityType::CapitalShip).is_valid());
     fixture.query_manager.reset_frame_collision_events();
     fixture.refresh_and_detect_overlaps(fixture.ids(handles));
     EXPECT_EQ(fixture.get_entity_overlaps().num(), 0)

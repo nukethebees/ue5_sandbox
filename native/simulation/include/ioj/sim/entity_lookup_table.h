@@ -167,10 +167,11 @@ class EntityLookupTables {
             auto const handles{for_type(runs.types[run]).entries()};
             [[maybe_unused]] auto const handle_count{handles.size()};
             auto const end{runs.end(run)};
+            // Full-ID sorting makes the final index the largest in this populated run.
+            assert(ids[order[end - 1]].index() < handle_count);
             for (auto index{runs.offsets[run]}; index < end; ++index) {
                 auto const row{order[index]};
                 auto const offset{ids[row].index()};
-                assert(offset < handle_count);
                 output[row] = handles[offset];
             }
         }
