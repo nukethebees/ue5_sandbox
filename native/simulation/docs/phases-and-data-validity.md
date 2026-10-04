@@ -62,9 +62,10 @@ Mission evaluation sees same-tick deaths before compaction. It does not depend o
 snapshot. Refresh surviving lookup rows in the next Preparation; do not rebuild the lookup tables
 for presentation after compaction.
 
-Refresh spatial-grid membership after removals so geometry-only traces remain available between
-ticks. Range queries that resolve entity columns require a published lookup phase; a live grid
-does not extend the lifetime of the previous lookup rows.
+The entity grid shares the lookup validity window. Rebuild it after Preparation and after Action
+movement, before resolving damage. Do not query it after structural removals or between ticks;
+the next Preparation publishes current rows and grid membership together. Debug presentation may
+read the grid's owned bounds as a snapshot of the last rebuild, not as current entity membership.
 
 The consolidated phase-invariant check verifies Thinking's published rows, health alignment,
 metadata, and live spatial-grid membership. Structural and phase-transition assertions enforce

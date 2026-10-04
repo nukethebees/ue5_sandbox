@@ -5,8 +5,6 @@
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <ioj/sim/world_aabb_operations.h>
 
-#include <sandbox/core/frame_memory_resource.h>
-
 #include <algorithm>
 #include <array>
 #include <type_traits>
@@ -253,32 +251,27 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
         << "Next frame does not repeat consumed impacts";
 }
 
-TEST(NativeSimulation, LevelSimInitialQueriesTest) {
-    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64 * 1024>
-        query_backing{};
-    ml::FrameMemoryResource query_memory{query_backing};
-    ml::FrameScratchScope query_scope{query_memory};
-
+TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
     auto data{make_battle()};
     collision::WorldAABBs static_bounds;
     collision::add(static_bounds, {{-10.f, 490.f, -10.f}}, {{10.f, 510.f, 10.f}});
     LevelSim simulation{std::move(data)};
     simulation.set_static_collision(std::move(static_bounds));
     simulation.finish_initialisation();
+
     auto const& queries{simulation.get_spatial_query_manager()};
-    auto const dynamic_hit{
-        queries.trace_closest({{-1100.f, 0.f, 0.f}}, {{-900.f, 0.f, 0.f}}, &query_memory)};
-    EXPECT_TRUE(dynamic_hit.hit && dynamic_hit.entity == simulation.get_capital_ships().get_id(0))
-        << "Initial capital is queryable before the first tick";
-    auto const static_hit{
-        queries.trace_closest({{-100.f, 500.f, 0.f}}, {{100.f, 500.f, 0.f}}, &query_memory)};
-    EXPECT_TRUE(static_hit.hit && static_hit.static_geometry_index == 0)
-        << "Initial static collision is queryable before the first tick";
+    auto const initial_bounds{queries.get_entity_collision_bounds()};
+    auto const initial_ids{initial_bounds.entity_ids()};
+    EXPECT_NE(std::ranges::find(initial_ids, simulation.get_capital_ships().get_id(0)),
+              initial_ids.end());
+    EXPECT_EQ(queries.get_static_collision_bounds().num(), 1);
+
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period());
-    EXPECT_TRUE(
-        queries.trace_closest({{-100.f, 500.f, 0.f}}, {{100.f, 500.f, 0.f}}, &query_memory).hit)
-        << "Static collision survives the first dynamic rebuild";
+    auto const current_static_bounds{queries.get_static_collision_bounds()};
+    ASSERT_EQ(current_static_bounds.num(), 1);
+    EXPECT_EQ(current_static_bounds.min_ys()[0], 490.f);
+    EXPECT_EQ(current_static_bounds.max_ys()[0], 510.f);
 }
 
 TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
