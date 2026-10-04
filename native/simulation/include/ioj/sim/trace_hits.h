@@ -383,6 +383,22 @@ struct TraceHits
         ml::native_soa::default_construct_n(columns.static_geometry_indices, count);
         ml::native_soa::default_construct_n(columns.hits, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.locations_xs, source.locations_xs, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.locations_ys, source.locations_ys, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.locations_zs, source.locations_zs, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.entities, source.entities, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.static_geometry_indices, source.static_geometry_indices, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(destination.hits, source.hits, count);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -392,17 +408,7 @@ struct TraceHits
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(
-            columns.locations_xs + index, columns.locations_xs + source, move_count);
-        ml::native_soa::copy_n(
-            columns.locations_ys + index, columns.locations_ys + source, move_count);
-        ml::native_soa::copy_n(
-            columns.locations_zs + index, columns.locations_zs + source, move_count);
-        ml::native_soa::copy_n(columns.entities + index, columns.entities + source, move_count);
-        ml::native_soa::copy_n(columns.static_geometry_indices + index,
-                               columns.static_geometry_indices + source,
-                               move_count);
-        ml::native_soa::copy_n(columns.hits + index, columns.hits + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -412,32 +418,25 @@ struct TraceHits
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, TraceHits, size_type>
+    {
+        auto const& locations_view{source.view_locations()};
+        return {ml::native_soa::source_data(locations_view.xs()),
+                ml::native_soa::source_data(locations_view.ys()),
+                ml::native_soa::source_data(locations_view.zs()),
+                ml::native_soa::source_data(source.entities()),
+                ml::native_soa::source_data(source.static_geometry_indices()),
+                ml::native_soa::source_data(source.hits())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, TraceHits, size_type>
     {
-        auto const destination{get_data(first)};
-        auto const& locations_view{source.view_locations()};
-        ml::native_soa::copy_n(destination.locations_xs,
-                               ml::native_soa::source_data(locations_view.xs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.locations_ys,
-                               ml::native_soa::source_data(locations_view.ys()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.locations_zs,
-                               ml::native_soa::source_data(locations_view.zs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.entities,
-                               ml::native_soa::source_data(source.entities()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.static_geometry_indices,
-                               ml::native_soa::source_data(source.static_geometry_indices()) +
-                                   source_first,
-                               count);
-        ml::native_soa::copy_n(
-            destination.hits, ml::native_soa::source_data(source.hits()) + source_first, count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -446,39 +445,14 @@ struct TraceHits
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, TraceHits, size_type>
     {
-        auto const destination{get_data(first)};
-        auto const& locations_view{source.view_locations()};
-        ml::native_soa::move_n(destination.locations_xs,
-                               ml::native_soa::source_data(locations_view.xs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.locations_ys,
-                               ml::native_soa::source_data(locations_view.ys()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.locations_zs,
-                               ml::native_soa::source_data(locations_view.zs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.entities,
-                               ml::native_soa::source_data(source.entities()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.static_geometry_indices,
-                               ml::native_soa::source_data(source.static_geometry_indices()) +
-                                   source_first,
-                               count);
-        ml::native_soa::move_n(
-            destination.hits, ml::native_soa::source_data(source.hits()) + source_first, count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.locations_xs, source.locations_xs, num_);
-        ml::native_soa::copy_n(destination.locations_ys, source.locations_ys, num_);
-        ml::native_soa::copy_n(destination.locations_zs, source.locations_zs, num_);
-        ml::native_soa::copy_n(destination.entities, source.entities, num_);
-        ml::native_soa::copy_n(
-            destination.static_geometry_indices, source.static_geometry_indices, num_);
-        ml::native_soa::copy_n(destination.hits, source.hits, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };

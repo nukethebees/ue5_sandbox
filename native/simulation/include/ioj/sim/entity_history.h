@@ -280,6 +280,21 @@ struct EntityHistory
         ml::native_soa::default_construct_n(columns.killed_by, count);
         ml::native_soa::default_construct_n(columns.life_state, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.entity_ids, source.entity_ids, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.entity_types, source.entity_types, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(destination.teams, source.teams, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(destination.kills, source.kills, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.killed_by, source.killed_by, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.life_state, source.life_state, count);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -289,13 +304,7 @@ struct EntityHistory
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(columns.entity_ids + index, columns.entity_ids + source, move_count);
-        ml::native_soa::copy_n(
-            columns.entity_types + index, columns.entity_types + source, move_count);
-        ml::native_soa::copy_n(columns.teams + index, columns.teams + source, move_count);
-        ml::native_soa::copy_n(columns.kills + index, columns.kills + source, move_count);
-        ml::native_soa::copy_n(columns.killed_by + index, columns.killed_by + source, move_count);
-        ml::native_soa::copy_n(columns.life_state + index, columns.life_state + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -305,29 +314,24 @@ struct EntityHistory
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityHistory, size_type>
+    {
+        return {ml::native_soa::source_data(source.entity_ids()),
+                ml::native_soa::source_data(source.entity_types()),
+                ml::native_soa::source_data(source.teams()),
+                ml::native_soa::source_data(source.kills()),
+                ml::native_soa::source_data(source.killed_by()),
+                ml::native_soa::source_data(source.life_state())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityHistory, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::copy_n(destination.entity_ids,
-                               ml::native_soa::source_data(source.entity_ids()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.entity_types,
-                               ml::native_soa::source_data(source.entity_types()) + source_first,
-                               count);
-        ml::native_soa::copy_n(
-            destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
-        ml::native_soa::copy_n(
-            destination.kills, ml::native_soa::source_data(source.kills()) + source_first, count);
-        ml::native_soa::copy_n(destination.killed_by,
-                               ml::native_soa::source_data(source.killed_by()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.life_state,
-                               ml::native_soa::source_data(source.life_state()) + source_first,
-                               count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -336,35 +340,14 @@ struct EntityHistory
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityHistory, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::move_n(destination.entity_ids,
-                               ml::native_soa::source_data(source.entity_ids()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.entity_types,
-                               ml::native_soa::source_data(source.entity_types()) + source_first,
-                               count);
-        ml::native_soa::move_n(
-            destination.teams, ml::native_soa::source_data(source.teams()) + source_first, count);
-        ml::native_soa::move_n(
-            destination.kills, ml::native_soa::source_data(source.kills()) + source_first, count);
-        ml::native_soa::move_n(destination.killed_by,
-                               ml::native_soa::source_data(source.killed_by()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.life_state,
-                               ml::native_soa::source_data(source.life_state()) + source_first,
-                               count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.entity_ids, source.entity_ids, num_);
-        ml::native_soa::copy_n(destination.entity_types, source.entity_types, num_);
-        ml::native_soa::copy_n(destination.teams, source.teams, num_);
-        ml::native_soa::copy_n(destination.kills, source.kills, num_);
-        ml::native_soa::copy_n(destination.killed_by, source.killed_by, num_);
-        ml::native_soa::copy_n(destination.life_state, source.life_state, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };

@@ -470,6 +470,20 @@ struct LineTraces
         ml::native_soa::default_construct_n(columns.ends_ys, count);
         ml::native_soa::default_construct_n(columns.ends_zs, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.starts_xs, source.starts_xs, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.starts_ys, source.starts_ys, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.starts_zs, source.starts_zs, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(destination.ends_xs, source.ends_xs, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(destination.ends_ys, source.ends_ys, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(destination.ends_zs, source.ends_zs, count);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -479,12 +493,7 @@ struct LineTraces
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(columns.starts_xs + index, columns.starts_xs + source, move_count);
-        ml::native_soa::copy_n(columns.starts_ys + index, columns.starts_ys + source, move_count);
-        ml::native_soa::copy_n(columns.starts_zs + index, columns.starts_zs + source, move_count);
-        ml::native_soa::copy_n(columns.ends_xs + index, columns.ends_xs + source, move_count);
-        ml::native_soa::copy_n(columns.ends_ys + index, columns.ends_ys + source, move_count);
-        ml::native_soa::copy_n(columns.ends_zs + index, columns.ends_zs + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -494,30 +503,26 @@ struct LineTraces
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, LineTraces, size_type>
+    {
+        auto const& starts_view{source.view_starts()};
+        auto const& ends_view{source.view_ends()};
+        return {ml::native_soa::source_data(starts_view.xs()),
+                ml::native_soa::source_data(starts_view.ys()),
+                ml::native_soa::source_data(starts_view.zs()),
+                ml::native_soa::source_data(ends_view.xs()),
+                ml::native_soa::source_data(ends_view.ys()),
+                ml::native_soa::source_data(ends_view.zs())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LineTraces, size_type>
     {
-        auto const destination{get_data(first)};
-        auto const& starts_view{source.view_starts()};
-        ml::native_soa::copy_n(destination.starts_xs,
-                               ml::native_soa::source_data(starts_view.xs()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.starts_ys,
-                               ml::native_soa::source_data(starts_view.ys()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.starts_zs,
-                               ml::native_soa::source_data(starts_view.zs()) + source_first,
-                               count);
-        auto const& ends_view{source.view_ends()};
-        ml::native_soa::copy_n(
-            destination.ends_xs, ml::native_soa::source_data(ends_view.xs()) + source_first, count);
-        ml::native_soa::copy_n(
-            destination.ends_ys, ml::native_soa::source_data(ends_view.ys()) + source_first, count);
-        ml::native_soa::copy_n(
-            destination.ends_zs, ml::native_soa::source_data(ends_view.zs()) + source_first, count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -526,36 +531,14 @@ struct LineTraces
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LineTraces, size_type>
     {
-        auto const destination{get_data(first)};
-        auto const& starts_view{source.view_starts()};
-        ml::native_soa::move_n(destination.starts_xs,
-                               ml::native_soa::source_data(starts_view.xs()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.starts_ys,
-                               ml::native_soa::source_data(starts_view.ys()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.starts_zs,
-                               ml::native_soa::source_data(starts_view.zs()) + source_first,
-                               count);
-        auto const& ends_view{source.view_ends()};
-        ml::native_soa::move_n(
-            destination.ends_xs, ml::native_soa::source_data(ends_view.xs()) + source_first, count);
-        ml::native_soa::move_n(
-            destination.ends_ys, ml::native_soa::source_data(ends_view.ys()) + source_first, count);
-        ml::native_soa::move_n(
-            destination.ends_zs, ml::native_soa::source_data(ends_view.zs()) + source_first, count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.starts_xs, source.starts_xs, num_);
-        ml::native_soa::copy_n(destination.starts_ys, source.starts_ys, num_);
-        ml::native_soa::copy_n(destination.starts_zs, source.starts_zs, num_);
-        ml::native_soa::copy_n(destination.ends_xs, source.ends_xs, num_);
-        ml::native_soa::copy_n(destination.ends_ys, source.ends_ys, num_);
-        ml::native_soa::copy_n(destination.ends_zs, source.ends_zs, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };

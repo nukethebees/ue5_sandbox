@@ -249,6 +249,16 @@ struct FighterOrderQueue
         ml::native_soa::default_construct_n(columns.tasks, count);
         ml::native_soa::default_construct_n(columns.targets, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.entity_ids, source.entity_ids, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(destination.orders, source.orders, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(destination.tasks, source.tasks, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(destination.targets, source.targets, count);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -258,10 +268,7 @@ struct FighterOrderQueue
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(columns.entity_ids + index, columns.entity_ids + source, move_count);
-        ml::native_soa::copy_n(columns.orders + index, columns.orders + source, move_count);
-        ml::native_soa::copy_n(columns.tasks + index, columns.tasks + source, move_count);
-        ml::native_soa::copy_n(columns.targets + index, columns.targets + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -271,23 +278,22 @@ struct FighterOrderQueue
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, FighterOrderQueue, size_type>
+    {
+        return {ml::native_soa::source_data(source.entity_ids()),
+                ml::native_soa::source_data(source.orders()),
+                ml::native_soa::source_data(source.tasks()),
+                ml::native_soa::source_data(source.targets())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, FighterOrderQueue, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::copy_n(destination.entity_ids,
-                               ml::native_soa::source_data(source.entity_ids()) + source_first,
-                               count);
-        ml::native_soa::copy_n(
-            destination.orders, ml::native_soa::source_data(source.orders()) + source_first, count);
-        ml::native_soa::copy_n(
-            destination.tasks, ml::native_soa::source_data(source.tasks()) + source_first, count);
-        ml::native_soa::copy_n(destination.targets,
-                               ml::native_soa::source_data(source.targets()) + source_first,
-                               count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -296,27 +302,14 @@ struct FighterOrderQueue
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, FighterOrderQueue, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::move_n(destination.entity_ids,
-                               ml::native_soa::source_data(source.entity_ids()) + source_first,
-                               count);
-        ml::native_soa::move_n(
-            destination.orders, ml::native_soa::source_data(source.orders()) + source_first, count);
-        ml::native_soa::move_n(
-            destination.tasks, ml::native_soa::source_data(source.tasks()) + source_first, count);
-        ml::native_soa::move_n(destination.targets,
-                               ml::native_soa::source_data(source.targets()) + source_first,
-                               count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.entity_ids, source.entity_ids, num_);
-        ml::native_soa::copy_n(destination.orders, source.orders, num_);
-        ml::native_soa::copy_n(destination.tasks, source.tasks, num_);
-        ml::native_soa::copy_n(destination.targets, source.targets, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
     void add(EntityUniqueId const entity_id,

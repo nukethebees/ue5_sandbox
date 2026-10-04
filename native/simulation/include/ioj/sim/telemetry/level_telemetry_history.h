@@ -410,6 +410,32 @@ struct HistoryRows
         ml::native_soa::default_construct_n(columns.active_lasers, count);
         ml::native_soa::default_construct_n(columns.lasers_fired, count);
     }
+    template <bool Overlapping, typename Byte>
+    static void transfer_columns(DataPointers<std::byte> const& destination,
+                                 DataPointers<Byte> const& source,
+                                 size_type count) {
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.completed_ticks, source.completed_ticks, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.validity_masks, source.validity_masks, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.active_entities, source.active_entities, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.active_entities_by_type, source.active_entities_by_type, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.active_entities_by_team_and_type,
+            source.active_entities_by_team_and_type,
+            count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.spawned_entities, source.spawned_entities, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.destroyed_entities, source.destroyed_entities, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(destination.kills, source.kills, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.active_lasers, source.active_lasers, count);
+        ml::soa_storage_detail::transfer_n<Overlapping>(
+            destination.lasers_fired, source.lasers_fired, count);
+    }
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
@@ -419,27 +445,7 @@ struct HistoryRows
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        ml::native_soa::copy_n(
-            columns.completed_ticks + index, columns.completed_ticks + source, move_count);
-        ml::native_soa::copy_n(
-            columns.validity_masks + index, columns.validity_masks + source, move_count);
-        ml::native_soa::copy_n(
-            columns.active_entities + index, columns.active_entities + source, move_count);
-        ml::native_soa::copy_n(columns.active_entities_by_type + index,
-                               columns.active_entities_by_type + source,
-                               move_count);
-        ml::native_soa::copy_n(columns.active_entities_by_team_and_type + index,
-                               columns.active_entities_by_team_and_type + source,
-                               move_count);
-        ml::native_soa::copy_n(
-            columns.spawned_entities + index, columns.spawned_entities + source, move_count);
-        ml::native_soa::copy_n(
-            columns.destroyed_entities + index, columns.destroyed_entities + source, move_count);
-        ml::native_soa::copy_n(columns.kills + index, columns.kills + source, move_count);
-        ml::native_soa::copy_n(
-            columns.active_lasers + index, columns.active_lasers + source, move_count);
-        ml::native_soa::copy_n(
-            columns.lasers_fired + index, columns.lasers_fired + source, move_count);
+        transfer_columns<false>(columns + index, columns + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -449,46 +455,28 @@ struct HistoryRows
             });
     }
     template <typename Columns>
+    static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
+        requires ml::soa_storage_detail::SoaSourceFor<Columns, HistoryRows, size_type>
+    {
+        return {ml::native_soa::source_data(source.completed_ticks()),
+                ml::native_soa::source_data(source.validity_masks()),
+                ml::native_soa::source_data(source.active_entities()),
+                ml::native_soa::source_data(source.active_entities_by_type()),
+                ml::native_soa::source_data(source.active_entities_by_team_and_type()),
+                ml::native_soa::source_data(source.spawned_entities()),
+                ml::native_soa::source_data(source.destroyed_entities()),
+                ml::native_soa::source_data(source.kills()),
+                ml::native_soa::source_data(source.active_lasers()),
+                ml::native_soa::source_data(source.lasers_fired())};
+    }
+    template <typename Columns>
     void append_columns(Columns const& source,
                         size_type source_first,
                         size_type first,
                         size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, HistoryRows, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::copy_n(destination.completed_ticks,
-                               ml::native_soa::source_data(source.completed_ticks()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.validity_masks,
-                               ml::native_soa::source_data(source.validity_masks()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.active_entities,
-                               ml::native_soa::source_data(source.active_entities()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.active_entities_by_type,
-                               ml::native_soa::source_data(source.active_entities_by_type()) +
-                                   source_first,
-                               count);
-        ml::native_soa::copy_n(
-            destination.active_entities_by_team_and_type,
-            ml::native_soa::source_data(source.active_entities_by_team_and_type()) + source_first,
-            count);
-        ml::native_soa::copy_n(destination.spawned_entities,
-                               ml::native_soa::source_data(source.spawned_entities()) +
-                                   source_first,
-                               count);
-        ml::native_soa::copy_n(destination.destroyed_entities,
-                               ml::native_soa::source_data(source.destroyed_entities()) +
-                                   source_first,
-                               count);
-        ml::native_soa::copy_n(
-            destination.kills, ml::native_soa::source_data(source.kills()) + source_first, count);
-        ml::native_soa::copy_n(destination.active_lasers,
-                               ml::native_soa::source_data(source.active_lasers()) + source_first,
-                               count);
-        ml::native_soa::copy_n(destination.lasers_fired,
-                               ml::native_soa::source_data(source.lasers_fired()) + source_first,
-                               count);
+        transfer_columns<false>(get_data(first), source_pointers(source) + source_first, count);
     }
     template <typename Columns>
     void copy_columns_from(Columns const& source,
@@ -497,59 +485,14 @@ struct HistoryRows
                            size_type count)
         requires ml::soa_storage_detail::SoaSourceFor<Columns, HistoryRows, size_type>
     {
-        auto const destination{get_data(first)};
-        ml::native_soa::move_n(destination.completed_ticks,
-                               ml::native_soa::source_data(source.completed_ticks()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.validity_masks,
-                               ml::native_soa::source_data(source.validity_masks()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.active_entities,
-                               ml::native_soa::source_data(source.active_entities()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.active_entities_by_type,
-                               ml::native_soa::source_data(source.active_entities_by_type()) +
-                                   source_first,
-                               count);
-        ml::native_soa::move_n(
-            destination.active_entities_by_team_and_type,
-            ml::native_soa::source_data(source.active_entities_by_team_and_type()) + source_first,
-            count);
-        ml::native_soa::move_n(destination.spawned_entities,
-                               ml::native_soa::source_data(source.spawned_entities()) +
-                                   source_first,
-                               count);
-        ml::native_soa::move_n(destination.destroyed_entities,
-                               ml::native_soa::source_data(source.destroyed_entities()) +
-                                   source_first,
-                               count);
-        ml::native_soa::move_n(
-            destination.kills, ml::native_soa::source_data(source.kills()) + source_first, count);
-        ml::native_soa::move_n(destination.active_lasers,
-                               ml::native_soa::source_data(source.active_lasers()) + source_first,
-                               count);
-        ml::native_soa::move_n(destination.lasers_fired,
-                               ml::native_soa::source_data(source.lasers_fired()) + source_first,
-                               count);
+        transfer_columns<true>(get_data(first), source_pointers(source) + source_first, count);
     }
     void copy_live_columns(std::byte* const new_data, size_type const new_capacity) noexcept {
         auto const old_blocks{capacity_blocks()};
         auto const new_blocks{static_cast<byte_size_type>(new_capacity / capacity_granularity)};
         auto const source{make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
         auto const destination{make_data_unchecked(new_data, new_blocks)};
-        ml::native_soa::copy_n(destination.completed_ticks, source.completed_ticks, num_);
-        ml::native_soa::copy_n(destination.validity_masks, source.validity_masks, num_);
-        ml::native_soa::copy_n(destination.active_entities, source.active_entities, num_);
-        ml::native_soa::copy_n(
-            destination.active_entities_by_type, source.active_entities_by_type, num_);
-        ml::native_soa::copy_n(destination.active_entities_by_team_and_type,
-                               source.active_entities_by_team_and_type,
-                               num_);
-        ml::native_soa::copy_n(destination.spawned_entities, source.spawned_entities, num_);
-        ml::native_soa::copy_n(destination.destroyed_entities, source.destroyed_entities, num_);
-        ml::native_soa::copy_n(destination.kills, source.kills, num_);
-        ml::native_soa::copy_n(destination.active_lasers, source.active_lasers, num_);
-        ml::native_soa::copy_n(destination.lasers_fired, source.lasers_fired, num_);
+        transfer_columns<false>(destination, source, num_);
     }
   public:
 };
