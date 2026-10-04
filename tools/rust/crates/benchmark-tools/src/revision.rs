@@ -51,9 +51,13 @@ pub fn make_git_command(root: &Path, args: &[&str]) -> Command {
 }
 
 pub fn run_git_capture(root: &Path, args: &[&str]) -> Result<String> {
+    Ok(String::from_utf8(run_git_capture_bytes(root, args)?)?)
+}
+
+pub fn run_git_capture_bytes(root: &Path, args: &[&str]) -> Result<Vec<u8>> {
     let output =
         require_process_success(capture_process_output(&mut make_git_command(root, args))?)?;
-    Ok(String::from_utf8(output.stdout)?)
+    Ok(output.stdout)
 }
 
 pub fn sha256_hex(bytes: impl AsRef<[u8]>) -> String {
@@ -92,7 +96,7 @@ pub fn capture_source_identity(root: &Path, artifact_root: Option<&Path>) -> Res
     )?
     .trim()
     .to_owned();
-    let diff = run_git_capture(
+    let diff = run_git_capture_bytes(
         root,
         &[
             "diff",

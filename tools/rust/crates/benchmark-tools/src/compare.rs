@@ -367,7 +367,7 @@ fn record_comparison_inputs(
 }
 
 fn write_source_diffs(run: &Run, baseline: &Source, candidate: &Source) -> Result<()> {
-    let diff = revision::run_git_capture(
+    let diff = revision::run_git_capture_bytes(
         &candidate.root,
         &[
             "diff",
@@ -379,12 +379,12 @@ fn write_source_diffs(run: &Run, baseline: &Source, candidate: &Source) -> Resul
             "--",
         ],
     )?;
-    write_text(&run.path("source.diff"), diff)?;
+    fs::write(run.path("source.diff"), diff)?;
 
     if candidate.dirty {
-        write_text(
-            &run.path("candidate-working-tree.diff"),
-            revision::run_git_capture(
+        fs::write(
+            run.path("candidate-working-tree.diff"),
+            revision::run_git_capture_bytes(
                 &candidate.root,
                 &[
                     "diff",
