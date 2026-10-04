@@ -192,6 +192,8 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                 // Each grid coordinate selects a different cell.
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 for (auto const id : grid.get_cell_entities({x, y, z})) {
+                    // Select the candidate type's already-bound lookup span.
+                    // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                     auto const handle{handles[std::to_underlying(id.entity_type())][id.index()]};
                     if (!include_entity(id, handle.team())) {
                         continue;
@@ -204,6 +206,8 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                     }
                     visited[entity_index] = 1;
 
+                    // Select the candidate type's already-bound location view.
+                    // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                     if (HMM_LenSqrV3(locations[id.entity_type()][local_index] - origin) <=
                         radius_squared) {
                         out_entities[count++] = id;
@@ -435,16 +439,19 @@ void SpatialQueryManager::copy_entity_locations(
     std::span<EntityUniqueId const> const ids,
     Vectors3fView const output,
     ml::FrameMemoryResource* const scratch_resource) const {
-    assert(ids.size() == output.num());
+    auto const count{output.num()};
+    assert(ids.size() == count);
     ml::FrameArray<std::uint32_t> order{scratch_resource};
     ml::FrameArray<EntityInstanceHandle> handles{scratch_resource};
-    order.set_num(output.num());
-    handles.set_num(output.num());
+    order.set_num(count);
+    handles.set_num(count);
     auto const runs{entity_tables_.lookups.lookup_handles(ids, order, handles)};
-    for (std::uint32_t row{}; row < output.num(); ++row) {
+    for (std::uint32_t row{}; row < count; ++row) {
         output.set(row, {});
     }
     for (std::uint32_t run{}; run < runs.num; ++run) {
+        // Bind locations once for each populated entity-type run.
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
         auto const locations{locations_[runs.types[run]]};
         auto const end{runs.end(run)};
         for (auto index{runs.offsets[run]}; index < end; ++index) {
@@ -471,8 +478,11 @@ void
         output_velocities.set(row, {});
     }
     for (std::uint32_t run{}; run < runs.num; ++run) {
+        // Bind motion once for each populated entity-type run.
+        // NOLINTBEGIN(ioj-loop-view-accessor-call)
         auto const locations{locations_[runs.types[run]]};
         auto const velocities{velocities_[runs.types[run]]};
+        // NOLINTEND(ioj-loop-view-accessor-call)
         auto const end{runs.end(run)};
         for (auto index{runs.offsets[run]}; index < end; ++index) {
             auto const row{order[index]};

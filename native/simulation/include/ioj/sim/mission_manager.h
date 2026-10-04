@@ -144,7 +144,7 @@ struct MissionManager {
     // Objective health tracking
     /* **************************************** */
     void update_objective_health(std::span<EntityUniqueId const> ids,
-                                 std::span<ShipHealth> healths,
+                                 std::span<ShipHealth> output,
                                  ml::FrameMemoryResource* scratch_resource);
     auto entities_that_must_survive_are_alive() const -> bool;
     auto entities_required_to_kill_are_dead() const -> bool;

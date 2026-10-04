@@ -553,6 +553,8 @@ void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource)
         if (!has_health(type)) {
             continue;
         }
+        // Bind health once for each populated entity-type run.
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
         auto const current_health{entity_tables_.health.get_const_view(
             type, entity_tables_.lookups.for_type(type).row_count())};
         auto const end{runs.end(run)};

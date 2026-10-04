@@ -441,6 +441,8 @@ void MissionManager::update_objective_health(std::span<EntityUniqueId const> con
     }
     for (std::uint32_t run{}; run < runs.num; ++run) {
         auto const type{runs.types[run]};
+        // Bind health once for each populated entity-type run.
+        // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
         auto const healths{entity_tables_.health.get_const_view(
             type, entity_tables_.lookups.for_type(type).row_count())};
         auto const end{runs.end(run)};
