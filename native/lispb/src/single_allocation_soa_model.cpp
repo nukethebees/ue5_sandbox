@@ -1,5 +1,6 @@
 #include "lowering_utils.h"
 #include "single_allocation_soa_internal.h"
+#include "soa_api.h"
 
 #include <algorithm>
 #include <set>
@@ -22,9 +23,7 @@ auto make_dialect(SoaBackend const backend) -> SingleAllocationDialect {
             .size_type = "std::uint32_t",
             .byte_size_type = "std::size_t",
             .span_template = "std::span",
-            .span_count_requires_cast = true,
             .column_iteration_function = "each_column",
-            .column_application_function = "each_column",
             .dependencies = {{"assert", "cassert", {}},
                              {"single_allocation_storage",
                               "sandbox/core/native_soa/storage.h",
@@ -38,7 +37,6 @@ auto make_dialect(SoaBackend const backend) -> SingleAllocationDialect {
         .byte_size_type = "SIZE_T",
         .span_template = "TArrayView",
         .column_iteration_function = "apply_arrays",
-        .column_application_function = "apply_arrays",
         .column_iteration_returns_result = true,
         .dependencies =
             {{"assert", "cassert", {}},
@@ -92,6 +90,7 @@ auto relative_column_spelling(std::string const& spelling,
                                                             "Layout",
                                                             "LayoutStart",
                                                             "Operations",
+                                                            "Overlapping",
                                                             "Self",
                                                             "State",
                                                             "Storage",
@@ -137,6 +136,8 @@ auto relative_column_spelling(std::string const& spelling,
                                                             "swap_remove_columns",
                                                             "swap_remove_indices",
                                                             "copy_columns",
+                                                            "transfer_columns",
+                                                            "source_pointers",
                                                             "copy_columns_from",
                                                             "append_columns",
                                                             "copy_live_columns",
@@ -184,13 +185,6 @@ auto relative_column_spelling(std::string const& spelling,
 
 } // namespace
 
-auto SingleAllocationDialect::span_count(Expr count) const -> Expr {
-    if (!span_count_requires_cast) {
-        return count;
-    }
-    return static_cast_expr("std::size_t", std::move(count));
-}
-
 auto build_single_allocation_model(SoaSchema const& schema,
                                    std::map<std::string, SoaSchema const*> const& schemas,
                                    TypeRegistry const& types,
@@ -234,9 +228,29 @@ auto build_single_allocation_model(SoaSchema const& schema,
                     *schemas.at(type_graph.type(*member.nested_type).identity.name)};
                 result.equivalent_constructors.emplace(nested_schema.name,
                                                        nested.equivalent_constructor.value_or(""));
-                if (nested_schema.uses_compact_vector_runtime()) {
-                    if (auto const shape{recognize_compact_vector(nested, backend)}) {
-                        result.compact_vectors.emplace(join(path, "_"), *shape);
+                if (auto shape{recognize_compact_vector(nested, backend)}) {
+                    auto use_runtime{nested_schema.uses_compact_vector_runtime()};
+                    if (backend == SoaBackend::standard_library && nested_schema.layout_only &&
+                        nested_schema.equivalent_type &&
+                        nested_schema.const_view_functions.empty() &&
+                        nested_schema.mutable_view_functions.empty() &&
+                        nested_schema.using_declarations.empty() &&
+                        !nested_schema.export_specifier) {
+                        if (shape->runtime_prefix == "Vector3") {
+                            use_runtime = uses_native_vector_view(nested_schema, types);
+                        } else if (shape->runtime_prefix == "RotatorSoA" &&
+                                   nested.equivalent_constructor.value_or("").empty()) {
+                            auto const equivalent{
+                                resolve_type(*nested_schema.equivalent_type, types)};
+                            shape->equivalent_type = equivalent.spelling;
+                            result.dependencies.insert(result.dependencies.end(),
+                                                       equivalent.dependencies.begin(),
+                                                       equivalent.dependencies.end());
+                            use_runtime = true;
+                        }
+                    }
+                    if (use_runtime) {
+                        result.compact_vectors.emplace(join(path, "_"), std::move(*shape));
                     }
                 }
                 self(self, nested, path);

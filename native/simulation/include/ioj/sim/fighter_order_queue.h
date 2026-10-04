@@ -48,7 +48,7 @@ struct FighterOrderQueueSingleLayout {
 };
 
 template <bool Const>
-struct FighterOrderQueueSingleViewImpl {
+struct FighterOrderQueueSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
     using soa_schema = FighterOrderQueueSchema;
     using size_type = std::uint32_t;
     using Layout = FighterOrderQueueSingleLayout;
@@ -69,48 +69,21 @@ struct FighterOrderQueueSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const {
-        using namespace ml::soa_storage_detail;
-        validate_view(state_, offset_, count_);
+    auto entity_ids() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
+            state_, offset_, count_, Layout::EntityIdsColumn);
     }
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
+    auto orders() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<FighterOrder>>>(
+            state_, offset_, count_, Layout::OrdersColumn);
     }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        using namespace ml::soa_storage_detail;
-        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
+    auto tasks() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<FighterTask>>>(
+            state_, offset_, count_, Layout::TasksColumn);
     }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count >= 0 && count <= self.count_);
-        return self.slice(self.count_ - count, count);
-    }
-    auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_, offset_, Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto orders() const -> std::span<Element<FighterOrder>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<FighterOrder>(
-                    state_, offset_, Layout::OrdersColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto tasks() const -> std::span<Element<FighterTask>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<FighterTask>(
-                    state_, offset_, Layout::TasksColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto targets() const -> std::span<Element<EntityUniqueId>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_, offset_, Layout::TargetsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+    auto targets() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
+            state_, offset_, count_, Layout::TargetsColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -120,6 +93,7 @@ struct FighterOrderQueueSingleViewImpl {
         func(targets());
     }
   private:
+    friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct FighterOrderQueueSingleViewImpl;
     State* state_{};
@@ -129,31 +103,13 @@ struct FighterOrderQueueSingleViewImpl {
 struct FighterOrderQueueSingleConstView : FighterOrderQueueSingleViewImpl<true> {
     using Base = FighterOrderQueueSingleViewImpl<true>;
     using Base::Base;
-    using View = FighterOrderQueueSingleView;
-    using ConstView = FighterOrderQueueSingleConstView;
-    FighterOrderQueueSingleConstView() = default;
-    FighterOrderQueueSingleConstView(FighterOrderQueueSingleView const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<FighterOrderQueueSingleConstView>());
 struct FighterOrderQueueSingleView : FighterOrderQueueSingleViewImpl<false> {
     using Base = FighterOrderQueueSingleViewImpl<false>;
     using Base::Base;
-    using View = FighterOrderQueueSingleView;
-    using ConstView = FighterOrderQueueSingleConstView;
-    FighterOrderQueueSingleView() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<FighterOrderQueueSingleView>());
-inline FighterOrderQueueSingleConstView::FighterOrderQueueSingleConstView(
-    FighterOrderQueueSingleView const& other)
-    : Base{other} {}
 struct FighterOrderQueue
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
@@ -254,7 +210,7 @@ struct FighterOrderQueue
                                  DataPointers<Byte> const& source,
                                  size_type count) {
         auto transfer = [count](auto* dst, auto const* src) {
-            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
         };
         transfer(destination.entity_ids, source.entity_ids);
         transfer(destination.orders, source.orders);

@@ -47,7 +47,7 @@ struct EntityDeathInfoSingleLayout {
 };
 
 template <bool Const>
-struct EntityDeathInfoSingleViewImpl {
+struct EntityDeathInfoSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
     using soa_schema = EntityDeathInfoSchema;
     using size_type = std::uint32_t;
     using Layout = EntityDeathInfoSingleLayout;
@@ -68,42 +68,17 @@ struct EntityDeathInfoSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const {
-        using namespace ml::soa_storage_detail;
-        validate_view(state_, offset_, count_);
+    auto reasons() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<DeathReason>>>(
+            state_, offset_, count_, Layout::ReasonsColumn);
     }
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
+    auto victims() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
+            state_, offset_, count_, Layout::VictimsColumn);
     }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        using namespace ml::soa_storage_detail;
-        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count >= 0 && count <= self.count_);
-        return self.slice(self.count_ - count, count);
-    }
-    auto reasons() const -> std::span<Element<DeathReason>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<DeathReason>(
-                    state_, offset_, Layout::ReasonsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto victims() const -> std::span<Element<EntityUniqueId>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_, offset_, Layout::VictimsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto killers() const -> std::span<Element<EntityUniqueId>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_, offset_, Layout::KillersColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+    auto killers() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
+            state_, offset_, count_, Layout::KillersColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -112,6 +87,7 @@ struct EntityDeathInfoSingleViewImpl {
         func(killers());
     }
   private:
+    friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct EntityDeathInfoSingleViewImpl;
     State* state_{};
@@ -121,31 +97,13 @@ struct EntityDeathInfoSingleViewImpl {
 struct EntityDeathInfoSingleConstView : EntityDeathInfoSingleViewImpl<true> {
     using Base = EntityDeathInfoSingleViewImpl<true>;
     using Base::Base;
-    using View = EntityDeathInfoSingleView;
-    using ConstView = EntityDeathInfoSingleConstView;
-    EntityDeathInfoSingleConstView() = default;
-    EntityDeathInfoSingleConstView(EntityDeathInfoSingleView const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<EntityDeathInfoSingleConstView>());
 struct EntityDeathInfoSingleView : EntityDeathInfoSingleViewImpl<false> {
     using Base = EntityDeathInfoSingleViewImpl<false>;
     using Base::Base;
-    using View = EntityDeathInfoSingleView;
-    using ConstView = EntityDeathInfoSingleConstView;
-    EntityDeathInfoSingleView() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<EntityDeathInfoSingleView>());
-inline EntityDeathInfoSingleConstView::EntityDeathInfoSingleConstView(
-    EntityDeathInfoSingleView const& other)
-    : Base{other} {}
 struct EntityDeathInfo
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
@@ -243,7 +201,7 @@ struct EntityDeathInfo
                                  DataPointers<Byte> const& source,
                                  size_type count) {
         auto transfer = [count](auto* dst, auto const* src) {
-            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
         };
         transfer(destination.reasons, source.reasons);
         transfer(destination.victims, source.victims);

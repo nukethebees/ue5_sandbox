@@ -28,20 +28,17 @@ using single_allocation_layout::try_allocation_bytes;
 using single_allocation_layout::try_round_capacity;
 using soa_storage_detail::source_data;
 
-template <typename T>
-void copy_n(T* const destination, T const* const source, int32 const count) noexcept {
+template <bool Overlapping, typename T>
+void transfer_n(T* const destination, T const* const source, int32 const count) noexcept {
     if (count == 0) {
         return;
     }
-    FMemory::Memcpy(destination, source, static_cast<SIZE_T>(count) * sizeof(T));
-}
-
-template <typename T>
-void move_n(T* const destination, T const* const source, int32 const count) noexcept {
-    if (count == 0) {
-        return;
+    auto const bytes{static_cast<SIZE_T>(count) * sizeof(T)};
+    if constexpr (Overlapping) {
+        FMemory::Memmove(destination, source, bytes);
+    } else {
+        FMemory::Memcpy(destination, source, bytes);
     }
-    FMemory::Memmove(destination, source, static_cast<SIZE_T>(count) * sizeof(T));
 }
 
 template <typename T>

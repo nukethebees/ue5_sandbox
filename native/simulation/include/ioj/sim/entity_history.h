@@ -53,7 +53,7 @@ struct EntityHistoryColumnsSingleLayout {
 };
 
 template <bool Const>
-struct EntityHistoryColumnsSingleViewImpl {
+struct EntityHistoryColumnsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
     using soa_schema = EntityHistoryColumnsSchema;
     using size_type = std::uint32_t;
     using Layout = EntityHistoryColumnsSingleLayout;
@@ -74,61 +74,29 @@ struct EntityHistoryColumnsSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const {
-        using namespace ml::soa_storage_detail;
-        validate_view(state_, offset_, count_);
+    auto entity_ids() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
+            state_, offset_, count_, Layout::EntityIdsColumn);
     }
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
+    auto entity_types() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityType>>>(
+            state_, offset_, count_, Layout::EntityTypesColumn);
     }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        using namespace ml::soa_storage_detail;
-        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
+    auto teams() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<Team>>>(
+            state_, offset_, count_, Layout::TeamsColumn);
     }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count >= 0 && count <= self.count_);
-        return self.slice(self.count_ - count, count);
+    auto kills() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<std::uint32_t>>>(
+            state_, offset_, count_, Layout::KillsColumn);
     }
-    auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_, offset_, Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+    auto killed_by() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
+            state_, offset_, count_, Layout::KilledByColumn);
     }
-    auto entity_types() const -> std::span<Element<EntityType>> {
-        using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<EntityType>(
-                state_, offset_, Layout::EntityTypesColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
-    }
-    auto teams() const -> std::span<Element<Team>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<Team>(
-                    state_, offset_, Layout::TeamsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto kills() const -> std::span<Element<std::uint32_t>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<std::uint32_t>(
-                    state_, offset_, Layout::KillsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto killed_by() const -> std::span<Element<EntityUniqueId>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_, offset_, Layout::KilledByColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto life_state() const -> std::span<Element<LifeState>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<LifeState>(
-                    state_, offset_, Layout::LifeStateColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+    auto life_state() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<LifeState>>>(
+            state_, offset_, count_, Layout::LifeStateColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -140,6 +108,7 @@ struct EntityHistoryColumnsSingleViewImpl {
         func(life_state());
     }
   private:
+    friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct EntityHistoryColumnsSingleViewImpl;
     State* state_{};
@@ -149,31 +118,13 @@ struct EntityHistoryColumnsSingleViewImpl {
 struct EntityHistoryColumnsSingleConstView : EntityHistoryColumnsSingleViewImpl<true> {
     using Base = EntityHistoryColumnsSingleViewImpl<true>;
     using Base::Base;
-    using View = EntityHistoryColumnsSingleView;
-    using ConstView = EntityHistoryColumnsSingleConstView;
-    EntityHistoryColumnsSingleConstView() = default;
-    EntityHistoryColumnsSingleConstView(EntityHistoryColumnsSingleView const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<EntityHistoryColumnsSingleConstView>());
 struct EntityHistoryColumnsSingleView : EntityHistoryColumnsSingleViewImpl<false> {
     using Base = EntityHistoryColumnsSingleViewImpl<false>;
     using Base::Base;
-    using View = EntityHistoryColumnsSingleView;
-    using ConstView = EntityHistoryColumnsSingleConstView;
-    EntityHistoryColumnsSingleView() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<EntityHistoryColumnsSingleView>());
-inline EntityHistoryColumnsSingleConstView::EntityHistoryColumnsSingleConstView(
-    EntityHistoryColumnsSingleView const& other)
-    : Base{other} {}
 struct EntityHistory
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
@@ -285,7 +236,7 @@ struct EntityHistory
                                  DataPointers<Byte> const& source,
                                  size_type count) {
         auto transfer = [count](auto* dst, auto const* src) {
-            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
         };
         transfer(destination.entity_ids, source.entity_ids);
         transfer(destination.entity_types, source.entity_types);

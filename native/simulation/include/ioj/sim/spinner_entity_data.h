@@ -57,7 +57,7 @@ struct SpinnerEntityDataSingleLayout {
 };
 
 template <bool Const>
-struct SpinnerEntityDataSingleViewImpl {
+struct SpinnerEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
     using soa_schema = SpinnerEntityDataSchema;
     using size_type = std::uint32_t;
     using Layout = SpinnerEntityDataSingleLayout;
@@ -78,65 +78,30 @@ struct SpinnerEntityDataSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const {
+    auto entity_ids() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
+            state_, offset_, count_, Layout::EntityIdsColumn);
+    }
+    auto view_locations() const {
         using namespace ml::soa_storage_detail;
-        validate_view(state_, offset_, count_);
+        return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
+                                                                     offset_,
+                                                                     count_,
+                                                                     Layout::LocationsXsColumn,
+                                                                     Layout::LocationsYsColumn,
+                                                                     Layout::LocationsZsColumn);
     }
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
+    auto yaws() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<float>>>(
+            state_, offset_, count_, Layout::YawsColumn);
     }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        using namespace ml::soa_storage_detail;
-        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
+    auto laser_cooldowns() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<std::int16_t>>>(
+            state_, offset_, count_, Layout::LaserCooldownsColumn);
     }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count >= 0 && count <= self.count_);
-        return self.slice(self.count_ - count, count);
-    }
-    auto entity_ids() const -> std::span<Element<EntityUniqueId>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_, offset_, Layout::EntityIdsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto view_locations() const -> ml::Vector3SoAView<Element<float>> {
-        using namespace ml::soa_storage_detail;
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{view_capacity_blocks(state_)};
-        return {view_column_data_unchecked<float>(
-                    state_, offset_, Layout::LocationsXsColumn.offset(blocks)),
-                view_column_data_unchecked<float>(
-                    state_, offset_, Layout::LocationsYsColumn.offset(blocks)),
-                view_column_data_unchecked<float>(
-                    state_, offset_, Layout::LocationsZsColumn.offset(blocks)),
-                count_};
-    }
-    auto yaws() const -> std::span<Element<float>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<float>(
-                    state_, offset_, Layout::YawsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto laser_cooldowns() const -> std::span<Element<std::int16_t>> {
-        using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<std::int16_t>(
-                state_, offset_, Layout::LaserCooldownsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
-    }
-    auto next_fire_point_indices() const -> std::span<Element<std::int32_t>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<std::int32_t>(
-                    state_,
-                    offset_,
-                    Layout::NextFirePointIndicesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+    auto next_fire_point_indices() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<std::int32_t>>>(
+            state_, offset_, count_, Layout::NextFirePointIndicesColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -150,6 +115,7 @@ struct SpinnerEntityDataSingleViewImpl {
         func(next_fire_point_indices());
     }
   private:
+    friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct SpinnerEntityDataSingleViewImpl;
     State* state_{};
@@ -159,31 +125,13 @@ struct SpinnerEntityDataSingleViewImpl {
 struct SpinnerEntityDataSingleConstView : SpinnerEntityDataSingleViewImpl<true> {
     using Base = SpinnerEntityDataSingleViewImpl<true>;
     using Base::Base;
-    using View = SpinnerEntityDataSingleView;
-    using ConstView = SpinnerEntityDataSingleConstView;
-    SpinnerEntityDataSingleConstView() = default;
-    SpinnerEntityDataSingleConstView(SpinnerEntityDataSingleView const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<SpinnerEntityDataSingleConstView>());
 struct SpinnerEntityDataSingleView : SpinnerEntityDataSingleViewImpl<false> {
     using Base = SpinnerEntityDataSingleViewImpl<false>;
     using Base::Base;
-    using View = SpinnerEntityDataSingleView;
-    using ConstView = SpinnerEntityDataSingleConstView;
-    SpinnerEntityDataSingleView() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<SpinnerEntityDataSingleView>());
-inline SpinnerEntityDataSingleConstView::SpinnerEntityDataSingleConstView(
-    SpinnerEntityDataSingleView const& other)
-    : Base{other} {}
 struct SpinnerEntityData
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
@@ -299,7 +247,7 @@ struct SpinnerEntityData
                                  DataPointers<Byte> const& source,
                                  size_type count) {
         auto transfer = [count](auto* dst, auto const* src) {
-            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
         };
         transfer(destination.entity_ids, source.entity_ids);
         transfer(destination.locations_xs, source.locations_xs);

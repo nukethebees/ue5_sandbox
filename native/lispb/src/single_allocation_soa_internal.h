@@ -17,13 +17,9 @@ struct SingleAllocationDialect {
     std::string size_type;
     std::string byte_size_type;
     std::string span_template;
-    bool span_count_requires_cast{};
     std::string column_iteration_function;
-    std::string column_application_function;
     bool column_iteration_returns_result{};
     std::vector<TypeDependency> dependencies;
-
-    auto span_count(Expr count) const -> Expr;
 };
 
 struct SingleAllocationColumn {
@@ -37,6 +33,7 @@ struct CompactVectorShape {
     std::string element_type;
     std::vector<std::string> components;
     std::string runtime_prefix;
+    std::string equivalent_type;
 };
 
 struct SingleAllocationModel {

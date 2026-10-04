@@ -6,10 +6,10 @@
 #include "ioj/sim/collision_types.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/query_result_types.h"
-#include "ioj/sim/vector_types.h"
 #include <ioj/sim/line_trace_result.h>
 
 #include "sandbox/core/native_soa/storage.h"
+#include "sandbox/core/vector_soa_view.h"
 
 #include <cassert>
 #include <memory_resource>
@@ -55,121 +55,8 @@ struct TraceHitsSingleLayout {
     static_assert(max_capacity >= capacity_granularity);
 };
 
-struct TraceHitsSingleView_locations;
-struct TraceHitsSingleConstView_locations;
 template <bool Const>
-struct TraceHitsSingleView_locationsImpl {
-    using soa_schema = Vectors3fSchema;
-    using size_type = std::uint32_t;
-    using Layout = TraceHitsSingleLayout;
-    using Storage = ml::native_soa::StorageState;
-    using State = std::conditional_t<Const, Storage const, Storage>;
-    template <typename T>
-    using Element = std::conditional_t<Const, T const, T>;
-    using View = TraceHitsSingleView_locations;
-    using ConstView = TraceHitsSingleConstView_locations;
-    TraceHitsSingleView_locationsImpl() = default;
-    TraceHitsSingleView_locationsImpl(State* state, size_type offset, size_type count)
-        : state_{state}
-        , offset_{offset}
-        , count_{count} {}
-    template <bool Enabled = Const>
-    TraceHitsSingleView_locationsImpl(TraceHitsSingleView_locationsImpl<false> const& other)
-        requires Enabled
-        : state_{other.state_}
-        , offset_{other.offset_}
-        , count_{other.count_} {}
-    void validate() const {
-        using namespace ml::soa_storage_detail;
-        validate_view(state_, offset_, count_);
-    }
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
-    }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        using namespace ml::soa_storage_detail;
-        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
-    }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count >= 0 && count <= self.count_);
-        return self.slice(self.count_ - count, count);
-    }
-    auto xs() const -> std::span<Element<float>> {
-        using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(
-                state_, offset_, Layout::LocationsXsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
-    }
-    auto ys() const -> std::span<Element<float>> {
-        using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(
-                state_, offset_, Layout::LocationsYsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
-    }
-    auto zs() const -> std::span<Element<float>> {
-        using namespace ml::soa_storage_detail;
-        return {
-            view_column_data<float>(
-                state_, offset_, Layout::LocationsZsColumn.offset(view_capacity_blocks(state_))),
-            static_cast<std::size_t>(count_)};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        func(xs());
-        func(ys());
-        func(zs());
-    }
-  private:
-    template <bool>
-    friend struct TraceHitsSingleView_locationsImpl;
-    State* state_{};
-    size_type offset_{};
-    size_type count_{};
-};
-struct TraceHitsSingleConstView_locations : TraceHitsSingleView_locationsImpl<true> {
-    using Base = TraceHitsSingleView_locationsImpl<true>;
-    using Base::Base;
-    using View = TraceHitsSingleView_locations;
-    using ConstView = TraceHitsSingleConstView_locations;
-    TraceHitsSingleConstView_locations() = default;
-    TraceHitsSingleConstView_locations(TraceHitsSingleView_locations const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        return HMM_V3(xs()[index], ys()[index], zs()[index]);
-    }
-};
-static_assert(ml::soa_storage_detail::validate_compact_view<TraceHitsSingleConstView_locations>());
-struct TraceHitsSingleView_locations : TraceHitsSingleView_locationsImpl<false> {
-    using Base = TraceHitsSingleView_locationsImpl<false>;
-    using Base::Base;
-    using View = TraceHitsSingleView_locations;
-    using ConstView = TraceHitsSingleConstView_locations;
-    TraceHitsSingleView_locations() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
-    using equivalent_type = Vector3f;
-    auto operator[](std::uint32_t index) const -> equivalent_type {
-        return HMM_V3(xs()[index], ys()[index], zs()[index]);
-    }
-};
-static_assert(ml::soa_storage_detail::validate_compact_view<TraceHitsSingleView_locations>());
-inline TraceHitsSingleConstView_locations::TraceHitsSingleConstView_locations(
-    TraceHitsSingleView_locations const& other)
-    : Base{other} {}
-template <bool Const>
-struct TraceHitsSingleViewImpl {
+struct TraceHitsSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
     using soa_schema = TraceHitsSchema;
     using size_type = std::uint32_t;
     using Layout = TraceHitsSingleLayout;
@@ -190,48 +77,27 @@ struct TraceHitsSingleViewImpl {
         : state_{other.state_}
         , offset_{other.offset_}
         , count_{other.count_} {}
-    void validate() const {
+    auto view_locations() const {
         using namespace ml::soa_storage_detail;
-        validate_view(state_, offset_, count_);
+        return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
+                                                                     offset_,
+                                                                     count_,
+                                                                     Layout::LocationsXsColumn,
+                                                                     Layout::LocationsYsColumn,
+                                                                     Layout::LocationsZsColumn);
     }
-    auto num() const noexcept -> size_type { return count_; }
-    auto is_empty() const noexcept -> bool { return count_ == 0; }
-    auto get_view(this auto const& self) { return self; }
-    auto get_view(this auto const& self, size_type offset, size_type count) {
-        return self.slice(offset, count);
+    auto entities() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<EntityUniqueId>>>(
+            state_, offset_, count_, Layout::EntitiesColumn);
     }
-    auto slice(this auto const& self, size_type offset, size_type count) {
-        using namespace ml::soa_storage_detail;
-        return slice_view<decltype(self)>(self.state_, self.offset_, self.count_, offset, count);
+    auto static_geometry_indices() const {
+        return ml::soa_storage_detail::column_view<
+            std::span<Element<collision::StaticGeometryIndex>>>(
+            state_, offset_, count_, Layout::StaticGeometryIndicesColumn);
     }
-    auto left(this auto const& self, size_type count) { return self.slice(0, count); }
-    auto right(this auto const& self, size_type count) {
-        assert(count >= 0 && count <= self.count_);
-        return self.slice(self.count_ - count, count);
-    }
-    auto view_locations() const -> std::
-        conditional_t<Const, TraceHitsSingleConstView_locations, TraceHitsSingleView_locations> {
-        return {state_, offset_, count_};
-    }
-    auto entities() const -> std::span<Element<EntityUniqueId>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<EntityUniqueId>(
-                    state_, offset_, Layout::EntitiesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto static_geometry_indices() const -> std::span<Element<collision::StaticGeometryIndex>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<collision::StaticGeometryIndex>(
-                    state_,
-                    offset_,
-                    Layout::StaticGeometryIndicesColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
-    }
-    auto hits() const -> std::span<Element<TraceHit>> {
-        using namespace ml::soa_storage_detail;
-        return {view_column_data<TraceHit>(
-                    state_, offset_, Layout::HitsColumn.offset(view_capacity_blocks(state_))),
-                static_cast<std::size_t>(count_)};
+    auto hits() const {
+        return ml::soa_storage_detail::column_view<std::span<Element<TraceHit>>>(
+            state_, offset_, count_, Layout::HitsColumn);
     }
     template <typename Func>
     void each_column(Func&& func) const {
@@ -244,6 +110,7 @@ struct TraceHitsSingleViewImpl {
         func(hits());
     }
   private:
+    friend ml::soa_storage_detail::CompactViewOperations;
     template <bool>
     friend struct TraceHitsSingleViewImpl;
     State* state_{};
@@ -253,30 +120,13 @@ struct TraceHitsSingleViewImpl {
 struct TraceHitsSingleConstView : TraceHitsSingleViewImpl<true> {
     using Base = TraceHitsSingleViewImpl<true>;
     using Base::Base;
-    using View = TraceHitsSingleView;
-    using ConstView = TraceHitsSingleConstView;
-    TraceHitsSingleConstView() = default;
-    TraceHitsSingleConstView(TraceHitsSingleView const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<TraceHitsSingleConstView>());
 struct TraceHitsSingleView : TraceHitsSingleViewImpl<false> {
     using Base = TraceHitsSingleViewImpl<false>;
     using Base::Base;
-    using View = TraceHitsSingleView;
-    using ConstView = TraceHitsSingleConstView;
-    TraceHitsSingleView() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<TraceHitsSingleView>());
-inline TraceHitsSingleConstView::TraceHitsSingleConstView(TraceHitsSingleView const& other)
-    : Base{other} {}
 struct TraceHits
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
@@ -388,7 +238,7 @@ struct TraceHits
                                  DataPointers<Byte> const& source,
                                  size_type count) {
         auto transfer = [count](auto* dst, auto const* src) {
-            ml::soa_storage_detail::transfer_n<Overlapping>(dst, src, count);
+            ml::native_soa::transfer_n<Overlapping>(dst, src, count);
         };
         transfer(destination.locations_xs, source.locations_xs);
         transfer(destination.locations_ys, source.locations_ys);

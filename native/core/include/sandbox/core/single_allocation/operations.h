@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
-#include <cstring>
 #include <memory_resource>
 #include <new>
 #include <span>
@@ -14,19 +13,6 @@
 #include <utility>
 
 namespace ml::soa_storage_detail {
-
-template <bool Overlapping, typename T, typename Size>
-void transfer_n(T* destination, T const* source, Size count) noexcept {
-    if (count == 0) {
-        return;
-    }
-    auto const bytes{static_cast<std::size_t>(count) * sizeof(T)};
-    if constexpr (Overlapping) {
-        std::memmove(destination, source, bytes);
-    } else {
-        std::memcpy(destination, source, bytes);
-    }
-}
 
 // Generated owners supply state and explicit typed column operations.
 template <typename Size, auto RoundedCapacity, auto GrowthCapacity>
