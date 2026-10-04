@@ -13,14 +13,33 @@
 #include <vector>
 
 namespace ioj::sim {
+inline constexpr auto has_health(EntityType const type) -> bool {
+    return type == EntityType::PlayerShip || type == EntityType::CapitalShip ||
+           type == EntityType::Fighter || type == EntityType::Turret;
+}
 namespace health_storage {
-inline constexpr auto capacities{entity_lifetime_capacities};
+inline constexpr auto capacities{[] {
+    auto result{entity_lifetime_capacities};
+    for (auto const type : ml::EnumTraits<EntityType>::values) {
+        if (!has_health(type)) {
+            result[type] = 0;
+        }
+    }
+    return result;
+}()};
 inline constexpr auto offsets{[] {
     EntityTypeSizes result;
     std::uint32_t next{};
     for (auto const type : ml::EnumTraits<EntityType>::values) {
         result[type] = next;
         next += capacities[type];
+    }
+    return result;
+}()};
+inline constexpr auto capacity{[] {
+    std::uint32_t result{};
+    for (auto const type : ml::EnumTraits<EntityType>::values) {
+        result += capacities[type];
     }
     return result;
 }()};
@@ -78,10 +97,17 @@ class HealthView {
 class HealthTable {
   public:
     HealthTable()
-        : values_(entity_identity_capacity) {}
+        : values_(health_storage::capacity) {}
+
+    [[nodiscard]] auto get_const_view(EntityType const type, std::size_t const count) const
+        -> HealthConstView {
+        assert(has_health(type) && count <= health_storage::capacities[type]);
+        return HealthConstView{std::span{values_}.subspan(health_storage::offsets[type], count)};
+    }
 
     template <EntityType Type>
     [[nodiscard]] auto get_const_view(std::size_t const count) const -> HealthConstView {
+        static_assert(has_health(Type));
         assert(count <= health_storage::capacities[Type]);
         constexpr auto base{health_storage::offsets[Type]};
         return HealthConstView{std::span{values_}.subspan(base, count)};
@@ -89,6 +115,7 @@ class HealthTable {
 
     template <EntityType Type>
     [[nodiscard]] auto get_view(std::size_t const count) -> HealthView {
+        static_assert(has_health(Type));
         assert(count <= health_storage::capacities[Type]);
         constexpr auto base{health_storage::offsets[Type]};
         return HealthView{std::span{values_}.subspan(base, count)};

@@ -542,15 +542,26 @@ void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource)
 
     auto const damage_count{damage_events.num()};
     ml::FrameArray<std::uint32_t> order{scratch_resource};
-    ml::FrameArray<std::uint8_t> instigator_alive{scratch_resource};
-    ml::FrameArray<Team> instigator_teams{scratch_resource};
+    ml::FrameArray<EntityInstanceHandle> instigators{scratch_resource};
     order.set_num(damage_count);
-    instigator_alive.set_num(damage_count);
-    instigator_teams.set_num(damage_count);
-    gather_entities(entity_tables_,
-                    damage_events.instigators,
-                    order,
-                    {.teams = instigator_teams, .alive = instigator_alive});
+    instigators.set_num(damage_count);
+    auto const runs{entity_tables_.lookups.resolve(damage_events.instigators, order, instigators)};
+    for (std::uint32_t run{}; run < runs.num; ++run) {
+        auto const type{runs.types[run]};
+        if (!has_health(type)) {
+            continue;
+        }
+        auto const current_health{entity_tables_.health.get_const_view(
+            type, entity_tables_.lookups.for_type(type).row_count())};
+        auto const end{runs.offsets[run] + runs.counts[run]};
+        for (auto index{runs.offsets[run]}; index < end; ++index) {
+            auto& handle{instigators[order[index]]};
+            // Resolution can kill an instigator before its published handle is retired.
+            if (handle.is_valid() && is_dead(current_health.health(handle.index()))) {
+                handle = {};
+            }
+        }
+    }
     auto const handles{entity_tables_.lookups.for_type(EntityType::Fighter).entries()};
     [[maybe_unused]] auto const entity_ids{data.entity_ids()};
     auto const teams{data.teams()};
@@ -572,10 +583,10 @@ void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource)
         }
 
         auto const instigator{damage_events.instigators[event_element]};
-        if (!instigator_alive[event_index]) {
+        if (!instigators[event_index].is_valid()) {
             continue;
         }
-        if (instigator_teams[event_index] != teams[fighter_index]) {
+        if (instigators[event_index].team() != teams[fighter_index]) {
             target_ids[fighter_index] = instigator;
         }
     }

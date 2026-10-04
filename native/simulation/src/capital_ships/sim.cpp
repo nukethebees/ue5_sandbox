@@ -74,13 +74,13 @@ void Sim::think(float const, ml::FrameMemoryResource* const scratch_resource) {
 
     auto const target_count{static_cast<std::uint32_t>(target_ids.size())};
     ml::FrameArray<std::uint32_t> order{scratch_resource};
-    ml::FrameArray<std::uint8_t> alive{scratch_resource};
+    ml::FrameArray<EntityInstanceHandle> targets{scratch_resource};
     order.set_num(target_count);
-    alive.set_num(target_count);
-    gather_entities(entity_tables_, target_ids, order, {.alive = alive});
+    targets.set_num(target_count);
+    entity_tables_.lookups.resolve(target_ids, order, targets);
 
     for (std::uint32_t index{}; index < target_count; ++index) {
-        if (!alive[index]) {
+        if (!targets[index].is_valid()) {
             target_ids[index] = {};
         }
     }
@@ -410,10 +410,10 @@ void Sim::queue_fighter_orders(ml::FrameMemoryResource* const scratch_resource) 
     auto const fighter_targets{fighters_interface.get_target_ids()};
     auto const target_count{static_cast<std::uint32_t>(fighter_targets.size())};
     ml::FrameArray<std::uint32_t> order{scratch_resource};
-    ml::FrameArray<std::uint8_t> alive{scratch_resource};
+    ml::FrameArray<EntityInstanceHandle> targets{scratch_resource};
     order.set_num(target_count);
-    alive.set_num(target_count);
-    gather_entities(entity_tables_, fighter_targets, order, {.alive = alive});
+    targets.set_num(target_count);
+    entity_tables_.lookups.resolve(fighter_targets, order, targets);
     auto const handles{entity_tables_.lookups.for_type(EntityType::Fighter).entries()};
     auto const entities{this->entities.get_const_view()};
     fighter_order_queue.reset();
@@ -436,7 +436,7 @@ void Sim::queue_fighter_orders(ml::FrameMemoryResource* const scratch_resource) 
             }
 
             auto const fighter_index{handles[fighter_id.index()].index()};
-            if (!alive[fighter_index]) {
+            if (!targets[fighter_index].is_valid()) {
                 fighter_order_queue.add(fighter_id, FighterOrder{0, 1}, {}, capital_target);
             }
         }

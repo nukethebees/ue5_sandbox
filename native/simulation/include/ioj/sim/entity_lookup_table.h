@@ -2,6 +2,7 @@
 
 #include <ioj/sim/entity_identity_layout.h>
 #include <ioj/sim/entity_instance_handle.h>
+#include <ioj/sim/entity_type_runs.h>
 #include <ioj/sim/health.h>
 #include <ioj/sim/sim_clock.h>
 
@@ -41,6 +42,7 @@ class EntityLookupTable {
                                            EntityInstanceHandle::index_minimum,
                                            EntityInstanceHandle::index_maximum));
         auto const count{ids.size()};
+        row_count_ = static_cast<std::uint32_t>(count);
         [[maybe_unused]] auto const handle_count{handles_.size()};
         for (EntityFrameIndex row{}; row < count; ++row) {
             auto const id{ids[row]};
@@ -92,9 +94,11 @@ class EntityLookupTable {
     [[nodiscard]] auto entries() const noexcept -> std::span<EntityInstanceHandle const> {
         return handles_;
     }
+    [[nodiscard]] auto row_count() const noexcept -> std::uint32_t { return row_count_; }
   private:
     [[maybe_unused]] EntityType type_;
     std::pmr::vector<EntityInstanceHandle> handles_;
+    std::uint32_t row_count_{};
 };
 
 class EntityLookupTables {
@@ -136,23 +140,36 @@ class EntityLookupTables {
         assert(output.size() == ids.size());
         assert(std::ranges::is_sorted(ids, {}, &EntityUniqueId::entity_type));
 
-        auto const count{ids.size()};
-        std::size_t first{};
-        while (first < count) {
-            auto const type{ids[first].entity_type()};
-            auto end{first + 1};
-            while (end < count && ids[end].entity_type() == type) {
-                ++end;
-            }
-
-            auto const destination{output.subspan(first, end - first)};
-            if (std::to_underlying(type) < ml::enum_count<EntityType>()) {
-                for_type(type).resolve(ids.subspan(first, end - first), destination);
-            } else {
-                std::ranges::fill(destination, EntityInstanceHandle{});
-            }
-            first = end;
+        std::ranges::fill(output, EntityInstanceHandle{});
+        auto const runs{entity_type_runs(ids)};
+        for (std::uint32_t run{}; run < runs.num; ++run) {
+            auto const offset{runs.offsets[run]};
+            auto const count{runs.counts[run]};
+            for_type(runs.types[run])
+                .resolve(ids.subspan(offset, count), output.subspan(offset, count));
         }
+    }
+
+    // Resolve arbitrary IDs without changing them; publish handles in caller order.
+    auto resolve(std::span<EntityUniqueId const> const ids,
+                 std::span<std::uint32_t> const order,
+                 std::span<EntityInstanceHandle> const output) const -> EntityTypeRuns {
+        assert(permits_lookup());
+        assert(output.size() == ids.size());
+        std::ranges::fill(output, EntityInstanceHandle{});
+        auto runs{group_entity_ids(ids, order)};
+        for (std::uint32_t run{}; run < runs.num; ++run) {
+            auto const handles{for_type(runs.types[run]).entries()};
+            auto const end{runs.offsets[run] + runs.counts[run]};
+            for (auto index{runs.offsets[run]}; index < end; ++index) {
+                auto const row{order[index]};
+                auto const offset{ids[row].index()};
+                if (offset < handles.size()) {
+                    output[row] = handles[offset];
+                }
+            }
+        }
+        return runs;
     }
   private:
     SimClock const& clock_;
