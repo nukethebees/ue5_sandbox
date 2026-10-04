@@ -76,7 +76,7 @@ auto relative_column_spelling(std::string const& spelling,
         return spelling;
     }
 
-    auto const relative{spelling.substr(prefix.size())};
+    auto relative{spelling.substr(prefix.size())};
     auto const first{relative.substr(0, relative.find("::"))};
     // Preserve qualification when class or template scope hides the namespace member.
     static std::set<std::string_view> const generated_names{"Base",
