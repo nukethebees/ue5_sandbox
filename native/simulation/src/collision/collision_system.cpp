@@ -95,12 +95,12 @@ void CollisionSystem::collect_overlaps_for_candidates(
     order.set_num(candidate_count);
     handles.set_num(candidate_count);
     present.set_num(candidate_count);
-    auto const runs{entity_tables_.lookups.resolve(overlap_candidates, order, handles)};
+    auto const runs{entity_tables_.lookups.lookup_handles(overlap_candidates, order, handles)};
     auto const built{uniform_grid_.get_entity_world_bounds()};
     auto const built_ids{built.entity_ids()};
     for (std::uint32_t run{}; run < runs.num; ++run) {
         auto const rows{uniform_grid_.bound_rows(runs.types[run])};
-        auto const end{runs.offsets[run] + runs.counts[run]};
+        auto const end{runs.end(run)};
         for (auto index{runs.offsets[run]}; index < end; ++index) {
             auto const candidate{order[index]};
             auto const handle{handles[candidate]};

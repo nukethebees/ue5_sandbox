@@ -76,7 +76,7 @@ void Sim::think(float const, ml::FrameMemoryResource* const scratch_resource) {
     ml::FrameArray<EntityInstanceHandle> targets{scratch_resource};
     order.set_num(target_count);
     targets.set_num(target_count);
-    entity_tables_.lookups.resolve(target_ids, order, targets);
+    entity_tables_.lookups.lookup_handles(target_ids, order, targets);
 
     for (std::uint32_t index{}; index < target_count; ++index) {
         if (!targets[index].is_valid()) {
@@ -412,7 +412,7 @@ void Sim::queue_fighter_orders(ml::FrameMemoryResource* const scratch_resource) 
     ml::FrameArray<EntityInstanceHandle> targets{scratch_resource};
     order.set_num(target_count);
     targets.set_num(target_count);
-    entity_tables_.lookups.resolve(fighter_targets, order, targets);
+    entity_tables_.lookups.lookup_handles(fighter_targets, order, targets);
     auto const handles{entity_tables_.lookups.for_type(EntityType::Fighter).entries()};
     auto const entities{this->entities.get_const_view()};
     fighter_order_queue.reset();
@@ -423,7 +423,6 @@ void Sim::queue_fighter_orders(ml::FrameMemoryResource* const scratch_resource) 
         auto const capital_target{target_ids[capital_index]};
         auto const span{fighter_spans[capital_index]};
         auto const end{span.end()};
-        assert(span.offset >= 0 && span.count >= 0);
         assert(static_cast<std::size_t>(end) <= fighter_ids.size());
 
         for (auto index{span.start()}; index < end; ++index) {
@@ -456,8 +455,6 @@ void Sim::set_target_id(EntityUniqueId const ship_id, EntityUniqueId const targe
     assert(found != ids.end());
     auto const entity_index{static_cast<EntityFrameIndex>(found - ids.begin())};
     auto const entities{this->entities.get_view()};
-    assert(entity_index < static_cast<std::uint32_t>(entities.num()));
-    assert(entities.entity_ids()[entity_index] == ship_id);
     entities.target_ids()[entity_index] = target_id;
 }
 

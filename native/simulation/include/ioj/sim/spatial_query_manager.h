@@ -123,16 +123,14 @@ struct SpatialQueryManager {
                                std::span<collision::SphereInBoundsResult> out_results) const;
     auto get_entity_type_radius(EntityType entity_type) const noexcept -> float;
     auto get_entity_type_radii() const noexcept -> EntityTypeRadii const&;
-    void copy_entity_radii(std::span<EntityUniqueId const> ids,
-                           std::span<float> out_radii,
-                           ml::FrameMemoryResource* scratch_resource) const;
-    void copy_target_locations(std::span<EntityUniqueId const> ids,
+    void copy_entity_locations(std::span<EntityUniqueId const> ids,
                                Vectors3fView locations,
                                ml::FrameMemoryResource* scratch_resource) const;
-    void refresh_targets(std::span<EntityUniqueId> ids,
-                         Vectors3fView locations,
-                         Vectors3fView velocities,
-                         ml::FrameMemoryResource* scratch_resource) const;
+    void copy_entity_motion(std::span<EntityUniqueId const> ids,
+                            Vectors3fView locations,
+                            Vectors3fView velocities,
+                            std::span<EntityInstanceHandle> handles,
+                            ml::FrameMemoryResource* scratch_resource) const;
 
     /* **************************************** */
     // Collision and spatial-index lifecycle

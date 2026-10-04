@@ -188,10 +188,20 @@ void Sim::prepare_tick(float const) {
 }
 void Sim::refresh_target_data(ml::FrameMemoryResource* const scratch_resource) {
     auto const entities{this->entities.get_view()};
-    spatial_query_manager.refresh_targets(entities.target_ids(),
-                                          entities.view_target_locations(),
-                                          entities.view_target_velocities(),
-                                          scratch_resource);
+    auto const count{entities.num()};
+    auto const target_ids{entities.target_ids()};
+    ml::FrameArray<EntityInstanceHandle> targets{scratch_resource};
+    targets.set_num(count);
+    spatial_query_manager.copy_entity_motion(target_ids,
+                                             entities.view_target_locations(),
+                                             entities.view_target_velocities(),
+                                             targets,
+                                             scratch_resource);
+    for (std::uint32_t row{}; row < count; ++row) {
+        if (!targets[row].is_valid()) {
+            target_ids[row] = {};
+        }
+    }
 }
 void Sim::think(float const, ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::think");
@@ -326,7 +336,7 @@ void Sim::perform_search_on_slice(std::uint32_t const begin,
             Vectors3fView const candidate_locations_view{std::span{candidate_xs}.first(count),
                                                          std::span{candidate_ys}.first(count),
                                                          std::span{candidate_zs}.first(count)};
-            spatial_query_manager.copy_target_locations(
+            spatial_query_manager.copy_entity_locations(
                 target_ids, candidate_locations_view, scratch_resource);
 
             spatial_query_manager.has_line_of_sight_to_targets(

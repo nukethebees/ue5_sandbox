@@ -6,6 +6,7 @@
 #include <ioj/sim/profiling.h>
 
 #include <sandbox/core/diagnostics.h>
+#include <sandbox/core/frame_array.h>
 
 #include <algorithm>
 #include <cassert>
@@ -32,8 +33,8 @@ auto get_level_entity_id(std::span<EntityUniqueId const> const level_entity_ids,
 /* **************************************** */
 // Construction and lifecycle
 /* **************************************** */
-void MissionManager::begin_play() {
-    prepare_objectives();
+void MissionManager::begin_play(ml::FrameMemoryResource* const scratch_resource) {
+    prepare_objectives(scratch_resource);
 
     switch (mission_mode) {
         case MissionMode::None: {
@@ -284,7 +285,7 @@ void MissionManager::objective_event_dispatched() {
 /* **************************************** */
 // Tick and state transitions
 /* **************************************** */
-void MissionManager::mission_tick() {
+void MissionManager::mission_tick(ml::FrameMemoryResource* const scratch_resource) {
     SANDBOX_PROFILE_SCOPE("MissionManager::mission_tick");
 
     switch (mission_state) {
@@ -305,8 +306,10 @@ void MissionManager::mission_tick() {
     }
 
     mission_elapsed_seconds = static_cast<float>(simulation_clock.get_simulation_time());
-    update_entity_health_that_must_survive();
-    update_entity_health_required_to_kill();
+    update_objective_health(
+        entity_ids_that_must_survive, entity_health_that_must_survive, scratch_resource);
+    update_objective_health(
+        entity_ids_required_to_kill, entity_health_required_to_kill, scratch_resource);
 
     if (!entity_ids_that_must_survive.empty() && !entities_that_must_survive_are_alive()) {
         set_mission_state(MissionState::Failed, MissionFailReason::DefenceObjectiveFailed);
@@ -421,55 +424,49 @@ void MissionManager::update_mission_kills() {
 /* **************************************** */
 // Objective health tracking
 /* **************************************** */
-void MissionManager::gather_objective_health(std::span<EntityUniqueId const> const ids) {
-    auto const count{ids.size()};
-    query_order_.resize(count);
-    query_handles_.resize(count);
-    query_health_.assign(count, 0);
-    auto const runs{entity_tables_.lookups.resolve(ids, query_order_, query_handles_)};
+void MissionManager::update_objective_health(std::span<EntityUniqueId const> const ids,
+                                             std::span<ShipHealth> const output,
+                                             ml::FrameMemoryResource* const scratch_resource) {
+    auto const count{static_cast<EntityTypeRuns::Count>(ids.size())};
+    ml::FrameArray<EntityTypeRuns::Offset> order{scratch_resource};
+    ml::FrameArray<EntityInstanceHandle> handles{scratch_resource};
+    order.set_num(count);
+    handles.set_num(count);
+    auto const runs{entity_tables_.lookups.lookup_handles(ids, order, handles)};
+    for (auto& result : output) {
+        result.health = 0;
+    }
     for (std::uint32_t run{}; run < runs.num; ++run) {
         auto const type{runs.types[run]};
         auto const healths{entity_tables_.health.get_const_view(
             type, entity_tables_.lookups.for_type(type).row_count())};
-        auto const end{runs.offsets[run] + runs.counts[run]};
+        auto const end{runs.end(run)};
         for (auto index{runs.offsets[run]}; index < end; ++index) {
-            auto const row{query_order_[index]};
-            auto const handle{query_handles_[row]};
+            auto const row{order[index]};
+            auto const handle{handles[row]};
             if (handle.is_valid()) {
-                query_health_[row] = healths.health(handle.index());
+                output[row].health = healths.health(handle.index());
             }
         }
     }
 }
-void MissionManager::prepare_objectives() {
+void MissionManager::prepare_objectives(ml::FrameMemoryResource* const scratch_resource) {
     auto initialise_pending = [&](auto const& ids, auto& healths) {
         auto const first{healths.size()};
-        auto const pending{std::span<EntityUniqueId const>{ids}.subspan(first)};
-        gather_objective_health(pending);
-        for (auto const health : query_health_) {
-            healths.emplace_back(health);
+        healths.resize(ids.size());
+        auto const pending{std::span<ShipHealth>{healths}.subspan(first)};
+        update_objective_health(
+            std::span<EntityUniqueId const>{ids}.subspan(first), pending, scratch_resource);
+        for (auto& health : pending) {
+            health.max_health = health.health;
         }
     };
     initialise_pending(entity_ids_that_must_survive, entity_health_that_must_survive);
     initialise_pending(entity_ids_required_to_kill, entity_health_required_to_kill);
 }
-void MissionManager::update_entity_health_that_must_survive() {
-    gather_objective_health(entity_ids_that_must_survive);
-    auto const count{query_health_.size()};
-    for (std::size_t index{}; index < count; ++index) {
-        entity_health_that_must_survive[index].health = query_health_[index];
-    }
-}
 auto MissionManager::entities_that_must_survive_are_alive() const -> bool {
     return std::ranges::all_of(entity_health_that_must_survive,
                                [](auto const health) { return health.is_alive(); });
-}
-void MissionManager::update_entity_health_required_to_kill() {
-    gather_objective_health(entity_ids_required_to_kill);
-    auto const count{query_health_.size()};
-    for (std::size_t index{}; index < count; ++index) {
-        entity_health_required_to_kill[index].health = query_health_[index];
-    }
 }
 auto MissionManager::entities_required_to_kill_are_dead() const -> bool {
     return std::ranges::none_of(entity_health_required_to_kill,

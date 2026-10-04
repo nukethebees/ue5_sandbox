@@ -1,5 +1,4 @@
 #pragma once
-#include <ioj/sim/entity_instance_handle.h>
 #include <ioj/sim/entity_unique_id.h>
 #include <ioj/sim/levels/level_mission_initialisation_data.h>
 #include <ioj/sim/missions/mission_fail_reason.h>
@@ -7,6 +6,8 @@
 #include <ioj/sim/missions/mission_state.h>
 #include <ioj/sim/ship_health.h>
 #include <ioj/sim/sim_clock.h>
+
+#include <sandbox/core/frame_memory_resource.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -46,10 +47,10 @@ struct MissionManager {
     auto operator=(MissionManager const&) -> MissionManager& = delete;
     auto operator=(MissionManager&&) -> MissionManager& = delete;
 
-    void begin_play();
-    void prepare_objectives();
+    void begin_play(ml::FrameMemoryResource* scratch_resource);
+    void prepare_objectives(ml::FrameMemoryResource* scratch_resource);
     void reset_runtime_state();
-    void mission_tick();
+    void mission_tick(ml::FrameMemoryResource* scratch_resource);
     auto complete_mission() -> bool;
 
     /* **************************************** */
@@ -142,10 +143,10 @@ struct MissionManager {
     /* **************************************** */
     // Objective health tracking
     /* **************************************** */
-    void gather_objective_health(std::span<EntityUniqueId const> ids);
-    void update_entity_health_that_must_survive();
+    void update_objective_health(std::span<EntityUniqueId const> ids,
+                                 std::span<ShipHealth> healths,
+                                 ml::FrameMemoryResource* scratch_resource);
     auto entities_that_must_survive_are_alive() const -> bool;
-    void update_entity_health_required_to_kill();
     auto entities_required_to_kill_are_dead() const -> bool;
 
     /* **************************************** */
@@ -161,9 +162,6 @@ struct MissionManager {
     /* **************************************** */
     std::optional<LevelMissionResult> pending_result_;
     EntityLedger const& entity_ledger;
-    std::vector<std::uint32_t> query_order_;
-    std::vector<EntityInstanceHandle> query_handles_;
-    std::vector<Health> query_health_;
     EntityTables const& entity_tables_;
 
     std::vector<EntityUniqueId> hero_entity_ids{};
