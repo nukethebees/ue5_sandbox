@@ -223,13 +223,14 @@ struct EntityHistory
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.entity_ids, count);
-        ml::native_soa::default_construct_n(columns.entity_types, count);
-        ml::native_soa::default_construct_n(columns.teams, count);
-        ml::native_soa::default_construct_n(columns.kills, count);
-        ml::native_soa::default_construct_n(columns.killed_by, count);
-        ml::native_soa::default_construct_n(columns.life_state, count);
+        default_construct_n(columns.entity_ids, count);
+        default_construct_n(columns.entity_types, count);
+        default_construct_n(columns.teams, count);
+        default_construct_n(columns.kills, count);
+        default_construct_n(columns.killed_by, count);
+        default_construct_n(columns.life_state, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -267,12 +268,13 @@ struct EntityHistory
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, EntityHistory, size_type>
     {
-        return {ml::native_soa::source_data(source.entity_ids()),
-                ml::native_soa::source_data(source.entity_types()),
-                ml::native_soa::source_data(source.teams()),
-                ml::native_soa::source_data(source.kills()),
-                ml::native_soa::source_data(source.killed_by()),
-                ml::native_soa::source_data(source.life_state())};
+        using ml::native_soa::source_data;
+        return {source_data(source.entity_ids()),
+                source_data(source.entity_types()),
+                source_data(source.teams()),
+                source_data(source.kills()),
+                source_data(source.killed_by()),
+                source_data(source.life_state())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

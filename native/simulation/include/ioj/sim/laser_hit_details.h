@@ -75,7 +75,7 @@ struct LaserHitDetailsSingleViewImpl : ml::soa_storage_detail::CompactViewOperat
         , offset_{other.offset_}
         , count_{other.count_} {}
     auto view_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -84,7 +84,7 @@ struct LaserHitDetailsSingleViewImpl : ml::soa_storage_detail::CompactViewOperat
                                                                      Layout::LocationsZsColumn);
     }
     auto view_emission_directions() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
@@ -228,14 +228,15 @@ struct LaserHitDetails
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.locations_xs, count);
-        ml::native_soa::default_construct_n(columns.locations_ys, count);
-        ml::native_soa::default_construct_n(columns.locations_zs, count);
-        ml::native_soa::default_construct_n(columns.emission_directions_xs, count);
-        ml::native_soa::default_construct_n(columns.emission_directions_ys, count);
-        ml::native_soa::default_construct_n(columns.emission_directions_zs, count);
-        ml::native_soa::default_construct_n(columns.sources, count);
+        default_construct_n(columns.locations_xs, count);
+        default_construct_n(columns.locations_ys, count);
+        default_construct_n(columns.locations_zs, count);
+        default_construct_n(columns.emission_directions_xs, count);
+        default_construct_n(columns.emission_directions_ys, count);
+        default_construct_n(columns.emission_directions_zs, count);
+        default_construct_n(columns.sources, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -274,15 +275,16 @@ struct LaserHitDetails
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LaserHitDetails, size_type>
     {
+        using ml::native_soa::source_data;
         auto const& locations_view{source.view_locations()};
         auto const& emission_directions_view{source.view_emission_directions()};
-        return {ml::native_soa::source_data(locations_view.xs()),
-                ml::native_soa::source_data(locations_view.ys()),
-                ml::native_soa::source_data(locations_view.zs()),
-                ml::native_soa::source_data(emission_directions_view.xs()),
-                ml::native_soa::source_data(emission_directions_view.ys()),
-                ml::native_soa::source_data(emission_directions_view.zs()),
-                ml::native_soa::source_data(source.sources())};
+        return {source_data(locations_view.xs()),
+                source_data(locations_view.ys()),
+                source_data(locations_view.zs()),
+                source_data(emission_directions_view.xs()),
+                source_data(emission_directions_view.ys()),
+                source_data(emission_directions_view.zs()),
+                source_data(source.sources())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

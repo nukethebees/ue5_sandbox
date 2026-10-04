@@ -72,7 +72,7 @@ struct LineTracesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations 
         , offset_{other.offset_}
         , count_{other.count_} {}
     auto view_starts() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -81,7 +81,7 @@ struct LineTracesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations 
                                                                      Layout::StartsZsColumn);
     }
     auto view_ends() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -216,13 +216,14 @@ struct LineTraces
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.starts_xs, count);
-        ml::native_soa::default_construct_n(columns.starts_ys, count);
-        ml::native_soa::default_construct_n(columns.starts_zs, count);
-        ml::native_soa::default_construct_n(columns.ends_xs, count);
-        ml::native_soa::default_construct_n(columns.ends_ys, count);
-        ml::native_soa::default_construct_n(columns.ends_zs, count);
+        default_construct_n(columns.starts_xs, count);
+        default_construct_n(columns.starts_ys, count);
+        default_construct_n(columns.starts_zs, count);
+        default_construct_n(columns.ends_xs, count);
+        default_construct_n(columns.ends_ys, count);
+        default_construct_n(columns.ends_zs, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -260,14 +261,15 @@ struct LineTraces
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LineTraces, size_type>
     {
+        using ml::native_soa::source_data;
         auto const& starts_view{source.view_starts()};
         auto const& ends_view{source.view_ends()};
-        return {ml::native_soa::source_data(starts_view.xs()),
-                ml::native_soa::source_data(starts_view.ys()),
-                ml::native_soa::source_data(starts_view.zs()),
-                ml::native_soa::source_data(ends_view.xs()),
-                ml::native_soa::source_data(ends_view.ys()),
-                ml::native_soa::source_data(ends_view.zs())};
+        return {source_data(starts_view.xs()),
+                source_data(starts_view.ys()),
+                source_data(starts_view.zs()),
+                source_data(ends_view.xs()),
+                source_data(ends_view.ys()),
+                source_data(ends_view.zs())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

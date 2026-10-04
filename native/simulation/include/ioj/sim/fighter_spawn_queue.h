@@ -80,7 +80,7 @@ struct FighterSpawnQueueSingleViewImpl : ml::soa_storage_detail::CompactViewOper
         , offset_{other.offset_}
         , count_{other.count_} {}
     auto view_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -89,7 +89,7 @@ struct FighterSpawnQueueSingleViewImpl : ml::soa_storage_detail::CompactViewOper
                                                                      Layout::LocationsZsColumn);
     }
     auto view_rotations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<std::conditional_t<Const,
                                                     ml::native_soa::RotatorSoAConstView<float>,
                                                     ml::native_soa::RotatorSoAView<float>>>(
@@ -251,16 +251,17 @@ struct FighterSpawnQueue
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.locations_xs, count);
-        ml::native_soa::default_construct_n(columns.locations_ys, count);
-        ml::native_soa::default_construct_n(columns.locations_zs, count);
-        ml::native_soa::default_construct_n(columns.rotations_pitches, count);
-        ml::native_soa::default_construct_n(columns.rotations_yaws, count);
-        ml::native_soa::default_construct_n(columns.rotations_rolls, count);
-        ml::native_soa::default_construct_n(columns.teams, count);
-        ml::native_soa::default_construct_n(columns.parents, count);
-        ml::native_soa::default_construct_n(columns.targets, count);
+        default_construct_n(columns.locations_xs, count);
+        default_construct_n(columns.locations_ys, count);
+        default_construct_n(columns.locations_zs, count);
+        default_construct_n(columns.rotations_pitches, count);
+        default_construct_n(columns.rotations_yaws, count);
+        default_construct_n(columns.rotations_rolls, count);
+        default_construct_n(columns.teams, count);
+        default_construct_n(columns.parents, count);
+        default_construct_n(columns.targets, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -301,17 +302,18 @@ struct FighterSpawnQueue
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, FighterSpawnQueue, size_type>
     {
+        using ml::native_soa::source_data;
         auto const& locations_view{source.view_locations()};
         auto const& rotations_view{source.view_rotations()};
-        return {ml::native_soa::source_data(locations_view.xs()),
-                ml::native_soa::source_data(locations_view.ys()),
-                ml::native_soa::source_data(locations_view.zs()),
-                ml::native_soa::source_data(rotations_view.pitches()),
-                ml::native_soa::source_data(rotations_view.yaws()),
-                ml::native_soa::source_data(rotations_view.rolls()),
-                ml::native_soa::source_data(source.teams()),
-                ml::native_soa::source_data(source.parents()),
-                ml::native_soa::source_data(source.targets())};
+        return {source_data(locations_view.xs()),
+                source_data(locations_view.ys()),
+                source_data(locations_view.zs()),
+                source_data(rotations_view.pitches()),
+                source_data(rotations_view.yaws()),
+                source_data(rotations_view.rolls()),
+                source_data(source.teams()),
+                source_data(source.parents()),
+                source_data(source.targets())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,

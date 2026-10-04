@@ -86,7 +86,7 @@ struct SpawnRequestsSingleViewImpl : ml::soa_storage_detail::CompactViewOperatio
         , offset_{other.offset_}
         , count_{other.count_} {}
     auto view_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -95,7 +95,7 @@ struct SpawnRequestsSingleViewImpl : ml::soa_storage_detail::CompactViewOperatio
                                                                      Layout::LocationsZsColumn);
     }
     auto view_rotations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<
             std::conditional_t<Const,
                                ml::native_soa::RotatorSoAConstView<float, Rotator3f>,
@@ -108,7 +108,7 @@ struct SpawnRequestsSingleViewImpl : ml::soa_storage_detail::CompactViewOperatio
             Layout::RotationsRollsColumn);
     }
     auto view_base_velocities() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(
             state_,
             offset_,
@@ -297,21 +297,22 @@ struct LaserSpawnRequests
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.locations_xs, count);
-        ml::native_soa::default_construct_n(columns.locations_ys, count);
-        ml::native_soa::default_construct_n(columns.locations_zs, count);
-        ml::native_soa::default_construct_n(columns.rotations_pitches, count);
-        ml::native_soa::default_construct_n(columns.rotations_yaws, count);
-        ml::native_soa::default_construct_n(columns.rotations_rolls, count);
-        ml::native_soa::default_construct_n(columns.base_velocities_xs, count);
-        ml::native_soa::default_construct_n(columns.base_velocities_ys, count);
-        ml::native_soa::default_construct_n(columns.base_velocities_zs, count);
-        ml::native_soa::default_construct_n(columns.damages, count);
-        ml::native_soa::default_construct_n(columns.speeds, count);
-        ml::native_soa::default_construct_n(columns.max_distances, count);
-        ml::native_soa::default_construct_n(columns.instigator_ids, count);
-        ml::native_soa::default_construct_n(columns.sources, count);
+        default_construct_n(columns.locations_xs, count);
+        default_construct_n(columns.locations_ys, count);
+        default_construct_n(columns.locations_zs, count);
+        default_construct_n(columns.rotations_pitches, count);
+        default_construct_n(columns.rotations_yaws, count);
+        default_construct_n(columns.rotations_rolls, count);
+        default_construct_n(columns.base_velocities_xs, count);
+        default_construct_n(columns.base_velocities_ys, count);
+        default_construct_n(columns.base_velocities_zs, count);
+        default_construct_n(columns.damages, count);
+        default_construct_n(columns.speeds, count);
+        default_construct_n(columns.max_distances, count);
+        default_construct_n(columns.instigator_ids, count);
+        default_construct_n(columns.sources, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -357,23 +358,24 @@ struct LaserSpawnRequests
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LaserSpawnRequests, size_type>
     {
+        using ml::native_soa::source_data;
         auto const& locations_view{source.view_locations()};
         auto const& rotations_view{source.view_rotations()};
         auto const& base_velocities_view{source.view_base_velocities()};
-        return {ml::native_soa::source_data(locations_view.xs()),
-                ml::native_soa::source_data(locations_view.ys()),
-                ml::native_soa::source_data(locations_view.zs()),
-                ml::native_soa::source_data(rotations_view.pitches()),
-                ml::native_soa::source_data(rotations_view.yaws()),
-                ml::native_soa::source_data(rotations_view.rolls()),
-                ml::native_soa::source_data(base_velocities_view.xs()),
-                ml::native_soa::source_data(base_velocities_view.ys()),
-                ml::native_soa::source_data(base_velocities_view.zs()),
-                ml::native_soa::source_data(source.damages()),
-                ml::native_soa::source_data(source.speeds()),
-                ml::native_soa::source_data(source.max_distances()),
-                ml::native_soa::source_data(source.instigator_ids()),
-                ml::native_soa::source_data(source.sources())};
+        return {source_data(locations_view.xs()),
+                source_data(locations_view.ys()),
+                source_data(locations_view.zs()),
+                source_data(rotations_view.pitches()),
+                source_data(rotations_view.yaws()),
+                source_data(rotations_view.rolls()),
+                source_data(base_velocities_view.xs()),
+                source_data(base_velocities_view.ys()),
+                source_data(base_velocities_view.zs()),
+                source_data(source.damages()),
+                source_data(source.speeds()),
+                source_data(source.max_distances()),
+                source_data(source.instigator_ids()),
+                source_data(source.sources())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,
@@ -482,7 +484,7 @@ struct EntitiesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
             state_, offset_, count_, Layout::SourcesColumn);
     }
     auto view_locations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -491,7 +493,7 @@ struct EntitiesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
                                                                      Layout::LocationsZsColumn);
     }
     auto view_rotations() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<
             std::conditional_t<Const,
                                ml::native_soa::RotatorSoAConstView<float, Rotator3f>,
@@ -504,7 +506,7 @@ struct EntitiesSingleViewImpl : ml::soa_storage_detail::CompactViewOperations {
             Layout::RotationsRollsColumn);
     }
     auto view_velocities() const {
-        using namespace ml::soa_storage_detail;
+        using ml::soa_storage_detail::three_column_view;
         return three_column_view<ml::Vector3SoAView<Element<float>>>(state_,
                                                                      offset_,
                                                                      count_,
@@ -700,23 +702,24 @@ struct LaserEntities
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
+        using ml::native_soa::default_construct_n;
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        ml::native_soa::default_construct_n(columns.active, count);
-        ml::native_soa::default_construct_n(columns.sources, count);
-        ml::native_soa::default_construct_n(columns.locations_xs, count);
-        ml::native_soa::default_construct_n(columns.locations_ys, count);
-        ml::native_soa::default_construct_n(columns.locations_zs, count);
-        ml::native_soa::default_construct_n(columns.rotations_pitches, count);
-        ml::native_soa::default_construct_n(columns.rotations_yaws, count);
-        ml::native_soa::default_construct_n(columns.rotations_rolls, count);
-        ml::native_soa::default_construct_n(columns.velocities_xs, count);
-        ml::native_soa::default_construct_n(columns.velocities_ys, count);
-        ml::native_soa::default_construct_n(columns.velocities_zs, count);
-        ml::native_soa::default_construct_n(columns.damages, count);
-        ml::native_soa::default_construct_n(columns.lifetimes_remaining, count);
-        ml::native_soa::default_construct_n(columns.instigator_ids, count);
-        ml::native_soa::default_construct_n(columns.initial_lifetimes, count);
-        ml::native_soa::default_construct_n(columns.spawn_times, count);
+        default_construct_n(columns.active, count);
+        default_construct_n(columns.sources, count);
+        default_construct_n(columns.locations_xs, count);
+        default_construct_n(columns.locations_ys, count);
+        default_construct_n(columns.locations_zs, count);
+        default_construct_n(columns.rotations_pitches, count);
+        default_construct_n(columns.rotations_yaws, count);
+        default_construct_n(columns.rotations_rolls, count);
+        default_construct_n(columns.velocities_xs, count);
+        default_construct_n(columns.velocities_ys, count);
+        default_construct_n(columns.velocities_zs, count);
+        default_construct_n(columns.damages, count);
+        default_construct_n(columns.lifetimes_remaining, count);
+        default_construct_n(columns.instigator_ids, count);
+        default_construct_n(columns.initial_lifetimes, count);
+        default_construct_n(columns.spawn_times, count);
     }
     template <bool Overlapping, typename Byte>
     static void transfer_columns(DataPointers<std::byte> const& destination,
@@ -764,25 +767,26 @@ struct LaserEntities
     static auto source_pointers(Columns const& source) -> DataPointers<std::byte const>
         requires ml::soa_storage_detail::SoaSourceFor<Columns, LaserEntities, size_type>
     {
+        using ml::native_soa::source_data;
         auto const& locations_view{source.view_locations()};
         auto const& rotations_view{source.view_rotations()};
         auto const& velocities_view{source.view_velocities()};
-        return {ml::native_soa::source_data(source.active()),
-                ml::native_soa::source_data(source.sources()),
-                ml::native_soa::source_data(locations_view.xs()),
-                ml::native_soa::source_data(locations_view.ys()),
-                ml::native_soa::source_data(locations_view.zs()),
-                ml::native_soa::source_data(rotations_view.pitches()),
-                ml::native_soa::source_data(rotations_view.yaws()),
-                ml::native_soa::source_data(rotations_view.rolls()),
-                ml::native_soa::source_data(velocities_view.xs()),
-                ml::native_soa::source_data(velocities_view.ys()),
-                ml::native_soa::source_data(velocities_view.zs()),
-                ml::native_soa::source_data(source.damages()),
-                ml::native_soa::source_data(source.lifetimes_remaining()),
-                ml::native_soa::source_data(source.instigator_ids()),
-                ml::native_soa::source_data(source.initial_lifetimes()),
-                ml::native_soa::source_data(source.spawn_times())};
+        return {source_data(source.active()),
+                source_data(source.sources()),
+                source_data(locations_view.xs()),
+                source_data(locations_view.ys()),
+                source_data(locations_view.zs()),
+                source_data(rotations_view.pitches()),
+                source_data(rotations_view.yaws()),
+                source_data(rotations_view.rolls()),
+                source_data(velocities_view.xs()),
+                source_data(velocities_view.ys()),
+                source_data(velocities_view.zs()),
+                source_data(source.damages()),
+                source_data(source.lifetimes_remaining()),
+                source_data(source.instigator_ids()),
+                source_data(source.initial_lifetimes()),
+                source_data(source.spawn_times())};
     }
     template <typename Columns>
     void append_columns(Columns const& source,
