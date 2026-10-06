@@ -64,37 +64,35 @@ void evaluates_scheme_and_preserves_state(TestContext& test) {
 
     auto const definition{
         interpreter.evaluate("(begin (define answer-to-everything 6) (* answer-to-everything 7))")};
-    test.expect(definition.succeeded, "definition succeeds");
-    test.expect(definition.value == "42", "definition returns 42");
-    test.expect(definition.error.empty(), "successful definition has no error");
+    test.expect(definition.has_value(), "definition succeeds");
+    test.expect(definition == "42", "definition returns 42");
 
     auto const reuse{interpreter.evaluate("(+ answer-to-everything 1)")};
-    test.expect(reuse.succeeded, "state reuse succeeds");
-    test.expect(reuse.value == "7", "state reuse returns 7");
+    test.expect(reuse.has_value(), "state reuse succeeds");
+    test.expect(reuse == "7", "state reuse returns 7");
 }
 
 void reports_errors_and_remains_usable(TestContext& test) {
     Interpreter interpreter;
 
     auto const error{interpreter.evaluate("(car 1)")};
-    test.expect(!error.succeeded, "invalid call fails evaluation");
-    test.expect(error.value.empty(), "failed evaluation has no value");
-    test.expect(!error.error.empty(), "failed evaluation reports an error");
+    test.expect(!error, "invalid call fails evaluation");
+    test.expect(!error && !error.error().empty(), "failed evaluation reports an error");
 
     auto const recovery{interpreter.evaluate("(+ 20 22)")};
-    test.expect(recovery.succeeded, "interpreter recovers after an error");
-    test.expect(recovery.value == "42", "recovery returns 42");
+    test.expect(recovery.has_value(), "interpreter recovers after an error");
+    test.expect(recovery == "42", "recovery returns 42");
 }
 
 void interpreter_instances_have_independent_state(TestContext& test) {
     Interpreter first;
     auto const definition{first.evaluate("(begin (define private-value 17) private-value)")};
-    test.expect(definition.succeeded, "first interpreter defines state");
+    test.expect(definition.has_value(), "first interpreter defines state");
 
     Interpreter second;
     auto const lookup{second.evaluate("private-value")};
-    test.expect(!lookup.succeeded, "second interpreter cannot see first interpreter state");
-    test.expect(!lookup.error.empty(), "missing state reports an error");
+    test.expect(!lookup, "second interpreter cannot see first interpreter state");
+    test.expect(!lookup && !lookup.error().empty(), "missing state reports an error");
 }
 
 void rejects_unsafe_operations_and_remains_usable(TestContext& test) {
@@ -129,16 +127,16 @@ void rejects_unsafe_operations_and_remains_usable(TestContext& test) {
 
     for (auto const expression : expressions) {
         auto const result{interpreter.evaluate(expression)};
-        test.expect(!result.succeeded, "unsafe operation fails evaluation");
-        test.expect(!result.error.empty(), "unsafe operation reports an error");
+        test.expect(!result, "unsafe operation fails evaluation");
+        test.expect(!result && !result.error().empty(), "unsafe operation reports an error");
     }
 
     auto const recovery{interpreter.evaluate("(+ 20 22)")};
-    test.expect(recovery.succeeded, "interpreter recovers after rejected operations");
-    test.expect(recovery.value == "42", "post-rejection recovery returns 42");
+    test.expect(recovery.has_value(), "interpreter recovers after rejected operations");
+    test.expect(recovery == "42", "post-rejection recovery returns 42");
 
     auto const unconfigured_loader{interpreter.evaluate("(load-script \"helper.scm\")")};
-    test.expect(!unconfigured_loader.succeeded,
+    test.expect(!unconfigured_loader,
                 "load-script is unavailable without an approved library root");
 }
 
@@ -155,8 +153,9 @@ void retains_useful_general_scheme(TestContext& test) {
                              "        (vector-ref (vector 7 8 9) 1)"
                              "        (format #f \"value-~D\" count)))")};
 
-    test.expect(result.succeeded, "functions, macros, collections, and higher-order calls succeed");
-    test.expect(result.value == "(3 (1 4 9 16) 8 \"value-3\")",
+    test.expect(result.has_value(),
+                "functions, macros, collections, and higher-order calls succeed");
+    test.expect(result == "(3 (1 4 9 16) 8 \"value-3\")",
                 "general Scheme produces the expected value");
 }
 
@@ -185,13 +184,15 @@ void loads_libraries_in_the_same_sandbox(TestContext& test) {
                              "  (load-script \"counted.scm\")"
                              "  (library-twice (set! macro-count (+ macro-count 1)))"
                              "  (list (library-answer 2) macro-count load-count nested-count))")};
-    test.expect(loaded.succeeded, "helper and nested helper files load: " + loaded.error);
-    test.expect(loaded.value == "(42 2 1 1)",
+    test.expect(loaded.has_value(),
+                "helper and nested helper files load: " + (loaded ? *loaded : loaded.error()));
+    test.expect(loaded == "(42 2 1 1)",
                 "loaded functions and macros remain visible and files load once");
 
     auto const unsafe{interpreter.evaluate("(load-script \"unsafe.scm\")")};
-    test.expect(!unsafe.succeeded, "a loaded file has the same sandbox restrictions");
-    test.expect(!unsafe.error.empty(), "a rejected capability in a loaded file reports an error");
+    test.expect(!unsafe, "a loaded file has the same sandbox restrictions");
+    test.expect(!unsafe && !unsafe.error().empty(),
+                "a rejected capability in a loaded file reports an error");
 }
 
 void rejects_unsafe_library_paths_and_cycles(TestContext& test) {
@@ -214,8 +215,8 @@ void rejects_unsafe_library_paths_and_cycles(TestContext& test) {
     };
     for (auto const expression : expressions) {
         auto const result{interpreter.evaluate(expression)};
-        test.expect(!result.succeeded, "an unsafe or invalid library path is rejected");
-        test.expect(!result.error.empty(), "a rejected library path reports an error");
+        test.expect(!result, "an unsafe or invalid library path is rejected");
+        test.expect(!result && !result.error().empty(), "a rejected library path reports an error");
     }
 
     std::error_code symlink_error;
@@ -224,22 +225,21 @@ void rejects_unsafe_library_paths_and_cycles(TestContext& test) {
     if (!symlink_error) {
         auto const linked_escape{
             interpreter.evaluate("(load-script \"linked-outside/secret.scm\")")};
-        test.expect(!linked_escape.succeeded, "a library symlink cannot escape the approved root");
+        test.expect(!linked_escape, "a library symlink cannot escape the approved root");
     }
 
     auto const cycle{interpreter.evaluate("(load-script \"a.scm\")")};
-    test.expect(!cycle.succeeded, "recursive library loading is rejected");
-    test.expect(cycle.error.contains("Recursive load-script cycle"),
+    test.expect(!cycle, "recursive library loading is rejected");
+    test.expect(!cycle && cycle.error().contains("Recursive load-script cycle"),
                 "recursive loading reports the cycle");
 
     auto const broken{interpreter.evaluate("(load-script \"broken.scm\")")};
-    test.expect(!broken.succeeded, "an invalid library reports an evaluation error");
-    test.expect(broken.error.contains("broken.scm"),
+    test.expect(!broken, "an invalid library reports an evaluation error");
+    test.expect(!broken && broken.error().contains("broken.scm"),
                 "a library evaluation error retains its filename");
 
     auto const recovery{interpreter.evaluate("(+ 40 2)")};
-    test.expect(recovery.succeeded && recovery.value == "42",
-                "the interpreter recovers after a load cycle");
+    test.expect(recovery == "42", "the interpreter recovers after a load cycle");
 }
 
 void enforces_library_resource_limits(TestContext& test) {
@@ -253,8 +253,9 @@ void enforces_library_resource_limits(TestContext& test) {
         .max_loaded_file_bytes = 8,
     }};
     auto const result{interpreter.evaluate("(load-script \"large.scm\")")};
-    test.expect(!result.succeeded, "an oversized library is rejected");
-    test.expect(result.error.contains("size limit"), "an oversized library reports its limit");
+    test.expect(!result, "an oversized library is rejected");
+    test.expect(!result && result.error().contains("size limit"),
+                "an oversized library reports its limit");
 
     Interpreter file_count_interpreter{InterpreterOptions{
         .script_library_root_utf8 = library.path().string(),
@@ -262,8 +263,8 @@ void enforces_library_resource_limits(TestContext& test) {
     }};
     auto const file_count{file_count_interpreter.evaluate(
         R"((begin (load-script "first.scm") (load-script "second.scm")))")};
-    test.expect(!file_count.succeeded, "the library file count is limited");
-    test.expect(file_count.error.contains("file count limit"),
+    test.expect(!file_count, "the library file count is limited");
+    test.expect(!file_count && file_count.error().contains("file count limit"),
                 "the library file count limit is reported");
 }
 
@@ -290,8 +291,7 @@ void exposes_values_during_a_synchronous_callback(TestContext& test) {
             test.expect(number_to_real(scheme, number) == 42.5, "real value is exposed");
         })};
 
-    test.expect(result.succeeded, "value evaluation succeeds");
-    test.expect(result.error.empty(), "value evaluation has no error");
+    test.expect(result.has_value(), "value evaluation succeeds");
     test.expect(consumed, "value callback is invoked");
 }
 
@@ -313,15 +313,15 @@ void caught_child_failure_preserves_parent_and_allows_retry(TestContext& test) {
         (load-script "outer.scm")
         (list attempts outer-count parent-finished)))")};
     test.expect(
-        first.succeeded && first.value == "(2 1 #t)",
+        first == "(2 1 #t)",
         "caught child failures can retry immediately and cache only the successful parent: " +
-            first.value + first.error);
+            (first ? *first : first.error()));
     auto const retry{interpreter.evaluate(R"((load-script "broken.scm"))")};
-    test.expect(!retry.succeeded && retry.error.contains("broken.scm"),
+    test.expect(!retry && retry.error().contains("broken.scm"),
                 "a failed child is not recorded as successfully loaded");
     auto const count{interpreter.evaluate("attempts")};
-    test.expect(count.succeeded && count.value == "3",
-                "a later failed-child load executes again: " + count.value + count.error);
+    test.expect(count == "3",
+                "a later failed-child load executes again: " + (count ? *count : count.error()));
 }
 
 void abort_releases_library_reservations(TestContext& test) {
@@ -340,7 +340,7 @@ void abort_releases_library_reservations(TestContext& test) {
         (catch #t (lambda () (load-script "broken.scm")) (lambda args #f))
         (load-script "good.scm") recovered))")};
     test.expect(
-        result.succeeded && result.value == "42",
+        result == "42",
         "abortion releases depth, file count, and byte reservations in the same evaluation");
 }
 
@@ -355,10 +355,10 @@ void active_nested_sources_count_toward_byte_limit(TestContext& test) {
         .max_total_loaded_bytes = outer.size() + inner.size() - 1,
     }};
     auto const rejected{interpreter.evaluate(R"((load-script "outer.scm"))")};
-    test.expect(!rejected.succeeded && rejected.error.contains("size limit"),
+    test.expect(!rejected && rejected.error().contains("size limit"),
                 "parent and child reservations cannot jointly exceed the total byte budget");
     auto const recovery{interpreter.evaluate(R"((begin (load-script "inner.scm") inner-value))")};
-    test.expect(recovery.succeeded && recovery.value == "42",
+    test.expect(recovery == "42",
                 "a rejected nested load releases the failed parent's reservation");
 
     Interpreter exact{InterpreterOptions{
@@ -368,8 +368,7 @@ void active_nested_sources_count_toward_byte_limit(TestContext& test) {
     auto const accepted{exact.evaluate(R"((begin
         (load-script "outer.scm") (load-script "inner.scm")
         (load-script "outer.scm") inner-value))")};
-    test.expect(accepted.succeeded && accepted.value == "42",
-                "successful nested loads use the exact byte budget once");
+    test.expect(accepted == "42", "successful nested loads use the exact byte budget once");
 }
 
 void nonlocal_exit_aborts_load(TestContext& test) {
@@ -383,8 +382,7 @@ void nonlocal_exit_aborts_load(TestContext& test) {
         (define escape #f)
         (call/cc (lambda (k) (set! escape k) (load-script "escape.scm")))
         (load-script "good.scm") recovered))")};
-    test.expect(result.succeeded && result.value == "42",
-                "a continuation escape aborts an active load");
+    test.expect(result == "42", "a continuation escape aborts an active load");
 }
 
 void loader_transitions_use_identity_and_safe_accounting(TestContext& test) {
@@ -420,7 +418,7 @@ void throwing_consumer_releases_gc_protection(TestContext& test) {
     for (int iteration{}; iteration < 16; ++iteration) {
         bool caught{};
         try {
-            static_cast<void>(
+            auto const result{
                 interpreter.evaluate_value("(list 1 2 3)", [&](Scheme& scheme, Value const value) {
                     auto const slot{s7_gc_protect(&scheme, value)};
                     s7_gc_unprotect_at(&scheme, slot);
@@ -430,15 +428,15 @@ void throwing_consumer_releases_gc_protection(TestContext& test) {
                     test.expect(slot == first_free_slot,
                                 "throwing consumers do not accumulate permanent GC registrations");
                     throw std::runtime_error{"consumer failure"};
-                }));
+                })};
+            test.expect(!result, "a throwing consumer cannot report success");
         } catch (std::runtime_error const&) {
             caught = true;
         }
         test.expect(caught, "consumer exceptions propagate to the host");
     }
     auto const recovery{interpreter.evaluate("(+ 40 2)")};
-    test.expect(recovery.succeeded && recovery.value == "42",
-                "the interpreter remains usable after consumer exceptions");
+    test.expect(recovery == "42", "the interpreter remains usable after consumer exceptions");
 }
 
 void captured_source_uses_the_validated_file(TestContext& test) {
@@ -465,15 +463,14 @@ void source_loading_preserves_reader_errors_and_empty_files(TestContext& test) {
     Interpreter interpreter{
         InterpreterOptions{.script_library_root_utf8 = library.path().string()}};
     auto const empty{interpreter.evaluate(R"((begin (load-script "empty.scm") 42))")};
-    test.expect(empty.succeeded && empty.value == "42", "captured empty source loads successfully");
+    test.expect(empty == "42", "captured empty source loads successfully");
     auto const broken{interpreter.evaluate(R"((load-script "reader-error.scm"))")};
-    test.expect(!broken.succeeded && broken.error.contains("reader-error.scm"),
+    test.expect(!broken && broken.error().contains("reader-error.scm"),
                 "source reader errors preserve filename context");
     library.write("reader-error.scm", "(define repaired 42)");
     auto const repaired{
         interpreter.evaluate(R"((begin (load-script "reader-error.scm") repaired))")};
-    test.expect(repaired.succeeded && repaired.value == "42",
-                "a file can be repaired and retried after a reader error");
+    test.expect(repaired == "42", "a file can be repaired and retried after a reader error");
 }
 }
 

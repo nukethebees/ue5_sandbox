@@ -58,15 +58,15 @@ auto Interpreter::evaluate(std::string_view const expression) -> EvaluationResul
             auto& output{*static_cast<std::string*>(context)};
             output = detail::object_to_string(&scheme, payload);
         })};
-    if (result.succeeded) {
-        result.value = std::move(value);
+    if (!result) {
+        return EvaluationResult{std::unexpect, std::move(result.error())};
     }
-    return result;
+    return EvaluationResult{std::in_place, std::move(value)};
 }
 
 auto Interpreter::evaluate_value_impl(std::string_view const expression,
                                       void* const context,
-                                      ValueConsumer const consume_value) -> EvaluationResult {
+                                      ValueConsumer const consume_value) -> ValueEvaluationResult {
     auto const* const source{expression.empty() ? "" : expression.data()};
     auto const source_value{
         s7_make_string_with_length(scheme_.get(), source, static_cast<s7_int>(expression.size()))};
@@ -76,8 +76,7 @@ auto Interpreter::evaluate_value_impl(std::string_view const expression,
         scheme_.get(), s7_t(scheme_.get()), evaluation_body_->get(), error_handler_->get())};
     loader_.evaluation_ended();
     if (!s7_is_pair(result) || !s7_is_boolean(s7_car(result))) {
-        return EvaluationResult{
-            .succeeded = false, .value = {}, .error = "s7 returned an invalid evaluation result."};
+        return ValueEvaluationResult{std::unexpect, "s7 returned an invalid evaluation result."};
     }
 
     bool const succeeded{s7_boolean(scheme_.get(), s7_car(result))};
@@ -85,13 +84,12 @@ auto Interpreter::evaluate_value_impl(std::string_view const expression,
     if (succeeded) {
         detail::GcProtection const protection{scheme_.get(), payload};
         consume_value(context, *scheme_, payload);
-        return EvaluationResult{.succeeded = true, .value = {}, .error = {}};
+        return {};
     }
     if (!s7_is_string(payload)) {
-        return EvaluationResult{
-            .succeeded = false, .value = {}, .error = "s7 returned an invalid error result."};
+        return ValueEvaluationResult{std::unexpect, "s7 returned an invalid error result."};
     }
 
-    return EvaluationResult{.succeeded = false, .value = {}, .error = s7_string(payload)};
+    return ValueEvaluationResult{std::unexpect, s7_string(payload)};
 }
 }

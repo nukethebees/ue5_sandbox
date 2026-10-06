@@ -216,8 +216,8 @@ auto CampaignDefinitionReader::read_source(std::string_view const source) const
         expression, [&decoded](s7::Scheme& scheme, s7::Value const value) {
             decoded = CampaignDecoder{scheme, value}.decode();
         })};
-    if (!evaluation.succeeded) {
-        return {.script_error = evaluation.error};
+    if (!evaluation) {
+        return {.script_error = evaluation.error()};
     }
     return decoded;
 }

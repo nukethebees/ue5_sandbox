@@ -6,6 +6,7 @@
 #include <native/s7/value.h>
 
 #include <cstddef>
+#include <expected>
 #include <memory>
 #include <optional>
 #include <string>
@@ -13,11 +14,8 @@
 #include <type_traits>
 
 namespace ml::s7 {
-struct EvaluationResult {
-    bool succeeded{};
-    std::string value;
-    std::string error;
-};
+using EvaluationResult = std::expected<std::string, std::string>;
+using ValueEvaluationResult = std::expected<void, std::string>;
 
 struct InterpreterOptions {
     std::optional<std::string> script_library_root_utf8{};
@@ -41,7 +39,7 @@ class Interpreter {
     // The consumer runs synchronously while the value is GC-protected and must not retain handles.
     template <typename Consumer>
     [[nodiscard]] auto evaluate_value(std::string_view const expression, Consumer&& consumer)
-        -> EvaluationResult {
+        -> ValueEvaluationResult {
         using ConsumerType = std::remove_reference_t<Consumer>;
         auto* const context{const_cast<void*>(static_cast<void const*>(std::addressof(consumer)))};
         return evaluate_value_impl(
@@ -54,7 +52,7 @@ class Interpreter {
 
     [[nodiscard]] auto evaluate_value_impl(std::string_view expression,
                                            void* context,
-                                           ValueConsumer consume_value) -> EvaluationResult;
+                                           ValueConsumer consume_value) -> ValueEvaluationResult;
 
     std::unique_ptr<Scheme, void (*)(Scheme*)> scheme_;
     detail::ScriptLoader loader_;
