@@ -1,11 +1,14 @@
 #pragma once
 
-#include <native/s7/interpreter.h>
-
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <unordered_set>
 #include <vector>
+
+namespace ml::s7 {
+struct InterpreterOptions;
+}
 
 namespace ml::s7::detail {
 struct LoadToken {

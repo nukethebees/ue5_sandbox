@@ -1,5 +1,8 @@
 #pragma once
 
+#include <native/s7/detail/s7_ownership.h>
+#include <native/s7/detail/script_bindings.h>
+#include <native/s7/detail/script_loader.h>
 #include <native/s7/value.h>
 
 #include <cstddef>
@@ -53,7 +56,11 @@ class Interpreter {
                                            void* context,
                                            ValueConsumer consume_value) -> EvaluationResult;
 
-    class Impl;
-    std::unique_ptr<Impl> impl_;
+    std::unique_ptr<Scheme, void (*)(Scheme*)> scheme_;
+    detail::ScriptLoader loader_;
+    detail::ScriptBindings bindings_;
+    Value source_symbol_{};
+    std::optional<detail::GcProtection> evaluation_body_;
+    std::optional<detail::GcProtection> error_handler_;
 };
 }

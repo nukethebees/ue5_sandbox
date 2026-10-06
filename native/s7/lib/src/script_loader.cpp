@@ -1,4 +1,6 @@
-#include "script_loader.h"
+#include <native/s7/detail/script_loader.h>
+
+#include <native/s7/interpreter.h>
 
 #include <algorithm>
 #include <cassert>

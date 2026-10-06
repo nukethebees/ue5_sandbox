@@ -1,5 +1,5 @@
 #include "script_files_win32.h"
-#include "script_loader.h"
+#include <native/s7/detail/script_loader.h>
 #include <native/s7/interpreter.h>
 #include <native/s7/value.h>
 

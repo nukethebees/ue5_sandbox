@@ -1,8 +1,8 @@
-#include "script_bindings.h"
+#include <native/s7/detail/script_bindings.h>
 
-#include "s7_ownership.h"
 #include "sandbox_policy.h"
 #include "script_files_win32.h"
+#include <native/s7/detail/s7_ownership.h>
 
 #include <cassert>
 #include <limits>
