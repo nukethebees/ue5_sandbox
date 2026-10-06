@@ -16,7 +16,7 @@ ScriptLoader::ScriptLoader(InterpreterOptions const& options)
 
 auto ScriptLoader::begin_load(std::string key, std::size_t const file_size) -> LoadAdmission {
     if (loaded_files_.contains(key)) {
-        return {.status = LoadStatus::already_loaded};
+        return LoadAdmission{std::in_place, LoadStatus::already_loaded};
     }
 
     auto const active{std::ranges::find(active_loads_, key, &ActiveLoad::key)};
@@ -29,31 +29,31 @@ auto ScriptLoader::begin_load(std::string key, std::size_t const file_size) -> L
             cycle += iterator->key;
         }
         cycle += " -> " + key;
-        return {.error = std::move(cycle)};
+        return LoadAdmission{std::unexpect, std::move(cycle)};
     }
     if (active_loads_.size() >= max_depth_) {
-        return {.error = "The load-script nesting limit was exceeded."};
+        return LoadAdmission{std::unexpect, "The load-script nesting limit was exceeded."};
     }
     if (loaded_files_.size() >= max_files_ ||
         active_loads_.size() >= max_files_ - loaded_files_.size()) {
-        return {.error = "The load-script file count limit was exceeded."};
+        return LoadAdmission{std::unexpect, "The load-script file count limit was exceeded."};
     }
 
     assert(loaded_bytes_ <= max_total_bytes_);
     assert(reserved_bytes_ <= max_total_bytes_ - loaded_bytes_);
     if (file_size > max_file_bytes_ ||
         file_size > max_total_bytes_ - loaded_bytes_ - reserved_bytes_) {
-        return {.error = "The load-script source size limit was exceeded."};
+        return LoadAdmission{std::unexpect, "The load-script source size limit was exceeded."};
     }
     if (next_token_.value == std::numeric_limits<std::int64_t>::max()) {
-        return {.error = "The load-script identity limit was exceeded."};
+        return LoadAdmission{std::unexpect, "The load-script identity limit was exceeded."};
     }
 
     auto const token{next_token_};
     active_loads_.push_back({.token = token, .key = std::move(key), .bytes = file_size});
     ++next_token_.value;
     reserved_bytes_ += file_size;
-    return {.status = LoadStatus::admitted, .token = token};
+    return LoadAdmission{std::in_place, LoadStatus::admitted, token};
 }
 void ScriptLoader::complete_load(LoadToken const token) {
     auto const active{std::ranges::find(active_loads_, token, &ActiveLoad::token)};

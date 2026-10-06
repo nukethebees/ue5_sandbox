@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <expected>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -16,13 +17,15 @@ struct LoadToken {
     auto operator==(LoadToken const&) const -> bool = default;
 };
 
-enum class LoadStatus { rejected, already_loaded, admitted };
+enum class LoadStatus { already_loaded, admitted };
 
-struct LoadAdmission {
-    LoadStatus status{LoadStatus::rejected};
+struct LoadDecision {
+    LoadStatus status{LoadStatus::already_loaded};
+    // Only admitted loads have a token to complete or abort.
     LoadToken token{};
-    std::string error{};
 };
+
+using LoadAdmission = std::expected<LoadDecision, std::string>;
 
 class ScriptLoader final {
   public:

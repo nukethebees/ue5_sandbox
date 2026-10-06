@@ -394,21 +394,36 @@ void loader_transitions_use_identity_and_safe_accounting(TestContext& test) {
                            .max_load_depth = 2}};
     auto const parent{loader.begin_load("parent", std::numeric_limits<std::size_t>::max() - 1)};
     auto const overflow{loader.begin_load("overflow", 2)};
-    test.expect(parent.status == LoadStatus::admitted && overflow.status == LoadStatus::rejected,
+    test.expect(parent && parent->status == LoadStatus::admitted && !overflow,
                 "active reservations reject overflow without adding byte counts");
+    if (!parent) {
+        return;
+    }
+
     auto const child{loader.begin_load("child", 1)};
-    test.expect(child.status == LoadStatus::admitted && child.token != parent.token,
+    test.expect(child && child->status == LoadStatus::admitted && child->token != parent->token,
                 "admitted loads have distinct identities");
-    loader.complete_load(parent.token);
-    loader.abort_load(child.token);
-    test.expect(loader.begin_load("parent", 0).status == LoadStatus::already_loaded,
+    if (!child) {
+        return;
+    }
+
+    loader.complete_load(parent->token);
+    loader.abort_load(child->token);
+    auto const cached{loader.begin_load("parent", 0)};
+    test.expect(cached && cached->status == LoadStatus::already_loaded,
                 "completion identifies the parent even while another token is active");
     auto const retried{loader.begin_load("child", 1)};
-    test.expect(retried.status == LoadStatus::admitted && retried.token != child.token,
+    test.expect(retried && retried->status == LoadStatus::admitted &&
+                    retried->token != child->token,
                 "abort frees count, depth, and bytes and retry gets a new identity");
-    test.expect(loader.begin_load("child", 0).error.contains("Recursive"),
+    if (!retried) {
+        return;
+    }
+
+    auto const cycle{loader.begin_load("child", 0)};
+    test.expect(!cycle && cycle.error().contains("Recursive"),
                 "an actually active load still reports a cycle");
-    loader.abort_load(retried.token);
+    loader.abort_load(retried->token);
     loader.evaluation_ended();
 }
 

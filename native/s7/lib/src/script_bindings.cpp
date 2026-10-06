@@ -132,25 +132,23 @@ auto ScriptBindings::resolve(s7_pointer const path) -> s7_pointer {
     }
 
     auto const admission{loader_.begin_load(path_key(file->narrow_path), file->file_size)};
-    switch (admission.status) {
-        case LoadStatus::rejected:
-            return load_failure(scheme_, admission.error);
-        case LoadStatus::already_loaded:
-            return s7_cons(scheme_, s7_make_integer(scheme_, 1), s7_f(scheme_));
-        case LoadStatus::admitted:
-            break;
+    if (!admission) {
+        return load_failure(scheme_, admission.error());
+    }
+    if (admission->status == LoadStatus::already_loaded) {
+        return s7_cons(scheme_, s7_make_integer(scheme_, 1), s7_f(scheme_));
     }
 
     auto const source{read_script_source(*file)};
     if (!source) {
-        loader_.abort_load(admission.token);
+        loader_.abort_load(admission->token);
         return load_failure(scheme_, source.error());
     }
     GcProtection const filename{scheme_, s7_make_string(scheme_, file->narrow_path.c_str())};
     GcProtection const contents{
         scheme_,
         s7_make_string_with_length(scheme_, source->c_str(), static_cast<s7_int>(source->size()))};
-    GcProtection const token{scheme_, s7_make_integer(scheme_, admission.token.value)};
+    GcProtection const token{scheme_, s7_make_integer(scheme_, admission->token.value)};
     return s7_list(
         scheme_, 4, s7_make_integer(scheme_, 2), token.get(), filename.get(), contents.get());
 }
