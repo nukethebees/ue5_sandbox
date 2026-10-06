@@ -20,7 +20,7 @@ auto object_to_string(s7_scheme* const scheme, s7_pointer const value) -> std::s
 }
 }
 
-class Interpreter::Impl final {
+class Interpreter::Impl {
   public:
     explicit Impl(InterpreterOptions options)
         : scheme_{s7_init(), &s7_free}

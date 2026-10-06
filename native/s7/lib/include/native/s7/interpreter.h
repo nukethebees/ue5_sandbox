@@ -24,7 +24,7 @@ struct InterpreterOptions {
     std::size_t max_load_depth{32};
 };
 
-class Interpreter final {
+class Interpreter {
   public:
     Interpreter();
     explicit Interpreter(InterpreterOptions options);
