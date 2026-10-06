@@ -150,7 +150,7 @@ void FileHandleCloser::operator()(void* const handle) const {
                                 true) == CSTR_EQUAL;
 }
 auto open_script_file(std::string_view const root_utf8, std::string_view const requested_path)
-    -> std::expected<ScriptFile, std::string> {
+    -> ScriptFileResult {
     if (requested_path.empty() || requested_path.front() == '/' || requested_path.front() == '\\' ||
         requested_path.contains(':') || requested_path.contains('\0')) {
         return std::unexpected("load-script requires a relative .scm path.");
@@ -193,11 +193,11 @@ auto open_script_file(std::string_view const root_utf8, std::string_view const r
         return std::unexpected("The requested script library file is unavailable.");
     }
 
-    return std::expected<ScriptFile, std::string>{
+    return ScriptFileResult{
         std::in_place, std::move(handle), std::move(candidate->narrow_path), candidate->file_size};
 }
 
-auto read_script_source(ScriptFile const& file) -> std::expected<std::string, std::string> {
+auto read_script_source(ScriptFile const& file) -> ScriptSourceResult {
     std::string source(file.file_size, '\0');
     std::size_t offset{};
     while (offset < file.file_size) {
@@ -206,8 +206,8 @@ auto read_script_source(ScriptFile const& file) -> std::expected<std::string, st
         DWORD received{};
         if (!ReadFile(file.handle.get(), source.data() + offset, count, &received, nullptr) ||
             received == 0) {
-            return std::expected<std::string, std::string>{
-                std::unexpect, "The requested script library file could not be read."};
+            return ScriptSourceResult{std::unexpect,
+                                      "The requested script library file could not be read."};
         }
         offset += received;
     }
