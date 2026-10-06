@@ -33,7 +33,7 @@ public class NativeOneTBB : ModuleRules
             string directory = Path.Combine(
                 repositoryRoot, "Binaries", "Native", "OneTBB", nativeToolchain,
                 Target.Platform.ToString(), Target.Configuration.ToString());
-            string name = debugTbb ? "tbb12_debug" : "tbb12";
+            string name = debugTbb ? "SandboxTBB12_debug" : "SandboxTBB12";
             string library = Path.Combine(directory, name + ".lib");
             string runtime = Path.Combine(directory, name + ".dll");
             if (!File.Exists(library) || !File.Exists(runtime))

@@ -18,6 +18,9 @@ target_compile_definitions(tbb INTERFACE __TBB_NO_IMPLICIT_LINKAGE=1)
 set_target_properties(tbb PROPERTIES UNITY_BUILD OFF)
 
 if(WIN32)
+  # Keep the project runtime distinct from Unreal's bundled oneTBB runtime.
+  set_target_properties(tbb PROPERTIES OUTPUT_NAME "SandboxTBB12")
+
   # Give the resource compiler the SDK paths when building from a plain shell.
   target_include_directories(tbb PRIVATE
     "$<$<COMPILE_LANGUAGE:RC>:${CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES}>")
