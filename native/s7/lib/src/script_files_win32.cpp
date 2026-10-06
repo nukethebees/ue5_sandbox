@@ -14,6 +14,29 @@
 #include <utility>
 
 namespace ml::s7::detail {
+struct CanonicalPath {
+    std::wstring wide_path;
+    std::string narrow_path;
+    std::size_t file_size{};
+};
+
+void FileHandleCloser::operator()(void* const handle) const {
+    CloseHandle(handle);
+}
+
+[[nodiscard]] auto open_file(std::wstring const& path, bool const directory) -> FileHandle {
+    auto const handle{
+        CreateFileW(path.c_str(),
+                    directory ? FILE_READ_ATTRIBUTES : GENERIC_READ,
+                    directory ? FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE
+                              : FILE_SHARE_READ | FILE_SHARE_DELETE,
+                    nullptr,
+                    OPEN_EXISTING,
+                    directory ? FILE_FLAG_BACKUP_SEMANTICS : FILE_FLAG_SEQUENTIAL_SCAN,
+                    nullptr)};
+    return FileHandle{handle == INVALID_HANDLE_VALUE ? nullptr : handle};
+}
+
 [[nodiscard]] auto utf8_to_wide(std::string_view const value) -> std::optional<std::wstring> {
     if (value.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
         return std::nullopt;
@@ -71,33 +94,24 @@ namespace ml::s7::detail {
     return path;
 }
 
-[[nodiscard]] auto canonical_path(std::wstring const& path, bool const require_directory)
+[[nodiscard]] auto canonical_path(FileHandle const& handle, bool const require_directory)
     -> std::optional<CanonicalPath> {
-    auto const handle{CreateFileW(path.c_str(),
-                                  FILE_READ_ATTRIBUTES,
-                                  FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                                  nullptr,
-                                  OPEN_EXISTING,
-                                  require_directory ? FILE_FLAG_BACKUP_SEMANTICS : 0,
-                                  nullptr)};
-    if (handle == INVALID_HANDLE_VALUE) {
+    if (!handle) {
         return std::nullopt;
     }
 
     BY_HANDLE_FILE_INFORMATION file_information{};
-    auto const has_information{GetFileInformationByHandle(handle, &file_information) != 0};
+    auto const has_information{GetFileInformationByHandle(handle.get(), &file_information) != 0};
     auto const is_directory{(file_information.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0};
-    auto const required_size{
-        GetFinalPathNameByHandleW(handle, nullptr, 0, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS)};
+    auto const required_size{GetFinalPathNameByHandleW(
+        handle.get(), nullptr, 0, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS)};
     if (!has_information || is_directory != require_directory || required_size == 0) {
-        CloseHandle(handle);
         return std::nullopt;
     }
 
     std::wstring resolved(static_cast<std::size_t>(required_size), L'\0');
     auto const copied{GetFinalPathNameByHandleW(
-        handle, resolved.data(), required_size, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS)};
-    CloseHandle(handle);
+        handle.get(), resolved.data(), required_size, FILE_NAME_NORMALIZED | VOLUME_NAME_DOS)};
     if (copied == 0 || copied >= required_size) {
         return std::nullopt;
     }
@@ -135,16 +149,16 @@ namespace ml::s7::detail {
                                 static_cast<int>(root.size()),
                                 true) == CSTR_EQUAL;
 }
-auto resolve_script_file(std::string_view const root_utf8, std::string_view const requested_path)
-    -> std::expected<CanonicalPath, std::string> {
+auto open_script_file(std::string_view const root_utf8, std::string_view const requested_path)
+    -> std::expected<ScriptFile, std::string> {
     if (requested_path.empty() || requested_path.front() == '/' || requested_path.front() == '\\' ||
-        requested_path.contains(':')) {
+        requested_path.contains(':') || requested_path.contains('\0')) {
         return std::unexpected("load-script requires a relative .scm path.");
     }
     std::size_t component_start{};
-    for (std::size_t index{}; index <= requested_path.size(); ++index) {
-        if (index != requested_path.size() && requested_path[index] != '/' &&
-            requested_path[index] != '\\') {
+    auto const path_size{requested_path.size()};
+    for (std::size_t index{}; index <= path_size; ++index) {
+        if (index != path_size && requested_path[index] != '/' && requested_path[index] != '\\') {
             continue;
         }
 
@@ -162,7 +176,8 @@ auto resolve_script_file(std::string_view const root_utf8, std::string_view cons
     if (!root_source.has_value()) {
         return std::unexpected("The configured script library root is unavailable.");
     }
-    auto const root{canonical_path(*root_source, true)};
+    auto const root_handle{open_file(*root_source, true)};
+    auto const root{canonical_path(root_handle, true)};
     if (!root.has_value()) {
         return std::unexpected("The configured script library root is unavailable.");
     }
@@ -172,11 +187,30 @@ auto resolve_script_file(std::string_view const root_utf8, std::string_view cons
         return std::unexpected("The requested script library file is unavailable.");
     }
     std::ranges::replace(*requested_path_wide, L'/', L'\\');
-    auto const candidate{canonical_path(root->wide_path + L'\\' + *requested_path_wide, false)};
+    auto handle{open_file(root->wide_path + L'\\' + *requested_path_wide, false)};
+    auto candidate{canonical_path(handle, false)};
     if (!candidate.has_value() || !is_within_root(candidate->wide_path, root->wide_path)) {
         return std::unexpected("The requested script library file is unavailable.");
     }
 
-    return *candidate;
+    return std::expected<ScriptFile, std::string>{
+        std::in_place, std::move(handle), std::move(candidate->narrow_path), candidate->file_size};
+}
+
+auto read_script_source(ScriptFile const& file) -> std::expected<std::string, std::string> {
+    std::string source(file.file_size, '\0');
+    std::size_t offset{};
+    while (offset < file.file_size) {
+        auto const count{
+            static_cast<DWORD>(std::min(file.file_size - offset, std::size_t{1024 * 1024}))};
+        DWORD received{};
+        if (!ReadFile(file.handle.get(), source.data() + offset, count, &received, nullptr) ||
+            received == 0) {
+            return std::expected<std::string, std::string>{
+                std::unexpect, "The requested script library file could not be read."};
+        }
+        offset += received;
+    }
+    return source;
 }
 }

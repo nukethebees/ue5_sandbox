@@ -1,3 +1,4 @@
+#include "script_files_win32.h"
 #include "script_loader.h"
 #include <native/s7/interpreter.h>
 #include <native/s7/value.h>
@@ -161,7 +162,8 @@ void retains_useful_general_scheme(TestContext& test) {
 
 void loads_libraries_in_the_same_sandbox(TestContext& test) {
     TemporaryLibrary library;
-    library.write("inner.scm", "(define nested-value 40)\n");
+    library.write("inner.scm",
+                  "(set! nested-count (+ nested-count 1))\n(define nested-value 40)\n");
     library.write("outer.scm",
                   "(load-script \"inner.scm\")\n"
                   "(define (library-answer value) (+ nested-value value))\n"
@@ -171,16 +173,20 @@ void loads_libraries_in_the_same_sandbox(TestContext& test) {
 
     Interpreter interpreter{
         InterpreterOptions{.script_library_root_utf8 = library.path().string()}};
-    auto const loaded{interpreter.evaluate("(begin"
-                                           "  (define load-count 0)"
-                                           "  (define macro-count 0)"
-                                           "  (load-script \"outer.scm\")"
-                                           "  (load-script \"counted.scm\")"
-                                           "  (load-script \"counted.scm\")"
-                                           "  (library-twice (set! macro-count (+ macro-count 1)))"
-                                           "  (list (library-answer 2) macro-count load-count))")};
-    test.expect(loaded.succeeded, "helper and nested helper files load");
-    test.expect(loaded.value == "(42 2 1)",
+    auto const loaded{
+        interpreter.evaluate("(begin"
+                             "  (define load-count 0)"
+                             "  (define nested-count 0)"
+                             "  (define macro-count 0)"
+                             "  (load-script \"outer.scm\")"
+                             "  (load-script \"inner.scm\")"
+                             "  (load-script \"outer.scm\")"
+                             "  (load-script \"counted.scm\")"
+                             "  (load-script \"counted.scm\")"
+                             "  (library-twice (set! macro-count (+ macro-count 1)))"
+                             "  (list (library-answer 2) macro-count load-count nested-count))")};
+    test.expect(loaded.succeeded, "helper and nested helper files load: " + loaded.error);
+    test.expect(loaded.value == "(42 2 1 1)",
                 "loaded functions and macros remain visible and files load once");
 
     auto const unsafe{interpreter.evaluate("(load-script \"unsafe.scm\")")};
@@ -306,13 +312,16 @@ void caught_child_failure_preserves_parent_and_allows_retry(TestContext& test) {
         (load-script "outer.scm")
         (load-script "outer.scm")
         (list attempts outer-count parent-finished)))")};
-    test.expect(first.succeeded && first.value == "(2 1 #t)",
-                "caught child failures can retry immediately and cache only the successful parent");
+    test.expect(
+        first.succeeded && first.value == "(2 1 #t)",
+        "caught child failures can retry immediately and cache only the successful parent: " +
+            first.value + first.error);
     auto const retry{interpreter.evaluate(R"((load-script "broken.scm"))")};
     test.expect(!retry.succeeded && retry.error.contains("broken.scm"),
                 "a failed child is not recorded as successfully loaded");
     auto const count{interpreter.evaluate("attempts")};
-    test.expect(count.succeeded && count.value == "3", "a later failed-child load executes again");
+    test.expect(count.succeeded && count.value == "3",
+                "a later failed-child load executes again: " + count.value + count.error);
 }
 
 void abort_releases_library_reservations(TestContext& test) {
@@ -431,6 +440,41 @@ void throwing_consumer_releases_gc_protection(TestContext& test) {
     test.expect(recovery.succeeded && recovery.value == "42",
                 "the interpreter remains usable after consumer exceptions");
 }
+
+void captured_source_uses_the_validated_file(TestContext& test) {
+    TemporaryLibrary library;
+    std::string const original{"(define captured-value 42)"};
+    library.write("capture.scm", original);
+    auto const file{detail::open_script_file(library.path().string(), "capture.scm")};
+    test.expect(file.has_value(), "capture opens a validated file");
+    if (!file) {
+        return;
+    }
+
+    std::filesystem::rename(library.path() / "capture.scm", library.path() / "original.scm");
+    library.write("capture.scm", "(getenv \"PATH\")");
+    auto const source{detail::read_script_source(*file)};
+    test.expect(source.has_value() && *source == original,
+                "replacing a validated pathname cannot replace the captured source");
+}
+
+void source_loading_preserves_reader_errors_and_empty_files(TestContext& test) {
+    TemporaryLibrary library;
+    library.write("empty.scm", "");
+    library.write("reader-error.scm", "(define missing-paren 1");
+    Interpreter interpreter{
+        InterpreterOptions{.script_library_root_utf8 = library.path().string()}};
+    auto const empty{interpreter.evaluate(R"((begin (load-script "empty.scm") 42))")};
+    test.expect(empty.succeeded && empty.value == "42", "captured empty source loads successfully");
+    auto const broken{interpreter.evaluate(R"((load-script "reader-error.scm"))")};
+    test.expect(!broken.succeeded && broken.error.contains("reader-error.scm"),
+                "source reader errors preserve filename context");
+    library.write("reader-error.scm", "(define repaired 42)");
+    auto const repaired{
+        interpreter.evaluate(R"((begin (load-script "reader-error.scm") repaired))")};
+    test.expect(repaired.succeeded && repaired.value == "42",
+                "a file can be repaired and retried after a reader error");
+}
 }
 
 int main() {
@@ -452,6 +496,8 @@ int main() {
     nonlocal_exit_aborts_load(test);
     loader_transitions_use_identity_and_safe_accounting(test);
     throwing_consumer_releases_gc_protection(test);
+    captured_source_uses_the_validated_file(test);
+    source_loading_preserves_reader_errors_and_empty_files(test);
 
     return test.failure_count() == 0 ? 0 : 1;
 }

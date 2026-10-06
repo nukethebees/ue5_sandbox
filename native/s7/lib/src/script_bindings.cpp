@@ -5,14 +5,21 @@
 #include "script_files_win32.h"
 
 #include <cassert>
+#include <limits>
 #include <utility>
 
 namespace ml::s7::detail {
 auto prepare_loader_factory(s7_scheme* const scheme) -> s7_pointer {
+    // Read and evaluate captured forms inside Scheme so errors and continuation
+    // exits reach the wind handler without crossing a resource-owning C++ frame.
     return s7_eval_c_string(scheme, R"(
-        (let ((host-load load)
-              (host-format format)
+        (let ((host-evaluate eval)
+              (host-open-input-string open-input-string)
+              (host-read read)
+              (host-eof? eof-object?)
+              (host-close-input-port close-input-port)
               (sandbox-root (rootlet))
+              (host-format format)
               (no-value (if #f #f)))
           (lambda (resolve complete abort)
             (lambda (path)
@@ -23,6 +30,7 @@ auto prepare_loader_factory(s7_scheme* const scheme) -> s7_pointer {
                       (else
                         (let ((token (cadr resolution))
                               (filename (caddr resolution))
+                              (port (host-open-input-string (cadddr resolution)))
                               (finished #f))
                           (dynamic-wind
                             (lambda ()
@@ -31,13 +39,17 @@ auto prepare_loader_factory(s7_scheme* const scheme) -> s7_pointer {
                             (lambda ()
                               (catch #t
                                 (lambda ()
-                                  (host-load filename sandbox-root)
+                                  (let loop ((form (host-read port)))
+                                    (unless (host-eof? form)
+                                      (host-evaluate form sandbox-root)
+                                      (loop (host-read port))))
                                   (complete token)
                                   (set! finished #t)
                                   no-value)
                                 (lambda (type info)
                                   (error type "~A: ~A" filename (apply host-format #f info)))))
                             (lambda ()
+                              (host-close-input-port port)
                               (unless finished
                                 (abort token)
                                 (set! finished #t))))))))))))");
@@ -110,10 +122,13 @@ auto ScriptBindings::resolve(s7_pointer const path) -> s7_pointer {
         return load_failure(scheme_, "No script library root is configured for this runtime.");
     }
 
-    auto const file{resolve_script_file(
+    auto const file{open_script_file(
         *root_, {s7_string(path), static_cast<std::size_t>(s7_string_length(path))})};
     if (!file) {
         return load_failure(scheme_, file.error());
+    }
+    if (file->file_size > static_cast<std::size_t>(std::numeric_limits<s7_int>::max())) {
+        return load_failure(scheme_, "The load-script source size limit was exceeded.");
     }
 
     auto const admission{loader_.begin_load(path_key(file->narrow_path), file->file_size)};
@@ -123,12 +138,20 @@ auto ScriptBindings::resolve(s7_pointer const path) -> s7_pointer {
         case LoadStatus::already_loaded:
             return s7_cons(scheme_, s7_make_integer(scheme_, 1), s7_f(scheme_));
         case LoadStatus::admitted:
-            return s7_list(scheme_,
-                           3,
-                           s7_make_integer(scheme_, 2),
-                           s7_make_integer(scheme_, admission.token.value),
-                           s7_make_string(scheme_, file->narrow_path.c_str()));
+            break;
     }
-    std::abort();
+
+    auto const source{read_script_source(*file)};
+    if (!source) {
+        loader_.abort_load(admission.token);
+        return load_failure(scheme_, source.error());
+    }
+    GcProtection const filename{scheme_, s7_make_string(scheme_, file->narrow_path.c_str())};
+    GcProtection const contents{
+        scheme_,
+        s7_make_string_with_length(scheme_, source->c_str(), static_cast<s7_int>(source->size()))};
+    GcProtection const token{scheme_, s7_make_integer(scheme_, admission.token.value)};
+    return s7_list(
+        scheme_, 4, s7_make_integer(scheme_, 2), token.get(), filename.get(), contents.get());
 }
 }

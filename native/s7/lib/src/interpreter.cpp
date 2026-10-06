@@ -5,7 +5,6 @@
 #include "script_bindings.h"
 #include "script_loader.h"
 
-#include <cassert>
 #include <cstdlib>
 #include <memory>
 #include <optional>
@@ -90,7 +89,7 @@ class Interpreter::Impl final {
         s7_pointer const payload{s7_cdr(result)};
         if (succeeded) {
             detail::GcProtection const protection{scheme_.get(), payload};
-            consume_value(context, *scheme_.get(), payload);
+            consume_value(context, *scheme_, payload);
             return EvaluationResult{.succeeded = true, .value = {}, .error = {}};
         }
         if (!s7_is_string(payload)) {
