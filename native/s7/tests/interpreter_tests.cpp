@@ -1,11 +1,16 @@
+#include "script_loader.h"
 #include <native/s7/interpreter.h>
 #include <native/s7/value.h>
+
+#include "s7.h"
 
 #include <array>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -283,6 +288,149 @@ void exposes_values_during_a_synchronous_callback(TestContext& test) {
     test.expect(result.error.empty(), "value evaluation has no error");
     test.expect(consumed, "value callback is invoked");
 }
+
+void caught_child_failure_preserves_parent_and_allows_retry(TestContext& test) {
+    TemporaryLibrary library;
+    library.write("broken.scm", R"(
+        (set! attempts (+ attempts 1))
+        (error 'broken "broken child"))");
+    library.write("outer.scm", R"(
+        (set! outer-count (+ outer-count 1))
+        (catch #t (lambda () (load-script "broken.scm")) (lambda args #f))
+        (catch #t (lambda () (load-script "broken.scm")) (lambda args #f))
+        (set! parent-finished #t))");
+    Interpreter interpreter{
+        InterpreterOptions{.script_library_root_utf8 = library.path().string()}};
+    auto const first{interpreter.evaluate(R"((begin
+        (define attempts 0) (define outer-count 0) (define parent-finished #f)
+        (load-script "outer.scm")
+        (load-script "outer.scm")
+        (list attempts outer-count parent-finished)))")};
+    test.expect(first.succeeded && first.value == "(2 1 #t)",
+                "caught child failures can retry immediately and cache only the successful parent");
+    auto const retry{interpreter.evaluate(R"((load-script "broken.scm"))")};
+    test.expect(!retry.succeeded && retry.error.contains("broken.scm"),
+                "a failed child is not recorded as successfully loaded");
+    auto const count{interpreter.evaluate("attempts")};
+    test.expect(count.succeeded && count.value == "3", "a later failed-child load executes again");
+}
+
+void abort_releases_library_reservations(TestContext& test) {
+    TemporaryLibrary library;
+    std::string const broken{R"((error 'broken "broken"))"};
+    library.write("broken.scm", broken);
+    library.write("good.scm", "(define recovered 42)");
+    Interpreter interpreter{InterpreterOptions{
+        .script_library_root_utf8 = library.path().string(),
+        .max_total_loaded_bytes = broken.size(),
+        .max_loaded_files = 1,
+        .max_load_depth = 1,
+    }};
+    auto const result{interpreter.evaluate(R"((begin
+        (catch #t (lambda () (load-script "broken.scm")) (lambda args #f))
+        (catch #t (lambda () (load-script "broken.scm")) (lambda args #f))
+        (load-script "good.scm") recovered))")};
+    test.expect(
+        result.succeeded && result.value == "42",
+        "abortion releases depth, file count, and byte reservations in the same evaluation");
+}
+
+void active_nested_sources_count_toward_byte_limit(TestContext& test) {
+    TemporaryLibrary library;
+    std::string const outer{R"((load-script "inner.scm"))"};
+    std::string const inner{"(define inner-value 42)"};
+    library.write("outer.scm", outer);
+    library.write("inner.scm", inner);
+    Interpreter interpreter{InterpreterOptions{
+        .script_library_root_utf8 = library.path().string(),
+        .max_total_loaded_bytes = outer.size() + inner.size() - 1,
+    }};
+    auto const rejected{interpreter.evaluate(R"((load-script "outer.scm"))")};
+    test.expect(!rejected.succeeded && rejected.error.contains("size limit"),
+                "parent and child reservations cannot jointly exceed the total byte budget");
+    auto const recovery{interpreter.evaluate(R"((begin (load-script "inner.scm") inner-value))")};
+    test.expect(recovery.succeeded && recovery.value == "42",
+                "a rejected nested load releases the failed parent's reservation");
+
+    Interpreter exact{InterpreterOptions{
+        .script_library_root_utf8 = library.path().string(),
+        .max_total_loaded_bytes = outer.size() + inner.size(),
+    }};
+    auto const accepted{exact.evaluate(R"((begin
+        (load-script "outer.scm") (load-script "inner.scm")
+        (load-script "outer.scm") inner-value))")};
+    test.expect(accepted.succeeded && accepted.value == "42",
+                "successful nested loads use the exact byte budget once");
+}
+
+void nonlocal_exit_aborts_load(TestContext& test) {
+    TemporaryLibrary library;
+    library.write("escape.scm", "(escape 7)");
+    library.write("good.scm", "(define recovered 42)");
+    Interpreter interpreter{InterpreterOptions{.script_library_root_utf8 = library.path().string(),
+                                               .max_loaded_files = 1,
+                                               .max_load_depth = 1}};
+    auto const result{interpreter.evaluate(R"((begin
+        (define escape #f)
+        (call/cc (lambda (k) (set! escape k) (load-script "escape.scm")))
+        (load-script "good.scm") recovered))")};
+    test.expect(result.succeeded && result.value == "42",
+                "a continuation escape aborts an active load");
+}
+
+void loader_transitions_use_identity_and_safe_accounting(TestContext& test) {
+    using detail::LoadStatus;
+    detail::ScriptLoader loader{
+        InterpreterOptions{.max_loaded_file_bytes = std::numeric_limits<std::size_t>::max(),
+                           .max_total_loaded_bytes = std::numeric_limits<std::size_t>::max(),
+                           .max_loaded_files = 2,
+                           .max_load_depth = 2}};
+    auto const parent{loader.begin_load("parent", std::numeric_limits<std::size_t>::max() - 1)};
+    auto const overflow{loader.begin_load("overflow", 2)};
+    test.expect(parent.status == LoadStatus::admitted && overflow.status == LoadStatus::rejected,
+                "active reservations reject overflow without adding byte counts");
+    auto const child{loader.begin_load("child", 1)};
+    test.expect(child.status == LoadStatus::admitted && child.token != parent.token,
+                "admitted loads have distinct identities");
+    loader.complete_load(parent.token);
+    loader.abort_load(child.token);
+    test.expect(loader.begin_load("parent", 0).status == LoadStatus::already_loaded,
+                "completion identifies the parent even while another token is active");
+    auto const retried{loader.begin_load("child", 1)};
+    test.expect(retried.status == LoadStatus::admitted && retried.token != child.token,
+                "abort frees count, depth, and bytes and retry gets a new identity");
+    test.expect(loader.begin_load("child", 0).error.contains("Recursive"),
+                "an actually active load still reports a cycle");
+    loader.abort_load(retried.token);
+    loader.evaluation_ended();
+}
+
+void throwing_consumer_releases_gc_protection(TestContext& test) {
+    Interpreter interpreter;
+    s7_int first_free_slot{-1};
+    for (int iteration{}; iteration < 16; ++iteration) {
+        bool caught{};
+        try {
+            static_cast<void>(
+                interpreter.evaluate_value("(list 1 2 3)", [&](Scheme& scheme, Value const value) {
+                    auto const slot{s7_gc_protect(&scheme, value)};
+                    s7_gc_unprotect_at(&scheme, slot);
+                    if (first_free_slot < 0) {
+                        first_free_slot = slot;
+                    }
+                    test.expect(slot == first_free_slot,
+                                "throwing consumers do not accumulate permanent GC registrations");
+                    throw std::runtime_error{"consumer failure"};
+                }));
+        } catch (std::runtime_error const&) {
+            caught = true;
+        }
+        test.expect(caught, "consumer exceptions propagate to the host");
+    }
+    auto const recovery{interpreter.evaluate("(+ 40 2)")};
+    test.expect(recovery.succeeded && recovery.value == "42",
+                "the interpreter remains usable after consumer exceptions");
+}
 }
 
 int main() {
@@ -298,6 +446,12 @@ int main() {
     rejects_unsafe_library_paths_and_cycles(test);
     enforces_library_resource_limits(test);
     exposes_values_during_a_synchronous_callback(test);
+    caught_child_failure_preserves_parent_and_allows_retry(test);
+    abort_releases_library_reservations(test);
+    active_nested_sources_count_toward_byte_limit(test);
+    nonlocal_exit_aborts_load(test);
+    loader_transitions_use_identity_and_safe_accounting(test);
+    throwing_consumer_releases_gc_protection(test);
 
     return test.failure_count() == 0 ? 0 : 1;
 }

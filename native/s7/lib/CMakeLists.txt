@@ -34,6 +34,10 @@ ioj_apply_native_abi(sandbox-s7-third-party)
 add_library(sandbox-s7 STATIC)
 target_sources(sandbox-s7 PRIVATE
   src/interpreter.cpp
+  src/sandbox_policy.cpp
+  src/script_bindings.cpp
+  src/script_files_win32.cpp
+  src/script_loader.cpp
   src/value.cpp
 )
 target_compile_features(sandbox-s7 PUBLIC cxx_std_23)
