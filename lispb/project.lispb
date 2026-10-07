@@ -7,6 +7,7 @@
     :sources (
       "lispb/schema/native_simulation_model.lispb"
       "lispb/schema/native_levels.lispb"
+      "lispb/schema/level_authoring_grammar.lispb"
       "lispb/schema/native_traces.lispb"
       "lispb/schema/core_layouts.lispb"
       "lispb/schema/level_telemetry_history.lispb"

@@ -10,12 +10,12 @@
     (value KillEnemies :serialized-name "kill-enemies")
     (value KillEnemiesWithinTime :serialized-name "kill-enemies-within-time")))
 
-(module native_levels_level_validation_error_code
-  :header "native/levels/lib/include/ioj/levels/level_validation_error_code.h"
-  :header-include "ioj/levels/level_validation_error_code.h"
+(module native_levels_diagnostic_code
+  :header "native/levels/lib/include/ioj/levels/diagnostic_code.h"
+  :header-include "ioj/levels/diagnostic_code.h"
   :backend standard-library
   :namespace ioj::levels
-  (enum LevelValidationErrorCode std::uint8_t
+  (enum DiagnosticCode std::uint8_t
     (value MissingLevelId)
     (value MissingTitle)
     (value InvalidParTime)
@@ -61,4 +61,29 @@
     (value UnexpectedMissionEvent)
     (value InvalidMissionEventTime)
     (value InvalidMissionKillIncrease)
-    (value MissionEventBeforeEntitySpawn)))
+    (value MissionEventBeforeEntitySpawn)
+    (value FileOpenFailed)
+    (value FileReadFailed)
+    (value ScriptEvaluationFailed)
+    (value UnsupportedValue)
+    (value ImproperList)
+    (value CyclicStructure)
+    (value LimitExceeded)
+    (value ExpectedRecord)
+    (value ExpectedKeyword)
+    (value UnknownProperty)
+    (value DuplicateProperty)
+    (value MissingProperty)
+    (value MissingValue)
+    (value InvalidType)
+    (value InvalidNumber)
+    (value UnknownSymbol)
+    (value InvalidSymbol)
+    (value UnsupportedEditorFeature)
+    (value MissingCampaignId)
+    (value MissingCampaignLevels)
+    (value DuplicateCampaignLevel)
+    (value DuplicateLevelId)
+    (value DuplicateCampaignId)
+    (value UnavailableLevel)
+    (value UnlockCycle)))

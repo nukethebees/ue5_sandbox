@@ -1,4 +1,4 @@
-#include <SpaceGameS7/LevelScriptCatalog.h>
+#include <SpaceGameS7/level_script_catalog.h>
 
 #include <CQTest.h>
 #include <HAL/FileManager.h>
@@ -21,27 +21,23 @@ struct FTemporaryScriptDirectory {
 auto valid_level_script(FStringView const id,
                         FStringView const title,
                         FStringView const unlock = FStringView{}) -> FString {
-    return FString::Printf(TEXT("(level (id '%s) (title \"%s\") "
-                                "(description \"Catalog test\") "
-                                "%s "
-                                "(teams (team 'blue)) (player 'player) "
-                                "(entities (entity 'player 'player-fighter 'blue "
-                                "(position 0 0 0) (rotation 0 0 0))))"),
-                           *FString{id},
-                           *FString{title},
-                           *FString{unlock});
+    return FString::Printf(
+        TEXT("(level :id '%s :title \"%s\" :description \"Catalog test\" %s :teams '(blue) :player "
+             "'player :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue "
+             ":position '(0 0 0) :rotation '(0 0 0))))"),
+        *FString{id},
+        *FString{title},
+        *FString{unlock});
 }
 
 auto valid_camera_level_script(FStringView const id, FStringView const title) -> FString {
-    return FString::Printf(TEXT("(level (id '%s) (title \"%s\") "
-                                "(description \"Catalog test\") "
-                                "(teams (team 'blue)) "
-                                "(camera (look-at 'capital) (distance 10000) "
-                                "(offset-direction -1 0 0)) "
-                                "(entities (entity 'capital 'capital-ship 'blue "
-                                "(position 0 0 0) (rotation 0 0 0))))"),
-                           *FString{id},
-                           *FString{title});
+    return FString::Printf(
+        TEXT("(level :id '%s :title \"%s\" :description \"Catalog test\" :teams '(blue) :camera "
+             "(camera :look-at '(capital) :distance 10000 :offset-direction '(-1 0 0)) :entities "
+             "(list (entity :id 'capital :archetype 'capital-ship :team 'blue :position '(0 0 0) "
+             ":rotation '(0 0 0))))"),
+        *FString{id},
+        *FString{title});
 }
 }
 
@@ -49,7 +45,7 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
 {
     TEST_METHOD(LoadsCheckedInLevelsAndCampaigns)
     {
-        auto const result{ml::s7::discover_level_scripts()};
+        auto const result{::ioj::levels::authoring::discover_level_scripts()};
         TestRunner->TestTrue(TEXT("Checked-in script catalog has no errors"),
                              result.error.IsEmpty());
         TestRunner->TestTrue(TEXT("Checked-in script catalog contains levels"),
@@ -82,7 +78,7 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
                                           *alpha_path) &&
             FFileHelper::SaveStringToFile(
                 valid_camera_level_script(TEXT("bravo"), TEXT("Bravo Level")), *bravo_path) &&
-            FFileHelper::SaveStringToFile(TEXT("(level (title \"Broken\"))"), *invalid_path) &&
+            FFileHelper::SaveStringToFile(TEXT("(level :title \"Broken\")"), *invalid_path) &&
             FFileHelper::SaveStringToFile(TEXT("not a level"), *ignored_path) &&
             FFileHelper::SaveStringToFile(valid_level_script(TEXT("nested"), TEXT("Nested Level")),
                                           *FPaths::Combine(nested_directory, TEXT("nested.scm")))};
@@ -90,7 +86,7 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             return;
         }
 
-        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
         TestRunner->TestTrue(TEXT("Catalog directory is readable"), result.error.IsEmpty());
         TestRunner->TestEqual(
             TEXT("Only flat Scheme files are discovered"), result.entries.Num(), 3);
@@ -109,12 +105,14 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
                               FString{TEXT("Catalog test")});
         TestRunner->TestTrue(TEXT("Valid entries retain their native definitions"),
                              static_cast<bool>(result.entries[0]));
-        TestRunner->TestTrue(TEXT("Player levels are catalogued as missions"),
-                             ml::s7::catalog_category(result.entries[0].definition.GetValue()) ==
-                                 ml::s7::ELevelCatalogCategory::Mission);
-        TestRunner->TestTrue(TEXT("Playerless levels are catalogued for Battle Viewer"),
-                             ml::s7::catalog_category(result.entries[1].definition.GetValue()) ==
-                                 ml::s7::ELevelCatalogCategory::BattleViewer);
+        TestRunner->TestTrue(
+            TEXT("Player levels are catalogued as missions"),
+            ::ioj::levels::authoring::catalog_category(result.entries[0].definition.GetValue()) ==
+                ::ioj::levels::authoring::ELevelCatalogCategory::Mission);
+        TestRunner->TestTrue(
+            TEXT("Playerless levels are catalogued for Battle Viewer"),
+            ::ioj::levels::authoring::catalog_category(result.entries[1].definition.GetValue()) ==
+                ::ioj::levels::authoring::ELevelCatalogCategory::BattleViewer);
         TestRunner->TestFalse(TEXT("Malformed entries are retained but invalid"),
                               static_cast<bool>(result.entries[2]));
         TestRunner->TestTrue(TEXT("Malformed entries include a useful error"),
@@ -130,16 +128,13 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
         auto const helper_source{TEXT("(define (shared-title suffix) "
                                       "  (string-append \"Shared \" suffix))\n"
                                       "(define-macro (shared-description text) "
-                                      "  `(description ,text))\n")};
-        auto const level_source{TEXT("(load-script \"level-helpers.scm\")\n"
-                                     "(level (id 'library-level) "
-                                     "       (title (shared-title \"Level\")) "
-                                     "       (shared-description \"From library\") "
-                                     "       (teams (team 'blue)) "
-                                     "       (player 'player) "
-                                     "       (entities (entity 'player 'player-fighter 'blue "
-                                     "                         (position 0 0 0) "
-                                     "                         (rotation 0 0 0))))")};
+                                      "  `(string-append ,text))\n")};
+        auto const level_source{
+            TEXT("(load-script \"level-helpers.scm\")\n(level :id 'library-level        :title "
+                 "(shared-title \"Level\") :description (shared-description \"From library\") "
+                 ":teams '(blue)        :player 'player        :entities (list (entity :id 'player "
+                 ":archetype 'player-fighter :team 'blue                          :position '(0 0 "
+                 "0)                          :rotation '(0 0 0))))")};
         auto const files_written{
             FFileHelper::SaveStringToFile(
                 helper_source, *FPaths::Combine(library_directory, TEXT("level-helpers.scm"))) &&
@@ -149,7 +144,7 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             return;
         }
 
-        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
         if (!TestRunner->TestTrue(TEXT("Library-backed catalog is valid"),
                                   result.error.IsEmpty()) ||
             !TestRunner->TestEqual(TEXT("Only the level is catalogued"), result.entries.Num(), 1) ||
@@ -180,7 +175,7 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             return;
         }
 
-        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
         TestRunner->TestEqual(TEXT("Both scripts remain visible"), result.entries.Num(), 2);
         if (result.entries.Num() != 2) {
             return;
@@ -206,14 +201,14 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
                                           *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
             FFileHelper::SaveStringToFile(valid_level_script(TEXT("bravo"), TEXT("Bravo")),
                                           *FPaths::Combine(directory.path, TEXT("bravo.scm"))) &&
-            FFileHelper::SaveStringToFile(TEXT("(campaign (id 'main) (title \"Main Campaign\") "
-                                               "(levels 'bravo 'alpha))"),
-                                          *FPaths::Combine(campaign_directory, TEXT("main.scm")))};
+            FFileHelper::SaveStringToFile(
+                TEXT("(campaign :id 'main :title \"Main Campaign\" :levels '(bravo alpha))"),
+                *FPaths::Combine(campaign_directory, TEXT("main.scm")))};
         if (!TestRunner->TestTrue(TEXT("Campaign fixtures are written"), files_written)) {
             return;
         }
 
-        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
         TestRunner->TestTrue(TEXT("Catalog is valid"), result.error.IsEmpty());
         if (!TestRunner->TestEqual(TEXT("One campaign is discovered"), result.campaigns.Num(), 1) ||
             !TestRunner->TestTrue(TEXT("Campaign is valid"),
@@ -235,17 +230,18 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
         IFileManager::Get().MakeDirectory(*campaign_directory, true);
         auto const files_written{
             FFileHelper::SaveStringToFile(
-                valid_level_script(
-                    TEXT("locked"), TEXT("Locked"), TEXT("(unlock (level-completed 'missing))")),
+                valid_level_script(TEXT("locked"),
+                                   TEXT("Locked"),
+                                   TEXT(":unlock (list (level-completed 'missing))")),
                 *FPaths::Combine(directory.path, TEXT("locked.scm"))) &&
-            FFileHelper::SaveStringToFile(TEXT("(campaign (id 'main) (title \"Main\") "
-                                               "(levels 'missing))"),
-                                          *FPaths::Combine(campaign_directory, TEXT("main.scm")))};
+            FFileHelper::SaveStringToFile(
+                TEXT("(campaign :id 'main :title \"Main\" :levels '(missing))"),
+                *FPaths::Combine(campaign_directory, TEXT("main.scm")))};
         if (!TestRunner->TestTrue(TEXT("Invalid fixtures are written"), files_written)) {
             return;
         }
 
-        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
         TestRunner->TestFalse(TEXT("Missing references are reported"), result.error.IsEmpty());
         TestRunner->TestFalse(TEXT("Level with missing prerequisite is invalid"),
                               static_cast<bool>(result.entries[0]));
@@ -262,18 +258,16 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             FFileHelper::SaveStringToFile(valid_level_script(TEXT("alpha"), TEXT("Alpha")),
                                           *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
             FFileHelper::SaveStringToFile(
-                TEXT("(campaign (id 'shared) (title \"First\") "
-                     "(levels 'alpha))"),
+                TEXT("(campaign :id 'shared :title \"First\" :levels '(alpha))"),
                 *FPaths::Combine(campaign_directory, TEXT("first.scm"))) &&
             FFileHelper::SaveStringToFile(
-                TEXT("(campaign (id 'shared) (title \"Second\") "
-                     "(levels 'alpha))"),
+                TEXT("(campaign :id 'shared :title \"Second\" :levels '(alpha))"),
                 *FPaths::Combine(campaign_directory, TEXT("second.scm")))};
         if (!TestRunner->TestTrue(TEXT("Duplicate campaign fixtures are written"), files_written)) {
             return;
         }
 
-        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
         if (!TestRunner->TestEqual(
                 TEXT("Both campaigns remain visible"), result.campaigns.Num(), 2)) {
             return;
@@ -295,14 +289,14 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
         auto const files_written{
             FFileHelper::SaveStringToFile(valid_level_script(TEXT("alpha"), TEXT("Alpha")),
                                           *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
-            FFileHelper::SaveStringToFile(TEXT("(campaign (id 'main) (title \"Main\") "
-                                               "(levels 'alpha 'alpha))"),
-                                          *FPaths::Combine(campaign_directory, TEXT("main.scm")))};
+            FFileHelper::SaveStringToFile(
+                TEXT("(campaign :id 'main :title \"Main\" :levels '(alpha alpha))"),
+                *FPaths::Combine(campaign_directory, TEXT("main.scm")))};
         if (!TestRunner->TestTrue(TEXT("Duplicate level fixtures are written"), files_written)) {
             return;
         }
 
-        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
         if (!TestRunner->TestEqual(TEXT("Campaign remains visible"), result.campaigns.Num(), 1)) {
             return;
         }
@@ -321,19 +315,17 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             FFileHelper::SaveStringToFile(valid_level_script(TEXT("alpha"), TEXT("Alpha")),
                                           *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
             FFileHelper::SaveStringToFile(
-                TEXT("(campaign (id 'first) (title \"First\") "
-                     "(levels 'alpha))"),
+                TEXT("(campaign :id 'first :title \"First\" :levels '(alpha))"),
                 *FPaths::Combine(campaign_directory, TEXT("first.scm"))) &&
             FFileHelper::SaveStringToFile(
-                TEXT("(campaign (id 'second) (title \"Second\") "
-                     "(levels 'alpha))"),
+                TEXT("(campaign :id 'second :title \"Second\" :levels '(alpha))"),
                 *FPaths::Combine(campaign_directory, TEXT("second.scm")))};
         if (!TestRunner->TestTrue(TEXT("Cross-list campaign fixtures are written"),
                                   files_written)) {
             return;
         }
 
-        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
         if (!TestRunner->TestEqual(
                 TEXT("Both campaigns are discovered"), result.campaigns.Num(), 2)) {
             return;
@@ -354,17 +346,17 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
         auto const files_written{
             FFileHelper::SaveStringToFile(
                 valid_level_script(
-                    TEXT("alpha"), TEXT("Alpha"), TEXT("(unlock (level-completed 'bravo))")),
+                    TEXT("alpha"), TEXT("Alpha"), TEXT(":unlock (list (level-completed 'bravo))")),
                 *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
             FFileHelper::SaveStringToFile(
                 valid_level_script(
-                    TEXT("bravo"), TEXT("Bravo"), TEXT("(unlock (level-completed 'alpha))")),
+                    TEXT("bravo"), TEXT("Bravo"), TEXT(":unlock (list (level-completed 'alpha))")),
                 *FPaths::Combine(directory.path, TEXT("bravo.scm")))};
         if (!TestRunner->TestTrue(TEXT("Cycle fixtures are written"), files_written)) {
             return;
         }
 
-        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
         TestRunner->TestFalse(TEXT("Cycle is reported"), result.error.IsEmpty());
         TestRunner->TestTrue(TEXT("Cycle path is readable"), result.error.Contains(TEXT("->")));
         TestRunner->TestFalse(TEXT("First cycle member is invalid"),

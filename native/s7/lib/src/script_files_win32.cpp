@@ -4,10 +4,11 @@
 #endif
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
+#include <ioj/ascii.h>
+
 #include <Windows.h>
 
 #include <algorithm>
-#include <cctype>
 #include <cstdint>
 #include <limits>
 #include <optional>
@@ -132,9 +133,7 @@ void FileHandleCloser::operator()(void* const handle) const {
 }
 
 [[nodiscard]] auto path_key(std::string key) -> std::string {
-    std::ranges::transform(key, key.begin(), [](unsigned char const character) {
-        return static_cast<char>(std::tolower(character));
-    });
+    std::ranges::transform(key, key.begin(), ioj::to_ascii_lower);
     return key;
 }
 

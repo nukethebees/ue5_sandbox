@@ -8,7 +8,10 @@ link the resulting artifacts through thin adapters.
 
 - `core/`, `memory/`, `image/`, `mesh_gen/`, and `profiling/`: reusable native systems.
 - `simulation/` and `simulation_benchmark/`: worldless combat simulation, tests, and runners.
-- `level_authoring/` and `s7/`: authored scenario support.
+- `levels/`: shared declarative definitions, typed IDs, semantic and catalog validation.
+- `level_authoring/`: AST parsers, Scheme loading, and editor serialization; see its [architecture](level_authoring/ARCHITECTURE.md).
+- `s7/`: sandboxed Scheme evaluation and an owned flat data AST.
+- `common/`: small ASCII, file, and grid-dimension utilities.
 - `lispb/`: schema, Slate, kernel, and material generation; see its [local guide](lispb/README.md).
 - `sbx_mimalloc/`: project allocator integration.
 - `third_party/`: pinned dependencies; do not treat their documentation as project guidance.

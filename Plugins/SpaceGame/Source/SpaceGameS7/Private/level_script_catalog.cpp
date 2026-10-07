@@ -1,17 +1,18 @@
-#include <SpaceGameS7/LevelScriptCatalog.h>
+#include <SpaceGameS7/level_script_catalog.h>
 
-#include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
-#include <SpaceGameS7/CampaignDefinitionReader.h>
-#include <SpaceGameS7/LevelDefinitionReader.h>
+#include <ioj/levels/catalog_validation.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
+#include <SpaceGameS7/campaign_definition_reader.h>
+#include <SpaceGameS7/level_definition_reader.h>
 
-#include <sandbox/level_authoring/CatalogValidation.h>
 #include <SandboxCoreEngine/strings.h>
 
+#include <Containers/StringConv.h>
 #include <HAL/FileManager.h>
 #include <Misc/FileHelper.h>
 #include <Misc/Paths.h>
 
-namespace ml::s7 {
+namespace ioj::levels::authoring {
 namespace {
 void append_error(FString& errors, FString message) {
     if (!errors.IsEmpty()) {
@@ -21,99 +22,68 @@ void append_error(FString& errors, FString message) {
 }
 
 auto to_utf8(FString const& value) -> std::string {
-    return TCHAR_TO_UTF8(*value);
+    auto const utf8{FTCHARToUTF8{*value, value.Len()}};
+    return {utf8.Get(), static_cast<std::size_t>(utf8.Length())};
 }
 
-auto format_read_error(FLevelDefinitionReadResult const& result) -> FString {
-    if (!result.script_error.IsEmpty()) {
-        return result.script_error;
-    }
-
-    TArray<FString> messages;
-    messages.Reserve(result.decode_errors.Num() + result.validation_errors.Num());
-    for (auto const& error : result.decode_errors) {
-        messages.Add(FString::Printf(TEXT("%s: %s"), *error.path, *error.message));
-    }
-    for (auto const& error : result.validation_errors) {
-        messages.Add(error.message);
-    }
-    return FString::Join(messages, TEXT("\n"));
-}
-
-auto format_read_error(FCampaignDefinitionReadResult const& result) -> FString {
-    if (!result.script_error.IsEmpty()) {
-        return result.script_error;
-    }
-
-    TArray<FString> messages;
-    messages.Reserve(result.decode_errors.Num());
-    for (auto const& error : result.decode_errors) {
-        messages.Add(FString::Printf(TEXT("%s: %s"), *error.path, *error.message));
-    }
-    return FString::Join(messages, TEXT("\n"));
-}
-
-auto to_native_levels(TArray<FLevelScriptEntry> const& entries)
-    -> std::vector<level_authoring::LevelCatalogEntry> {
-    std::vector<level_authoring::LevelCatalogEntry> result;
-    result.reserve(entries.Num());
-    for (auto const& entry : entries) {
-        level_authoring::LevelCatalogEntry native{.filename = to_utf8(entry.filename)};
+auto to_native_levels(TArray<FLevelScriptEntry> const& entries) -> std::vector<LevelCatalogEntry> {
+    std::vector<LevelCatalogEntry> result;
+    auto const count{entries.Num()};
+    for (int32 index{}; index < count; ++index) {
+        auto const& entry{entries[index]};
         if (entry.definition) {
-            native.definition = level_authoring::to_native(*entry.definition);
+            result.push_back({static_cast<CatalogEntryIndex>(index),
+                              std::filesystem::path{*entry.path},
+                              to_native(*entry.definition)});
         }
-        result.push_back(std::move(native));
     }
     return result;
 }
-
-auto to_native_campaign(FCampaignDefinition const& definition)
-    -> ::ioj::levels::CampaignDefinition {
-    ::ioj::levels::CampaignDefinition result{
-        .id = to_utf8(definition.id.value.ToString().ToLower()),
-        .title = to_utf8(definition.title),
-    };
-    result.level_ids.reserve(definition.level_ids.Num());
-    for (auto const level_id : definition.level_ids) {
-        result.level_ids.push_back(to_utf8(level_id.value.ToString().ToLower()));
+auto to_native_campaign(ml::FCampaignDefinition const& definition) -> CampaignDefinition {
+    CampaignDefinition result{.id = CampaignId{to_utf8(definition.id.value.ToString().ToLower())},
+                              .title = to_utf8(definition.title)};
+    for (auto const id : definition.level_ids) {
+        result.level_ids.emplace_back(to_utf8(id.value.ToString().ToLower()));
     }
     return result;
 }
-
 auto to_native_campaigns(TArray<FCampaignScriptEntry> const& entries)
-    -> std::vector<level_authoring::CampaignCatalogEntry> {
-    std::vector<level_authoring::CampaignCatalogEntry> result;
-    result.reserve(entries.Num());
-    for (auto const& entry : entries) {
-        level_authoring::CampaignCatalogEntry native{.filename = to_utf8(entry.filename)};
+    -> std::vector<CampaignCatalogEntry> {
+    std::vector<CampaignCatalogEntry> result;
+    auto const count{entries.Num()};
+    for (int32 index{}; index < count; ++index) {
+        auto const& entry{entries[index]};
         if (entry.definition) {
-            native.definition = to_native_campaign(*entry.definition);
+            result.push_back({static_cast<CatalogEntryIndex>(index),
+                              std::filesystem::path{*entry.path},
+                              to_native_campaign(*entry.definition)});
         }
-        result.push_back(std::move(native));
     }
     return result;
 }
 
 void apply_level_issues(FLevelScriptCatalogResult& result) {
     auto const native_entries{to_native_levels(result.entries)};
-    auto const issues{level_authoring::validate_level_catalog(native_entries)};
+    auto const issues{::ioj::levels::validate_level_catalog(native_entries)};
     for (auto const& issue : issues) {
         auto& entry{result.entries[static_cast<int32>(issue.entry_index)]};
-        entry.error = ml::to_fstring(issue.message);
+        auto const message{ml::to_fstring(issue.diagnostic.message)};
+        append_error(entry.error, message);
         entry.definition.Reset();
-        append_error(result.error, FString::Printf(TEXT("%s: %s"), *entry.filename, *entry.error));
+        append_error(result.error, FString::Printf(TEXT("%s: %s"), *entry.filename, *message));
     }
 }
 
 void apply_campaign_issues(FLevelScriptCatalogResult& result) {
     auto const levels{to_native_levels(result.entries)};
     auto const campaigns{to_native_campaigns(result.campaigns)};
-    auto const issues{level_authoring::validate_campaign_catalog(campaigns, levels, {})};
+    auto const issues{::ioj::levels::validate_campaign_catalog(campaigns, levels)};
     for (auto const& issue : issues) {
         auto& entry{result.campaigns[static_cast<int32>(issue.entry_index)]};
-        entry.error = ml::to_fstring(issue.message);
+        auto const message{ml::to_fstring(issue.diagnostic.message)};
+        append_error(entry.error, message);
         entry.definition.Reset();
-        append_error(result.error, FString::Printf(TEXT("%s: %s"), *entry.filename, *entry.error));
+        append_error(result.error, FString::Printf(TEXT("%s: %s"), *entry.filename, *message));
     }
 }
 
@@ -138,10 +108,10 @@ void discover_campaigns(FLevelScriptCatalogResult& result) {
         FCampaignScriptEntry entry{.filename = filename, .path = path};
         auto read_result{reader.read_file(path)};
         if (!read_result) {
-            entry.error = format_read_error(read_result);
+            entry.error = ml::to_fstring(format_diagnostics(read_result.error()));
             append_error(result.error, FString::Printf(TEXT("%s: %s"), *filename, *entry.error));
         } else {
-            entry.definition = MoveTemp(read_result.definition);
+            entry.definition = MoveTemp(*read_result);
         }
         result.campaigns.Add(MoveTemp(entry));
     }
@@ -161,7 +131,7 @@ void discover_campaigns(FLevelScriptCatalogResult& result) {
 }
 } // namespace
 
-auto catalog_category(FLevelDefinition const& definition) noexcept -> ELevelCatalogCategory {
+auto catalog_category(ml::FLevelDefinition const& definition) noexcept -> ELevelCatalogCategory {
     return definition.player_entity_id.is_set() ? ELevelCatalogCategory::Mission
                                                 : ELevelCatalogCategory::BattleViewer;
 }
@@ -209,11 +179,11 @@ auto discover_level_scripts(FStringView const directory) -> FLevelScriptCatalogR
 
         auto read_result{reader.read_source(entry.source_text)};
         if (read_result) {
-            entry.display_title = read_result.definition->metadata.title;
-            entry.description = read_result.definition->metadata.description;
-            entry.definition = MoveTemp(read_result.definition);
+            entry.display_title = read_result->metadata.title;
+            entry.description = read_result->metadata.description;
+            entry.definition = MoveTemp(*read_result);
         } else {
-            entry.error = format_read_error(read_result);
+            entry.error = ml::to_fstring(format_diagnostics(read_result.error()));
         }
         result.entries.Add(MoveTemp(entry));
     }
@@ -226,4 +196,4 @@ auto discover_level_scripts(FStringView const directory) -> FLevelScriptCatalogR
 auto discover_level_scripts() -> FLevelScriptCatalogResult {
     return discover_level_scripts(default_level_script_directory());
 }
-} // namespace ml::s7
+} // namespace ioj::levels::authoring

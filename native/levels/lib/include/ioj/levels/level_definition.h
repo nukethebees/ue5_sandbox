@@ -1,7 +1,9 @@
 #pragma once
 
+#include <ioj/levels/diagnostic_code.h>
+#include <ioj/levels/diagnostics.h>
+#include <ioj/levels/identifiers.h>
 #include <ioj/levels/level_mission_mode.h>
-#include <ioj/levels/level_validation_error_code.h>
 
 #include <cstdint>
 #include <optional>
@@ -22,23 +24,23 @@ struct Rotator3d {
 };
 
 struct LevelMetadata {
-    std::string id{};
+    LevelId id{};
     std::string title{};
     std::string description{};
     std::optional<float> par_time_seconds{};
 };
 
 struct EntitySpawnDefinition {
-    std::string id{};
+    EntityId id{};
     std::string archetype{};
-    std::string team{};
+    TeamId team{};
     Vector3d position{};
     Rotator3d rotation{};
     double spawn_time_seconds{};
 };
 
 struct LevelCameraDefinition {
-    std::vector<std::string> target_entity_ids{};
+    std::vector<EntityId> target_entity_ids{};
     Vector3d offset_direction{};
     double distance{};
 };
@@ -52,40 +54,30 @@ struct LevelMissionDefinition {
     LevelMissionMode mode{LevelMissionMode::Unspecified};
     std::optional<float> time_limit_seconds{};
     std::optional<std::int32_t> kill_count{};
-    std::vector<std::string> hero_entity_ids{};
-    std::vector<std::string> must_survive_entity_ids{};
-    std::vector<std::string> required_kill_entity_ids{};
+    std::vector<EntityId> hero_entity_ids{};
+    std::vector<EntityId> must_survive_entity_ids{};
+    std::vector<EntityId> required_kill_entity_ids{};
 };
 
 struct LevelMissionObjectiveEvent {
     double time_seconds{};
-    std::vector<std::string> must_survive_entity_ids{};
-    std::vector<std::string> required_kill_entity_ids{};
+    std::vector<EntityId> must_survive_entity_ids{};
+    std::vector<EntityId> required_kill_entity_ids{};
     std::int32_t kill_target_increase{};
 };
 
 struct LevelDefinition {
     LevelMetadata metadata{};
-    std::vector<std::string> unlock_level_ids{};
-    std::string player_entity_id{};
+    std::vector<LevelId> unlock_level_ids{};
+    EntityId player_entity_id{};
     std::optional<LevelCameraDefinition> camera{};
     std::optional<LevelCollisionGridDefinition> collision_grid{};
     std::optional<LevelMissionDefinition> mission{};
     std::vector<LevelMissionObjectiveEvent> mission_events{};
-    std::vector<std::string> teams{};
+    std::vector<TeamId> teams{};
     std::vector<EntitySpawnDefinition> entities{};
 };
 
-struct LevelValidationError {
-    LevelValidationErrorCode code{};
-    std::string message{};
-};
-
-struct LevelValidationResult {
-    std::vector<LevelValidationError> errors{};
-
-    explicit operator bool() const noexcept { return errors.empty(); }
-};
-
-[[nodiscard]] auto validate_level(LevelDefinition const& definition) -> LevelValidationResult;
+[[nodiscard]] auto validate_level(LevelDefinition const& definition)
+    -> std::expected<void, Diagnostics>;
 } // namespace ioj::levels

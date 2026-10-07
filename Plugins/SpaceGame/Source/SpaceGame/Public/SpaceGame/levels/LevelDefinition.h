@@ -88,7 +88,7 @@ class SPACEGAME_API FLevelBuilder {
     FLevelDefinition definition_{};
 };
 
-using ELevelValidationErrorCode = ::ioj::levels::LevelValidationErrorCode;
+using ELevelValidationErrorCode = ::ioj::levels::DiagnosticCode;
 
 struct SPACEGAME_API FLevelValidationError {
     ELevelValidationErrorCode code{};

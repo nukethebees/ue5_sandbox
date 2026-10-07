@@ -9,7 +9,7 @@ Use this skill for authored-level work: designing encounters, modifying level la
 
 ## Workflow
 
-1. Inspect the level and mission DSL before changing S7 scripts. The authoritative reader is `Plugins/SpaceGame/Source/SpaceGameS7/Private/LevelDefinitionReader.cpp`.
+1. Inspect the level and mission DSL before changing S7 scripts. See `LevelScripts/README.md` for syntax and `native/level_authoring/lib/src/level_definition_reader.cpp` for the authoritative grammar.
 2. Inspect relevant existing levels in `LevelScripts/` and, when applicable, authored maps in `Content/Levels/`.
 3. Understand the requested gameplay goal, including the intended player experience and success conditions.
 4. Make the smallest coherent level change that achieves that goal.

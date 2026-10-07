@@ -52,6 +52,11 @@ public class NativeLevels : ModuleRules
             }
             PublicAdditionalLibraries.Add(libraryPath);
             ExternalDependencies.Add(libraryPath);
+            // Supply the static archive dependency explicitly for Unreal's external-module linker.
+            string commonLibraryPath = Path.Combine(repositoryRoot, "Binaries", "Native", "Common",
+                nativeToolchain, Target.Platform.ToString(), Target.Configuration.ToString(), "native-common.lib");
+            PublicAdditionalLibraries.Add(commonLibraryPath);
+            ExternalDependencies.Add(commonLibraryPath);
         }
     }
 }

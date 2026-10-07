@@ -1,7 +1,7 @@
 #include "SandboxEditor/levels/S7LevelSourceSession.h"
 
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
-#include <SpaceGameS7/LevelScriptCatalog.h>
+#include <SpaceGameS7/level_script_catalog.h>
 
 #include <Containers/StringConv.h>
 #include <HAL/FileManager.h>
@@ -109,19 +109,28 @@ auto FS7LevelSourceSession::save_replacement_as(FString source,
     return write(source, path, overwrite, true);
 }
 
-auto FS7LevelSourceSession::read() const -> ml::s7::FLevelDefinitionReadResult {
+auto FS7LevelSourceSession::read() const -> ::ioj::levels::authoring::FLevelDefinitionReadResult {
     if (!is_attached()) {
-        return {.script_error = TEXT("The source buffer is not attached to the current level.")};
+        return ::ioj::levels::authoring::FLevelDefinitionReadResult{
+            std::unexpect,
+            ::ioj::levels::Diagnostics{
+                {::ioj::levels::DiagnosticCode::ExpectedRecord,
+                 "$",
+                 "The source buffer is not attached to the current level."}}};
     }
     if (buffer_.TrimStartAndEnd().IsEmpty()) {
-        return {.script_error =
-                    TEXT("The S7 source buffer is empty. Use Save Canonical from Scene to create "
-                         "a script from the current level.")};
+        return ::ioj::levels::authoring::FLevelDefinitionReadResult{
+            std::unexpect,
+            ::ioj::levels::Diagnostics{{::ioj::levels::DiagnosticCode::ExpectedRecord,
+                                        "$",
+                                        "The S7 source buffer is empty. Use Save Canonical from "
+                                        "Scene to create a script from the current level."}}};
     }
-    auto const source_directory{path_.IsEmpty() ? ml::s7::default_level_script_directory()
-                                                : FPaths::GetPath(path_)};
+    auto const source_directory{path_.IsEmpty()
+                                    ? ::ioj::levels::authoring::default_level_script_directory()
+                                    : FPaths::GetPath(path_)};
     auto const library_root{FPaths::Combine(source_directory, TEXT("Libraries"))};
-    return ml::s7::FLevelDefinitionReader{library_root}.read_source(buffer_);
+    return ::ioj::levels::authoring::FLevelDefinitionReader{library_root}.read_source(buffer_);
 }
 
 auto FS7LevelSourceSession::refresh_external_conflict() -> std::expected<void, FString> {

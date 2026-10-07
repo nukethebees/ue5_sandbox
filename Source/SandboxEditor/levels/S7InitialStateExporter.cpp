@@ -8,8 +8,8 @@
 #include <SpaceGame/levels/LevelEntityResolution.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGameS7/LevelDefinitionWriter.h>
-#include <SpaceGameS7/LevelScriptCatalog.h>
+#include <SpaceGameS7/level_definition_writer.h>
+#include <SpaceGameS7/level_script_catalog.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <DesktopPlatformModule.h>
@@ -165,13 +165,14 @@ auto select_export_path(ULevel const& level) -> TOptional<FString> {
     auto const parent_window{
         FSlateApplication::Get().FindBestParentWindowHandleForDialogs(nullptr)};
     TArray<FString> filenames;
-    auto const selected{desktop_platform->SaveFileDialog(parent_window,
-                                                         TEXT("Export S7 Initial State"),
-                                                         s7::default_level_script_directory(),
-                                                         default_filename,
-                                                         TEXT("S7 level (*.scm)|*.scm"),
-                                                         EFileDialogFlags::None,
-                                                         filenames)};
+    auto const selected{
+        desktop_platform->SaveFileDialog(parent_window,
+                                         TEXT("Export S7 Initial State"),
+                                         ::ioj::levels::authoring::default_level_script_directory(),
+                                         default_filename,
+                                         TEXT("S7 level (*.scm)|*.scm"),
+                                         EFileDialogFlags::None,
+                                         filenames)};
     if (!selected || filenames.Num() != 1) {
         return NullOpt;
     }
@@ -442,7 +443,7 @@ void execute_s7_initial_state_export() {
         log_export_error(plan.error());
         return;
     }
-    auto const source{s7::emit_editor_level_source(plan->definition)};
+    auto const source{::ioj::levels::authoring::emit_editor_level_source(plan->definition)};
     if (!source) {
         log_export_error(source.error());
         return;

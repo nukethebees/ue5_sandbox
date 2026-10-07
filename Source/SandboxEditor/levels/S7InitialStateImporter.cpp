@@ -6,9 +6,11 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameS7/LevelDefinitionReader.h>
-#include <SpaceGameS7/LevelScriptCatalog.h>
+#include <SpaceGameS7/level_definition_reader.h>
+#include <SpaceGameS7/level_script_catalog.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <DesktopPlatformModule.h>
 #include <Editor.h>
@@ -30,20 +32,9 @@ struct FDelayedSpawnGroup {
     EResolvedLevelArchetype archetype{};
 };
 
-auto format_read_error(s7::FLevelDefinitionReadResult const& result) -> FString {
-    if (!result.script_error.IsEmpty()) {
-        return result.script_error;
-    }
-
-    TArray<FString> messages;
-    messages.Reserve(result.decode_errors.Num() + result.validation_errors.Num());
-    for (auto const& error : result.decode_errors) {
-        messages.Add(FString::Printf(TEXT("%s: %s"), *error.path, *error.message));
-    }
-    for (auto const& error : result.validation_errors) {
-        messages.Add(error.message);
-    }
-    return FString::Join(messages, TEXT("\n"));
+auto format_read_error(::ioj::levels::authoring::FLevelDefinitionReadResult const& result)
+    -> FString {
+    return ml::to_fstring(::ioj::levels::format_diagnostics(result.error()));
 }
 
 auto select_level_script() -> TOptional<FString> {
@@ -55,13 +46,14 @@ auto select_level_script() -> TOptional<FString> {
     auto const parent_window{
         FSlateApplication::Get().FindBestParentWindowHandleForDialogs(nullptr)};
     TArray<FString> filenames;
-    auto const selected{desktop_platform->OpenFileDialog(parent_window,
-                                                         TEXT("Import S7 Initial State"),
-                                                         s7::default_level_script_directory(),
-                                                         TEXT(""),
-                                                         TEXT("S7 level (*.scm)|*.scm"),
-                                                         EFileDialogFlags::None,
-                                                         filenames)};
+    auto const selected{
+        desktop_platform->OpenFileDialog(parent_window,
+                                         TEXT("Import S7 Initial State"),
+                                         ::ioj::levels::authoring::default_level_script_directory(),
+                                         TEXT(""),
+                                         TEXT("S7 level (*.scm)|*.scm"),
+                                         EFileDialogFlags::None,
+                                         filenames)};
     return selected && filenames.Num() == 1 ? TOptional<FString>{MoveTemp(filenames[0])} : NullOpt;
 }
 
@@ -348,14 +340,14 @@ void execute_s7_initial_state_import() {
         return;
     }
 
-    s7::FLevelDefinitionReader reader;
+    ::ioj::levels::authoring::FLevelDefinitionReader reader;
     auto const read_result{reader.read_file(selected_path.GetValue())};
     if (!read_result) {
         show_error(format_read_error(read_result));
         return;
     }
 
-    auto const plan{make_s7_initial_state_import_plan(read_result.definition.GetValue())};
+    auto const plan{make_s7_initial_state_import_plan(read_result.value())};
     if (!plan) {
         show_error(plan.error());
         return;

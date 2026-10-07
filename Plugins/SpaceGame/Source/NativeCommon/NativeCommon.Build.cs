@@ -8,8 +8,6 @@ public class NativeCommon : ModuleRules
     {
         Type = ModuleType.External;
 
-        PublicDependencyModuleNames.AddRange(new string[] {  });
-
         if (Target.Platform != UnrealTargetPlatform.Win64 ||
             Target.Architecture != UnrealArch.X64)
         {

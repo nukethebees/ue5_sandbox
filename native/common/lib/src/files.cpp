@@ -1,8 +1,8 @@
 #include <ioj/files.h>
 
+#include <array>
 #include <cerrno>
 #include <fstream>
-#include <iterator>
 
 namespace ioj {
 auto read_file(std::filesystem::path const& path) -> std::expected<std::string, FileReadError> {
@@ -13,10 +13,17 @@ auto read_file(std::filesystem::path const& path) -> std::expected<std::string, 
             FileReadError{FileReadErrorCode::OpenFailed, path, {errno, std::generic_category()}}};
     }
 
-    std::string result{std::istreambuf_iterator<char>{input}, {}};
-    if (input.bad()) {
-        return std::unexpected{
-            FileReadError{FileReadErrorCode::ReadFailed, path, {errno, std::generic_category()}}};
+    std::string result;
+    std::array<char, 8192> buffer;
+    while (input.read(buffer.data(), buffer.size())) {
+        result.append(buffer.data(), buffer.size());
+    }
+    result.append(buffer.data(), static_cast<std::size_t>(input.gcount()));
+    if (!input.eof() || input.bad()) {
+        return std::unexpected{FileReadError{FileReadErrorCode::ReadFailed,
+                                             path,
+                                             errno ? std::error_code{errno, std::generic_category()}
+                                                   : std::make_error_code(std::errc::io_error)}};
     }
 
     return result;

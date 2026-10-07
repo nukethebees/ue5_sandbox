@@ -38,12 +38,12 @@
             (offset-x (cadr slot))
             (offset-y (caddr slot))
             (offset-z (cadddr slot)))
-        (entity (entity-id team 'capital index) 'capital-ship team
-          (position
+        (entity :id (entity-id team 'capital index) :archetype 'capital-ship :team team
+          :position (list
             (+ center-x offset-x)
             (+ center-y offset-y)
             (+ center-z offset-z))
-          (rotation 0 yaw 0))))
+          :rotation (list 0 yaw 0))))
     capital-slots))
 
 (define (make-turret-clusters team center-x center-y center-z yaw)
@@ -60,12 +60,12 @@
                     (offset-x (cadr offset))
                     (offset-y (caddr offset))
                     (offset-z (cadddr offset)))
-                (entity (turret-id team cluster-index turret-index) 'static-turret team
-                  (position
+                (entity :id (turret-id team cluster-index turret-index) :archetype 'static-turret :team team
+                  :position (list
                     (+ cluster-x offset-x)
                     (+ cluster-y offset-y)
                     (+ cluster-z offset-z))
-                  (rotation 0 yaw 0))))
+                  :rotation (list 0 yaw 0))))
             turret-offsets)))
       turret-clusters)))
 
@@ -84,23 +84,21 @@
     (make-faction 'yellow -800000 -300000 18000 -34)))
 
 (level
-  (id 'six-faction-armada)
-  (title "Six-Faction Armada")
-  (description "A massive free-play battle with six widely separated fleets scattered across three dimensions.")
+  :id 'six-faction-armada
+  :title "Six-Faction Armada"
+  :description "A massive free-play battle with six widely separated fleets scattered across three dimensions."
 
-  (teams
-    (team 'white)
-    (team 'red)
-    (team 'green)
-    (team 'blue)
-    (team 'orange)
-    (team 'yellow))
+  :teams '(white
+    red
+    green
+    blue
+    orange
+    yellow)
 
-  (player 'player)
+  :player 'player
 
-  (apply entities
-    (cons
-      (entity 'player 'player-fighter 'blue
-        (position 185000 830000 18000)
-        (rotation 0 -159 0))
-      armada-entities)))
+  :entities (cons
+      (entity :id 'player :archetype 'player-fighter :team 'blue
+        :position '(185000 830000 18000)
+        :rotation '(0 -159 0))
+      armada-entities))

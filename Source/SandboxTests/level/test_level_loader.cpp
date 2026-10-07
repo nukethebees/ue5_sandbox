@@ -24,7 +24,7 @@
 #include <SpaceGamePresentation/presentation/widgets/BattleViewerHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
-#include <SpaceGameS7/LevelDefinitionReader.h>
+#include <SpaceGameS7/level_definition_reader.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -46,7 +46,7 @@ FLevelLoaderCameraScenario::FLevelLoaderCameraScenario(FSimulationTestContext& c
 void FLevelLoaderCameraScenario::load_fixture() {
     initialise_test_driver();
 
-    s7::FLevelDefinitionReader reader;
+    ::ioj::levels::authoring::FLevelDefinitionReader reader;
     auto const script_path{
         FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("FleetOverview.scm"))};
     auto const scripted_definition{reader.read_file(script_path)};
@@ -55,7 +55,7 @@ void FLevelLoaderCameraScenario::load_fixture() {
         return;
     }
 
-    auto definition{scripted_definition.definition.GetValue()};
+    auto definition{scripted_definition.value()};
     auto const red_capital_index{
         definition.entities.ids.IndexOfByKey(FLevelEntityId{FName{TEXT("red-capital")}})};
     check(red_capital_index != INDEX_NONE);
@@ -268,13 +268,13 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
                      count_actors<ATestSpaceShip>(context_.world),
                      TEXT("Rejected headless load creates no player"));
 
-    s7::FLevelDefinitionReader reader;
+    ::ioj::levels::authoring::FLevelDefinitionReader reader;
     auto const script_path{
         FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("FleetOverview.scm"))};
     auto const definition{reader.read_file(script_path)};
     checks.is_true(static_cast<bool>(definition), TEXT("Playerless fixture can be reloaded"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-    auto const result{loader.load(definition.definition.GetValue())};
+    auto const result{loader.load(definition.value())};
     checks.is_true(static_cast<bool>(result),
                    TEXT("Playerless level loads without presentation classes"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
@@ -378,7 +378,7 @@ void FLevelLoaderScenario::load_fixture() {
                        ::ioj::sim::OrchestratorState::Uninitialised,
                    TEXT("Rejected load leaves orchestrator uninitialised"));
 
-    s7::FLevelDefinitionReader reader;
+    ::ioj::levels::authoring::FLevelDefinitionReader reader;
     auto const script_path{
         FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("BorderSkirmish.scm"))};
     auto const scripted_definition{reader.read_file(script_path)};
@@ -387,7 +387,7 @@ void FLevelLoaderScenario::load_fixture() {
         return;
     }
 
-    auto const load_result{loader.load(scripted_definition.definition.GetValue())};
+    auto const load_result{loader.load(scripted_definition.value())};
     if (!checks.is_true(static_cast<bool>(load_result), TEXT("Valid definition loads"))) {
         return;
     }

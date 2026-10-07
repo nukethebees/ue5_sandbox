@@ -1,0 +1,263 @@
+#include <ioj/levels/authoring/level_definition_writer.h>
+
+#include <ioj/ascii.h>
+#include <ioj/levels/authoring/grammar.h>
+#include <ioj/s7/sexpression_emitter.h>
+
+#include <algorithm>
+#include <cmath>
+#include <format>
+#include <numeric>
+
+namespace ioj::levels::authoring {
+namespace {
+using s7::SexpressionEmitter;
+auto canonical_symbol(std::string_view const value) -> bool {
+    return !value.empty() && ioj::is_ascii_lower(value.front()) &&
+           std::ranges::all_of(value, [](char const c) {
+               return ioj::is_ascii_lower(c) || ioj::is_ascii_digit(c) || c == '-';
+           });
+}
+void check_symbol(Diagnostics& errors, std::string_view const value, std::string path) {
+    if (!canonical_symbol(value)) {
+        errors.push_back({DiagnosticCode::InvalidSymbol,
+                          std::move(path),
+                          std::format("'{}' is not a canonical lowercase Lisp symbol", value)});
+    }
+}
+auto editor_number(double const value) -> std::string {
+    if (std::abs(value) < 0.0005) {
+        return "0";
+    }
+    auto result{std::format("{:.3f}", value)};
+    while (result.ends_with('0')) {
+        result.pop_back();
+    }
+    if (result.ends_with('.')) {
+        result.pop_back();
+    }
+    return result == "-0" ? "0" : result;
+}
+void property(SexpressionEmitter& out, Property const key) {
+    out.newline();
+    out.token(std::format(":{}", to_serialized_string(key)));
+}
+void symbol(SexpressionEmitter& out, std::string_view const value) {
+    out.token(std::format("'{}", value));
+}
+void vector(SexpressionEmitter& out, double const x, double const y, double const z) {
+    out.begin_quoted_list();
+    out.token(editor_number(x));
+    out.token(editor_number(y));
+    out.token(editor_number(z));
+    out.end_list();
+}
+template <typename Id>
+void id_list(SexpressionEmitter& out, Property const key, std::vector<Id> ids) {
+    std::ranges::sort(ids);
+    property(out, key);
+    out.begin_quoted_list();
+    for (auto const& id : ids) {
+        out.token(id.value);
+    }
+    out.end_list();
+}
+auto entity_output_rank(std::string_view const archetype) -> int {
+    if (archetype == "player-fighter") {
+        return 0;
+    }
+    if (archetype == "capital-ship") {
+        return 1;
+    }
+    return 2;
+}
+auto validate_output(LevelDefinition const& definition) -> Diagnostics {
+    Diagnostics errors;
+    auto validation{validate_level(definition)};
+    if (!validation) {
+        errors = std::move(validation.error());
+    }
+    if (definition.metadata.par_time_seconds) {
+        errors.push_back({DiagnosticCode::UnsupportedEditorFeature,
+                          "level.par-time",
+                          "Editor level source does not support par-time"});
+    }
+    if (!definition.unlock_level_ids.empty()) {
+        errors.push_back({DiagnosticCode::UnsupportedEditorFeature,
+                          "level.unlock",
+                          "Editor level source does not support unlock criteria"});
+    }
+    if (!definition.mission_events.empty()) {
+        errors.push_back({DiagnosticCode::UnsupportedEditorFeature,
+                          "level.mission-events",
+                          "Editor level source does not support mission events"});
+    }
+    check_symbol(errors, definition.metadata.id.value, "level.id");
+    for (auto const& team : definition.teams) {
+        check_symbol(errors, team.value, "level.teams");
+    }
+    if (!definition.player_entity_id.empty()) {
+        check_symbol(errors, definition.player_entity_id.value, "level.player");
+    }
+    if (definition.camera) {
+        for (auto const& id : definition.camera->target_entity_ids) {
+            check_symbol(errors, id.value, "level.camera.look-at");
+        }
+    }
+    if (definition.mission) {
+        auto const& mission{*definition.mission};
+        for (auto const& id : mission.hero_entity_ids) {
+            check_symbol(errors, id.value, "level.mission.heroes");
+        }
+        for (auto const& id : mission.must_survive_entity_ids) {
+            check_symbol(errors, id.value, "level.mission.must-survive");
+        }
+        for (auto const& id : mission.required_kill_entity_ids) {
+            check_symbol(errors, id.value, "level.mission.required-kills");
+        }
+    }
+    auto const count{definition.entities.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const& entity{definition.entities[index]};
+        auto const path{std::format("level.entities[{}]", index)};
+        check_symbol(errors, entity.id.value, path + ".id");
+        check_symbol(errors, entity.archetype, path + ".archetype");
+        check_symbol(errors, entity.team.value, path + ".team");
+    }
+    return errors;
+}
+}
+
+auto emit_editor_level_source(LevelDefinition const& definition)
+    -> std::expected<std::string, Diagnostics> {
+    auto errors{validate_output(definition)};
+    if (!errors.empty()) {
+        return std::unexpected{std::move(errors)};
+    }
+
+    SexpressionEmitter out;
+    out.comment("Generated by Space Game Level Authoring. Saving rewrites canonical explicit S7.");
+    out.newline();
+    out.begin_list(to_serialized_string(RecordKind::Level));
+    property(out, Property::Id);
+    symbol(out, definition.metadata.id.value);
+    property(out, Property::Title);
+    out.string(definition.metadata.title);
+    if (!definition.metadata.description.empty()) {
+        property(out, Property::Description);
+        out.string(definition.metadata.description);
+    }
+    if (definition.collision_grid &&
+        (definition.collision_grid->level_size || definition.collision_grid->cell_size)) {
+        property(out, Property::CollisionGrid);
+        out.begin_list(to_serialized_string(RecordKind::CollisionGrid));
+        if (definition.collision_grid->level_size) {
+            auto const size{*definition.collision_grid->level_size};
+            property(out, Property::LevelSize);
+            vector(out, size.x, size.y, size.z);
+        }
+        if (definition.collision_grid->cell_size) {
+            auto const size{*definition.collision_grid->cell_size};
+            property(out, Property::CellSize);
+            vector(out, size.x, size.y, size.z);
+        }
+        out.end_list();
+    }
+    id_list(out, Property::Teams, definition.teams);
+    if (!definition.player_entity_id.empty()) {
+        property(out, Property::Player);
+        symbol(out, definition.player_entity_id.value);
+    } else {
+        auto const& camera{*definition.camera};
+        property(out, Property::Camera);
+        out.begin_list(to_serialized_string(RecordKind::Camera));
+        id_list(out, Property::LookAt, camera.target_entity_ids);
+        property(out, Property::Distance);
+        out.token(editor_number(camera.distance));
+        property(out, Property::OffsetDirection);
+        vector(
+            out, camera.offset_direction.x, camera.offset_direction.y, camera.offset_direction.z);
+        out.end_list();
+    }
+    if (definition.mission) {
+        auto const& mission{*definition.mission};
+        property(out, Property::Mission);
+        out.begin_list(to_serialized_string(RecordKind::Mission));
+        property(out, Property::Mode);
+        symbol(out, to_serialized_string(mission.mode));
+        if (mission.time_limit_seconds) {
+            property(out, Property::TimeLimit);
+            out.token(editor_number(*mission.time_limit_seconds));
+        }
+        if (mission.kill_count) {
+            property(out, Property::KillCount);
+            out.token(std::to_string(*mission.kill_count));
+        }
+        if (!mission.hero_entity_ids.empty()) {
+            id_list(out, Property::Heroes, mission.hero_entity_ids);
+        }
+        if (!mission.must_survive_entity_ids.empty()) {
+            id_list(out, Property::MustSurvive, mission.must_survive_entity_ids);
+        }
+        if (!mission.required_kill_entity_ids.empty()) {
+            id_list(out, Property::RequiredKills, mission.required_kill_entity_ids);
+        }
+        out.end_list();
+    }
+
+    std::vector<std::size_t> indices(definition.entities.size());
+    std::iota(indices.begin(), indices.end(), std::size_t{});
+    std::ranges::sort(indices, [&](std::size_t const a, std::size_t const b) {
+        auto const& left{definition.entities[a]};
+        auto const& right{definition.entities[b]};
+        if (left.team != right.team) {
+            return left.team < right.team;
+        }
+        auto const left_rank{entity_output_rank(left.archetype)};
+        auto const right_rank{entity_output_rank(right.archetype)};
+        return left_rank != right_rank ? left_rank < right_rank : left.id < right.id;
+    });
+    property(out, Property::Entities);
+    out.begin_list("list");
+    auto const entity_count{indices.size()};
+    std::size_t group_end{};
+    for (std::size_t position{}; position < entity_count; ++position) {
+        auto const index{indices[position]};
+        auto const& entity{definition.entities[index]};
+        out.newline();
+        if (position == group_end) {
+            group_end = position + 1;
+            while (group_end < entity_count) {
+                auto const& next{definition.entities[indices[group_end]]};
+                if (next.team != entity.team || next.archetype != entity.archetype) {
+                    break;
+                }
+                ++group_end;
+            }
+            out.comment(std::format("Team: {} | Archetype: {} | Count: {}",
+                                    entity.team.value,
+                                    entity.archetype,
+                                    group_end - position));
+        }
+        out.begin_list(to_serialized_string(RecordKind::Entity));
+        property(out, Property::Id);
+        symbol(out, entity.id.value);
+        property(out, Property::Archetype);
+        symbol(out, entity.archetype);
+        property(out, Property::Team);
+        symbol(out, entity.team.value);
+        property(out, Property::Position);
+        vector(out, entity.position.x, entity.position.y, entity.position.z);
+        property(out, Property::Rotation);
+        vector(out, entity.rotation.pitch, entity.rotation.yaw, entity.rotation.roll);
+        if (entity.spawn_time_seconds != 0.0) {
+            property(out, Property::SpawnAt);
+            out.token(editor_number(entity.spawn_time_seconds));
+        }
+        out.end_list();
+    }
+    out.end_list();
+    out.end_list();
+    return std::move(out).finish();
+}
+}

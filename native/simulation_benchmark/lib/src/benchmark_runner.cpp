@@ -1,5 +1,6 @@
 #include <sandbox/simulation_benchmark/benchmark_runner.hpp>
 
+#include <ioj/levels/authoring/level_definition_reader.h>
 #include <ioj/sim/fighter_types.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/profiling.h>
@@ -7,8 +8,6 @@
 #include <ioj/sim/rotator3d.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/telemetry/level_telemetry_run_end_reason.h>
-
-#include <sandbox/level_authoring/LevelDefinitionReader.h>
 
 #include <algorithm>
 #include <chrono>
@@ -62,18 +61,8 @@ auto summarize_tick_timings(std::vector<double> timings) -> TickTimingSummary {
             .p99_microseconds = nearest_rank(0.99)};
 }
 
-auto read_error(ml::level_authoring::LevelDefinitionReadResult const& result) -> std::string {
-    std::ostringstream output;
-    if (!result.script_error.empty()) {
-        output << result.script_error;
-    }
-    for (auto const& error : result.decode_errors) {
-        output << (output.tellp() > 0 ? "\n" : "") << error.path << ": " << error.message;
-    }
-    for (auto const& error : result.validation_errors) {
-        output << (output.tellp() > 0 ? "\n" : "") << error.message;
-    }
-    return output.str();
+auto read_error(ioj::levels::authoring::LevelDefinitionReadResult const& result) -> std::string {
+    return ioj::levels::format_diagnostics(result.error());
 }
 
 auto mission_state_name(ioj::sim::MissionState const state) -> std::string {
@@ -203,12 +192,12 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     }
 #endif
 
-    ml::level_authoring::LevelDefinitionReader reader;
+    ioj::levels::authoring::LevelDefinitionReader reader;
     auto level_result{reader.read_file(options.level_path)};
     if (!level_result) {
         return std::unexpected{read_error(level_result)};
     }
-    auto const& level{*level_result.definition};
+    auto const& level{*level_result};
 
     auto reference{ioj::sim::make_reference_level_simulation_data()};
     auto& data{reference.data};
@@ -224,7 +213,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     }
 
     for (auto const& team_id : level.teams) {
-        data.participating_teams.add(ioj::sim::levels::to_simulation_team(team_id));
+        data.participating_teams.add(ioj::sim::levels::to_simulation_team(team_id.value));
     }
     if (options.fighter_stress_cap.has_value()) {
         auto const team_count{data.participating_teams.num()};
@@ -240,7 +229,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         auto const player_definition{std::ranges::find(
             level.entities, level.player_entity_id, &ioj::levels::EntitySpawnDefinition::id)};
         auto player{reference.player};
-        player.team = ioj::sim::levels::to_simulation_team(player_definition->team);
+        player.team = ioj::sim::levels::to_simulation_team(player_definition->team.value);
         player.transform.location = {player_definition->position.x,
                                      player_definition->position.y,
                                      player_definition->position.z};
@@ -266,7 +255,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
 
     if (options.telemetry_enabled) {
         data.telemetry_metadata = ioj::sim::LevelTelemetryRunMetadata{
-            .level_id = level.metadata.id,
+            .level_id = level.metadata.id.value,
             .level_display_name = level.metadata.title,
             .tick_rate_hz = simulation_tick_rate_hz,
             .tick_period_seconds = 1.0 / simulation_tick_rate_hz,
@@ -391,7 +380,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     };
     return BenchmarkResult{
         .level_path = options.level_path.generic_string(),
-        .level_id = level.metadata.id,
+        .level_id = level.metadata.id.value,
         .level_title = level.metadata.title,
         .requested_seconds = options.simulated_seconds,
         .tick_rate_hz = simulation.get_clock().get_tick_rate(),

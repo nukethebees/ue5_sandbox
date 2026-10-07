@@ -1,70 +1,76 @@
-#include <SpaceGameS7/LevelDefinitionReader.h>
+#include <SpaceGameS7/level_definition_reader.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <CQTest.h>
+
+#include <algorithm>
 
 namespace {
 constexpr TCHAR valid_level[]{LR"(
 (level
-  (id 'scripted-example)
-  (title "Scripted Example")
-  (description "Built as ordinary Scheme data.")
-  (par-time 75.5)
-  (teams (team 'blue) (team 'red))
-  (player 'player)
-  (mission
-    (mode 'kill-enemies)
-    (heroes 'player 'blue-capital)
-    (must-survive 'blue-capital)
-    (required-kills 'red-capital))
-  (entities
-    (entity 'player 'player-fighter 'blue
-      (position 100 200 300) (rotation 0 45 0))
-    (entity 'blue-capital 'capital-ship 'blue
-      (position 1000 0 0) (rotation 0 0 0))
-    (entity 'red-capital 'capital-ship 'red
-      (position -1000 0 0) (rotation 0 180 0))
-    (entity 'red-turret 'static-turret 'red
-      (position 0 500 0) (rotation 0 90 0))))
+  :id 'scripted-example
+  :title "Scripted Example"
+  :description "Built as ordinary Scheme data."
+  :par-time 75.5
+  :teams '(blue red)
+  :player 'player
+  :mission (mission
+    :mode 'kill-enemies
+    :heroes '(player blue-capital)
+    :must-survive '(blue-capital)
+    :required-kills '(red-capital))
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position '(100 200 300) :rotation '(0 45 0))
+    (entity :id 'blue-capital :archetype 'capital-ship :team 'blue
+      :position '(1000 0 0) :rotation '(0 0 0))
+    (entity :id 'red-capital :archetype 'capital-ship :team 'red
+      :position '(-1000 0 0) :rotation '(0 180 0))
+    (entity :id 'red-turret :archetype 'static-turret :team 'red
+      :position '(0 500 0) :rotation '(0 90 0))))
 )"};
 
 constexpr TCHAR valid_camera_level[]{LR"(
 (level
-  (id 'camera-example)
-  (title "Camera Example")
-  (teams (team 'blue) (team 'red))
-  (camera
-    (look-at 'blue-capital 'red-capital)
-    (distance 10000)
-    (offset-direction -1 -1 0.5))
-  (entities
-    (entity 'blue-capital 'capital-ship 'blue
-      (position -1000 0 0) (rotation 0 0 0))
-    (entity 'red-capital 'capital-ship 'red
-      (position 1000 0 0) (rotation 0 180 0))))
+  :id 'camera-example
+  :title "Camera Example"
+  :teams '(blue red)
+  :camera (camera
+    :look-at '(blue-capital red-capital)
+    :distance 10000
+    :offset-direction '(-1 -1 0.5))
+  :entities (list
+    (entity :id 'blue-capital :archetype 'capital-ship :team 'blue
+      :position '(-1000 0 0) :rotation '(0 0 0))
+    (entity :id 'red-capital :archetype 'capital-ship :team 'red
+      :position '(1000 0 0) :rotation '(0 180 0))))
 )"};
 
 constexpr TCHAR scheduled_level[]{LR"(
 (level
-  (id 'scheduled-example)
-  (title "Scheduled Example")
-  (teams (team 'blue) (team 'red))
-  (camera (look-at 'hero) (distance 1000) (offset-direction -1 0 0))
-  (mission (mode 'kill-enemies) (kill-count 1) (heroes 'hero))
-  (mission-events
-    (mission-event (at 1.25)
-      (add-required-kills 'enemy)
-      (increase-kill-count 2)))
-  (entities
-    (entity 'hero 'capital-ship 'blue
-      (position 0 0 0) (rotation 0 0 0))
-    (entity 'enemy 'capital-ship 'red
-      (position 1000 0 0) (rotation 0 180 0) (spawn-at 1.25))))
+  :id 'scheduled-example
+  :title "Scheduled Example"
+  :teams '(blue red)
+  :camera (camera :look-at '(hero) :distance 1000 :offset-direction '(-1 0 0))
+  :mission (mission :mode 'kill-enemies :kill-count 1 :heroes '(hero))
+  :mission-events (list
+    (mission-event :at 1.25
+      :add-required-kills '(enemy)
+      :increase-kill-count 2))
+  :entities (list
+    (entity :id 'hero :archetype 'capital-ship :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))
+    (entity :id 'enemy :archetype 'capital-ship :team 'red
+      :position '(1000 0 0) :rotation '(0 180 0) :spawn-at 1.25)))
 )"};
 
-auto contains_error(ml::s7::FLevelDefinitionReadResult const& result,
+auto contains_error(::ioj::levels::authoring::FLevelDefinitionReadResult const& result,
                     ml::ELevelValidationErrorCode const code) -> bool {
-    return result.validation_errors.ContainsByPredicate(
-        [code](ml::FLevelValidationError const& error) { return error.code == code; });
+    return !result &&
+           std::ranges::any_of(result.error(), [code](ioj::levels::Diagnostic const& error) {
+               return error.code == code;
+           });
 }
 }
 
@@ -72,15 +78,15 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 {
     TEST_METHOD(DecodesScheduledSpawnsAndMissionObjectives)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const result{reader.read_source(scheduled_level)};
         if (!TestRunner->TestTrue(TEXT("Scheduled script produces a definition"),
                                   static_cast<bool>(result))) {
-            TestRunner->AddError(result.script_error);
+            TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(result.error())));
             return;
         }
 
-        auto const& definition{result.definition.GetValue()};
+        auto const& definition{result.value()};
         TestRunner->TestEqual(
             TEXT("Spawn time is decoded"), definition.entities.spawn_times_seconds[1], 1.25);
         TestRunner->TestEqual(
@@ -95,16 +101,16 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(DecodesSchemeDataIntoAValidatedNativeSoA)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const result{reader.read_source(valid_level)};
 
         if (!TestRunner->TestTrue(TEXT("Script produces a definition"),
                                   static_cast<bool>(result))) {
-            TestRunner->AddError(result.script_error);
+            TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(result.error())));
             return;
         }
 
-        auto const& definition{result.definition.GetValue()};
+        auto const& definition{result.value()};
         TestRunner->TestEqual(TEXT("Definition has two teams"), definition.teams.Num(), 2);
         TestRunner->TestEqual(TEXT("Definition has four entities"), definition.entities.num(), 4);
         TestRunner->TestTrue(TEXT("Stable level id is decoded"),
@@ -144,27 +150,31 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(ReportsSchemeErrorsWithoutDecoding)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const result{reader.read_source(TEXT("(undefined-level-function)"))};
 
         TestRunner->TestFalse(TEXT("Invalid script does not produce a definition"),
                               static_cast<bool>(result));
-        TestRunner->TestFalse(TEXT("Scheme error is reported"), result.script_error.IsEmpty());
-        TestRunner->TestTrue(TEXT("Decoder did not run"), result.decode_errors.IsEmpty());
+        TestRunner->TestFalse(
+            TEXT("Scheme error is reported"),
+            ml::to_fstring(::ioj::levels::format_diagnostics(result.error())).IsEmpty());
+        TestRunner->TestTrue(
+            TEXT("Evaluation error is classified"),
+            contains_error(result, ioj::levels::DiagnosticCode::ScriptEvaluationFailed));
     }
 
     TEST_METHOD(DecodesPlayerlessCameraDefinition)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const result{reader.read_source(valid_camera_level)};
 
         if (!TestRunner->TestTrue(TEXT("Camera script produces a definition"),
                                   static_cast<bool>(result))) {
-            TestRunner->AddError(result.script_error);
+            TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(result.error())));
             return;
         }
 
-        auto const& definition{result.definition.GetValue()};
+        auto const& definition{result.value()};
         TestRunner->TestFalse(TEXT("Camera level has no player"),
                               definition.player_entity_id.is_set());
         TestRunner->TestFalse(TEXT("Omitted par time remains unset"),
@@ -182,144 +192,151 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(ReportsStructuralDecodeErrorsWithPaths)
     {
-        ml::s7::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(TEXT("(level (title 42))"))};
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
+        auto const result{reader.read_source(TEXT("(level :title 42)"))};
 
         TestRunner->TestFalse(TEXT("Malformed data is rejected"), static_cast<bool>(result));
-        TestRunner->TestTrue(TEXT("Scheme evaluation succeeded"), result.script_error.IsEmpty());
-        TestRunner->TestFalse(TEXT("Decode error is reported"), result.decode_errors.IsEmpty());
-        if (!result.decode_errors.IsEmpty()) {
+        TestRunner->TestFalse(
+            TEXT("Scheme evaluation succeeded"),
+            contains_error(result, ioj::levels::DiagnosticCode::ScriptEvaluationFailed));
+        TestRunner->TestFalse(TEXT("Decode error is reported"), result.error().empty());
+        if (!result.error().empty()) {
             TestRunner->TestTrue(TEXT("Decode error identifies the title"),
-                                 result.decode_errors[0].path.Contains(TEXT("level")));
+                                 result.error()[0].node_path.contains("level"));
         }
     }
 
     TEST_METHOD(RejectsComplexTransformComponents)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
-  (id 'complex-position)
-  (title "Complex Position")
-  (teams (team 'blue))
-  (player 'player)
-  (entities
-    (entity 'player 'player-fighter 'blue
-      (position 1+2i 0 0) (rotation 0 0 0))))
+  :id 'complex-position
+  :title "Complex Position"
+  :teams '(blue)
+  :player 'player
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position (list 1+2i 0 0) :rotation '(0 0 0))))
 )")};
 
         TestRunner->TestFalse(TEXT("Complex transform is rejected"), static_cast<bool>(result));
-        TestRunner->TestFalse(TEXT("Decode error is reported"), result.decode_errors.IsEmpty());
-        if (!result.decode_errors.IsEmpty()) {
-            TestRunner->TestTrue(TEXT("Decode error requires a real number"),
-                                 result.decode_errors[0].message.Contains(TEXT("real number")));
+        TestRunner->TestFalse(TEXT("Decode error is reported"), result.error().empty());
+        if (!result.error().empty()) {
+            TestRunner->TestTrue(
+                TEXT("Decode error requires a real number"),
+                contains_error(result, ioj::levels::DiagnosticCode::UnsupportedValue));
         }
     }
 
     TEST_METHOD(RejectsDuplicateCollectionClauses)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
-  (id 'duplicate-teams)
-  (title "Duplicate Teams")
-  (teams (team 'blue))
-  (teams (team 'red))
-  (player 'player)
-  (entities
-    (entity 'player 'player-fighter 'blue
-      (position 0 0 0) (rotation 0 0 0))))
+  :id 'duplicate-teams
+  :title "Duplicate Teams"
+  :teams '(blue)
+  :teams '(red)
+  :player 'player
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))))
 )")};
 
         TestRunner->TestFalse(TEXT("Duplicate collection is rejected"), static_cast<bool>(result));
-        TestRunner->TestFalse(TEXT("Decode error is reported"), result.decode_errors.IsEmpty());
-        if (!result.decode_errors.IsEmpty()) {
-            TestRunner->TestTrue(TEXT("Duplicate clause is identified"),
-                                 result.decode_errors[0].message.Contains(TEXT("Duplicate teams")));
+        TestRunner->TestFalse(TEXT("Decode error is reported"), result.error().empty());
+        if (!result.error().empty()) {
+            TestRunner->TestTrue(
+                TEXT("Duplicate clause is identified"),
+                contains_error(result, ioj::levels::DiagnosticCode::DuplicateProperty));
         }
     }
 
     TEST_METHOD(RejectsDuplicateIdClauses)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
-  (id 'first-id)
-  (id 'second-id)
-  (title "Duplicate Id")
-  (teams (team 'blue))
-  (player 'player)
-  (entities
-    (entity 'player 'player-fighter 'blue
-      (position 0 0 0) (rotation 0 0 0))))
+  :id 'first-id
+  :id 'second-id
+  :title "Duplicate Id"
+  :teams '(blue)
+  :player 'player
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))))
 )")};
 
         TestRunner->TestFalse(TEXT("Duplicate id is rejected"), static_cast<bool>(result));
-        TestRunner->TestFalse(TEXT("Decode error is reported"), result.decode_errors.IsEmpty());
-        if (!result.decode_errors.IsEmpty()) {
-            TestRunner->TestTrue(TEXT("Duplicate id clause is identified"),
-                                 result.decode_errors[0].message.Contains(TEXT("Duplicate id")));
+        TestRunner->TestFalse(TEXT("Decode error is reported"), result.error().empty());
+        if (!result.error().empty()) {
+            TestRunner->TestTrue(
+                TEXT("Duplicate id clause is identified"),
+                contains_error(result, ioj::levels::DiagnosticCode::DuplicateProperty));
         }
     }
 
     TEST_METHOD(ReportsMalformedAndDuplicateParTimes)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const malformed{reader.read_source(LR"(
 (level
-  (id 'malformed-par)
-  (title "Malformed Par")
-  (par-time "fast")
-  (teams (team 'blue))
-  (player 'player)
-  (mission (mode 'kill-enemies) (heroes 'player))
-  (entities
-    (entity 'player 'player-fighter 'blue
-      (position 0 0 0) (rotation 0 0 0))))
+  :id 'malformed-par
+  :title "Malformed Par"
+  :par-time "fast"
+  :teams '(blue)
+  :player 'player
+  :mission (mission :mode 'kill-enemies :heroes '(player))
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))))
 )")};
         TestRunner->TestFalse(TEXT("Malformed par time is rejected"), static_cast<bool>(malformed));
         TestRunner->TestFalse(TEXT("Malformed par time reports a decode error"),
-                              malformed.decode_errors.IsEmpty());
+                              malformed.error().empty());
 
         auto const duplicate{reader.read_source(LR"(
 (level
-  (id 'duplicate-par)
-  (title "Duplicate Par")
-  (par-time 30)
-  (par-time 45)
-  (teams (team 'blue))
-  (player 'player)
-  (mission (mode 'kill-enemies) (heroes 'player))
-  (entities
-    (entity 'player 'player-fighter 'blue
-      (position 0 0 0) (rotation 0 0 0))))
+  :id 'duplicate-par
+  :title "Duplicate Par"
+  :par-time 30
+  :par-time 45
+  :teams '(blue)
+  :player 'player
+  :mission (mission :mode 'kill-enemies :heroes '(player))
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))))
 )")};
         TestRunner->TestFalse(TEXT("Duplicate par time is rejected"), static_cast<bool>(duplicate));
         TestRunner->TestFalse(TEXT("Duplicate par time reports a decode error"),
-                              duplicate.decode_errors.IsEmpty());
-        if (!duplicate.decode_errors.IsEmpty()) {
+                              duplicate.error().empty());
+        if (!duplicate.error().empty()) {
             TestRunner->TestTrue(
                 TEXT("Duplicate par-time clause is identified"),
-                duplicate.decode_errors[0].message.Contains(TEXT("Duplicate par-time")));
+                contains_error(duplicate, ioj::levels::DiagnosticCode::DuplicateProperty));
         }
     }
 
     TEST_METHOD(ReportsNativeValidationErrorsAfterDecoding)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
-  (id 'invalid-team)
-  (title "Invalid Team")
-  (teams (team 'blue))
-  (player 'player)
-  (entities
-    (entity 'player 'player-fighter 'blue (position 0 0 0) (rotation 0 0 0))
-    (entity 'enemy 'capital-ship 'red (position 100 0 0) (rotation 0 0 0))))
+  :id 'invalid-team
+  :title "Invalid Team"
+  :teams '(blue)
+  :player 'player
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0) :rotation '(0 0 0))
+    (entity :id 'enemy :archetype 'capital-ship :team 'red :position '(100 0 0) :rotation '(0 0 0))))
 )")};
 
         TestRunner->TestFalse(TEXT("Invalid definition is rejected"), static_cast<bool>(result));
-        TestRunner->TestTrue(TEXT("Scheme evaluation succeeded"), result.script_error.IsEmpty());
+        TestRunner->TestFalse(
+            TEXT("Scheme evaluation succeeded"),
+            contains_error(result, ioj::levels::DiagnosticCode::ScriptEvaluationFailed));
         TestRunner->TestTrue(
             TEXT("Unknown team is reported by native validation"),
             contains_error(result, ml::ELevelValidationErrorCode::UnknownTeamReference));
@@ -327,58 +344,57 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(ReportsMalformedCameraData)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
-  (id 'malformed-camera)
-  (title "Malformed Camera")
-  (teams (team 'blue))
-  (camera
-    (look-at 'capital)
-    (distance "far")
-    (offset-direction -1 0 0))
-  (entities
-    (entity 'capital 'capital-ship 'blue
-      (position 0 0 0) (rotation 0 0 0))))
+  :id 'malformed-camera
+  :title "Malformed Camera"
+  :teams '(blue)
+  :camera (camera
+    :look-at '(capital)
+    :distance "far"
+    :offset-direction '(-1 0 0))
+  :entities (list
+    (entity :id 'capital :archetype 'capital-ship :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))))
 )")};
 
         TestRunner->TestFalse(TEXT("Malformed camera is rejected"), static_cast<bool>(result));
-        TestRunner->TestFalse(TEXT("Camera decode error is reported"),
-                              result.decode_errors.IsEmpty());
+        TestRunner->TestFalse(TEXT("Camera decode error is reported"), result.error().empty());
     }
 
     TEST_METHOD(RejectsDuplicateCameraClauses)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
-  (id 'duplicate-camera)
-  (title "Duplicate Camera")
-  (teams (team 'blue))
-  (camera (look-at 'capital) (distance 1000) (offset-direction -1 0 0))
-  (camera (look-at 'capital) (distance 2000) (offset-direction 1 0 0))
-  (entities
-    (entity 'capital 'capital-ship 'blue
-      (position 0 0 0) (rotation 0 0 0))))
+  :id 'duplicate-camera
+  :title "Duplicate Camera"
+  :teams '(blue)
+  :camera (camera :look-at '(capital) :distance 1000 :offset-direction '(-1 0 0))
+  :camera (camera :look-at '(capital) :distance 2000 :offset-direction '(1 0 0))
+  :entities (list
+    (entity :id 'capital :archetype 'capital-ship :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))))
 )")};
 
         TestRunner->TestFalse(TEXT("Duplicate camera is rejected"), static_cast<bool>(result));
         TestRunner->TestFalse(TEXT("Duplicate camera decode error is reported"),
-                              result.decode_errors.IsEmpty());
+                              result.error().empty());
     }
 
     TEST_METHOD(ReportsInvalidCameraTargetReferences)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const empty_targets{reader.read_source(LR"(
 (level
-  (id 'empty-targets)
-  (title "Empty Targets")
-  (teams (team 'blue))
-  (camera (look-at) (distance 1000) (offset-direction -1 0 0))
-  (entities
-    (entity 'capital 'capital-ship 'blue
-      (position 0 0 0) (rotation 0 0 0))))
+  :id 'empty-targets
+  :title "Empty Targets"
+  :teams '(blue)
+  :camera (camera :look-at '() :distance 1000 :offset-direction '(-1 0 0))
+  :entities (list
+    (entity :id 'capital :archetype 'capital-ship :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))))
 )")};
         TestRunner->TestTrue(
             TEXT("Empty camera targets are reported by native validation"),
@@ -386,13 +402,13 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
         auto const unknown_target{reader.read_source(LR"(
 (level
-  (id 'unknown-target)
-  (title "Unknown Target")
-  (teams (team 'blue))
-  (camera (look-at 'missing) (distance 1000) (offset-direction -1 0 0))
-  (entities
-    (entity 'capital 'capital-ship 'blue
-      (position 0 0 0) (rotation 0 0 0))))
+  :id 'unknown-target
+  :title "Unknown Target"
+  :teams '(blue)
+  :camera (camera :look-at '(missing) :distance 1000 :offset-direction '(-1 0 0))
+  :entities (list
+    (entity :id 'capital :archetype 'capital-ship :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))))
 )")};
         TestRunner->TestTrue(
             TEXT("Unknown camera target is reported by native validation"),
@@ -401,33 +417,32 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(DecodesTimedMissionValues)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
-  (id 'timed-mission)
-  (title "Timed Mission")
-  (teams (team 'blue) (team 'red))
-  (player 'player)
-  (mission
-    (mode 'kill-enemies-within-time)
-    (time-limit 45.5)
-    (kill-count 3)
-    (heroes 'player))
-  (entities
-    (entity 'player 'player-fighter 'blue
-      (position 0 0 0) (rotation 0 0 0))
-    (entity 'enemy 'capital-ship 'red
-      (position 1000 0 0) (rotation 0 180 0))))
+  :id 'timed-mission
+  :title "Timed Mission"
+  :teams '(blue red)
+  :player 'player
+  :mission (mission
+    :mode 'kill-enemies-within-time
+    :time-limit 45.5
+    :kill-count 3
+    :heroes '(player))
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))
+    (entity :id 'enemy :archetype 'capital-ship :team 'red
+      :position '(1000 0 0) :rotation '(0 180 0))))
 )")};
 
         if (!TestRunner->TestTrue(TEXT("Timed mission is valid"), static_cast<bool>(result))) {
             return;
         }
-        if (!TestRunner->TestTrue(TEXT("Timed mission is decoded"),
-                                  result.definition->mission.IsSet())) {
+        if (!TestRunner->TestTrue(TEXT("Timed mission is decoded"), result->mission.IsSet())) {
             return;
         }
-        auto const& mission{result.definition->mission.GetValue()};
+        auto const& mission{result->mission.GetValue()};
         TestRunner->TestTrue(TEXT("Timed mode is decoded"),
                              mission.mode ==
                                  ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime);
@@ -438,33 +453,33 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(ReportsInvalidMissionData)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const duplicate_clause{reader.read_source(LR"(
 (level
-  (id 'duplicate-mission-clause)
-  (title "Duplicate Mission Clause")
-  (teams (team 'blue))
-  (player 'player)
-  (mission (mode 'kill-enemies) (mode 'survive-time) (heroes 'player))
-  (entities
-    (entity 'player 'player-fighter 'blue
-      (position 0 0 0) (rotation 0 0 0))))
+  :id 'duplicate-mission-clause
+  :title "Duplicate Mission Clause"
+  :teams '(blue)
+  :player 'player
+  :mission (mission :mode 'kill-enemies :mode 'survive-time :heroes '(player))
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))))
 )")};
         TestRunner->TestFalse(TEXT("Duplicate mission clause is rejected"),
                               static_cast<bool>(duplicate_clause));
         TestRunner->TestFalse(TEXT("Duplicate mission clause reports a decode error"),
-                              duplicate_clause.decode_errors.IsEmpty());
+                              duplicate_clause.error().empty());
 
         auto const unknown_reference{reader.read_source(LR"(
 (level
-  (id 'unknown-mission-entity)
-  (title "Unknown Mission Entity")
-  (teams (team 'blue))
-  (player 'player)
-  (mission (mode 'kill-enemies) (heroes 'missing))
-  (entities
-    (entity 'player 'player-fighter 'blue
-      (position 0 0 0) (rotation 0 0 0))))
+  :id 'unknown-mission-entity
+  :title "Unknown Mission Entity"
+  :teams '(blue)
+  :player 'player
+  :mission (mission :mode 'kill-enemies :heroes '(missing))
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))))
 )")};
         TestRunner->TestTrue(TEXT("Unknown mission entity uses native validation"),
                              contains_error(unknown_reference,
@@ -472,42 +487,42 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
         auto const fractional_count{reader.read_source(LR"(
 (level
-  (id 'fractional-count)
-  (title "Fractional Count")
-  (teams (team 'blue))
-  (player 'player)
-  (mission (mode 'kill-enemies) (kill-count 1.5) (heroes 'player))
-  (entities
-    (entity 'player 'player-fighter 'blue
-      (position 0 0 0) (rotation 0 0 0))))
+  :id 'fractional-count
+  :title "Fractional Count"
+  :teams '(blue)
+  :player 'player
+  :mission (mission :mode 'kill-enemies :kill-count 1.5 :heroes '(player))
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))))
 )")};
         TestRunner->TestFalse(TEXT("Fractional kill count is rejected"),
                               static_cast<bool>(fractional_count));
         TestRunner->TestFalse(TEXT("Fractional kill count reports a decode error"),
-                              fractional_count.decode_errors.IsEmpty());
+                              fractional_count.error().empty());
     }
 
     TEST_METHOD(DecodesDeclarativeUnlockCriteria)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
-  (id 'locked-level)
-  (title "Locked Level")
-  (unlock
+  :id 'locked-level
+  :title "Locked Level"
+  :unlock (list
     (level-completed 'first-level)
     (level-completed 'second-level))
-  (teams (team 'blue))
-  (player 'player)
-  (entities
-    (entity 'player 'player-fighter 'blue
-      (position 0 0 0) (rotation 0 0 0))))
+  :teams '(blue)
+  :player 'player
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))))
 )")};
 
         if (!TestRunner->TestTrue(TEXT("Unlock criteria are valid"), static_cast<bool>(result))) {
             return;
         }
-        auto const& criteria{result.definition->unlock_criteria};
+        auto const& criteria{result->unlock_criteria};
         TestRunner->TestEqual(TEXT("Both criteria are decoded"), criteria.Num(), 2);
         TestRunner->TestTrue(TEXT("First prerequisite id is decoded"),
                              criteria[0].Get<ml::FLevelCompletedUnlockCriterion>().level_id ==
@@ -516,17 +531,17 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(RejectsSelfUnlockDependency)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
-  (id 'self-locked)
-  (title "Self Locked")
-  (unlock (level-completed 'self-locked))
-  (teams (team 'blue))
-  (player 'player)
-  (entities
-    (entity 'player 'player-fighter 'blue
-      (position 0 0 0) (rotation 0 0 0))))
+  :id 'self-locked
+  :title "Self Locked"
+  :unlock (list (level-completed 'self-locked))
+  :teams '(blue)
+  :player 'player
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))))
 )")};
 
         TestRunner->TestFalse(TEXT("Self dependency is rejected"), static_cast<bool>(result));

@@ -47,8 +47,15 @@ public class NativeS7 : ModuleRules
                     libraryPath);
             }
             PublicAdditionalLibraries.Add(libraryPath);
-            PublicAdditionalLibraries.Add(Path.Combine(Path.GetDirectoryName(libraryPath)!, "native-s7-data.lib"));
+            string dataLibraryPath = Path.Combine(Path.GetDirectoryName(libraryPath)!, "native-s7-data.lib");
+            PublicAdditionalLibraries.Add(dataLibraryPath);
+            ExternalDependencies.Add(dataLibraryPath);
             ExternalDependencies.Add(libraryPath);
+            // Supply the static archive dependency explicitly for Unreal's external-module linker.
+            string commonLibraryPath = Path.Combine(repositoryRoot, "Binaries", "Native", "Common",
+                nativeToolchain, Target.Platform.ToString(), Target.Configuration.ToString(), "native-common.lib");
+            PublicAdditionalLibraries.Add(commonLibraryPath);
+            ExternalDependencies.Add(commonLibraryPath);
         }
     }
 }

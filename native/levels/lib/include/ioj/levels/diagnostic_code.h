@@ -6,7 +6,7 @@
 #include <cstdint>
 
 namespace ioj::levels {
-enum class LevelValidationErrorCode : std::uint8_t {
+enum class DiagnosticCode : std::uint8_t {
     MissingLevelId,
     MissingTitle,
     InvalidParTime,
@@ -53,6 +53,31 @@ enum class LevelValidationErrorCode : std::uint8_t {
     InvalidMissionEventTime,
     InvalidMissionKillIncrease,
     MissionEventBeforeEntitySpawn,
+    FileOpenFailed,
+    FileReadFailed,
+    ScriptEvaluationFailed,
+    UnsupportedValue,
+    ImproperList,
+    CyclicStructure,
+    LimitExceeded,
+    ExpectedRecord,
+    ExpectedKeyword,
+    UnknownProperty,
+    DuplicateProperty,
+    MissingProperty,
+    MissingValue,
+    InvalidType,
+    InvalidNumber,
+    UnknownSymbol,
+    InvalidSymbol,
+    UnsupportedEditorFeature,
+    MissingCampaignId,
+    MissingCampaignLevels,
+    DuplicateCampaignLevel,
+    DuplicateLevelId,
+    DuplicateCampaignId,
+    UnavailableLevel,
+    UnlockCycle,
 };
 
 } // namespace ioj::levels

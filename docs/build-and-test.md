@@ -129,8 +129,9 @@ Configure `win-x64-clangcl-debug-tidy`, then run `coj tidy --scope simulation
 Implementation-only changes use their owning scope. Shared headers require consumer analysis:
 follow `target_link_libraries` and actual include users, including header-only consumers. Core,
 memory, profiling, compiler defaults, or uncertain cross-cutting changes require the full
-`coj tidy --scope native --build-dir out/build/win-x64-clangcl-debug/clang-tidy` sweep. Simulation public headers also
-require level-authoring; level-authoring headers require simulation; image headers require
+`coj tidy --scope native --build-dir out/build/win-x64-clangcl-debug/clang-tidy` sweep. Shared level definitions
+require both level-authoring and simulation; authoring reader changes also affect simulation-benchmark;
+image headers require
 mesh-gen where consumed. Expand further for actual includes, and validate Unreal adapters when
 those public interfaces cross the engine boundary. Directory ownership alone is insufficient.
 

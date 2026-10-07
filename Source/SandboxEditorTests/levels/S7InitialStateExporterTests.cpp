@@ -7,8 +7,10 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameS7/LevelDefinitionReader.h>
-#include <SpaceGameS7/LevelDefinitionWriter.h>
+#include <SpaceGameS7/level_definition_reader.h>
+#include <SpaceGameS7/level_definition_writer.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <Camera/CameraActor.h>
 #include <CQTest.h>
@@ -83,7 +85,8 @@ TEST_CLASS(S7InitialStateExporter, "Sandbox.UnitTests")
             TestRunner->AddError(collected.error());
             return;
         }
-        auto const source{ml::s7::emit_editor_level_source(collected->definition)};
+        auto const source{
+            ::ioj::levels::authoring::emit_editor_level_source(collected->definition)};
         if (!TestRunner->TestTrue(TEXT("Collected state emits"), source.has_value())) {
             TestRunner->AddError(source.error());
             return;
@@ -91,14 +94,13 @@ TEST_CLASS(S7InitialStateExporter, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Asset defaults are not exported as S7 overrides"),
                               source->Contains(TEXT("(collision-grid")));
 
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const read{reader.read_source(*source)};
         if (!TestRunner->TestTrue(TEXT("Exported state reads"), static_cast<bool>(read))) {
-            TestRunner->AddError(read.script_error);
+            TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(read.error())));
             return;
         }
-        auto const import_plan{
-            ml::editor::make_s7_initial_state_import_plan(read.definition.GetValue())};
+        auto const import_plan{ml::editor::make_s7_initial_state_import_plan(read.value())};
         if (!TestRunner->TestTrue(TEXT("Existing importer accepts source"),
                                   import_plan.has_value())) {
             return;
@@ -164,15 +166,16 @@ TEST_CLASS(S7InitialStateExporter, "Sandbox.UnitTests")
             if (!TestRunner->TestTrue(TEXT("Grid state exports"), collected.has_value())) {
                 return;
             }
-            auto const source{ml::s7::emit_editor_level_source(collected->definition)};
+            auto const source{
+                ::ioj::levels::authoring::emit_editor_level_source(collected->definition)};
             if (!TestRunner->TestTrue(TEXT("Grid state writes"), source.has_value())) {
                 return;
             }
             TestRunner->TestEqual(TEXT("Only explicit level size is written"),
-                                  source->Contains(TEXT("(level-size")),
+                                  source->Contains(TEXT(":level-size")),
                                   has_size);
             TestRunner->TestEqual(TEXT("Only explicit cell size is written"),
-                                  source->Contains(TEXT("(cell-size")),
+                                  source->Contains(TEXT(":cell-size")),
                                   has_cells);
             TestRunner->TestEqual(TEXT("Empty grid clause is omitted"),
                                   source->Contains(TEXT("(collision-grid")),
@@ -209,7 +212,8 @@ TEST_CLASS(S7InitialStateExporter, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Initial state exports"), collected.has_value())) {
             return;
         }
-        auto const source{ml::s7::emit_editor_level_source(collected->definition)};
+        auto const source{
+            ::ioj::levels::authoring::emit_editor_level_source(collected->definition)};
         if (TestRunner->TestTrue(TEXT("Initial state writes"), source.has_value())) {
             TestRunner->TestFalse(TEXT("Base grid is not pinned in S7"),
                                   source->Contains(TEXT("(collision-grid")));

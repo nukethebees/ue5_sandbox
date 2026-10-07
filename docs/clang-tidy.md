@@ -46,7 +46,7 @@ and do not automatically discover dependents or inspect Git changes.
 | `layout` | `layout` |
 | `lispb` | `lispb` |
 | `memory` | `memory` |
-| `level-authoring` | `level_authoring` |
+| `level-authoring` | `level_authoring`, `levels`, `common` |
 | `s7` | `s7` |
 | `image` | `image` |
 | `mesh-gen` | `mesh_gen` |

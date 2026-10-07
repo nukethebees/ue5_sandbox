@@ -23,8 +23,8 @@ struct MissionTickValues {
     std::vector<std::int32_t> kill_target_increases{};
 };
 
-auto entity_index(::ioj::levels::LevelDefinition const& definition, std::string const& id)
-    -> std::uint32_t {
+auto entity_index(::ioj::levels::LevelDefinition const& definition,
+                  ::ioj::levels::EntityId const& id) -> std::uint32_t {
     auto const found{
         std::ranges::find(definition.entities, id, &::ioj::levels::EntitySpawnDefinition::id)};
     assert(found != definition.entities.end());
@@ -33,7 +33,7 @@ auto entity_index(::ioj::levels::LevelDefinition const& definition, std::string 
 
 void append_indices(std::vector<std::int32_t>& output,
                     ::ioj::levels::LevelDefinition const& definition,
-                    std::vector<std::string> const& ids) {
+                    std::vector<::ioj::levels::EntityId> const& ids) {
     for (auto const& id : ids) {
         output.push_back(static_cast<std::int32_t>(entity_index(definition, id)));
     }
@@ -124,8 +124,8 @@ auto compile_level(::ioj::levels::LevelDefinition const& definition,
     auto validation{::ioj::levels::validate_level(definition)};
     if (!validation) {
         LevelCompilationErrors errors;
-        errors.reserve(validation.errors.size());
-        for (auto& error : validation.errors) {
+        errors.reserve(validation.error().size());
+        for (auto& error : validation.error()) {
             errors.push_back(std::move(error.message));
         }
         return std::unexpected{std::move(errors)};
@@ -136,7 +136,7 @@ auto compile_level(::ioj::levels::LevelDefinition const& definition,
     auto& initial_spawns{compiled.initial_spawns};
     auto& schedule{compiled.schedule};
     auto& mission_initialisation{initialisation.mission.emplace()};
-    mission_initialisation.level_id = definition.metadata.id;
+    mission_initialisation.level_id = definition.metadata.id.value;
     mission_initialisation.level_title = definition.metadata.title;
     initialisation.entity_count = static_cast<std::uint32_t>(definition.entities.size());
     if (!definition.player_entity_id.empty()) {
@@ -217,7 +217,7 @@ auto compile_level(::ioj::levels::LevelDefinition const& definition,
                          Rotator3f{static_cast<float>(entity.rotation.pitch),
                                    static_cast<float>(entity.rotation.yaw),
                                    static_cast<float>(entity.rotation.roll)});
-            capital_events.teams()[row] = to_simulation_team(entity.team);
+            capital_events.teams()[row] = to_simulation_team(entity.team.value);
             capital_events.healths()[row] = capital_config.max_health;
             capital_events.initial_fighter_spawn_delays()[row] = 0.0f;
             capital_events.fighter_spawn_cooldowns()[row] = capital_config.spawn_delay;
@@ -236,7 +236,7 @@ auto compile_level(::ioj::levels::LevelDefinition const& definition,
                          Rotator3f{static_cast<float>(entity.rotation.pitch),
                                    static_cast<float>(entity.rotation.yaw),
                                    static_cast<float>(entity.rotation.roll)});
-            turret_events.teams()[row] = to_simulation_team(entity.team);
+            turret_events.teams()[row] = to_simulation_team(entity.team.value);
             turret_events.healths()[row] = turret_config.max_health;
             turret_events.laser_damages()[row] = turret_config.laser.damage;
         }

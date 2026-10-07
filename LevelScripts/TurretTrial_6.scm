@@ -1,47 +1,46 @@
 (level
-  (id 'turret-trial-6)
-  (title "Turret Trial 6")
-  (description "Choose which of two mutually supporting turret clusters to attack first.")
+  :id 'turret-trial-6
+  :title "Turret Trial 6"
+  :description "Choose which of two mutually supporting turret clusters to attack first."
 
-  (unlock
+  :unlock (list
     (level-completed 'turret-trial-5))
 
-  (teams
-    (team 'blue)
-    (team 'red))
+  :teams '(blue
+    red)
 
-  (player 'player)
+  :player 'player
 
-  (mission
-    (mode 'kill-enemies)
-    (heroes 'player)
-    (must-survive 'player))
+  :mission (mission
+    :mode 'kill-enemies
+    :heroes '(player)
+    :must-survive '(player))
 
-  (entities
-    (entity 'player 'player-fighter 'blue
-      (position 0 -73000 1000)
-      (rotation 0 90 0))
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position '(0 -73000 1000)
+      :rotation '(0 90 0))
 
-    (entity 'turret-0 'static-turret 'red
-      (position -7000 7500 0)
-      (rotation 0 -90 0))
+    (entity :id 'turret-0 :archetype 'static-turret :team 'red
+      :position '(-7000 7500 0)
+      :rotation '(0 -90 0))
 
-    (entity 'turret-1 'static-turret 'red
-      (position -4000 9500 2000)
-      (rotation 0 -90 0))
+    (entity :id 'turret-1 :archetype 'static-turret :team 'red
+      :position '(-4000 9500 2000)
+      :rotation '(0 -90 0))
 
-    (entity 'turret-2 'static-turret 'red
-      (position -7000 11500 -2000)
-      (rotation 0 -90 0))
+    (entity :id 'turret-2 :archetype 'static-turret :team 'red
+      :position '(-7000 11500 -2000)
+      :rotation '(0 -90 0))
 
-    (entity 'turret-3 'static-turret 'red
-      (position 7000 7500 0)
-      (rotation 0 -90 0))
+    (entity :id 'turret-3 :archetype 'static-turret :team 'red
+      :position '(7000 7500 0)
+      :rotation '(0 -90 0))
 
-    (entity 'turret-4 'static-turret 'red
-      (position 4000 9500 -2000)
-      (rotation 0 -90 0))
+    (entity :id 'turret-4 :archetype 'static-turret :team 'red
+      :position '(4000 9500 -2000)
+      :rotation '(0 -90 0))
 
-    (entity 'turret-5 'static-turret 'red
-      (position 7000 11500 2000)
-      (rotation 0 -90 0))))
+    (entity :id 'turret-5 :archetype 'static-turret :team 'red
+      :position '(7000 11500 2000)
+      :rotation '(0 -90 0))))

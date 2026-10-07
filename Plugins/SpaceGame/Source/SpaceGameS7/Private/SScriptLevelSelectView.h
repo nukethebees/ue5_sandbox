@@ -16,6 +16,8 @@ struct SScriptLevelSelectViewBuilder;
 }
 
 namespace ml::s7 {
+using ::ioj::levels::authoring::ELevelCatalogCategory;
+
 DECLARE_DELEGATE_OneParam(FOnLevelRowSelected, int32);
 DECLARE_DELEGATE_OneParam(FOnLevelCategorySelected, ELevelCatalogCategory);
 DECLARE_DELEGATE_OneParam(FOnBattleSpeedChanged, TOptional<double>);

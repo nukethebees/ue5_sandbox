@@ -12,7 +12,7 @@
 #include <SpaceGame/simulation/SimulationConfigConversion.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestSimulationConfig.h>
-#include <SpaceGameS7/LevelDefinitionReader.h>
+#include <SpaceGameS7/level_definition_reader.h>
 
 #include <CQTest.h>
 #include <Engine/StaticMesh.h>
@@ -324,7 +324,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Runtime fighter spawn transforms match their source"),
                              transforms_match);
 
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const script_path{
             FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("TurretTrial_0.scm"))};
         auto const scripted_definition{reader.read_file(script_path)};
@@ -333,8 +333,8 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             return;
         }
 
-        auto const result{ml::make_level_simulation_init_data(
-            *runtime, {}, scripted_definition.definition.GetValue())};
+        auto const result{
+            ml::make_level_simulation_init_data(*runtime, {}, scripted_definition.value())};
         TestRunner->TestTrue(TEXT("Runtime config starts Turret Trial 0"), result.has_value());
     }
 

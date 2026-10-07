@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SpaceGameS7/LevelDefinitionReader.h>
+#include <SpaceGameS7/level_definition_reader.h>
 
 #include <CoreMinimal.h>
 #include <UObject/WeakObjectPtr.h>
@@ -33,7 +33,7 @@ class SANDBOXEDITOR_API FS7LevelSourceSession final {
                                            ES7SourceOverwritePolicy overwrite)
         -> std::expected<void, FString>;
 
-    [[nodiscard]] auto read() const -> ml::s7::FLevelDefinitionReadResult;
+    [[nodiscard]] auto read() const -> ::ioj::levels::authoring::FLevelDefinitionReadResult;
     [[nodiscard]] auto refresh_external_conflict() -> std::expected<void, FString>;
 
     [[nodiscard]] auto document() const -> AS7LevelAuthoringDocument*;

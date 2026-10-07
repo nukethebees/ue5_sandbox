@@ -5,7 +5,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/levels/S7LevelSourceSession.h"
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGameS7/LevelDefinitionWriter.h>
+#include <SpaceGameS7/level_definition_writer.h>
 
 #include <Engine/Level.h>
 #include <UObject/UnrealType.h>
@@ -42,7 +42,7 @@ auto scene_digest(ULevel const& level, AS7LevelAuthoringDocument const& document
     if (!definition) {
         return FS7LevelSourceSession::source_digest(TEXT("invalid:") + definition.error());
     }
-    auto const source{s7::emit_editor_level_source(*definition)};
+    auto const source{::ioj::levels::authoring::emit_editor_level_source(*definition)};
     if (!source) {
         return FS7LevelSourceSession::source_digest(TEXT("invalid:") + source.error());
     }

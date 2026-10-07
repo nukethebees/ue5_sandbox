@@ -1,7 +1,7 @@
 #include "SpaceGame/levels/LevelDefinition.h"
 
 #include "LevelEntityTableOperations.h"
-#include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -68,9 +68,13 @@ auto validate_level(FLevelDefinition const& definition) -> FLevelValidationResul
         return result;
     }
 
-    auto native_result{::ioj::levels::validate_level(level_authoring::to_native(definition))};
-    result.errors.Reserve(static_cast<int32>(native_result.errors.size()));
-    for (auto& error : native_result.errors) {
+    auto native_result{
+        ::ioj::levels::validate_level(::ioj::levels::authoring::to_native(definition))};
+    if (native_result) {
+        return result;
+    }
+    result.errors.Reserve(static_cast<int32>(native_result.error().size()));
+    for (auto& error : native_result.error()) {
         result.errors.Add({.code = error.code, .message = to_fstring(error.message)});
     }
     return result;

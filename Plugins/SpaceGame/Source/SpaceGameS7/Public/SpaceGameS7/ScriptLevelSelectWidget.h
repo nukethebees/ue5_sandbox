@@ -2,7 +2,7 @@
 
 #include <SpaceGame/ui/main_menu/LevelSelectWidget.h>
 #include <SpaceGamePresentation/ui/style/GameUiStyle.h>
-#include <SpaceGameS7/LevelScriptCatalog.h>
+#include <SpaceGameS7/level_script_catalog.h>
 
 #include "ScriptLevelSelectWidget.generated.h"
 
@@ -14,6 +14,10 @@ class UGameSubsystem;
 }
 
 namespace ml::s7 {
+using ::ioj::levels::authoring::ELevelCatalogCategory;
+using ::ioj::levels::authoring::FCampaignScriptEntry;
+using ::ioj::levels::authoring::FLevelScriptEntry;
+
 class SScriptLevelSelectView;
 
 enum class ELevelCompletionIndicatorState : uint8 {

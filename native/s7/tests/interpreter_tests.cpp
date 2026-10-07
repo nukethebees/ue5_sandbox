@@ -270,25 +270,25 @@ void enforces_library_resource_limits(TestContext& test) {
 
 void exposes_values_during_a_synchronous_callback(TestContext& test) {
     Interpreter interpreter;
-    bool consumed{};
+    bool consumed{false};
 
     auto const result{interpreter.evaluate_value(
         "(list 'level \"title\" 42.5)", [&](Scheme& scheme, Value const value) {
             consumed = true;
-            test.expect(is_list(scheme, value), "root value is a list");
-            test.expect(list_length(scheme, value) == 3, "list length is exposed");
+            test.expect(s7_is_list(&scheme, value), "root value is a list");
+            test.expect(s7_list_length(&scheme, value) == 3, "list length is exposed");
 
-            auto const tag{list_value(scheme, value, 0)};
-            test.expect(is_symbol(tag), "first value is a symbol");
-            test.expect(symbol_name(tag) == "level", "symbol name is exposed");
+            auto const tag{s7_list_ref(&scheme, value, 0)};
+            test.expect(s7_is_symbol(tag), "first value is a symbol");
+            test.expect(std::string_view{s7_symbol_name(tag)} == "level", "symbol name is exposed");
 
-            auto const title{list_value(scheme, value, 1)};
-            test.expect(is_string(title), "second value is a string");
-            test.expect(string_value(title) == "title", "string value is exposed");
+            auto const title{s7_list_ref(&scheme, value, 1)};
+            test.expect(s7_is_string(title), "second value is a string");
+            test.expect(std::string_view{s7_string(title)} == "title", "string value is exposed");
 
-            auto const number{list_value(scheme, value, 2)};
-            test.expect(is_real(number), "third value is real");
-            test.expect(number_to_real(scheme, number) == 42.5, "real value is exposed");
+            auto const number{s7_list_ref(&scheme, value, 2)};
+            test.expect(s7_is_real(number), "third value is real");
+            test.expect(s7_number_to_real(&scheme, number) == 42.5, "real value is exposed");
         })};
 
     test.expect(result.has_value(), "value evaluation succeeds");
@@ -431,7 +431,7 @@ void throwing_consumer_releases_gc_protection(TestContext& test) {
     Interpreter interpreter;
     s7_int first_free_slot{-1};
     for (int iteration{}; iteration < 16; ++iteration) {
-        bool caught{};
+        bool caught{false};
         try {
             auto const result{
                 interpreter.evaluate_value("(list 1 2 3)", [&](Scheme& scheme, Value const value) {

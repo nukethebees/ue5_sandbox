@@ -14,6 +14,11 @@
 #include <Misc/FileHelper.h>
 
 namespace ml::s7 {
+using ::ioj::levels::authoring::catalog_category;
+using ::ioj::levels::authoring::discover_level_scripts;
+using ::ioj::levels::authoring::ELevelCatalogCategory;
+using ::ioj::levels::authoring::FLevelScriptEntry;
+
 auto level_completion_indicator_state(ml::ioj::FLevelProgressSummary const& progress,
                                       TOptional<float> const par_time_seconds)
     -> ELevelCompletionIndicatorState {

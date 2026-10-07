@@ -107,6 +107,7 @@ add_custom_target(native-tests
     native-soa-tests-mimalloc
     native-layout-tests
     native-level-authoring-tests
+    native-level-parser-tests
     native-memory-tests
     native-simulation-tests
     native-simulation-soak-tests

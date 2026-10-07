@@ -1,11 +1,12 @@
-#include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 
 #include <SandboxCoreEngine/strings.h>
 
-namespace ml::level_authoring {
+namespace ioj::levels::authoring {
 namespace {
 auto to_utf8(FString const& value) -> std::string {
-    return TCHAR_TO_UTF8(*value);
+    auto const converted{FTCHARToUTF8{*value, value.Len()}};
+    return {converted.Get(), static_cast<std::size_t>(converted.Length())};
 }
 
 auto to_utf8(FName const value) -> std::string {
@@ -19,30 +20,30 @@ auto to_fname(std::string const& value) -> FName {
     return FName{ml::to_fstring(value)};
 }
 
-template <typename Id>
-auto to_ids(TConstArrayView<Id> const source) -> std::vector<std::string> {
-    std::vector<std::string> result;
+template <typename NativeId, typename Id>
+auto to_ids(TConstArrayView<Id> const source) -> std::vector<NativeId> {
+    std::vector<NativeId> result;
     result.reserve(source.Num());
     for (auto const id : source) {
-        result.push_back(to_utf8(id.value));
+        result.emplace_back(to_utf8(id.value));
     }
     return result;
 }
 
-template <typename Id>
-auto to_unreal_ids(std::vector<std::string> const& source) -> TArray<Id> {
+template <typename Id, typename NativeId>
+auto to_unreal_ids(std::vector<NativeId> const& source) -> TArray<Id> {
     TArray<Id> result;
     result.Reserve(static_cast<int32>(source.size()));
     for (auto const& id : source) {
-        result.Add(Id{to_fname(id)});
+        result.Add(Id{to_fname(id.value)});
     }
     return result;
 }
 } // namespace
 
-auto to_native(FLevelDefinition const& definition) -> ::ioj::levels::LevelDefinition {
+auto to_native(ml::FLevelDefinition const& definition) -> ::ioj::levels::LevelDefinition {
     ::ioj::levels::LevelDefinition result;
-    result.metadata.id = to_utf8(definition.metadata.id.value);
+    result.metadata.id = LevelId{to_utf8(definition.metadata.id.value)};
     result.metadata.title = to_utf8(definition.metadata.title);
     result.metadata.description = to_utf8(definition.metadata.description);
     if (definition.metadata.par_time_seconds.IsSet()) {
@@ -51,10 +52,10 @@ auto to_native(FLevelDefinition const& definition) -> ::ioj::levels::LevelDefini
 
     result.unlock_level_ids.reserve(definition.unlock_criteria.Num());
     for (auto const& criterion : definition.unlock_criteria) {
-        result.unlock_level_ids.push_back(
-            to_utf8(criterion.Get<FLevelCompletedUnlockCriterion>().level_id.value));
+        result.unlock_level_ids.emplace_back(
+            to_utf8(criterion.Get<ml::FLevelCompletedUnlockCriterion>().level_id.value));
     }
-    result.player_entity_id = to_utf8(definition.player_entity_id.value);
+    result.player_entity_id = EntityId{to_utf8(definition.player_entity_id.value)};
 
     if (definition.collision_grid.IsSet()) {
         auto const& grid{definition.collision_grid.GetValue()};
@@ -73,7 +74,7 @@ auto to_native(FLevelDefinition const& definition) -> ::ioj::levels::LevelDefini
     if (definition.camera.IsSet()) {
         auto const& camera{definition.camera.GetValue()};
         result.camera = {
-            .target_entity_ids = to_ids<FLevelEntityId>(camera.target_entity_ids),
+            .target_entity_ids = to_ids<EntityId, ml::FLevelEntityId>(camera.target_entity_ids),
             .offset_direction = {camera.offset_direction.X,
                                  camera.offset_direction.Y,
                                  camera.offset_direction.Z},
@@ -84,9 +85,11 @@ auto to_native(FLevelDefinition const& definition) -> ::ioj::levels::LevelDefini
         auto const& mission{definition.mission.GetValue()};
         ::ioj::levels::LevelMissionDefinition native_mission{
             .mode = mission.mode,
-            .hero_entity_ids = to_ids<FLevelEntityId>(mission.hero_entity_ids),
-            .must_survive_entity_ids = to_ids<FLevelEntityId>(mission.must_survive_entity_ids),
-            .required_kill_entity_ids = to_ids<FLevelEntityId>(mission.required_kill_entity_ids),
+            .hero_entity_ids = to_ids<EntityId, ml::FLevelEntityId>(mission.hero_entity_ids),
+            .must_survive_entity_ids =
+                to_ids<EntityId, ml::FLevelEntityId>(mission.must_survive_entity_ids),
+            .required_kill_entity_ids =
+                to_ids<EntityId, ml::FLevelEntityId>(mission.required_kill_entity_ids),
         };
         if (mission.time_limit_seconds.IsSet()) {
             native_mission.time_limit_seconds = mission.time_limit_seconds.GetValue();
@@ -101,21 +104,23 @@ auto to_native(FLevelDefinition const& definition) -> ::ioj::levels::LevelDefini
     for (auto const& event : definition.mission_events) {
         result.mission_events.push_back({
             .time_seconds = event.time_seconds,
-            .must_survive_entity_ids = to_ids<FLevelEntityId>(event.must_survive_entity_ids),
-            .required_kill_entity_ids = to_ids<FLevelEntityId>(event.required_kill_entity_ids),
+            .must_survive_entity_ids =
+                to_ids<EntityId, ml::FLevelEntityId>(event.must_survive_entity_ids),
+            .required_kill_entity_ids =
+                to_ids<EntityId, ml::FLevelEntityId>(event.required_kill_entity_ids),
             .kill_target_increase = event.kill_target_increase,
         });
     }
-    result.teams = to_ids<FLevelTeamId>(definition.teams);
+    result.teams = to_ids<TeamId, ml::FLevelTeamId>(definition.teams);
 
     auto const entities{definition.entities.get_const_view()};
     auto const entity_count{entities.num()};
     result.entities.reserve(entity_count);
     for (int32 index{}; index < entity_count; ++index) {
         result.entities.push_back({
-            .id = to_utf8(entities.ids[index].value),
+            .id = EntityId{to_utf8(entities.ids[index].value)},
             .archetype = to_utf8(entities.archetypes[index].value),
-            .team = to_utf8(entities.teams[index].value),
+            .team = TeamId{to_utf8(entities.teams[index].value)},
             .position = {entities.positions.xs[index],
                          entities.positions.ys[index],
                          entities.positions.zs[index]},
@@ -128,10 +133,10 @@ auto to_native(FLevelDefinition const& definition) -> ::ioj::levels::LevelDefini
     return result;
 }
 
-auto to_unreal(::ioj::levels::LevelDefinition definition) -> FLevelDefinition {
-    FLevelBuilder builder;
-    FLevelMetadata metadata{
-        .id = FLevelId{to_fname(definition.metadata.id)},
+auto to_unreal(::ioj::levels::LevelDefinition definition) -> ml::FLevelDefinition {
+    ml::FLevelBuilder builder;
+    ml::FLevelMetadata metadata{
+        .id = ml::FLevelId{to_fname(definition.metadata.id.value)},
         .title = ml::to_fstring(definition.metadata.title),
         .description = ml::to_fstring(definition.metadata.description),
     };
@@ -142,7 +147,7 @@ auto to_unreal(::ioj::levels::LevelDefinition definition) -> FLevelDefinition {
 
     if (definition.collision_grid) {
         auto const& grid{*definition.collision_grid};
-        FLevelCollisionGridDefinition unreal_grid;
+        ml::FLevelCollisionGridDefinition unreal_grid;
         if (grid.level_size) {
             unreal_grid.level_size = FVector3f{static_cast<float>(grid.level_size->x),
                                                static_cast<float>(grid.level_size->y),
@@ -157,21 +162,22 @@ auto to_unreal(::ioj::levels::LevelDefinition definition) -> FLevelDefinition {
     }
 
     for (auto const& level_id : definition.unlock_level_ids) {
-        builder.add_unlock_criterion(FLevelUnlockCriterion{
-            TInPlaceType<FLevelCompletedUnlockCriterion>{},
-            FLevelCompletedUnlockCriterion{.level_id = FLevelId{to_fname(level_id)}}});
+        builder.add_unlock_criterion(
+            ml::FLevelUnlockCriterion{TInPlaceType<ml::FLevelCompletedUnlockCriterion>{},
+                                      ml::FLevelCompletedUnlockCriterion{
+                                          .level_id = ml::FLevelId{to_fname(level_id.value)}}});
     }
     for (auto const& team : definition.teams) {
-        builder.add_team(FLevelTeamId{to_fname(team)});
+        builder.add_team(ml::FLevelTeamId{to_fname(team.value)});
     }
     if (!definition.player_entity_id.empty()) {
-        builder.set_player_entity(FLevelEntityId{to_fname(definition.player_entity_id)});
+        builder.set_player_entity(ml::FLevelEntityId{to_fname(definition.player_entity_id.value)});
     }
 
     if (definition.camera) {
         auto const& camera{*definition.camera};
-        builder.set_camera(FLevelCameraDefinition{
-            .target_entity_ids = to_unreal_ids<FLevelEntityId>(camera.target_entity_ids),
+        builder.set_camera(ml::FLevelCameraDefinition{
+            .target_entity_ids = to_unreal_ids<ml::FLevelEntityId>(camera.target_entity_ids),
             .offset_direction = FVector{camera.offset_direction.x,
                                         camera.offset_direction.y,
                                         camera.offset_direction.z},
@@ -180,13 +186,13 @@ auto to_unreal(::ioj::levels::LevelDefinition definition) -> FLevelDefinition {
     }
     if (definition.mission) {
         auto const& source{*definition.mission};
-        FLevelMissionDefinition mission{
+        ml::FLevelMissionDefinition mission{
             .mode = source.mode,
-            .hero_entity_ids = to_unreal_ids<FLevelEntityId>(source.hero_entity_ids),
+            .hero_entity_ids = to_unreal_ids<ml::FLevelEntityId>(source.hero_entity_ids),
             .must_survive_entity_ids =
-                to_unreal_ids<FLevelEntityId>(source.must_survive_entity_ids),
+                to_unreal_ids<ml::FLevelEntityId>(source.must_survive_entity_ids),
             .required_kill_entity_ids =
-                to_unreal_ids<FLevelEntityId>(source.required_kill_entity_ids),
+                to_unreal_ids<ml::FLevelEntityId>(source.required_kill_entity_ids),
         };
         if (source.time_limit_seconds) {
             mission.time_limit_seconds = *source.time_limit_seconds;
@@ -198,20 +204,20 @@ auto to_unreal(::ioj::levels::LevelDefinition definition) -> FLevelDefinition {
     }
 
     for (auto const& source : definition.mission_events) {
-        builder.add_mission_event(FLevelMissionObjectiveEvent{
+        builder.add_mission_event(ml::FLevelMissionObjectiveEvent{
             .time_seconds = source.time_seconds,
             .must_survive_entity_ids =
-                to_unreal_ids<FLevelEntityId>(source.must_survive_entity_ids),
+                to_unreal_ids<ml::FLevelEntityId>(source.must_survive_entity_ids),
             .required_kill_entity_ids =
-                to_unreal_ids<FLevelEntityId>(source.required_kill_entity_ids),
+                to_unreal_ids<ml::FLevelEntityId>(source.required_kill_entity_ids),
             .kill_target_increase = source.kill_target_increase,
         });
     }
     for (auto const& source : definition.entities) {
-        builder.add_entity(FEntitySpawnDefinition{
-            .id = FLevelEntityId{to_fname(source.id)},
-            .archetype = FEntityArchetypeId{to_fname(source.archetype)},
-            .team = FLevelTeamId{to_fname(source.team)},
+        builder.add_entity(ml::FEntitySpawnDefinition{
+            .id = ml::FLevelEntityId{to_fname(source.id.value)},
+            .archetype = ml::FEntityArchetypeId{to_fname(source.archetype)},
+            .team = ml::FLevelTeamId{to_fname(source.team.value)},
             .position = FVector{source.position.x, source.position.y, source.position.z},
             .rotation = FRotator{source.rotation.pitch, source.rotation.yaw, source.rotation.roll},
             .spawn_time_seconds = source.spawn_time_seconds,
@@ -219,4 +225,4 @@ auto to_unreal(::ioj::levels::LevelDefinition definition) -> FLevelDefinition {
     }
     return builder.finish();
 }
-} // namespace ml::level_authoring
+} // namespace ioj::levels::authoring

@@ -1,31 +1,30 @@
 (level
-  (id 'turret-trial-1)
-  (title "Turret Trial 1")
-  (description "Destroy two widely separated turrets one at a time.")
+  :id 'turret-trial-1
+  :title "Turret Trial 1"
+  :description "Destroy two widely separated turrets one at a time."
 
-  (unlock
+  :unlock (list
     (level-completed 'turret-trial-0))
 
-  (teams
-    (team 'blue)
-    (team 'red))
+  :teams '(blue
+    red)
 
-  (player 'player)
+  :player 'player
 
-  (mission
-    (mode 'kill-enemies)
-    (heroes 'player)
-    (must-survive 'player))
+  :mission (mission
+    :mode 'kill-enemies
+    :heroes '(player)
+    :must-survive '(player))
 
-  (entities
-    (entity 'player 'player-fighter 'blue
-      (position 0 -72000 1000)
-      (rotation 0 90 0))
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position '(0 -72000 1000)
+      :rotation '(0 90 0))
 
-    (entity 'turret-0 'static-turret 'red
-      (position -6000 12000 0)
-      (rotation 0 -90 0))
+    (entity :id 'turret-0 :archetype 'static-turret :team 'red
+      :position '(-6000 12000 0)
+      :rotation '(0 -90 0))
 
-    (entity 'turret-1 'static-turret 'red
-      (position 6000 12000 0)
-      (rotation 0 -90 0))))
+    (entity :id 'turret-1 :archetype 'static-turret :team 'red
+      :position '(6000 12000 0)
+      :rotation '(0 -90 0))))

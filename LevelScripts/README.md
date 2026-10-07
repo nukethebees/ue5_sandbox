@@ -3,6 +3,24 @@
 `LevelScripts/` contains S7-authored scenarios consumed by the native simulation and Unreal
 integration layers.
 
+Records use keyword properties, symbols for identifiers, and strings for text:
+
+```scheme
+(level :id 'example :title "Example"
+  :teams '(blue red)
+  :player 'player
+  :mission (mission :mode 'kill-enemies :heroes '(player))
+  :entities (list
+    (entity :id 'player :archetype 'player-fighter :team 'blue
+      :position '(0 0 0) :rotation '(0 -90 0))))
+```
+
+Quote literal lists such as vectors and IDs. Use `list` when members must be evaluated,
+such as entity constructors or computed coordinates. Each keyword takes one value;
+nested records retain their constructor, for example `:camera (camera ...)`.
+Campaigns use `(campaign :id 'main :title "Main" :levels '(example next-level))`.
+Shared helpers loaded through `load-script` can construct the same records procedurally.
+
 - `Campaigns/` contains gameplay, showcase, evaluation, and development scenarios.
 - `Benchmarks/` contains deterministic workloads used by benchmark runners.
 - `Libraries/` contains shared S7 support code.

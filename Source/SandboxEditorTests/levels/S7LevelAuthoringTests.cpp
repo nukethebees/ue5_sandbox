@@ -12,8 +12,10 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameS7/LevelDefinitionReader.h>
-#include <SpaceGameS7/LevelDefinitionWriter.h>
+#include <SpaceGameS7/level_definition_reader.h>
+#include <SpaceGameS7/level_definition_writer.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <CQTest.h>
 #include <Editor.h>
@@ -434,23 +436,23 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             TestRunner->AddError(collected.error());
             return;
         }
-        auto const source{ml::s7::emit_editor_level_source(*collected)};
+        auto const source{::ioj::levels::authoring::emit_editor_level_source(*collected)};
         if (!TestRunner->TestTrue(TEXT("Partial grid writes"), source.has_value())) {
             TestRunner->AddError(source.error());
             return;
         }
         TestRunner->TestFalse(TEXT("Inherited size is omitted"),
-                              source->Contains(TEXT("(level-size")));
+                              source->Contains(TEXT(":level-size")));
         TestRunner->TestTrue(TEXT("Authored cell size is written"),
-                             source->Contains(TEXT("(cell-size")));
+                             source->Contains(TEXT(":cell-size")));
 
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const read{reader.read_source(*source)};
         if (!TestRunner->TestTrue(TEXT("Partial grid reads"), static_cast<bool>(read))) {
-            TestRunner->AddError(read.script_error);
+            TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(read.error())));
             return;
         }
-        auto const& grid{read.definition->collision_grid};
+        auto const& grid{read->collision_grid};
         TestRunner->TestTrue(TEXT("Grid clause persists"), grid.IsSet());
         if (grid.IsSet()) {
             TestRunner->TestFalse(TEXT("Size stays inherited"), grid->level_size.IsSet());
@@ -858,19 +860,18 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             TestRunner->AddError(definition.error());
             return;
         }
-        auto const source{ml::s7::emit_editor_level_source(*definition)};
+        auto const source{::ioj::levels::authoring::emit_editor_level_source(*definition)};
         if (!TestRunner->TestTrue(TEXT("Definition writes"), source.has_value())) {
             return;
         }
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const read{reader.read_source(*source)};
         if (!TestRunner->TestTrue(TEXT("Generated source reads"), static_cast<bool>(read))) {
             return;
         }
-        TestRunner->TestTrue(TEXT("Mission survives"), read.definition->mission.IsSet());
-        TestRunner->TestEqual(TEXT("Required kill survives"),
-                              read.definition->mission->required_kill_entity_ids.Num(),
-                              1);
+        TestRunner->TestTrue(TEXT("Mission survives"), read->mission.IsSet());
+        TestRunner->TestEqual(
+            TEXT("Required kill survives"), read->mission->required_kill_entity_ids.Num(), 1);
     }
 
     TEST_METHOD(PreviewReportsMetadataOnlyChange)
@@ -1905,13 +1906,13 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             TestRunner->AddError(collected.error());
             return;
         }
-        auto const source{ml::s7::emit_editor_level_source(*collected)};
+        auto const source{::ioj::levels::authoring::emit_editor_level_source(*collected)};
         if (!TestRunner->TestTrue(TEXT("Delayed scene writes"), source.has_value())) {
             TestRunner->AddError(source.error());
             return;
         }
         TestRunner->TestTrue(TEXT("Spawn clause survives"),
-                             source->Contains(TEXT("(spawn-at 2.5)")));
+                             source->Contains(TEXT(":spawn-at 2.5")));
 
         auto updated_definition{*collected};
         updated_definition.entities.spawn_times_seconds[0] = 4.0;

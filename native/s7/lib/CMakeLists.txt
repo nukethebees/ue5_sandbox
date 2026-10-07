@@ -36,7 +36,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 ioj_apply_native_abi(sandbox-s7-third-party)
 
-add_library(native-s7-data STATIC src/ast.cpp)
+add_library(native-s7-data STATIC src/ast.cpp src/sexpression_emitter.cpp)
 target_include_directories(native-s7-data PUBLIC include)
 target_link_libraries(native-s7-data PUBLIC native-common sandbox::native_defaults)
 ioj_enable_warnings(native-s7-data)
@@ -55,7 +55,6 @@ target_sources(sandbox-s7 PRIVATE
   src/script_bindings.cpp
   src/script_files_win32.cpp
   src/script_loader.cpp
-  src/value.cpp
 )
 target_include_directories(sandbox-s7 PUBLIC include)
 

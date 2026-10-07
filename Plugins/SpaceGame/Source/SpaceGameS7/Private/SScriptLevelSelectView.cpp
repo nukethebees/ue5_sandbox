@@ -18,6 +18,8 @@
 #include "generated/ml/s7/SScriptLevelSelectView.slate.generated.h"
 
 namespace ml::s7 {
+using ::ioj::levels::authoring::ELevelCatalogCategory;
+
 void SScriptLevelSelectView::Construct(FArguments const& args) {
     style_ = args._Style;
     check(style_ != nullptr);

@@ -1,6 +1,8 @@
 #include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
 #include <SandboxEditor/levels/S7LevelSourceSession.h>
 
+#include <SandboxCoreEngine/strings.h>
+
 #include <CQTest.h>
 #include <Engine/World.h>
 #include <HAL/FileManager.h>
@@ -35,11 +37,11 @@ auto write_source(FStringView const source, FString const& path) -> bool {
 }
 
 auto level_source(FStringView const title) -> FString {
-    return FString::Printf(TEXT("(level (id 'source-session) (title \"%s\") "
-                                "(teams (team 'blue)) (player 'player) "
-                                "(entities (entity 'player 'player-fighter 'blue "
-                                "(position 0 0 0) (rotation 0 0 0))))"),
-                           *FString{title});
+    return FString::Printf(
+        TEXT("(level :id 'source-session :title \"%s\" :teams '(blue) :player 'player :entities "
+             "(list (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0) "
+             ":rotation '(0 0 0))))"),
+        *FString{title});
 }
 }
 
@@ -117,11 +119,10 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         auto const library_directory{FPaths::Combine(directory.path, TEXT("Libraries"))};
         auto const source_path{FPaths::Combine(directory.path, TEXT("level.scm"))};
         IFileManager::Get().MakeDirectory(*library_directory, true);
-        FString const source{TEXT("(load-script \"metadata.scm\") "
-                                  "(level (id 'library-level) (title shared-title) "
-                                  "(teams (team 'blue)) (player 'player) "
-                                  "(entities (entity 'player 'player-fighter 'blue "
-                                  "(position 0 0 0) (rotation 0 0 0))))")};
+        FString const source{
+            TEXT("(load-script \"metadata.scm\") (level :id 'library-level :title shared-title "
+                 ":teams '(blue) :player 'player :entities (list (entity :id 'player :archetype "
+                 "'player-fighter :team 'blue :position '(0 0 0) :rotation '(0 0 0))))")};
         if (!TestRunner->TestNotNull(TEXT("Document"), document) ||
             !TestRunner->TestTrue(
                 TEXT("Library is written"),
@@ -140,22 +141,23 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         }
         auto const read{session.read()};
         if (!TestRunner->TestTrue(TEXT("Buffer parses"), static_cast<bool>(read))) {
-            TestRunner->AddError(read.script_error);
+            TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(read.error())));
             return;
         }
         TestRunner->TestEqual(TEXT("Sibling library supplies title"),
-                              read.definition->metadata.title,
+                              read->metadata.title,
                               FString{TEXT("From Sibling Library")});
 
         session.set_buffer(source.Replace(TEXT("shared-title"), TEXT("\"From Buffer\"")));
         auto const edited_read{session.read()};
         if (!TestRunner->TestTrue(TEXT("Edited buffer parses without saving"),
                                   static_cast<bool>(edited_read))) {
-            TestRunner->AddError(edited_read.script_error);
+            TestRunner->AddError(
+                ml::to_fstring(::ioj::levels::format_diagnostics(edited_read.error())));
             return;
         }
         TestRunner->TestEqual(TEXT("Preview input comes from the buffer"),
-                              edited_read.definition->metadata.title,
+                              edited_read->metadata.title,
                               FString{TEXT("From Buffer")});
         FString unchanged_disk_source;
         FFileHelper::LoadFileToString(unchanged_disk_source, *source_path);

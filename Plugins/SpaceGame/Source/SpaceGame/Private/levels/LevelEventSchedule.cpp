@@ -1,6 +1,6 @@
 #include <ioj/sim/levels/level_compilation.h>
 #include <SpaceGame/levels/CompileLevelEvents.h>
-#include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
+#include <SpaceGame/levels/native_level_definition_conversion.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -11,7 +11,7 @@ auto compile_level_events(FLevelDefinition const& definition,
                           ::ioj::sim::TurretSimConfig const& turret_config)
     -> FLevelEventCompilationResult {
     auto result{::ioj::sim::levels::compile_level(
-        level_authoring::to_native(definition), clock, capital_config, turret_config)};
+        ::ioj::levels::authoring::to_native(definition), clock, capital_config, turret_config)};
     if (result) {
         return FLevelEventCompilationResult{std::in_place, std::move(result.value())};
     }

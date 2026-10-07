@@ -3,7 +3,7 @@
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGameS7/LevelDefinitionReader.h>
+#include <SpaceGameS7/level_definition_reader.h>
 
 #include <CQTest.h>
 #include <Editor.h>
@@ -85,26 +85,25 @@ TEST_CLASS(S7InitialStateImporter, "Sandbox.UnitTests")
 
     TEST_METHOD(ProceduralS7ProducesInitialEntities)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const read_result{reader.read_source(LR"(
 (define (make-ship index)
-  (entity (string->symbol (format #f "ship-~A" index)) 'capital-ship 'blue
-    (position (* index 1000) 200 300)
-    (rotation 0 (* index 10) 0)))
+  (entity :id (string->symbol (format #f "ship-~A" index)) :archetype 'capital-ship :team 'blue
+    :position (list (* index 1000) 200 300)
+    :rotation (list 0 (* index 10) 0)))
 (level
-  (id 'procedural-import)
-  (title "Procedural Import")
-  (teams (team 'blue))
-  (camera (look-at 'ship-0) (distance 1000) (offset-direction -1 0 0))
-  (apply entities (map make-ship '(0 1 2 3))))
+  :id 'procedural-import
+  :title "Procedural Import"
+  :teams '(blue)
+  :camera (camera :look-at '(ship-0) :distance 1000 :offset-direction '(-1 0 0))
+  :entities (map make-ship '(0 1 2 3)))
 )")};
         if (!TestRunner->TestTrue(TEXT("Procedural S7 evaluates"),
                                   static_cast<bool>(read_result))) {
             return;
         }
 
-        auto const plan{
-            ml::editor::make_s7_initial_state_import_plan(read_result.definition.GetValue())};
+        auto const plan{ml::editor::make_s7_initial_state_import_plan(read_result.value())};
         if (!TestRunner->TestTrue(TEXT("Import plan is created"), plan.has_value())) {
             return;
         }
@@ -122,34 +121,33 @@ TEST_CLASS(S7InitialStateImporter, "Sandbox.UnitTests")
 
     TEST_METHOD(UnsupportedFeaturesAreGrouped)
     {
-        ml::s7::FLevelDefinitionReader reader;
+        ::ioj::levels::authoring::FLevelDefinitionReader reader;
         auto const read_result{reader.read_source(LR"(
 (level
-  (id 'unsupported-import)
-  (title "Unsupported Import")
-  (unlock (level-completed 'prior-level))
-  (teams (team 'blue) (team 'red))
-  (camera (look-at 'hero) (distance 1000) (offset-direction -1 0 0))
-  (mission (mode 'kill-enemies) (kill-count 3) (heroes 'hero))
-  (mission-events
-    (mission-event (at 2) (add-required-kills 'enemy-a)))
-  (entities
-    (entity 'hero 'capital-ship 'blue
-      (position 0 0 0) (rotation 0 0 0))
-    (entity 'enemy-a 'capital-ship 'red
-      (position 1000 0 0) (rotation 0 0 0) (spawn-at 1))
-    (entity 'enemy-b 'capital-ship 'red
-      (position 2000 0 0) (rotation 0 0 0) (spawn-at 1))
-    (entity 'enemy-turret 'static-turret 'red
-      (position 3000 0 0) (rotation 0 0 0) (spawn-at 1))))
+  :id 'unsupported-import
+  :title "Unsupported Import"
+  :unlock (list (level-completed 'prior-level))
+  :teams '(blue red)
+  :camera (camera :look-at '(hero) :distance 1000 :offset-direction '(-1 0 0))
+  :mission (mission :mode 'kill-enemies :kill-count 3 :heroes '(hero))
+  :mission-events (list
+    (mission-event :at 2 :add-required-kills '(enemy-a)))
+  :entities (list
+    (entity :id 'hero :archetype 'capital-ship :team 'blue
+      :position '(0 0 0) :rotation '(0 0 0))
+    (entity :id 'enemy-a :archetype 'capital-ship :team 'red
+      :position '(1000 0 0) :rotation '(0 0 0) :spawn-at 1)
+    (entity :id 'enemy-b :archetype 'capital-ship :team 'red
+      :position '(2000 0 0) :rotation '(0 0 0) :spawn-at 1)
+    (entity :id 'enemy-turret :archetype 'static-turret :team 'red
+      :position '(3000 0 0) :rotation '(0 0 0) :spawn-at 1)))
 )")};
         if (!TestRunner->TestTrue(TEXT("Unsupported fixture evaluates"),
                                   static_cast<bool>(read_result))) {
             return;
         }
 
-        auto const plan{
-            ml::editor::make_s7_initial_state_import_plan(read_result.definition.GetValue())};
+        auto const plan{ml::editor::make_s7_initial_state_import_plan(read_result.value())};
         if (!TestRunner->TestTrue(TEXT("Import plan is created"), plan.has_value())) {
             return;
         }
@@ -173,7 +171,7 @@ TEST_CLASS(S7InitialStateImporter, "Sandbox.UnitTests")
     TEST_METHOD(CheckedInLevelsProduceRepresentativeInitialStates)
     {
         auto make_plan = [this](TCHAR const* filename) -> ml::editor::FS7InitialStateImportPlan {
-            ml::s7::FLevelDefinitionReader reader;
+            ::ioj::levels::authoring::FLevelDefinitionReader reader;
             auto const path{FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), filename)};
             auto const read_result{reader.read_file(path)};
             if (!TestRunner->TestTrue(*FString::Printf(TEXT("%s evaluates"), filename),
@@ -181,8 +179,7 @@ TEST_CLASS(S7InitialStateImporter, "Sandbox.UnitTests")
                 return {};
             }
 
-            auto const plan{
-                ml::editor::make_s7_initial_state_import_plan(read_result.definition.GetValue())};
+            auto const plan{ml::editor::make_s7_initial_state_import_plan(read_result.value())};
             if (!TestRunner->TestTrue(
                     *FString::Printf(TEXT("%s produces an import plan"), filename),
                     plan.has_value())) {

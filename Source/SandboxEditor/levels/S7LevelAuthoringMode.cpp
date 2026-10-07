@@ -7,9 +7,11 @@
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameS7/LevelDefinitionReader.h>
-#include <SpaceGameS7/LevelDefinitionWriter.h>
-#include <SpaceGameS7/LevelScriptCatalog.h>
+#include <SpaceGameS7/level_definition_reader.h>
+#include <SpaceGameS7/level_definition_writer.h>
+#include <SpaceGameS7/level_script_catalog.h>
+
+#include <SandboxCoreEngine/strings.h>
 
 #include <CanvasItem.h>
 #include <CanvasTypes.h>
@@ -39,7 +41,7 @@ auto select_source_path(bool const save, FString const& suggested_filename) -> T
     }
     auto const parent{FSlateApplication::Get().FindBestParentWindowHandleForDialogs(nullptr)};
     TArray<FString> paths;
-    auto const directory{ml::s7::default_level_script_directory()};
+    auto const directory{::ioj::levels::authoring::default_level_script_directory()};
     auto const selected{save ? desktop->SaveFileDialog(parent,
                                                        TEXT("Save Explicit S7 Level"),
                                                        directory,
@@ -210,7 +212,7 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
                                   : std::expected<ml::FLevelDefinition, FString>{std::unexpected{
                                         TEXT("The current level is unavailable.")}}};
         auto const generated{
-            definition ? ml::s7::emit_editor_level_source(*definition)
+            definition ? ::ioj::levels::authoring::emit_editor_level_source(*definition)
                        : std::expected<FString, FString>{std::unexpected{definition.error()}}};
         if (!generated || document_->synchronized_scene_hash !=
                               ml::editor::FS7LevelSourceSession::source_digest(*generated)) {
@@ -779,15 +781,14 @@ void US7LevelAuthoringMode::preview_apply() {
     }
     auto const read{source_session_.read()};
     if (!read) {
-        set_status(FText::FromString(!read.script_error.IsEmpty()
-                                         ? read.script_error
-                                         : TEXT("The S7 level did not decode or validate.")));
+        set_status(
+            FText::FromString(ml::to_fstring(::ioj::levels::format_diagnostics(read.error()))));
         preview_.Reset();
         preview_stale_ = false;
         changed_.Broadcast();
         return;
     }
-    auto plan{ml::editor::make_s7_level_sync_plan(*level, *document_, read.definition.GetValue())};
+    auto plan{ml::editor::make_s7_level_sync_plan(*level, *document_, read.value())};
     if (!plan) {
         set_status(FText::FromString(plan.error()));
         preview_.Reset();
@@ -864,7 +865,7 @@ void US7LevelAuthoringMode::apply_preview() {
             ml::editor::FS7LevelSourceSession::source_digest(source_session_.buffer());
         auto const definition{ml::editor::collect_s7_editor_level(*level, *document_)};
         auto const generated{
-            definition ? ml::s7::emit_editor_level_source(*definition)
+            definition ? ::ioj::levels::authoring::emit_editor_level_source(*definition)
                        : std::expected<FString, FString>{std::unexpected{definition.error()}}};
         if (generated) {
             document_->synchronized_scene_hash =
@@ -954,7 +955,7 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
         changed_.Broadcast();
         return;
     }
-    auto const source{ml::s7::emit_editor_level_source(*definition)};
+    auto const source{::ioj::levels::authoring::emit_editor_level_source(*definition)};
     if (!source) {
         set_status(FText::FromString(source.error()));
         changed_.Broadcast();

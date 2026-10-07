@@ -4,7 +4,7 @@
 
 #include <expected>
 
-namespace ml::s7 {
-SPACEGAMES7_API auto emit_editor_level_source(FLevelDefinition const& definition)
+namespace ioj::levels::authoring {
+SPACEGAMES7_API auto emit_editor_level_source(ml::FLevelDefinition const& definition)
     -> std::expected<FString, FString>;
 }

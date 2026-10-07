@@ -2,7 +2,7 @@ set(sandbox_unreal_native_dependency_targets
   native-memory
   sbx-mimalloc
   native-simulation-unreal
-  native-level-authoring
+  native-level-authoring-s7
   sandbox-s7
   native-core
   cpu_features

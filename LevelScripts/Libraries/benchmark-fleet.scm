@@ -16,12 +16,12 @@
   (define (make-capital team index formation-y row-direction yaw)
     (let ((column (modulo index formation-columns))
           (row (quotient index formation-columns)))
-      (entity (capital-id team index) 'capital-ship team
-        (position
+      (entity :id (capital-id team index) :archetype 'capital-ship :team team
+        :position (list
           (* (- column (/ (- formation-columns 1) 2.0)) column-spacing)
           (+ formation-y (* row-direction row row-spacing))
           (* (- (modulo index 3) 1) 5000))
-        (rotation 0 yaw 0))))
+        :rotation (list 0 yaw 0))))
 
   (define (make-fleet team formation-y row-direction yaw)
     (map

@@ -54,6 +54,9 @@ public class NativeLevelAuthoring : ModuleRules
                     libraryPath);
             }
             PublicAdditionalLibraries.Add(libraryPath);
+            string readerLibraryPath = Path.Combine(Path.GetDirectoryName(libraryPath)!, "native-level-authoring-s7.lib");
+            PublicAdditionalLibraries.Add(readerLibraryPath);
+            ExternalDependencies.Add(readerLibraryPath);
             ExternalDependencies.Add(libraryPath);
         }
     }

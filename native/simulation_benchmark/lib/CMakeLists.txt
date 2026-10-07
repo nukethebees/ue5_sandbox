@@ -11,7 +11,7 @@ target_link_libraries(native-simulation-benchmark-lib
     sandbox::native_defaults
     native-simulation
   PRIVATE
-    native-level-authoring
+    native-level-authoring-s7
     CLI11::CLI11
 )
 ioj_enable_warnings(native-simulation-benchmark-lib)
