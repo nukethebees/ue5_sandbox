@@ -1,7 +1,7 @@
 #include "script_files_win32.h"
-#include <native/s7/detail/script_loader.h>
-#include <native/s7/interpreter.h>
-#include <native/s7/value.h>
+#include <ioj/s7/detail/script_loader.h>
+#include <ioj/s7/interpreter.h>
+#include <ioj/s7/value.h>
 
 #include "s7.h"
 
@@ -16,7 +16,7 @@
 #include <string_view>
 #include <system_error>
 
-namespace ml::s7::tests {
+namespace ioj::s7::tests {
 class TestContext final {
   public:
     void expect(bool const condition, std::string_view const message) {
@@ -490,7 +490,7 @@ void source_loading_preserves_reader_errors_and_empty_files(TestContext& test) {
 }
 
 int main() {
-    using namespace ml::s7::tests;
+    using namespace ioj::s7::tests;
 
     TestContext test;
     evaluates_scheme_and_preserves_state(test);

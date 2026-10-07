@@ -7,11 +7,11 @@
 #include <unordered_set>
 #include <vector>
 
-namespace ml::s7 {
+namespace ioj::s7 {
 struct InterpreterOptions;
 }
 
-namespace ml::s7::detail {
+namespace ioj::s7::detail {
 struct LoadToken {
     std::int64_t value{};
     auto operator==(LoadToken const&) const -> bool = default;

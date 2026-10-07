@@ -6,7 +6,7 @@
 struct s7_scheme;
 struct s7_cell;
 
-namespace ml::s7 {
+namespace ioj::s7 {
 using Scheme = s7_scheme;
 using Value = s7_cell*;
 

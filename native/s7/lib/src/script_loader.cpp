@@ -1,13 +1,13 @@
-#include <native/s7/detail/script_loader.h>
+#include <ioj/s7/detail/script_loader.h>
 
-#include <native/s7/interpreter.h>
+#include <ioj/s7/interpreter.h>
 
 #include <algorithm>
 #include <cassert>
 #include <limits>
 #include <utility>
 
-namespace ml::s7::detail {
+namespace ioj::s7::detail {
 ScriptLoader::ScriptLoader(InterpreterOptions const& options)
     : max_file_bytes_{options.max_loaded_file_bytes}
     , max_total_bytes_{options.max_total_loaded_bytes}

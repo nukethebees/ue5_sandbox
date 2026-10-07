@@ -87,6 +87,7 @@ add_subdirectory(sbx_mimalloc)
 add_subdirectory(lispb)
 add_subdirectory(layout)
 add_subdirectory(memory)
+add_subdirectory(common)
 add_subdirectory(s7)
 add_subdirectory(core)
 add_subdirectory(simulation)
@@ -111,6 +112,7 @@ add_custom_target(native-tests
     native-simulation-benchmark-tests
     sandbox-image-tests
     sandbox-s7-tests
+    native-s7-ast-tests
     sbx-mimalloc-tests
     slate-codegen-tests
     mesh-gen-tests

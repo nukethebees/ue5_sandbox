@@ -1,5 +1,6 @@
-#include <native/s7/interpreter.h>
+#include <ioj/s7/interpreter.h>
 
+#include "ast_materialization.h"
 #include "sandbox_policy.h"
 
 #include <cstdlib>
@@ -7,7 +8,7 @@
 #include <string>
 #include <utility>
 
-namespace ml::s7 {
+namespace ioj::s7 {
 namespace detail {
 auto object_to_string(s7_scheme* const scheme, s7_pointer const value) -> std::string {
     std::unique_ptr<char, decltype(&std::free)> const text{s7_object_to_c_string(scheme, value),
@@ -50,6 +51,19 @@ Interpreter::Interpreter(InterpreterOptions options)
     bindings_.install(loader_factory.get());
 }
 Interpreter::~Interpreter() = default;
+
+auto Interpreter::evaluate_ast(std::string_view const expression, ioj::s7::AstLimits const limits)
+    -> ioj::s7::AstResult {
+    ioj::s7::AstResult ast;
+    auto evaluation{evaluate_value(expression, [&](Scheme& scheme, Value const value) {
+        ast = ioj::s7::detail::materialize_ast(scheme, value, limits);
+    })};
+    if (!evaluation) {
+        return std::unexpected{ioj::s7::AstDiagnostics{
+            {ioj::s7::AstErrorCode::EvaluationFailed, "$", std::move(evaluation.error())}}};
+    }
+    return ast;
+}
 
 auto Interpreter::evaluate(std::string_view const expression) -> EvaluationResult {
     std::string value;

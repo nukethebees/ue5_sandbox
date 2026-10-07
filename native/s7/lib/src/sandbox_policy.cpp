@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-namespace ml::s7::detail {
+namespace ioj::s7::detail {
 inline constexpr std::string_view explicitly_disabled_bindings[]{
     "autoload",
     "call-with-input-file",

@@ -36,9 +36,20 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 ioj_apply_native_abi(sandbox-s7-third-party)
 
+add_library(native-s7-data STATIC src/ast.cpp)
+target_include_directories(native-s7-data PUBLIC include)
+target_link_libraries(native-s7-data PUBLIC native-common sandbox::native_defaults)
+ioj_enable_warnings(native-s7-data)
+ioj_apply_native_abi(native-s7-data)
+if(IOJ_WITH_UNREAL)
+  set_target_properties(native-s7-data PROPERTIES ARCHIVE_OUTPUT_DIRECTORY
+    "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}")
+endif()
+
 add_library(sandbox-s7 STATIC)
 target_sources(sandbox-s7 PRIVATE
   src/interpreter.cpp
+  src/ast_materialization.cpp
   src/s7_ownership.cpp
   src/sandbox_policy.cpp
   src/script_bindings.cpp
@@ -57,6 +68,7 @@ endif()
 target_link_libraries(sandbox-s7
   PUBLIC
     sandbox::native_defaults
+    native-s7-data
   PRIVATE
     sandbox-s7-third-party
     sandbox-s7-warning-exceptions

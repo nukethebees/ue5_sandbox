@@ -1,14 +1,14 @@
 #pragma once
 
-#include <native/s7/detail/script_loader.h>
-#include <native/s7/value.h>
+#include <ioj/s7/detail/script_loader.h>
+#include <ioj/s7/value.h>
 
 #include <mutex>
 #include <optional>
 #include <string>
 #include <unordered_map>
 
-namespace ml::s7::detail {
+namespace ioj::s7::detail {
 [[nodiscard]] auto prepare_loader_factory(Scheme* scheme) -> Value;
 
 // The runtime and loader outlive this registration. Serialize all access to one

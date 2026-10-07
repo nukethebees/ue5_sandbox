@@ -1,10 +1,10 @@
 #pragma once
 
-#include <native/s7/value.h>
+#include <ioj/s7/value.h>
 
 #include <cstdint>
 
-namespace ml::s7::detail {
+namespace ioj::s7::detail {
 // Use only around host operations that return normally or throw C++ exceptions.
 // Scheme evaluation must contain its non-local exits inside an s7 catch boundary.
 class GcProtection final {

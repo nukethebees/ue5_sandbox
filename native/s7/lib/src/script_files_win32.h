@@ -6,7 +6,7 @@
 #include <string>
 #include <string_view>
 
-namespace ml::s7::detail {
+namespace ioj::s7::detail {
 struct FileHandleCloser {
     void operator()(void* handle) const;
 };

@@ -13,7 +13,7 @@
 #include <optional>
 #include <utility>
 
-namespace ml::s7::detail {
+namespace ioj::s7::detail {
 struct CanonicalPath {
     std::wstring wide_path;
     std::string narrow_path;

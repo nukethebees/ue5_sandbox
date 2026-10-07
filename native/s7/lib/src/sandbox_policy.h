@@ -2,7 +2,7 @@
 
 #include "s7.h"
 
-namespace ml::s7::detail {
+namespace ioj::s7::detail {
 inline constexpr char source_variable_name[]{"*sandbox-s7-source*"};
 
 // Protect each returned helper before allocating another s7 object.

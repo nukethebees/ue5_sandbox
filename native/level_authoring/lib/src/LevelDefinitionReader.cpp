@@ -1,8 +1,8 @@
 #include <sandbox/level_authoring/LevelDefinitionReader.h>
 
 #include "reader_utilities.h"
-#include <native/s7/interpreter.h>
-#include <native/s7/value.h>
+#include <ioj/s7/interpreter.h>
+#include <ioj/s7/value.h>
 
 #include <cmath>
 #include <cstdint>
@@ -57,7 +57,7 @@ inline constexpr std::string_view level_prelude{R"(
 namespace {
 class DefinitionDecoder final {
   public:
-    DefinitionDecoder(s7::Scheme& scheme, s7::Value const root)
+    DefinitionDecoder(::ioj::s7::Scheme& scheme, ::ioj::s7::Value const root)
         : scheme_{scheme}
         , root_{root} {}
 
@@ -88,12 +88,12 @@ class DefinitionDecoder final {
             }
 
             auto const tag_value{list_value(clause, 0)};
-            if (!s7::is_symbol(tag_value)) {
+            if (!::ioj::s7::is_symbol(tag_value)) {
                 add_error(path, "Level clause tag must be a symbol");
                 continue;
             }
 
-            auto const tag{std::string{s7::symbol_name(tag_value)}};
+            auto const tag{std::string{::ioj::s7::symbol_name(tag_value)}};
             if (tag == "id") {
                 if (has_id) {
                     add_error(path, "Duplicate id clause");
@@ -202,25 +202,27 @@ class DefinitionDecoder final {
         return {.definition = std::move(definition_)};
     }
   private:
-    auto list_length(s7::Value const value) const -> std::int64_t {
-        return s7::list_length(scheme_, value);
+    auto list_length(::ioj::s7::Value const value) const -> std::int64_t {
+        return ::ioj::s7::list_length(scheme_, value);
     }
 
-    auto list_value(s7::Value const value, std::int64_t const index) const -> s7::Value {
-        return s7::list_value(scheme_, value, index);
+    auto list_value(::ioj::s7::Value const value, std::int64_t const index) const
+        -> ::ioj::s7::Value {
+        return ::ioj::s7::list_value(scheme_, value, index);
     }
 
-    auto is_non_empty_list(s7::Value const value) const -> bool {
-        return s7::is_list(scheme_, value) && list_length(value) > 0;
+    auto is_non_empty_list(::ioj::s7::Value const value) const -> bool {
+        return ::ioj::s7::is_list(scheme_, value) && list_length(value) > 0;
     }
 
     void add_error(std::string path, std::string message) {
         errors_.push_back({std::move(path), std::move(message)});
     }
 
-    auto expect_length(s7::Value const value, std::int64_t const expected, std::string const& path)
-        -> bool {
-        if (!s7::is_list(scheme_, value)) {
+    auto expect_length(::ioj::s7::Value const value,
+                       std::int64_t const expected,
+                       std::string const& path) -> bool {
+        if (!::ioj::s7::is_list(scheme_, value)) {
             add_error(path, "Expected a list");
             return false;
         }
@@ -235,7 +237,7 @@ class DefinitionDecoder final {
         return true;
     }
 
-    auto expect_tagged_list(s7::Value const value,
+    auto expect_tagged_list(::ioj::s7::Value const value,
                             std::string_view const expected_tag,
                             std::string const& path) -> bool {
         if (!is_non_empty_list(value)) {
@@ -244,42 +246,46 @@ class DefinitionDecoder final {
         }
 
         auto const tag{list_value(value, 0)};
-        if (!s7::is_symbol(tag) || s7::symbol_name(tag) != expected_tag) {
+        if (!::ioj::s7::is_symbol(tag) || ::ioj::s7::symbol_name(tag) != expected_tag) {
             add_error(path, "Expected a '" + std::string{expected_tag} + "' value");
             return false;
         }
         return true;
     }
 
-    auto read_symbol(s7::Value const value, std::string const& path, std::string& output) -> bool {
-        if (!s7::is_symbol(value)) {
+    auto read_symbol(::ioj::s7::Value const value, std::string const& path, std::string& output)
+        -> bool {
+        if (!::ioj::s7::is_symbol(value)) {
             add_error(path, "Expected a symbol");
             return false;
         }
-        output = s7::symbol_name(value);
+        output = ::ioj::s7::symbol_name(value);
         reader_detail::lowercase_ascii(output);
         return true;
     }
 
-    auto read_string(s7::Value const value, std::string const& path, std::string& output) -> bool {
-        if (!s7::is_string(value)) {
+    auto read_string(::ioj::s7::Value const value, std::string const& path, std::string& output)
+        -> bool {
+        if (!::ioj::s7::is_string(value)) {
             add_error(path, "Expected a string");
             return false;
         }
-        output = s7::string_value(value);
+        output = ::ioj::s7::string_value(value);
         return true;
     }
 
-    auto read_number(s7::Value const value, std::string const& path, double& output) -> bool {
-        if (!s7::is_real(value)) {
+    auto read_number(::ioj::s7::Value const value, std::string const& path, double& output)
+        -> bool {
+        if (!::ioj::s7::is_real(value)) {
             add_error(path, "Expected a real number");
             return false;
         }
-        output = s7::number_to_real(scheme_, value);
+        output = ::ioj::s7::number_to_real(scheme_, value);
         return true;
     }
 
-    auto read_int32(s7::Value const value, std::string const& path, std::int32_t& output) -> bool {
+    auto read_int32(::ioj::s7::Value const value, std::string const& path, std::int32_t& output)
+        -> bool {
         double number{};
         if (!read_number(value, path, number)) {
             return false;
@@ -294,13 +300,15 @@ class DefinitionDecoder final {
         return true;
     }
 
-    void read_text_clause(s7::Value const clause, std::string const& path, std::string& output) {
+    void read_text_clause(::ioj::s7::Value const clause,
+                          std::string const& path,
+                          std::string& output) {
         if (expect_length(clause, 2, path)) {
             read_string(list_value(clause, 1), path + ".value", output);
         }
     }
 
-    void read_unlock(s7::Value const clause, std::string const& path) {
+    void read_unlock(::ioj::s7::Value const clause, std::string const& path) {
         auto const count{list_length(clause) - 1};
         if (count == 0) {
             add_error(path, "Unlock clause must contain at least one criterion");
@@ -316,11 +324,11 @@ class DefinitionDecoder final {
             }
 
             auto const tag_value{list_value(value, 0)};
-            if (!s7::is_symbol(tag_value)) {
+            if (!::ioj::s7::is_symbol(tag_value)) {
                 add_error(criterion_path, "Unlock criterion tag must be a symbol");
                 continue;
             }
-            auto const tag{std::string{s7::symbol_name(tag_value)}};
+            auto const tag{std::string{::ioj::s7::symbol_name(tag_value)}};
             if (tag != "level-completed") {
                 add_error(criterion_path, "Unknown unlock criterion '" + tag + "'");
                 continue;
@@ -336,7 +344,7 @@ class DefinitionDecoder final {
         }
     }
 
-    void read_teams(s7::Value const clause, std::string const& path) {
+    void read_teams(::ioj::s7::Value const clause, std::string const& path) {
         auto const count{list_length(clause) - 1};
         for (std::int64_t index{}; index < count; ++index) {
             auto const value{list_value(clause, index + 1)};
@@ -353,7 +361,7 @@ class DefinitionDecoder final {
         }
     }
 
-    void read_camera(s7::Value const clause, std::string const& path) {
+    void read_camera(::ioj::s7::Value const clause, std::string const& path) {
         if (!expect_length(clause, 4, path)) {
             return;
         }
@@ -400,7 +408,7 @@ class DefinitionDecoder final {
         }
     }
 
-    auto read_mission_mode(s7::Value const value,
+    auto read_mission_mode(::ioj::s7::Value const value,
                            std::string const& path,
                            ::ioj::sim::levels::LevelMissionMode& output) -> bool {
         std::string mode;
@@ -420,7 +428,7 @@ class DefinitionDecoder final {
         return true;
     }
 
-    void read_entity_id_list(s7::Value const value,
+    void read_entity_id_list(::ioj::s7::Value const value,
                              std::string_view const tag,
                              std::string const& path,
                              std::vector<std::string>& output) {
@@ -439,7 +447,7 @@ class DefinitionDecoder final {
         }
     }
 
-    void read_mission(s7::Value const clause, std::string const& path) {
+    void read_mission(::ioj::s7::Value const clause, std::string const& path) {
         ::ioj::sim::levels::LevelMissionDefinition mission;
         bool has_mode{};
         bool has_time_limit{};
@@ -457,11 +465,11 @@ class DefinitionDecoder final {
             }
 
             auto const tag_value{list_value(value, 0)};
-            if (!s7::is_symbol(tag_value)) {
+            if (!::ioj::s7::is_symbol(tag_value)) {
                 add_error(clause_path, "Mission clause tag must be a symbol");
                 continue;
             }
-            auto const tag{std::string{s7::symbol_name(tag_value)}};
+            auto const tag{std::string{::ioj::s7::symbol_name(tag_value)}};
             if (tag == "mode") {
                 if (has_mode) {
                     add_error(clause_path, "Duplicate mission mode clause");
@@ -523,7 +531,7 @@ class DefinitionDecoder final {
         definition_.mission = std::move(mission);
     }
 
-    void read_mission_events(s7::Value const clause, std::string const& path) {
+    void read_mission_events(::ioj::s7::Value const clause, std::string const& path) {
         auto const event_count{list_length(clause) - 1};
         for (std::int64_t event_index{}; event_index < event_count; ++event_index) {
             auto const value{list_value(clause, event_index + 1)};
@@ -551,12 +559,12 @@ class DefinitionDecoder final {
                     continue;
                 }
                 auto const tag_value{list_value(event_clause, 0)};
-                if (!s7::is_symbol(tag_value)) {
+                if (!::ioj::s7::is_symbol(tag_value)) {
                     add_error(clause_path, "Mission event clause tag must be a symbol");
                     valid = false;
                     continue;
                 }
-                auto const tag{std::string{s7::symbol_name(tag_value)}};
+                auto const tag{std::string{::ioj::s7::symbol_name(tag_value)}};
                 if (tag == "add-must-survive") {
                     read_entity_id_list(event_clause,
                                         "add-must-survive",
@@ -586,7 +594,7 @@ class DefinitionDecoder final {
         }
     }
 
-    auto read_vector(s7::Value const value,
+    auto read_vector(::ioj::s7::Value const value,
                      std::string_view const tag,
                      std::string const& path,
                      double (&components)[3]) -> bool {
@@ -604,7 +612,7 @@ class DefinitionDecoder final {
         return valid;
     }
 
-    void read_entities(s7::Value const clause, std::string const& path) {
+    void read_entities(::ioj::s7::Value const clause, std::string const& path) {
         auto const count{list_length(clause) - 1};
         for (std::int64_t index{}; index < count; ++index) {
             auto const value{list_value(clause, index + 1)};
@@ -654,7 +662,7 @@ class DefinitionDecoder final {
         }
     }
 
-    void read_collision_grid(s7::Value const clause, std::string const& path) {
+    void read_collision_grid(::ioj::s7::Value const clause, std::string const& path) {
         auto const count{list_length(clause) - 1};
         if (count == 0) {
             add_error(path, "Collision-grid clause must contain a level-size or cell-size");
@@ -665,12 +673,12 @@ class DefinitionDecoder final {
         for (std::int64_t index{}; index < count; ++index) {
             auto const value{list_value(clause, index + 1)};
             auto const value_path{reader_detail::indexed_path(path, index)};
-            if (!is_non_empty_list(value) || !s7::is_symbol(list_value(value, 0))) {
+            if (!is_non_empty_list(value) || !::ioj::s7::is_symbol(list_value(value, 0))) {
                 add_error(value_path, "Expected a collision-grid dimension");
                 valid = false;
                 continue;
             }
-            auto const tag{std::string{s7::symbol_name(list_value(value, 0))}};
+            auto const tag{std::string{::ioj::s7::symbol_name(list_value(value, 0))}};
             double components[3]{};
             if (tag == "level-size") {
                 if (grid.level_size) {
@@ -706,8 +714,8 @@ class DefinitionDecoder final {
         }
     }
 
-    s7::Scheme& scheme_;
-    s7::Value root_{};
+    ::ioj::s7::Scheme& scheme_;
+    ::ioj::s7::Value root_{};
     ::ioj::sim::levels::LevelDefinition definition_{};
     std::vector<LevelDefinitionDecodeError> errors_{};
 };
@@ -738,11 +746,11 @@ auto LevelDefinitionReader::read_file(std::filesystem::path const& path) const
 
 auto LevelDefinitionReader::read_source(std::string_view const source) const
     -> LevelDefinitionReadResult {
-    s7::InterpreterOptions options;
+    ::ioj::s7::InterpreterOptions options;
     if (!script_library_root_.empty()) {
         options.script_library_root_utf8 = script_library_root_;
     }
-    s7::Interpreter interpreter{std::move(options)};
+    ::ioj::s7::Interpreter interpreter{std::move(options)};
 
     std::string expression;
     expression.reserve(level_definition_reader_detail::level_prelude.size() + source.size() + 10);
@@ -753,7 +761,7 @@ auto LevelDefinitionReader::read_source(std::string_view const source) const
 
     LevelDefinitionReadResult decoded;
     auto const evaluation{interpreter.evaluate_value(
-        expression, [&decoded](s7::Scheme& scheme, s7::Value const value) {
+        expression, [&decoded](::ioj::s7::Scheme& scheme, ::ioj::s7::Value const value) {
             decoded = DefinitionDecoder{scheme, value}.decode();
         })};
     if (!evaluation) {

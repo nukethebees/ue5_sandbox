@@ -1,8 +1,8 @@
 #include <sandbox/level_authoring/CampaignDefinitionReader.h>
 
 #include "reader_utilities.h"
-#include <native/s7/interpreter.h>
-#include <native/s7/value.h>
+#include <ioj/s7/interpreter.h>
+#include <ioj/s7/value.h>
 
 #include <algorithm>
 #include <cctype>
@@ -28,7 +28,7 @@ auto blank(std::string const& value) -> bool {
 
 class CampaignDecoder final {
   public:
-    CampaignDecoder(s7::Scheme& scheme, s7::Value const root)
+    CampaignDecoder(::ioj::s7::Scheme& scheme, ::ioj::s7::Value const root)
         : scheme_{scheme}
         , root_{root} {}
 
@@ -50,12 +50,12 @@ class CampaignDecoder final {
             }
 
             auto const tag_value{list_value(clause, 0)};
-            if (!s7::is_symbol(tag_value)) {
+            if (!::ioj::s7::is_symbol(tag_value)) {
                 add_error(path, "Campaign clause tag must be a symbol");
                 continue;
             }
 
-            auto const tag{std::string{s7::symbol_name(tag_value)}};
+            auto const tag{std::string{::ioj::s7::symbol_name(tag_value)}};
             if (tag == "id") {
                 if (has_id) {
                     add_error(path, "Duplicate id clause");
@@ -101,25 +101,27 @@ class CampaignDecoder final {
         return {.definition = std::move(definition_)};
     }
   private:
-    auto list_length(s7::Value const value) const -> std::int64_t {
-        return s7::list_length(scheme_, value);
+    auto list_length(::ioj::s7::Value const value) const -> std::int64_t {
+        return ::ioj::s7::list_length(scheme_, value);
     }
 
-    auto list_value(s7::Value const value, std::int64_t const index) const -> s7::Value {
-        return s7::list_value(scheme_, value, index);
+    auto list_value(::ioj::s7::Value const value, std::int64_t const index) const
+        -> ::ioj::s7::Value {
+        return ::ioj::s7::list_value(scheme_, value, index);
     }
 
-    auto is_non_empty_list(s7::Value const value) const -> bool {
-        return s7::is_list(scheme_, value) && list_length(value) > 0;
+    auto is_non_empty_list(::ioj::s7::Value const value) const -> bool {
+        return ::ioj::s7::is_list(scheme_, value) && list_length(value) > 0;
     }
 
     void add_error(std::string path, std::string message) {
         errors_.push_back({std::move(path), std::move(message)});
     }
 
-    auto expect_length(s7::Value const value, std::int64_t const expected, std::string const& path)
-        -> bool {
-        if (!s7::is_list(scheme_, value)) {
+    auto expect_length(::ioj::s7::Value const value,
+                       std::int64_t const expected,
+                       std::string const& path) -> bool {
+        if (!::ioj::s7::is_list(scheme_, value)) {
             add_error(path, "Expected a list");
             return false;
         }
@@ -133,7 +135,7 @@ class CampaignDecoder final {
         return true;
     }
 
-    auto expect_tagged_list(s7::Value const value,
+    auto expect_tagged_list(::ioj::s7::Value const value,
                             std::string_view const expected_tag,
                             std::string const& path) -> bool {
         if (!is_non_empty_list(value)) {
@@ -141,33 +143,35 @@ class CampaignDecoder final {
             return false;
         }
         auto const tag{list_value(value, 0)};
-        if (!s7::is_symbol(tag) || s7::symbol_name(tag) != expected_tag) {
+        if (!::ioj::s7::is_symbol(tag) || ::ioj::s7::symbol_name(tag) != expected_tag) {
             add_error(path, "Expected a '" + std::string{expected_tag} + "' value");
             return false;
         }
         return true;
     }
 
-    auto read_symbol(s7::Value const value, std::string const& path, std::string& output) -> bool {
-        if (!s7::is_symbol(value)) {
+    auto read_symbol(::ioj::s7::Value const value, std::string const& path, std::string& output)
+        -> bool {
+        if (!::ioj::s7::is_symbol(value)) {
             add_error(path, "Expected a symbol");
             return false;
         }
-        output = s7::symbol_name(value);
+        output = ::ioj::s7::symbol_name(value);
         reader_detail::lowercase_ascii(output);
         return true;
     }
 
-    auto read_string(s7::Value const value, std::string const& path, std::string& output) -> bool {
-        if (!s7::is_string(value)) {
+    auto read_string(::ioj::s7::Value const value, std::string const& path, std::string& output)
+        -> bool {
+        if (!::ioj::s7::is_string(value)) {
             add_error(path, "Expected a string");
             return false;
         }
-        output = s7::string_value(value);
+        output = ::ioj::s7::string_value(value);
         return true;
     }
 
-    void read_levels(s7::Value const clause, std::string const& path) {
+    void read_levels(::ioj::s7::Value const clause, std::string const& path) {
         std::unordered_set<std::string> seen;
         auto const count{list_length(clause) - 1};
         definition_.level_ids.reserve(static_cast<std::size_t>(count));
@@ -185,8 +189,8 @@ class CampaignDecoder final {
         }
     }
 
-    s7::Scheme& scheme_;
-    s7::Value root_{};
+    ::ioj::s7::Scheme& scheme_;
+    ::ioj::s7::Value root_{};
     CampaignDefinition definition_{};
     std::vector<CampaignDefinitionDecodeError> errors_{};
 };
@@ -197,11 +201,11 @@ CampaignDefinitionReader::CampaignDefinitionReader(std::string script_library_ro
 
 auto CampaignDefinitionReader::read_source(std::string_view const source) const
     -> CampaignDefinitionReadResult {
-    s7::InterpreterOptions options;
+    ::ioj::s7::InterpreterOptions options;
     if (!script_library_root_.empty()) {
         options.script_library_root_utf8 = script_library_root_;
     }
-    s7::Interpreter interpreter{std::move(options)};
+    ::ioj::s7::Interpreter interpreter{std::move(options)};
 
     std::string expression;
     auto const prelude{campaign_definition_reader_detail::campaign_prelude};
@@ -213,7 +217,7 @@ auto CampaignDefinitionReader::read_source(std::string_view const source) const
 
     CampaignDefinitionReadResult decoded;
     auto const evaluation{interpreter.evaluate_value(
-        expression, [&decoded](s7::Scheme& scheme, s7::Value const value) {
+        expression, [&decoded](::ioj::s7::Scheme& scheme, ::ioj::s7::Value const value) {
             decoded = CampaignDecoder{scheme, value}.decode();
         })};
     if (!evaluation) {

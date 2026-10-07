@@ -1,14 +1,14 @@
-#include <native/s7/detail/script_bindings.h>
+#include <ioj/s7/detail/script_bindings.h>
 
 #include "sandbox_policy.h"
 #include "script_files_win32.h"
-#include <native/s7/detail/s7_ownership.h>
+#include <ioj/s7/detail/s7_ownership.h>
 
 #include <cassert>
 #include <limits>
 #include <utility>
 
-namespace ml::s7::detail {
+namespace ioj::s7::detail {
 auto prepare_loader_factory(s7_scheme* const scheme) -> s7_pointer {
     // Read and evaluate captured forms inside Scheme so errors and continuation
     // exits reach the wind handler without crossing a resource-owning C++ frame.
