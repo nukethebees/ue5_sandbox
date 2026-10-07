@@ -146,8 +146,7 @@ public class SandboxCore : ModuleRules
             }
 
             PublicAdditionalLibraries.Add(tracyLibrary);
-            PublicDelayLoadDLLs.Add("SandboxTracyClient.dll");
-            RuntimeDependencies.Add("$(TargetOutputDir)/SandboxTracyClient.dll", tracyRuntime);
+            RuntimeDependencies.Add("$(BinaryOutputDir)/SandboxTracyClient.dll", tracyRuntime);
             ExternalDependencies.Add(tracyLibrary);
             ExternalDependencies.Add(tracyRuntime);
         }

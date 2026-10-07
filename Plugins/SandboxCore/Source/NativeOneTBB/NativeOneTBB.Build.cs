@@ -44,7 +44,7 @@ public class NativeOneTBB : ModuleRules
             }
 
             PublicAdditionalLibraries.Add(library);
-            RuntimeDependencies.Add("$(TargetOutputDir)/" + name + ".dll", runtime);
+            RuntimeDependencies.Add("$(BinaryOutputDir)/" + name + ".dll", runtime);
             ExternalDependencies.Add(library);
             ExternalDependencies.Add(runtime);
         }
