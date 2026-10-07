@@ -85,6 +85,7 @@ class NativeWorkflowTests(unittest.TestCase):
             (fixture / "CMakeLists.txt").write_text(
                 'cmake_minimum_required(VERSION 4.4.2)\n'
                 'project(OptionProbes LANGUAGES CXX)\n'
+                f'include("{self.source_dir.as_posix()}/cmake/compiler_options/CMakeLists.txt")\n'
                 f'include("{self.source_dir.as_posix()}/cmake/compiler_warnings/add_supported_interface_options.cmake")\n'
                 'set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ENTRY:ioj_missing_entry")\n'
                 'add_library(valid INTERFACE)\n'
@@ -605,7 +606,7 @@ cmake_language(DEFER CALL check_simulation_policy)
             self.assertNotIn("LLVM_DIR:", cache)
             self.assertNotIn("Clang_DIR:", cache)
             consumer_policy = (build_directory / "consumer-policy.txt").read_text()
-            self.assertIn("cxx_std_23", consumer_policy)
+            self.assertIn("cxx_std_26", consumer_policy)
             self.assertIn("_ITERATOR_DEBUG_LEVEL=0", consumer_policy)
             self.assertIn("/permissive-", consumer_policy)
             self.assertNotRegex(consumer_policy, r"/W4|/WX|-Werror|-Wpedantic")

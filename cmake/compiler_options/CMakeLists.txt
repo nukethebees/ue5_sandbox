@@ -1,6 +1,11 @@
 add_library(ioj_cxx_standard INTERFACE)
 add_library(ioj::cxx_standard ALIAS ioj_cxx_standard)
-target_compile_features(ioj_cxx_standard INTERFACE cxx_std_23)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+  # Preserve the pinned MSVC presets until CMake supports their C++26 mode.
+  target_compile_features(ioj_cxx_standard INTERFACE cxx_std_23)
+else()
+  target_compile_features(ioj_cxx_standard INTERFACE cxx_std_26)
+endif()
 
 add_library(ioj_native_abi INTERFACE)
 add_library(ioj::native_abi ALIAS ioj_native_abi)

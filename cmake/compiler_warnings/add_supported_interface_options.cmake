@@ -27,6 +27,9 @@ function(target_add_supported_options interface_target)
     set(supported_options_SOURCE "int main() { return 0; }")
   endif()
 
+  get_target_property(cxx_features ioj::cxx_standard INTERFACE_COMPILE_FEATURES)
+  string(REGEX REPLACE "^cxx_std_" "" cxx_standard "${cxx_features}")
+
   string(CONCAT options_identity
     "${CMAKE_CXX_COMPILER};${CMAKE_CXX_COMPILER_ARG1};${CMAKE_CXX_COMPILER_TARGET};"
     "${CMAKE_CXX_COMPILER_ID};${CMAKE_CXX_COMPILER_VERSION};"
@@ -34,7 +37,7 @@ function(target_add_supported_options interface_target)
     "${CMAKE_CXX_FLAGS};${CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES};"
     "${CMAKE_TRY_COMPILE_CONFIGURATION};${CMAKE_MSVC_RUNTIME_LIBRARY};"
     "${CMAKE_CXX_COMPILER_FRONTEND_VARIANT};${supported_options_SOURCE};"
-    "${supported_options_COMPILE};${supported_options_LINK}"
+    "${supported_options_COMPILE};${supported_options_LINK};CXX_STANDARD=${cxx_standard}"
   )
   string(TOUPPER "${CMAKE_TRY_COMPILE_CONFIGURATION}" probe_configuration)
   if(NOT probe_configuration)
@@ -68,7 +71,7 @@ function(target_add_supported_options interface_target)
     try_compile(options_compile_succeeded
       SOURCE_FROM_VAR supported_options.cpp supported_options_SOURCE
       ${try_compile_arguments}
-      CXX_STANDARD 23
+      CXX_STANDARD ${cxx_standard}
       CXX_STANDARD_REQUIRED TRUE
       CXX_EXTENSIONS TRUE
       OUTPUT_VARIABLE options_compile_output
