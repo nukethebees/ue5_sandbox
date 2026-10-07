@@ -1,6 +1,7 @@
-#include <ioj/sim/levels/level_definition.h>
+#include <ioj/levels/level_definition.h>
 
-#include <ioj/sim/collision_grid.h>
+#include <ioj/ascii.h>
+#include <ioj/grid_dimensions.h>
 
 #include <algorithm>
 #include <cctype>
@@ -9,7 +10,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-namespace ioj::sim::levels {
+namespace ioj::levels {
 namespace {
 using IdSet = std::unordered_set<std::string>;
 
@@ -351,16 +352,7 @@ auto validate_level(LevelDefinition const& definition) -> LevelValidationResult 
         add_error(
             result, LevelValidationErrorCode::MissingLevelId, "Level definition has no stable id");
     }
-    auto title{definition.metadata.title};
-    title.erase(title.begin(), std::find_if(title.begin(), title.end(), [](unsigned char const c) {
-                    return std::isspace(c) == 0;
-                }));
-    title.erase(std::find_if(title.rbegin(),
-                             title.rend(),
-                             [](unsigned char const c) { return std::isspace(c) == 0; })
-                    .base(),
-                title.end());
-    if (title.empty()) {
+    if (ioj::blank(definition.metadata.title)) {
         add_error(result, LevelValidationErrorCode::MissingTitle, "Level definition has no title");
     }
     if (definition.metadata.par_time_seconds) {
@@ -399,15 +391,13 @@ auto validate_level(LevelDefinition const& definition) -> LevelValidationResult 
                       "Collision-grid cell size must be finite and greater than zero");
         }
         if (grid.level_size && grid.cell_size && valid_level_size && valid_cell_size) {
-            auto const level_size{Vector3f{{static_cast<float>(grid.level_size->x),
-                                            static_cast<float>(grid.level_size->y),
-                                            static_cast<float>(grid.level_size->z)}}};
-            auto const cell_size{Vector3f{{static_cast<float>(grid.cell_size->x),
-                                           static_cast<float>(grid.cell_size->y),
-                                           static_cast<float>(grid.cell_size->z)}}};
-            auto const dimensions{collision::calculate_grid_dimensions(level_size, cell_size)};
-            auto const geometry{collision::GridGeometry{dimensions, cell_size}};
-            if (!collision::is_configured(geometry) || collision::num_cells(geometry) <= 0) {
+            auto const x{ioj::grid_axis_count(static_cast<float>(grid.level_size->x),
+                                              static_cast<float>(grid.cell_size->x))};
+            auto const y{ioj::grid_axis_count(static_cast<float>(grid.level_size->y),
+                                              static_cast<float>(grid.cell_size->y))};
+            auto const z{ioj::grid_axis_count(static_cast<float>(grid.level_size->z),
+                                              static_cast<float>(grid.cell_size->z))};
+            if (!ioj::grid_cell_count_fits(x, y, z)) {
                 add_error(result,
                           LevelValidationErrorCode::InvalidGridDimensions,
                           "Collision-grid dimensions and cell count must fit in 32-bit integers");

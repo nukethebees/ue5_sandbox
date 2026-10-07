@@ -1,0 +1,64 @@
+(module native_levels_level_mission_mode
+  :header "native/levels/lib/include/ioj/levels/level_mission_mode.h"
+  :header-include "ioj/levels/level_mission_mode.h"
+  :backend standard-library
+  :namespace ioj::levels
+  (enum LevelMissionMode std::uint8_t
+    :native-api true
+    (value Unspecified :serialized-name "unspecified")
+    (value SurviveTime :serialized-name "survive-time")
+    (value KillEnemies :serialized-name "kill-enemies")
+    (value KillEnemiesWithinTime :serialized-name "kill-enemies-within-time")))
+
+(module native_levels_level_validation_error_code
+  :header "native/levels/lib/include/ioj/levels/level_validation_error_code.h"
+  :header-include "ioj/levels/level_validation_error_code.h"
+  :backend standard-library
+  :namespace ioj::levels
+  (enum LevelValidationErrorCode std::uint8_t
+    (value MissingLevelId)
+    (value MissingTitle)
+    (value InvalidParTime)
+    (value UnexpectedParTime)
+    (value MissingViewpoint)
+    (value ConflictingViewpoints)
+    (value PlayerEntityNotFound)
+    (value MismatchedEntityColumns)
+    (value EmptyTeamId)
+    (value DuplicateTeamId)
+    (value UnsupportedTeamId)
+    (value UnknownTeamReference)
+    (value EmptyArchetypeId)
+    (value UnsupportedArchetype)
+    (value ArchetypeRoleMismatch)
+    (value DuplicateEntityId)
+    (value InvalidPlacement)
+    (value InvalidSpawnTime)
+    (value DelayedPlayerSpawn)
+    (value MissingCameraTarget)
+    (value DuplicateCameraTarget)
+    (value CameraTargetNotFound)
+    (value InvalidCameraDistance)
+    (value InvalidCameraOffsetDirection)
+    (value InvalidLevelSize)
+    (value InvalidGridCellSize)
+    (value InvalidGridDimensions)
+    (value MissingMissionMode)
+    (value UnsupportedMissionMode)
+    (value InvalidMissionTimeLimit)
+    (value UnexpectedMissionTimeLimit)
+    (value InvalidMissionKillCount)
+    (value UnexpectedMissionKillCount)
+    (value MissingMissionHeroes)
+    (value MissingMissionSurvivors)
+    (value MissionEntityNotFound)
+    (value DuplicateMissionEntityReference)
+    (value ConflictingMissionEntityRoles)
+    (value AmbiguousAutomaticKillTeams)
+    (value MissingUnlockLevelId)
+    (value DuplicateUnlockCriterion)
+    (value SelfUnlockDependency)
+    (value UnexpectedMissionEvent)
+    (value InvalidMissionEventTime)
+    (value InvalidMissionKillIncrease)
+    (value MissionEventBeforeEntitySpawn)))

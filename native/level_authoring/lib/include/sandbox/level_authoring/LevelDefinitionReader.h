@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/levels/level_definition.h>
+#include <ioj/levels/level_definition.h>
 
 #include <filesystem>
 #include <optional>
@@ -15,10 +15,10 @@ struct LevelDefinitionDecodeError {
 };
 
 struct LevelDefinitionReadResult {
-    std::optional<::ioj::sim::levels::LevelDefinition> definition{};
+    std::optional<::ioj::levels::LevelDefinition> definition{};
     std::string script_error{};
     std::vector<LevelDefinitionDecodeError> decode_errors{};
-    std::vector<::ioj::sim::levels::LevelValidationError> validation_errors{};
+    std::vector<::ioj::levels::LevelValidationError> validation_errors{};
 
     explicit operator bool() const noexcept { return definition.has_value(); }
 };

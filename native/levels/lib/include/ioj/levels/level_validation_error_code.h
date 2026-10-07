@@ -5,7 +5,7 @@
 
 #include <cstdint>
 
-namespace ioj::sim::levels {
+namespace ioj::levels {
 enum class LevelValidationErrorCode : std::uint8_t {
     MissingLevelId,
     MissingTitle,
@@ -55,4 +55,4 @@ enum class LevelValidationErrorCode : std::uint8_t {
     MissionEventBeforeEntitySpawn,
 };
 
-} // namespace ioj::sim::levels
+} // namespace ioj::levels

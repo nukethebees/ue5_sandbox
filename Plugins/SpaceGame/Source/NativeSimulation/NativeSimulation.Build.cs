@@ -11,6 +11,7 @@ public class NativeSimulation : ModuleRules
         PublicDependencyModuleNames.AddRange(new string[]
         {
             "NativeMemory",
+            "NativeLevels",
             "NativeOneTBB",
             "SandboxCore",
         });

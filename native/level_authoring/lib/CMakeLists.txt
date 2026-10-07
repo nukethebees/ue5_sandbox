@@ -3,7 +3,6 @@ target_sources(native-level-authoring PRIVATE
   src/reader_utilities.h
   include/sandbox/level_authoring/LevelDefinitionReader.h
   src/LevelDefinitionReader.cpp
-  include/sandbox/level_authoring/CampaignDefinition.h
   include/sandbox/level_authoring/CampaignDefinitionReader.h
   src/CampaignDefinitionReader.cpp
   include/sandbox/level_authoring/LevelDefinitionWriter.h
@@ -15,7 +14,7 @@ target_include_directories(native-level-authoring PUBLIC include)
 target_link_libraries(native-level-authoring
   PUBLIC
     sandbox::native_defaults
-    native-simulation
+    native-levels
   PRIVATE
     sandbox-s7
 )

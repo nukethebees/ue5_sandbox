@@ -191,7 +191,7 @@ class CampaignDecoder final {
 
     ::ioj::s7::Scheme& scheme_;
     ::ioj::s7::Value root_{};
-    CampaignDefinition definition_{};
+    ::ioj::levels::CampaignDefinition definition_{};
     std::vector<CampaignDefinitionDecodeError> errors_{};
 };
 } // namespace

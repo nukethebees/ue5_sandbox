@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/level_authoring/CampaignDefinition.h>
+#include <ioj/levels/campaign_definition.h>
 
 #include <optional>
 #include <string>
@@ -14,7 +14,7 @@ struct CampaignDefinitionDecodeError {
 };
 
 struct CampaignDefinitionReadResult {
-    std::optional<CampaignDefinition> definition{};
+    std::optional<::ioj::levels::CampaignDefinition> definition{};
     std::string script_error{};
     std::vector<CampaignDefinitionDecodeError> decode_errors{};
 

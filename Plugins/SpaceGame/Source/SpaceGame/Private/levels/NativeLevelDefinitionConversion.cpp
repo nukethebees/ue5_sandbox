@@ -40,8 +40,8 @@ auto to_unreal_ids(std::vector<std::string> const& source) -> TArray<Id> {
 }
 } // namespace
 
-auto to_native(FLevelDefinition const& definition) -> ::ioj::sim::levels::LevelDefinition {
-    ::ioj::sim::levels::LevelDefinition result;
+auto to_native(FLevelDefinition const& definition) -> ::ioj::levels::LevelDefinition {
+    ::ioj::levels::LevelDefinition result;
     result.metadata.id = to_utf8(definition.metadata.id.value);
     result.metadata.title = to_utf8(definition.metadata.title);
     result.metadata.description = to_utf8(definition.metadata.description);
@@ -58,14 +58,14 @@ auto to_native(FLevelDefinition const& definition) -> ::ioj::sim::levels::LevelD
 
     if (definition.collision_grid.IsSet()) {
         auto const& grid{definition.collision_grid.GetValue()};
-        ::ioj::sim::levels::LevelCollisionGridDefinition native_grid;
+        ::ioj::levels::LevelCollisionGridDefinition native_grid;
         if (grid.level_size.IsSet()) {
             auto const size{grid.level_size.GetValue()};
-            native_grid.level_size = ::ioj::sim::levels::Vector3d{size.X, size.Y, size.Z};
+            native_grid.level_size = ::ioj::levels::Vector3d{size.X, size.Y, size.Z};
         }
         if (grid.cell_size.IsSet()) {
             auto const size{grid.cell_size.GetValue()};
-            native_grid.cell_size = ::ioj::sim::levels::Vector3d{size.X, size.Y, size.Z};
+            native_grid.cell_size = ::ioj::levels::Vector3d{size.X, size.Y, size.Z};
         }
         result.collision_grid = MoveTemp(native_grid);
     }
@@ -82,7 +82,7 @@ auto to_native(FLevelDefinition const& definition) -> ::ioj::sim::levels::LevelD
     }
     if (definition.mission.IsSet()) {
         auto const& mission{definition.mission.GetValue()};
-        ::ioj::sim::levels::LevelMissionDefinition native_mission{
+        ::ioj::levels::LevelMissionDefinition native_mission{
             .mode = mission.mode,
             .hero_entity_ids = to_ids<FLevelEntityId>(mission.hero_entity_ids),
             .must_survive_entity_ids = to_ids<FLevelEntityId>(mission.must_survive_entity_ids),
@@ -128,7 +128,7 @@ auto to_native(FLevelDefinition const& definition) -> ::ioj::sim::levels::LevelD
     return result;
 }
 
-auto to_unreal(::ioj::sim::levels::LevelDefinition definition) -> FLevelDefinition {
+auto to_unreal(::ioj::levels::LevelDefinition definition) -> FLevelDefinition {
     FLevelBuilder builder;
     FLevelMetadata metadata{
         .id = FLevelId{to_fname(definition.metadata.id)},

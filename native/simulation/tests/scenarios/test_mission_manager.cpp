@@ -56,17 +56,17 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
     }};
     switch (scenario) {
         case Scenario::SurviveTime:
-            mission.mode = levels::LevelMissionMode::SurviveTime;
+            mission.mode = ::ioj::levels::LevelMissionMode::SurviveTime;
             mission.time_limit_seconds = 0.1f;
             add_survivor();
             break;
         case Scenario::KillEnemies:
-            mission.mode = levels::LevelMissionMode::KillEnemies;
+            mission.mode = ::ioj::levels::LevelMissionMode::KillEnemies;
             mission.kill_count = 1;
             add_hero();
             break;
         case Scenario::KillEnemiesWithinTime:
-            mission.mode = levels::LevelMissionMode::KillEnemiesWithinTime;
+            mission.mode = ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime;
             mission.time_limit_seconds = 0.1f;
             mission.kill_count = 1;
             add_hero();
@@ -74,24 +74,24 @@ void run_worldless_mission_manager_scenario(tests::SimulationFixture const& conf
         case Scenario::DefenceObjective:
         case Scenario::SuccessIsTerminal:
         case Scenario::ExplicitCompletionIsLatched:
-            mission.mode = levels::LevelMissionMode::SurviveTime;
+            mission.mode = ::ioj::levels::LevelMissionMode::SurviveTime;
             mission.time_limit_seconds = scenario == Scenario::SuccessIsTerminal ? 0.1f : 10.f;
             add_survivor();
             break;
         case Scenario::RequiredKillsObjective:
-            mission.mode = levels::LevelMissionMode::KillEnemies;
+            mission.mode = ::ioj::levels::LevelMissionMode::KillEnemies;
             mission.kill_count = 1;
             add_hero();
             add_required_enemy();
             break;
         case Scenario::RequiredKillsTimeElapsed:
-            mission.mode = levels::LevelMissionMode::SurviveTime;
+            mission.mode = ::ioj::levels::LevelMissionMode::SurviveTime;
             mission.time_limit_seconds = 0.1f;
             add_survivor();
             add_required_enemy();
             break;
         case Scenario::AutomaticKillTarget:
-            mission.mode = levels::LevelMissionMode::KillEnemies;
+            mission.mode = ::ioj::levels::LevelMissionMode::KillEnemies;
             mission.kill_count = 0;
             add_hero();
             break;

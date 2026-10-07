@@ -71,8 +71,8 @@ auto strict_subset_error(FLevelDefinition const& definition) -> FString {
     return FString::Join(errors, TEXT("\n"));
 }
 
-auto authoring_mode(::ioj::sim::levels::LevelMissionMode const mode) -> ETestMissionMode {
-    using Source = ::ioj::sim::levels::LevelMissionMode;
+auto authoring_mode(::ioj::levels::LevelMissionMode const mode) -> ETestMissionMode {
+    using Source = ::ioj::levels::LevelMissionMode;
     switch (mode) {
         case Source::SurviveTime:
             return ETestMissionMode::SurviveTime;
@@ -86,8 +86,8 @@ auto authoring_mode(::ioj::sim::levels::LevelMissionMode const mode) -> ETestMis
     return ETestMissionMode::None;
 }
 
-auto mission_mode(ETestMissionMode const mode) -> ::ioj::sim::levels::LevelMissionMode {
-    using Result = ::ioj::sim::levels::LevelMissionMode;
+auto mission_mode(ETestMissionMode const mode) -> ::ioj::levels::LevelMissionMode {
+    using Result = ::ioj::levels::LevelMissionMode;
     switch (mode) {
         case ETestMissionMode::SurviveTime:
             return Result::SurviveTime;

@@ -15,8 +15,8 @@
 namespace ml::level_authoring {
 namespace {
 auto make_level(std::string id, std::vector<std::string> unlocks = {})
-    -> ::ioj::sim::levels::LevelDefinition {
-    ::ioj::sim::levels::LevelDefinition definition{
+    -> ::ioj::levels::LevelDefinition {
+    ::ioj::levels::LevelDefinition definition{
         .metadata = {.id = std::move(id), .title = "Test Level"},
         .unlock_level_ids = std::move(unlocks),
         .player_entity_id = "player",
@@ -149,12 +149,12 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourc
     for (int const mask : {0, 1, 2, 3}) {
         auto definition{base};
         if (mask != 0) {
-            ::ioj::sim::levels::LevelCollisionGridDefinition grid;
+            ::ioj::levels::LevelCollisionGridDefinition grid;
             if ((mask & 1) != 0) {
-                grid.level_size = ::ioj::sim::levels::Vector3d{2000000.0, 2000000.0, 500000.0};
+                grid.level_size = ::ioj::levels::Vector3d{2000000.0, 2000000.0, 500000.0};
             }
             if ((mask & 2) != 0) {
-                grid.cell_size = ::ioj::sim::levels::Vector3d{5000.0, 5000.0, 20000.0};
+                grid.cell_size = ::ioj::levels::Vector3d{5000.0, 5000.0, 20000.0};
             }
             definition.collision_grid = grid;
         }
@@ -233,8 +233,8 @@ TEST(NativeLevelAuthoringWriter, RoundTripsInitialMissionObjectives) {
         .archetype = "capital-ship",
         .team = "red",
     });
-    definition.mission = ::ioj::sim::levels::LevelMissionDefinition{
-        .mode = ::ioj::sim::levels::LevelMissionMode::KillEnemies,
+    definition.mission = ::ioj::levels::LevelMissionDefinition{
+        .mode = ::ioj::levels::LevelMissionMode::KillEnemies,
         .kill_count = 2,
         .hero_entity_ids = {"player"},
         .must_survive_entity_ids = {"player"},
@@ -251,7 +251,7 @@ TEST(NativeLevelAuthoringWriter, RoundTripsInitialMissionObjectives) {
     auto const decoded{reader.read_source(*source)};
     ASSERT_TRUE(decoded) << decoded.script_error;
     ASSERT_TRUE(decoded.definition->mission);
-    EXPECT_EQ(decoded.definition->mission->mode, ::ioj::sim::levels::LevelMissionMode::KillEnemies);
+    EXPECT_EQ(decoded.definition->mission->mode, ::ioj::levels::LevelMissionMode::KillEnemies);
     EXPECT_EQ(decoded.definition->mission->kill_count, 2);
     EXPECT_EQ(decoded.definition->mission->required_kill_entity_ids,
               (std::vector<std::string>{"enemy"}));
@@ -289,9 +289,10 @@ TEST(NativeLevelAuthoringCatalog, ValidatesCampaignIdsAndLevelReferences) {
     };
     std::vector<CampaignCatalogEntry> campaigns{
         {.filename = "first.scm",
-         .definition = CampaignDefinition{.id = "campaign", .level_ids = {"alpha"}}},
+         .definition = ::ioj::levels::CampaignDefinition{.id = "campaign", .level_ids = {"alpha"}}},
         {.filename = "second.scm",
-         .definition = CampaignDefinition{.id = "campaign", .level_ids = {"missing"}}},
+         .definition =
+             ::ioj::levels::CampaignDefinition{.id = "campaign", .level_ids = {"missing"}}},
     };
     auto const duplicate_issues{validate_campaign_catalog(campaigns, levels, {})};
     EXPECT_EQ(duplicate_issues.size(), 2u);

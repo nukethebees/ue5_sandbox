@@ -5,6 +5,8 @@ if(WIN32 AND
 endif()
 
 add_library(native-core STATIC)
+add_library(native-enum-traits INTERFACE)
+target_include_directories(native-enum-traits INTERFACE include)
 target_sources(native-core PRIVATE
   include/sandbox/core/container_ops.h
   include/sandbox/core/monotonic_clock.h

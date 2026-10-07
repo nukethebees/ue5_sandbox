@@ -68,8 +68,8 @@ auto to_native_levels(TArray<FLevelScriptEntry> const& entries)
 }
 
 auto to_native_campaign(FCampaignDefinition const& definition)
-    -> level_authoring::CampaignDefinition {
-    level_authoring::CampaignDefinition result{
+    -> ::ioj::levels::CampaignDefinition {
+    ::ioj::levels::CampaignDefinition result{
         .id = to_utf8(definition.id.value.ToString().ToLower()),
         .title = to_utf8(definition.title),
     };

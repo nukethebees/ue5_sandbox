@@ -279,7 +279,7 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
         LevelMissionEventType::MustSurvive, std::array{static_cast<std::int32_t>(turret_index)}));
 
     auto& mission{data.level_events.initialisation.mission.emplace()};
-    mission.mode = levels::LevelMissionMode::SurviveTime;
+    mission.mode = ::ioj::levels::LevelMissionMode::SurviveTime;
     mission.time_limit_seconds = 10.f;
     mission.save_results = false;
     mission.must_survive_entity_indices = {static_cast<std::int32_t>(capital_index)};
@@ -431,7 +431,7 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
             {.location = {0.0, 500.0, 0.0}}};
 
         auto& mission{data.level_events.initialisation.mission.emplace()};
-        mission.mode = levels::LevelMissionMode::KillEnemies;
+        mission.mode = ::ioj::levels::LevelMissionMode::KillEnemies;
         mission.kill_count = 1;
         mission.save_results = false;
         mission.hero_entity_indices = {static_cast<std::int32_t>(second)};

@@ -12,8 +12,8 @@
 
 namespace ml::editor {
 namespace s7_level_authoring_session_detail {
-auto mission_mode(ETestMissionMode const mode) -> ::ioj::sim::levels::LevelMissionMode {
-    using Result = ::ioj::sim::levels::LevelMissionMode;
+auto mission_mode(ETestMissionMode const mode) -> ::ioj::levels::LevelMissionMode {
+    using Result = ::ioj::levels::LevelMissionMode;
     switch (mode) {
         case ETestMissionMode::SurviveTime:
             return Result::SurviveTime;

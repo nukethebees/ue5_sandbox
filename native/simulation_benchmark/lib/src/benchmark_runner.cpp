@@ -238,7 +238,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         data.player.reset();
     } else {
         auto const player_definition{std::ranges::find(
-            level.entities, level.player_entity_id, &ioj::sim::levels::EntitySpawnDefinition::id)};
+            level.entities, level.player_entity_id, &ioj::levels::EntitySpawnDefinition::id)};
         auto player{reference.player};
         player.team = ioj::sim::levels::to_simulation_team(player_definition->team);
         player.transform.location = {player_definition->position.x,

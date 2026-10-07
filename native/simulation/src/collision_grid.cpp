@@ -1,6 +1,7 @@
 #include "ioj/sim/collision_grid.h"
 
 #include "ioj/sim/vectors3f.h"
+#include <ioj/grid_dimensions.h>
 
 #include <algorithm>
 #include <cassert>
@@ -110,27 +111,14 @@ auto is_configured(GridGeometry const geometry) noexcept -> bool {
         return false;
     }
 
-    auto const xy_cell_count{static_cast<long long>(geometry.dimensions.x) * geometry.dimensions.y};
-    return xy_cell_count <= std::numeric_limits<int>::max() / geometry.dimensions.z;
+    return ioj::grid_cell_count_fits(
+        geometry.dimensions.x, geometry.dimensions.y, geometry.dimensions.z);
 }
 auto calculate_grid_dimensions(Vector3f const grid_size, Vector3f const cell_size) noexcept
     -> CellCoord {
-    auto const calculate_dimension = [](float const extent, float const cell) noexcept -> int {
-        if (!std::isfinite(extent) || !std::isfinite(cell) || extent <= 0.0f || cell <= 0.0f) {
-            return 0;
-        }
-
-        auto const dimension{std::ceil(static_cast<double>(extent) / cell)};
-        if (dimension > static_cast<double>(std::numeric_limits<int>::max())) {
-            return 0;
-        }
-
-        return static_cast<int>(dimension);
-    };
-
-    return {calculate_dimension(grid_size.X, cell_size.X),
-            calculate_dimension(grid_size.Y, cell_size.Y),
-            calculate_dimension(grid_size.Z, cell_size.Z)};
+    return {ioj::grid_axis_count(grid_size.X, cell_size.X),
+            ioj::grid_axis_count(grid_size.Y, cell_size.Y),
+            ioj::grid_axis_count(grid_size.Z, cell_size.Z)};
 }
 auto num_cells(GridGeometry const geometry) noexcept -> GridCellCount {
     return geometry.dimensions.x * geometry.dimensions.y * geometry.dimensions.z;

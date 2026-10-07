@@ -50,16 +50,16 @@ auto compile_proxy_mission(::FLevelMissionDefinition const& definition,
     auto const mode{[&] {
         switch (definition.mission_mode) {
             case ETestMissionMode::None:
-                return ::ioj::sim::levels::LevelMissionMode::Unspecified;
+                return ::ioj::levels::LevelMissionMode::Unspecified;
             case ETestMissionMode::SurviveTime:
-                return ::ioj::sim::levels::LevelMissionMode::SurviveTime;
+                return ::ioj::levels::LevelMissionMode::SurviveTime;
             case ETestMissionMode::KillEnemies:
-                return ::ioj::sim::levels::LevelMissionMode::KillEnemies;
+                return ::ioj::levels::LevelMissionMode::KillEnemies;
             case ETestMissionMode::KillEnemiesWithinTime:
-                return ::ioj::sim::levels::LevelMissionMode::KillEnemiesWithinTime;
+                return ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime;
         }
         checkNoEntry();
-        return ::ioj::sim::levels::LevelMissionMode::Unspecified;
+        return ::ioj::levels::LevelMissionMode::Unspecified;
     }()};
     ::ioj::sim::LevelMissionInitialisationData result{
         .mode = mode,

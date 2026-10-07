@@ -372,7 +372,7 @@ class DefinitionDecoder final {
             return;
         }
 
-        ::ioj::sim::levels::LevelCameraDefinition camera;
+        ::ioj::levels::LevelCameraDefinition camera;
         auto const target_count{list_length(targets) - 1};
         camera.target_entity_ids.reserve(static_cast<std::size_t>(target_count));
         bool valid{true};
@@ -410,17 +410,17 @@ class DefinitionDecoder final {
 
     auto read_mission_mode(::ioj::s7::Value const value,
                            std::string const& path,
-                           ::ioj::sim::levels::LevelMissionMode& output) -> bool {
+                           ::ioj::levels::LevelMissionMode& output) -> bool {
         std::string mode;
         if (!read_symbol(value, path, mode)) {
             return false;
         }
         if (mode == "survive-time") {
-            output = ::ioj::sim::levels::LevelMissionMode::SurviveTime;
+            output = ::ioj::levels::LevelMissionMode::SurviveTime;
         } else if (mode == "kill-enemies") {
-            output = ::ioj::sim::levels::LevelMissionMode::KillEnemies;
+            output = ::ioj::levels::LevelMissionMode::KillEnemies;
         } else if (mode == "kill-enemies-within-time") {
-            output = ::ioj::sim::levels::LevelMissionMode::KillEnemiesWithinTime;
+            output = ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime;
         } else {
             add_error(path, "Unknown mission mode '" + mode + "'");
             return false;
@@ -448,7 +448,7 @@ class DefinitionDecoder final {
     }
 
     void read_mission(::ioj::s7::Value const clause, std::string const& path) {
-        ::ioj::sim::levels::LevelMissionDefinition mission;
+        ::ioj::levels::LevelMissionDefinition mission;
         bool has_mode{};
         bool has_time_limit{};
         bool has_kill_count{};
@@ -540,7 +540,7 @@ class DefinitionDecoder final {
                 continue;
             }
 
-            ::ioj::sim::levels::LevelMissionObjectiveEvent event;
+            ::ioj::levels::LevelMissionObjectiveEvent event;
             auto const time{list_value(value, 1)};
             if (!expect_tagged_list(time, "at", event_path + ".at") ||
                 !expect_length(time, 2, event_path + ".at") ||
@@ -626,7 +626,7 @@ class DefinitionDecoder final {
                 continue;
             }
 
-            ::ioj::sim::levels::EntitySpawnDefinition entity;
+            ::ioj::levels::EntitySpawnDefinition entity;
             double position[3]{};
             double rotation[3]{};
             auto valid{read_symbol(list_value(value, 1), entity_path + ".id", entity.id)};
@@ -668,7 +668,7 @@ class DefinitionDecoder final {
             add_error(path, "Collision-grid clause must contain a level-size or cell-size");
             return;
         }
-        ::ioj::sim::levels::LevelCollisionGridDefinition grid;
+        ::ioj::levels::LevelCollisionGridDefinition grid;
         bool valid{true};
         for (std::int64_t index{}; index < count; ++index) {
             auto const value{list_value(clause, index + 1)};
@@ -688,7 +688,7 @@ class DefinitionDecoder final {
                 }
                 if (read_vector(value, "level-size", value_path, components)) {
                     grid.level_size =
-                        ::ioj::sim::levels::Vector3d{components[0], components[1], components[2]};
+                        ::ioj::levels::Vector3d{components[0], components[1], components[2]};
                 } else {
                     valid = false;
                 }
@@ -700,7 +700,7 @@ class DefinitionDecoder final {
                 }
                 if (read_vector(value, "cell-size", value_path, components)) {
                     grid.cell_size =
-                        ::ioj::sim::levels::Vector3d{components[0], components[1], components[2]};
+                        ::ioj::levels::Vector3d{components[0], components[1], components[2]};
                 } else {
                     valid = false;
                 }
@@ -716,7 +716,7 @@ class DefinitionDecoder final {
 
     ::ioj::s7::Scheme& scheme_;
     ::ioj::s7::Value root_{};
-    ::ioj::sim::levels::LevelDefinition definition_{};
+    ::ioj::levels::LevelDefinition definition_{};
     std::vector<LevelDefinitionDecodeError> errors_{};
 };
 } // namespace

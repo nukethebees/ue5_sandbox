@@ -23,14 +23,16 @@ struct MissionTickValues {
     std::vector<std::int32_t> kill_target_increases{};
 };
 
-auto entity_index(LevelDefinition const& definition, std::string const& id) -> std::uint32_t {
-    auto const found{std::ranges::find(definition.entities, id, &EntitySpawnDefinition::id)};
+auto entity_index(::ioj::levels::LevelDefinition const& definition, std::string const& id)
+    -> std::uint32_t {
+    auto const found{
+        std::ranges::find(definition.entities, id, &::ioj::levels::EntitySpawnDefinition::id)};
     assert(found != definition.entities.end());
     return static_cast<std::uint32_t>(found - definition.entities.begin());
 }
 
 void append_indices(std::vector<std::int32_t>& output,
-                    LevelDefinition const& definition,
+                    ::ioj::levels::LevelDefinition const& definition,
                     std::vector<std::string> const& ids) {
     for (auto const& id : ids) {
         output.push_back(static_cast<std::int32_t>(entity_index(definition, id)));
@@ -115,11 +117,11 @@ auto to_simulation_team(std::string_view const id) noexcept -> Team {
     return Team::White;
 }
 
-auto compile_level(LevelDefinition const& definition,
+auto compile_level(::ioj::levels::LevelDefinition const& definition,
                    SimClock const& clock,
                    CapitalShipSimConfig const& capital_config,
                    TurretSimConfig const& turret_config) -> LevelCompilationResult {
-    auto validation{validate_level(definition)};
+    auto validation{::ioj::levels::validate_level(definition)};
     if (!validation) {
         LevelCompilationErrors errors;
         errors.reserve(validation.errors.size());
@@ -154,8 +156,8 @@ auto compile_level(LevelDefinition const& definition,
         append_indices(mission_initialisation.required_kill_entity_indices,
                        definition,
                        mission.required_kill_entity_ids);
-        if ((mission.mode == LevelMissionMode::KillEnemies ||
-             mission.mode == LevelMissionMode::KillEnemiesWithinTime) &&
+        if ((mission.mode == ::ioj::levels::LevelMissionMode::KillEnemies ||
+             mission.mode == ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime) &&
             !mission.kill_count && !mission.hero_entity_ids.empty()) {
             auto const hero_team{
                 definition.entities[entity_index(definition, mission.hero_entity_ids.front())]

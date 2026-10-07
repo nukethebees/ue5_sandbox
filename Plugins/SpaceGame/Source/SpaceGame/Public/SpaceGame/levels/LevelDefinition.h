@@ -1,6 +1,6 @@
 #pragma once
-#include <ioj/sim/levels/level_definition.h>
-#include <ioj/sim/levels/level_mission_mode.h>
+#include <ioj/levels/level_definition.h>
+#include <ioj/levels/level_mission_mode.h>
 #include <ioj/sim/levels/level_runtime_events.h>
 #include <SpaceGameSimulation/levels/LevelDefinitionSoA.h>
 #include <SpaceGameSimulation/levels/LevelTypes.h>
@@ -37,7 +37,7 @@ struct SPACEGAME_API FLevelCollisionGridDefinition {
 };
 
 struct SPACEGAME_API FLevelMissionDefinition {
-    ::ioj::sim::levels::LevelMissionMode mode{::ioj::sim::levels::LevelMissionMode::Unspecified};
+    ::ioj::levels::LevelMissionMode mode{::ioj::levels::LevelMissionMode::Unspecified};
     TOptional<float> time_limit_seconds{NullOpt};
     TOptional<int32> kill_count{NullOpt};
     TArray<FLevelEntityId> hero_entity_ids{};
@@ -88,7 +88,7 @@ class SPACEGAME_API FLevelBuilder {
     FLevelDefinition definition_{};
 };
 
-using ELevelValidationErrorCode = ::ioj::sim::levels::LevelValidationErrorCode;
+using ELevelValidationErrorCode = ::ioj::levels::LevelValidationErrorCode;
 
 struct SPACEGAME_API FLevelValidationError {
     ELevelValidationErrorCode code{};

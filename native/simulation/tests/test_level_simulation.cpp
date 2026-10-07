@@ -77,7 +77,7 @@ void add_mission(LevelSimInitData& data) {
     auto& mission{data.level_events.initialisation.mission.emplace()};
     auto const entities{
         data.level_events.initial_spawns.capital_spawns.get_const_view().entity_indices()};
-    mission.mode = levels::LevelMissionMode::KillEnemies;
+    mission.mode = ::ioj::levels::LevelMissionMode::KillEnemies;
     mission.kill_count = 1;
     mission.save_results = false;
     mission.hero_entity_indices = {static_cast<std::int32_t>(entities[0])};

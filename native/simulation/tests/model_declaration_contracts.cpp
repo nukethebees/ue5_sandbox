@@ -1,5 +1,7 @@
 // Frozen declaration contracts from the handwritten simulation model.
 // Keep these expectations independent of the LispB schema.
+#include <ioj/levels/level_mission_mode.h>
+#include <ioj/levels/level_validation_error_code.h>
 #include <ioj/sim/attack_distance_band.h>
 #include <ioj/sim/base_sim_config.h>
 #include <ioj/sim/capital_death_event.h>
@@ -11,8 +13,6 @@
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/laser_source.h>
 #include <ioj/sim/level_telemetry_current_state.h>
-#include <ioj/sim/levels/level_mission_mode.h>
-#include <ioj/sim/levels/level_validation_error_code.h>
 #include <ioj/sim/line_trace_result.h>
 #include <ioj/sim/line_traces.h>
 #include <ioj/sim/navigation_telemetry.h>
@@ -1259,69 +1259,109 @@ static_assert(static_cast<std::uint8_t>(TraceEntityFilter::ExcludeFighters) == 1
 }
 
 namespace ioj::sim::levels::model_contract {
-static_assert(std::is_same_v<std::underlying_type_t<LevelMissionMode>, std::uint8_t>);
-static_assert(static_cast<std::uint8_t>(LevelMissionMode::Unspecified) == 0);
-static_assert(static_cast<std::uint8_t>(LevelMissionMode::SurviveTime) == 1);
-static_assert(static_cast<std::uint8_t>(LevelMissionMode::KillEnemies) == 2);
-static_assert(static_cast<std::uint8_t>(LevelMissionMode::KillEnemiesWithinTime) == 3);
+static_assert(
+    std::is_same_v<std::underlying_type_t<::ioj::levels::LevelMissionMode>, std::uint8_t>);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::LevelMissionMode::Unspecified) == 0);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::LevelMissionMode::SurviveTime) == 1);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::LevelMissionMode::KillEnemies) == 2);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::LevelMissionMode::KillEnemiesWithinTime) ==
+              3);
 }
 
 namespace ioj::sim::levels::model_contract {
-static_assert(std::is_same_v<std::underlying_type_t<LevelValidationErrorCode>, std::uint8_t>);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::MissingLevelId) == 0);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::MissingTitle) == 1);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::InvalidParTime) == 2);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::UnexpectedParTime) == 3);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::MissingViewpoint) == 4);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::ConflictingViewpoints) == 5);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::PlayerEntityNotFound) == 6);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::MismatchedEntityColumns) == 7);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::EmptyTeamId) == 8);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::DuplicateTeamId) == 9);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::UnsupportedTeamId) == 10);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::UnknownTeamReference) == 11);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::EmptyArchetypeId) == 12);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::UnsupportedArchetype) == 13);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::ArchetypeRoleMismatch) == 14);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::DuplicateEntityId) == 15);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::InvalidPlacement) == 16);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::InvalidSpawnTime) == 17);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::DelayedPlayerSpawn) == 18);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::MissingCameraTarget) == 19);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::DuplicateCameraTarget) == 20);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::CameraTargetNotFound) == 21);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::InvalidCameraDistance) == 22);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::InvalidCameraOffsetDirection) ==
-              23);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::InvalidLevelSize) == 24);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::InvalidGridCellSize) == 25);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::InvalidGridDimensions) == 26);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::MissingMissionMode) == 27);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::UnsupportedMissionMode) == 28);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::InvalidMissionTimeLimit) == 29);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::UnexpectedMissionTimeLimit) ==
-              30);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::InvalidMissionKillCount) == 31);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::UnexpectedMissionKillCount) ==
-              32);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::MissingMissionHeroes) == 33);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::MissingMissionSurvivors) == 34);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::MissionEntityNotFound) == 35);
 static_assert(
-    static_cast<std::uint8_t>(LevelValidationErrorCode::DuplicateMissionEntityReference) == 36);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::ConflictingMissionEntityRoles) ==
-              37);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::AmbiguousAutomaticKillTeams) ==
-              38);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::MissingUnlockLevelId) == 39);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::DuplicateUnlockCriterion) == 40);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::SelfUnlockDependency) == 41);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::UnexpectedMissionEvent) == 42);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::InvalidMissionEventTime) == 43);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::InvalidMissionKillIncrease) ==
-              44);
-static_assert(static_cast<std::uint8_t>(LevelValidationErrorCode::MissionEventBeforeEntitySpawn) ==
-              45);
+    std::is_same_v<std::underlying_type_t<::ioj::levels::LevelValidationErrorCode>, std::uint8_t>);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::MissingLevelId) ==
+              0);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::MissingTitle) ==
+              1);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::InvalidParTime) ==
+              2);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::UnexpectedParTime) == 3);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::MissingViewpoint) == 4);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::ConflictingViewpoints) == 5);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::PlayerEntityNotFound) == 6);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::MismatchedEntityColumns) == 7);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::EmptyTeamId) == 8);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::DuplicateTeamId) ==
+              9);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::UnsupportedTeamId) == 10);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::UnknownTeamReference) == 11);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::EmptyArchetypeId) == 12);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::UnsupportedArchetype) == 13);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::ArchetypeRoleMismatch) == 14);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::DuplicateEntityId) == 15);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::InvalidPlacement) == 16);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::InvalidSpawnTime) == 17);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::DelayedPlayerSpawn) == 18);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::MissingCameraTarget) == 19);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::DuplicateCameraTarget) == 20);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::CameraTargetNotFound) == 21);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::InvalidCameraDistance) == 22);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::InvalidCameraOffsetDirection) == 23);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::InvalidLevelSize) == 24);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::InvalidGridCellSize) == 25);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::InvalidGridDimensions) == 26);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::MissingMissionMode) == 27);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::UnsupportedMissionMode) == 28);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::InvalidMissionTimeLimit) == 29);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::UnexpectedMissionTimeLimit) == 30);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::InvalidMissionKillCount) == 31);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::UnexpectedMissionKillCount) == 32);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::MissingMissionHeroes) == 33);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::MissingMissionSurvivors) == 34);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::MissionEntityNotFound) == 35);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::DuplicateMissionEntityReference) == 36);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::ConflictingMissionEntityRoles) == 37);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::AmbiguousAutomaticKillTeams) == 38);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::MissingUnlockLevelId) == 39);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::DuplicateUnlockCriterion) == 40);
+static_assert(
+    static_cast<std::uint8_t>(::ioj::levels::LevelValidationErrorCode::SelfUnlockDependency) == 41);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::UnexpectedMissionEvent) == 42);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::InvalidMissionEventTime) == 43);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::InvalidMissionKillIncrease) == 44);
+static_assert(static_cast<std::uint8_t>(
+                  ::ioj::levels::LevelValidationErrorCode::MissionEventBeforeEntitySpawn) == 45);
 }
 
 namespace ioj::sim::player::model_contract {

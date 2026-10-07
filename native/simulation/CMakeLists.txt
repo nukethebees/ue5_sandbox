@@ -40,6 +40,7 @@ foreach(native_simulation_target IN LISTS native_simulation_targets)
       sandbox::handmade_math
       native-memory
       native-core
+      native-levels
       "$<$<BOOL:${IOJ_WITH_TRACY}>:sandbox::profiling-api>"
     PRIVATE
       ioj::core_pch

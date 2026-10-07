@@ -965,7 +965,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         TestRunner->TestEqual(TEXT("Mission mode is applied"),
                               collected->mission->mode,
-                              ::ioj::sim::levels::LevelMissionMode::KillEnemiesWithinTime);
+                              ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime);
         TestRunner->TestEqual(TEXT("Mission time is applied"),
                               collected->mission->time_limit_seconds.GetValue(),
                               60.0f);
@@ -1560,7 +1560,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         builder.set_camera({.target_entity_ids = {ml::FLevelEntityId{TEXT("add")}},
                             .offset_direction = FVector{-1.0, 0.0, 0.0},
                             .distance = 1000.0});
-        builder.set_mission({.mode = ::ioj::sim::levels::LevelMissionMode::KillEnemies,
+        builder.set_mission({.mode = ::ioj::levels::LevelMissionMode::KillEnemies,
                              .kill_count = 1,
                              .hero_entity_ids = {ml::FLevelEntityId{TEXT("add")}},
                              .required_kill_entity_ids = {ml::FLevelEntityId{TEXT("replace")}}});

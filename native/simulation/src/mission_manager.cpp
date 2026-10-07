@@ -95,19 +95,19 @@ void MissionManager::initialise_level_mission(
     set_save_mission_results(data.save_results);
 
     switch (data.mode) {
-        case levels::LevelMissionMode::Unspecified: {
+        case ::ioj::levels::LevelMissionMode::Unspecified: {
             set_mission_mode(MissionMode::None);
             break;
         }
-        case levels::LevelMissionMode::SurviveTime: {
+        case ::ioj::levels::LevelMissionMode::SurviveTime: {
             set_mission_mode(MissionMode::SurviveTime);
             break;
         }
-        case levels::LevelMissionMode::KillEnemies: {
+        case ::ioj::levels::LevelMissionMode::KillEnemies: {
             set_mission_mode(MissionMode::KillEnemies);
             break;
         }
-        case levels::LevelMissionMode::KillEnemiesWithinTime: {
+        case ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime: {
             set_mission_mode(MissionMode::KillEnemiesWithinTime);
             break;
         }
@@ -117,8 +117,8 @@ void MissionManager::initialise_level_mission(
         set_target_time(data.time_limit_seconds.value());
     }
 
-    if (data.mode == levels::LevelMissionMode::KillEnemies ||
-        data.mode == levels::LevelMissionMode::KillEnemiesWithinTime) {
+    if (data.mode == ::ioj::levels::LevelMissionMode::KillEnemies ||
+        data.mode == ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime) {
         set_kill_target(data.kill_count.value_or(0) +
                         kill_target_increase_before_level_initialisation_);
     }

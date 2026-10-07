@@ -95,8 +95,7 @@ void append_error(std::vector<std::string>& errors, std::string error) {
     }
 }
 
-auto collect_errors(::ioj::sim::levels::LevelDefinition const& definition)
-    -> std::vector<std::string> {
+auto collect_errors(::ioj::levels::LevelDefinition const& definition) -> std::vector<std::string> {
     std::vector<std::string> errors;
     if (definition.metadata.par_time_seconds) {
         errors.emplace_back("Editor level source does not support par-time");
@@ -144,8 +143,8 @@ auto join_errors(std::vector<std::string> const& errors) -> std::string {
     return result;
 }
 
-auto mission_mode_symbol(::ioj::sim::levels::LevelMissionMode const mode) -> std::string_view {
-    using enum ::ioj::sim::levels::LevelMissionMode;
+auto mission_mode_symbol(::ioj::levels::LevelMissionMode const mode) -> std::string_view {
+    using enum ::ioj::levels::LevelMissionMode;
     switch (mode) {
         case SurviveTime:
             return "survive-time";
@@ -174,7 +173,7 @@ void append_id_clause(std::string& source,
 }
 } // namespace
 
-auto emit_editor_level_source(::ioj::sim::levels::LevelDefinition const& definition)
+auto emit_editor_level_source(::ioj::levels::LevelDefinition const& definition)
     -> std::expected<std::string, std::string> {
     auto const errors{collect_errors(definition)};
     if (!errors.empty()) {

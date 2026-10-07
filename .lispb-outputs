@@ -30,6 +30,8 @@ Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/s
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/LevelDefinitionSoA.h
 native/core/include/sandbox/core/sandbox_ismc_render.h
+native/levels/lib/include/ioj/levels/level_mission_mode.h
+native/levels/lib/include/ioj/levels/level_validation_error_code.h
 native/simulation/include/ioj/sim/attack_distance_band.h
 native/simulation/include/ioj/sim/base_sim_config.h
 native/simulation/include/ioj/sim/capital_death_event.h
@@ -64,9 +66,7 @@ native/simulation/include/ioj/sim/laser_source.h
 native/simulation/include/ioj/sim/lasers/phase_interface.h
 native/simulation/include/ioj/sim/level_event_values.h
 native/simulation/include/ioj/sim/level_telemetry_current_state.h
-native/simulation/include/ioj/sim/levels/level_mission_mode.h
 native/simulation/include/ioj/sim/levels/level_runtime_events.h
-native/simulation/include/ioj/sim/levels/level_validation_error_code.h
 native/simulation/include/ioj/sim/line_trace_result.h
 native/simulation/include/ioj/sim/line_traces.h
 native/simulation/include/ioj/sim/missions/mission_fail_reason.h

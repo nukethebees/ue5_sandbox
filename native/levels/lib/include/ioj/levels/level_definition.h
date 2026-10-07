@@ -1,14 +1,14 @@
 #pragma once
 
-#include <ioj/sim/levels/level_mission_mode.h>
-#include <ioj/sim/levels/level_validation_error_code.h>
+#include <ioj/levels/level_mission_mode.h>
+#include <ioj/levels/level_validation_error_code.h>
 
 #include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
 
-namespace ioj::sim::levels {
+namespace ioj::levels {
 struct Vector3d {
     double x{};
     double y{};
@@ -88,4 +88,4 @@ struct LevelValidationResult {
 };
 
 [[nodiscard]] auto validate_level(LevelDefinition const& definition) -> LevelValidationResult;
-} // namespace ioj::sim::levels
+} // namespace ioj::levels

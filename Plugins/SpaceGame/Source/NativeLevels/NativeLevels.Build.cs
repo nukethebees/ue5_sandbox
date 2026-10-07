@@ -1,18 +1,19 @@
-using System.IO;
 using System;
+using System.IO;
 using UnrealBuildTool;
 
-public class NativeS7 : ModuleRules
+public class NativeLevels : ModuleRules
 {
-    public NativeS7(ReadOnlyTargetRules Target) : base(Target)
+    public NativeLevels(ReadOnlyTargetRules Target) : base(Target)
     {
         Type = ModuleType.External;
-        PublicDependencyModuleNames.Add("NativeCommon");
+
+        PublicDependencyModuleNames.AddRange(new string[] { "NativeCommon" });
 
         if (Target.Platform != UnrealTargetPlatform.Win64 ||
             Target.Architecture != UnrealArch.X64)
         {
-            throw new BuildException("NativeS7 currently supports only Win64 x64 targets.");
+            throw new BuildException("NativeLevels currently supports only Win64 x64 targets.");
         }
 
         if (Target.bUseStaticCRT ||
@@ -20,34 +21,36 @@ public class NativeS7 : ModuleRules
              Target.bDebugBuildsActuallyUseDebugCRT))
         {
             throw new BuildException(
-                "NativeS7 requires the dynamic release CRT used by the CMake target.");
+                "NativeLevels requires the dynamic release CRT used by the CMake target.");
         }
 
         string repositoryRoot = Path.GetFullPath(
             Path.Combine(ModuleDirectory, "..", "..", "..", ".."));
-        string nativeToolchain = Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN") ?? "clang-cl";
-        string includeDirectory = Path.Combine(repositoryRoot, "native", "s7", "lib", "include");
-        PublicSystemIncludePaths.Add(includeDirectory);
+        string nativeToolchain =
+            Environment.GetEnvironmentVariable("IOJ_NATIVE_TOOLCHAIN") ?? "clang-cl";
+        PublicSystemIncludePaths.Add(
+            Path.Combine(repositoryRoot, "native", "levels", "lib", "include"));
+        PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "core", "include"));
+
         if (!Target.bGenerateProjectFiles)
         {
             string libraryPath = Path.Combine(
                 repositoryRoot,
                 "Binaries",
                 "Native",
-                "S7",
+                "Levels",
                 nativeToolchain,
                 Target.Platform.ToString(),
                 Target.Configuration.ToString(),
-                "sandbox_s7.lib");
+                "native-levels.lib");
             if (!File.Exists(libraryPath))
             {
                 throw new BuildException(
-                    "NativeS7 expected the CMake-built library at '{0}'. " +
+                    "NativeLevels expected the CMake-built library at '{0}'. " +
                     "Build Unreal targets through a repository CMake workflow.",
                     libraryPath);
             }
             PublicAdditionalLibraries.Add(libraryPath);
-            PublicAdditionalLibraries.Add(Path.Combine(Path.GetDirectoryName(libraryPath)!, "native-s7-data.lib"));
             ExternalDependencies.Add(libraryPath);
         }
     }

@@ -1,7 +1,7 @@
 #pragma once
 
+#include <ioj/levels/level_definition.h>
 #include <ioj/sim/levels/compiled_level_events.h>
-#include <ioj/sim/levels/level_definition.h>
 #include <ioj/sim/sim_config.h>
 
 #include <expected>
@@ -19,7 +19,7 @@ using LevelCompilationResult = std::expected<CompiledLevelEvents, LevelCompilati
 
 [[nodiscard]] auto to_simulation_team(std::string_view id) noexcept -> Team;
 
-[[nodiscard]] auto compile_level(LevelDefinition const& definition,
+[[nodiscard]] auto compile_level(::ioj::levels::LevelDefinition const& definition,
                                  SimClock const& clock,
                                  CapitalShipSimConfig const& capital_config,
                                  TurretSimConfig const& turret_config) -> LevelCompilationResult;
