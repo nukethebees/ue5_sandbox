@@ -20,40 +20,35 @@ endif()
 
 foreach(native_simulation_target IN LISTS native_simulation_targets)
   ioj_apply_native_abi(${native_simulation_target})
-  target_compile_features(${native_simulation_target} PUBLIC cxx_std_23)
-  target_link_libraries(${native_simulation_target} PUBLIC ioj::cxx_conformance)
   target_include_directories(${native_simulation_target} PUBLIC
     include
   )
-  target_link_libraries(${native_simulation_target}
-    PUBLIC 
-      sandbox::handmade_math 
-      native-memory 
-      native-core
-    PRIVATE 
-      sandbox::native_defaults
-      ioj::core_pch
-  )
   ioj_enable_warnings(${native_simulation_target})
+  set(simulation_profiling_libraries)
   if(IOJ_WITH_TRACY)
     target_compile_definitions(${native_simulation_target} PRIVATE IOJ_WITH_TRACY)
-    target_link_libraries(${native_simulation_target} PUBLIC sandbox::profiling-api)
     if(native_simulation_target STREQUAL "native-simulation-unreal")
-      target_link_libraries(${native_simulation_target} PRIVATE TracyClientUnreal)
+      set(simulation_profiling_libraries TracyClientUnreal)
     else()
-      target_link_libraries(${native_simulation_target} PRIVATE
-        Tracy::TracyClient
-        sandbox::profiling
-      )
+      set(simulation_profiling_libraries Tracy::TracyClient sandbox::profiling)
     endif()
   endif()
 
+  target_link_libraries(${native_simulation_target}
+    PUBLIC
+      sandbox::native_defaults
+      sandbox::handmade_math
+      native-memory
+      native-core
+      "$<$<BOOL:${IOJ_WITH_TRACY}>:sandbox::profiling-api>"
+    PRIVATE
+      ioj::core_pch
+      ${simulation_profiling_libraries}
+      "$<$<BOOL:${IOJ_WITH_UNREAL}>:ioj::unreal_avx2>"
+  )
   set_target_properties(${native_simulation_target} PROPERTIES
     OUTPUT_NAME SandboxNativeSimulation
   )
-  if(IOJ_WITH_UNREAL)
-    target_link_libraries(${native_simulation_target} PRIVATE ioj::unreal_avx2)
-  endif()
 endforeach()
 
 if(IOJ_WITH_UNREAL)

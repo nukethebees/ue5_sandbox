@@ -10,15 +10,14 @@ add_library(kernel-codegen-lib
   src/unreal_renderer.cpp
 )
 set_target_properties(kernel-codegen-lib PROPERTIES UNITY_BUILD OFF)
-target_compile_features(kernel-codegen-lib PUBLIC cxx_std_23)
-target_link_libraries(kernel-codegen-lib PUBLIC ioj::cxx_conformance)
 target_include_directories(kernel-codegen-lib PUBLIC include)
 target_link_libraries(kernel-codegen-lib
-  PUBLIC lispb-output
+  PUBLIC
+    sandbox::native_defaults
+    lispb-output
   PRIVATE
-  lispb-syntax
-  sandbox::native_defaults
-  ioj::codegen_pch
+    lispb-syntax
+    ioj::codegen_pch
 )
 ioj_enable_warnings(kernel-codegen-lib CODEGEN)
 
@@ -64,7 +63,6 @@ add_executable(kernel-generated-compile-tests
   ${KERNEL_COMPILE_FILES}
 )
 set_target_properties(kernel-generated-compile-tests PROPERTIES UNITY_BUILD OFF)
-target_compile_features(kernel-generated-compile-tests PRIVATE cxx_std_23)
 target_compile_definitions(kernel-generated-compile-tests PRIVATE CODEGEN_CHECK_EXIT)
 target_include_directories(kernel-generated-compile-tests PRIVATE
   "${KERNEL_COMPILE_OUTPUT}"
@@ -123,7 +121,6 @@ add_executable(kernel-generated-standard-tests
   ${KERNEL_STANDARD_FILES}
 )
 set_target_properties(kernel-generated-standard-tests PROPERTIES UNITY_BUILD OFF)
-target_compile_features(kernel-generated-standard-tests PRIVATE cxx_std_23)
 target_include_directories(kernel-generated-standard-tests PRIVATE
   "${KERNEL_STANDARD_OUTPUT}"
   "${KERNEL_STANDARD_OUTPUT}/include"
@@ -303,7 +300,6 @@ foreach(TARGET IN ITEMS
     kernel-native-dot-relaxed-avx2
     kernel-native-dot-relaxed-avx512)
   set_target_properties(${TARGET} PROPERTIES UNITY_BUILD OFF)
-  target_compile_features(${TARGET} PRIVATE cxx_std_23)
   target_include_directories(${TARGET} PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
   target_link_libraries(${TARGET} PRIVATE sandbox::native_defaults)
   ioj_enable_warnings(${TARGET} CODEGEN)
@@ -345,7 +341,6 @@ add_executable(kernel-native-simd-tests
   ${KERNEL_NATIVE_SIMD_OBJECTS}
 )
 add_dependencies(kernel-native-simd-tests kernel-native-generated-sources)
-target_compile_features(kernel-native-simd-tests PRIVATE cxx_std_23)
 target_include_directories(kernel-native-simd-tests PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
 target_link_libraries(kernel-native-simd-tests PRIVATE
   hwy
@@ -369,7 +364,6 @@ add_executable(kernel-native-benchmarks
 )
 set_target_properties(kernel-native-benchmarks PROPERTIES UNITY_BUILD OFF)
 add_dependencies(kernel-native-benchmarks kernel-native-generated-sources)
-target_compile_features(kernel-native-benchmarks PRIVATE cxx_std_23)
 target_include_directories(kernel-native-benchmarks PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
 target_link_libraries(kernel-native-benchmarks PRIVATE
   hwy

@@ -14,8 +14,13 @@ set_target_properties(sandbox-s7-third-party PROPERTIES UNITY_BUILD OFF)
 target_sources(sandbox-s7-third-party PRIVATE
   src/s7_sandbox.cpp
 )
-target_compile_features(sandbox-s7-third-party PRIVATE cxx_std_23)
-target_link_libraries(sandbox-s7-third-party PRIVATE ioj::asan ioj::cxx_conformance)
+target_link_libraries(sandbox-s7-third-party
+  PRIVATE
+    ioj::cxx_standard
+    ioj::asan
+    ioj::cxx_conformance
+    "$<$<BOOL:${IOJ_WITH_UNREAL}>:ioj::unreal_avx2>"
+)
 target_compile_definitions(sandbox-s7-third-party PUBLIC ${IOJ_S7_DEFINITIONS})
 target_include_directories(sandbox-s7-third-party SYSTEM PUBLIC ../ThirdParty/s7)
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -41,8 +46,6 @@ target_sources(sandbox-s7 PRIVATE
   src/script_loader.cpp
   src/value.cpp
 )
-target_compile_features(sandbox-s7 PUBLIC cxx_std_23)
-target_link_libraries(sandbox-s7 PUBLIC ioj::cxx_conformance)
 target_include_directories(sandbox-s7 PUBLIC include)
 
 add_library(sandbox-s7-warning-exceptions INTERFACE)
@@ -51,10 +54,13 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     /wd5039 # The third-party s7 C callback typedefs cannot express noexcept.
   )
 endif()
-target_link_libraries(sandbox-s7 PRIVATE
-  sandbox-s7-third-party
-  sandbox::native_defaults
-  sandbox-s7-warning-exceptions
+target_link_libraries(sandbox-s7
+  PUBLIC
+    sandbox::native_defaults
+  PRIVATE
+    sandbox-s7-third-party
+    sandbox-s7-warning-exceptions
+    "$<$<BOOL:${IOJ_WITH_UNREAL}>:ioj::unreal_avx2>"
 )
 ioj_enable_warnings(sandbox-s7)
 ioj_apply_native_abi(sandbox-s7)
@@ -63,8 +69,6 @@ set_target_properties(sandbox-s7 PROPERTIES
   OUTPUT_NAME sandbox_s7
 )
 if(IOJ_WITH_UNREAL)
-  target_link_libraries(sandbox-s7-third-party PRIVATE ioj::unreal_avx2)
-  target_link_libraries(sandbox-s7 PRIVATE ioj::unreal_avx2)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
     file(MAKE_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"

@@ -4,15 +4,14 @@ add_library(slate-codegen-lib
   src/preprocessor.cpp
   src/renderer.cpp
 )
-target_compile_features(slate-codegen-lib PUBLIC cxx_std_23)
-target_link_libraries(slate-codegen-lib PUBLIC ioj::cxx_conformance)
 target_include_directories(slate-codegen-lib PUBLIC include)
 target_link_libraries(slate-codegen-lib
-  PUBLIC lispb-output
+  PUBLIC
+    sandbox::native_defaults
+    lispb-output
   PRIVATE
-  lispb-syntax
-  sandbox::native_defaults
-  ioj::codegen_pch
+    lispb-syntax
+    ioj::codegen_pch
 )
 ioj_enable_warnings(slate-codegen-lib CODEGEN)
 
@@ -56,7 +55,6 @@ add_executable(slate-generated-compile-tests
   ${SLATE_COMPILE_HEADERS}
 )
 set_target_properties(slate-generated-compile-tests PROPERTIES UNITY_BUILD OFF)
-target_compile_features(slate-generated-compile-tests PRIVATE cxx_std_23)
 target_include_directories(slate-generated-compile-tests PRIVATE "${SLATE_COMPILE_OUTPUT}")
 target_link_libraries(slate-generated-compile-tests PRIVATE sandbox::native_defaults)
 ioj_enable_warnings(slate-generated-compile-tests CODEGEN)

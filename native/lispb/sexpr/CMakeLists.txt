@@ -3,10 +3,11 @@ add_library(lispb-syntax
   src/lexer.cpp
   src/reader.cpp
 )
-target_compile_features(lispb-syntax PUBLIC cxx_std_23)
-target_link_libraries(lispb-syntax PUBLIC ioj::cxx_conformance)
 target_include_directories(lispb-syntax PUBLIC include)
-target_link_libraries(lispb-syntax PRIVATE sandbox::native_defaults)
+target_link_libraries(lispb-syntax
+  PUBLIC
+    sandbox::native_defaults
+)
 ioj_enable_warnings(lispb-syntax CODEGEN)
 
 add_executable(lispb-syntax-tests tests/reader_tests.cpp)

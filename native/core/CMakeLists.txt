@@ -40,8 +40,6 @@ target_sources(native-core PRIVATE
   src/ui/settings_slider.cpp
   src/ui/stacked_bar_chart.cpp
 )
-target_compile_features(native-core PUBLIC cxx_std_23)
-target_link_libraries(native-core PUBLIC ioj::cxx_conformance TBB::tbb)
 target_include_directories(native-core PUBLIC include)
 
 # Separate translation units keep AVX2 out of the scalar reference and prevent
@@ -59,25 +57,27 @@ add_library(native-core-ismc-highway-avx2 OBJECT src/sandbox_ismc_packing_highwa
 ioj_configure_highway_target(native-core-ismc-highway-avx2 avx2)
 target_include_directories(native-core-ismc-highway-avx2 PRIVATE include)
 target_link_libraries(native-core-ismc-highway-avx2 PRIVATE sandbox::handmade_math)
-target_link_libraries(native-core PRIVATE native-core-ismc-scalar native-core-ismc-highway-avx2)
 target_link_libraries(native-core
-  PUBLIC 
-    sandbox::handmade_math
-  PRIVATE 
+  PUBLIC
     sandbox::native_defaults
+    TBB::tbb
+    sandbox::handmade_math
+  PRIVATE
+    native-core-ismc-scalar
+    native-core-ismc-highway-avx2
     ioj::core_pch
+    "$<$<BOOL:${IOJ_WITH_TRACY}>:sandbox::profiling>"
+    "$<$<BOOL:${IOJ_WITH_UNREAL}>:ioj::unreal_avx2>"
 )
 ioj_enable_warnings(native-core)
 if(IOJ_WITH_TRACY)
   target_compile_definitions(native-core PRIVATE IOJ_WITH_TRACY)
-  target_link_libraries(native-core PRIVATE sandbox::profiling)
 endif()
 
 set_target_properties(native-core PROPERTIES
   OUTPUT_NAME SandboxNativeCore
 )
 if(IOJ_WITH_UNREAL)
-  target_link_libraries(native-core PRIVATE ioj::unreal_avx2)
   set_target_properties(native-core PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/Core/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
@@ -122,11 +122,7 @@ target_sources(native-core-tests PRIVATE
   tests/vector_math_tests.cpp
   tests/vector3d_tests.cpp
 )
-target_compile_features(native-core-tests PRIVATE cxx_std_23)
-target_link_libraries(native-core-tests PRIVATE native-core sandbox::native_defaults ioj::test_pch)
 ioj_enable_warnings(native-core-tests)
-
-target_link_libraries(native-core-tests PRIVATE GTest::gtest_main CpuFeatures::cpu_features)
 
 add_test(NAME native-core-tests COMMAND native-core-tests)
 set_tests_properties(native-core-tests PROPERTIES LABELS "unit;all;native;native-core")
@@ -140,7 +136,6 @@ target_link_libraries(native-core-ismc-avx2-experiment
   PRIVATE sandbox::native_defaults ioj::arch_avx2 ioj::fp_precise)
 ioj_apply_native_abi(native-core-ismc-avx2-experiment)
 ioj_enable_warnings(native-core-ismc-avx2-experiment)
-target_link_libraries(native-core-tests PRIVATE native-core-ismc-avx2-experiment)
 
 add_library(native-core-ismc-avx512-experiment OBJECT EXCLUDE_FROM_ALL
   experiments/sandbox_ismc_packing_avx512.cpp)
@@ -151,15 +146,24 @@ target_link_libraries(native-core-ismc-avx512-experiment
   PRIVATE sandbox::native_defaults ioj::arch_avx512 ioj::fp_precise)
 ioj_apply_native_abi(native-core-ismc-avx512-experiment)
 ioj_enable_warnings(native-core-ismc-avx512-experiment)
-target_link_libraries(native-core-tests PRIVATE native-core-ismc-avx512-experiment)
 
 add_library(native-core-ismc-highway-avx512 OBJECT EXCLUDE_FROM_ALL
   src/sandbox_ismc_packing_highway.cpp)
 ioj_configure_highway_target(native-core-ismc-highway-avx512 avx512)
 target_include_directories(native-core-ismc-highway-avx512 PUBLIC experiments)
 target_link_libraries(native-core-ismc-highway-avx512 PUBLIC native-core)
-target_link_libraries(native-core-tests PRIVATE native-core-ismc-highway-avx512)
-target_link_libraries(native-core-tests PRIVATE hwy)
+target_link_libraries(native-core-tests
+  PRIVATE
+    native-core
+    sandbox::native_defaults
+    ioj::test_pch
+    GTest::gtest_main
+    CpuFeatures::cpu_features
+    native-core-ismc-avx2-experiment
+    native-core-ismc-avx512-experiment
+    native-core-ismc-highway-avx512
+    hwy
+)
 
 add_executable(native-core-benchmarks)
 ioj_stage_tbb_runtime(native-core-benchmarks)
@@ -168,7 +172,6 @@ target_sources(native-core-benchmarks PRIVATE
   benchmarks/vector_lerp_benchmarks.cpp
   benchmarks/sandbox_ismc_packing_benchmarks.cpp
 )
-target_compile_features(native-core-benchmarks PRIVATE cxx_std_23)
 target_link_libraries(native-core-benchmarks PRIVATE
   native-core
   native-core-ismc-avx2-experiment
@@ -246,7 +249,6 @@ add_library(native-core-static-string-view-reject-automatic OBJECT EXCLUDE_FROM_
 target_sources(native-core-static-string-view-reject-automatic PRIVATE
   tests/static_string_view_reject_automatic_storage.cpp
 )
-target_compile_features(native-core-static-string-view-reject-automatic PRIVATE cxx_std_23)
 target_link_libraries(native-core-static-string-view-reject-automatic PRIVATE
   native-core
   sandbox::native_defaults

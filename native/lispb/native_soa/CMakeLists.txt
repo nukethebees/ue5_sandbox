@@ -23,7 +23,6 @@ add_custom_target(check-generated-native-soa-fixture
   VERBATIM)
 add_dependencies(check-generated-code check-generated-native-soa-fixture)
 add_library(native-soa INTERFACE)
-target_compile_features(native-soa INTERFACE cxx_std_23)
 target_include_directories(native-soa INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include" "${NATIVE_SOA_GENERATED}")
 target_include_directories(native-soa INTERFACE "${PROJECT_SOURCE_DIR}/native/core/include")
 target_sources(native-soa INTERFACE "${NATIVE_SOA_GENERATED}/native_soa_types.h")
@@ -38,11 +37,14 @@ set_tests_properties(native-soa-tests PROPERTIES LABELS "unit;all;native;native-
 add_executable(native-soa-tests-mimalloc tests.cpp "${NATIVE_SOA_GENERATED}/native_soa_types.cpp")
 ioj_enable_warnings(native-soa-tests-mimalloc)
 target_compile_definitions(native-soa-tests-mimalloc PRIVATE NATIVE_SOA_MIMALLOC=1)
-target_link_libraries(native-soa-tests-mimalloc PRIVATE native-soa GTest::gtest_main sandbox::mimalloc)
-target_link_libraries(native-soa-tests-mimalloc PRIVATE
-  ioj::arch_avx2
-  ioj::debug_symbols
-  ioj::fp_precise
+target_link_libraries(native-soa-tests-mimalloc
+  PRIVATE
+    native-soa
+    GTest::gtest_main
+    sandbox::mimalloc
+    ioj::arch_avx2
+    ioj::debug_symbols
+    ioj::fp_precise
 )
 add_test(NAME native-soa-tests-mimalloc COMMAND native-soa-tests-mimalloc)
 set_tests_properties(native-soa-tests-mimalloc PROPERTIES LABELS "unit;all;native;native-soa")
@@ -51,16 +53,18 @@ add_executable(native-soa-benchmarks production_benchmarks.cpp)
 target_sources(native-soa-benchmarks PRIVATE
   "${PROJECT_SOURCE_DIR}/native/simulation/src/laser_frame_output.cpp")
 set_target_properties(native-soa-benchmarks PROPERTIES UNITY_BUILD OFF)
-target_link_libraries(native-soa-benchmarks PRIVATE
-  sandbox::native_defaults sandbox::handmade_math benchmark::benchmark_main)
 ioj_enable_warnings(native-soa-benchmarks)
 target_include_directories(native-soa-benchmarks PRIVATE
   "${PROJECT_SOURCE_DIR}/native/simulation/include"
   "${PROJECT_SOURCE_DIR}/native/core/include")
-target_link_libraries(native-soa-benchmarks PRIVATE
-  ioj::arch_avx2
-  ioj::debug_symbols
-  ioj::fp_precise
+target_link_libraries(native-soa-benchmarks
+  PRIVATE
+    sandbox::native_defaults
+    sandbox::handmade_math
+    benchmark::benchmark_main
+    ioj::arch_avx2
+    ioj::debug_symbols
+    ioj::fp_precise
 )
 add_test(NAME native-soa-dry-run COMMAND native-soa-benchmarks --benchmark_dry_run
   "--benchmark_filter=^Production/"

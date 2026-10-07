@@ -7,20 +7,25 @@ add_library(lispb-output
   src/generator.cpp
   src/format_generated.cpp
 )
-target_compile_features(lispb-output PUBLIC cxx_std_23)
-target_link_libraries(lispb-output PUBLIC ioj::cxx_conformance)
 target_compile_definitions(lispb-output
   PRIVATE IOJ_CLANG_FORMAT_EXECUTABLE="${IOJ_CLANG_FORMAT_EXECUTABLE}"
 )
 target_include_directories(lispb-output PUBLIC include)
-target_link_libraries(lispb-output PRIVATE sandbox::native_defaults)
+target_link_libraries(lispb-output
+  PUBLIC
+    sandbox::native_defaults
+)
 ioj_enable_warnings(lispb-output CODEGEN)
 
 add_library(lispb-project src/project.cpp)
-target_compile_features(lispb-project PUBLIC cxx_std_23)
-target_link_libraries(lispb-project PUBLIC ioj::cxx_conformance)
 target_include_directories(lispb-project PUBLIC include)
-target_link_libraries(lispb-project PRIVATE lispb-schema lispb-syntax sandbox::native_defaults)
+target_link_libraries(lispb-project
+  PUBLIC
+    sandbox::native_defaults
+  PRIVATE
+    lispb-schema
+    lispb-syntax
+)
 ioj_enable_warnings(lispb-project CODEGEN)
 
 add_library(lispb-schema)
@@ -38,13 +43,12 @@ target_sources(lispb-schema PRIVATE
   src/type_graph.cpp
   src/validation.cpp
 )
-target_compile_features(lispb-schema PUBLIC cxx_std_23)
-target_link_libraries(lispb-schema PUBLIC ioj::cxx_conformance)
 target_include_directories(lispb-schema PUBLIC include)
 target_link_libraries(lispb-schema
+  PUBLIC
+    sandbox::native_defaults
   PRIVATE
     lispb-syntax
-    sandbox::native_defaults
 )
 ioj_enable_warnings(lispb-schema CODEGEN)
 
@@ -81,15 +85,13 @@ target_sources(codegen-lib PRIVATE
   src/vector_lowering.cpp
 )
 set_target_properties(codegen-lib PROPERTIES UNITY_BUILD OFF)
-target_compile_features(codegen-lib PUBLIC cxx_std_23)
-target_link_libraries(codegen-lib PUBLIC ioj::cxx_conformance)
 target_include_directories(codegen-lib PUBLIC include)
 target_link_libraries(codegen-lib
   PUBLIC
+    sandbox::native_defaults
     lispb-output
     lispb-schema
   PRIVATE
-    sandbox::native_defaults
     ioj::codegen_pch
 )
 ioj_enable_warnings(codegen-lib CODEGEN)
@@ -98,21 +100,19 @@ add_library(lispb-target-compiler
   src/target_compiler.cpp
   material/compiler.cpp
 )
-target_compile_features(lispb-target-compiler PUBLIC cxx_std_23)
-target_link_libraries(lispb-target-compiler PUBLIC ioj::cxx_conformance)
 target_include_directories(lispb-target-compiler PUBLIC include)
-target_link_libraries(lispb-target-compiler PUBLIC
-  codegen-lib
-  kernel-codegen-lib
-  lispb-project
-  material-gen
-  slate-codegen-lib
-  sandbox::native_defaults
+target_link_libraries(lispb-target-compiler
+  PUBLIC
+    sandbox::native_defaults
+    codegen-lib
+    kernel-codegen-lib
+    lispb-project
+    material-gen
+    slate-codegen-lib
 )
 ioj_enable_warnings(lispb-target-compiler CODEGEN)
 
 add_executable(lispb src/main.cpp)
-target_compile_features(lispb PRIVATE cxx_std_23)
 target_link_libraries(lispb PRIVATE
   lispb-target-compiler
   sandbox::native_defaults
@@ -185,7 +185,6 @@ target_sources(codegen-generated-compile-fixture PRIVATE
   ${CODEGEN_COMPILE_FIXTURE_SOURCES}
 )
 set_target_properties(codegen-generated-compile-fixture PROPERTIES UNITY_BUILD OFF)
-target_compile_features(codegen-generated-compile-fixture PRIVATE cxx_std_23)
 target_include_directories(codegen-generated-compile-fixture PUBLIC
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
   "${CODEGEN_COMPILE_FIXTURE_SOURCE}/stubs"
@@ -201,7 +200,6 @@ target_sources(codegen-generated-tests PRIVATE
   tests/packed_support_tests.cpp
 )
 set_target_properties(codegen-generated-tests PROPERTIES UNITY_BUILD OFF)
-target_compile_features(codegen-generated-tests PRIVATE cxx_std_23)
 target_link_libraries(codegen-generated-tests PRIVATE
   codegen-generated-compile-fixture
   GTest::gtest_main
@@ -253,7 +251,6 @@ foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
   set(reject_target "codegen-reject-single-${restriction}")
   add_library(${reject_target} OBJECT EXCLUDE_FROM_ALL tests/compile_fixture/rejected_leaf.cpp)
   add_dependencies(${reject_target} codegen-generated-compile-fixture)
-  target_compile_features(${reject_target} PRIVATE cxx_std_23)
   target_compile_definitions(${reject_target} PRIVATE "CODEGEN_BAD_${restriction}")
   target_include_directories(${reject_target} PRIVATE
     "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
@@ -274,7 +271,6 @@ foreach(restriction IN ITEMS SIGNED_STORAGE BOOL_STORAGE ZERO_BITS NEGATIVE_BITS
     UNSIGNED_VALUE SIGNED_VALUE BOOL_VALUE ENUM_WIDTH ENUM_SIGNED FLOAT_VALUE POINTER_VALUE REFERENCE_VALUE)
   set(reject_target "codegen-reject-packed-${restriction}")
   add_library(${reject_target} OBJECT EXCLUDE_FROM_ALL tests/compile_fixture/rejected_packed_field.cpp)
-  target_compile_features(${reject_target} PRIVATE cxx_std_23)
   target_compile_definitions(${reject_target} PRIVATE "CODEGEN_BAD_${restriction}")
   target_include_directories(${reject_target} PRIVATE "${PROJECT_SOURCE_DIR}/native/core/include")
   target_link_libraries(${reject_target} PRIVATE sandbox::native_defaults)

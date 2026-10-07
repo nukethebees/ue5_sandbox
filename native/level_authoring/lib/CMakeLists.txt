@@ -11,15 +11,13 @@ target_sources(native-level-authoring PRIVATE
   include/sandbox/level_authoring/CatalogValidation.h
   src/CatalogValidation.cpp
 )
-target_compile_features(native-level-authoring PUBLIC cxx_std_23)
-target_link_libraries(native-level-authoring PUBLIC ioj::cxx_conformance)
 target_include_directories(native-level-authoring PUBLIC include)
 target_link_libraries(native-level-authoring
-  PUBLIC 
-    native-simulation
-  PRIVATE 
-    sandbox-s7 
+  PUBLIC
     sandbox::native_defaults
+    native-simulation
+  PRIVATE
+    sandbox-s7
 )
 ioj_enable_warnings(native-level-authoring)
 ioj_apply_native_abi(native-level-authoring)

@@ -18,8 +18,6 @@ target_sources(native-layout PRIVATE
   src/schema_loader.cpp
   src/workspace.cpp
 )
-target_compile_features(native-layout PUBLIC cxx_std_23)
-target_link_libraries(native-layout PUBLIC ioj::cxx_conformance)
 target_include_directories(native-layout PUBLIC include)
 target_compile_definitions(native-layout PRIVATE
   IOJ_LAYOUT_TARGET_PLATFORM="${CMAKE_SYSTEM_NAME}"
@@ -29,9 +27,9 @@ target_compile_definitions(native-layout PRIVATE
 )
 target_link_libraries(native-layout
   PUBLIC
+    sandbox::native_defaults
     lispb-schema
   PRIVATE
     lispb-project
-    sandbox::native_defaults
 )
 ioj_enable_warnings(native-layout)

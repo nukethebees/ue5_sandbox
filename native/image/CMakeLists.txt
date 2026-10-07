@@ -6,13 +6,16 @@ set(IOJ_IMAGE_SOURCES
 )
 
 add_library(sandbox-image STATIC ${IOJ_IMAGE_SOURCES})
-target_compile_features(sandbox-image PUBLIC cxx_std_23)
-target_link_libraries(sandbox-image PUBLIC ioj::cxx_conformance)
 target_include_directories(sandbox-image
   PUBLIC include
   PRIVATE src
 )
-target_link_libraries(sandbox-image PRIVATE sandbox::native_defaults ioj::core_pch)
+target_link_libraries(sandbox-image
+  PUBLIC
+    sandbox::native_defaults
+  PRIVATE
+    ioj::core_pch
+)
 ioj_enable_warnings(sandbox-image)
 set_target_properties(sandbox-image PROPERTIES
   OUTPUT_NAME sandbox_image
@@ -22,7 +25,6 @@ add_executable(sandbox-image-tests
   ${IOJ_IMAGE_SOURCES}
   tests/image_generation_tests.cpp
 )
-target_compile_features(sandbox-image-tests PRIVATE cxx_std_23)
 target_include_directories(sandbox-image-tests PRIVATE include src tests)
 target_link_libraries(sandbox-image-tests PRIVATE
   sandbox::native_defaults

@@ -1,7 +1,6 @@
 add_executable(native-simulation-benchmark-tests)
 ioj_stage_tbb_runtime(native-simulation-benchmark-tests)
 target_sources(native-simulation-benchmark-tests PRIVATE simulation_benchmark_tests.cpp)
-target_compile_features(native-simulation-benchmark-tests PRIVATE cxx_std_23)
 target_link_libraries(native-simulation-benchmark-tests PRIVATE
   native-simulation-benchmark-lib
   GTest::gtest_main

@@ -4,13 +4,14 @@ set(MESH_GEN_SOURCES
 )
 
 add_library(mesh-gen STATIC ${MESH_GEN_SOURCES})
-target_compile_features(mesh-gen PUBLIC cxx_std_23)
-target_link_libraries(mesh-gen PUBLIC ioj::cxx_conformance)
 target_include_directories(mesh-gen
   PUBLIC include
   PRIVATE src
 )
-target_link_libraries(mesh-gen PRIVATE sandbox::native_defaults)
+target_link_libraries(mesh-gen
+  PUBLIC
+    sandbox::native_defaults
+)
 ioj_enable_warnings(mesh-gen)
 
 if(IOJ_WITH_UNREAL)
@@ -21,15 +22,17 @@ if(IOJ_WITH_UNREAL)
   endforeach()
 
   add_library(sandbox-mesh-gen STATIC ${MESH_GEN_SOURCES})
-  target_compile_features(sandbox-mesh-gen PUBLIC cxx_std_23)
-  target_link_libraries(sandbox-mesh-gen PUBLIC ioj::cxx_conformance)
   target_include_directories(sandbox-mesh-gen
     PUBLIC include
     PRIVATE src
   )
-  target_link_libraries(sandbox-mesh-gen PRIVATE sandbox::native_defaults)
   ioj_enable_warnings(sandbox-mesh-gen)
-  target_link_libraries(sandbox-mesh-gen PRIVATE ioj::unreal_avx2)
+  target_link_libraries(sandbox-mesh-gen
+    PUBLIC
+      sandbox::native_defaults
+    PRIVATE
+      ioj::unreal_avx2
+  )
   set_target_properties(sandbox-mesh-gen PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/MeshGen/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"

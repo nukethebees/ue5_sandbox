@@ -1,6 +1,5 @@
 add_executable(sandbox-s7-tests)
 target_sources(sandbox-s7-tests PRIVATE interpreter_tests.cpp)
-target_compile_features(sandbox-s7-tests PRIVATE cxx_std_23)
 target_include_directories(sandbox-s7-tests PRIVATE ../lib/src)
 target_include_directories(sandbox-s7-tests SYSTEM PRIVATE ../ThirdParty/s7)
 target_link_libraries(sandbox-s7-tests PRIVATE

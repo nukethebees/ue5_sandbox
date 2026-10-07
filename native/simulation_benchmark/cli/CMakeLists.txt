@@ -1,7 +1,6 @@
 add_executable(native-simulation-benchmark)
 ioj_stage_tbb_runtime(native-simulation-benchmark)
 target_sources(native-simulation-benchmark PRIVATE main.cpp)
-target_compile_features(native-simulation-benchmark PRIVATE cxx_std_23)
 target_link_libraries(native-simulation-benchmark PRIVATE
   native-simulation-benchmark-lib
   sandbox::native_defaults

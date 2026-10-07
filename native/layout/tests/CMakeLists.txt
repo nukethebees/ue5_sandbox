@@ -16,7 +16,6 @@ target_sources(native-layout-tests PRIVATE
   schema_loader_tests.cpp
   workspace_tests.cpp
 )
-target_compile_features(native-layout-tests PRIVATE cxx_std_23)
 target_link_libraries(native-layout-tests PRIVATE
   native-layout
   native-soa

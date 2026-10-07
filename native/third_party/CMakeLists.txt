@@ -41,12 +41,16 @@ if(IOJ_BUILD_DEVELOPER_TOOLS)
     imgui/backends/imgui_impl_sdl3.cpp
     imgui/backends/imgui_impl_sdlgpu3.cpp
   )
-  target_compile_features(sandbox-imgui PUBLIC cxx_std_23)
   target_include_directories(sandbox-imgui SYSTEM PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/imgui"
     "${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends"
   )
-  target_link_libraries(sandbox-imgui PUBLIC SDL3::SDL3-static ioj::asan)
+  target_link_libraries(sandbox-imgui
+    PUBLIC
+      ioj::cxx_standard
+      SDL3::SDL3-static
+      ioj::asan
+  )
   ioj_apply_native_abi(sandbox-imgui)
 endif()
 
@@ -72,14 +76,11 @@ ioj_apply_native_abi(hwy)
 # Keep static SIMD targets isolated from baseline callers and unity builds.
 function(ioj_configure_highway_target target isa)
   set_target_properties(${target} PROPERTIES UNITY_BUILD OFF)
-  target_compile_features(${target} PRIVATE cxx_std_23)
   target_compile_definitions(${target} PRIVATE HWY_COMPILE_ONLY_STATIC)
-  target_link_libraries(${target} PRIVATE hwy sandbox::native_defaults ioj::fp_precise)
-  if(isa STREQUAL "avx512")
-    target_link_libraries(${target} PRIVATE ioj::arch_avx512)
-  else()
-    target_link_libraries(${target} PRIVATE ioj::arch_avx2)
-  endif()
+  target_link_libraries(${target} PRIVATE
+    hwy sandbox::native_defaults ioj::fp_precise
+    "$<IF:$<STREQUAL:${isa},avx512>,ioj::arch_avx512,ioj::arch_avx2>"
+  )
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND MSVC)
     target_compile_options(${target} PRIVATE /clang:-maes /clang:-mpclmul /clang:-mbmi2 /clang:-mfma /clang:-mf16c)
   elseif(NOT MSVC)
