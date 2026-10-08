@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <limits>
 
-namespace ioj {
+namespace ioj::levels {
 // Return zero for non-positive/non-finite inputs or an unrepresentable dimension.
 [[nodiscard]] inline auto grid_axis_count(float const extent, float const cell) noexcept
     -> std::int32_t {

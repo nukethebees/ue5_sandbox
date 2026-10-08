@@ -5,8 +5,8 @@ if(WIN32 AND
 endif()
 
 add_library(native-core STATIC)
-add_library(native-enum-traits INTERFACE)
-target_include_directories(native-enum-traits INTERFACE include)
+add_library(native-core-headers INTERFACE)
+target_include_directories(native-core-headers INTERFACE include)
 target_sources(native-core PRIVATE
   include/sandbox/core/container_ops.h
   include/sandbox/core/monotonic_clock.h
@@ -46,7 +46,8 @@ target_include_directories(native-core PUBLIC include)
 
 # Separate translation units keep AVX2 out of the scalar reference and prevent
 # unity builds or contraction from changing the packing arithmetic.
-add_library(native-core-ismc-scalar OBJECT
+add_library(native-core-ismc-scalar OBJECT)
+target_sources(native-core-ismc-scalar PRIVATE
   src/sandbox_ismc_packing.cpp
   src/sandbox_ismc_packing_dispatch.cpp)
 set_target_properties(native-core-ismc-scalar PROPERTIES UNITY_BUILD OFF)
@@ -55,7 +56,9 @@ target_link_libraries(native-core-ismc-scalar PRIVATE
   hwy sandbox::native_defaults sandbox::handmade_math ioj::fp_precise)
 ioj_apply_native_abi(native-core-ismc-scalar)
 ioj_enable_warnings(native-core-ismc-scalar)
-add_library(native-core-ismc-highway-avx2 OBJECT src/sandbox_ismc_packing_highway.cpp)
+add_library(native-core-ismc-highway-avx2 OBJECT)
+target_sources(native-core-ismc-highway-avx2 PRIVATE
+  src/sandbox_ismc_packing_highway.cpp)
 ioj_configure_highway_target(native-core-ismc-highway-avx2 avx2)
 target_include_directories(native-core-ismc-highway-avx2 PRIVATE include)
 target_link_libraries(native-core-ismc-highway-avx2 PRIVATE sandbox::handmade_math)
@@ -82,7 +85,7 @@ set_target_properties(native-core PROPERTIES
 if(IOJ_WITH_UNREAL)
   set_target_properties(native-core PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/Core/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${IOJ_NATIVE_OUTPUT_ROOT}/Core/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
 
@@ -129,7 +132,8 @@ ioj_enable_warnings(native-core-tests)
 add_test(NAME native-core-tests COMMAND native-core-tests)
 set_tests_properties(native-core-tests PROPERTIES LABELS "unit;all;native;native-core")
 
-add_library(native-core-ismc-avx2-experiment OBJECT EXCLUDE_FROM_ALL
+add_library(native-core-ismc-avx2-experiment OBJECT EXCLUDE_FROM_ALL)
+target_sources(native-core-ismc-avx2-experiment PRIVATE
   experiments/sandbox_ismc_packing_avx2.cpp)
 set_target_properties(native-core-ismc-avx2-experiment PROPERTIES UNITY_BUILD OFF)
 target_include_directories(native-core-ismc-avx2-experiment PUBLIC experiments)
@@ -139,7 +143,8 @@ target_link_libraries(native-core-ismc-avx2-experiment
 ioj_apply_native_abi(native-core-ismc-avx2-experiment)
 ioj_enable_warnings(native-core-ismc-avx2-experiment)
 
-add_library(native-core-ismc-avx512-experiment OBJECT EXCLUDE_FROM_ALL
+add_library(native-core-ismc-avx512-experiment OBJECT EXCLUDE_FROM_ALL)
+target_sources(native-core-ismc-avx512-experiment PRIVATE
   experiments/sandbox_ismc_packing_avx512.cpp)
 set_target_properties(native-core-ismc-avx512-experiment PROPERTIES UNITY_BUILD OFF)
 target_include_directories(native-core-ismc-avx512-experiment PUBLIC experiments)
@@ -149,7 +154,8 @@ target_link_libraries(native-core-ismc-avx512-experiment
 ioj_apply_native_abi(native-core-ismc-avx512-experiment)
 ioj_enable_warnings(native-core-ismc-avx512-experiment)
 
-add_library(native-core-ismc-highway-avx512 OBJECT EXCLUDE_FROM_ALL
+add_library(native-core-ismc-highway-avx512 OBJECT EXCLUDE_FROM_ALL)
+target_sources(native-core-ismc-highway-avx512 PRIVATE
   src/sandbox_ismc_packing_highway.cpp)
 ioj_configure_highway_target(native-core-ismc-highway-avx512 avx512)
 target_include_directories(native-core-ismc-highway-avx512 PUBLIC experiments)

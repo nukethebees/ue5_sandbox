@@ -55,7 +55,7 @@ endforeach()
 if(IOJ_WITH_UNREAL)
   set_target_properties(native-simulation-unreal PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/Simulation/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${IOJ_NATIVE_OUTPUT_ROOT}/Simulation/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
 

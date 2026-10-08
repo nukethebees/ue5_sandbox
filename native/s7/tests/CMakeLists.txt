@@ -12,7 +12,9 @@ ioj_apply_native_abi(sandbox-s7-tests)
 add_test(NAME sandbox-s7-tests COMMAND sandbox-s7-tests)
 set_tests_properties(sandbox-s7-tests PROPERTIES LABELS "unit;all;native;native-s7")
 
-add_executable(native-s7-ast-tests ast_tests.cpp)
+add_executable(native-s7-ast-tests)
+target_sources(native-s7-ast-tests PRIVATE
+  ast_tests.cpp)
 target_link_libraries(native-s7-ast-tests PRIVATE sandbox-s7 GTest::gtest_main)
 ioj_enable_warnings(native-s7-ast-tests)
 ioj_apply_native_abi(native-s7-ast-tests)

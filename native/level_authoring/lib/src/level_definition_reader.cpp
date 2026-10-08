@@ -9,7 +9,7 @@ namespace ioj::levels::authoring {
 namespace {
 using detail::AstParser;
 
-auto vector(AstParser& parser, s7::NodeIndex const node, std::string const& path) -> Vector3d {
+auto vector(AstParser& parser, s7::NodeIndex const node, std::string const& path) -> ml::Vector3d {
     auto const values{parser.list(node, path)};
     if (values.size() != 3) {
         parser.error(DiagnosticCode::InvalidType, path, "Expected three numeric components");

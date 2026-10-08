@@ -36,14 +36,17 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
 endif()
 ioj_apply_native_abi(sandbox-s7-third-party)
 
-add_library(native-s7-data STATIC src/ast.cpp src/sexpression_emitter.cpp)
+add_library(native-s7-data STATIC)
+target_sources(native-s7-data PRIVATE
+  src/ast.cpp
+  src/sexpression_emitter.cpp)
 target_include_directories(native-s7-data PUBLIC include)
 target_link_libraries(native-s7-data PUBLIC native-common sandbox::native_defaults)
 ioj_enable_warnings(native-s7-data)
 ioj_apply_native_abi(native-s7-data)
 if(IOJ_WITH_UNREAL)
   set_target_properties(native-s7-data PROPERTIES ARCHIVE_OUTPUT_DIRECTORY
-    "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}")
+    "${IOJ_NATIVE_OUTPUT_ROOT}/S7/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}")
 endif()
 
 add_library(sandbox-s7 STATIC)
@@ -82,13 +85,13 @@ set_target_properties(sandbox-s7 PROPERTIES
 if(IOJ_WITH_UNREAL)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
     file(MAKE_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"
+      "${IOJ_NATIVE_OUTPUT_ROOT}/S7/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"
     )
   endforeach()
 
   set_target_properties(sandbox-s7 PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${IOJ_NATIVE_OUTPUT_ROOT}/S7/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
 

@@ -234,9 +234,9 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
                                      player_definition->position.y,
                                      player_definition->position.z};
         player.transform.rotation =
-            ioj::sim::to_quaternion(ioj::sim::Rotator3d{player_definition->rotation.pitch,
-                                                        player_definition->rotation.yaw,
-                                                        player_definition->rotation.roll});
+            ioj::sim::to_quaternion(ioj::Rotator3d{player_definition->rotation.pitch,
+                                                   player_definition->rotation.yaw,
+                                                   player_definition->rotation.roll});
         data.player = player;
     }
 

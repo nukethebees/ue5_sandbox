@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/type_traits.h>
+
 #include <compare>
 #include <functional>
 #include <string>
@@ -40,29 +42,14 @@ struct TeamId {
 };
 }
 
+namespace ioj::levels {
+template <typename T>
+concept Identifier = ioj::SameAsAny<T, LevelId, CampaignId, EntityId, TeamId>;
+}
+
 namespace std {
-template <>
-struct hash<ioj::levels::LevelId> {
-    auto operator()(ioj::levels::LevelId const& id) const noexcept -> size_t {
-        return hash<string>{}(id.value);
-    }
-};
-template <>
-struct hash<ioj::levels::CampaignId> {
-    auto operator()(ioj::levels::CampaignId const& id) const noexcept -> size_t {
-        return hash<string>{}(id.value);
-    }
-};
-template <>
-struct hash<ioj::levels::EntityId> {
-    auto operator()(ioj::levels::EntityId const& id) const noexcept -> size_t {
-        return hash<string>{}(id.value);
-    }
-};
-template <>
-struct hash<ioj::levels::TeamId> {
-    auto operator()(ioj::levels::TeamId const& id) const noexcept -> size_t {
-        return hash<string>{}(id.value);
-    }
+template <ioj::levels::Identifier Id>
+struct hash<Id> {
+    auto operator()(Id const& id) const noexcept -> size_t { return hash<string>{}(id.value); }
 };
 }

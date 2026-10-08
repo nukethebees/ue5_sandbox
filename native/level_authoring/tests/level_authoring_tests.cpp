@@ -193,10 +193,10 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourc
             definition.collision_grid.emplace();
         }
         if ((mask & 1) != 0) {
-            definition.collision_grid->level_size = Vector3d{20000, 20000, 20000};
+            definition.collision_grid->level_size = ml::Vector3d{20000, 20000, 20000};
         }
         if ((mask & 2) != 0) {
-            definition.collision_grid->cell_size = Vector3d{5000, 5000, 5000};
+            definition.collision_grid->cell_size = ml::Vector3d{5000, 5000, 5000};
         }
         auto const source{emit_editor_level_source(definition)};
         ASSERT_TRUE(source) << format_diagnostics(source.error());

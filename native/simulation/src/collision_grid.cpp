@@ -1,7 +1,7 @@
 #include "ioj/sim/collision_grid.h"
 
 #include "ioj/sim/vectors3f.h"
-#include <ioj/grid_dimensions.h>
+#include <ioj/levels/grid_dimensions.h>
 
 #include <algorithm>
 #include <cassert>
@@ -111,14 +111,14 @@ auto is_configured(GridGeometry const geometry) noexcept -> bool {
         return false;
     }
 
-    return ioj::grid_cell_count_fits(
+    return ioj::levels::grid_cell_count_fits(
         geometry.dimensions.x, geometry.dimensions.y, geometry.dimensions.z);
 }
 auto calculate_grid_dimensions(Vector3f const grid_size, Vector3f const cell_size) noexcept
     -> CellCoord {
-    return {ioj::grid_axis_count(grid_size.X, cell_size.X),
-            ioj::grid_axis_count(grid_size.Y, cell_size.Y),
-            ioj::grid_axis_count(grid_size.Z, cell_size.Z)};
+    return {ioj::levels::grid_axis_count(grid_size.X, cell_size.X),
+            ioj::levels::grid_axis_count(grid_size.Y, cell_size.Y),
+            ioj::levels::grid_axis_count(grid_size.Z, cell_size.Z)};
 }
 auto num_cells(GridGeometry const geometry) noexcept -> GridCellCount {
     return geometry.dimensions.x * geometry.dimensions.y * geometry.dimensions.z;

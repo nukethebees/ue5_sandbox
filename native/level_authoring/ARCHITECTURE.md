@@ -14,8 +14,9 @@ Scheme source -> sandbox-s7 -> owned s7::Ast
                        simulation / Unreal
 ```
 
-`native-s7-data` owns flat nodes, child indices, and text bytes. Nodes have enum kinds and
-32-bit indices/ranges; integers, ratios, and real numbers retain distinct payloads.
+`native-s7-data` owns flat nodes, child indices, text bytes, and separate contiguous arrays
+for integers, ratios, reals, and booleans. Each node contains only an enum kind and a 32-bit
+offset/count into its corresponding storage. There is no union or inline payload.
 Materialization rejects unsupported values, improper lists, cycles, and resource-limit
 violations. No runtime handles survive in the AST. Shared acyclic sublists are copied.
 
@@ -26,7 +27,10 @@ without s7. The `native-level-authoring-s7` library provides source/file reader 
 it destroys the interpreter before parsing and semantic validation.
 
 `native-levels` owns LevelId, CampaignId, EntityId, TeamId, declarative definitions,
-and validation. Simulation depends on it and retains all runtime compilation/state.
+and validation, split into metadata, entity, camera, grid, and mission definitions. It reuses
+the existing core vector type and shared rotation type through `native-core-headers`,
+without linking the core runtime. Grid dimension rules live with the level definitions.
+Simulation depends on it and retains all runtime compilation/state.
 Catalog validators receive only successfully decoded definitions, retaining original
 discovery indices and filesystem paths. Diagnostics distinguish `node_path` from
 `source_path` and carry an error code and message.

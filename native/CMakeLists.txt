@@ -1,3 +1,5 @@
+set(IOJ_NATIVE_OUTPUT_ROOT "${PROJECT_SOURCE_DIR}/Binaries/Native")
+
 add_library(sandbox_native_no_rtti INTERFACE)
 add_library(sandbox::native_no_rtti ALIAS sandbox_native_no_rtti)
 target_compile_options(sandbox_native_no_rtti INTERFACE
@@ -75,9 +77,9 @@ if(IOJ_WITH_TRACY)
     set_target_properties(TracyClientUnreal PROPERTIES
       OUTPUT_NAME SandboxTracyClient
       ARCHIVE_OUTPUT_DIRECTORY
-        "${PROJECT_SOURCE_DIR}/Binaries/Native/Tracy/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+        "${IOJ_NATIVE_OUTPUT_ROOT}/Tracy/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
       RUNTIME_OUTPUT_DIRECTORY
-        "${PROJECT_SOURCE_DIR}/Binaries/Native/Tracy/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+        "${IOJ_NATIVE_OUTPUT_ROOT}/Tracy/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
     )
   endif()
 endif()

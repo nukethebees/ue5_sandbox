@@ -62,11 +62,11 @@ auto to_native(ml::FLevelDefinition const& definition) -> ::ioj::levels::LevelDe
         ::ioj::levels::LevelCollisionGridDefinition native_grid;
         if (grid.level_size.IsSet()) {
             auto const size{grid.level_size.GetValue()};
-            native_grid.level_size = ::ioj::levels::Vector3d{size.X, size.Y, size.Z};
+            native_grid.level_size = ::ml::Vector3d{size.X, size.Y, size.Z};
         }
         if (grid.cell_size.IsSet()) {
             auto const size{grid.cell_size.GetValue()};
-            native_grid.cell_size = ::ioj::levels::Vector3d{size.X, size.Y, size.Z};
+            native_grid.cell_size = ::ml::Vector3d{size.X, size.Y, size.Z};
         }
         result.collision_grid = MoveTemp(native_grid);
     }

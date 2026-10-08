@@ -113,7 +113,7 @@ if(IOJ_WITH_UNREAL)
   target_link_libraries(sbx-mimalloc PRIVATE ioj::unreal_avx2)
   set_target_properties(sbx-mimalloc PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/SbxMimalloc/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${IOJ_NATIVE_OUTPUT_ROOT}/SbxMimalloc/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
 

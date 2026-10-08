@@ -17,7 +17,7 @@ ioj_enable_warnings(mesh-gen)
 if(IOJ_WITH_UNREAL)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
     file(MAKE_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/MeshGen/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"
+      "${IOJ_NATIVE_OUTPUT_ROOT}/MeshGen/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"
     )
   endforeach()
 
@@ -35,7 +35,7 @@ if(IOJ_WITH_UNREAL)
   )
   set_target_properties(sandbox-mesh-gen PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/MeshGen/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${IOJ_NATIVE_OUTPUT_ROOT}/MeshGen/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
     OUTPUT_NAME sandbox_mesh_gen
   )
 
