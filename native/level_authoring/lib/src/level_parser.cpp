@@ -4,7 +4,6 @@
 
 #include <array>
 #include <format>
-#include <unordered_map>
 #include <unordered_set>
 
 namespace ioj::levels::authoring {
@@ -189,24 +188,29 @@ auto entity(AstParser& parser, s7::NodeIndex const node, std::string const& node
 
 void assign_generated_entity_ids(std::vector<EntitySpawnDefinition>& entities) {
     std::unordered_set<EntityId> used_ids;
+    used_ids.reserve(entities.size());
     for (auto const& entity : entities) {
         if (!entity.id.empty()) {
             used_ids.insert(entity.id);
         }
     }
 
-    std::unordered_map<std::string, std::size_t> next_indices;
+    std::array<std::array<std::size_t, ml::EnumTraits<EntityArchetype>::values.size()>,
+               ml::EnumTraits<Team>::values.size()>
+        next_indices{};
     for (auto& entity : entities) {
         if (!entity.id.empty()) {
             continue;
         }
 
-        auto const prefix{std::format(
-            "{}-{}", to_serialized_string(entity.team), to_serialized_string(entity.archetype))};
-        auto& index{next_indices[prefix]};
+        auto& index{next_indices[static_cast<std::size_t>(entity.team)]
+                                [static_cast<std::size_t>(entity.archetype)]};
         // Reserve explicit IDs before generating names, including IDs on later entities.
         do {
-            entity.id = EntityId{std::format("{}-{}", prefix, index++)};
+            entity.id = EntityId{std::format("{}-{}-{}",
+                                             to_serialized_string(entity.team),
+                                             to_serialized_string(entity.archetype),
+                                             index++)};
         } while (!used_ids.insert(entity.id).second);
     }
 }
@@ -238,10 +242,10 @@ auto unlocks(AstParser& parser,
 }
 }
 
-auto parse_level(s7::Ast const& ast) -> LevelDefinitionReadResult {
+auto parse_level(s7::Ast const& ast, s7::NodeIndex const root) -> LevelDefinitionReadResult {
     AstParser parser{ast};
     LevelDefinition result;
-    auto const fields{parser.record(ast.root, RecordKind::Level, "level")};
+    auto const fields{parser.record(root, RecordKind::Level, "level")};
     for (auto const& field : fields) {
         switch (field.property) {
             case Property::Id:
@@ -275,6 +279,7 @@ auto parse_level(s7::Ast const& ast) -> LevelDefinitionReadResult {
             case Property::MissionEvents: {
                 auto const values{parser.list(field.value, field.node_path)};
                 auto const count{values.size()};
+                result.mission_events.reserve(count);
                 for (std::size_t index{}; index < count; ++index) {
                     result.mission_events.push_back(mission_event(
                         parser, values[index], std::format("{}[{}]", field.node_path, index)));
@@ -284,6 +289,7 @@ auto parse_level(s7::Ast const& ast) -> LevelDefinitionReadResult {
             case Property::Entities: {
                 auto const values{parser.list(field.value, field.node_path)};
                 auto const count{values.size()};
+                result.entities.reserve(count);
                 for (std::size_t index{}; index < count; ++index) {
                     result.entities.push_back(entity(
                         parser, values[index], std::format("{}[{}]", field.node_path, index)));

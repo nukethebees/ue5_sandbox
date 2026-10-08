@@ -1,5 +1,6 @@
 #include "validation.h"
 
+#include <cassert>
 #include <cmath>
 #include <format>
 
@@ -7,12 +8,12 @@ namespace ioj::levels::detail {
 namespace {
 auto validate_references(std::vector<EntityId> const& references,
                          std::string_view const role,
-                         IdSet const& entity_ids,
+                         EntityValidationState const& entities,
                          Diagnostics& result) -> IdSet {
     IdSet validated;
     validated.reserve(references.size());
     for (auto const& id : references) {
-        if (id.empty() || !entity_ids.contains(id)) {
+        if (id.empty() || !entities.by_id.contains(id)) {
             result.emplace_back(DiagnosticCode::MissionEntityNotFound,
                                 "level.mission",
                                 "Mission " + std::string{role} + " entity '" + id.value +
@@ -31,8 +32,9 @@ void validate_initial_spawns(IdSet const& ids,
                              EntityValidationState const& entities,
                              Diagnostics& result) {
     for (auto const& id : ids) {
-        auto const found{entities.spawn_times_by_id.find(id)};
-        if (found != entities.spawn_times_by_id.end() && found->second > 0.0) {
+        auto const found{entities.by_id.find(id)};
+        assert(found != entities.by_id.end());
+        if (found->second.spawn_time_seconds > 0.0) {
             result.emplace_back(DiagnosticCode::MissionEventBeforeEntitySpawn,
                                 "level.mission",
                                 "Initial mission objective entity '" + id.value +
@@ -43,9 +45,9 @@ void validate_initial_spawns(IdSet const& ids,
 
 }
 
-void validate_mission(LevelMissionDefinition const& mission,
+auto validate_mission(LevelMissionDefinition const& mission,
                       EntityValidationState const& entities,
-                      Diagnostics& result) {
+                      Diagnostics& result) -> MissionReferences {
     auto requires_time_limit{false};
     auto uses_kill_count{false};
     switch (mission.mode) {
@@ -106,11 +108,11 @@ void validate_mission(LevelMissionDefinition const& mission,
                             "Survive-time mission cannot define a kill count");
     }
 
-    auto const heroes{validate_references(mission.hero_entity_ids, "hero", entities.ids, result)};
-    auto const survivors{
-        validate_references(mission.must_survive_entity_ids, "must-survive", entities.ids, result)};
-    auto const required{validate_references(
-        mission.required_kill_entity_ids, "required-kill", entities.ids, result)};
+    auto const heroes{validate_references(mission.hero_entity_ids, "hero", entities, result)};
+    auto survivors{
+        validate_references(mission.must_survive_entity_ids, "must-survive", entities, result)};
+    auto required{
+        validate_references(mission.required_kill_entity_ids, "required-kill", entities, result)};
     validate_initial_spawns(heroes, entities, result);
     validate_initial_spawns(survivors, entities, result);
     validate_initial_spawns(required, entities, result);
@@ -128,13 +130,11 @@ void validate_mission(LevelMissionDefinition const& mission,
     if (uses_kill_count && !mission.kill_count && !heroes.empty()) {
         std::optional<Team> hero_team;
         for (auto const& id : heroes) {
-            auto const found{entities.teams_by_id.find(id)};
-            if (found == entities.teams_by_id.end()) {
-                continue;
-            }
+            auto const found{entities.by_id.find(id)};
+            assert(found != entities.by_id.end());
             if (!hero_team) {
-                hero_team = found->second;
-            } else if (*hero_team != found->second) {
+                hero_team = found->second.team;
+            } else if (*hero_team != found->second.team) {
                 result.emplace_back(
                     DiagnosticCode::AmbiguousAutomaticKillTeams,
                     "level.mission.heroes",
@@ -143,10 +143,13 @@ void validate_mission(LevelMissionDefinition const& mission,
             }
         }
     }
+
+    return {std::move(survivors), std::move(required)};
 }
 
 void validate_mission_events(LevelDefinition const& definition,
                              EntityValidationState const& entities,
+                             MissionReferences references,
                              Diagnostics& result) {
     if (definition.mission_events.empty()) {
         return;
@@ -159,10 +162,8 @@ void validate_mission_events(LevelDefinition const& definition,
     }
 
     auto const& mission{*definition.mission};
-    auto must_survive{
-        validate_references(mission.must_survive_entity_ids, "must-survive", entities.ids, result)};
-    auto required{validate_references(
-        mission.required_kill_entity_ids, "required-kill", entities.ids, result)};
+    auto& must_survive{references.survivors};
+    auto& required{references.required};
     auto const event_count{definition.mission_events.size()};
     for (std::size_t event_index{}; event_index < event_count; ++event_index) {
         auto const& event{definition.mission_events[event_index]};
@@ -191,15 +192,15 @@ void validate_mission_events(LevelDefinition const& definition,
                                   IdSet const& conflicting_role,
                                   std::string_view const role) {
             for (auto const& id : references) {
-                auto const spawn{entities.spawn_times_by_id.find(id)};
-                if (spawn == entities.spawn_times_by_id.end()) {
+                auto const spawn{entities.by_id.find(id)};
+                if (spawn == entities.by_id.end()) {
                     result.emplace_back(DiagnosticCode::MissionEntityNotFound,
                                         "level.mission",
                                         "Mission event " + std::string{role} + " entity '" +
                                             id.value + "' is not declared");
                     continue;
                 }
-                if (spawn->second > event.time_seconds) {
+                if (spawn->second.spawn_time_seconds > event.time_seconds) {
                     result.emplace_back(DiagnosticCode::MissionEventBeforeEntitySpawn,
                                         "level.mission",
                                         "Mission event references entity '" + id.value +

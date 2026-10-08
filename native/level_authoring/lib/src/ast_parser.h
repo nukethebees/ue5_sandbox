@@ -46,6 +46,7 @@ class AstParser {
         std::vector<Id> result;
         auto const values{list(node, node_path)};
         auto const count{values.size()};
+        result.reserve(count);
         for (std::size_t index{}; index < count; ++index) {
             result.emplace_back(symbol(values[index], std::format("{}[{}]", node_path, index)));
         }

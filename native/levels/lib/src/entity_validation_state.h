@@ -8,10 +8,12 @@
 
 namespace ioj::levels::detail {
 using IdSet = std::unordered_set<EntityId>;
+struct EntityFacts {
+    Team team{};
+    double spawn_time_seconds{};
+};
 struct EntityValidationState {
-    IdSet ids{};
-    std::unordered_map<EntityId, Team> teams_by_id{};
-    std::unordered_map<EntityId, double> spawn_times_by_id{};
+    std::unordered_map<EntityId, EntityFacts> by_id{};
     bool player_found{false};
 };
 }

@@ -80,10 +80,11 @@ auto validate_level(LevelDefinition const& definition) -> std::expected<void, Di
     if (definition.camera) {
         detail::validate_camera(*definition.camera, entities, result);
     }
+    detail::MissionReferences references;
     if (definition.mission) {
-        detail::validate_mission(*definition.mission, entities, result);
+        references = detail::validate_mission(*definition.mission, entities, result);
     }
-    detail::validate_mission_events(definition, entities, result);
+    detail::validate_mission_events(definition, entities, std::move(references), result);
     if (!result.empty()) {
         return std::unexpected{std::move(result)};
     }

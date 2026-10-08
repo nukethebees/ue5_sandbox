@@ -28,7 +28,9 @@ the validated file handle through reading and lives under `runtime/lib/src/platf
 
 `native-level-authoring` depends on `native-s7-data` and `native-levels`, without the
 interpreter or simulation. Its parsers accept a valid AST and return `std::expected`
-definitions with structured diagnostics. `native-level-parser-tests` links this boundary
+definitions with structured diagnostics. Level and campaign parsers borrow the AST and take
+an explicit root node, so catalog parsing never changes or copies AST storage.
+`native-level-parser-tests` links this boundary
 without s7. The `native-level-authoring-s7` library provides source/file reader entry points;
 `DefinitionReader::read_root_file` evaluates one explicit root and its imports in one
 interpreter. `catalog` accepts `:levels` and `:campaigns` filename lists and evaluates
@@ -58,6 +60,8 @@ Teams and entity archetypes are enums parsed from LispB-defined spellings at inp
 boundaries. Participating teams are derived from initial and scheduled entities. The shared `ioj::Team`
 enum is used throughout authoring and simulation; only Unreal properties use its reflected projection. Semantic validation
 checks references, role constraints, and numeric rules independently of AST parsing.
+Validation stores entity facts in one ID lookup and passes the validated initial mission
+role sets into event validation. Generated entity-ID counters use fixed team/archetype slots.
 Catalog validators receive only successfully decoded definitions, retaining original
 discovery indices and filesystem paths. Diagnostics distinguish `node_path` from
 `source_path` and carry an error code and message.

@@ -10,7 +10,7 @@
 namespace ioj::levels::authoring {
 namespace {
 template <typename Definition, typename Parse>
-auto parse_entry(s7::Ast& ast,
+auto parse_entry(s7::Ast const& ast,
                  s7::NodeIndex const node,
                  std::string const& node_path,
                  std::filesystem::path const& source_root,
@@ -61,8 +61,7 @@ auto parse_entry(s7::Ast& ast,
             {DiagnosticCode::ScriptEvaluationFailed, node_path, std::move(*evaluation_error)}}};
     } else {
         assert(value.has_value());
-        ast.root = *value;
-        result = parse(ast);
+        result = parse(ast, *value);
     }
     if (!result) {
         for (auto& error : result.error()) {
@@ -72,7 +71,7 @@ auto parse_entry(s7::Ast& ast,
     return {std::move(source_path), std::move(result)};
 }
 }
-auto parse_catalog(s7::Ast ast, std::filesystem::path const& source_root)
+auto parse_catalog(s7::Ast const& ast, std::filesystem::path const& source_root)
     -> std::expected<DefinitionCatalog, Diagnostics> {
     detail::AstParser parser{ast};
     DefinitionCatalog result;
@@ -84,6 +83,11 @@ auto parse_catalog(s7::Ast ast, std::filesystem::path const& source_root)
         }
         auto const entries{parser.list(field.value, field.node_path)};
         auto const count{entries.size()};
+        if (field.property == Property::Levels) {
+            result.levels.reserve(count);
+        } else {
+            result.campaigns.reserve(count);
+        }
         for (std::size_t index{}; index < count; ++index) {
             auto const node_path{std::format("{}[{}]", field.node_path, index)};
             switch (field.property) {

@@ -3,10 +3,10 @@
 #include "ast_parser.h"
 
 namespace ioj::levels::authoring {
-auto parse_campaign(s7::Ast const& ast) -> CampaignDefinitionReadResult {
+auto parse_campaign(s7::Ast const& ast, s7::NodeIndex const root) -> CampaignDefinitionReadResult {
     detail::AstParser parser{ast};
     CampaignDefinition result;
-    auto const fields{parser.record(ast.root, RecordKind::Campaign, "campaign")};
+    auto const fields{parser.record(root, RecordKind::Campaign, "campaign")};
     for (auto const& field : fields) {
         switch (field.property) {
             case Property::Id:

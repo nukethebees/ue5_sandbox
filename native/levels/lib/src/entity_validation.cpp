@@ -15,9 +15,7 @@ auto owner(EntitySpawnDefinition const& entity, std::size_t const index) -> std:
 auto validate_entities(LevelDefinition const& definition, Diagnostics& result)
     -> EntityValidationState {
     EntityValidationState state;
-    state.ids.reserve(definition.entities.size());
-    state.teams_by_id.reserve(definition.entities.size());
-    state.spawn_times_by_id.reserve(definition.entities.size());
+    state.by_id.reserve(definition.entities.size());
 
     auto const entity_count{definition.entities.size()};
     for (std::size_t index{}; index < entity_count; ++index) {
@@ -28,14 +26,12 @@ auto validate_entities(LevelDefinition const& definition, Diagnostics& result)
                              entity.id == definition.player_entity_id};
 
         if (!entity.id.empty()) {
-            if (!state.ids.insert(entity.id).second) {
+            if (!state.by_id.emplace(entity.id, EntityFacts{entity.team, entity.spawn_time_seconds})
+                     .second) {
                 result.emplace_back(DiagnosticCode::DuplicateEntityId,
                                     "level.entities.id",
                                     entity_owner + " duplicates authored entity id '" +
                                         entity.id.value + "'");
-            } else {
-                state.teams_by_id.emplace(entity.id, entity.team);
-                state.spawn_times_by_id.emplace(entity.id, entity.spawn_time_seconds);
             }
         }
 

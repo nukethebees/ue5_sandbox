@@ -23,7 +23,7 @@ void validate_camera(LevelCameraDefinition const& camera,
                                     " duplicates entity '" + id.value + "'");
             continue;
         }
-        if (id.empty() || !entities.ids.contains(id)) {
+        if (id.empty() || !entities.by_id.contains(id)) {
             result.emplace_back(DiagnosticCode::CameraTargetNotFound,
                                 "level.camera.look-at",
                                 "Initial camera target '" + id.value + "' is not declared");

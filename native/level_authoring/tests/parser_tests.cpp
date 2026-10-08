@@ -15,7 +15,7 @@ TEST(NativeLevelParser, ParsesOwnedAstWithoutLinkingTheInterpreter) {
         {.kind = s7::NodeKind::String, .offset = 19, .count = 5},
     };
     ast.child_indices = {1, 2, 3, 4, 5};
-    auto const result{parse_level(ast)};
+    auto const result{parse_level(ast, ast.root)};
     ASSERT_TRUE(result);
     EXPECT_EQ(result->metadata.id, LevelId{"fixture"});
     EXPECT_EQ(result->metadata.title, "Title");

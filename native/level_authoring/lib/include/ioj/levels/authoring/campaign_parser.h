@@ -4,5 +4,7 @@
 
 namespace ioj::levels::authoring {
 using CampaignDefinitionReadResult = std::expected<CampaignDefinition, Diagnostics>;
-[[nodiscard]] auto parse_campaign(s7::Ast const& ast) -> CampaignDefinitionReadResult;
+// Parse structure and types from a valid node index in ast; validate before publishing.
+[[nodiscard]] auto parse_campaign(s7::Ast const& ast, s7::NodeIndex root)
+    -> CampaignDefinitionReadResult;
 }

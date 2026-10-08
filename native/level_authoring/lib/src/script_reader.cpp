@@ -106,7 +106,7 @@ auto with_source_path(Result result, std::filesystem::path const& path) -> Resul
 }
 
 auto decode_level(s7::Ast const& ast) -> LevelDefinitionReadResult {
-    auto definition{parse_level(ast)};
+    auto definition{parse_level(ast, ast.root)};
     if (!definition) {
         return definition;
     }
@@ -118,7 +118,7 @@ auto decode_level(s7::Ast const& ast) -> LevelDefinitionReadResult {
 }
 
 auto decode_campaign(s7::Ast const& ast) -> CampaignDefinitionReadResult {
-    auto definition{parse_campaign(ast)};
+    auto definition{parse_campaign(ast, ast.root)};
     if (!definition) {
         return definition;
     }
@@ -161,7 +161,7 @@ auto DefinitionReader::read_root_file(std::filesystem::path const& path) const
             full_path);
     }
 
-    auto catalog{parse_catalog(std::move(*ast), full_path.parent_path())};
+    auto catalog{parse_catalog(*ast, full_path.parent_path())};
     if (catalog) {
         for (auto& entry : catalog->levels) {
             if (entry.definition) {
