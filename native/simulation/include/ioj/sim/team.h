@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <unordered_map>
 
 namespace ioj::sim {
 enum class Team : std::uint8_t {
@@ -96,28 +97,21 @@ enum class Team : std::uint8_t {
     }
 }
 
-[[nodiscard]] constexpr auto try_parse_serialized_team(std::string_view const value) noexcept
+[[nodiscard]] inline auto try_parse_serialized_team(std::string_view const value)
     -> std::optional<Team> {
-    if (value == "white") {
-        return Team::White;
+    static std::unordered_map<std::string_view, Team> const values{
+        {"white", Team::White},
+        {"red", Team::Red},
+        {"green", Team::Green},
+        {"blue", Team::Blue},
+        {"orange", Team::Orange},
+        {"yellow", Team::Yellow},
+    };
+    auto const found{values.find(value)};
+    if (found == values.end()) {
+        return std::nullopt;
     }
-    if (value == "red") {
-        return Team::Red;
-    }
-    if (value == "green") {
-        return Team::Green;
-    }
-    if (value == "blue") {
-        return Team::Blue;
-    }
-    if (value == "orange") {
-        return Team::Orange;
-    }
-    if (value == "yellow") {
-        return Team::Yellow;
-    }
-
-    return std::nullopt;
+    return found->second;
 }
 
 } // namespace ioj::sim

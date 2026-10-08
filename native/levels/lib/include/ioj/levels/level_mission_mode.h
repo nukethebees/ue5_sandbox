@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <unordered_map>
 
 namespace ioj::levels {
 enum class LevelMissionMode : std::uint8_t {
@@ -77,23 +78,19 @@ enum class LevelMissionMode : std::uint8_t {
     }
 }
 
-[[nodiscard]] constexpr auto
-    try_parse_serialized_level_mission_mode(std::string_view const value) noexcept
+[[nodiscard]] inline auto try_parse_serialized_level_mission_mode(std::string_view const value)
     -> std::optional<LevelMissionMode> {
-    if (value == "unspecified") {
-        return LevelMissionMode::Unspecified;
+    static std::unordered_map<std::string_view, LevelMissionMode> const values{
+        {"unspecified", LevelMissionMode::Unspecified},
+        {"survive-time", LevelMissionMode::SurviveTime},
+        {"kill-enemies", LevelMissionMode::KillEnemies},
+        {"kill-enemies-within-time", LevelMissionMode::KillEnemiesWithinTime},
+    };
+    auto const found{values.find(value)};
+    if (found == values.end()) {
+        return std::nullopt;
     }
-    if (value == "survive-time") {
-        return LevelMissionMode::SurviveTime;
-    }
-    if (value == "kill-enemies") {
-        return LevelMissionMode::KillEnemies;
-    }
-    if (value == "kill-enemies-within-time") {
-        return LevelMissionMode::KillEnemiesWithinTime;
-    }
-
-    return std::nullopt;
+    return found->second;
 }
 
 } // namespace ioj::levels

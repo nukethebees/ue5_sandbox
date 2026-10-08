@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <unordered_map>
 
 namespace ioj::sim {
 enum class ShipFireRate : std::uint8_t {
@@ -84,20 +85,18 @@ enum class ShipFireRate : std::uint8_t {
     }
 }
 
-[[nodiscard]] constexpr auto
-    try_parse_serialized_ship_fire_rate(std::string_view const value) noexcept
+[[nodiscard]] inline auto try_parse_serialized_ship_fire_rate(std::string_view const value)
     -> std::optional<ShipFireRate> {
-    if (value == "single") {
-        return ShipFireRate::Single;
+    static std::unordered_map<std::string_view, ShipFireRate> const values{
+        {"single", ShipFireRate::Single},
+        {"burst_3", ShipFireRate::Burst3},
+        {"full_auto", ShipFireRate::FullAuto},
+    };
+    auto const found{values.find(value)};
+    if (found == values.end()) {
+        return std::nullopt;
     }
-    if (value == "burst_3") {
-        return ShipFireRate::Burst3;
-    }
-    if (value == "full_auto") {
-        return ShipFireRate::FullAuto;
-    }
-
-    return std::nullopt;
+    return found->second;
 }
 
 } // namespace ioj::sim

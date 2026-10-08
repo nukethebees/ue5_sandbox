@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <unordered_map>
 
 namespace ioj::sim {
 enum class MissionFailReason : std::uint8_t {
@@ -97,23 +98,19 @@ enum class MissionFailReason : std::uint8_t {
     }
 }
 
-[[nodiscard]] constexpr auto
-    try_parse_serialized_mission_fail_reason(std::string_view const value) noexcept
+[[nodiscard]] inline auto try_parse_serialized_mission_fail_reason(std::string_view const value)
     -> std::optional<MissionFailReason> {
-    if (value == "none") {
-        return MissionFailReason::None;
+    static std::unordered_map<std::string_view, MissionFailReason> const values{
+        {"none", MissionFailReason::None},
+        {"player_killed", MissionFailReason::PlayerKilled},
+        {"time_elapsed", MissionFailReason::TimeElapsed},
+        {"defence_objective_failed", MissionFailReason::DefenceObjectiveFailed},
+    };
+    auto const found{values.find(value)};
+    if (found == values.end()) {
+        return std::nullopt;
     }
-    if (value == "player_killed") {
-        return MissionFailReason::PlayerKilled;
-    }
-    if (value == "time_elapsed") {
-        return MissionFailReason::TimeElapsed;
-    }
-    if (value == "defence_objective_failed") {
-        return MissionFailReason::DefenceObjectiveFailed;
-    }
-
-    return std::nullopt;
+    return found->second;
 }
 
 } // namespace ioj::sim

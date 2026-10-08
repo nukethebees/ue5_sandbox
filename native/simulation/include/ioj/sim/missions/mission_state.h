@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <unordered_map>
 
 namespace ioj::sim {
 enum class MissionState : std::uint8_t {
@@ -110,26 +111,20 @@ enum class MissionState : std::uint8_t {
     }
 }
 
-[[nodiscard]] constexpr auto
-    try_parse_serialized_mission_state(std::string_view const value) noexcept
+[[nodiscard]] inline auto try_parse_serialized_mission_state(std::string_view const value)
     -> std::optional<MissionState> {
-    if (value == "not_started") {
-        return MissionState::NotStarted;
+    static std::unordered_map<std::string_view, MissionState> const values{
+        {"not_started", MissionState::NotStarted},
+        {"running", MissionState::Running},
+        {"succeeded", MissionState::Succeeded},
+        {"failed", MissionState::Failed},
+        {"disabled", MissionState::Disabled},
+    };
+    auto const found{values.find(value)};
+    if (found == values.end()) {
+        return std::nullopt;
     }
-    if (value == "running") {
-        return MissionState::Running;
-    }
-    if (value == "succeeded") {
-        return MissionState::Succeeded;
-    }
-    if (value == "failed") {
-        return MissionState::Failed;
-    }
-    if (value == "disabled") {
-        return MissionState::Disabled;
-    }
-
-    return std::nullopt;
+    return found->second;
 }
 
 } // namespace ioj::sim

@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <unordered_map>
 
 namespace ioj::sim {
 enum class LevelTelemetryRunEndReason : std::uint8_t {
@@ -99,29 +100,22 @@ enum class LevelTelemetryRunEndReason : std::uint8_t {
     }
 }
 
-[[nodiscard]] constexpr auto
-    try_parse_serialized_level_telemetry_run_end_reason(std::string_view const value) noexcept
-    -> std::optional<LevelTelemetryRunEndReason> {
-    if (value == "mission_succeeded") {
-        return LevelTelemetryRunEndReason::MissionSucceeded;
+[[nodiscard]] inline auto
+    try_parse_serialized_level_telemetry_run_end_reason(std::string_view const value)
+        -> std::optional<LevelTelemetryRunEndReason> {
+    static std::unordered_map<std::string_view, LevelTelemetryRunEndReason> const values{
+        {"mission_succeeded", LevelTelemetryRunEndReason::MissionSucceeded},
+        {"mission_failed", LevelTelemetryRunEndReason::MissionFailed},
+        {"battle_resolved", LevelTelemetryRunEndReason::BattleResolved},
+        {"duration_reached", LevelTelemetryRunEndReason::DurationReached},
+        {"orchestrator_reset", LevelTelemetryRunEndReason::OrchestratorReset},
+        {"world_end", LevelTelemetryRunEndReason::WorldEnd},
+    };
+    auto const found{values.find(value)};
+    if (found == values.end()) {
+        return std::nullopt;
     }
-    if (value == "mission_failed") {
-        return LevelTelemetryRunEndReason::MissionFailed;
-    }
-    if (value == "battle_resolved") {
-        return LevelTelemetryRunEndReason::BattleResolved;
-    }
-    if (value == "duration_reached") {
-        return LevelTelemetryRunEndReason::DurationReached;
-    }
-    if (value == "orchestrator_reset") {
-        return LevelTelemetryRunEndReason::OrchestratorReset;
-    }
-    if (value == "world_end") {
-        return LevelTelemetryRunEndReason::WorldEnd;
-    }
-
-    return std::nullopt;
+    return found->second;
 }
 
 } // namespace ioj::sim

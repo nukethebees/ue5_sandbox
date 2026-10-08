@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <unordered_map>
 
 namespace ioj::sim {
 enum class EntityType : std::uint8_t {
@@ -110,25 +111,20 @@ enum class EntityType : std::uint8_t {
     }
 }
 
-[[nodiscard]] constexpr auto try_parse_serialized_entity_type(std::string_view const value) noexcept
+[[nodiscard]] inline auto try_parse_serialized_entity_type(std::string_view const value)
     -> std::optional<EntityType> {
-    if (value == "player_ship") {
-        return EntityType::PlayerShip;
+    static std::unordered_map<std::string_view, EntityType> const values{
+        {"player_ship", EntityType::PlayerShip},
+        {"turret", EntityType::Turret},
+        {"capital_ship", EntityType::CapitalShip},
+        {"capital_ship_fighter", EntityType::Fighter},
+        {"tube_spinner", EntityType::TubeSpinner},
+    };
+    auto const found{values.find(value)};
+    if (found == values.end()) {
+        return std::nullopt;
     }
-    if (value == "turret") {
-        return EntityType::Turret;
-    }
-    if (value == "capital_ship") {
-        return EntityType::CapitalShip;
-    }
-    if (value == "capital_ship_fighter") {
-        return EntityType::Fighter;
-    }
-    if (value == "tube_spinner") {
-        return EntityType::TubeSpinner;
-    }
-
-    return std::nullopt;
+    return found->second;
 }
 
 } // namespace ioj::sim

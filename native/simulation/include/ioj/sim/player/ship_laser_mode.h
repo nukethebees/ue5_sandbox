@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <unordered_map>
 
 namespace ioj::sim {
 enum class ShipLaserMode : std::uint8_t {
@@ -84,20 +85,18 @@ enum class ShipLaserMode : std::uint8_t {
     }
 }
 
-[[nodiscard]] constexpr auto
-    try_parse_serialized_ship_laser_mode(std::string_view const value) noexcept
+[[nodiscard]] inline auto try_parse_serialized_ship_laser_mode(std::string_view const value)
     -> std::optional<ShipLaserMode> {
-    if (value == "single") {
-        return ShipLaserMode::Single;
+    static std::unordered_map<std::string_view, ShipLaserMode> const values{
+        {"single", ShipLaserMode::Single},
+        {"double", ShipLaserMode::Double},
+        {"hyper", ShipLaserMode::Hyper},
+    };
+    auto const found{values.find(value)};
+    if (found == values.end()) {
+        return std::nullopt;
     }
-    if (value == "double") {
-        return ShipLaserMode::Double;
-    }
-    if (value == "hyper") {
-        return ShipLaserMode::Hyper;
-    }
-
-    return std::nullopt;
+    return found->second;
 }
 
 } // namespace ioj::sim

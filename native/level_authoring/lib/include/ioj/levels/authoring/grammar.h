@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <optional>
 #include <string_view>
+#include <unordered_map>
 
 namespace ioj::levels::authoring {
 enum class Property : std::uint8_t {
@@ -367,109 +368,48 @@ enum class Property : std::uint8_t {
     }
 }
 
-[[nodiscard]] constexpr auto try_parse_serialized_property(std::string_view const value) noexcept
+[[nodiscard]] inline auto try_parse_serialized_property(std::string_view const value)
     -> std::optional<Property> {
-    if (value == "id") {
-        return Property::Id;
+    static std::unordered_map<std::string_view, Property> const values{
+        {"id", Property::Id},
+        {"title", Property::Title},
+        {"description", Property::Description},
+        {"par-time", Property::ParTime},
+        {"collision-grid", Property::CollisionGrid},
+        {"unlock", Property::Unlock},
+        {"teams", Property::Teams},
+        {"player", Property::Player},
+        {"camera", Property::Camera},
+        {"mission", Property::Mission},
+        {"mission-events", Property::MissionEvents},
+        {"entities", Property::Entities},
+        {"levels", Property::Levels},
+        {"level-size", Property::LevelSize},
+        {"cell-size", Property::CellSize},
+        {"look-at", Property::LookAt},
+        {"distance", Property::Distance},
+        {"offset-direction", Property::OffsetDirection},
+        {"mode", Property::Mode},
+        {"time-limit", Property::TimeLimit},
+        {"kill-count", Property::KillCount},
+        {"heroes", Property::Heroes},
+        {"must-survive", Property::MustSurvive},
+        {"required-kills", Property::RequiredKills},
+        {"at", Property::At},
+        {"add-must-survive", Property::AddMustSurvive},
+        {"add-required-kills", Property::AddRequiredKills},
+        {"increase-kill-count", Property::IncreaseKillCount},
+        {"archetype", Property::Archetype},
+        {"team", Property::Team},
+        {"position", Property::Position},
+        {"rotation", Property::Rotation},
+        {"spawn-at", Property::SpawnAt},
+    };
+    auto const found{values.find(value)};
+    if (found == values.end()) {
+        return std::nullopt;
     }
-    if (value == "title") {
-        return Property::Title;
-    }
-    if (value == "description") {
-        return Property::Description;
-    }
-    if (value == "par-time") {
-        return Property::ParTime;
-    }
-    if (value == "collision-grid") {
-        return Property::CollisionGrid;
-    }
-    if (value == "unlock") {
-        return Property::Unlock;
-    }
-    if (value == "teams") {
-        return Property::Teams;
-    }
-    if (value == "player") {
-        return Property::Player;
-    }
-    if (value == "camera") {
-        return Property::Camera;
-    }
-    if (value == "mission") {
-        return Property::Mission;
-    }
-    if (value == "mission-events") {
-        return Property::MissionEvents;
-    }
-    if (value == "entities") {
-        return Property::Entities;
-    }
-    if (value == "levels") {
-        return Property::Levels;
-    }
-    if (value == "level-size") {
-        return Property::LevelSize;
-    }
-    if (value == "cell-size") {
-        return Property::CellSize;
-    }
-    if (value == "look-at") {
-        return Property::LookAt;
-    }
-    if (value == "distance") {
-        return Property::Distance;
-    }
-    if (value == "offset-direction") {
-        return Property::OffsetDirection;
-    }
-    if (value == "mode") {
-        return Property::Mode;
-    }
-    if (value == "time-limit") {
-        return Property::TimeLimit;
-    }
-    if (value == "kill-count") {
-        return Property::KillCount;
-    }
-    if (value == "heroes") {
-        return Property::Heroes;
-    }
-    if (value == "must-survive") {
-        return Property::MustSurvive;
-    }
-    if (value == "required-kills") {
-        return Property::RequiredKills;
-    }
-    if (value == "at") {
-        return Property::At;
-    }
-    if (value == "add-must-survive") {
-        return Property::AddMustSurvive;
-    }
-    if (value == "add-required-kills") {
-        return Property::AddRequiredKills;
-    }
-    if (value == "increase-kill-count") {
-        return Property::IncreaseKillCount;
-    }
-    if (value == "archetype") {
-        return Property::Archetype;
-    }
-    if (value == "team") {
-        return Property::Team;
-    }
-    if (value == "position") {
-        return Property::Position;
-    }
-    if (value == "rotation") {
-        return Property::Rotation;
-    }
-    if (value == "spawn-at") {
-        return Property::SpawnAt;
-    }
-
-    return std::nullopt;
+    return found->second;
 }
 
 enum class RecordKind : std::uint8_t {
@@ -577,34 +517,23 @@ enum class RecordKind : std::uint8_t {
     }
 }
 
-[[nodiscard]] constexpr auto try_parse_serialized_record_kind(std::string_view const value) noexcept
+[[nodiscard]] inline auto try_parse_serialized_record_kind(std::string_view const value)
     -> std::optional<RecordKind> {
-    if (value == "level") {
-        return RecordKind::Level;
+    static std::unordered_map<std::string_view, RecordKind> const values{
+        {"level", RecordKind::Level},
+        {"campaign", RecordKind::Campaign},
+        {"entity", RecordKind::Entity},
+        {"mission", RecordKind::Mission},
+        {"camera", RecordKind::Camera},
+        {"collision-grid", RecordKind::CollisionGrid},
+        {"mission-event", RecordKind::MissionEvent},
+        {"level-completed", RecordKind::LevelCompleted},
+    };
+    auto const found{values.find(value)};
+    if (found == values.end()) {
+        return std::nullopt;
     }
-    if (value == "campaign") {
-        return RecordKind::Campaign;
-    }
-    if (value == "entity") {
-        return RecordKind::Entity;
-    }
-    if (value == "mission") {
-        return RecordKind::Mission;
-    }
-    if (value == "camera") {
-        return RecordKind::Camera;
-    }
-    if (value == "collision-grid") {
-        return RecordKind::CollisionGrid;
-    }
-    if (value == "mission-event") {
-        return RecordKind::MissionEvent;
-    }
-    if (value == "level-completed") {
-        return RecordKind::LevelCompleted;
-    }
-
-    return std::nullopt;
+    return found->second;
 }
 
 } // namespace ioj::levels::authoring

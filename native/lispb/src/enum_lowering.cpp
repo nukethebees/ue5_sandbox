@@ -360,19 +360,20 @@ auto native_enum_declaration(EnumSchema const& schema, TypeRegistry const& types
         output << "        }\n";
         output << "    }\n\n";
         output << "}\n\n";
-        output << "[[nodiscard]] constexpr auto try_parse_serialized_" << snake_name
-               << "(std::string_view const value) noexcept -> std::optional<" << schema.name
-               << "> {\n";
+        output << "[[nodiscard]] inline auto try_parse_serialized_" << snake_name
+               << "(std::string_view const value) -> std::optional<" << schema.name << "> {\n";
+        output << "    static std::unordered_map<std::string_view, " << schema.name
+               << "> const values{\n";
         for (auto const& value : schema.values) {
-            if (!value.serialized_name.has_value()) {
-                continue;
+            if (value.serialized_name.has_value()) {
+                output << "        {" << native_string_literal(*value.serialized_name) << ", "
+                       << schema.name << "::" << value.name << "},\n";
             }
-            output << "    if (value == " << native_string_literal(*value.serialized_name)
-                   << ") {\n";
-            output << "        return " << schema.name << "::" << value.name << ";\n";
-            output << "    }\n";
         }
-        output << "\n    return std::nullopt;\n}\n";
+        output << "    };\n";
+        output << "    auto const found{values.find(value)};\n";
+        output << "    if (found == values.end()) {\n        return std::nullopt;\n    }\n";
+        output << "    return found->second;\n}\n";
     }
     return output.str();
 }
@@ -516,6 +517,11 @@ auto lower_enum(EnumSchema const& schema,
             .add(Include{"optional", true}, 2)
             .add(Include{"string_view", true}, 2)
             .add(Include{"sandbox/core/enum_traits.h", false}, 2);
+        if (std::ranges::any_of(schema.values, [](auto const& value) {
+                return value.serialized_name.has_value();
+            })) {
+            prefix.add(Include{"unordered_map", true}, 2);
+        }
         emission.header_prefix = prefix.build();
         emission.header = {raw(native_enum_declaration(schema, types))};
         emission.header_global = {Namespace{"ml", {raw(native_enum_traits(settings, schema))}}};
