@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'evaluation-distributed-defence))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

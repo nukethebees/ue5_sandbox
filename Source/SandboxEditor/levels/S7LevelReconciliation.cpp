@@ -43,32 +43,11 @@ auto strict_subset_error(FLevelDefinition const& definition) -> FString {
     if (!definition.mission_events.IsEmpty()) {
         unsupported.Add(TEXT("mission events"));
     }
-    auto const entities{definition.entities.get_const_view()};
-    TSet<FLevelTeamId> used_teams;
-    auto const entity_count{entities.num()};
-    for (int32 index{}; index < entity_count; ++index) {
-        used_teams.Add(entities.teams[index]);
-    }
-
-    TArray<FString> unused_teams;
-    for (auto const team : definition.teams) {
-        if (!used_teams.Contains(team)) {
-            unused_teams.Add(team.value.ToString());
-        }
-    }
-
-    TArray<FString> errors;
     if (!unsupported.IsEmpty()) {
-        errors.Add(FString::Printf(TEXT("The focused authoring mode does not support: %s."),
-                                   *FString::Join(unsupported, TEXT(", "))));
+        return FString::Printf(TEXT("The focused authoring mode does not support: %s."),
+                               *FString::Join(unsupported, TEXT(", ")));
     }
-    if (!unused_teams.IsEmpty()) {
-        errors.Add(FString::Printf(
-            TEXT("The focused authoring mode cannot preserve declared teams unused by entities: "
-                 "%s."),
-            *FString::Join(unused_teams, TEXT(", "))));
-    }
-    return FString::Join(errors, TEXT("\n"));
+    return {};
 }
 
 auto authoring_mode(::ioj::levels::LevelMissionMode const mode) -> ETestMissionMode {
@@ -284,10 +263,10 @@ auto prepare_sync_plan(ULevel const& level,
     for (int32 index{}; index < entity_count; ++index) {
         auto const id{entities.ids[index]};
         auto const archetype{resolve_level_archetype(entities.archetypes[index])};
-        auto const team{resolve_level_team(entities.teams[index])};
+        auto const team{ml::to_unreal(entities.teams[index])};
         auto* const type{
             archetype.IsSet() ? s7_level_actor_class(*archetype, *document.level_config) : nullptr};
-        if (!archetype.IsSet() || !team.IsSet() || !IsValid(type) ||
+        if (!archetype.IsSet() || !IsValid(type) ||
             type->HasAnyClassFlags(CLASS_Abstract | CLASS_NotPlaceable | CLASS_Transient)) {
             return std::unexpected{
                 FString::Printf(TEXT("Entity '%s' cannot be materialised."), *id.value.ToString())};
@@ -332,7 +311,7 @@ auto prepare_sync_plan(ULevel const& level,
         }
         prepared.entities.Add({.id = id,
                                .archetype = archetype.GetValue(),
-                               .team = team.GetValue(),
+                               .team = team,
                                .actor_class = type,
                                .transform = transform,
                                .existing_actor = existing_actor,

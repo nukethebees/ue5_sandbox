@@ -242,8 +242,8 @@ auto make_s7_initial_state_import_plan(FLevelDefinition const& definition)
     plan.entities.Reserve(entity_count);
     for (int32 i{}; i < entity_count; ++i) {
         auto const archetype{resolve_level_archetype(entities.archetypes[i])};
-        auto const team{resolve_level_team(entities.teams[i])};
-        check(archetype.IsSet() && team.IsSet());
+        auto const team{ml::to_unreal(entities.teams[i])};
+        check(archetype.IsSet());
 
         auto const spawn_time{entities.spawn_times_seconds[i]};
         if (spawn_time > 0.0) {
@@ -260,7 +260,7 @@ auto make_s7_initial_state_import_plan(FLevelDefinition const& definition)
         plan.entities.Add({
             .id = entities.ids[i],
             .archetype = archetype.GetValue(),
-            .team = team.GetValue(),
+            .team = team,
             .transform = FTransform{FRotator{entities.rotations.pitches[i],
                                              entities.rotations.yaws[i],
                                              entities.rotations.rolls[i]},

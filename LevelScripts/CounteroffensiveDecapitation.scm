@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'defence-last-anchorage))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

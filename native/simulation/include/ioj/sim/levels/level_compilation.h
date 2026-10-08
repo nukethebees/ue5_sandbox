@@ -17,8 +17,6 @@ namespace ioj::levels {
 using LevelCompilationErrors = std::vector<std::string>;
 using LevelCompilationResult = std::expected<sim::CompiledLevelEvents, LevelCompilationErrors>;
 
-[[nodiscard]] auto to_simulation_team(TeamId id) noexcept -> sim::Team;
-
 [[nodiscard]] auto compile_level(LevelDefinition const& definition,
                                  sim::SimClock const& clock,
                                  sim::CapitalShipSimConfig const& capital_config,

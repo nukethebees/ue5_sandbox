@@ -1279,64 +1279,61 @@ static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::Conflicti
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::PlayerEntityNotFound) == 6);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MismatchedEntityColumns) ==
               7);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::EmptyTeamId) == 8);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::DuplicateTeamId) == 9);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::UnsupportedTeamId) == 10);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::UnknownTeamReference) == 11);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::EmptyArchetypeId) == 12);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::UnsupportedArchetype) == 13);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::UnsupportedTeam) == 8);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::EmptyArchetypeId) == 9);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::UnsupportedArchetype) == 10);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::ArchetypeRoleMismatch) ==
-              14);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::DuplicateEntityId) == 15);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidPlacement) == 16);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidSpawnTime) == 17);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::DelayedPlayerSpawn) == 18);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MissingCameraTarget) == 19);
+              11);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::DuplicateEntityId) == 12);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidPlacement) == 13);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidSpawnTime) == 14);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::DelayedPlayerSpawn) == 15);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MissingCameraTarget) == 16);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::DuplicateCameraTarget) ==
-              20);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::CameraTargetNotFound) == 21);
+              17);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::CameraTargetNotFound) == 18);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidCameraDistance) ==
-              22);
+              19);
 static_assert(
-    static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidCameraOffsetDirection) == 23);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidLevelSize) == 24);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidGridCellSize) == 25);
+    static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidCameraOffsetDirection) == 20);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidLevelSize) == 21);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidGridCellSize) == 22);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidGridDimensions) ==
-              26);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MissingMissionMode) == 27);
+              23);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MissingMissionMode) == 24);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::UnsupportedMissionMode) ==
-              28);
+              25);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidMissionTimeLimit) ==
-              29);
+              26);
 static_assert(
-    static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::UnexpectedMissionTimeLimit) == 30);
+    static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::UnexpectedMissionTimeLimit) == 27);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidMissionKillCount) ==
-              31);
+              28);
 static_assert(
-    static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::UnexpectedMissionKillCount) == 32);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MissingMissionHeroes) == 33);
+    static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::UnexpectedMissionKillCount) == 29);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MissingMissionHeroes) == 30);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MissingMissionSurvivors) ==
-              34);
+              31);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MissionEntityNotFound) ==
-              35);
+              32);
 static_assert(static_cast<std::uint8_t>(
-                  ::ioj::levels::DiagnosticCode::DuplicateMissionEntityReference) == 36);
+                  ::ioj::levels::DiagnosticCode::DuplicateMissionEntityReference) == 33);
 static_assert(
-    static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::ConflictingMissionEntityRoles) == 37);
+    static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::ConflictingMissionEntityRoles) == 34);
 static_assert(
-    static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::AmbiguousAutomaticKillTeams) == 38);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MissingUnlockLevelId) == 39);
+    static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::AmbiguousAutomaticKillTeams) == 35);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MissingUnlockLevelId) == 36);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::DuplicateUnlockCriterion) ==
-              40);
-static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::SelfUnlockDependency) == 41);
+              37);
+static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::SelfUnlockDependency) == 38);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::UnexpectedMissionEvent) ==
-              42);
+              39);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidMissionEventTime) ==
-              43);
+              40);
 static_assert(
-    static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidMissionKillIncrease) == 44);
+    static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::InvalidMissionKillIncrease) == 41);
 static_assert(
-    static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MissionEventBeforeEntitySpawn) == 45);
+    static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MissionEventBeforeEntitySpawn) == 42);
 }
 
 namespace ioj::sim::player::model_contract {

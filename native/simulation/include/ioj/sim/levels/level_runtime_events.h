@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include "ioj/levels/team.h"
 #include "ioj/sim/entity_type.h"
 #include "ioj/sim/health.h"
 #include "ioj/sim/level_event_types.h"
-#include "ioj/sim/team.h"
 
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/vector_soa_view.h"
@@ -294,7 +294,7 @@ struct LevelCapitalSpawnEventsSingleLayout {
     inline static constexpr ColLayout<float> RotationsPitchesColumn{LocationsZsColumn};
     inline static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
     inline static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
-    inline static constexpr ColLayout<Team> TeamsColumn{RotationsRollsColumn};
+    inline static constexpr ColLayout<::ioj::Team> TeamsColumn{RotationsRollsColumn};
     inline static constexpr ColLayout<Health> HealthsColumn{TeamsColumn};
     inline static constexpr ColLayout<float> InitialFighterSpawnDelaysColumn{HealthsColumn};
     inline static constexpr ColLayout<float> FighterSpawnCooldownsColumn{
@@ -367,7 +367,7 @@ struct LevelCapitalSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVi
             Layout::RotationsRollsColumn);
     }
     auto teams() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<Team>>>(
+        return ml::soa_storage_detail::column_view<std::span<Element<::ioj::Team>>>(
             state_, offset_, count_, Layout::TeamsColumn);
     }
     auto healths() const {
@@ -468,7 +468,7 @@ struct LevelCapitalSpawnEvents
         Element<float>* rotations_pitches{};
         Element<float>* rotations_yaws{};
         Element<float>* rotations_rolls{};
-        Element<Team>* teams{};
+        Element<::ioj::Team>* teams{};
         Element<Health>* healths{};
         Element<float>* initial_fighter_spawn_delays{};
         Element<float>* fighter_spawn_cooldowns{};
@@ -658,7 +658,7 @@ struct LevelTurretSpawnEventsSingleLayout {
     inline static constexpr ColLayout<float> RotationsPitchesColumn{LocationsZsColumn};
     inline static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
     inline static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
-    inline static constexpr ColLayout<Team> TeamsColumn{RotationsRollsColumn};
+    inline static constexpr ColLayout<::ioj::Team> TeamsColumn{RotationsRollsColumn};
     inline static constexpr ColLayout<Health> HealthsColumn{TeamsColumn};
     inline static constexpr ColLayout<std::int32_t> LaserDamagesColumn{HealthsColumn};
 
@@ -725,7 +725,7 @@ struct LevelTurretSpawnEventsSingleViewImpl : ml::soa_storage_detail::CompactVie
             Layout::RotationsRollsColumn);
     }
     auto teams() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<Team>>>(
+        return ml::soa_storage_detail::column_view<std::span<Element<::ioj::Team>>>(
             state_, offset_, count_, Layout::TeamsColumn);
     }
     auto healths() const {
@@ -819,7 +819,7 @@ struct LevelTurretSpawnEvents
         Element<float>* rotations_pitches{};
         Element<float>* rotations_yaws{};
         Element<float>* rotations_rolls{};
-        Element<Team>* teams{};
+        Element<::ioj::Team>* teams{};
         Element<Health>* healths{};
         Element<std::int32_t>* laser_damages{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {

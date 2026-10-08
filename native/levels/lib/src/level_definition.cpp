@@ -6,6 +6,17 @@
 
 namespace ioj::levels {
 
+auto participating_teams(LevelDefinition const& definition) -> std::vector<Team> {
+    std::vector<Team> result;
+    for (auto const& entity : definition.entities) {
+        if (!std::ranges::contains(result, entity.team)) {
+            result.emplace_back(entity.team);
+        }
+    }
+    std::ranges::sort(result);
+    return result;
+}
+
 auto validate_level(LevelDefinition const& definition) -> std::expected<void, Diagnostics> {
     Diagnostics result;
     if (definition.metadata.id.empty()) {
@@ -53,26 +64,6 @@ auto validate_level(LevelDefinition const& definition) -> std::expected<void, Di
         }
     }
 
-    std::unordered_set<TeamId> teams;
-    teams.reserve(definition.teams.size());
-    auto const team_count{definition.teams.size()};
-    for (std::size_t index{}; index < team_count; ++index) {
-        auto const& team{definition.teams[index]};
-        if (!teams.insert(team).second) {
-            result.emplace_back(DiagnosticCode::DuplicateTeamId,
-                                "level.teams",
-                                "Team " + std::to_string(index) + " duplicates team id '" +
-                                    std::string{to_serialized_string(team)} + "'");
-            continue;
-        }
-        if (!std::ranges::contains(ml::EnumTraits<TeamId>::values, team)) {
-            result.emplace_back(DiagnosticCode::UnsupportedTeamId,
-                                "level.teams",
-                                "Team " + std::to_string(index) + " uses unsupported team id '" +
-                                    std::string{to_serialized_string(team)} + "'");
-        }
-    }
-
     auto const has_player{!definition.player_entity_id.empty()};
     auto const has_camera{definition.camera.has_value()};
     if (!has_player && !has_camera) {
@@ -85,7 +76,7 @@ auto validate_level(LevelDefinition const& definition) -> std::expected<void, Di
                             "Level definition cannot have both a player and an initial camera");
     }
 
-    auto const entities{detail::validate_entities(definition, teams, result)};
+    auto const entities{detail::validate_entities(definition, result)};
     if (definition.camera) {
         detail::validate_camera(*definition.camera, entities, result);
     }

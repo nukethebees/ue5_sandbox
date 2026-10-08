@@ -233,9 +233,6 @@ auto parse_level(s7::Ast const& ast) -> LevelDefinitionReadResult {
             case Property::Unlock:
                 result.unlock_level_ids = unlocks(parser, ast, field.value, field.node_path);
                 break;
-            case Property::Teams:
-                result.teams = parser.teams(field.value, field.node_path);
-                break;
             case Property::Player:
                 result.player_entity_id = EntityId{parser.symbol(field.value, field.node_path)};
                 break;

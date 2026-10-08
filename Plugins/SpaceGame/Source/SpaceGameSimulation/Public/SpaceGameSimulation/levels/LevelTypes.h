@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/levels/team.h>
+
 #include <CoreMinimal.h>
 
 namespace ml {
@@ -25,16 +27,6 @@ inline auto GetTypeHash(FCampaignId const& id) -> uint32 {
     return GetTypeHash(id.value);
 }
 
-struct SPACEGAMESIMULATION_API FLevelTeamId {
-    FName value{NAME_None};
-
-    auto operator==(FLevelTeamId const&) const -> bool = default;
-};
-
-inline auto GetTypeHash(FLevelTeamId const& id) -> uint32 {
-    return GetTypeHash(id.value);
-}
-
 struct SPACEGAMESIMULATION_API FLevelEntityId {
     FName value{NAME_None};
 
@@ -54,15 +46,6 @@ struct SPACEGAMESIMULATION_API FEntityArchetypeId {
 
 inline auto GetTypeHash(FEntityArchetypeId const& id) -> uint32 {
     return GetTypeHash(id.value);
-}
-
-namespace level_teams {
-inline FLevelTeamId const white{FName{TEXT("white")}};
-inline FLevelTeamId const red{FName{TEXT("red")}};
-inline FLevelTeamId const green{FName{TEXT("green")}};
-inline FLevelTeamId const blue{FName{TEXT("blue")}};
-inline FLevelTeamId const orange{FName{TEXT("orange")}};
-inline FLevelTeamId const yellow{FName{TEXT("yellow")}};
 }
 
 namespace level_archetypes {

@@ -68,8 +68,7 @@ auto spawn_player(UWorld& world,
                   FSpawnedActorTransaction& transaction,
                   FLevelLoadResult& result) -> ATestSpaceShip* {
     auto const entity{level_entity_table_detail::get(entities, player_index)};
-    auto const team{resolve_level_team(entity.team)};
-    check(team.IsSet());
+    auto const team{ml::to_unreal(entity.team)};
     auto const transform{FTransform{entity.rotation, entity.position}};
     auto* const player{
         world.SpawnActorDeferred<ATestSpaceShip>(config.classes.player_ship_class, transform)};
@@ -82,7 +81,7 @@ auto spawn_player(UWorld& world,
 
     transaction.add(*player);
     player->set_actor_config(&config.player_ship);
-    player->set_team(team.GetValue());
+    player->set_team(team);
     if (!finish_spawn(*player, transform)) {
         add_error(result,
                   ELevelLoadErrorCode::ActorSpawnFailed,

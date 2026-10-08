@@ -3,8 +3,8 @@
 
 #pragma once
 
+#include "ioj/levels/team.h"
 #include "ioj/sim/entity_unique_id.h"
-#include "ioj/sim/team.h"
 
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/vector_soa_view.h"
@@ -44,7 +44,7 @@ struct TurretEntityDataSingleLayout {
     inline static constexpr ColLayout<float> RotationsPitchesColumn{FirePointLocationsZsColumn};
     inline static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
     inline static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
-    inline static constexpr ColLayout<Team> TeamsColumn{RotationsRollsColumn};
+    inline static constexpr ColLayout<::ioj::Team> TeamsColumn{RotationsRollsColumn};
     inline static constexpr ColLayout<std::int16_t> LaserCooldownsColumn{TeamsColumn};
     inline static constexpr ColLayout<std::int32_t> LaserDamagesColumn{LaserCooldownsColumn};
     inline static constexpr ColLayout<std::int16_t> TargetRefreshCountdownsPeriodsColumn{
@@ -137,7 +137,7 @@ struct TurretEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOpera
             Layout::RotationsRollsColumn);
     }
     auto teams() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<Team>>>(
+        return ml::soa_storage_detail::column_view<std::span<Element<::ioj::Team>>>(
             state_, offset_, count_, Layout::TeamsColumn);
     }
     auto laser_cooldowns() const {
@@ -282,7 +282,7 @@ struct TurretEntityData
         Element<float>* rotations_pitches{};
         Element<float>* rotations_yaws{};
         Element<float>* rotations_rolls{};
-        Element<Team>* teams{};
+        Element<::ioj::Team>* teams{};
         Element<std::int16_t>* laser_cooldowns{};
         Element<std::int32_t>* laser_damages{};
         Element<std::int16_t>* target_refresh_countdowns_periods{};

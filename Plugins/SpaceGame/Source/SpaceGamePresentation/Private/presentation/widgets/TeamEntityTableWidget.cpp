@@ -156,7 +156,7 @@ void UTeamEntityTableWidget::rebuild_table() {
                                1,
                                data_alignment)};
         heading->SetText(
-            FText::FromString(ml::to_fstring(::ioj::sim::to_string(ml::to_native(team_value)))));
+            FText::FromString(ml::to_fstring(::ioj::to_string(ml::to_native(team_value)))));
         if (hud_style_) {
             auto heading_style{hud_style_->caption_text};
             auto const base_colour{heading_style.ColorAndOpacity.GetSpecifiedColor()};

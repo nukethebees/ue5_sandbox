@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'strike-reserve-breakthrough))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

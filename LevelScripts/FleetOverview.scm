@@ -3,8 +3,6 @@
   :title "Fleet Overview"
   :description "A playerless battle viewed from an authored camera between two flagships."
 
-  :teams '(blue
-    red)
 
   :camera (camera
     :look-at '(blue-capital red-capital)

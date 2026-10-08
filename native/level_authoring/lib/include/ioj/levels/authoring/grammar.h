@@ -22,7 +22,6 @@ enum class Property : std::uint8_t {
     ParTime,
     CollisionGrid,
     Unlock,
-    Teams,
     Player,
     Camera,
     Mission,
@@ -74,9 +73,6 @@ enum class Property : std::uint8_t {
         }
         case Property::Unlock: {
             return "Unlock";
-        }
-        case Property::Teams: {
-            return "Teams";
         }
         case Property::Player: {
             return "Player";
@@ -193,9 +189,6 @@ enum class Property : std::uint8_t {
     if (value == "Unlock") {
         return Property::Unlock;
     }
-    if (value == "Teams") {
-        return Property::Teams;
-    }
     if (value == "Player") {
         return Property::Player;
     }
@@ -311,9 +304,6 @@ enum class Property : std::uint8_t {
         case Property::Unlock: {
             return "unlock";
         }
-        case Property::Teams: {
-            return "teams";
-        }
         case Property::Player: {
             return "player";
         }
@@ -419,7 +409,6 @@ enum class Property : std::uint8_t {
         {"par-time", Property::ParTime},
         {"collision-grid", Property::CollisionGrid},
         {"unlock", Property::Unlock},
-        {"teams", Property::Teams},
         {"player", Property::Player},
         {"camera", Property::Camera},
         {"mission", Property::Mission},
@@ -607,7 +596,6 @@ struct EnumTraits<::ioj::levels::authoring::Property> {
         ::ioj::levels::authoring::Property::ParTime,
         ::ioj::levels::authoring::Property::CollisionGrid,
         ::ioj::levels::authoring::Property::Unlock,
-        ::ioj::levels::authoring::Property::Teams,
         ::ioj::levels::authoring::Property::Player,
         ::ioj::levels::authoring::Property::Camera,
         ::ioj::levels::authoring::Property::Mission,
@@ -646,7 +634,6 @@ struct EnumTraits<::ioj::levels::authoring::Property> {
         std::string_view{"ParTime"},
         std::string_view{"CollisionGrid"},
         std::string_view{"Unlock"},
-        std::string_view{"Teams"},
         std::string_view{"Player"},
         std::string_view{"Camera"},
         std::string_view{"Mission"},

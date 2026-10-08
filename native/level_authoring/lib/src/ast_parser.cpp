@@ -69,13 +69,13 @@ auto AstParser::symbol(s7::NodeIndex const node, std::string_view const node_pat
     std::ranges::transform(result, result.begin(), ioj::to_ascii_lower);
     return result;
 }
-auto AstParser::team(s7::NodeIndex const node, std::string_view const node_path) -> TeamId {
+auto AstParser::team(s7::NodeIndex const node, std::string_view const node_path) -> Team {
     auto const text{symbol(node, node_path)};
-    auto const value{try_parse_serialized_team_id(text)};
+    auto const value{try_parse_serialized_team(text)};
     if (!value && ast_.node(node).kind == s7::NodeKind::Symbol) {
-        error(DiagnosticCode::UnsupportedTeamId, node_path, std::format("Unknown team '{}'", text));
+        error(DiagnosticCode::UnsupportedTeam, node_path, std::format("Unknown team '{}'", text));
     }
-    return value.value_or(TeamId::White);
+    return value.value_or(Team::White);
 }
 auto AstParser::archetype(s7::NodeIndex const node, std::string_view const node_path)
     -> EntityArchetype {
@@ -88,17 +88,6 @@ auto AstParser::archetype(s7::NodeIndex const node, std::string_view const node_
     }
     return value.value_or(EntityArchetype::PlayerFighter);
 }
-auto AstParser::teams(s7::NodeIndex const node, std::string_view const node_path)
-    -> std::vector<TeamId> {
-    std::vector<TeamId> result;
-    auto const values{list(node, node_path)};
-    auto const count{values.size()};
-    for (std::size_t index{}; index < count; ++index) {
-        result.push_back(team(values[index], std::format("{}[{}]", node_path, index)));
-    }
-    return result;
-}
-
 auto AstParser::string(s7::NodeIndex const node, std::string_view const node_path) -> std::string {
     if (ast_.node(node).kind != s7::NodeKind::String) {
         error(DiagnosticCode::InvalidType, node_path, "Expected a string");

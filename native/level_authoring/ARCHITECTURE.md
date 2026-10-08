@@ -49,14 +49,14 @@ A new root load starts fresh; no interpreter or bindings persist between catalog
 The runtime privately roots s7's internal hooks after revoking their public bindings, keeping
 global redefinition and error handling safe across garbage collections.
 
-`native-levels` owns LevelId, CampaignId, EntityId, TeamId, declarative definitions,
+`native-levels` owns LevelId, CampaignId, EntityId, Team, declarative definitions,
 and validation, split into metadata, entity, camera, grid, and mission definitions. It reuses
 the existing core vector type and shared rotation type through `native-core-headers`,
 with file/ASCII utilities supplied by core. Grid dimension rules live with the level definitions.
 Simulation depends on it and retains all runtime compilation/state.
-Team IDs and entity archetypes are enums parsed from LispB-defined spellings at input
-boundaries. Declared teams include unpopulated participants and affect fighter capacity;
-they cannot be replaced with the set of teams found in authored entities. Semantic validation
+Teams and entity archetypes are enums parsed from LispB-defined spellings at input
+boundaries. Participating teams are derived from initial and scheduled entities. The shared `ioj::Team`
+enum is used throughout authoring and simulation; only Unreal properties use its reflected projection. Semantic validation
 checks references, role constraints, and numeric rules independently of AST parsing.
 Catalog validators receive only successfully decoded definitions, retaining original
 discovery indices and filesystem paths. Diagnostics distinguish `node_path` from

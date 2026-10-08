@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'defence-screen-duty))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

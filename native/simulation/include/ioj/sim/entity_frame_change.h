@@ -1,7 +1,7 @@
 #pragma once
+#include <ioj/levels/team.h>
 #include <ioj/sim/entity_unique_id.h>
 #include <ioj/sim/rotator_types.h>
-#include <ioj/sim/team.h>
 #include <ioj/sim/vector_types.h>
 
 namespace ioj::sim {

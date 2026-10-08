@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'defence-dual-custody))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

@@ -27,8 +27,8 @@ auto serialized_name(::ioj::sim::EntityType const value) -> FString {
     return ml::to_fstring(::ioj::sim::to_serialized_string(value));
 }
 
-auto serialized_name(::ioj::sim::Team const value) -> FString {
-    return ml::to_fstring(::ioj::sim::to_serialized_string(value));
+auto serialized_name(::ioj::Team const value) -> FString {
+    return ml::to_fstring(::ioj::to_serialized_string(value));
 }
 
 auto serialized_name(::ioj::sim::MissionMode const value) -> FString {
@@ -407,7 +407,7 @@ auto parse_serialized_enum(FString const& value, FString const& path)
     auto const encoded{
         std::string_view{utf8_value.Get(), static_cast<std::size_t>(utf8_value.Length())}};
     if constexpr (std::is_same_v<Enum, ETestTeam>) {
-        if (auto const result{::ioj::sim::try_parse_serialized_team(encoded)}) {
+        if (auto const result{::ioj::try_parse_serialized_team(encoded)}) {
             return ml::to_unreal(*result);
         }
     } else if constexpr (std::is_same_v<Enum, ETestMissionMode>) {

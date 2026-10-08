@@ -3,8 +3,6 @@
   :title "Strike 01: Range Clearance"
   :description "Eliminate an isolated three-turret battery and return to operational control."
 
-  :teams '(blue
-    red)
 
   :player 'player
 

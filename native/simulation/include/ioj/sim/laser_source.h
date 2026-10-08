@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "ioj/levels/team.h"
 #include "ioj/sim/entity_type.h"
-#include "ioj/sim/team.h"
 
 namespace ioj::sim {
 struct LaserSource {
-    ioj::sim::Team team{Team::White};
+    ioj::Team team{Team::White};
 
     ioj::sim::EntityType type{EntityType::TubeSpinner};
 

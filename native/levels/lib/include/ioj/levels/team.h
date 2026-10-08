@@ -14,7 +14,7 @@
 #include <string_view>
 #include <unordered_map>
 
-namespace ioj::sim {
+namespace ioj {
 enum class Team : std::uint8_t {
     White = 0,
     Red = 1,
@@ -112,17 +112,17 @@ enum class Team : std::uint8_t {
     return ioj::lookup_enum(values, value);
 }
 
-} // namespace ioj::sim
+} // namespace ioj
 namespace ml {
 template <>
-struct EnumTraits<::ioj::sim::Team> {
+struct EnumTraits<::ioj::Team> {
     inline static constexpr std::array values{
-        ::ioj::sim::Team::White,
-        ::ioj::sim::Team::Red,
-        ::ioj::sim::Team::Green,
-        ::ioj::sim::Team::Blue,
-        ::ioj::sim::Team::Orange,
-        ::ioj::sim::Team::Yellow,
+        ::ioj::Team::White,
+        ::ioj::Team::Red,
+        ::ioj::Team::Green,
+        ::ioj::Team::Blue,
+        ::ioj::Team::Orange,
+        ::ioj::Team::Yellow,
     };
     inline static constexpr std::array names{
         std::string_view{"White"},
@@ -135,7 +135,7 @@ struct EnumTraits<::ioj::sim::Team> {
 };
 
 template <>
-[[nodiscard]] constexpr auto enum_count<::ioj::sim::Team>() noexcept -> std::size_t {
+[[nodiscard]] constexpr auto enum_count<::ioj::Team>() noexcept -> std::size_t {
     return 6;
 }
 

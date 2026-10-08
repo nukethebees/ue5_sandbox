@@ -5,6 +5,8 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
+#include <algorithm>
+
 namespace ml::editor {
 auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedActor> {
     EResolvedLevelArchetype archetype{};
@@ -22,10 +24,11 @@ auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedAc
         return NullOpt;
     }
 
-    auto const level_team{to_level_team_id(team)};
-    return level_team.IsSet() ? TOptional<FS7LevelResolvedActor>{FS7LevelResolvedActor{
-                                    archetype, level_team.GetValue()}}
-                              : NullOpt;
+    auto const native_team{ml::to_native(team)};
+    if (!std::ranges::contains(ml::EnumTraits<::ioj::Team>::values, native_team)) {
+        return NullOpt;
+    }
+    return FS7LevelResolvedActor{archetype, native_team};
 }
 
 auto s7_level_actor_class(EResolvedLevelArchetype const archetype,

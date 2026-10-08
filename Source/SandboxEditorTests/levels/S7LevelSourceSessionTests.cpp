@@ -38,7 +38,7 @@ auto write_source(FStringView const source, FString const& path) -> bool {
 
 auto level_source(FStringView const title) -> FString {
     return FString::Printf(
-        TEXT("(level :id 'source-session :title \"%s\" :teams '(blue) :player 'player :entities "
+        TEXT("(level :id 'source-session :title \"%s\" :player 'player :entities "
              "(list (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0) "
              ":rotation '(0 0 0))))"),
         *FString{title});
@@ -121,7 +121,7 @@ TEST_CLASS(S7LevelSourceSession, "Sandbox.UnitTests")
         IFileManager::Get().MakeDirectory(*library_directory, true);
         FString const source{
             TEXT("(load-script \"metadata.scm\") (level :id 'library-level :title shared-title "
-                 ":teams '(blue) :player 'player :entities (list (entity :id 'player :archetype "
+                 " :player 'player :entities (list (entity :id 'player :archetype "
                  "'player-fighter :team 'blue :position '(0 0 0) :rotation '(0 0 0))))")};
         if (!TestRunner->TestNotNull(TEXT("Document"), document) ||
             !TestRunner->TestTrue(

@@ -126,7 +126,7 @@ void validate_mission(LevelMissionDefinition const& mission,
     }
 
     if (uses_kill_count && !mission.kill_count && !heroes.empty()) {
-        std::optional<TeamId> hero_team;
+        std::optional<Team> hero_team;
         for (auto const& id : heroes) {
             auto const found{entities.teams_by_id.find(id)};
             if (found == entities.teams_by_id.end()) {

@@ -13,7 +13,6 @@ constexpr TCHAR valid_level[]{LR"(
   :title "Scripted Example"
   :description "Built as ordinary Scheme data."
   :par-time 75.5
-  :teams '(blue red)
   :player 'player
   :mission (mission
     :mode 'kill-enemies
@@ -35,7 +34,6 @@ constexpr TCHAR valid_camera_level[]{LR"(
 (level
   :id 'camera-example
   :title "Camera Example"
-  :teams '(blue red)
   :camera (camera
     :look-at '(blue-capital red-capital)
     :distance 10000
@@ -51,7 +49,6 @@ constexpr TCHAR scheduled_level[]{LR"(
 (level
   :id 'scheduled-example
   :title "Scheduled Example"
-  :teams '(blue red)
   :camera (camera :look-at '(hero) :distance 1000 :offset-direction '(-1 0 0))
   :mission (mission :mode 'kill-enemies :kill-count 1 :heroes '(hero))
   :mission-events (list
@@ -111,7 +108,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         }
 
         auto const& definition{result.value()};
-        TestRunner->TestEqual(TEXT("Definition has two teams"), definition.teams.Num(), 2);
         TestRunner->TestEqual(TEXT("Definition has four entities"), definition.entities.num(), 4);
         TestRunner->TestTrue(TEXT("Stable level id is decoded"),
                              definition.metadata.id ==
@@ -213,7 +209,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 (level
   :id 'complex-position
   :title "Complex Position"
-  :teams '(blue)
   :player 'player
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue
@@ -234,10 +229,9 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         ::ioj::levels::authoring::FDefinitionReader reader;
         auto const result{reader.read_level_source(LR"(
 (level
-  :id 'duplicate-teams
-  :title "Duplicate Teams"
-  :teams '(blue)
-  :teams '(red)
+  :id 'duplicate-entities
+  :title "Duplicate Entities"
+  :entities '()
   :player 'player
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue
@@ -261,7 +255,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
   :id 'first-id
   :id 'second-id
   :title "Duplicate Id"
-  :teams '(blue)
   :player 'player
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue
@@ -285,7 +278,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
   :id 'malformed-par
   :title "Malformed Par"
   :par-time "fast"
-  :teams '(blue)
   :player 'player
   :mission (mission :mode 'kill-enemies :heroes '(player))
   :entities (list
@@ -302,7 +294,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
   :title "Duplicate Par"
   :par-time 30
   :par-time 45
-  :teams '(blue)
   :player 'player
   :mission (mission :mode 'kill-enemies :heroes '(player))
   :entities (list
@@ -319,18 +310,17 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         }
     }
 
-    TEST_METHOD(ReportsNativeValidationErrorsAfterDecoding)
+    TEST_METHOD(ReportsUnsupportedEntityTeams)
     {
         ::ioj::levels::authoring::FDefinitionReader reader;
         auto const result{reader.read_level_source(LR"(
 (level
   :id 'invalid-team
   :title "Invalid Team"
-  :teams '(blue)
   :player 'player
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0) :rotation '(0 0 0))
-    (entity :id 'enemy :archetype 'capital-ship :team 'red :position '(100 0 0) :rotation '(0 0 0))))
+    (entity :id 'enemy :archetype 'capital-ship :team 'unknown :position '(100 0 0) :rotation '(0 0 0))))
 )")};
 
         TestRunner->TestFalse(TEXT("Invalid definition is rejected"), static_cast<bool>(result));
@@ -338,8 +328,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
             TEXT("Scheme evaluation succeeded"),
             contains_error(result, ioj::levels::DiagnosticCode::ScriptEvaluationFailed));
         TestRunner->TestTrue(
-            TEXT("Unknown team is reported by native validation"),
-            contains_error(result, ml::ELevelValidationErrorCode::UnknownTeamReference));
+            TEXT("Unsupported team is reported"),
+            contains_error(result, ml::ELevelValidationErrorCode::UnsupportedTeam));
     }
 
     TEST_METHOD(ReportsMalformedCameraData)
@@ -349,7 +339,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 (level
   :id 'malformed-camera
   :title "Malformed Camera"
-  :teams '(blue)
   :camera (camera
     :look-at '(capital)
     :distance "far"
@@ -370,7 +359,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 (level
   :id 'duplicate-camera
   :title "Duplicate Camera"
-  :teams '(blue)
   :camera (camera :look-at '(capital) :distance 1000 :offset-direction '(-1 0 0))
   :camera (camera :look-at '(capital) :distance 2000 :offset-direction '(1 0 0))
   :entities (list
@@ -390,7 +378,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 (level
   :id 'empty-targets
   :title "Empty Targets"
-  :teams '(blue)
   :camera (camera :look-at '() :distance 1000 :offset-direction '(-1 0 0))
   :entities (list
     (entity :id 'capital :archetype 'capital-ship :team 'blue
@@ -404,7 +391,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 (level
   :id 'unknown-target
   :title "Unknown Target"
-  :teams '(blue)
   :camera (camera :look-at '(missing) :distance 1000 :offset-direction '(-1 0 0))
   :entities (list
     (entity :id 'capital :archetype 'capital-ship :team 'blue
@@ -422,7 +408,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 (level
   :id 'timed-mission
   :title "Timed Mission"
-  :teams '(blue red)
   :player 'player
   :mission (mission
     :mode 'kill-enemies-within-time
@@ -458,7 +443,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 (level
   :id 'duplicate-mission-clause
   :title "Duplicate Mission Clause"
-  :teams '(blue)
   :player 'player
   :mission (mission :mode 'kill-enemies :mode 'survive-time :heroes '(player))
   :entities (list
@@ -474,7 +458,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 (level
   :id 'unknown-mission-entity
   :title "Unknown Mission Entity"
-  :teams '(blue)
   :player 'player
   :mission (mission :mode 'kill-enemies :heroes '(missing))
   :entities (list
@@ -489,7 +472,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 (level
   :id 'fractional-count
   :title "Fractional Count"
-  :teams '(blue)
   :player 'player
   :mission (mission :mode 'kill-enemies :kill-count 1.5 :heroes '(player))
   :entities (list
@@ -512,7 +494,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
   :unlock (list
     (level-completed 'first-level)
     (level-completed 'second-level))
-  :teams '(blue)
   :player 'player
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue
@@ -537,7 +518,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
   :id 'self-locked
   :title "Self Locked"
   :unlock (list (level-completed 'self-locked))
-  :teams '(blue)
   :player 'player
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue

@@ -19,7 +19,7 @@ struct SPACEGAME_API FLevelMetadata {
 struct SPACEGAME_API FEntitySpawnDefinition {
     FLevelEntityId id{};
     FEntityArchetypeId archetype{};
-    FLevelTeamId team{};
+    ::ioj::Team team{};
     FVector position{FVector::ZeroVector};
     FRotator rotation{FRotator::ZeroRotator};
     double spawn_time_seconds{};
@@ -68,7 +68,6 @@ struct SPACEGAME_API FLevelDefinition {
     TOptional<FLevelCollisionGridDefinition> collision_grid{NullOpt};
     TOptional<FLevelMissionDefinition> mission{NullOpt};
     TArray<FLevelMissionObjectiveEvent> mission_events{};
-    TArray<FLevelTeamId> teams{};
     FLevelEntityTable entities{};
 };
 
@@ -81,7 +80,6 @@ class SPACEGAME_API FLevelBuilder {
     void set_mission(FLevelMissionDefinition const& mission);
     void add_unlock_criterion(FLevelUnlockCriterion criterion);
     void add_mission_event(FLevelMissionObjectiveEvent const& event);
-    auto add_team(FLevelTeamId team) -> FLevelTeamId;
     auto add_entity(FEntitySpawnDefinition const& entity) -> FLevelEntityId;
     auto finish() -> FLevelDefinition;
   private:

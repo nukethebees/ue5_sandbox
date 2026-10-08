@@ -7,9 +7,8 @@
 
 namespace ioj::levels::detail {
 
-auto validate_entities(LevelDefinition const& definition,
-                       std::unordered_set<TeamId> const& declared_teams,
-                       Diagnostics& result) -> EntityValidationState;
+auto validate_entities(LevelDefinition const& definition, Diagnostics& result)
+    -> EntityValidationState;
 void validate_mission(LevelMissionDefinition const& mission,
                       EntityValidationState const& entities,
                       Diagnostics& result);

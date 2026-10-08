@@ -1,3 +1,4 @@
+#include <ioj/levels/team.h>
 #include <ioj/sim/entity_type.h>
 #include <ioj/sim/missions/mission_fail_reason.h>
 #include <ioj/sim/missions/mission_mode.h>
@@ -6,7 +7,6 @@
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/player/space_ship_common.h>
-#include <ioj/sim/team.h>
 #include <ioj/sim/telemetry/level_telemetry_run_end_reason.h>
 
 #include <gtest/gtest.h>

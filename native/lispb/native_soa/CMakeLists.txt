@@ -49,9 +49,12 @@ target_link_libraries(native-soa-tests-mimalloc
 add_test(NAME native-soa-tests-mimalloc COMMAND native-soa-tests-mimalloc)
 set_tests_properties(native-soa-tests-mimalloc PROPERTIES LABELS "unit;all;native;native-soa")
 
-add_executable(native-soa-benchmarks production_benchmarks.cpp)
-target_sources(native-soa-benchmarks PRIVATE
-  "${PROJECT_SOURCE_DIR}/native/simulation/src/laser_frame_output.cpp")
+add_executable(native-soa-benchmarks)
+target_sources(native-soa-benchmarks
+  PRIVATE
+    production_benchmarks.cpp
+    "${PROJECT_SOURCE_DIR}/native/simulation/src/laser_frame_output.cpp"
+)
 set_target_properties(native-soa-benchmarks PROPERTIES UNITY_BUILD OFF)
 ioj_enable_warnings(native-soa-benchmarks)
 target_include_directories(native-soa-benchmarks PRIVATE
@@ -61,6 +64,7 @@ target_link_libraries(native-soa-benchmarks
   PRIVATE
     sandbox::native_defaults
     sandbox::handmade_math
+    native-levels
     benchmark::benchmark_main
     ioj::arch_avx2
     ioj::debug_symbols

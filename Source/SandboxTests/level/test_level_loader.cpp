@@ -363,7 +363,7 @@ void FLevelLoaderScenario::load_fixture() {
     FLevelLoader loader{context_.orchestrator};
 
     auto invalid_definition{example_levels::make_native_example()};
-    invalid_definition.entities.teams[1] = level_teams::green;
+    invalid_definition.entities.teams[1] = static_cast<::ioj::Team>(255);
     auto const invalid_result{loader.load(invalid_definition)};
     checks.is_true(!static_cast<bool>(invalid_result), TEXT("Invalid definition is rejected"));
     checks.are_equal(

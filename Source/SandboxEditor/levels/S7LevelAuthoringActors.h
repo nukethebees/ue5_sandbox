@@ -10,7 +10,7 @@ class USpaceGameLevelConfig;
 namespace ml::editor {
 struct FS7LevelResolvedActor {
     EResolvedLevelArchetype archetype{};
-    FLevelTeamId team{};
+    ::ioj::Team team{};
 };
 
 auto resolve_s7_level_actor(AActor const& actor) -> TOptional<FS7LevelResolvedActor>;

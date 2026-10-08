@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'strike-range-clearance))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

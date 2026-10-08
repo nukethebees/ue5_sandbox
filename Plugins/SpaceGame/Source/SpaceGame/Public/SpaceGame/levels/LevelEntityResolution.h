@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SpaceGamePresentation/entities/TestTeam.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGameSimulation/levels/LevelTypes.h>
 
 #include <Misc/Optional.h>
@@ -26,28 +26,6 @@ inline auto resolve_level_archetype(FEntityArchetypeId const id)
     return NullOpt;
 }
 
-inline auto resolve_level_team(FLevelTeamId const id) -> TOptional<ETestTeam> {
-    if (id == level_teams::white) {
-        return ETestTeam::White;
-    }
-    if (id == level_teams::red) {
-        return ETestTeam::Red;
-    }
-    if (id == level_teams::green) {
-        return ETestTeam::Green;
-    }
-    if (id == level_teams::blue) {
-        return ETestTeam::Blue;
-    }
-    if (id == level_teams::orange) {
-        return ETestTeam::Orange;
-    }
-    if (id == level_teams::yellow) {
-        return ETestTeam::Yellow;
-    }
-    return NullOpt;
-}
-
 inline auto to_level_archetype_id(EResolvedLevelArchetype const archetype) -> FEntityArchetypeId {
     switch (archetype) {
         case EResolvedLevelArchetype::PlayerFighter:
@@ -61,21 +39,4 @@ inline auto to_level_archetype_id(EResolvedLevelArchetype const archetype) -> FE
     return {};
 }
 
-inline auto to_level_team_id(ETestTeam const team) -> TOptional<FLevelTeamId> {
-    switch (team) {
-        case ETestTeam::White:
-            return level_teams::white;
-        case ETestTeam::Red:
-            return level_teams::red;
-        case ETestTeam::Green:
-            return level_teams::green;
-        case ETestTeam::Blue:
-            return level_teams::blue;
-        case ETestTeam::Orange:
-            return level_teams::orange;
-        case ETestTeam::Yellow:
-            return level_teams::yellow;
-    }
-    return NullOpt;
-}
 }

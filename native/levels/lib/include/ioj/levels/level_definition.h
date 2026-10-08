@@ -20,10 +20,11 @@ struct LevelDefinition {
     std::optional<LevelCollisionGridDefinition> collision_grid{};
     std::optional<LevelMissionDefinition> mission{};
     std::vector<LevelMissionObjectiveEvent> mission_events{};
-    // Include declared participants even when they have no authored entities.
-    std::vector<TeamId> teams{};
     std::vector<EntitySpawnDefinition> entities{};
 };
+
+// Return distinct teams from initial and scheduled entities, in enum order.
+[[nodiscard]] auto participating_teams(LevelDefinition const& definition) -> std::vector<Team>;
 
 [[nodiscard]] auto validate_level(LevelDefinition const& definition)
     -> std::expected<void, Diagnostics>;

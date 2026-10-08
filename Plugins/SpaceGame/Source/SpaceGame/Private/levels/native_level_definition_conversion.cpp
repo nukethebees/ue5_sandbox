@@ -129,43 +129,22 @@ auto to_native(ml::FLevelDefinition const& definition)
             .kill_target_increase = event.kill_target_increase,
         });
     }
-    auto const team_count{definition.teams.Num()};
-    for (int32 index{}; index < team_count; ++index) {
-        auto const name{to_utf8(definition.teams[index].value)};
-        auto const team{try_parse_serialized_team_id(name)};
-        if (team) {
-            result.teams.push_back(*team);
-        } else {
-            errors.emplace_back(name.empty() ? DiagnosticCode::EmptyTeamId
-                                             : DiagnosticCode::UnsupportedTeamId,
-                                std::format("level.teams[{}]", index),
-                                std::format("Unknown team '{}'", name));
-        }
-    }
-
     auto const entities{definition.entities.get_const_view()};
     auto const entity_count{entities.num()};
     result.entities.reserve(entity_count);
     for (int32 index{}; index < entity_count; ++index) {
         auto const archetype_name{to_utf8(entities.archetypes[index].value)};
         auto const archetype{try_parse_serialized_entity_archetype(archetype_name)};
-        auto const team_name{to_utf8(entities.teams[index].value)};
-        auto const team{try_parse_serialized_team_id(team_name)};
         if (!archetype) {
             errors.emplace_back(archetype_name.empty() ? DiagnosticCode::EmptyArchetypeId
                                                        : DiagnosticCode::UnsupportedArchetype,
                                 std::format("level.entities[{}].archetype", index),
                                 std::format("Unknown archetype '{}'", archetype_name));
         }
-        if (!team) {
-            errors.emplace_back(DiagnosticCode::UnknownTeamReference,
-                                std::format("level.entities[{}].team", index),
-                                std::format("Unknown team '{}'", team_name));
-        }
         result.entities.push_back({
             .id = EntityId{to_utf8(entities.ids[index].value)},
             .archetype = archetype.value_or(EntityArchetype::PlayerFighter),
-            .team = team.value_or(TeamId::White),
+            .team = entities.teams[index],
             .position = {entities.positions.xs[index],
                          entities.positions.ys[index],
                          entities.positions.zs[index]},
@@ -225,9 +204,6 @@ auto to_unreal(LevelDefinition definition) -> ml::FLevelDefinition {
                                       ml::FLevelCompletedUnlockCriterion{
                                           .level_id = ml::FLevelId{to_fname(level_id.value)}}});
     }
-    for (auto const& team : definition.teams) {
-        builder.add_team(ml::FLevelTeamId{to_fname(to_serialized_string(team))});
-    }
     if (!definition.player_entity_id.empty()) {
         builder.set_player_entity(ml::FLevelEntityId{to_fname(definition.player_entity_id.value)});
     }
@@ -275,7 +251,7 @@ auto to_unreal(LevelDefinition definition) -> ml::FLevelDefinition {
         builder.add_entity(ml::FEntitySpawnDefinition{
             .id = ml::FLevelEntityId{to_fname(source.id.value)},
             .archetype = ml::FEntityArchetypeId{to_fname(to_serialized_string(source.archetype))},
-            .team = ml::FLevelTeamId{to_fname(to_serialized_string(source.team))},
+            .team = source.team,
             .position = FVector{source.position.x, source.position.y, source.position.z},
             .rotation = FRotator{source.rotation.pitch, source.rotation.yaw, source.rotation.roll},
             .spawn_time_seconds = source.spawn_time_seconds,

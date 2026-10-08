@@ -238,7 +238,6 @@ auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument cons
         builder.set_collision_grid(grid);
     }
 
-    TSet<FLevelTeamId> teams;
     TArray<FEntitySpawnDefinition> entities;
     for (auto const& binding : document.entities) {
         if (!IsValid(binding.actor) || !is_canonical_s7_level_entity_id(binding.id)) {
@@ -259,7 +258,6 @@ auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument cons
         }
         ids.Add(binding.id);
         ids_by_actor.Add(binding.actor, FLevelEntityId{binding.id});
-        teams.Add(resolved->team);
         entities.Add({
             .id = FLevelEntityId{binding.id},
             .archetype = to_level_archetype_id(resolved->archetype),
@@ -277,13 +275,6 @@ auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument cons
                 TEXT("Supported actor '%s' is not adopted by the authoring document."),
                 *actor->GetActorLabel())};
         }
-    }
-    auto sorted_teams{teams.Array()};
-    sorted_teams.Sort([](FLevelTeamId const lhs, FLevelTeamId const rhs) {
-        return lhs.value.LexicalLess(rhs.value);
-    });
-    for (auto const team : sorted_teams) {
-        builder.add_team(team);
     }
     for (auto const& entity : entities) {
         builder.add_entity(entity);

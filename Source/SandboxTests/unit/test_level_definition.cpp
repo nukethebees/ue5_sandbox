@@ -16,18 +16,16 @@ auto make_camera_level() -> ml::FLevelDefinition {
     ml::FLevelBuilder builder;
     builder.set_metadata(ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("camera-level")}},
                                             .title = TEXT("Camera Level")});
-    builder.add_team(ml::level_teams::blue);
-    builder.add_team(ml::level_teams::red);
     builder.add_entity(ml::FEntitySpawnDefinition{
         .id = ml::FLevelEntityId{FName{TEXT("blue-capital")}},
         .archetype = ml::level_archetypes::capital_ship,
-        .team = ml::level_teams::blue,
+        .team = ::ioj::Team::Blue,
         .position = FVector{-1000.0, 0.0, 0.0},
     });
     builder.add_entity(ml::FEntitySpawnDefinition{
         .id = ml::FLevelEntityId{FName{TEXT("red-capital")}},
         .archetype = ml::level_archetypes::capital_ship,
-        .team = ml::level_teams::red,
+        .team = ::ioj::Team::Red,
         .position = FVector{1000.0, 0.0, 0.0},
     });
     builder.set_camera(ml::FLevelCameraDefinition{
@@ -48,7 +46,6 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         auto const validation{ml::validate_level(definition)};
 
         TestRunner->TestTrue(TEXT("Definition is valid"), static_cast<bool>(validation));
-        TestRunner->TestEqual(TEXT("Definition has two teams"), definition.teams.Num(), 2);
         TestRunner->TestEqual(
             TEXT("Definition has four entity rows"), definition.entities.num(), 4);
         TestRunner->TestEqual(
@@ -64,7 +61,7 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
                              definition.entities.archetypes[0] ==
                                  ml::level_archetypes::player_fighter);
         TestRunner->TestTrue(TEXT("Player team is preserved"),
-                             definition.entities.teams[0] == ml::level_teams::blue);
+                             definition.entities.teams[0] == ::ioj::Team::Blue);
         TestRunner->TestTrue(TEXT("Player position is preserved"),
                              definition.entities.positions.get_const_view()[0].Equals(
                                  FVector{0.0, -25000.0, 1000.0}));
@@ -85,16 +82,16 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         }
     }
 
-    TEST_METHOD(UnknownTeamReferenceFailsValidation)
+    TEST_METHOD(UnsupportedTeamFailsValidation)
     {
         auto definition{ml::example_levels::make_native_example()};
-        definition.entities.teams[1] = ml::level_teams::green;
+        definition.entities.teams[1] = static_cast<::ioj::Team>(255);
 
         auto const validation{ml::validate_level(definition)};
         TestRunner->TestFalse(TEXT("Definition is invalid"), static_cast<bool>(validation));
         TestRunner->TestTrue(
             TEXT("Unknown team is reported"),
-            contains_error(validation, ml::ELevelValidationErrorCode::UnknownTeamReference));
+            contains_error(validation, ml::ELevelValidationErrorCode::UnsupportedTeam));
     }
 
     TEST_METHOD(BuilderConstructsValidPlayerlessCameraLevel)
@@ -162,11 +159,10 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         ml::FLevelBuilder builder;
         builder.set_metadata(
             ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("first")}}, .title = TEXT("First")});
-        builder.add_team(ml::level_teams::blue);
         auto const first_player{builder.add_entity(ml::FEntitySpawnDefinition{
             .id = ml::FLevelEntityId{FName{TEXT("first-player")}},
             .archetype = ml::level_archetypes::player_fighter,
-            .team = ml::level_teams::blue,
+            .team = ::ioj::Team::Blue,
             .position = FVector{10.0, 20.0, 30.0},
         })};
         builder.set_player_entity(first_player);
@@ -183,11 +179,10 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
         builder.set_metadata(
             ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("second")}}, .title = TEXT("Second")});
-        builder.add_team(ml::level_teams::red);
         auto const second_player{builder.add_entity(ml::FEntitySpawnDefinition{
             .id = ml::FLevelEntityId{FName{TEXT("second-player")}},
             .archetype = ml::level_archetypes::player_fighter,
-            .team = ml::level_teams::red,
+            .team = ::ioj::Team::Red,
         })};
         builder.set_player_entity(second_player);
         auto const second{builder.finish()};
@@ -218,11 +213,10 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         ml::FLevelBuilder builder;
         builder.set_metadata(
             ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("camera")}}, .title = TEXT("Camera")});
-        builder.add_team(ml::level_teams::blue);
         builder.add_entity(ml::FEntitySpawnDefinition{
             .id = ml::FLevelEntityId{FName{TEXT("capital")}},
             .archetype = ml::level_archetypes::capital_ship,
-            .team = ml::level_teams::blue,
+            .team = ::ioj::Team::Blue,
         });
         builder.set_camera(ml::FLevelCameraDefinition{
             .target_entity_ids = {ml::FLevelEntityId{FName{TEXT("capital")}}},
@@ -240,11 +234,10 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
         builder.set_metadata(
             ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("player")}}, .title = TEXT("Player")});
-        builder.add_team(ml::level_teams::blue);
         auto const player_id{builder.add_entity(ml::FEntitySpawnDefinition{
             .id = ml::FLevelEntityId{FName{TEXT("player")}},
             .archetype = ml::level_archetypes::player_fighter,
-            .team = ml::level_teams::blue,
+            .team = ::ioj::Team::Blue,
         })};
         builder.set_player_entity(player_id);
         auto const player_level{builder.finish()};

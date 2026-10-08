@@ -8,8 +8,6 @@
   :title "Fighter Scheduling Benchmark"
   :description "Two dense capital fleets for saturating the configured fighter population cap."
 
-  :teams '(blue
-    red)
 
   :camera (camera
     :look-at '(blue-capital-0 red-capital-0)

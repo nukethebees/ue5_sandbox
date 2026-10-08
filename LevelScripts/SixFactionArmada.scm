@@ -88,12 +88,6 @@
   :title "Six-Faction Armada"
   :description "A massive free-play battle with six widely separated fleets scattered across three dimensions."
 
-  :teams '(white
-    red
-    green
-    blue
-    orange
-    yellow)
 
   :player 'player
 

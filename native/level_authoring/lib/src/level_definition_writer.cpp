@@ -149,14 +149,6 @@ auto emit_editor_level_source(LevelDefinition const& definition)
         }
         out.end_list();
     }
-    auto teams{definition.teams};
-    std::ranges::sort(teams, {}, [](TeamId const team) { return to_serialized_string(team); });
-    property(out, Property::Teams);
-    out.begin_quoted_list();
-    for (auto const team : teams) {
-        out.token(to_serialized_string(team));
-    }
-    out.end_list();
     if (!definition.player_entity_id.empty()) {
         property(out, Property::Player);
         symbol(out, definition.player_entity_id.value);

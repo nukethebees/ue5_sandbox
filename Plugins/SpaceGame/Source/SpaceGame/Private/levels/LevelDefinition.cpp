@@ -34,11 +34,6 @@ void FLevelBuilder::add_mission_event(FLevelMissionObjectiveEvent const& event) 
     definition_.mission_events.Add(event);
 }
 
-auto FLevelBuilder::add_team(FLevelTeamId const team) -> FLevelTeamId {
-    definition_.teams.Add(team);
-    return team;
-}
-
 auto FLevelBuilder::add_entity(FEntitySpawnDefinition const& entity) -> FLevelEntityId {
     level_entity_table_detail::append(definition_.entities, entity);
     return entity.id;

@@ -23,11 +23,13 @@
 #include <Misc/PackageName.h>
 #include <Misc/Paths.h>
 
+#include <algorithm>
+
 namespace ml::editor {
 namespace s7_initial_state_exporter_detail {
 struct FExportCandidate {
     EResolvedLevelArchetype archetype{};
-    FLevelTeamId team{};
+    ::ioj::Team team{};
     FTransform transform{FTransform::Identity};
     FString actor_label{};
     FString id_base{};
@@ -101,8 +103,7 @@ auto compare_candidates(FExportCandidate const& lhs, FExportCandidate const& rhs
     if (order != 0) {
         return order < 0;
     }
-    order =
-        lhs.team.value.ToString().Compare(rhs.team.value.ToString(), ESearchCase::CaseSensitive);
+    order = ::ioj::to_serialized_string(lhs.team).compare(::ioj::to_serialized_string(rhs.team));
     if (order != 0) {
         return order < 0;
     }
@@ -289,8 +290,8 @@ auto collect_s7_initial_state(ULevel const& level, FLevelMetadata const& metadat
             continue;
         }
 
-        auto const level_team{to_level_team_id(team)};
-        if (!level_team.IsSet()) {
+        auto const level_team{ml::to_native(team)};
+        if (!std::ranges::contains(ml::EnumTraits<::ioj::Team>::values, level_team)) {
             ++plan.warnings.invalid_team_actor_count;
             continue;
         }
@@ -305,7 +306,7 @@ auto collect_s7_initial_state(ULevel const& level, FLevelMetadata const& metadat
         auto const label{actor->GetActorLabel()};
         candidates.Add({
             .archetype = archetype,
-            .team = level_team.GetValue(),
+            .team = level_team,
             .transform = transform,
             .actor_label = label,
             .id_base = canonical_symbol(label, archetype_text),
@@ -351,18 +352,6 @@ auto collect_s7_initial_state(ULevel const& level, FLevelMetadata const& metadat
             builder.set_collision_grid(grid);
         }
     }
-    TSet<FLevelTeamId> used_teams;
-    for (auto const& candidate : candidates) {
-        used_teams.Add(candidate.team);
-    }
-    TArray<FLevelTeamId> teams{used_teams.Array()};
-    teams.Sort([](FLevelTeamId const lhs, FLevelTeamId const rhs) {
-        return lhs.value.LexicalLess(rhs.value);
-    });
-    for (auto const team : teams) {
-        builder.add_team(team);
-    }
-
     TOptional<FLevelEntityId> player_id{NullOpt};
     for (auto const& candidate : candidates) {
         builder.add_entity({
@@ -382,6 +371,13 @@ auto collect_s7_initial_state(ULevel const& level, FLevelMetadata const& metadat
     } else {
         TArray<FLevelEntityId> targets;
         FVector focus{FVector::ZeroVector};
+        TArray<::ioj::Team> teams;
+        for (auto const& candidate : candidates) {
+            teams.AddUnique(candidate.team);
+        }
+        teams.Sort([](::ioj::Team const lhs, ::ioj::Team const rhs) {
+            return ::ioj::to_serialized_string(lhs) < ::ioj::to_serialized_string(rhs);
+        });
         for (auto const team : teams) {
             auto const* const representative{candidates.FindByPredicate(
                 [team](FExportCandidate const& candidate) { return candidate.team == team; })};

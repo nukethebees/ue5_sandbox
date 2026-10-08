@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'counteroffensive-three-axes))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

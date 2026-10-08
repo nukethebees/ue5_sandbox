@@ -7,13 +7,14 @@ Records use keyword properties, symbols for identifiers, and strings for text:
 
 ```scheme
 (level :id 'example :title "Example"
-  :teams '(blue red)
   :player 'player
   :mission (mission :mode 'kill-enemies :heroes '(player))
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue
       :position '(0 0 0) :rotation '(0 -90 0))))
 ```
+
+Teams are derived from entity assignments, including scheduled spawns; no team list is declared.
 
 Quote literal lists such as vectors and IDs. Use `list` when members must be evaluated,
 such as entity constructors or computed coordinates. Each keyword takes one value;

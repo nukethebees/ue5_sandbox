@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include "ioj/levels/team.h"
 #include "ioj/sim/entity_life_state.h"
 #include "ioj/sim/entity_type.h"
 #include "ioj/sim/entity_unique_id.h"
-#include "ioj/sim/team.h"
 
 #include "sandbox/core/native_soa/storage.h"
 
@@ -32,7 +32,7 @@ struct EntityHistoryColumnsSingleLayout {
 
     inline static constexpr ColLayout<EntityUniqueId> EntityIdsColumn{LayoutStart};
     inline static constexpr ColLayout<EntityType> EntityTypesColumn{EntityIdsColumn};
-    inline static constexpr ColLayout<Team> TeamsColumn{EntityTypesColumn};
+    inline static constexpr ColLayout<::ioj::Team> TeamsColumn{EntityTypesColumn};
     inline static constexpr ColLayout<std::uint32_t> KillsColumn{TeamsColumn};
     inline static constexpr ColLayout<EntityUniqueId> KilledByColumn{KillsColumn};
     inline static constexpr ColLayout<LifeState> LifeStateColumn{KilledByColumn};
@@ -83,7 +83,7 @@ struct EntityHistoryColumnsSingleViewImpl : ml::soa_storage_detail::CompactViewO
             state_, offset_, count_, Layout::EntityTypesColumn);
     }
     auto teams() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<Team>>>(
+        return ml::soa_storage_detail::column_view<std::span<Element<::ioj::Team>>>(
             state_, offset_, count_, Layout::TeamsColumn);
     }
     auto kills() const {
@@ -169,7 +169,7 @@ struct EntityHistory
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
         Element<EntityUniqueId>* entity_ids{};
         Element<EntityType>* entity_types{};
-        Element<Team>* teams{};
+        Element<::ioj::Team>* teams{};
         Element<std::uint32_t>* kills{};
         Element<EntityUniqueId>* killed_by{};
         Element<LifeState>* life_state{};

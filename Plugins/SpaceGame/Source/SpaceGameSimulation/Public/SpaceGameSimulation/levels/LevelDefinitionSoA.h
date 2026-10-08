@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/levels/team.h"
 #include "SpaceGameSimulation/levels/LevelTypes.h"
 
 #include "sandbox/core/soa_concepts.h"
@@ -50,7 +51,7 @@ struct SPACEGAMESIMULATION_API FLevelEntityTableConstView {
 
     TConstArrayView<ml::FLevelEntityId> ids;
     TConstArrayView<ml::FEntityArchetypeId> archetypes;
-    TConstArrayView<ml::FLevelTeamId> teams;
+    TConstArrayView<::ioj::Team> teams;
     FVectors3d::ConstView positions;
     FRotatorsd::ConstView rotations;
     TConstArrayView<double> spawn_times_seconds;
@@ -63,7 +64,7 @@ struct SPACEGAMESIMULATION_API FLevelEntityTableView {
     void set(int32 const index,
              ml::FLevelEntityId const new_ids,
              ml::FEntityArchetypeId const new_archetypes,
-             ml::FLevelTeamId const new_teams,
+             ::ioj::Team const new_teams,
              FVectors3d::equivalent_type const& new_positions,
              FRotatorsd::equivalent_type const& new_rotations,
              double const new_spawn_times_seconds) const {
@@ -102,7 +103,7 @@ struct SPACEGAMESIMULATION_API FLevelEntityTableView {
 
     TArrayView<ml::FLevelEntityId> ids;
     TArrayView<ml::FEntityArchetypeId> archetypes;
-    TArrayView<ml::FLevelTeamId> teams;
+    TArrayView<::ioj::Team> teams;
     FVectors3d::View positions;
     FRotatorsd::View rotations;
     TArrayView<double> spawn_times_seconds;
@@ -114,7 +115,7 @@ struct SPACEGAMESIMULATION_API FLevelEntityTable {
     void set(int32 const index,
              ml::FLevelEntityId const new_ids,
              ml::FEntityArchetypeId const new_archetypes,
-             ml::FLevelTeamId const new_teams,
+             ::ioj::Team const new_teams,
              FVectors3d::equivalent_type const& new_positions,
              FRotatorsd::equivalent_type const& new_rotations,
              double const new_spawn_times_seconds) {
@@ -128,7 +129,7 @@ struct SPACEGAMESIMULATION_API FLevelEntityTable {
 
     auto add(ml::FLevelEntityId const new_ids,
              ml::FEntityArchetypeId const new_archetypes,
-             ml::FLevelTeamId const new_teams,
+             ::ioj::Team const new_teams,
              FVectors3d::equivalent_type const& new_positions,
              FRotatorsd::equivalent_type const& new_rotations,
              double const new_spawn_times_seconds) -> int32 {
@@ -254,7 +255,7 @@ struct SPACEGAMESIMULATION_API FLevelEntityTable {
 
     TArray<ml::FLevelEntityId> ids;
     TArray<ml::FEntityArchetypeId> archetypes;
-    TArray<ml::FLevelTeamId> teams;
+    TArray<::ioj::Team> teams;
     FVectors3d positions;
     FRotatorsd rotations;
     TArray<double> spawn_times_seconds;

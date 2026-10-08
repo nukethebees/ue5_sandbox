@@ -41,10 +41,6 @@
   :header "SpaceGameSimulation/levels/LevelTypes.h"
   :pass-by value)
 
-(type level_team_id
-  :spelling "ml::FLevelTeamId"
-  :header "SpaceGameSimulation/levels/LevelTypes.h"
-  :pass-by value)
 
 
 
@@ -115,8 +111,8 @@
   :pass-by value)
 
 (type native_team
-  :spelling "ioj::sim::Team"
-  :header "ioj/sim/team.h"
+  :spelling "::ioj::Team"
+  :header "ioj/levels/team.h"
   :pass-by value)
 
 (type native_health

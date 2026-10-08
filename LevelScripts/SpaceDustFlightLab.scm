@@ -3,7 +3,6 @@
   :title "Space Dust Flight Lab"
   :description "A quiet player-flight lab for tuning velocity-driven space dust. A friendly capital ship provides an optional depth-occlusion reference."
 
-  :teams '(blue)
 
   :player 'player
 

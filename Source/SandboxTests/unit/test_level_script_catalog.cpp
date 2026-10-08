@@ -41,7 +41,7 @@ auto valid_level_script(FStringView const id,
                         FStringView const title,
                         FStringView const unlock = FStringView{}) -> FString {
     return FString::Printf(
-        TEXT("(level :id '%s :title \"%s\" :description \"Catalog test\" %s :teams '(blue) :player "
+        TEXT("(level :id '%s :title \"%s\" :description \"Catalog test\" %s :player "
              "'player :entities (list (entity :id 'player :archetype 'player-fighter :team 'blue "
              ":position '(0 0 0) :rotation '(0 0 0))))"),
         *FString{id},
@@ -51,7 +51,7 @@ auto valid_level_script(FStringView const id,
 
 auto valid_camera_level_script(FStringView const id, FStringView const title) -> FString {
     return FString::Printf(
-        TEXT("(level :id '%s :title \"%s\" :description \"Catalog test\" :teams '(blue) :camera "
+        TEXT("(level :id '%s :title \"%s\" :description \"Catalog test\" :camera "
              "(camera :look-at '(capital) :distance 10000 :offset-direction '(-1 0 0)) :entities "
              "(list (entity :id 'capital :archetype 'capital-ship :team 'blue :position '(0 0 0) "
              ":rotation '(0 0 0))))"),
@@ -199,7 +199,7 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             TEXT("(load-script \"Libraries/level-helpers.scm\")\n(level :id 'library-level        "
                  ":title "
                  "(shared-title \"Level\") :description (shared-description \"From library\") "
-                 ":teams '(blue)        :player 'player        :entities (list (entity :id 'player "
+                 " :player 'player        :entities (list (entity :id 'player "
                  ":archetype 'player-fighter :team 'blue                          :position '(0 0 "
                  "0)                          :rotation '(0 0 0))))")};
         auto const files_written{

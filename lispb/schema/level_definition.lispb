@@ -9,7 +9,7 @@
     :export-specifier SPACEGAMESIMULATION_API
     (member ids array @level_entity_id)
     (member archetypes array @entity_archetype_id)
-    (member teams array @level_team_id)
+    (member teams array @native_team)
     (member positions nested @vectors_3d)
     (member rotations nested @rotators_d)
     (member spawn_times_seconds array double)))

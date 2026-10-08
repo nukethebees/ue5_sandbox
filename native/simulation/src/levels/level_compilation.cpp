@@ -104,24 +104,6 @@ auto append_spawn_groups(sim::LevelEventSchedule& schedule,
 
 } // namespace
 
-auto to_simulation_team(TeamId const id) noexcept -> sim::Team {
-    switch (id) {
-        case TeamId::White:
-            return sim::Team::White;
-        case TeamId::Red:
-            return sim::Team::Red;
-        case TeamId::Green:
-            return sim::Team::Green;
-        case TeamId::Blue:
-            return sim::Team::Blue;
-        case TeamId::Orange:
-            return sim::Team::Orange;
-        case TeamId::Yellow:
-            return sim::Team::Yellow;
-    }
-    std::unreachable();
-}
-
 auto compile_level(LevelDefinition const& definition,
                    sim::SimClock const& clock,
                    sim::CapitalShipSimConfig const& capital_config,
@@ -222,7 +204,7 @@ auto compile_level(LevelDefinition const& definition,
                               sim::Rotator3f{static_cast<float>(entity.rotation.pitch),
                                              static_cast<float>(entity.rotation.yaw),
                                              static_cast<float>(entity.rotation.roll)});
-            capital_events.teams()[row] = to_simulation_team(entity.team);
+            capital_events.teams()[row] = entity.team;
             capital_events.healths()[row] = capital_config.max_health;
             capital_events.initial_fighter_spawn_delays()[row] = 0.0f;
             capital_events.fighter_spawn_cooldowns()[row] = capital_config.spawn_delay;
@@ -241,7 +223,7 @@ auto compile_level(LevelDefinition const& definition,
                               sim::Rotator3f{static_cast<float>(entity.rotation.pitch),
                                              static_cast<float>(entity.rotation.yaw),
                                              static_cast<float>(entity.rotation.roll)});
-            turret_events.teams()[row] = to_simulation_team(entity.team);
+            turret_events.teams()[row] = entity.team;
             turret_events.healths()[row] = turret_config.max_health;
             turret_events.laser_damages()[row] = turret_config.laser.damage;
         }

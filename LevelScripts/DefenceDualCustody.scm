@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'defence-pincer-watch))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

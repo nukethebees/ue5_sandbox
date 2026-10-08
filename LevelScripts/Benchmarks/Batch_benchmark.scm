@@ -4,8 +4,6 @@
   :id 'batch-benchmark
   :title "Batch Benchmark"
 
-  :teams '(blue
-    red)
 
   ;; Boilerplate observer camera for this playerless seed.
   :camera (camera

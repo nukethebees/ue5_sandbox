@@ -55,11 +55,12 @@ auto level_details(FLevelScriptEntry const& entry, ml::ioj::FLevelProgressSummar
     -> FString {
     check(entry.definition.IsSet());
     auto const& definition{entry.definition.GetValue()};
+    TSet<::ioj::Team> const teams{definition.entities.teams};
     auto details{
         FString::Printf(TEXT("LEVEL ID  //  %s\nTEAMS  //  %d    ENTITIES  //  %d    "
                              "PLAYER ASSET  //  %s\nPROGRESS  //  %s"),
                         *definition.metadata.id.value.ToString(),
-                        definition.teams.Num(),
+                        teams.Num(),
                         definition.entities.num(),
                         definition.player_entity_id.is_set() ? TEXT("ASSIGNED") : TEXT("NONE"),
                         *progress_label(definition, progress).ToUpper())};

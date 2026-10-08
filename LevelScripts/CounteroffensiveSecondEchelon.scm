@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'counteroffensive-decapitation))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

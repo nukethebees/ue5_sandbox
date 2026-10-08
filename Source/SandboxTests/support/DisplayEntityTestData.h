@@ -31,7 +31,7 @@ struct FDisplayEntityTestData {
     ::ioj::sim::FighterEntityData motion;
     std::vector<::ioj::sim::Health> healths;
     std::vector<::ioj::sim::EntityUniqueId> entity_ids;
-    std::vector<::ioj::sim::Team> teams;
+    std::vector<::ioj::Team> teams;
     std::vector<::ioj::sim::EntityType> entity_types;
 };
 }

@@ -3,8 +3,6 @@
   :title "Border Skirmish"
   :description "A two-team encounter demonstrating scripted level construction."
 
-  :teams '(blue
-    red)
 
   :player 'player
 

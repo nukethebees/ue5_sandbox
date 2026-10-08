@@ -3,7 +3,7 @@
 #include <ioj/levels/authoring/grammar.h>
 #include <ioj/levels/diagnostics.h>
 #include <ioj/levels/entity_archetype.h>
-#include <ioj/levels/team_id.h>
+#include <ioj/levels/team.h>
 #include <ioj/s7/ast.h>
 
 #include <algorithm>
@@ -31,9 +31,8 @@ class AstParser {
     [[nodiscard]] auto integer(s7::NodeIndex node, std::string_view const node_path)
         -> std::int32_t;
     [[nodiscard]] auto float_number(s7::NodeIndex node, std::string_view const node_path) -> float;
-    [[nodiscard]] auto team(s7::NodeIndex node, std::string_view node_path) -> TeamId;
+    [[nodiscard]] auto team(s7::NodeIndex node, std::string_view node_path) -> Team;
     [[nodiscard]] auto archetype(s7::NodeIndex node, std::string_view node_path) -> EntityArchetype;
-    [[nodiscard]] auto teams(s7::NodeIndex node, std::string_view node_path) -> std::vector<TeamId>;
     void
         require(std::span<Field const> fields, Property property, std::string_view const node_path);
     void unknown(Field const& field);

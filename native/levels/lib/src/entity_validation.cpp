@@ -12,9 +12,8 @@ auto owner(EntitySpawnDefinition const& entity, std::size_t const index) -> std:
 }
 }
 
-auto validate_entities(LevelDefinition const& definition,
-                       std::unordered_set<TeamId> const& declared_teams,
-                       Diagnostics& result) -> EntityValidationState {
+auto validate_entities(LevelDefinition const& definition, Diagnostics& result)
+    -> EntityValidationState {
     EntityValidationState state;
     state.ids.reserve(definition.entities.size());
     state.teams_by_id.reserve(definition.entities.size());
@@ -41,11 +40,10 @@ auto validate_entities(LevelDefinition const& definition,
         }
 
         state.player_found = state.player_found || is_player;
-        if (!declared_teams.contains(entity.team)) {
-            result.emplace_back(DiagnosticCode::UnknownTeamReference,
+        if (!std::ranges::contains(ml::EnumTraits<Team>::values, entity.team)) {
+            result.emplace_back(DiagnosticCode::UnsupportedTeam,
                                 "level.entities.team",
-                                entity_owner + " references undeclared team '" +
-                                    std::string{to_serialized_string(entity.team)} + "'");
+                                entity_owner + " has an invalid team");
         }
 
         if (!std::ranges::contains(ml::EnumTraits<EntityArchetype>::values, entity.archetype)) {

@@ -20,7 +20,7 @@ auto FLevelEntityTableConstView::get_view(int32 const offset, int32 const count)
     return ConstView{
         TConstArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
         TConstArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TConstArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
+        TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
         TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
@@ -36,7 +36,7 @@ auto FLevelEntityTableConstView::get_const_view(int32 const offset, int32 const 
     return ConstView{
         TConstArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
         TConstArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TConstArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
+        TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
         TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
@@ -75,7 +75,7 @@ auto FLevelEntityTableView::get_view(int32 const offset, int32 const count) -> V
     return View{
         TArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
         TArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
+        TArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_view(offset, count),
         rotations.get_view(offset, count),
         TArrayView<double>{spawn_times_seconds}.Slice(offset, count),
@@ -90,7 +90,7 @@ auto FLevelEntityTableView::get_view(int32 const offset, int32 const count) cons
     return ConstView{
         TConstArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
         TConstArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TConstArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
+        TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
         TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
@@ -106,7 +106,7 @@ auto FLevelEntityTableView::get_const_view(int32 const offset, int32 const count
     return ConstView{
         TConstArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
         TConstArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TConstArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
+        TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
         TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
@@ -181,7 +181,7 @@ auto FLevelEntityTable::get_view(int32 const offset, int32 const count) -> View 
     return View{
         TArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
         TArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
+        TArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_view(offset, count),
         rotations.get_view(offset, count),
         TArrayView<double>{spawn_times_seconds}.Slice(offset, count),
@@ -196,7 +196,7 @@ auto FLevelEntityTable::get_view(int32 const offset, int32 const count) const ->
     return ConstView{
         TConstArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
         TConstArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TConstArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
+        TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
         TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
@@ -211,7 +211,7 @@ auto FLevelEntityTable::get_const_view(int32 const offset, int32 const count) co
     return ConstView{
         TConstArrayView<ml::FLevelEntityId>{ids}.Slice(offset, count),
         TConstArrayView<ml::FEntityArchetypeId>{archetypes}.Slice(offset, count),
-        TConstArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
+        TConstArrayView<::ioj::Team>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
         TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),

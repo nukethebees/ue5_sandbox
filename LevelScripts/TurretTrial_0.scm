@@ -4,8 +4,6 @@
   :description "Destroy a single isolated turret and survive."
   :par-time 15
 
-  :teams '(blue
-    red)
 
   :player 'player
 

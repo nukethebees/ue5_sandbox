@@ -3,7 +3,6 @@
   :title "Dev: Three-Second Failure"
   :description "Development-only mission that guarantees a timeout after three seconds."
 
-  :teams '(blue)
 
   :player 'player
 

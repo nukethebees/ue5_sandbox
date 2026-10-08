@@ -69,8 +69,8 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     spawns.entity_indices()[1] = 1;
     spawns.target_entity_indices()[0] = ::ioj::sim::invalid_level_entity_index;
     spawns.target_entity_indices()[1] = ::ioj::sim::invalid_level_entity_index;
-    spawns.teams()[0] = ::ioj::sim::Team::Green;
-    spawns.teams()[1] = ::ioj::sim::Team::White;
+    spawns.teams()[0] = ::ioj::Team::Green;
+    spawns.teams()[1] = ::ioj::Team::White;
     spawns.healths()[0] = 100;
     spawns.healths()[1] = 100;
     spawns.initial_fighter_spawn_delays()[0] = 60.f;
@@ -94,18 +94,16 @@ auto make_scheduled_battle() -> ::ioj::sim::LevelSimInitData {
     ml::FLevelBuilder builder;
     builder.set_metadata(
         {.id = ml::FLevelId{FName{TEXT("scheduled-battle")}}, .title = TEXT("Scheduled Battle")});
-    builder.add_team(ml::level_teams::blue);
-    builder.add_team(ml::level_teams::red);
     auto const hero{builder.add_entity({
         .id = ml::FLevelEntityId{FName{TEXT("hero")}},
         .archetype = ml::level_archetypes::capital_ship,
-        .team = ml::level_teams::blue,
+        .team = ::ioj::Team::Blue,
         .position = FVector{-1000.0, 0.0, 0.0},
     })};
     auto const enemy{builder.add_entity({
         .id = ml::FLevelEntityId{FName{TEXT("enemy")}},
         .archetype = ml::level_archetypes::capital_ship,
-        .team = ml::level_teams::red,
+        .team = ::ioj::Team::Red,
         .position = FVector{1000.0, 0.0, 0.0},
         .spawn_time_seconds = 0.21,
     })};
@@ -217,7 +215,7 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
     initial.entity_indices()[0] = data.level_events.initialisation.entity_count++;
     ::ioj::sim::set_vector(initial.view_locations(), 0, ml::make_vector3f(-1000.f, 1000.f, 0.f));
     ::ioj::sim::set_rotation(initial.view_rotations(), 0, {});
-    initial.teams()[0] = ::ioj::sim::Team::Blue;
+    initial.teams()[0] = ::ioj::Team::Blue;
     initial.healths()[0] = 100;
     initial.laser_damages()[0] = 0;
     ::ioj::sim::LevelSim simulation{MoveTemp(data)};
@@ -306,7 +304,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     struct FEntitySnapshot {
         std::vector<::ioj::sim::Health> healths;
         std::vector<::ioj::sim::Vector3f> locations;
-        std::vector<::ioj::sim::Team> teams;
+        std::vector<::ioj::Team> teams;
         std::vector<::ioj::sim::EntityType> types;
     };
     using Samples = ml::TimeSeriesData<FEntitySnapshot>;
@@ -504,16 +502,15 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
         deaths.get_capital_ships().get_id(0), MAX_int32, deaths.get_capital_ships().get_id(1));
     ::ioj::sim::LevelSimTestAccess::queue_direct_damage_events(deaths, damage.get_const_view());
     ::ioj::sim::lasers::LaserSpawnRequests shot;
-    ::ioj::sim::tests::add_laser_spawn(
-        shot,
-        {700.f, 0.f, 0.f},
-        {},
-        {},
-        MAX_int32,
-        1000.f,
-        10000.f,
-        {},
-        {::ioj::sim::Team::Green, ::ioj::sim::EntityType::CapitalShip});
+    ::ioj::sim::tests::add_laser_spawn(shot,
+                                       {700.f, 0.f, 0.f},
+                                       {},
+                                       {},
+                                       MAX_int32,
+                                       1000.f,
+                                       10000.f,
+                                       {},
+                                       {::ioj::Team::Green, ::ioj::sim::EntityType::CapitalShip});
     ::ioj::sim::LevelSimTestAccess::queue_laser_spawns(deaths, shot.get_const_view());
     deaths.start();
     deaths.advance(0.425);

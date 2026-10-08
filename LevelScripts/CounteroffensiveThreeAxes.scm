@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'counteroffensive-second-echelon))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

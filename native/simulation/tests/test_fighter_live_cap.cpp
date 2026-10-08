@@ -145,6 +145,32 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
         << "A zero-team simulation remains empty";
 }
 
+TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
+    std::vector<Team> const capitals{Team::White};
+    auto initial_only{make_cap_battle(capitals, {}, 7, 8)};
+    LevelSim initial_simulation{std::move(initial_only)};
+    start_and_tick(initial_simulation);
+    EXPECT_EQ(count_team(initial_simulation, Team::White), 7);
+
+    auto with_reinforcements{make_cap_battle(capitals, {}, 7, 8)};
+    auto& schedule{with_reinforcements.level_events.schedule};
+    schedule.execution_ticks = {100};
+    schedule.event_group_counts = {{}};
+    schedule.turret_spawns.add_defaulted(1);
+    auto const turret{schedule.turret_spawns.get_view()};
+    turret.entity_indices()[0] = with_reinforcements.level_events.initialisation.entity_count++;
+    turret.teams()[0] = Team::Red;
+    turret.healths()[0] = 100;
+    set_vector(turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});
+    ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, 0, 1));
+
+    LevelSim scheduled_simulation{std::move(with_reinforcements)};
+    start_and_tick(scheduled_simulation);
+    EXPECT_EQ(count_team(scheduled_simulation, Team::White), 3)
+        << "Reserve the future team's share before its first entity spawns";
+    EXPECT_EQ(scheduled_simulation.get_read_access().get_turrets().get_entities().num(), 0);
+}
+
 TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
 
     std::vector<Team> const capitals{Team::White, Team::White};

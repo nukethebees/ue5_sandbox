@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'counteroffensive-fleet-termination))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

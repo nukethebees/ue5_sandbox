@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'strike-carrier-intercept))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

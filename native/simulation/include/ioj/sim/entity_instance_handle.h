@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "ioj/sim/team.h"
+#include "ioj/levels/team.h"
 
 #include "sandbox/core/packed_value.h"
 
@@ -30,7 +30,7 @@ struct EntityInstanceHandle {
         static_cast<index_type>(index_field::value_mask)};
 
     // team
-    using team_type = ioj::sim::Team;
+    using team_type = ::ioj::Team;
     static_assert(ml::valid_packed_enum<team_type, 3>());
     using team_underlying_type = std::underlying_type_t<team_type>;
     using team_field = ml::PackedField<storage_type, team_type, 18, 3>;

@@ -400,7 +400,7 @@
   (record LaserSource
     :comparison equality
     :comparison-noexcept true
-    (member team ioj::sim::Team :initializer "Team::White")
+    (member team ioj::Team :initializer "Team::White")
     (member type ioj::sim::EntityType :initializer "EntityType::TubeSpinner")))
 
 (module native_index_span

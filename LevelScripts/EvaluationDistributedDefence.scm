@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'evaluation-break-the-spear))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

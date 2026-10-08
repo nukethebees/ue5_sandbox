@@ -211,13 +211,13 @@ void UTelemetryDashboardWidget::rebuild_state() {
             return total;
         };
         auto const& combat{record->battle_samples.Last().combat};
-        auto const winner{record->completion.reason ==
-                                  ::ioj::sim::LevelTelemetryRunEndReason::BattleResolved
-                              ? (record->completion.winning_team.has_value()
-                                     ? ml::to_fstring(::ioj::sim::to_serialized_string(
-                                           record->completion.winning_team.value()))
-                                     : FString{TEXT("draw")})
-                              : FString{TEXT("—")}};
+        auto const winner{
+            record->completion.reason == ::ioj::sim::LevelTelemetryRunEndReason::BattleResolved
+                ? (record->completion.winning_team.has_value()
+                       ? ml::to_fstring(
+                             ::ioj::to_serialized_string(record->completion.winning_team.value()))
+                       : FString{TEXT("draw")})
+                : FString{TEXT("—")}};
         summary += FString::Printf(
             TEXT("\nBATTLE RESULT  //  %s    SAMPLES // %d\nCOMBAT  //  SHOTS %llu  HITS %llu  "
                  "DAMAGE %.0f  KILLS %llu  LOSSES %llu"),

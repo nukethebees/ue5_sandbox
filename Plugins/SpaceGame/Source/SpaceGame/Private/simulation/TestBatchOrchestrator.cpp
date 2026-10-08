@@ -1023,12 +1023,12 @@ void ATestBatchOrchestrator::process_battle_run_end() {
         !level_simulation_->has_future_authored_spawns()) {
         auto const alive_by_team{get_entity_ledger().count_alive_per_team()};
         int32 living_team_count{};
-        std::optional<::ioj::sim::Team> winner;
+        std::optional<::ioj::Team> winner;
         constexpr int32 team_count{ml::enum_count<ETestTeam>()};
         for (int32 team_index{}; team_index < team_count; ++team_index) {
             if (alive_by_team[team_index] > 0) {
                 ++living_team_count;
-                winner = static_cast<::ioj::sim::Team>(team_index);
+                winner = static_cast<::ioj::Team>(team_index);
             }
         }
         if (living_team_count <= 1) {

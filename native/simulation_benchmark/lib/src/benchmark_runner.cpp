@@ -213,8 +213,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         data.capital_ships.max_health = std::numeric_limits<ioj::sim::Health>::max() / 2;
     }
 
-    for (auto const& team_id : level.teams) {
-        data.participating_teams.add(ioj::levels::to_simulation_team(team_id));
+    for (auto const team : participating_teams(level)) {
+        data.participating_teams.add(team);
     }
     if (options.fighter_stress_cap.has_value()) {
         auto const team_count{data.participating_teams.num()};
@@ -230,7 +230,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         auto const player_definition{std::ranges::find(
             level.entities, level.player_entity_id, &ioj::levels::EntitySpawnDefinition::id)};
         auto player{reference.player};
-        player.team = ioj::levels::to_simulation_team(player_definition->team);
+        player.team = player_definition->team;
         player.transform.location = {player_definition->position.x,
                                      player_definition->position.y,
                                      player_definition->position.z};

@@ -3,52 +3,52 @@
 
 #pragma once
 
-#include "ioj/sim/team.h"
+#include "ioj/levels/team.h"
 #include "SpaceGamePresentation/entities/TestTeam.h"
 namespace ml {
-[[nodiscard]] constexpr auto to_native(ETestTeam const value) noexcept -> ::ioj::sim::Team {
+[[nodiscard]] constexpr auto to_native(ETestTeam const value) noexcept -> ::ioj::Team {
     switch (value) {
         case ETestTeam::White: {
-            return ::ioj::sim::Team::White;
+            return ::ioj::Team::White;
         }
         case ETestTeam::Red: {
-            return ::ioj::sim::Team::Red;
+            return ::ioj::Team::Red;
         }
         case ETestTeam::Green: {
-            return ::ioj::sim::Team::Green;
+            return ::ioj::Team::Green;
         }
         case ETestTeam::Blue: {
-            return ::ioj::sim::Team::Blue;
+            return ::ioj::Team::Blue;
         }
         case ETestTeam::Orange: {
-            return ::ioj::sim::Team::Orange;
+            return ::ioj::Team::Orange;
         }
         case ETestTeam::Yellow: {
-            return ::ioj::sim::Team::Yellow;
+            return ::ioj::Team::Yellow;
         }
     }
 
-    return static_cast<::ioj::sim::Team>(value);
+    return static_cast<::ioj::Team>(value);
 }
 
-[[nodiscard]] constexpr auto to_unreal(::ioj::sim::Team const value) noexcept -> ETestTeam {
+[[nodiscard]] constexpr auto to_unreal(::ioj::Team const value) noexcept -> ETestTeam {
     switch (value) {
-        case ::ioj::sim::Team::White: {
+        case ::ioj::Team::White: {
             return ETestTeam::White;
         }
-        case ::ioj::sim::Team::Red: {
+        case ::ioj::Team::Red: {
             return ETestTeam::Red;
         }
-        case ::ioj::sim::Team::Green: {
+        case ::ioj::Team::Green: {
             return ETestTeam::Green;
         }
-        case ::ioj::sim::Team::Blue: {
+        case ::ioj::Team::Blue: {
             return ETestTeam::Blue;
         }
-        case ::ioj::sim::Team::Orange: {
+        case ::ioj::Team::Orange: {
             return ETestTeam::Orange;
         }
-        case ::ioj::sim::Team::Yellow: {
+        case ::ioj::Team::Yellow: {
             return ETestTeam::Yellow;
         }
     }
@@ -56,10 +56,10 @@ namespace ml {
     return static_cast<ETestTeam>(value);
 }
 
-static_assert(static_cast<int>(ETestTeam::White) == static_cast<int>(::ioj::sim::Team::White));
-static_assert(static_cast<int>(ETestTeam::Red) == static_cast<int>(::ioj::sim::Team::Red));
-static_assert(static_cast<int>(ETestTeam::Green) == static_cast<int>(::ioj::sim::Team::Green));
-static_assert(static_cast<int>(ETestTeam::Blue) == static_cast<int>(::ioj::sim::Team::Blue));
-static_assert(static_cast<int>(ETestTeam::Orange) == static_cast<int>(::ioj::sim::Team::Orange));
-static_assert(static_cast<int>(ETestTeam::Yellow) == static_cast<int>(::ioj::sim::Team::Yellow));
+static_assert(static_cast<int>(ETestTeam::White) == static_cast<int>(::ioj::Team::White));
+static_assert(static_cast<int>(ETestTeam::Red) == static_cast<int>(::ioj::Team::Red));
+static_assert(static_cast<int>(ETestTeam::Green) == static_cast<int>(::ioj::Team::Green));
+static_assert(static_cast<int>(ETestTeam::Blue) == static_cast<int>(::ioj::Team::Blue));
+static_assert(static_cast<int>(ETestTeam::Orange) == static_cast<int>(::ioj::Team::Orange));
+static_assert(static_cast<int>(ETestTeam::Yellow) == static_cast<int>(::ioj::Team::Yellow));
 } // namespace ml

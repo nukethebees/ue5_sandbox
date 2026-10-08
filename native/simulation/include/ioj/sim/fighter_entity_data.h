@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include "ioj/levels/team.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/fighter_navigation_types.h"
 #include "ioj/sim/fighter_types.h"
-#include "ioj/sim/team.h"
 
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/vector_soa_view.h"
@@ -70,7 +70,7 @@ struct FighterEntityDataSingleLayout {
     inline static constexpr ColLayout<float> VelocitiesZsColumn{VelocitiesYsColumn};
     inline static constexpr ColLayout<float> MoveDistancesColumn{VelocitiesZsColumn};
     inline static constexpr ColLayout<float> SpeedsColumn{MoveDistancesColumn};
-    inline static constexpr ColLayout<Team> TeamsColumn{SpeedsColumn};
+    inline static constexpr ColLayout<::ioj::Team> TeamsColumn{SpeedsColumn};
     inline static constexpr ColLayout<EntityUniqueId> ParentIdsColumn{TeamsColumn};
     inline static constexpr ColLayout<std::int8_t> AwarenessScanCountdownsColumn{ParentIdsColumn};
     inline static constexpr ColLayout<std::int16_t> NavigationUpdateCountdownsRemainingTicksColumn{
@@ -237,7 +237,7 @@ struct FighterEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             state_, offset_, count_, Layout::SpeedsColumn);
     }
     auto teams() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<Team>>>(
+        return ml::soa_storage_detail::column_view<std::span<Element<::ioj::Team>>>(
             state_, offset_, count_, Layout::TeamsColumn);
     }
     auto parent_ids() const {
@@ -499,7 +499,7 @@ struct FighterEntityData
         Element<float>* velocities_zs{};
         Element<float>* move_distances{};
         Element<float>* speeds{};
-        Element<Team>* teams{};
+        Element<::ioj::Team>* teams{};
         Element<EntityUniqueId>* parent_ids{};
         Element<std::int8_t>* awareness_scan_countdowns{};
         Element<std::int16_t>* navigation_update_countdowns_remaining_ticks{};

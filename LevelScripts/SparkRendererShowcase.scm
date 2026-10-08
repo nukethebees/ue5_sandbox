@@ -3,8 +3,6 @@
   :title "Spark Renderer Showcase"
   :description "An autonomous close-range crossfire staged to showcase analytic laser-impact sparks."
 
-  :teams '(blue
-    red)
 
   :camera (camera
     :look-at '(blue-capital-left blue-capital-right

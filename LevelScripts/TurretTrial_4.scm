@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'turret-trial-3))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

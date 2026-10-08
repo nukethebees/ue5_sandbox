@@ -19,27 +19,25 @@ auto make_actor_level() -> ml::FLevelDefinition {
         .id = ml::FLevelId{TEXT("editor-import")},
         .title = TEXT("Editor Import"),
     });
-    builder.add_team(ml::level_teams::blue);
-    builder.add_team(ml::level_teams::red);
     builder.set_player_entity(ml::FLevelEntityId{TEXT("player")});
     builder.add_entity({
         .id = ml::FLevelEntityId{TEXT("player")},
         .archetype = ml::level_archetypes::player_fighter,
-        .team = ml::level_teams::blue,
+        .team = ::ioj::Team::Blue,
         .position = FVector{100.0, 200.0, 300.0},
         .rotation = FRotator{10.0, 20.0, 30.0},
     });
     builder.add_entity({
         .id = ml::FLevelEntityId{TEXT("capital")},
         .archetype = ml::level_archetypes::capital_ship,
-        .team = ml::level_teams::blue,
+        .team = ::ioj::Team::Blue,
         .position = FVector{1000.0, 2000.0, 3000.0},
         .rotation = FRotator{0.0, 90.0, 0.0},
     });
     builder.add_entity({
         .id = ml::FLevelEntityId{TEXT("turret")},
         .archetype = ml::level_archetypes::static_turret,
-        .team = ml::level_teams::red,
+        .team = ::ioj::Team::Red,
         .position = FVector{-1000.0, -2000.0, -3000.0},
         .rotation = FRotator{0.0, -90.0, 0.0},
     });
@@ -94,7 +92,6 @@ TEST_CLASS(S7InitialStateImporter, "Sandbox.UnitTests")
 (level
   :id 'procedural-import
   :title "Procedural Import"
-  :teams '(blue)
   :camera (camera :look-at '(ship-0) :distance 1000 :offset-direction '(-1 0 0))
   :entities (map make-ship '(0 1 2 3)))
 )")};
@@ -127,7 +124,6 @@ TEST_CLASS(S7InitialStateImporter, "Sandbox.UnitTests")
   :id 'unsupported-import
   :title "Unsupported Import"
   :unlock (list (level-completed 'prior-level))
-  :teams '(blue red)
   :camera (camera :look-at '(hero) :distance 1000 :offset-direction '(-1 0 0))
   :mission (mission :mode 'kill-enemies :kill-count 3 :heroes '(hero))
   :mission-events (list

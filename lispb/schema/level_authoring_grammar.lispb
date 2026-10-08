@@ -9,7 +9,6 @@
     (value ParTime :serialized-name "par-time")
     (value CollisionGrid :serialized-name "collision-grid")
     (value Unlock :serialized-name "unlock")
-    (value Teams :serialized-name "teams")
     (value Player :serialized-name "player")
     (value Camera :serialized-name "camera")
     (value Mission :serialized-name "mission")

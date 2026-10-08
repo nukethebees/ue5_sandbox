@@ -7,8 +7,6 @@
   :title "Benchmark Fleet 04 — 64 Capitals"
   :description "64 capital ships across two opposing fleets; up to 448 entities after all fighter wings deploy."
 
-  :teams '(blue
-    red)
 
   :camera (camera
     :look-at '(blue-capital-0 red-capital-0)

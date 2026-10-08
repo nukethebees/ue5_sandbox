@@ -62,7 +62,7 @@ auto add_worldless_capital_spawn(::ioj::sim::LevelSimInitData& data,
     events.entity_indices()[index] = data.level_events.initialisation.entity_count++;
     events.target_entity_indices()[index] = target_entity_index;
     ::ioj::sim::set_vector(events.view_locations(), index, ml::to_native(FVector3f{location}));
-    events.teams()[index] = static_cast<::ioj::sim::Team>(team);
+    events.teams()[index] = static_cast<::ioj::Team>(team);
     events.healths()[index] = health == INDEX_NONE ? data.capital_ships.max_health : health;
     events.initial_fighter_spawn_delays()[index] = initial_spawn_delay;
     events.fighter_spawn_cooldowns()[index] = spawn_cooldown;

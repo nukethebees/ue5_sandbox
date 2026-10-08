@@ -310,13 +310,6 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     }
     auto& data{result.value()};
     data.static_bounds = MoveTemp(static_bounds);
-    data.participating_teams.reserve(definition.teams.Num());
-    for (auto const team_id : definition.teams) {
-        auto const team{resolve_level_team(team_id)};
-        check(team.IsSet());
-        data.participating_teams.add(ml::to_native(team.GetValue()));
-    }
-
     ::ioj::sim::SimClock clock;
     clock.initialise(clock_settings);
     auto compiled{compile_level_events(definition, clock, data.capital_ships, data.turrets)};

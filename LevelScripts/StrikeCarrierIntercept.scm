@@ -6,8 +6,6 @@
   :unlock (list
     (level-completed 'strike-layered-battery))
 
-  :teams '(blue
-    red)
 
   :player 'player
 

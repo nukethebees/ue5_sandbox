@@ -8,11 +8,11 @@
 #include <span>
 
 namespace ml::presentation {
+using ::ioj::Team;
 using ::ioj::sim::EntityType;
 using ::ioj::sim::EntityUniqueId;
 using ::ioj::sim::Health;
 using ::ioj::sim::HealthConstView;
-using ::ioj::sim::Team;
 using ::ioj::sim::Vector3f;
 using ::ioj::sim::Vectors3fConstView;
 // Borrowed owner columns, valid only until the next structural mutation.

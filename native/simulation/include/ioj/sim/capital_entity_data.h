@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "ioj/levels/team.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/index_span.h"
-#include "ioj/sim/team.h"
 
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/vector_soa_view.h"
@@ -43,7 +43,7 @@ struct CapitalEntityDataSingleLayout {
     inline static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
     inline static constexpr ColLayout<float> FighterSpawnTimersColumn{RotationsRollsColumn};
     inline static constexpr ColLayout<float> FighterSpawnCooldownsColumn{FighterSpawnTimersColumn};
-    inline static constexpr ColLayout<Team> TeamsColumn{FighterSpawnCooldownsColumn};
+    inline static constexpr ColLayout<::ioj::Team> TeamsColumn{FighterSpawnCooldownsColumn};
     inline static constexpr ColLayout<IndexSpan> FighterIdSpansColumn{TeamsColumn};
     inline static constexpr ColLayout<EntityUniqueId> TargetIdsColumn{FighterIdSpansColumn};
 
@@ -118,7 +118,7 @@ struct CapitalEntityDataSingleViewImpl : ml::soa_storage_detail::CompactViewOper
             state_, offset_, count_, Layout::FighterSpawnCooldownsColumn);
     }
     auto teams() const {
-        return ml::soa_storage_detail::column_view<std::span<Element<Team>>>(
+        return ml::soa_storage_detail::column_view<std::span<Element<::ioj::Team>>>(
             state_, offset_, count_, Layout::TeamsColumn);
     }
     auto fighter_id_spans() const {
@@ -215,7 +215,7 @@ struct CapitalEntityData
         Element<float>* rotations_rolls{};
         Element<float>* fighter_spawn_timers{};
         Element<float>* fighter_spawn_cooldowns{};
-        Element<Team>* teams{};
+        Element<::ioj::Team>* teams{};
         Element<IndexSpan>* fighter_id_spans{};
         Element<EntityUniqueId>* target_ids{};
         auto operator+(size_type const offset) const noexcept -> DataPointers {
