@@ -4435,6 +4435,11 @@ static char *pos_int_to_str_direct_1(s7_scheme *sc, s7_int num)
   #define lookup_unexamined(Sc, Sym) s7_symbol_value(Sc, Sym)  /* changed 3-Nov-22 -- we're using lookup_unexamined below to avoid the unbound_variable check */
   #define lookup_checked(Sc, Sym) lookup(Sc, Sym)
 #endif
+#if WITH_CLANG_PP
+  /* Allow optimizer probes of unbound parameters despite Clang C++'s throwing lookup. */
+  #undef lookup_unexamined
+  #define lookup_unexamined(Sc, Sym) s7_symbol_value(Sc, Sym)
+#endif
 static s7_pointer symbol_to_local_slot(s7_scheme *sc, s7_pointer symbol, s7_pointer let);
 static inline s7_pointer lookup_slot_from(s7_pointer symbol, s7_pointer let);
 
