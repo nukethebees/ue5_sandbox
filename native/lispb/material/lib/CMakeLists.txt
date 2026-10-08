@@ -1,11 +1,15 @@
 add_library(material-gen STATIC)
-target_sources(material-gen PRIVATE
-  src/CompiledMaterial.cpp
-  src/MaterialFrontend.cpp
-  src/MaterialIR.cpp
-  src/SourceHash.cpp
+target_sources(material-gen
+  PRIVATE
+    src/CompiledMaterial.cpp
+    src/MaterialFrontend.cpp
+    src/MaterialIR.cpp
+    src/SourceHash.cpp
 )
-target_include_directories(material-gen PUBLIC include)
+target_include_directories(material-gen
+  PUBLIC
+    include
+)
 target_link_libraries(material-gen
   PUBLIC
     sandbox::native_defaults
@@ -16,19 +20,24 @@ target_link_libraries(material-gen
 ioj_enable_warnings(material-gen CODEGEN)
 
 if(IOJ_WITH_UNREAL)
+  set(material_output_dir "${IOJ_NATIVE_OUTPUT_ROOT}/MaterialGen/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}")
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
     file(MAKE_DIRECTORY
-      "${IOJ_NATIVE_OUTPUT_ROOT}/MaterialGen/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"
+      "${material_output_dir}/${configuration}"
     )
   endforeach()
 
   add_library(sandbox-material-gen STATIC)
-  target_sources(sandbox-material-gen PRIVATE
-    src/CompiledMaterial.cpp
-    src/MaterialIR.cpp
-    src/SourceHash.cpp
+  target_sources(sandbox-material-gen
+    PRIVATE
+      src/CompiledMaterial.cpp
+      src/MaterialIR.cpp
+      src/SourceHash.cpp
   )
-  target_include_directories(sandbox-material-gen PUBLIC include)
+  target_include_directories(sandbox-material-gen
+    PUBLIC
+      include
+  )
   target_link_libraries(sandbox-material-gen
     PUBLIC
       sandbox::native_defaults
@@ -39,7 +48,7 @@ if(IOJ_WITH_UNREAL)
   ioj_enable_warnings(sandbox-material-gen CODEGEN)
   set_target_properties(sandbox-material-gen PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${IOJ_NATIVE_OUTPUT_ROOT}/MaterialGen/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${material_output_dir}/${UE_CONFIGURATION}"
     OUTPUT_NAME sandbox_material_gen
   )
 
@@ -52,11 +61,20 @@ if(IOJ_WITH_UNREAL)
     set_target_properties(sandbox-material-gen PROPERTIES
       MSVC_RUNTIME_LIBRARY MultiThreadedDLL
     )
-    target_compile_definitions(sandbox-material-gen PRIVATE NDEBUG _ITERATOR_DEBUG_LEVEL=0)
+    target_compile_definitions(sandbox-material-gen
+      PRIVATE
+        NDEBUG _ITERATOR_DEBUG_LEVEL=0
+    )
     if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-      target_compile_options(sandbox-material-gen PRIVATE /U_DEBUG)
+      target_compile_options(sandbox-material-gen
+        PRIVATE
+          /U_DEBUG
+      )
     else()
-      target_compile_options(sandbox-material-gen PRIVATE -U_DEBUG)
+      target_compile_options(sandbox-material-gen
+        PRIVATE
+          -U_DEBUG
+      )
     endif()
   endif()
 endif()

@@ -14,13 +14,20 @@ sandbox_add_rust_host_tool(
 set_source_files_properties("${SBX_MIMALLOC_SOURCE}" PROPERTIES LANGUAGE CXX)
 
 function(configure_sbx_mimalloc_object target)
-  target_link_libraries(${target} PRIVATE ioj::cxx_standard ioj::asan)
-  target_include_directories(${target} PRIVATE "${SBX_MIMALLOC_ROOT}/include")
-  target_compile_definitions(${target} PRIVATE
-    MI_BUILD_RELEASE=1
-    MI_DEBUG=0
-    MI_STATIC_LIB=1
-    MI_WIN_NOREDIRECT=1
+  target_link_libraries(${target}
+    PRIVATE
+      ioj::cxx_standard ioj::asan
+  )
+  target_include_directories(${target}
+    PRIVATE
+      "${SBX_MIMALLOC_ROOT}/include"
+  )
+  target_compile_definitions(${target}
+    PRIVATE
+      MI_BUILD_RELEASE=1
+      MI_DEBUG=0
+      MI_STATIC_LIB=1
+      MI_WIN_NOREDIRECT=1
   )
   set_property(TARGET ${target} PROPERTY CXX_SCAN_FOR_MODULES OFF)
   ioj_apply_native_abi(${target})
@@ -47,19 +54,22 @@ add_custom_target(sbx-mimalloc-prefix-header DEPENDS "${SBX_MIMALLOC_PREFIX_HEAD
 add_library(sbx-mimalloc-implementation OBJECT "${SBX_MIMALLOC_SOURCE}")
 set_target_properties(sbx-mimalloc-implementation PROPERTIES UNITY_BUILD OFF)
 configure_sbx_mimalloc_object(sbx-mimalloc-implementation)
-target_compile_definitions(sbx-mimalloc-implementation PRIVATE
-  SBX_MIMALLOC_PREFIXED_LINKER_INCLUDES=1
+target_compile_definitions(sbx-mimalloc-implementation
+  PRIVATE
+    SBX_MIMALLOC_PREFIXED_LINKER_INCLUDES=1
 )
 add_dependencies(sbx-mimalloc-implementation sbx-mimalloc-prefix-header)
 if(IOJ_MSVC_FRONTEND)
-  target_compile_options(sbx-mimalloc-implementation PRIVATE
-    /Zl
-    "/FI${SBX_MIMALLOC_PREFIX_HEADER}"
+  target_compile_options(sbx-mimalloc-implementation
+    PRIVATE
+      /Zl
+      "/FI${SBX_MIMALLOC_PREFIX_HEADER}"
   )
 else()
-  target_compile_options(sbx-mimalloc-implementation PRIVATE
-    -fno-autolink
-    -include "${SBX_MIMALLOC_PREFIX_HEADER}"
+  target_compile_options(sbx-mimalloc-implementation
+    PRIVATE
+      -fno-autolink
+      -include "${SBX_MIMALLOC_PREFIX_HEADER}"
   )
 endif()
 
@@ -81,24 +91,38 @@ add_custom_target(sbx-mimalloc-symbol-audit DEPENDS "${SBX_MIMALLOC_AUDIT_STAMP}
 add_library(sbx-mimalloc STATIC)
 add_library(sandbox::mimalloc ALIAS sbx-mimalloc)
 set_target_properties(sbx-mimalloc PROPERTIES UNITY_BUILD OFF)
-target_sources(sbx-mimalloc PRIVATE
-  src/memory.cpp
-  src/memory_resource.cpp
-  $<TARGET_OBJECTS:sbx-mimalloc-implementation>
+target_sources(sbx-mimalloc
+  PRIVATE
+    src/memory.cpp
+    src/memory_resource.cpp
+    $<TARGET_OBJECTS:sbx-mimalloc-implementation>
 )
 target_include_directories(sbx-mimalloc
-  PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
-  PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated"
+  PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+  PRIVATE
+    "${CMAKE_CURRENT_BINARY_DIR}/generated"
 )
-target_include_directories(sbx-mimalloc SYSTEM PRIVATE "${SBX_MIMALLOC_ROOT}/include")
+target_include_directories(sbx-mimalloc SYSTEM
+  PRIVATE
+    "${SBX_MIMALLOC_ROOT}/include"
+)
 target_link_libraries(sbx-mimalloc
-  PUBLIC ioj::cxx_standard ioj::cxx_conformance psapi shell32 user32 advapi32 bcrypt
-  PRIVATE sandbox::native_defaults
+  PUBLIC
+    ioj::cxx_standard ioj::cxx_conformance psapi shell32 user32 advapi32 bcrypt
+  PRIVATE
+    sandbox::native_defaults
 )
 ioj_enable_warnings(sbx-mimalloc)
 if(IOJ_WITH_TRACY)
-  target_compile_definitions(sbx-mimalloc PRIVATE IOJ_WITH_TRACY)
-  target_link_libraries(sbx-mimalloc PRIVATE sandbox::profiling)
+  target_compile_definitions(sbx-mimalloc
+    PRIVATE
+      IOJ_WITH_TRACY
+  )
+  target_link_libraries(sbx-mimalloc
+    PRIVATE
+      sandbox::profiling
+  )
 endif()
 ioj_apply_native_abi(sbx-mimalloc)
 
@@ -108,9 +132,18 @@ set_target_properties(sbx-mimalloc PROPERTIES
   OUTPUT_NAME SandboxMimalloc
 )
 if(IOJ_WITH_UNREAL)
-  target_link_libraries(sbx-mimalloc-prefix-probe PRIVATE ioj::unreal_avx2)
-  target_link_libraries(sbx-mimalloc-implementation PRIVATE ioj::unreal_avx2)
-  target_link_libraries(sbx-mimalloc PRIVATE ioj::unreal_avx2)
+  target_link_libraries(sbx-mimalloc-prefix-probe
+    PRIVATE
+      ioj::unreal_avx2
+  )
+  target_link_libraries(sbx-mimalloc-implementation
+    PRIVATE
+      ioj::unreal_avx2
+  )
+  target_link_libraries(sbx-mimalloc
+    PRIVATE
+      ioj::unreal_avx2
+  )
   set_target_properties(sbx-mimalloc PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
       "${IOJ_NATIVE_OUTPUT_ROOT}/SbxMimalloc/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
@@ -118,9 +151,10 @@ if(IOJ_WITH_UNREAL)
 endif()
 
 add_executable(sbx-mimalloc-tests tests/memory_tests.cpp)
-target_link_libraries(sbx-mimalloc-tests PRIVATE
-  sandbox::mimalloc
-  sandbox::native_defaults
+target_link_libraries(sbx-mimalloc-tests
+  PRIVATE
+    sandbox::mimalloc
+    sandbox::native_defaults
 )
 ioj_enable_warnings(sbx-mimalloc-tests)
 ioj_apply_native_abi(sbx-mimalloc-tests)

@@ -5,8 +5,10 @@ set(MESH_GEN_SOURCES
 
 add_library(mesh-gen STATIC ${MESH_GEN_SOURCES})
 target_include_directories(mesh-gen
-  PUBLIC include
-  PRIVATE src
+  PUBLIC
+    include
+  PRIVATE
+    src
 )
 target_link_libraries(mesh-gen
   PUBLIC
@@ -23,8 +25,10 @@ if(IOJ_WITH_UNREAL)
 
   add_library(sandbox-mesh-gen STATIC ${MESH_GEN_SOURCES})
   target_include_directories(sandbox-mesh-gen
-    PUBLIC include
-    PRIVATE src
+    PUBLIC
+      include
+    PRIVATE
+      src
   )
   ioj_enable_warnings(sandbox-mesh-gen)
   target_link_libraries(sandbox-mesh-gen
@@ -48,11 +52,20 @@ if(IOJ_WITH_UNREAL)
     set_target_properties(sandbox-mesh-gen PROPERTIES
       MSVC_RUNTIME_LIBRARY MultiThreadedDLL
     )
-    target_compile_definitions(sandbox-mesh-gen PRIVATE NDEBUG _ITERATOR_DEBUG_LEVEL=0)
+    target_compile_definitions(sandbox-mesh-gen
+      PRIVATE
+        NDEBUG _ITERATOR_DEBUG_LEVEL=0
+    )
     if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-      target_compile_options(sandbox-mesh-gen PRIVATE /U_DEBUG)
+      target_compile_options(sandbox-mesh-gen
+        PRIVATE
+          /U_DEBUG
+      )
     else()
-      target_compile_options(sandbox-mesh-gen PRIVATE -U_DEBUG)
+      target_compile_options(sandbox-mesh-gen
+        PRIVATE
+          -U_DEBUG
+      )
     endif()
   endif()
 endif()

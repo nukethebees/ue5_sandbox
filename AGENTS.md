@@ -66,6 +66,7 @@ Unreal Engine 5.8 project.
 # Builds
 
 * CMake is used to drive all builds, including UBT
+* Before editing CMake files, read [CMake style](cmake/STYLE.md).
 * Set `IOJ_ROOT` to the absolute base directory for shared tools and temporary files.
   Stable tools are maintainer-installed under `%IOJ_ROOT%\tools\<ToolName>\bin`
   and invoked from PATH.

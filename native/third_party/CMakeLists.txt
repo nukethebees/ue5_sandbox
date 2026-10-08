@@ -32,18 +32,20 @@ if(IOJ_BUILD_DEVELOPER_TOOLS)
   add_subdirectory(nativefiledialog-extended EXCLUDE_FROM_ALL)
 
   add_library(sandbox-imgui)
-  target_sources(sandbox-imgui PRIVATE
-    imgui/imgui.cpp
-    imgui/imgui_draw.cpp
-    imgui/imgui_tables.cpp
-    imgui/imgui_widgets.cpp
-    imgui/misc/cpp/imgui_stdlib.cpp
-    imgui/backends/imgui_impl_sdl3.cpp
-    imgui/backends/imgui_impl_sdlgpu3.cpp
+  target_sources(sandbox-imgui
+    PRIVATE
+      imgui/imgui.cpp
+      imgui/imgui_draw.cpp
+      imgui/imgui_tables.cpp
+      imgui/imgui_widgets.cpp
+      imgui/misc/cpp/imgui_stdlib.cpp
+      imgui/backends/imgui_impl_sdl3.cpp
+      imgui/backends/imgui_impl_sdlgpu3.cpp
   )
-  target_include_directories(sandbox-imgui SYSTEM PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/imgui"
-    "${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends"
+  target_include_directories(sandbox-imgui SYSTEM
+    PUBLIC
+      "${CMAKE_CURRENT_SOURCE_DIR}/imgui"
+      "${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends"
   )
   target_link_libraries(sandbox-imgui
     PUBLIC
@@ -55,7 +57,10 @@ if(IOJ_BUILD_DEVELOPER_TOOLS)
 endif()
 
 foreach(google_test_target IN ITEMS gtest gtest_main)
-  target_link_libraries(${google_test_target} PRIVATE ioj::asan)
+  target_link_libraries(${google_test_target}
+    PRIVATE
+      ioj::asan
+  )
   ioj_apply_native_abi(${google_test_target})
 endforeach()
 
@@ -70,21 +75,34 @@ set(HWY_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
 set(HWY_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 set(HWY_ENABLE_LIST_TARGETS OFF CACHE BOOL "" FORCE)
 add_subdirectory(highway SYSTEM EXCLUDE_FROM_ALL)
-target_link_libraries(hwy PRIVATE ioj::asan)
+target_link_libraries(hwy
+  PRIVATE
+    ioj::asan
+)
 ioj_apply_native_abi(hwy)
 
 # Keep static SIMD targets isolated from baseline callers and unity builds.
 function(ioj_configure_highway_target target isa)
   set_target_properties(${target} PROPERTIES UNITY_BUILD OFF)
-  target_compile_definitions(${target} PRIVATE HWY_COMPILE_ONLY_STATIC)
-  target_link_libraries(${target} PRIVATE
-    hwy sandbox::native_defaults ioj::fp_precise
-    "$<IF:$<STREQUAL:${isa},avx512>,ioj::arch_avx512,ioj::arch_avx2>"
+  target_compile_definitions(${target}
+    PRIVATE
+      HWY_COMPILE_ONLY_STATIC
+  )
+  target_link_libraries(${target}
+    PRIVATE
+      hwy sandbox::native_defaults ioj::fp_precise
+      "$<IF:$<STREQUAL:${isa},avx512>,ioj::arch_avx512,ioj::arch_avx2>"
   )
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND MSVC)
-    target_compile_options(${target} PRIVATE /clang:-maes /clang:-mpclmul /clang:-mbmi2 /clang:-mfma /clang:-mf16c)
+    target_compile_options(${target}
+      PRIVATE
+        /clang:-maes /clang:-mpclmul /clang:-mbmi2 /clang:-mfma /clang:-mf16c
+    )
   elseif(NOT MSVC)
-    target_compile_options(${target} PRIVATE -maes -mpclmul -mbmi2 -mfma -mf16c)
+    target_compile_options(${target}
+      PRIVATE
+        -maes -mpclmul -mbmi2 -mfma -mf16c
+    )
   endif()
   ioj_apply_native_abi(${target})
   ioj_enable_warnings(${target})
@@ -95,7 +113,10 @@ if(IOJ_WITH_UNREAL)
     ARCHIVE_OUTPUT_DIRECTORY
       "${IOJ_NATIVE_OUTPUT_ROOT}/Highway/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
-  target_link_libraries(cpu_features PRIVATE ioj::unreal_avx2)
+  target_link_libraries(cpu_features
+    PRIVATE
+      ioj::unreal_avx2
+  )
   set_target_properties(cpu_features PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
       "${IOJ_NATIVE_OUTPUT_ROOT}/CpuFeatures/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
@@ -110,6 +131,9 @@ set(BENCHMARK_INSTALL_TOOLS OFF CACHE BOOL "" FORCE)
 add_subdirectory(benchmark EXCLUDE_FROM_ALL)
 
 foreach(google_benchmark_target IN ITEMS benchmark benchmark_main)
-  target_link_libraries(${google_benchmark_target} PRIVATE "$<BUILD_LOCAL_INTERFACE:ioj::asan>")
+  target_link_libraries(${google_benchmark_target}
+    PRIVATE
+      "$<BUILD_LOCAL_INTERFACE:ioj::asan>"
+  )
   ioj_apply_native_abi(${google_benchmark_target})
 endforeach()

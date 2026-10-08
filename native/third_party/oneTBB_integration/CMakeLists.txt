@@ -14,7 +14,10 @@ if(NOT DEFINED CMAKE_COMPILE_WARNING_AS_ERROR)
   set_property(TARGET tbb PROPERTY COMPILE_WARNING_AS_ERROR ON)
 endif()
 # Select the import library through CMake even when Debug uses the release CRT.
-target_compile_definitions(tbb INTERFACE __TBB_NO_IMPLICIT_LINKAGE=1)
+target_compile_definitions(tbb
+  INTERFACE
+    __TBB_NO_IMPLICIT_LINKAGE=1
+)
 set_target_properties(tbb PROPERTIES UNITY_BUILD OFF)
 
 if(WIN32)
@@ -22,8 +25,10 @@ if(WIN32)
   set_target_properties(tbb PROPERTIES OUTPUT_NAME "SandboxTBB12")
 
   # Give the resource compiler the SDK paths when building from a plain shell.
-  target_include_directories(tbb PRIVATE
-    "$<$<COMPILE_LANGUAGE:RC>:${CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES}>")
+  target_include_directories(tbb
+    PRIVATE
+      "$<$<COMPILE_LANGUAGE:RC>:${CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES}>"
+  )
 endif()
 
 if(IOJ_WITH_UNREAL)

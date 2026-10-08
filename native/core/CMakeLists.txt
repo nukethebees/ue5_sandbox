@@ -6,62 +6,84 @@ endif()
 
 add_library(native-core STATIC)
 add_library(native-core-headers INTERFACE)
-target_include_directories(native-core-headers INTERFACE include)
-target_sources(native-core PRIVATE
-  include/sandbox/core/container_ops.h
-  include/sandbox/core/monotonic_clock.h
-  include/sandbox/core/speed_response.h
-  include/sandbox/core/diagnostics.h
-  include/sandbox/core/enum_traits.h
-  include/sandbox/core/packed_value.h
-  include/sandbox/core/parallel_for.h
-  include/sandbox/core/countdown_timers.h
-  include/sandbox/core/math_types.h
-  include/sandbox/core/native_soa/storage.h
-  include/sandbox/core/native_soa/vector_storage_ops.h
-  include/sandbox/core/periodic_tick_countdown.h
-  include/sandbox/core/space_dust_math.h
-  include/sandbox/core/tick_countdown.h
-  include/sandbox/core/vector_normalization.h
-  src/generated/array_math_kernels.cpp
-  src/generated/vector_lerp_kernels.cpp
-  src/array_math.cpp
-  src/array_utils.cpp
-  src/countdown.cpp
-  src/trigonometry.cpp
-  src/frame_memory_resource.cpp
-  src/graph_plot.cpp
-  src/projectile_intercept.cpp
-  src/rotation.cpp
-  src/test_timeline.cpp
-  src/ui/chart_layout.cpp
-  src/ui/entity_overlay.cpp
-  src/ui/heatmap_2d.cpp
-  src/ui/histogram.cpp
-  src/ui/radar_2d.cpp
-  src/ui/settings_slider.cpp
-  src/ui/stacked_bar_chart.cpp
+target_include_directories(native-core-headers
+  INTERFACE
+    include
 )
-target_include_directories(native-core PUBLIC include)
+target_sources(native-core
+  PRIVATE
+    include/sandbox/core/container_ops.h
+    include/sandbox/core/monotonic_clock.h
+    include/sandbox/core/speed_response.h
+    include/sandbox/core/diagnostics.h
+    include/sandbox/core/enum_traits.h
+    include/sandbox/core/packed_value.h
+    include/sandbox/core/parallel_for.h
+    include/sandbox/core/countdown_timers.h
+    include/sandbox/core/math_types.h
+    include/sandbox/core/native_soa/storage.h
+    include/sandbox/core/native_soa/vector_storage_ops.h
+    include/sandbox/core/periodic_tick_countdown.h
+    include/sandbox/core/space_dust_math.h
+    include/sandbox/core/tick_countdown.h
+    include/sandbox/core/vector_normalization.h
+    src/generated/array_math_kernels.cpp
+    src/generated/vector_lerp_kernels.cpp
+    src/array_math.cpp
+    src/array_utils.cpp
+    src/countdown.cpp
+    src/trigonometry.cpp
+    src/frame_memory_resource.cpp
+    src/graph_plot.cpp
+    src/projectile_intercept.cpp
+    src/rotation.cpp
+    src/test_timeline.cpp
+    src/ui/chart_layout.cpp
+    src/ui/entity_overlay.cpp
+    src/ui/heatmap_2d.cpp
+    src/ui/histogram.cpp
+    src/ui/radar_2d.cpp
+    src/ui/settings_slider.cpp
+    src/ui/stacked_bar_chart.cpp
+)
+target_include_directories(native-core
+  PUBLIC
+    include
+)
 
 # Separate translation units keep AVX2 out of the scalar reference and prevent
 # unity builds or contraction from changing the packing arithmetic.
 add_library(native-core-ismc-scalar OBJECT)
-target_sources(native-core-ismc-scalar PRIVATE
-  src/sandbox_ismc_packing.cpp
-  src/sandbox_ismc_packing_dispatch.cpp)
+target_sources(native-core-ismc-scalar
+  PRIVATE
+    src/sandbox_ismc_packing.cpp
+    src/sandbox_ismc_packing_dispatch.cpp
+)
 set_target_properties(native-core-ismc-scalar PROPERTIES UNITY_BUILD OFF)
-target_include_directories(native-core-ismc-scalar PRIVATE include)
-target_link_libraries(native-core-ismc-scalar PRIVATE
-  hwy sandbox::native_defaults sandbox::handmade_math ioj::fp_precise)
+target_include_directories(native-core-ismc-scalar
+  PRIVATE
+    include
+)
+target_link_libraries(native-core-ismc-scalar
+  PRIVATE
+    hwy sandbox::native_defaults sandbox::handmade_math ioj::fp_precise
+)
 ioj_apply_native_abi(native-core-ismc-scalar)
 ioj_enable_warnings(native-core-ismc-scalar)
 add_library(native-core-ismc-highway-avx2 OBJECT)
-target_sources(native-core-ismc-highway-avx2 PRIVATE
-  src/sandbox_ismc_packing_highway.cpp)
+target_sources(native-core-ismc-highway-avx2
+  PRIVATE
+    src/sandbox_ismc_packing_highway.cpp
+)
 ioj_configure_highway_target(native-core-ismc-highway-avx2 avx2)
-target_include_directories(native-core-ismc-highway-avx2 PRIVATE include)
-target_link_libraries(native-core-ismc-highway-avx2 PRIVATE sandbox::handmade_math)
+target_include_directories(native-core-ismc-highway-avx2
+  PRIVATE
+    include
+)
+target_link_libraries(native-core-ismc-highway-avx2
+  PRIVATE
+    sandbox::handmade_math
+)
 target_link_libraries(native-core
   PUBLIC
     sandbox::native_defaults
@@ -76,7 +98,10 @@ target_link_libraries(native-core
 )
 ioj_enable_warnings(native-core)
 if(IOJ_WITH_TRACY)
-  target_compile_definitions(native-core PRIVATE IOJ_WITH_TRACY)
+  target_compile_definitions(native-core
+    PRIVATE
+      IOJ_WITH_TRACY
+  )
 endif()
 
 set_target_properties(native-core PROPERTIES
@@ -92,40 +117,41 @@ endif()
 add_executable(native-core-tests)
 ioj_stage_tbb_runtime(native-core-tests)
 
-target_sources(native-core-tests PRIVATE
-  tests/generated/array_math_kernels_tests.cpp
-  tests/array_math_tests.cpp
-  tests/vector_lerp_tests.cpp
-  tests/array_utils_tests.cpp
-  tests/container_tests.cpp
-  tests/fixed_array_tests.cpp
-  tests/frame_array_tests.cpp
-  tests/frame_memory_resource_tests.cpp
-  tests/countdown_tests.cpp
-  tests/enum_array_tests.cpp
-  tests/graph_plot_tests.cpp
-  tests/interpolation_tests.cpp
-  tests/invoke_tests.cpp
-  tests/lock_free_mpsc_queue_tests.cpp
-  tests/loop_bounds_tests.cpp
-  tests/monitored_lock_free_mpsc_queue_tests.cpp
-  tests/native_soa_vector_storage_ops_tests.cpp
-  tests/projectile_intercept_tests.cpp
-  tests/quantized_decimal_tests.cpp
-  tests/rotation_tests.cpp
-  tests/sandbox_ismc_transform_tests.cpp
-  tests/sandbox_ismc_packing_tests.cpp
-  tests/space_dust_math_tests.cpp
-  tests/static_string_view_tests.cpp
-  tests/time_series_data_tests.cpp
-  tests/timing_tests.cpp
-  tests/ui_entity_overlay_tests.cpp
-  tests/ui_heatmap_2d_tests.cpp
-  tests/ui_radar_stacked_bar_tests.cpp
-  tests/ui_settings_histogram_tests.cpp
-  tests/test_timeline_tests.cpp
-  tests/vector_math_tests.cpp
-  tests/vector3d_tests.cpp
+target_sources(native-core-tests
+  PRIVATE
+    tests/generated/array_math_kernels_tests.cpp
+    tests/array_math_tests.cpp
+    tests/vector_lerp_tests.cpp
+    tests/array_utils_tests.cpp
+    tests/container_tests.cpp
+    tests/fixed_array_tests.cpp
+    tests/frame_array_tests.cpp
+    tests/frame_memory_resource_tests.cpp
+    tests/countdown_tests.cpp
+    tests/enum_array_tests.cpp
+    tests/graph_plot_tests.cpp
+    tests/interpolation_tests.cpp
+    tests/invoke_tests.cpp
+    tests/lock_free_mpsc_queue_tests.cpp
+    tests/loop_bounds_tests.cpp
+    tests/monitored_lock_free_mpsc_queue_tests.cpp
+    tests/native_soa_vector_storage_ops_tests.cpp
+    tests/projectile_intercept_tests.cpp
+    tests/quantized_decimal_tests.cpp
+    tests/rotation_tests.cpp
+    tests/sandbox_ismc_transform_tests.cpp
+    tests/sandbox_ismc_packing_tests.cpp
+    tests/space_dust_math_tests.cpp
+    tests/static_string_view_tests.cpp
+    tests/time_series_data_tests.cpp
+    tests/timing_tests.cpp
+    tests/ui_entity_overlay_tests.cpp
+    tests/ui_heatmap_2d_tests.cpp
+    tests/ui_radar_stacked_bar_tests.cpp
+    tests/ui_settings_histogram_tests.cpp
+    tests/test_timeline_tests.cpp
+    tests/vector_math_tests.cpp
+    tests/vector3d_tests.cpp
 )
 ioj_enable_warnings(native-core-tests)
 
@@ -133,33 +159,57 @@ add_test(NAME native-core-tests COMMAND native-core-tests)
 set_tests_properties(native-core-tests PROPERTIES LABELS "unit;all;native;native-core")
 
 add_library(native-core-ismc-avx2-experiment OBJECT EXCLUDE_FROM_ALL)
-target_sources(native-core-ismc-avx2-experiment PRIVATE
-  experiments/sandbox_ismc_packing_avx2.cpp)
+target_sources(native-core-ismc-avx2-experiment
+  PRIVATE
+    experiments/sandbox_ismc_packing_avx2.cpp
+)
 set_target_properties(native-core-ismc-avx2-experiment PROPERTIES UNITY_BUILD OFF)
-target_include_directories(native-core-ismc-avx2-experiment PUBLIC experiments)
+target_include_directories(native-core-ismc-avx2-experiment
+  PUBLIC
+    experiments
+)
 target_link_libraries(native-core-ismc-avx2-experiment
-  PUBLIC native-core
-  PRIVATE sandbox::native_defaults ioj::arch_avx2 ioj::fp_precise)
+  PUBLIC
+    native-core
+  PRIVATE
+    sandbox::native_defaults ioj::arch_avx2 ioj::fp_precise
+)
 ioj_apply_native_abi(native-core-ismc-avx2-experiment)
 ioj_enable_warnings(native-core-ismc-avx2-experiment)
 
 add_library(native-core-ismc-avx512-experiment OBJECT EXCLUDE_FROM_ALL)
-target_sources(native-core-ismc-avx512-experiment PRIVATE
-  experiments/sandbox_ismc_packing_avx512.cpp)
+target_sources(native-core-ismc-avx512-experiment
+  PRIVATE
+    experiments/sandbox_ismc_packing_avx512.cpp
+)
 set_target_properties(native-core-ismc-avx512-experiment PROPERTIES UNITY_BUILD OFF)
-target_include_directories(native-core-ismc-avx512-experiment PUBLIC experiments)
+target_include_directories(native-core-ismc-avx512-experiment
+  PUBLIC
+    experiments
+)
 target_link_libraries(native-core-ismc-avx512-experiment
-  PUBLIC native-core CpuFeatures::cpu_features
-  PRIVATE sandbox::native_defaults ioj::arch_avx512 ioj::fp_precise)
+  PUBLIC
+    native-core CpuFeatures::cpu_features
+  PRIVATE
+    sandbox::native_defaults ioj::arch_avx512 ioj::fp_precise
+)
 ioj_apply_native_abi(native-core-ismc-avx512-experiment)
 ioj_enable_warnings(native-core-ismc-avx512-experiment)
 
 add_library(native-core-ismc-highway-avx512 OBJECT EXCLUDE_FROM_ALL)
-target_sources(native-core-ismc-highway-avx512 PRIVATE
-  src/sandbox_ismc_packing_highway.cpp)
+target_sources(native-core-ismc-highway-avx512
+  PRIVATE
+    src/sandbox_ismc_packing_highway.cpp
+)
 ioj_configure_highway_target(native-core-ismc-highway-avx512 avx512)
-target_include_directories(native-core-ismc-highway-avx512 PUBLIC experiments)
-target_link_libraries(native-core-ismc-highway-avx512 PUBLIC native-core)
+target_include_directories(native-core-ismc-highway-avx512
+  PUBLIC
+    experiments
+)
+target_link_libraries(native-core-ismc-highway-avx512
+  PUBLIC
+    native-core
+)
 target_link_libraries(native-core-tests
   PRIVATE
     native-core
@@ -175,91 +225,58 @@ target_link_libraries(native-core-tests
 
 add_executable(native-core-benchmarks)
 ioj_stage_tbb_runtime(native-core-benchmarks)
-target_sources(native-core-benchmarks PRIVATE
-  benchmarks/projectile_intercept_benchmarks.cpp
-  benchmarks/vector_lerp_benchmarks.cpp
-  benchmarks/sandbox_ismc_packing_benchmarks.cpp
+target_sources(native-core-benchmarks
+  PRIVATE
+    benchmarks/projectile_intercept_benchmarks.cpp
+    benchmarks/vector_lerp_benchmarks.cpp
+    benchmarks/sandbox_ismc_packing_benchmarks.cpp
 )
-target_link_libraries(native-core-benchmarks PRIVATE
-  native-core
-  native-core-ismc-avx2-experiment
-  native-core-ismc-avx512-experiment
-  native-core-ismc-highway-avx512
-  hwy
-  benchmark::benchmark
-  benchmark::benchmark_main
-  CpuFeatures::cpu_features
-  sandbox::native_defaults
+target_link_libraries(native-core-benchmarks
+  PRIVATE
+    native-core
+    native-core-ismc-avx2-experiment
+    native-core-ismc-avx512-experiment
+    native-core-ismc-highway-avx512
+    hwy
+    benchmark::benchmark
+    benchmark::benchmark_main
+    CpuFeatures::cpu_features
+    sandbox::native_defaults
 )
 ioj_enable_warnings(native-core-benchmarks)
 
-add_custom_target(native-core-ismc-benchmark-report
-  COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc"
-  COMMAND "$<TARGET_FILE:native-core-benchmarks>"
-    "--benchmark_filter=^ismc/[^/]+/(scalar|avx2|production)/"
-    --benchmark_repetitions=5
-    --benchmark_min_time=0.05s
-    --benchmark_enable_random_interleaving=true
-    --benchmark_display_aggregates_only=true
-    "--benchmark_out=${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc/packing-results.json"
-    --benchmark_out_format=json
-  DEPENDS native-core-benchmarks
-  COMMENT "Comparing scalar, intrinsic AVX2 and production Highway packing"
-  USES_TERMINAL
-  VERBATIM
+include("${PROJECT_SOURCE_DIR}/cmake/benchmark_report.cmake")
+set(ismc_report_dir "${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc")
+ioj_add_benchmark_report(native-core-ismc-benchmark-report native-core-benchmarks
+  "^ismc/[^/]+/(scalar|avx2|production)/"
+  "${ismc_report_dir}/packing-results.json" 5 0.05s
+  "Comparing scalar, intrinsic AVX2 and production Highway packing"
 )
-
-add_custom_target(native-core-ismc-avx512-benchmark-report
-  COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc"
-  COMMAND "$<TARGET_FILE:native-core-benchmarks>"
-    --benchmark_filter=^ismc/
-    --benchmark_repetitions=5
-    --benchmark_min_time=0.05s
-    --benchmark_enable_random_interleaving=true
-    --benchmark_display_aggregates_only=true
-    "--benchmark_out=${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc/packing-avx512-results.json"
-    --benchmark_out_format=json
-  DEPENDS native-core-benchmarks
-  COMMENT "Comparing scalar, AVX2 and experimental AVX512 with production AoS storage"
-  USES_TERMINAL
-  VERBATIM
+ioj_add_benchmark_report(native-core-ismc-avx512-benchmark-report native-core-benchmarks
+  "^ismc/"
+  "${ismc_report_dir}/packing-avx512-results.json" 5 0.05s
+  "Comparing scalar, AVX2 and experimental AVX512 with production AoS storage"
 )
-
-add_custom_target(native-core-vector-lerp-benchmark-report
-  COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/out/benchmarks/native-core"
-  COMMAND "$<TARGET_FILE:native-core-benchmarks>"
-    --benchmark_filter=^vector_lerp/
-    --benchmark_repetitions=7
-    --benchmark_min_time=0.05s
-    --benchmark_enable_random_interleaving=true
-    --benchmark_display_aggregates_only=true
-    "--benchmark_out=${PROJECT_SOURCE_DIR}/out/benchmarks/native-core/vector-lerp-results.json"
-    --benchmark_out_format=json
-  DEPENDS native-core-benchmarks
-  COMMENT "Benchmarking fused native 3D lerp against three 1D lerps"
-  USES_TERMINAL
-  VERBATIM
+ioj_add_benchmark_report(native-core-vector-lerp-benchmark-report native-core-benchmarks
+  "^vector_lerp/"
+  "${PROJECT_SOURCE_DIR}/out/benchmarks/native-core/vector-lerp-results.json" 7 0.05s
+  "Benchmarking fused native 3D lerp against three 1D lerps"
 )
-
-add_custom_target(native-core-highway-benchmark-report
-  COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/.local/benchmarks/highway"
-  COMMAND "$<TARGET_FILE:native-core-benchmarks>"
-    "--benchmark_filter=^ismc/[^/]+/(scalar|avx2|avx512|production|highway-avx512)/(17|2000|40000)/real_time$"
-    --benchmark_repetitions=3 --benchmark_min_time=0.02s
-    --benchmark_enable_random_interleaving=true --benchmark_display_aggregates_only=true
-    "--benchmark_out=${PROJECT_SOURCE_DIR}/.local/benchmarks/highway/ismc.json"
-    --benchmark_out_format=json
-  DEPENDS native-core-benchmarks
-  USES_TERMINAL VERBATIM
+ioj_add_benchmark_report(native-core-highway-benchmark-report native-core-benchmarks
+  "^ismc/[^/]+/(scalar|avx2|avx512|production|highway-avx512)/(17|2000|40000)/real_time$"
+  "${PROJECT_SOURCE_DIR}/.local/benchmarks/highway/ismc.json" 3 0.02s
+  "Comparing production and experimental Highway packing"
 )
 
 add_library(native-core-static-string-view-reject-automatic OBJECT EXCLUDE_FROM_ALL)
-target_sources(native-core-static-string-view-reject-automatic PRIVATE
-  tests/static_string_view_reject_automatic_storage.cpp
+target_sources(native-core-static-string-view-reject-automatic
+  PRIVATE
+    tests/static_string_view_reject_automatic_storage.cpp
 )
-target_link_libraries(native-core-static-string-view-reject-automatic PRIVATE
-  native-core
-  sandbox::native_defaults
+target_link_libraries(native-core-static-string-view-reject-automatic
+  PRIVATE
+    native-core
+    sandbox::native_defaults
 )
 ioj_enable_warnings(native-core-static-string-view-reject-automatic)
 add_test(NAME StaticStringViewRejectsAutomaticStorage
