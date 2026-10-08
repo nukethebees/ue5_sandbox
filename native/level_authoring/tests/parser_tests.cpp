@@ -7,12 +7,12 @@ TEST(NativeLevelParser, ParsesOwnedAstWithoutLinkingTheInterpreter) {
     s7::Ast ast;
     ast.text_bytes = "levelidfixturetitleTitle";
     ast.nodes = {
-        {.kind = s7::NodeKind::List, .range = {0, 5}},
-        {.kind = s7::NodeKind::Keyword, .range = {0, 5}},
-        {.kind = s7::NodeKind::Keyword, .range = {5, 2}},
-        {.kind = s7::NodeKind::Symbol, .range = {7, 7}},
-        {.kind = s7::NodeKind::Keyword, .range = {14, 5}},
-        {.kind = s7::NodeKind::String, .range = {19, 5}},
+        {.kind = s7::NodeKind::List, .offset = 0, .count = 5},
+        {.kind = s7::NodeKind::Keyword, .offset = 0, .count = 5},
+        {.kind = s7::NodeKind::Keyword, .offset = 5, .count = 2},
+        {.kind = s7::NodeKind::Symbol, .offset = 7, .count = 7},
+        {.kind = s7::NodeKind::Keyword, .offset = 14, .count = 5},
+        {.kind = s7::NodeKind::String, .offset = 19, .count = 5},
     };
     ast.child_indices = {1, 2, 3, 4, 5};
     auto const result{parse_level(ast)};

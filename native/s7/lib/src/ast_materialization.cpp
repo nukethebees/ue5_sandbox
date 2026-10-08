@@ -66,8 +66,8 @@ class Materializer {
             for (auto const pair : spine) {
                 active_.erase(pair);
             }
-            node.range = {static_cast<std::uint32_t>(ast_.child_indices.size()),
-                          static_cast<std::uint32_t>(children.size())};
+            node.offset = static_cast<std::uint32_t>(ast_.child_indices.size());
+            node.count = static_cast<std::uint32_t>(children.size());
             ast_.child_indices.insert(ast_.child_indices.end(), children.begin(), children.end());
         } else if (s7_is_keyword(value) || s7_is_symbol(value) || s7_is_string(value)) {
             std::string_view text;
@@ -84,21 +84,29 @@ class Materializer {
             if (text.size() > limits_.max_text_bytes - ast_.text_bytes.size()) {
                 return fail(AstErrorCode::LimitExceeded, path, "AST text limit exceeded");
             }
-            node.range = {static_cast<std::uint32_t>(ast_.text_bytes.size()),
-                          static_cast<std::uint32_t>(text.size())};
+            node.offset = static_cast<std::uint32_t>(ast_.text_bytes.size());
+            node.count = static_cast<std::uint32_t>(text.size());
             ast_.text_bytes.append(text);
         } else if (s7_is_boolean(value)) {
             node.kind = NodeKind::Boolean;
-            node.boolean = s7_boolean(&scheme_, value);
+            node.offset = static_cast<std::uint32_t>(ast_.booleans.size());
+            node.count = 1;
+            ast_.booleans.push_back(static_cast<std::uint8_t>(s7_boolean(&scheme_, value)));
         } else if (s7_is_integer(value)) {
             node.kind = NodeKind::Integer;
-            node.integer = s7_integer(value);
+            node.offset = static_cast<std::uint32_t>(ast_.integers.size());
+            node.count = 1;
+            ast_.integers.push_back(s7_integer(value));
         } else if (s7_is_rational(value)) {
             node.kind = NodeKind::Ratio;
-            node.ratio = {s7_numerator(value), s7_denominator(value)};
+            node.offset = static_cast<std::uint32_t>(ast_.ratios.size());
+            node.count = 1;
+            ast_.ratios.push_back(Ratio{s7_numerator(value), s7_denominator(value)});
         } else if (s7_is_real(value)) {
             node.kind = NodeKind::Real;
-            node.real = s7_real(value);
+            node.offset = static_cast<std::uint32_t>(ast_.reals.size());
+            node.count = 1;
+            ast_.reals.push_back(s7_real(value));
         } else {
             return fail(AstErrorCode::UnsupportedValue, path, "Unsupported evaluated Scheme value");
         }

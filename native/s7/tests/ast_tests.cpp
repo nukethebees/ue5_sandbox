@@ -28,17 +28,40 @@ TEST(SchemeAst, OwnsValuesAfterInterpreterAndSourceAreDestroyed) {
     EXPECT_EQ(moved.node(values[2]).kind, NodeKind::String);
     EXPECT_EQ(moved.text(values[2]), "text");
     EXPECT_EQ(moved.node(values[3]).kind, NodeKind::Integer);
-    EXPECT_EQ(moved.node(values[3]).integer, INT64_C(9007199254740993));
+    EXPECT_EQ(moved.integer(values[3]), INT64_C(9007199254740993));
     EXPECT_EQ(moved.node(values[4]).kind, NodeKind::Ratio);
-    EXPECT_EQ(moved.node(values[4]).ratio.numerator, 2);
-    EXPECT_EQ(moved.node(values[4]).ratio.denominator, 3);
+    EXPECT_EQ(moved.ratio(values[4]).numerator, 2);
+    EXPECT_EQ(moved.ratio(values[4]).denominator, 3);
     EXPECT_EQ(moved.node(values[5]).kind, NodeKind::Real);
-    EXPECT_DOUBLE_EQ(moved.node(values[5]).real, 1.25);
-    EXPECT_TRUE(moved.node(values[6]).boolean);
+    EXPECT_DOUBLE_EQ(moved.real(values[5]), 1.25);
+    EXPECT_TRUE(moved.boolean(values[6]));
     EXPECT_TRUE(moved.children(values[7]).empty());
     auto const nested{moved.children(values[8])};
     ASSERT_EQ(nested.size(), 2u);
     EXPECT_EQ(moved.text(moved.children(nested[1])[0]), "b");
+}
+
+TEST(SchemeAst, CopiesMixedPayloadsIndependently) {
+    Interpreter interpreter;
+    auto original{interpreter.evaluate_ast(R"('(7 #f 1.5 2/3 "a" (8 #t 2.5 3/4 "b")))")};
+    ASSERT_TRUE(original);
+    auto const copy{*original};
+    *original = Ast{};
+
+    auto const outer{copy.children(copy.root)};
+    auto const inner{copy.children(outer[5])};
+    EXPECT_EQ(copy.integer(outer[0]), 7);
+    EXPECT_EQ(copy.integer(inner[0]), 8);
+    EXPECT_FALSE(copy.boolean(outer[1]));
+    EXPECT_TRUE(copy.boolean(inner[1]));
+    EXPECT_DOUBLE_EQ(copy.real(outer[2]), 1.5);
+    EXPECT_DOUBLE_EQ(copy.real(inner[2]), 2.5);
+    EXPECT_EQ(copy.ratio(outer[3]).numerator, 2);
+    EXPECT_EQ(copy.ratio(inner[3]).numerator, 3);
+    EXPECT_EQ(copy.ratio(outer[3]).denominator, 3);
+    EXPECT_EQ(copy.ratio(inner[3]).denominator, 4);
+    EXPECT_EQ(copy.text(outer[4]), "a");
+    EXPECT_EQ(copy.text(inner[4]), "b");
 }
 
 TEST(SchemeAst, RejectsUnsupportedAndMalformedData) {

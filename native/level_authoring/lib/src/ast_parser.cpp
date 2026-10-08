@@ -78,12 +78,13 @@ auto AstParser::number(s7::NodeIndex const node, std::string const& path) -> dou
     auto const& value{ast_.node(node)};
     switch (value.kind) {
         case s7::NodeKind::Integer:
-            return static_cast<double>(value.integer);
-        case s7::NodeKind::Ratio:
-            return static_cast<double>(value.ratio.numerator) /
-                   static_cast<double>(value.ratio.denominator);
+            return static_cast<double>(ast_.integer(node));
+        case s7::NodeKind::Ratio: {
+            auto const ratio{ast_.ratio(node)};
+            return static_cast<double>(ratio.numerator) / static_cast<double>(ratio.denominator);
+        }
         case s7::NodeKind::Real:
-            return value.real;
+            return ast_.real(node);
         default:
             error(DiagnosticCode::InvalidType, path, "Expected a real number");
             return 0.0;
@@ -92,22 +93,26 @@ auto AstParser::number(s7::NodeIndex const node, std::string const& path) -> dou
 auto AstParser::integer(s7::NodeIndex const node, std::string const& path) -> std::int32_t {
     auto const& value{ast_.node(node)};
     if (value.kind == s7::NodeKind::Integer) {
-        if (value.integer >= std::numeric_limits<std::int32_t>::min() &&
-            value.integer <= std::numeric_limits<std::int32_t>::max()) {
-            return static_cast<std::int32_t>(value.integer);
+        auto const integer{ast_.integer(node)};
+        if (integer >= std::numeric_limits<std::int32_t>::min() &&
+            integer <= std::numeric_limits<std::int32_t>::max()) {
+            return static_cast<std::int32_t>(integer);
         }
     } else if (value.kind == s7::NodeKind::Real) {
-        if (std::isfinite(value.real) && std::trunc(value.real) == value.real &&
-            value.real >= std::numeric_limits<std::int32_t>::min() &&
-            value.real <= std::numeric_limits<std::int32_t>::max()) {
-            return static_cast<std::int32_t>(value.real);
+        auto const real{ast_.real(node)};
+        if (std::isfinite(real) && std::trunc(real) == real &&
+            real >= std::numeric_limits<std::int32_t>::min() &&
+            real <= std::numeric_limits<std::int32_t>::max()) {
+            return static_cast<std::int32_t>(real);
         }
-    } else if (value.kind == s7::NodeKind::Ratio && value.ratio.denominator > 0 &&
-               value.ratio.numerator % value.ratio.denominator == 0) {
-        auto const quotient{value.ratio.numerator / value.ratio.denominator};
-        if (quotient >= std::numeric_limits<std::int32_t>::min() &&
-            quotient <= std::numeric_limits<std::int32_t>::max()) {
-            return static_cast<std::int32_t>(quotient);
+    } else if (value.kind == s7::NodeKind::Ratio) {
+        auto const ratio{ast_.ratio(node)};
+        if (ratio.denominator > 0 && ratio.numerator % ratio.denominator == 0) {
+            auto const quotient{ratio.numerator / ratio.denominator};
+            if (quotient >= std::numeric_limits<std::int32_t>::min() &&
+                quotient <= std::numeric_limits<std::int32_t>::max()) {
+                return static_cast<std::int32_t>(quotient);
+            }
         }
     }
     error(DiagnosticCode::InvalidNumber, path, "Expected a 32-bit integer");

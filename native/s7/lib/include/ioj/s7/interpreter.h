@@ -4,9 +4,9 @@
 #include <ioj/s7/detail/s7_ownership.h>
 #include <ioj/s7/detail/script_bindings.h>
 #include <ioj/s7/detail/script_loader.h>
+#include <ioj/s7/interpreter_options.h>
 #include <ioj/s7/value.h>
 
-#include <cstddef>
 #include <expected>
 #include <memory>
 #include <optional>
@@ -17,14 +17,6 @@
 namespace ioj::s7 {
 using EvaluationResult = std::expected<std::string, std::string>;
 using ValueEvaluationResult = std::expected<void, std::string>;
-
-struct InterpreterOptions {
-    std::optional<std::string> script_library_root_utf8{};
-    std::size_t max_loaded_file_bytes{1024 * 1024};
-    std::size_t max_total_loaded_bytes{8 * 1024 * 1024};
-    std::size_t max_loaded_files{64};
-    std::size_t max_load_depth{32};
-};
 
 class Interpreter {
   public:
