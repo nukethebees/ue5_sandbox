@@ -1,4 +1,4 @@
-#include <SpaceGameS7/level_definition_reader.h>
+#include <SpaceGameS7/definition_reader.h>
 #include <SpaceGameS7/level_definition_writer.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -95,8 +95,8 @@ TEST_CLASS(S7LevelDefinitionWriter, "Sandbox.UnitTests")
             return;
         }
 
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const read{reader.read_source(*source)};
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const read{reader.read_level_source(*source)};
         if (!TestRunner->TestTrue(TEXT("Emitted source reads"), static_cast<bool>(read))) {
             TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(read.error())));
             return;
@@ -130,8 +130,8 @@ TEST_CLASS(S7LevelDefinitionWriter, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Spawn clause is emitted"),
                              source->Contains(TEXT(":spawn-at 5")));
 
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const read{reader.read_source(*source)};
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const read{reader.read_level_source(*source)};
         if (!TestRunner->TestTrue(TEXT("Scheduled source reads"), static_cast<bool>(read))) {
             TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(read.error())));
             return;
@@ -142,8 +142,8 @@ TEST_CLASS(S7LevelDefinitionWriter, "Sandbox.UnitTests")
 
     TEST_METHOD(ExpandsLargeProceduralLevelIntoExplicitSemanticEquivalent)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const input{reader.read_file(FPaths::Combine(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const input{reader.read_level_file(FPaths::Combine(
             FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("BenchmarkFleet_10.scm")))};
         if (!TestRunner->TestTrue(TEXT("Procedural benchmark reads"), static_cast<bool>(input))) {
             TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(input.error())));
@@ -160,7 +160,7 @@ TEST_CLASS(S7LevelDefinitionWriter, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Writer does not reconstruct procedural application"),
                               source->Contains(TEXT("(apply entities")));
 
-        auto const output{reader.read_source(*source)};
+        auto const output{reader.read_level_source(*source)};
         if (!TestRunner->TestTrue(TEXT("Expanded benchmark reads"), static_cast<bool>(output))) {
             TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(output.error())));
             return;

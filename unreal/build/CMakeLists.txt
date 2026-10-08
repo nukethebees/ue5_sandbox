@@ -5,6 +5,7 @@ set(sandbox_unreal_native_dependency_targets
   native-level-authoring-s7
   sandbox-s7
   native-core
+  native-ui
   cpu_features
 )
 set(sandbox_unreal_native_dependencies)

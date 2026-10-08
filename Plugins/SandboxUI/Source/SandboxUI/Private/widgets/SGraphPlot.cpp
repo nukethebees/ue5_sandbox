@@ -1,6 +1,6 @@
 #include "SandboxUI/widgets/SGraphPlot.h"
 
-#include <sandbox/core/graph_plot.h>
+#include <ioj/ui/graph_plot.h>
 
 #include "Rendering/DrawElementTypes.h"
 #include "Styling/CoreStyle.h"
@@ -29,7 +29,7 @@ void draw_graph_plot_box(FSlateWindowElementList& out_draw_elements,
                                color);
 }
 
-auto native_layout_settings(FGraphPlotStyle const& style) -> ml::graph::LayoutSettings {
+auto native_layout_settings(FGraphPlotStyle const& style) -> ioj::ui::graph::LayoutSettings {
     return {.desired_width = style.desired_size.X,
             .desired_height = style.desired_size.Y,
             .left_margin = style.left_margin,
@@ -97,8 +97,8 @@ FVector2D SGraphPlot::ComputeDesiredSize(float) const {
 }
 
 void SGraphPlot::update_layout(FVector2f const local_size) const {
-    auto const layout{
-        ml::graph::make_plot_layout({local_size.X, local_size.Y}, native_layout_settings(style_))};
+    auto const layout{ioj::ui::graph::make_plot_layout({local_size.X, local_size.Y},
+                                                       native_layout_settings(style_))};
     plot_origin_ = {layout.origin.x, layout.origin.y};
     plot_size_ = {layout.size.x, layout.size.y};
 
@@ -357,14 +357,14 @@ auto SGraphPlot::OnMouseMove(FGeometry const& geometry, FPointerEvent const& eve
     auto const range{cache_.get_x_range()};
     auto const cursor_x{range.min +
                         (local.X - plot_origin_.X) / plot_size_.X * (range.max - range.min)};
-    std::vector<ml::graph::SeriesView> native_series;
+    std::vector<ioj::ui::graph::SeriesView> native_series;
     native_series.reserve(static_cast<std::size_t>(series_.Num()));
     for (auto const& series : series_) {
         native_series.push_back(
             {.x = {series.x.GetData(), static_cast<std::size_t>(series.x.Num())},
              .y = {series.y.GetData(), static_cast<std::size_t>(series.y.Num())}});
     }
-    auto const nearest_x{ml::graph::nearest_x(native_series, cursor_x)};
+    auto const nearest_x{ioj::ui::graph::nearest_x(native_series, cursor_x)};
     if (!nearest_x) {
         if (clear_hover()) {
             Invalidate(EInvalidateWidgetReason::Paint);
@@ -377,10 +377,10 @@ auto SGraphPlot::OnMouseMove(FGeometry const& geometry, FPointerEvent const& eve
     hovered_x_ = *nearest_x;
     auto tooltip{FString::Printf(TEXT("x: %.5g"), hovered_x_.GetValue())};
     for (auto const& series : series_) {
-        auto const view{ml::graph::SeriesView{
+        auto const view{ioj::ui::graph::SeriesView{
             .x = {series.x.GetData(), static_cast<std::size_t>(series.x.Num())},
             .y = {series.y.GetData(), static_cast<std::size_t>(series.y.Num())}}};
-        auto const nearest{ml::graph::nearest_sample_index(view, hovered_x_.GetValue())};
+        auto const nearest{ioj::ui::graph::nearest_sample_index(view, hovered_x_.GetValue())};
         if (!nearest) {
             continue;
         }
@@ -409,7 +409,7 @@ void SGraphPlot::rebuild_ticks() const {
                     bool const invert,
                     TArray<FTick>& output) {
         auto const ticks{
-            ml::graph::build_ticks({range.min, range.max}, extent, target_count, invert)};
+            ioj::ui::graph::build_ticks({range.min, range.max}, extent, target_count, invert)};
         output.Reset(static_cast<int32>(ticks.size()));
         for (auto const& tick : ticks) {
             output.Add(
@@ -421,7 +421,7 @@ void SGraphPlot::rebuild_ticks() const {
 }
 
 bool SGraphPlot::is_valid_style(FGraphPlotStyle const& style) {
-    return ml::graph::is_valid_layout(native_layout_settings(style));
+    return ioj::ui::graph::is_valid_layout(native_layout_settings(style));
 }
 
 void SGraphPlot::refresh_cache_series() {

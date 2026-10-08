@@ -29,6 +29,12 @@ struct Vector3d {
     auto size_squared() const -> double { return x * x + y * y + z * z; }
     auto size() const -> double { return std::sqrt(size_squared()); }
 };
+[[nodiscard]] inline auto is_finite(Vector3d const value) noexcept -> bool {
+    return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
+}
+[[nodiscard]] inline auto is_positive_finite(Vector3d const value) noexcept -> bool {
+    return is_finite(value) && value.x > 0.0 && value.y > 0.0 && value.z > 0.0;
+}
 inline auto dot(Vector3d const a, Vector3d const b) -> double {
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }

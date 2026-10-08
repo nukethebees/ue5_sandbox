@@ -1,11 +1,12 @@
 #include <sandbox/simulation_benchmark/benchmark_runner.hpp>
 
-#include <ioj/levels/authoring/level_definition_reader.h>
+#include <ioj/levels/authoring/definition_reader.h>
+#include <ioj/levels/authoring/level_parser.h>
+#include <ioj/rotator3d.h>
 #include <ioj/sim/fighter_types.h>
 #include <ioj/sim/levels/level_compilation.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/reference_level_simulation_data.h>
-#include <ioj/sim/rotator3d.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/telemetry/level_telemetry_run_end_reason.h>
 
@@ -192,8 +193,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     }
 #endif
 
-    ioj::levels::authoring::LevelDefinitionReader reader;
-    auto level_result{reader.read_file(options.level_path)};
+    ioj::levels::authoring::DefinitionReader reader;
+    auto level_result{reader.read_level_file(options.level_path)};
     if (!level_result) {
         return std::unexpected{read_error(level_result)};
     }
@@ -234,9 +235,9 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
                                      player_definition->position.y,
                                      player_definition->position.z};
         player.transform.rotation =
-            ioj::sim::to_quaternion(ioj::Rotator3d{player_definition->rotation.pitch,
-                                                   player_definition->rotation.yaw,
-                                                   player_definition->rotation.roll});
+            ioj::to_quaternion(ioj::Rotator3d{player_definition->rotation.pitch,
+                                              player_definition->rotation.yaw,
+                                              player_definition->rotation.roll});
         data.player = player;
     }
 

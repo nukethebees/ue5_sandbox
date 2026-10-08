@@ -1,8 +1,8 @@
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 
 namespace {
-auto native_role(EEntityOverlayObjectiveRole const role) -> ml::ui::entity_overlay::ObjectiveRole {
-    return static_cast<ml::ui::entity_overlay::ObjectiveRole>(role);
+auto native_role(EEntityOverlayObjectiveRole const role) -> ioj::ui::entity_overlay::ObjectiveRole {
+    return static_cast<ioj::ui::entity_overlay::ObjectiveRole>(role);
 }
 }
 
@@ -21,7 +21,7 @@ auto FEntityOverlayCollector::try_add(FVector3f const position,
                                       float world_radius,
                                       EEntityOverlayObjectiveRole const objective_role,
                                       bool const bypass_range) -> bool {
-    auto display_data{ml::ui::entity_overlay::pack_display_data(native_role(objective_role))};
+    auto display_data{ioj::ui::entity_overlay::pack_display_data(native_role(objective_role))};
     return try_add_impl(position, normalized_health, world_radius, display_data, bypass_range);
 }
 
@@ -35,7 +35,7 @@ auto FEntityOverlayCollector::try_add_colored(FVector3f const position,
         position,
         normalized_health,
         world_radius,
-        ml::ui::entity_overlay::pack_display_data(
+        ioj::ui::entity_overlay::pack_display_data(
             native_role(objective_role), {fill_color.R, fill_color.G, fill_color.B, fill_color.A}),
         bypass_range);
 }
@@ -62,7 +62,7 @@ auto FEntityOverlayCollector::try_add_impl(FVector3f const position,
                                                    .health = instance.health,
                                                    .world_radius = instance.world_radius,
                                                    .display_data = instance.display_data})};
-    if (addition->swap_index != ml::ui::entity_overlay::invalid_index) {
+    if (addition->swap_index != ioj::ui::entity_overlay::invalid_index) {
         output_instances_->Swap(addition->swap_index, added_index);
     }
     return true;

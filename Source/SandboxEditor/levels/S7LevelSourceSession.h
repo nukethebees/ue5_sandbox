@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SpaceGameS7/level_definition_reader.h>
+#include <SpaceGameS7/definition_reader.h>
 
 #include <CoreMinimal.h>
 #include <UObject/WeakObjectPtr.h>

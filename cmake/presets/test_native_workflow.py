@@ -21,10 +21,11 @@ TIDY_SCOPES = {
     "layout": ("layout",),
     "lispb": ("lispb",),
     "memory": ("memory",),
-    "level-authoring": ("level_authoring", "levels", "common"),
+    "level-authoring": ("level_authoring", "levels"),
     "s7": ("s7",),
     "image": ("image",),
     "mesh-gen": ("mesh_gen",),
+    "ui": ("ui",),
 }
 
 
@@ -655,7 +656,7 @@ cmake_language(DEFER CALL check_simulation_policy)
             self.assertIn('native-core-tests.exe"', test_file)
 
             for report, executable in (
-                ("native-core-vector-lerp-benchmark-report", "native/core/native-core-benchmarks.exe"),
+                ("native-core-vector-lerp-benchmark-report", "native/core/benchmarks/native-core-benchmarks.exe"),
                 ("native-soa-production-report", "native/lispb/native_soa/native-soa-benchmarks.exe"),
                 ("native-soa-candidate-report", "native/lispb/native_soa/native-soa-benchmarks.exe"),
                 ("native-soa-laser-hit-append-report", "native/lispb/native_soa/native-soa-benchmarks.exe"),

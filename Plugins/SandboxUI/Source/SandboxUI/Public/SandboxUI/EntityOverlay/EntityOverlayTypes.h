@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/core/ui/entity_overlay.h>
+#include <ioj/ui/entity_overlay.h>
 
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
@@ -41,7 +41,7 @@ struct SANDBOXUI_API FEntityOverlaySourceView {
     TConstArrayView<float> world_radii;
 
     [[nodiscard]] auto is_valid() const noexcept -> bool {
-        return ml::ui::entity_overlay::source_sizes_match(
+        return ioj::ui::entity_overlay::source_sizes_match(
             positions.Num(), health_values.Num(), world_radii.Num());
     }
 };
@@ -112,6 +112,6 @@ class FEntityOverlayCollector {
                                     uint32 display_data,
                                     bool bypass_range) -> bool;
 
-    ml::ui::entity_overlay::Collector collector_;
+    ioj::ui::entity_overlay::Collector collector_;
     TArray<FEntityOverlayInstance>* output_instances_{nullptr};
 };

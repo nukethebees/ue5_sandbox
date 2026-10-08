@@ -6,7 +6,7 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameS7/level_definition_reader.h>
+#include <SpaceGameS7/definition_reader.h>
 #include <SpaceGameS7/level_script_catalog.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
@@ -340,8 +340,8 @@ void execute_s7_initial_state_import() {
         return;
     }
 
-    ::ioj::levels::authoring::FLevelDefinitionReader reader;
-    auto const read_result{reader.read_file(selected_path.GetValue())};
+    ::ioj::levels::authoring::FDefinitionReader reader;
+    auto const read_result{reader.read_level_file(selected_path.GetValue())};
     if (!read_result) {
         show_error(format_read_error(read_result));
         return;

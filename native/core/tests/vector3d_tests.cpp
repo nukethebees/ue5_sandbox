@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
+
 TEST(NativeCoreVector3d, MovesTowardsTargetWithoutOvershoot) {
     auto const current{ml::Vector3d{3.0, 4.0, 0.0}};
     auto const target{ml::Vector3d{0.0, 0.0, 0.0}};
@@ -13,4 +15,19 @@ TEST(NativeCoreVector3d, MovesTowardsTargetWithoutOvershoot) {
     EXPECT_EQ(ml::move_towards(current, target, 5.0), target);
     EXPECT_EQ(ml::move_towards(current, target, 6.0), target);
     EXPECT_EQ(ml::move_towards(current, target, 0.0), current);
+}
+
+TEST(NativeCoreVector3d, ChecksFinitePositiveDimensions) {
+    EXPECT_TRUE(ml::is_finite({-1.0, 0.0, 3.0}));
+    EXPECT_TRUE(ml::is_positive_finite({1.0, 2.0, 3.0}));
+    EXPECT_FALSE(ml::is_positive_finite({0.0, 2.0, 3.0}));
+    EXPECT_FALSE(ml::is_positive_finite({1.0, -2.0, 3.0}));
+    auto const infinity{std::numeric_limits<double>::infinity()};
+    auto const nan{std::numeric_limits<double>::quiet_NaN()};
+    for (auto const value : {ml::Vector3d{infinity, 2.0, 3.0},
+                             ml::Vector3d{1.0, nan, 3.0},
+                             ml::Vector3d{1.0, 2.0, -infinity}}) {
+        EXPECT_FALSE(ml::is_finite(value));
+        EXPECT_FALSE(ml::is_positive_finite(value));
+    }
 }

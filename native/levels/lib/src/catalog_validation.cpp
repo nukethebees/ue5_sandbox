@@ -11,8 +11,10 @@
 namespace ioj::levels {
 namespace {
 struct EntryState {
+    enum class Visit { Unvisited, Active, Complete };
+
     Diagnostics issues{};
-    enum class Visit { Unvisited, Active, Complete } visit{Visit::Unvisited};
+    Visit visit{Visit::Unvisited};
 };
 void add_issue(EntryState& state, DiagnosticCode const code, std::string message) {
     if (std::ranges::none_of(state.issues,

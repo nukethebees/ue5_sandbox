@@ -8,6 +8,7 @@
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/player/flight_model_evaluator.h>
 #include <ioj/sim/profiling.h>
+#include <ioj/sim/rotator_math.h>
 #include <ioj/sim/ship_health.h>
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/transform3d.h>

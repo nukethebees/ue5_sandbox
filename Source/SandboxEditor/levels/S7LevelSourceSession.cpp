@@ -130,7 +130,7 @@ auto FS7LevelSourceSession::read() const -> ::ioj::levels::authoring::FLevelDefi
                                     ? ::ioj::levels::authoring::default_level_script_directory()
                                     : FPaths::GetPath(path_)};
     auto const library_root{FPaths::Combine(source_directory, TEXT("Libraries"))};
-    return ::ioj::levels::authoring::FLevelDefinitionReader{library_root}.read_source(buffer_);
+    return ::ioj::levels::authoring::FDefinitionReader{library_root}.read_level_source(buffer_);
 }
 
 auto FS7LevelSourceSession::refresh_external_conflict() -> std::expected<void, FString> {

@@ -1,13 +1,13 @@
 #include "SandboxUI/widgets/SRadar2D.h"
 
-#include <sandbox/core/ui/radar_2d.h>
+#include <ioj/ui/radar_2d.h>
 
 #include "Brushes/SlateColorBrush.h"
 #include "Rendering/DrawElementTypes.h"
 
 namespace {
-auto to_native(FVectors2f const& positions) -> ml::ui::radar_2d::Positions {
-    ml::ui::radar_2d::Positions result;
+auto to_native(FVectors2f const& positions) -> ioj::ui::radar_2d::Positions {
+    ioj::ui::radar_2d::Positions result;
     result.xs.reserve(static_cast<std::size_t>(positions.xs.Num()));
     result.ys.reserve(static_cast<std::size_t>(positions.ys.Num()));
     for (auto const value : positions.xs) {
@@ -19,7 +19,7 @@ auto to_native(FVectors2f const& positions) -> ml::ui::radar_2d::Positions {
     return result;
 }
 
-auto to_unreal(ml::ui::radar_2d::Positions const& positions) -> FVectors2f {
+auto to_unreal(ioj::ui::radar_2d::Positions const& positions) -> FVectors2f {
     FVectors2f result;
     result.xs.Reserve(static_cast<int32>(positions.xs.size()));
     result.ys.Reserve(static_cast<int32>(positions.ys.size()));
@@ -34,7 +34,7 @@ auto to_unreal(ml::ui::radar_2d::Positions const& positions) -> FVectors2f {
 }
 
 struct SRadar2D::FData {
-    ml::ui::radar_2d::Data native;
+    ioj::ui::radar_2d::Data native;
 };
 
 FRadar2DContactStyle::FRadar2DContactStyle()
@@ -78,7 +78,7 @@ bool SRadar2D::set_presentation(FRadar2DPresentation presentation) {
 }
 
 bool SRadar2D::set_buckets(TArray<FRadar2DStyleBucket> buckets) {
-    std::vector<ml::ui::radar_2d::Positions> positions;
+    std::vector<ioj::ui::radar_2d::Positions> positions;
     positions.reserve(static_cast<std::size_t>(buckets.Num()));
     for (auto const& bucket : buckets) {
         if (!is_valid_style(bucket.style)) {
@@ -208,7 +208,7 @@ int32 SRadar2D::OnPaint(FPaintArgs const&,
     check_invariants();
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
     auto const layout{
-        ml::ui::radar_2d::make_layout({widget_size.X, widget_size.Y}, data_->native.range())};
+        ioj::ui::radar_2d::make_layout({widget_size.X, widget_size.Y}, data_->native.range())};
     if (layout.size.x <= 0.0f) {
         return layer_id;
     }
@@ -246,7 +246,7 @@ int32 SRadar2D::OnPaint(FPaintArgs const&,
         auto const* const ys{positions.ys.data()};
         for (int32 contact_index{0}; contact_index < contact_count; ++contact_index) {
             auto const native_centre{
-                ml::ui::radar_2d::to_local({xs[contact_index], ys[contact_index]}, layout)};
+                ioj::ui::radar_2d::to_local({xs[contact_index], ys[contact_index]}, layout)};
             auto const local_centre{FVector2f{native_centre.x, native_centre.y}};
             auto const top_left{local_centre - half_size};
             auto const bottom_right{local_centre + half_size};
@@ -281,7 +281,7 @@ FString SRadar2D::GetReferencerName() const {
 }
 
 bool SRadar2D::is_valid_style(FRadar2DContactStyle const& style) {
-    return ml::ui::radar_2d::is_valid_extent({style.rendered_size.X, style.rendered_size.Y});
+    return ioj::ui::radar_2d::is_valid_extent({style.rendered_size.X, style.rendered_size.Y});
 }
 
 bool SRadar2D::is_valid_presentation(FRadar2DPresentation const& presentation) {

@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <format>
 #include <limits>
 #include <span>
 #include <utility>
@@ -47,10 +48,12 @@ auto append_mission_groups(sim::LevelEventSchedule& schedule,
         if (schedule.add_mission_group(type, event_values)) {
             return true;
         }
-        error =
-            "Level event compilation at tick " + std::to_string(schedule.execution_ticks.back()) +
-            ": " + std::string{name} + " event count " + std::to_string(event_values.size()) +
-            " exceeds the per-tick group limit of " + std::to_string(sim::max_level_event_count);
+        error = std::format("Level event compilation at tick {}: {} event count {} "
+                            "exceeds the per-tick group limit of {}",
+                            schedule.execution_ticks.back(),
+                            name,
+                            event_values.size(),
+                            sim::max_level_event_count);
         return false;
     };
     if (!append(sim::LevelMissionEventType::MustSurvive, values.must_survive, "must-survive") ||
@@ -79,10 +82,12 @@ auto append_spawn_groups(sim::LevelEventSchedule& schedule,
         if (schedule.add_spawn_group(type, offset, count)) {
             return true;
         }
-        error = "Level event compilation at tick " +
-                std::to_string(schedule.execution_ticks.back()) + ": " + std::string{name} +
-                " spawn count " + std::to_string(count) + " exceeds the per-tick group limit of " +
-                std::to_string(sim::max_level_event_count);
+        error = std::format("Level event compilation at tick {}: {} spawn count {} "
+                            "exceeds the per-tick group limit of {}",
+                            schedule.execution_ticks.back(),
+                            name,
+                            count,
+                            sim::max_level_event_count);
         return false;
     };
     if (!append(sim::EntityType::CapitalShip,

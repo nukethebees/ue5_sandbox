@@ -21,8 +21,7 @@
     ],
     "level-authoring": [
       "level_authoring",
-      "levels",
-      "common"
+      "levels"
     ],
     "s7": [
       "s7"
@@ -32,6 +31,9 @@
     ],
     "mesh-gen": [
       "mesh_gen"
+    ],
+    "ui": [
+      "ui"
     ]
   }
 }

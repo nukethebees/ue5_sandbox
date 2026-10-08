@@ -1,7 +1,8 @@
 #include "SandboxUI/widgets/SettingsWidgets.h"
 
+#include <ioj/ui/settings_slider.h>
+
 #include "SandboxUI/slate/SlateSlots.h"
-#include <sandbox/core/ui/settings_slider.h>
 
 #include "Framework/Application/SlateApplication.h"
 #include "Styling/CoreStyle.h"
@@ -97,7 +98,8 @@ void SSettingsSlider::Construct(FArguments const& args) {
     value_ = args._Value;
     on_value_changed_ = args._OnValueChanged;
 
-    auto const normalized_step{ml::ui::settings_slider::normalized_step(step_, minimum_, maximum_)};
+    auto const normalized_step{
+        ioj::ui::settings_slider::normalized_step(step_, minimum_, maximum_)};
     SAssignNew(slider_, SSlider)
         .Style(&style.slider)
         .Value(this, &SSettingsSlider::normalized_value)
@@ -130,12 +132,12 @@ void SSettingsSlider::focus() {
 }
 
 auto SSettingsSlider::normalized_value() const -> float {
-    return ml::ui::settings_slider::normalize(value_.Get(), minimum_, maximum_);
+    return ioj::ui::settings_slider::normalize(value_.Get(), minimum_, maximum_);
 }
 
 void SSettingsSlider::handle_value_changed(float const value) {
     on_value_changed_.ExecuteIfBound(
-        ml::ui::settings_slider::denormalize(value, minimum_, maximum_, step_));
+        ioj::ui::settings_slider::denormalize(value, minimum_, maximum_, step_));
 }
 
 void SSettingsChoice::Construct(FArguments const& args) {

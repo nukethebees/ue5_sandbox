@@ -60,8 +60,7 @@ auto validate_entities(LevelDefinition const& definition,
         }
 
         auto const placement_is_finite{
-            std::isfinite(entity.position.x) && std::isfinite(entity.position.y) &&
-            std::isfinite(entity.position.z) && std::isfinite(entity.rotation.pitch) &&
+            ml::is_finite(entity.position) && std::isfinite(entity.rotation.pitch) &&
             std::isfinite(entity.rotation.yaw) && std::isfinite(entity.rotation.roll)};
         if (!placement_is_finite) {
             result.emplace_back(DiagnosticCode::InvalidPlacement,

@@ -29,27 +29,24 @@ target_sources(native-core
     include/sandbox/core/vector_normalization.h
     src/generated/array_math_kernels.cpp
     src/generated/vector_lerp_kernels.cpp
+    src/files.cpp
+    src/rotator3d.cpp
     src/array_math.cpp
     src/array_utils.cpp
     src/countdown.cpp
     src/trigonometry.cpp
     src/frame_memory_resource.cpp
-    src/graph_plot.cpp
     src/projectile_intercept.cpp
     src/rotation.cpp
     src/test_timeline.cpp
-    src/ui/chart_layout.cpp
-    src/ui/entity_overlay.cpp
-    src/ui/heatmap_2d.cpp
-    src/ui/histogram.cpp
-    src/ui/radar_2d.cpp
-    src/ui/settings_slider.cpp
-    src/ui/stacked_bar_chart.cpp
 )
 target_include_directories(native-core
   PUBLIC
     include
 )
+
+# Keep file-only static-library consumers independent of the runtime allocation/profiling code.
+set_source_files_properties(src/files.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 
 # Separate translation units keep AVX2 out of the scalar reference and prevent
 # unity builds or contraction from changing the packing arithmetic.
@@ -129,7 +126,6 @@ target_sources(native-core-tests
     tests/frame_memory_resource_tests.cpp
     tests/countdown_tests.cpp
     tests/enum_array_tests.cpp
-    tests/graph_plot_tests.cpp
     tests/interpolation_tests.cpp
     tests/invoke_tests.cpp
     tests/lock_free_mpsc_queue_tests.cpp
@@ -145,10 +141,6 @@ target_sources(native-core-tests
     tests/static_string_view_tests.cpp
     tests/time_series_data_tests.cpp
     tests/timing_tests.cpp
-    tests/ui_entity_overlay_tests.cpp
-    tests/ui_heatmap_2d_tests.cpp
-    tests/ui_radar_stacked_bar_tests.cpp
-    tests/ui_settings_histogram_tests.cpp
     tests/test_timeline_tests.cpp
     tests/vector_math_tests.cpp
     tests/vector3d_tests.cpp
@@ -223,50 +215,7 @@ target_link_libraries(native-core-tests
     hwy
 )
 
-add_executable(native-core-benchmarks)
-ioj_stage_tbb_runtime(native-core-benchmarks)
-target_sources(native-core-benchmarks
-  PRIVATE
-    benchmarks/projectile_intercept_benchmarks.cpp
-    benchmarks/vector_lerp_benchmarks.cpp
-    benchmarks/sandbox_ismc_packing_benchmarks.cpp
-)
-target_link_libraries(native-core-benchmarks
-  PRIVATE
-    native-core
-    native-core-ismc-avx2-experiment
-    native-core-ismc-avx512-experiment
-    native-core-ismc-highway-avx512
-    hwy
-    benchmark::benchmark
-    benchmark::benchmark_main
-    CpuFeatures::cpu_features
-    sandbox::native_defaults
-)
-ioj_enable_warnings(native-core-benchmarks)
-
-include("${PROJECT_SOURCE_DIR}/cmake/benchmark_report.cmake")
-set(ismc_report_dir "${PROJECT_SOURCE_DIR}/.local/benchmarks/ismc")
-ioj_add_benchmark_report(native-core-ismc-benchmark-report native-core-benchmarks
-  "^ismc/[^/]+/(scalar|avx2|production)/"
-  "${ismc_report_dir}/packing-results.json" 5 0.05s
-  "Comparing scalar, intrinsic AVX2 and production Highway packing"
-)
-ioj_add_benchmark_report(native-core-ismc-avx512-benchmark-report native-core-benchmarks
-  "^ismc/"
-  "${ismc_report_dir}/packing-avx512-results.json" 5 0.05s
-  "Comparing scalar, AVX2 and experimental AVX512 with production AoS storage"
-)
-ioj_add_benchmark_report(native-core-vector-lerp-benchmark-report native-core-benchmarks
-  "^vector_lerp/"
-  "${PROJECT_SOURCE_DIR}/out/benchmarks/native-core/vector-lerp-results.json" 7 0.05s
-  "Benchmarking fused native 3D lerp against three 1D lerps"
-)
-ioj_add_benchmark_report(native-core-highway-benchmark-report native-core-benchmarks
-  "^ismc/[^/]+/(scalar|avx2|avx512|production|highway-avx512)/(17|2000|40000)/real_time$"
-  "${PROJECT_SOURCE_DIR}/.local/benchmarks/highway/ismc.json" 3 0.02s
-  "Comparing production and experimental Highway packing"
-)
+add_subdirectory(benchmarks)
 
 add_library(native-core-static-string-view-reject-automatic OBJECT EXCLUDE_FROM_ALL)
 target_sources(native-core-static-string-view-reject-automatic

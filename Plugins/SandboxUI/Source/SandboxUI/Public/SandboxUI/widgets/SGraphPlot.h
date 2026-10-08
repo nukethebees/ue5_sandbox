@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SandboxCore/graph_plot.h"
+#include "SandboxUI/graph_plot.h"
 
 #include "Containers/Array.h"
 #include "Fonts/SlateFontInfo.h"

@@ -14,6 +14,7 @@ public class SandboxUI : ModuleRules
             "CoreUObject",
             "InputCore",
             "SandboxCore",
+            "NativeUI",
             "Slate",
             "SlateCore",
         });

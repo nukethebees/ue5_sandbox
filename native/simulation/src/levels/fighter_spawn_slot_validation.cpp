@@ -42,7 +42,7 @@ auto validate_fighter_spawn_slots(sim::CapitalShipSimConfig const& capital_confi
             entity_bounds,
             sim::EntityType::Fighter,
             sim::to_float(slot.location),
-            sim::to_quaternion(sim::to_float(sim::to_rotator(slot.rotation)))));
+            sim::to_quaternion(sim::to_float(ioj::to_rotator(slot.rotation)))));
         if (intersects(capital_bounds, fighter_bounds.back(), 0.0f, clearance)) {
             errors.push_back({.kind = FighterSpawnSlotValidationErrorKind::IntersectsCapital,
                               .first_slot = static_cast<std::int32_t>(index),

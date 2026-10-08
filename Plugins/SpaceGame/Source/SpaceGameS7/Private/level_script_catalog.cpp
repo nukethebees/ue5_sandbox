@@ -2,8 +2,7 @@
 
 #include <ioj/levels/catalog_validation.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
-#include <SpaceGameS7/campaign_definition_reader.h>
-#include <SpaceGameS7/level_definition_reader.h>
+#include <SpaceGameS7/definition_reader.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -104,12 +103,12 @@ void discover_campaigns(FLevelScriptCatalogResult& result) {
         return lhs.Compare(rhs, ESearchCase::IgnoreCase) < 0;
     });
 
-    FCampaignDefinitionReader reader{FPaths::Combine(result.directory, TEXT("Libraries"))};
+    FDefinitionReader reader{FPaths::Combine(result.directory, TEXT("Libraries"))};
     result.campaigns.Reserve(filenames.Num());
     for (auto const& filename : filenames) {
         auto const path{FPaths::Combine(campaign_directory, filename)};
         FCampaignScriptEntry entry{.filename = filename, .path = path};
-        auto read_result{reader.read_file(path)};
+        auto read_result{reader.read_campaign_file(path)};
         if (!read_result) {
             entry.error = ml::to_fstring(format_diagnostics(read_result.error()));
             append_error(result.error, FString::Printf(TEXT("%s: %s"), *filename, *entry.error));
@@ -165,7 +164,7 @@ auto discover_level_scripts(FStringView const directory) -> FLevelScriptCatalogR
         return lhs.Compare(rhs, ESearchCase::IgnoreCase) < 0;
     });
 
-    FLevelDefinitionReader reader{FPaths::Combine(result.directory, TEXT("Libraries"))};
+    FDefinitionReader reader{FPaths::Combine(result.directory, TEXT("Libraries"))};
     result.entries.Reserve(filenames.Num());
     for (auto const& filename : filenames) {
         auto const path{FPaths::Combine(result.directory, filename)};
@@ -180,7 +179,7 @@ auto discover_level_scripts(FStringView const directory) -> FLevelScriptCatalogR
             continue;
         }
 
-        auto read_result{reader.read_source(entry.source_text)};
+        auto read_result{reader.read_level_source(entry.source_text)};
         if (read_result) {
             entry.display_title = read_result->metadata.title;
             entry.description = read_result->metadata.description;

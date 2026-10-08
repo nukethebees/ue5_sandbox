@@ -1,7 +1,8 @@
 #include <ioj/files.h>
-#include <ioj/levels/authoring/campaign_definition_reader.h>
-#include <ioj/levels/authoring/level_definition_reader.h>
+#include <ioj/levels/authoring/campaign_parser.h>
+#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/level_definition_writer.h>
+#include <ioj/levels/authoring/level_parser.h>
 #include <ioj/levels/catalog_validation.h>
 
 #include <gtest/gtest.h>
@@ -68,12 +69,12 @@ TEST(NativeLevelAuthoringReader, ReadsFileWithSiblingLibraryDirectory) {
     source.replace(source.find("\"Test\""), 6, "benchmark-title");
     auto const path{directory.path() / "level.scm"};
     std::ofstream{path} << "(load-script \"metadata.scm\")\n" << source;
-    auto const result{LevelDefinitionReader{}.read_file(path)};
+    auto const result{DefinitionReader{}.read_level_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_EQ(result->metadata.title, "Loaded From Library");
 }
 TEST(NativeLevelAuthoringReader, ReportsMissingFile) {
-    auto const result{LevelDefinitionReader{}.read_file("missing-level.scm")};
+    auto const result{DefinitionReader{}.read_level_file("missing-level.scm")};
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().front().code, DiagnosticCode::FileOpenFailed);
     EXPECT_EQ(result.error().front().source_path, "missing-level.scm");
@@ -101,13 +102,13 @@ TEST(NativeLevelAuthoringFiles, ReadsEmptyBinaryAndLargeFilesWithExplicitErrors)
     EXPECT_TRUE(missing.error().system_error);
 }
 TEST(NativeLevelAuthoringCampaignReader, DecodesAndValidatesCampaignData) {
-    CampaignDefinitionReader reader;
-    auto const result{reader.read_source(
+    DefinitionReader reader;
+    auto const result{reader.read_campaign_source(
         R"((campaign :id 'first-campaign :title "First Campaign" :levels '(alpha beta)))")};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_EQ(result->id, CampaignId{"first-campaign"});
     EXPECT_EQ(result->level_ids, (std::vector{LevelId{"alpha"}, LevelId{"beta"}}));
-    auto const duplicate{reader.read_source(
+    auto const duplicate{reader.read_campaign_source(
         R"((campaign :id 'campaign :title "Duplicate" :levels '(alpha alpha)))")};
     ASSERT_FALSE(duplicate);
     EXPECT_TRUE(has_code(duplicate.error(), DiagnosticCode::DuplicateCampaignLevel));
@@ -115,7 +116,7 @@ TEST(NativeLevelAuthoringCampaignReader, DecodesAndValidatesCampaignData) {
 TEST(NativeLevelAuthoringReader, ParsesClosedVocabulariesAndPreservesUnpopulatedTeams) {
     auto source{minimal_source()};
     source.replace(source.find(":teams '(blue)"), 14, ":teams '(blue red)");
-    auto const result{LevelDefinitionReader{}.read_source(source)};
+    auto const result{DefinitionReader{}.read_level_source(source)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_EQ(result->teams, (std::vector{TeamId::Blue, TeamId::Red}));
     ASSERT_EQ(result->entities.size(), 1u);
@@ -126,13 +127,13 @@ TEST(NativeLevelAuthoringReader, RejectsUnknownTeamAndArchetypeIndependently) {
     auto source{minimal_source()};
     source.replace(source.find("'player-fighter"), 15, "'unknown-ship");
     source.replace(source.find(":team 'blue"), 11, ":team 'unknown-team");
-    auto const result{LevelDefinitionReader{}.read_source(source)};
+    auto const result{DefinitionReader{}.read_level_source(source)};
     ASSERT_FALSE(result);
     EXPECT_TRUE(has_code(result.error(), DiagnosticCode::UnsupportedArchetype));
     EXPECT_TRUE(has_code(result.error(), DiagnosticCode::UnsupportedTeamId));
 }
 TEST(NativeLevelAuthoringReader, ReportsIndependentMalformedProperties) {
-    auto const result{LevelDefinitionReader{}.read_source(R"((level
+    auto const result{DefinitionReader{}.read_level_source(R"((level
       :id 17 :title 'not-text :title "duplicate" :unknown 4
       :entities (list (entity :id 4 :team 6 :archetype 7
         :position '(a b c) :rotation '(x y z) :spawn-at 'bad))))")};
@@ -150,16 +151,16 @@ TEST(NativeLevelAuthoringReader, RejectsMissingPropertiesOddListsAndWrongTags) {
                               "'(level :id x :title \"X\")",
                               "(level 'id 'x :title \"X\")",
                               "(campaign :id 'x :title \"X\")"}) {
-        EXPECT_FALSE(LevelDefinitionReader{}.read_source(source)) << source;
+        EXPECT_FALSE(DefinitionReader{}.read_level_source(source)) << source;
     }
-    auto const missing{CampaignDefinitionReader{}.read_source("(campaign :id 'x)")};
+    auto const missing{DefinitionReader{}.read_campaign_source("(campaign :id 'x)")};
     ASSERT_FALSE(missing);
     EXPECT_TRUE(has_code(missing.error(), DiagnosticCode::MissingProperty));
 }
 TEST(NativeLevelAuthoringReader, DistinguishesEvaluationConversionAndParsingFailures) {
-    auto const evaluation{LevelDefinitionReader{}.read_source("(missing-function)")};
-    auto const conversion{LevelDefinitionReader{}.read_source("(lambda () 1)")};
-    auto const parsing{LevelDefinitionReader{}.read_source("'(1 2)")};
+    auto const evaluation{DefinitionReader{}.read_level_source("(missing-function)")};
+    auto const conversion{DefinitionReader{}.read_level_source("(lambda () 1)")};
+    auto const parsing{DefinitionReader{}.read_level_source("'(1 2)")};
     ASSERT_FALSE(evaluation);
     ASSERT_FALSE(conversion);
     ASSERT_FALSE(parsing);
@@ -188,7 +189,7 @@ TEST(NativeLevelAuthoringWriter, EmitsDeterministicReadableSource) {
     EXPECT_EQ(*a, *b);
     EXPECT_TRUE(a->contains(":position '(1000 200.123 -300.5)"));
     EXPECT_TRUE(a->contains(":spawn-at 2.5"));
-    auto const loaded{LevelDefinitionReader{}.read_source(*a)};
+    auto const loaded{DefinitionReader{}.read_level_source(*a)};
     ASSERT_TRUE(loaded) << format_diagnostics(loaded.error());
     EXPECT_EQ(loaded->metadata.title, first.metadata.title);
     EXPECT_EQ(loaded->metadata.description, first.metadata.description);
@@ -201,7 +202,7 @@ TEST(NativeLevelAuthoringWriter, HandlesEmptyCollectionsEscapesAndNumericBoundar
     auto source{emit_editor_level_source(definition)};
     ASSERT_TRUE(source) << format_diagnostics(source.error());
     EXPECT_TRUE(source->contains(":position '(0 0.001 "));
-    auto parsed{LevelDefinitionReader{}.read_source(*source)};
+    auto parsed{DefinitionReader{}.read_level_source(*source)};
     ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
     EXPECT_EQ(parsed->metadata.description, definition.metadata.description);
     EXPECT_DOUBLE_EQ(parsed->entities[0].position.x, 0.0);
@@ -220,7 +221,7 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourc
         }
         auto const source{emit_editor_level_source(definition)};
         ASSERT_TRUE(source) << format_diagnostics(source.error());
-        auto const parsed{LevelDefinitionReader{}.read_source(*source)};
+        auto const parsed{DefinitionReader{}.read_level_source(*source)};
         ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
         ASSERT_EQ(parsed->collision_grid.has_value(), mask != 0);
         if (mask != 0) {
@@ -239,7 +240,7 @@ TEST(NativeLevelAuthoringCollisionGrid, RejectsMalformedAndInvalidExplicitDimens
           "(collision-grid :unknown '(1 1 1))"}) {
         auto source{minimal_source()};
         source.insert(source.size() - 1, std::format(" :collision-grid {}", grid));
-        EXPECT_FALSE(LevelDefinitionReader{}.read_source(source)) << grid;
+        EXPECT_FALSE(DefinitionReader{}.read_level_source(source)) << grid;
     }
 }
 TEST(NativeLevelAuthoringWriter, RoundTripsInitialMissionObjectives) {
@@ -254,7 +255,7 @@ TEST(NativeLevelAuthoringWriter, RoundTripsInitialMissionObjectives) {
                                                 .required_kill_entity_ids = {EntityId{"enemy"}}};
     auto const source{emit_editor_level_source(definition)};
     ASSERT_TRUE(source);
-    auto const parsed{LevelDefinitionReader{}.read_source(*source)};
+    auto const parsed{DefinitionReader{}.read_level_source(*source)};
     ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
     ASSERT_TRUE(parsed->mission);
     EXPECT_EQ(parsed->mission->mode, LevelMissionMode::KillEnemies);
@@ -306,23 +307,23 @@ TEST(NativeLevelAuthoringFixtures, ReadsEveryCheckedInLevelAndCampaign) {
     std::filesystem::path const root{IOJ_LEVEL_SCRIPTS};
     std::vector<LevelCatalogEntry> levels;
     std::vector<CampaignCatalogEntry> campaigns;
-    LevelDefinitionReader reader{root / "Libraries"};
+    DefinitionReader reader{root / "Libraries"};
     for (auto const& entry : std::filesystem::recursive_directory_iterator(root)) {
         if (entry.path().extension() != ".scm" ||
             entry.path().parent_path().filename() == "Libraries" ||
             entry.path().parent_path().filename() == "Campaigns") {
             continue;
         }
-        auto parsed{reader.read_file(entry.path())};
+        auto parsed{reader.read_level_file(entry.path())};
         ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
         levels.push_back({levels.size(), entry.path(), std::move(*parsed)});
     }
-    CampaignDefinitionReader campaign_reader{root / "Libraries"};
+    DefinitionReader campaign_reader{root / "Libraries"};
     for (auto const& entry : std::filesystem::directory_iterator(root / "Campaigns")) {
         if (entry.path().extension() != ".scm") {
             continue;
         }
-        auto parsed{campaign_reader.read_file(entry.path())};
+        auto parsed{campaign_reader.read_campaign_file(entry.path())};
         ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
         campaigns.push_back({campaigns.size(), entry.path(), std::move(*parsed)});
     }

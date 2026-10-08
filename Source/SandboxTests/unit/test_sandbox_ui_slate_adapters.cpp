@@ -1,9 +1,10 @@
+#include <ioj/ui/entity_overlay.h>
+
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 #include "SandboxUI/widgets/SHeatmap2D.h"
 #include "SandboxUI/widgets/SHistogram.h"
 #include "SandboxUI/widgets/SRadar2D.h"
 #include "SandboxUI/widgets/SStackedBarChart.h"
-#include <sandbox/core/ui/entity_overlay.h>
 
 #include <CQTest.h>
 #include <Input/Events.h>
@@ -192,8 +193,8 @@ TEST_CLASS(SandboxUISlateAdapters, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Objective swapping preserves the earlier objective"),
                               output[1].world_position.X,
                               1.0f);
-        auto const expected{ml::ui::entity_overlay::pack_display_data(
-            ml::ui::entity_overlay::ObjectiveRole::Destroy,
+        auto const expected{ioj::ui::entity_overlay::pack_display_data(
+            ioj::ui::entity_overlay::ObjectiveRole::Destroy,
             {fill_color.R, fill_color.G, fill_color.B, fill_color.A})};
         TestRunner->TestEqual(TEXT("FLinearColor conversion matches native color packing"),
                               output[2].display_data,

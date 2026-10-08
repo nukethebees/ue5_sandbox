@@ -1,4 +1,4 @@
-#include <ioj/levels/authoring/level_definition_reader.h>
+#include <ioj/levels/authoring/level_parser.h>
 
 #include <gtest/gtest.h>
 

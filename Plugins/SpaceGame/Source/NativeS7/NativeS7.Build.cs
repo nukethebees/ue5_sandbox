@@ -7,7 +7,7 @@ public class NativeS7 : ModuleRules
     public NativeS7(ReadOnlyTargetRules Target) : base(Target)
     {
         Type = ModuleType.External;
-        PublicDependencyModuleNames.Add("NativeCommon");
+        PublicDependencyModuleNames.Add("SandboxCore");
 
         if (Target.Platform != UnrealTargetPlatform.Win64 ||
             Target.Architecture != UnrealArch.X64)
@@ -53,10 +53,10 @@ public class NativeS7 : ModuleRules
             ExternalDependencies.Add(dataLibraryPath);
             ExternalDependencies.Add(libraryPath);
             // Supply the static archive dependency explicitly for Unreal's external-module linker.
-            string commonLibraryPath = Path.Combine(repositoryRoot, "Binaries", "Native", "Common",
-                nativeToolchain, Target.Platform.ToString(), Target.Configuration.ToString(), "native-common.lib");
-            PublicAdditionalLibraries.Add(commonLibraryPath);
-            ExternalDependencies.Add(commonLibraryPath);
+            string coreLibraryPath = Path.Combine(repositoryRoot, "Binaries", "Native", "Core",
+                nativeToolchain, Target.Platform.ToString(), Target.Configuration.ToString(), "SandboxNativeCore.lib");
+            PublicAdditionalLibraries.Add(coreLibraryPath);
+            ExternalDependencies.Add(coreLibraryPath);
         }
     }
 }

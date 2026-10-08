@@ -75,7 +75,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/reference_level_simulation_data.h
   ../include/ioj/sim/rotator_math.h
   ../include/ioj/sim/rotator_types.h
-  ../include/ioj/sim/rotator3d.h
   ../include/ioj/sim/rotators3f.h
   ../include/ioj/sim/ship_flight_model.h
   ../include/ioj/sim/ship_health.h
@@ -127,7 +126,6 @@ target_sources(native-simulation PRIVATE
   overlap_handler.cpp
   reference_level_simulation_data.cpp
   rotator_math.cpp
-  rotator3d.cpp
   ship_flight_model.cpp
   ship_health.cpp
   sim_time.cpp

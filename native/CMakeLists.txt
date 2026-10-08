@@ -89,9 +89,9 @@ add_subdirectory(sbx_mimalloc)
 add_subdirectory(lispb)
 add_subdirectory(layout)
 add_subdirectory(memory)
-add_subdirectory(common)
-add_subdirectory(s7)
 add_subdirectory(core)
+add_subdirectory(ui)
+add_subdirectory(s7)
 add_subdirectory(levels)
 add_subdirectory(simulation)
 add_subdirectory(level_authoring)
@@ -105,6 +105,7 @@ add_custom_target(native-tests
     codegen-tests
     kernel-codegen-tests
     native-core-tests
+    native-ui-tests
     native-soa-tests
     native-soa-tests-mimalloc
     native-layout-tests

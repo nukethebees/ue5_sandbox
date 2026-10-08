@@ -9,6 +9,7 @@
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/health.h>
 #include <ioj/sim/profiling.h>
+#include <ioj/sim/rotator_math.h>
 #include <ioj/sim/sim_config.h>
 #include <ioj/sim/spatial_query_manager.h>
 

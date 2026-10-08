@@ -24,7 +24,7 @@
 #include <SpaceGamePresentation/presentation/widgets/BattleViewerHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
-#include <SpaceGameS7/level_definition_reader.h>
+#include <SpaceGameS7/definition_reader.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -46,10 +46,10 @@ FLevelLoaderCameraScenario::FLevelLoaderCameraScenario(FSimulationTestContext& c
 void FLevelLoaderCameraScenario::load_fixture() {
     initialise_test_driver();
 
-    ::ioj::levels::authoring::FLevelDefinitionReader reader;
+    ::ioj::levels::authoring::FDefinitionReader reader;
     auto const script_path{
         FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("FleetOverview.scm"))};
-    auto const scripted_definition{reader.read_file(script_path)};
+    auto const scripted_definition{reader.read_level_file(script_path)};
     if (!checks.is_true(static_cast<bool>(scripted_definition),
                         TEXT("Playerless Scheme level produces a valid native definition"))) {
         return;
@@ -268,10 +268,10 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
                      count_actors<ATestSpaceShip>(context_.world),
                      TEXT("Rejected headless load creates no player"));
 
-    ::ioj::levels::authoring::FLevelDefinitionReader reader;
+    ::ioj::levels::authoring::FDefinitionReader reader;
     auto const script_path{
         FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("FleetOverview.scm"))};
-    auto const definition{reader.read_file(script_path)};
+    auto const definition{reader.read_level_file(script_path)};
     checks.is_true(static_cast<bool>(definition), TEXT("Playerless fixture can be reloaded"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     auto const result{loader.load(definition.value())};
@@ -378,10 +378,10 @@ void FLevelLoaderScenario::load_fixture() {
                        ::ioj::sim::OrchestratorState::Uninitialised,
                    TEXT("Rejected load leaves orchestrator uninitialised"));
 
-    ::ioj::levels::authoring::FLevelDefinitionReader reader;
+    ::ioj::levels::authoring::FDefinitionReader reader;
     auto const script_path{
         FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("BorderSkirmish.scm"))};
-    auto const scripted_definition{reader.read_file(script_path)};
+    auto const scripted_definition{reader.read_level_file(script_path)};
     if (!checks.is_true(static_cast<bool>(scripted_definition),
                         TEXT("Scheme produces a valid native definition"))) {
         return;

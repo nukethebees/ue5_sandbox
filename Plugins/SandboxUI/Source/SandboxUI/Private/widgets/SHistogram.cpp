@@ -1,7 +1,7 @@
 #include "SandboxUI/widgets/SHistogram.h"
 
-#include <sandbox/core/ui/chart_layout.h>
-#include <sandbox/core/ui/histogram.h>
+#include <ioj/ui/chart_layout.h>
+#include <ioj/ui/histogram.h>
 
 #include "Internationalization/Text.h"
 #include "Rendering/DrawElementTypes.h"
@@ -51,7 +51,7 @@ void draw_histogram_label(FSlateWindowElementList& out_draw_elements,
 }
 
 struct SHistogram::FData {
-    ml::ui::histogram::Data native;
+    ioj::ui::histogram::Data native;
 };
 
 FHistogramStyle::FHistogramStyle()
@@ -149,13 +149,13 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
                           bool const parent_enabled) const {
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
     auto const native_layout{
-        ml::ui::chart_layout::make_layout({widget_size.X, widget_size.Y},
-                                          {.padding = {style_.chart_padding.Left,
-                                                       style_.chart_padding.Top,
-                                                       style_.chart_padding.Right,
-                                                       style_.chart_padding.Bottom},
-                                           .axis_thickness = style_.axis_thickness,
-                                           .label_area_height = style_.label_area_height})};
+        ioj::ui::chart_layout::make_layout({widget_size.X, widget_size.Y},
+                                           {.padding = {style_.chart_padding.Left,
+                                                        style_.chart_padding.Top,
+                                                        style_.chart_padding.Right,
+                                                        style_.chart_padding.Bottom},
+                                            .axis_thickness = style_.axis_thickness,
+                                            .label_area_height = style_.label_area_height})};
     auto const plot_size{FVector2f{native_layout.plot_size.x, native_layout.plot_size.y}};
     auto const plot_origin{FVector2f{native_layout.plot_origin.x, native_layout.plot_origin.y}};
     auto const label_height{native_layout.label_area_height};
@@ -163,7 +163,7 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
     auto const enabled{ShouldBeEnabled(parent_enabled)};
     auto const draw_effect{enabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect};
     auto const inherited_tint{widget_style.GetColorAndOpacityTint()};
-    auto const histogram_geometry{ml::ui::histogram::build_geometry(
+    auto const histogram_geometry{ioj::ui::histogram::build_geometry(
         data_->native.bins(), {plot_size.X, plot_size.Y}, style_.bar_gap)};
     draw_histogram_box(out_draw_elements,
                        layer_id,
@@ -218,9 +218,9 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
                        axis_tint);
 
     if (label_height <= 0.0f || plot_size.X <= 0.0f ||
-        !ml::ui::histogram::is_valid_configuration(data_->native.domain_minimum(),
-                                                   data_->native.domain_maximum(),
-                                                   data_->native.bin_count())) {
+        !ioj::ui::histogram::is_valid_configuration(data_->native.domain_minimum(),
+                                                    data_->native.domain_maximum(),
+                                                    data_->native.bin_count())) {
         return axis_layer;
     }
 
@@ -280,30 +280,30 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
 auto SHistogram::OnMouseMove(FGeometry const& geometry, FPointerEvent const& event) -> FReply {
     auto const widget_size{FVector2f{geometry.GetLocalSize()}};
     auto const native_layout{
-        ml::ui::chart_layout::make_layout({widget_size.X, widget_size.Y},
-                                          {.padding = {style_.chart_padding.Left,
-                                                       style_.chart_padding.Top,
-                                                       style_.chart_padding.Right,
-                                                       style_.chart_padding.Bottom},
-                                           .axis_thickness = style_.axis_thickness,
-                                           .label_area_height = style_.label_area_height})};
+        ioj::ui::chart_layout::make_layout({widget_size.X, widget_size.Y},
+                                           {.padding = {style_.chart_padding.Left,
+                                                        style_.chart_padding.Top,
+                                                        style_.chart_padding.Right,
+                                                        style_.chart_padding.Bottom},
+                                            .axis_thickness = style_.axis_thickness,
+                                            .label_area_height = style_.label_area_height})};
     auto const plot_size{FVector2f{native_layout.plot_size.x, native_layout.plot_size.y}};
     auto const plot_origin{FVector2f{native_layout.plot_origin.x, native_layout.plot_origin.y}};
     auto const local{FVector2f{geometry.AbsoluteToLocal(event.GetScreenSpacePosition())}};
-    auto const native_hovered{ml::ui::histogram::hit_test_bin({local.X, local.Y},
-                                                              {plot_origin.X, plot_origin.Y},
-                                                              {plot_size.X, plot_size.Y},
-                                                              data_->native.bin_count())};
+    auto const native_hovered{ioj::ui::histogram::hit_test_bin({local.X, local.Y},
+                                                               {plot_origin.X, plot_origin.Y},
+                                                               {plot_size.X, plot_size.Y},
+                                                               data_->native.bin_count())};
     auto const hovered{native_hovered.value_or(INDEX_NONE)};
     if (hovered != hovered_bin_) {
         hovered_bin_ = hovered;
         auto const bins{data_->native.bins()};
-        auto const range{ml::ui::histogram::bin_range(data_->native.domain_minimum(),
-                                                      data_->native.domain_maximum(),
-                                                      data_->native.bin_count(),
-                                                      hovered_bin_)};
+        auto const range{ioj::ui::histogram::bin_range(data_->native.domain_minimum(),
+                                                       data_->native.domain_maximum(),
+                                                       data_->native.bin_count(),
+                                                       hovered_bin_)};
         if (range && hovered_bin_ < static_cast<int32>(bins.size())) {
-            SetToolTipText(FText::FromString(FString::Printf(TEXT("%.5g – %.5g\n%d intervals"),
+            SetToolTipText(FText::FromString(FString::Printf(TEXT("%.5g â€“ %.5g\n%d intervals"),
                                                              range->minimum,
                                                              range->maximum,
                                                              bins[hovered_bin_])));

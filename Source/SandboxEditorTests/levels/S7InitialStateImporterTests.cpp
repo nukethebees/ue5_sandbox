@@ -3,7 +3,7 @@
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGameS7/level_definition_reader.h>
+#include <SpaceGameS7/definition_reader.h>
 
 #include <CQTest.h>
 #include <Editor.h>
@@ -85,8 +85,8 @@ TEST_CLASS(S7InitialStateImporter, "Sandbox.UnitTests")
 
     TEST_METHOD(ProceduralS7ProducesInitialEntities)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const read_result{reader.read_source(LR"(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const read_result{reader.read_level_source(LR"(
 (define (make-ship index)
   (entity :id (string->symbol (format #f "ship-~A" index)) :archetype 'capital-ship :team 'blue
     :position (list (* index 1000) 200 300)
@@ -121,8 +121,8 @@ TEST_CLASS(S7InitialStateImporter, "Sandbox.UnitTests")
 
     TEST_METHOD(UnsupportedFeaturesAreGrouped)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const read_result{reader.read_source(LR"(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const read_result{reader.read_level_source(LR"(
 (level
   :id 'unsupported-import
   :title "Unsupported Import"
@@ -171,9 +171,9 @@ TEST_CLASS(S7InitialStateImporter, "Sandbox.UnitTests")
     TEST_METHOD(CheckedInLevelsProduceRepresentativeInitialStates)
     {
         auto make_plan = [this](TCHAR const* filename) -> ml::editor::FS7InitialStateImportPlan {
-            ::ioj::levels::authoring::FLevelDefinitionReader reader;
+            ::ioj::levels::authoring::FDefinitionReader reader;
             auto const path{FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), filename)};
-            auto const read_result{reader.read_file(path)};
+            auto const read_result{reader.read_level_file(path)};
             if (!TestRunner->TestTrue(*FString::Printf(TEXT("%s evaluates"), filename),
                                       static_cast<bool>(read_result))) {
                 return {};

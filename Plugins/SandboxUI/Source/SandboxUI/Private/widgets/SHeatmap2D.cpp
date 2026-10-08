@@ -1,8 +1,7 @@
 #include "SandboxUI/widgets/SHeatmap2D.h"
 
 #include "WidgetMath.h"
-
-#include <sandbox/core/ui/heatmap_2d.h>
+#include <ioj/ui/heatmap_2d.h>
 
 #include "Application/SlateApplicationBase.h"
 #include "Internationalization/Text.h"
@@ -19,16 +18,16 @@ auto is_finite_heatmap_color(FLinearColor const& color) -> bool {
            FMath::IsFinite(color.A);
 }
 
-auto to_native(FLinearColor const color) -> ml::ui::Color4f {
+auto to_native(FLinearColor const color) -> ioj::ui::Color4f {
     return {color.R, color.G, color.B, color.A};
 }
 
-auto to_unreal(ml::ui::Vector2f const value) -> FVector2f {
+auto to_unreal(ioj::ui::Vector2f const value) -> FVector2f {
     return {value.x, value.y};
 }
 
-auto to_native(FHeatmapGrid const& grid) -> ml::ui::heatmap_2d::Grid {
-    ml::ui::heatmap_2d::Grid result{.columns = grid.columns, .rows = grid.rows};
+auto to_native(FHeatmapGrid const& grid) -> ioj::ui::heatmap_2d::Grid {
+    ioj::ui::heatmap_2d::Grid result{.columns = grid.columns, .rows = grid.rows};
     result.values.reserve(static_cast<std::size_t>(grid.values.Num()));
     for (auto const value : grid.values) {
         result.values.push_back(value);
@@ -36,7 +35,7 @@ auto to_native(FHeatmapGrid const& grid) -> ml::ui::heatmap_2d::Grid {
     return result;
 }
 
-auto to_unreal(ml::ui::heatmap_2d::Grid const& grid) -> FHeatmapGrid {
+auto to_unreal(ioj::ui::heatmap_2d::Grid const& grid) -> FHeatmapGrid {
     FHeatmapGrid result{.columns = grid.columns, .rows = grid.rows};
     result.values.Reserve(static_cast<int32>(grid.values.size()));
     for (auto const value : grid.values) {
@@ -45,25 +44,25 @@ auto to_unreal(ml::ui::heatmap_2d::Grid const& grid) -> FHeatmapGrid {
     return result;
 }
 
-auto to_native(FHeatmapValueRange const range) -> ml::ui::heatmap_2d::ValueRange {
+auto to_native(FHeatmapValueRange const range) -> ioj::ui::heatmap_2d::ValueRange {
     return {range.minimum, range.maximum};
 }
 
-auto to_unreal(ml::ui::heatmap_2d::ValueRange const range) -> FHeatmapValueRange {
+auto to_unreal(ioj::ui::heatmap_2d::ValueRange const range) -> FHeatmapValueRange {
     return {range.minimum, range.maximum};
 }
 
-auto to_native(FHeatmapDomain const domain) -> ml::ui::heatmap_2d::Domain {
+auto to_native(FHeatmapDomain const domain) -> ioj::ui::heatmap_2d::Domain {
     return {domain.minimum_x, domain.maximum_x, domain.minimum_y, domain.maximum_y};
 }
 
-auto to_unreal(ml::ui::heatmap_2d::Domain const domain) -> FHeatmapDomain {
+auto to_unreal(ioj::ui::heatmap_2d::Domain const domain) -> FHeatmapDomain {
     return {domain.minimum_x, domain.maximum_x, domain.minimum_y, domain.maximum_y};
 }
 
 auto native_color_stops(TConstArrayView<FHeatmapColorStop> const stops)
-    -> std::vector<ml::ui::heatmap_2d::ColorStop> {
-    std::vector<ml::ui::heatmap_2d::ColorStop> result;
+    -> std::vector<ioj::ui::heatmap_2d::ColorStop> {
+    std::vector<ioj::ui::heatmap_2d::ColorStop> result;
     result.reserve(static_cast<std::size_t>(stops.Num()));
     for (auto const& stop : stops) {
         result.push_back({stop.position, to_native(stop.color)});
@@ -71,7 +70,7 @@ auto native_color_stops(TConstArrayView<FHeatmapColorStop> const stops)
     return result;
 }
 
-auto native_layout_settings(FHeatmap2DStyle const& style) -> ml::ui::heatmap_2d::LayoutSettings {
+auto native_layout_settings(FHeatmap2DStyle const& style) -> ioj::ui::heatmap_2d::LayoutSettings {
     return {.padding = {style.chart_padding.Left,
                         style.chart_padding.Top,
                         style.chart_padding.Right,
@@ -124,7 +123,7 @@ void draw_heatmap_label(FSlateWindowElementList& out_draw_elements,
 }
 
 struct SHeatmap2D::FData {
-    ml::ui::heatmap_2d::Data native;
+    ioj::ui::heatmap_2d::Data native;
 };
 
 struct SHeatmap2D::FRenderCache {
@@ -133,9 +132,9 @@ struct SHeatmap2D::FRenderCache {
         TArray<SlateIndex> indices;
     };
 
-    std::vector<ml::ui::Color4f> color_lut;
-    std::vector<ml::ui::heatmap_2d::CellGeometry> cells;
-    std::vector<ml::ui::heatmap_2d::MeshBatch> local_batches;
+    std::vector<ioj::ui::Color4f> color_lut;
+    std::vector<ioj::ui::heatmap_2d::CellGeometry> cells;
+    std::vector<ioj::ui::heatmap_2d::MeshBatch> local_batches;
     TArray<FTransformedBatch> transformed_batches;
     FVector2f plot_origin{FVector2f::ZeroVector};
     FVector2f plot_size{FVector2f::ZeroVector};
@@ -244,8 +243,8 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
                           FWidgetStyle const& widget_style,
                           bool const parent_enabled) const {
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
-    auto const layout{ml::ui::heatmap_2d::make_plot_layout({widget_size.X, widget_size.Y},
-                                                           native_layout_settings(style_))};
+    auto const layout{ioj::ui::heatmap_2d::make_plot_layout({widget_size.X, widget_size.Y},
+                                                            native_layout_settings(style_))};
     auto const plot_origin{to_unreal(layout.plot_origin)};
     auto const plot_size{to_unreal(layout.plot_size)};
     auto const enabled{ShouldBeEnabled(parent_enabled)};
@@ -262,17 +261,17 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
 
     auto& cache{*render_cache_};
     if (cache.color_lut_dirty) {
-        cache.color_lut = ml::ui::heatmap_2d::build_color_lut(
+        cache.color_lut = ioj::ui::heatmap_2d::build_color_lut(
             native_color_stops(style_.color_stops), color_lut_entry_count);
         cache.color_lut_dirty = false;
         cache.local_geometry_dirty = true;
     }
     if (cache.local_geometry_dirty || cache.plot_origin != plot_origin ||
         cache.plot_size != plot_size) {
-        cache.cells = ml::ui::heatmap_2d::build_cell_geometry(
+        cache.cells = ioj::ui::heatmap_2d::build_cell_geometry(
             data_->native.grid(), data_->native.value_range(), cache.color_lut, layout.plot_size);
         cache.local_batches =
-            ml::ui::heatmap_2d::build_mesh_batches(cache.cells, layout.plot_origin);
+            ioj::ui::heatmap_2d::build_mesh_batches(cache.cells, layout.plot_origin);
         cache.transformed_batches.SetNum(static_cast<int32>(cache.local_batches.size()));
         auto const batch_count{static_cast<int32>(cache.local_batches.size())};
         for (int32 batch_index{}; batch_index < batch_count; ++batch_index) {
@@ -430,7 +429,7 @@ bool SHeatmap2D::is_valid_style(FHeatmap2DStyle const& style) {
            FMath::IsFinite(style.chart_padding.Top) && style.chart_padding.Top >= 0.0f &&
            FMath::IsFinite(style.chart_padding.Bottom) && style.chart_padding.Bottom >= 0.0f &&
            is_finite_heatmap_color(style.background_color) &&
-           ml::ui::heatmap_2d::is_valid_color_stops(native_color_stops(style.color_stops)) &&
+           ioj::ui::heatmap_2d::is_valid_color_stops(native_color_stops(style.color_stops)) &&
            is_finite_heatmap_color(style.axis_color) && FMath::IsFinite(style.axis_thickness) &&
            style.axis_thickness > 0.0f && is_finite_heatmap_color(style.label_color) &&
            FMath::IsFinite(style.x_label_area_height) && style.x_label_area_height >= 0.0f &&

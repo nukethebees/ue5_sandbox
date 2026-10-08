@@ -12,7 +12,7 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameS7/level_definition_reader.h>
+#include <SpaceGameS7/definition_reader.h>
 #include <SpaceGameS7/level_definition_writer.h>
 
 #include <SandboxCoreEngine/strings.h>
@@ -446,8 +446,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Authored cell size is written"),
                              source->Contains(TEXT(":cell-size")));
 
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const read{reader.read_source(*source)};
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const read{reader.read_level_source(*source)};
         if (!TestRunner->TestTrue(TEXT("Partial grid reads"), static_cast<bool>(read))) {
             TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(read.error())));
             return;
@@ -864,8 +864,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Definition writes"), source.has_value())) {
             return;
         }
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const read{reader.read_source(*source)};
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const read{reader.read_level_source(*source)};
         if (!TestRunner->TestTrue(TEXT("Generated source reads"), static_cast<bool>(read))) {
             return;
         }

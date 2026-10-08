@@ -11,7 +11,7 @@ target_include_directories(native-s7-data
 )
 target_link_libraries(native-s7-data
   PUBLIC
-    native-common
+    native-core-headers
     sandbox::native_defaults
 )
 ioj_enable_warnings(native-s7-data)

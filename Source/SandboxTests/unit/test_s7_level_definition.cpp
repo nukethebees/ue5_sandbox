@@ -1,4 +1,4 @@
-#include <SpaceGameS7/level_definition_reader.h>
+#include <SpaceGameS7/definition_reader.h>
 
 #include <SandboxCoreEngine/strings.h>
 
@@ -78,8 +78,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 {
     TEST_METHOD(DecodesScheduledSpawnsAndMissionObjectives)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(scheduled_level)};
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(scheduled_level)};
         if (!TestRunner->TestTrue(TEXT("Scheduled script produces a definition"),
                                   static_cast<bool>(result))) {
             TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(result.error())));
@@ -101,8 +101,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(DecodesSchemeDataIntoAValidatedNativeSoA)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(valid_level)};
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(valid_level)};
 
         if (!TestRunner->TestTrue(TEXT("Script produces a definition"),
                                   static_cast<bool>(result))) {
@@ -150,8 +150,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(ReportsSchemeErrorsWithoutDecoding)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(TEXT("(undefined-level-function)"))};
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(TEXT("(undefined-level-function)"))};
 
         TestRunner->TestFalse(TEXT("Invalid script does not produce a definition"),
                               static_cast<bool>(result));
@@ -165,8 +165,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(DecodesPlayerlessCameraDefinition)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(valid_camera_level)};
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(valid_camera_level)};
 
         if (!TestRunner->TestTrue(TEXT("Camera script produces a definition"),
                                   static_cast<bool>(result))) {
@@ -192,8 +192,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(ReportsStructuralDecodeErrorsWithPaths)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(TEXT("(level :title 42)"))};
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(TEXT("(level :title 42)"))};
 
         TestRunner->TestFalse(TEXT("Malformed data is rejected"), static_cast<bool>(result));
         TestRunner->TestFalse(
@@ -208,8 +208,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(RejectsComplexTransformComponents)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(LR"(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(LR"(
 (level
   :id 'complex-position
   :title "Complex Position"
@@ -231,8 +231,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(RejectsDuplicateCollectionClauses)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(LR"(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(LR"(
 (level
   :id 'duplicate-teams
   :title "Duplicate Teams"
@@ -255,8 +255,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(RejectsDuplicateIdClauses)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(LR"(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(LR"(
 (level
   :id 'first-id
   :id 'second-id
@@ -279,8 +279,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(ReportsMalformedAndDuplicateParTimes)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const malformed{reader.read_source(LR"(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const malformed{reader.read_level_source(LR"(
 (level
   :id 'malformed-par
   :title "Malformed Par"
@@ -296,7 +296,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Malformed par time reports a decode error"),
                               malformed.error().empty());
 
-        auto const duplicate{reader.read_source(LR"(
+        auto const duplicate{reader.read_level_source(LR"(
 (level
   :id 'duplicate-par
   :title "Duplicate Par"
@@ -321,8 +321,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(ReportsNativeValidationErrorsAfterDecoding)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(LR"(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(LR"(
 (level
   :id 'invalid-team
   :title "Invalid Team"
@@ -344,8 +344,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(ReportsMalformedCameraData)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(LR"(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(LR"(
 (level
   :id 'malformed-camera
   :title "Malformed Camera"
@@ -365,8 +365,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(RejectsDuplicateCameraClauses)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(LR"(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(LR"(
 (level
   :id 'duplicate-camera
   :title "Duplicate Camera"
@@ -385,8 +385,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(ReportsInvalidCameraTargetReferences)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const empty_targets{reader.read_source(LR"(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const empty_targets{reader.read_level_source(LR"(
 (level
   :id 'empty-targets
   :title "Empty Targets"
@@ -400,7 +400,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
             TEXT("Empty camera targets are reported by native validation"),
             contains_error(empty_targets, ml::ELevelValidationErrorCode::MissingCameraTarget));
 
-        auto const unknown_target{reader.read_source(LR"(
+        auto const unknown_target{reader.read_level_source(LR"(
 (level
   :id 'unknown-target
   :title "Unknown Target"
@@ -417,8 +417,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(DecodesTimedMissionValues)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(LR"(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(LR"(
 (level
   :id 'timed-mission
   :title "Timed Mission"
@@ -453,8 +453,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(ReportsInvalidMissionData)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const duplicate_clause{reader.read_source(LR"(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const duplicate_clause{reader.read_level_source(LR"(
 (level
   :id 'duplicate-mission-clause
   :title "Duplicate Mission Clause"
@@ -470,7 +470,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Duplicate mission clause reports a decode error"),
                               duplicate_clause.error().empty());
 
-        auto const unknown_reference{reader.read_source(LR"(
+        auto const unknown_reference{reader.read_level_source(LR"(
 (level
   :id 'unknown-mission-entity
   :title "Unknown Mission Entity"
@@ -485,7 +485,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
                              contains_error(unknown_reference,
                                             ml::ELevelValidationErrorCode::MissionEntityNotFound));
 
-        auto const fractional_count{reader.read_source(LR"(
+        auto const fractional_count{reader.read_level_source(LR"(
 (level
   :id 'fractional-count
   :title "Fractional Count"
@@ -504,8 +504,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(DecodesDeclarativeUnlockCriteria)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(LR"(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(LR"(
 (level
   :id 'locked-level
   :title "Locked Level"
@@ -531,8 +531,8 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(RejectsSelfUnlockDependency)
     {
-        ::ioj::levels::authoring::FLevelDefinitionReader reader;
-        auto const result{reader.read_source(LR"(
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(LR"(
 (level
   :id 'self-locked
   :title "Self Locked"

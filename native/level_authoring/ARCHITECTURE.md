@@ -22,19 +22,22 @@ violations. No runtime handles survive in the AST. Shared acyclic sublists are c
 The data library lives in `native/s7/data`, the interpreter and conversion in
 `native/s7/runtime`, and the vendored implementation in `native/s7/third_party`.
 Each interpreter owns its protected evaluation/error procedures; its private loader closure
-captures the loader context without a process-wide registry. Windows file capture retains
+captures the loader context without a process-wide registry. Public evaluation exposes only
+owned text or AST data; s7 handles and ownership helpers are private implementation details. Windows file capture retains
 the validated file handle through reading and lives under `runtime/lib/src/platform/windows`.
 
 `native-level-authoring` depends on `native-s7-data` and `native-levels`, without the
 interpreter or simulation. Its parsers accept a valid AST and return `std::expected`
 definitions with structured diagnostics. `native-level-parser-tests` links this boundary
 without s7. The `native-level-authoring-s7` library provides source/file reader entry points;
-it destroys the interpreter before parsing and semantic validation.
+its single `DefinitionReader` shares file loading and evaluation for levels and campaigns,
+then destroys the interpreter before parsing and semantic validation. Level and campaign files
+return different record kinds; library scripts are loaded explicitly through `load-script`.
 
 `native-levels` owns LevelId, CampaignId, EntityId, TeamId, declarative definitions,
 and validation, split into metadata, entity, camera, grid, and mission definitions. It reuses
 the existing core vector type and shared rotation type through `native-core-headers`,
-without linking the core runtime. Grid dimension rules live with the level definitions.
+with file/ASCII utilities supplied by core. Grid dimension rules live with the level definitions.
 Simulation depends on it and retains all runtime compilation/state.
 Team IDs and entity archetypes are enums parsed from LispB-defined spellings at input
 boundaries. Declared teams include unpopulated participants and affect fighter capacity;

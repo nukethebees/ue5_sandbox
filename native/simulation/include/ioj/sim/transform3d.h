@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/rotator3d.h>
+#include <ioj/rotator3d.h>
 #include <ioj/sim/vector_types.h>
 
 #include <sandbox/core/math_types.h>

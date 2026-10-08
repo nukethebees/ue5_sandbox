@@ -16,9 +16,10 @@ target_include_directories(native-levels
 )
 target_link_libraries(native-levels
   PUBLIC
-    native-common
     native-core-headers
     sandbox::native_defaults
+  PRIVATE
+    native-core
 )
 ioj_enable_warnings(native-levels)
 ioj_apply_native_abi(native-levels)

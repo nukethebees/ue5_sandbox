@@ -26,6 +26,7 @@ public class SbxUIExperiments : ModuleRules
             "RenderCore",
             "RHI",
             "SandboxUI",
+            "NativeUI",
             "Slate",
             "UMGEditor",
             "UnrealEd",

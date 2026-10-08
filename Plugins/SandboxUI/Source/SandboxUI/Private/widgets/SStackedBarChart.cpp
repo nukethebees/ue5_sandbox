@@ -1,7 +1,7 @@
 #include "SandboxUI/widgets/SStackedBarChart.h"
 
-#include <sandbox/core/ui/chart_layout.h>
-#include <sandbox/core/ui/stacked_bar_chart.h>
+#include <ioj/ui/chart_layout.h>
+#include <ioj/ui/stacked_bar_chart.h>
 
 #include "Rendering/DrawElementTypes.h"
 #include "Styling/CoreStyle.h"
@@ -29,7 +29,7 @@ void draw_stacked_bar_box(FSlateWindowElementList& out_draw_elements,
 }
 
 struct SStackedBarChart::FData {
-    ml::ui::stacked_bar_chart::Data native;
+    ioj::ui::stacked_bar_chart::Data native;
 };
 
 FStackedBarChartStyle::FStackedBarChartStyle()
@@ -48,7 +48,7 @@ void SStackedBarChart::Construct(FArguments const& args) {
 }
 
 void SStackedBarChart::set_bars(TArray<FStackedBar> bars) {
-    std::vector<ml::ui::stacked_bar_chart::Bar> native_bars;
+    std::vector<ioj::ui::stacked_bar_chart::Bar> native_bars;
     native_bars.reserve(static_cast<std::size_t>(bars.Num()));
     TArray<FText> labels;
     labels.Reserve(bars.Num());
@@ -129,13 +129,13 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
     check_invariants();
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
     auto const native_layout{
-        ml::ui::chart_layout::make_layout({widget_size.X, widget_size.Y},
-                                          {.padding = {style_.chart_padding.Left,
-                                                       style_.chart_padding.Top,
-                                                       style_.chart_padding.Right,
-                                                       style_.chart_padding.Bottom},
-                                           .axis_thickness = style_.axis_thickness,
-                                           .label_area_height = style_.label_area_height})};
+        ioj::ui::chart_layout::make_layout({widget_size.X, widget_size.Y},
+                                           {.padding = {style_.chart_padding.Left,
+                                                        style_.chart_padding.Top,
+                                                        style_.chart_padding.Right,
+                                                        style_.chart_padding.Bottom},
+                                            .axis_thickness = style_.axis_thickness,
+                                            .label_area_height = style_.label_area_height})};
     auto const plot_size{FVector2f{native_layout.plot_size.x, native_layout.plot_size.y}};
     auto const plot_origin{FVector2f{native_layout.plot_origin.x, native_layout.plot_origin.y}};
     auto const label_height{native_layout.label_area_height};
@@ -143,7 +143,7 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
     auto const enabled{ShouldBeEnabled(parent_enabled)};
     auto const draw_effect{enabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect};
     auto const inherited_tint{widget_style.GetColorAndOpacityTint()};
-    auto const chart_geometry{ml::ui::stacked_bar_chart::build_geometry(
+    auto const chart_geometry{ioj::ui::stacked_bar_chart::build_geometry(
         data_->native.bars(), {plot_size.X, plot_size.Y}, style_.bar_gap)};
     auto const segment_layer{layer_id};
     if (plot_size.X > 0.0f && plot_size.Y > 0.0f) {

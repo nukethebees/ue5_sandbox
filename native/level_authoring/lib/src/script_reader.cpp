@@ -1,7 +1,8 @@
 #include <ioj/files.h>
-#include <ioj/levels/authoring/campaign_definition_reader.h>
+#include <ioj/levels/authoring/campaign_parser.h>
+#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/authoring/grammar.h>
-#include <ioj/levels/authoring/level_definition_reader.h>
+#include <ioj/levels/authoring/level_parser.h>
 #include <ioj/s7/interpreter.h>
 
 #include <format>
@@ -68,17 +69,28 @@ auto file_error(ioj::FileReadError const& error) -> Diagnostics {
              std::format("Unable to read script file: {}", error.system_error.message()),
              error.source_path}};
 }
+
+auto evaluate_file(std::filesystem::path const& path, std::filesystem::path const& library_root)
+    -> std::expected<s7::Ast, Diagnostics> {
+    auto source{ioj::read_file(path)};
+    if (!source) {
+        return std::unexpected{file_error(source.error())};
+    }
+    return evaluate(*source, library_root);
 }
 
-LevelDefinitionReader::LevelDefinitionReader(std::filesystem::path script_library_root)
-    : script_library_root_{std::move(script_library_root)} {}
-auto LevelDefinitionReader::read_source(std::string_view const source) const
-    -> LevelDefinitionReadResult {
-    auto ast{evaluate(source, script_library_root_)};
-    if (!ast) {
-        return std::unexpected{std::move(ast.error())};
+template <typename Result>
+auto with_source_path(Result result, std::filesystem::path const& path) -> Result {
+    if (!result) {
+        for (auto& error : result.error()) {
+            error.source_path = path;
+        }
     }
-    auto definition{parse_level(*ast)};
+    return result;
+}
+
+auto decode_level(s7::Ast const& ast) -> LevelDefinitionReadResult {
+    auto definition{parse_level(ast)};
     if (!definition) {
         return definition;
     }
@@ -88,32 +100,9 @@ auto LevelDefinitionReader::read_source(std::string_view const source) const
     }
     return definition;
 }
-auto LevelDefinitionReader::read_file(std::filesystem::path const& path) const
-    -> LevelDefinitionReadResult {
-    auto source{ioj::read_file(path)};
-    if (!source) {
-        return std::unexpected{file_error(source.error())};
-    }
-    auto const library{script_library_root_.empty() ? path.parent_path() / "Libraries"
-                                                    : script_library_root_};
-    auto result{LevelDefinitionReader{library}.read_source(*source)};
-    if (!result) {
-        for (auto& error : result.error()) {
-            error.source_path = path;
-        }
-    }
-    return result;
-}
 
-CampaignDefinitionReader::CampaignDefinitionReader(std::filesystem::path script_library_root)
-    : script_library_root_{std::move(script_library_root)} {}
-auto CampaignDefinitionReader::read_source(std::string_view const source) const
-    -> CampaignDefinitionReadResult {
-    auto ast{evaluate(source, script_library_root_)};
-    if (!ast) {
-        return std::unexpected{std::move(ast.error())};
-    }
-    auto definition{parse_campaign(*ast)};
+auto decode_campaign(s7::Ast const& ast) -> CampaignDefinitionReadResult {
+    auto definition{parse_campaign(ast)};
     if (!definition) {
         return definition;
     }
@@ -123,20 +112,28 @@ auto CampaignDefinitionReader::read_source(std::string_view const source) const
     }
     return definition;
 }
-auto CampaignDefinitionReader::read_file(std::filesystem::path const& path) const
+}
+
+DefinitionReader::DefinitionReader(std::filesystem::path script_library_root)
+    : script_library_root_{std::move(script_library_root)} {}
+auto DefinitionReader::read_level_source(std::string_view const source) const
+    -> LevelDefinitionReadResult {
+    return evaluate(source, script_library_root_).and_then(decode_level);
+}
+auto DefinitionReader::read_campaign_source(std::string_view const source) const
     -> CampaignDefinitionReadResult {
-    auto source{ioj::read_file(path)};
-    if (!source) {
-        return std::unexpected{file_error(source.error())};
-    }
+    return evaluate(source, script_library_root_).and_then(decode_campaign);
+}
+auto DefinitionReader::read_level_file(std::filesystem::path const& path) const
+    -> LevelDefinitionReadResult {
+    auto const library{script_library_root_.empty() ? path.parent_path() / "Libraries"
+                                                    : script_library_root_};
+    return with_source_path(evaluate_file(path, library).and_then(decode_level), path);
+}
+auto DefinitionReader::read_campaign_file(std::filesystem::path const& path) const
+    -> CampaignDefinitionReadResult {
     auto const library{script_library_root_.empty() ? path.parent_path().parent_path() / "Libraries"
                                                     : script_library_root_};
-    auto result{CampaignDefinitionReader{library}.read_source(*source)};
-    if (!result) {
-        for (auto& error : result.error()) {
-            error.source_path = path;
-        }
-    }
-    return result;
+    return with_source_path(evaluate_file(path, library).and_then(decode_campaign), path);
 }
 }

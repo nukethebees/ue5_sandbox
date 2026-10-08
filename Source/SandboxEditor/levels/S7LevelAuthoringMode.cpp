@@ -7,7 +7,7 @@
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGameS7/level_definition_reader.h>
+#include <SpaceGameS7/definition_reader.h>
 #include <SpaceGameS7/level_definition_writer.h>
 #include <SpaceGameS7/level_script_catalog.h>
 
