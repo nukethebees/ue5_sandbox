@@ -8,6 +8,8 @@
 
 namespace ioj::s7::detail {
 namespace {
+// Copy evaluated Scheme data into owned flat storage. Track active pairs to reject
+// cycles, and enforce limits before growing the AST; retain no interpreter handles.
 class Materializer {
   public:
     Materializer(s7_scheme& scheme, AstLimits const limits)

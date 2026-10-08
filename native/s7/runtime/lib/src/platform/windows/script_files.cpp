@@ -1,4 +1,4 @@
-#include "script_files.h"
+#include "../../script_files.h"
 
 #include "canonical_path.h"
 #include "utf_encoding.h"

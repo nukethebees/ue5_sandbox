@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ioj/s7/detail/active_load.h>
-#include <ioj/s7/detail/load_decision.h>
+#include "active_load.h"
+#include "load_decision.h"
 
 #include <cstddef>
 #include <cstdint>

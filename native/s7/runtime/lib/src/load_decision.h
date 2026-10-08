@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ioj/s7/detail/load_status.h>
-#include <ioj/s7/detail/load_token.h>
+#include "load_status.h"
+#include "load_token.h"
 
 namespace ioj::s7::detail {
 struct LoadDecision {

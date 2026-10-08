@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/s7/value.h>
+#include <s7.h>
 
 #include <cstdint>
 
@@ -9,16 +9,16 @@ namespace ioj::s7::detail {
 // Scheme evaluation must contain its non-local exits inside an s7 catch boundary.
 class GcProtection {
   public:
-    GcProtection(Scheme* scheme, Value value);
+    GcProtection(s7_scheme* scheme, s7_pointer value);
     ~GcProtection();
 
     GcProtection(GcProtection const&) = delete;
     auto operator=(GcProtection const&) -> GcProtection& = delete;
 
-    [[nodiscard]] auto get() const -> Value { return value_; }
+    [[nodiscard]] auto get() const -> s7_pointer { return value_; }
   private:
-    Scheme* scheme_;
-    Value value_;
+    s7_scheme* scheme_;
+    s7_pointer value_;
     std::int64_t location_;
 };
 }

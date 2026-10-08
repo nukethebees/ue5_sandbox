@@ -1,7 +1,7 @@
-#include "platform/windows/script_files.h"
-#include <ioj/s7/detail/script_loader.h>
+#include "s7_ownership.h"
+#include "script_files.h"
+#include "script_loader.h"
 #include <ioj/s7/interpreter.h>
-#include <ioj/s7/value.h>
 
 #include "s7.h"
 
@@ -288,33 +288,6 @@ void enforces_library_resource_limits(TestContext& test) {
                 "the library file count limit is reported");
 }
 
-void exposes_values_during_a_synchronous_callback(TestContext& test) {
-    Interpreter interpreter;
-    bool consumed{false};
-
-    auto const result{interpreter.evaluate_value(
-        "(list 'level \"title\" 42.5)", [&](Scheme& scheme, Value const value) {
-            consumed = true;
-            test.expect(s7_is_list(&scheme, value), "root value is a list");
-            test.expect(s7_list_length(&scheme, value) == 3, "list length is exposed");
-
-            auto const tag{s7_list_ref(&scheme, value, 0)};
-            test.expect(s7_is_symbol(tag), "first value is a symbol");
-            test.expect(std::string_view{s7_symbol_name(tag)} == "level", "symbol name is exposed");
-
-            auto const title{s7_list_ref(&scheme, value, 1)};
-            test.expect(s7_is_string(title), "second value is a string");
-            test.expect(std::string_view{s7_string(title)} == "title", "string value is exposed");
-
-            auto const number{s7_list_ref(&scheme, value, 2)};
-            test.expect(s7_is_real(number), "third value is real");
-            test.expect(s7_number_to_real(&scheme, number) == 42.5, "real value is exposed");
-        })};
-
-    test.expect(result.has_value(), "value evaluation succeeds");
-    test.expect(consumed, "value callback is invoked");
-}
-
 void caught_child_failure_preserves_parent_and_allows_retry(TestContext& test) {
     TemporaryLibrary library;
     library.write("broken.scm", R"(
@@ -447,31 +420,27 @@ void loader_transitions_use_identity_and_safe_accounting(TestContext& test) {
     loader.evaluation_ended();
 }
 
-void throwing_consumer_releases_gc_protection(TestContext& test) {
-    Interpreter interpreter;
+void throwing_host_operation_releases_gc_protection(TestContext& test) {
+    std::unique_ptr<s7_scheme, decltype(&s7_free)> scheme{s7_init(), &s7_free};
     s7_int first_free_slot{-1};
     for (int iteration{}; iteration < 16; ++iteration) {
         bool caught{false};
         try {
-            auto const result{
-                interpreter.evaluate_value("(list 1 2 3)", [&](Scheme& scheme, Value const value) {
-                    auto const slot{s7_gc_protect(&scheme, value)};
-                    s7_gc_unprotect_at(&scheme, slot);
-                    if (first_free_slot < 0) {
-                        first_free_slot = slot;
-                    }
-                    test.expect(slot == first_free_slot,
-                                "throwing consumers do not accumulate permanent GC registrations");
-                    throw std::runtime_error{"consumer failure"};
-                })};
-            test.expect(!result, "a throwing consumer cannot report success");
+            detail::GcProtection const protected_value{scheme.get(),
+                                                       s7_make_integer(scheme.get(), 42)};
+            auto const slot{s7_gc_protect(scheme.get(), protected_value.get())};
+            s7_gc_unprotect_at(scheme.get(), slot);
+            if (first_free_slot < 0) {
+                first_free_slot = slot;
+            }
+            test.expect(slot == first_free_slot,
+                        "throwing host operations do not accumulate GC registrations");
+            throw std::runtime_error{"host failure"};
         } catch (std::runtime_error const&) {
             caught = true;
         }
-        test.expect(caught, "consumer exceptions propagate to the host");
+        test.expect(caught, "host exceptions propagate");
     }
-    auto const recovery{interpreter.evaluate("(+ 40 2)")};
-    test.expect(recovery == "42", "the interpreter remains usable after consumer exceptions");
 }
 
 void captured_source_uses_the_validated_file(TestContext& test) {
@@ -507,6 +476,17 @@ void source_loading_preserves_reader_errors_and_empty_files(TestContext& test) {
         interpreter.evaluate(R"((begin (load-script "reader-error.scm") repaired))")};
     test.expect(repaired == "42", "a file can be repaired and retried after a reader error");
 }
+void internal_hooks_survive_collection_after_bindings_are_revoked(TestContext& test) {
+    Interpreter interpreter;
+    for (int iteration{}; iteration < 40; ++iteration) {
+        auto const result{interpreter.evaluate(
+            "(begin (define collected-value (make-list 10000 1)) (length collected-value))")};
+        test.expect(result == "10000", "redefinition remains safe across garbage collections");
+    }
+    test.expect(!interpreter.evaluate("missing-after-collection"),
+                "unbound-variable hooks remain alive after collection");
+    test.expect(interpreter.evaluate("(+ 20 22)") == "42", "evaluation recovers after an error");
+}
 }
 
 int main() {
@@ -522,15 +502,15 @@ int main() {
     loads_libraries_in_the_same_sandbox(test);
     rejects_unsafe_library_paths_and_cycles(test);
     enforces_library_resource_limits(test);
-    exposes_values_during_a_synchronous_callback(test);
     caught_child_failure_preserves_parent_and_allows_retry(test);
     abort_releases_library_reservations(test);
     active_nested_sources_count_toward_byte_limit(test);
     nonlocal_exit_aborts_load(test);
     loader_transitions_use_identity_and_safe_accounting(test);
-    throwing_consumer_releases_gc_protection(test);
+    throwing_host_operation_releases_gc_protection(test);
     captured_source_uses_the_validated_file(test);
     source_loading_preserves_reader_errors_and_empty_files(test);
+    internal_hooks_survive_collection_after_bindings_are_revoked(test);
 
     return test.failure_count() == 0 ? 0 : 1;
 }

@@ -1,8 +1,8 @@
-#include <ioj/s7/detail/script_bindings.h>
+#include "script_bindings.h"
 
-#include "platform/windows/script_files.h"
+#include "s7_ownership.h"
 #include "sandbox_policy.h"
-#include <ioj/s7/detail/s7_ownership.h>
+#include "script_files.h"
 
 #include <cassert>
 #include <limits>
@@ -87,7 +87,7 @@ void ScriptBindings::install(s7_pointer const factory) {
             s7_list(scheme_, 4, owner.get(), resolve.get(), complete.get(), abort.get()))};
     install_binding(scheme_, "load-script", load_script.get());
 }
-auto ScriptBindings::context(Value const arguments) -> ScriptBindings& {
+auto ScriptBindings::context(s7_pointer const arguments) -> ScriptBindings& {
     auto const value{s7_car(arguments)};
     assert(s7_is_c_pointer(value));
     auto* const owner{static_cast<ScriptBindings*>(s7_c_pointer(value))};

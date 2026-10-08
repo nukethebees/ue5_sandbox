@@ -1,6 +1,6 @@
 #pragma once
 
-#include "file_handle.h"
+#include "script_file_handle.h"
 
 #include <string>
 

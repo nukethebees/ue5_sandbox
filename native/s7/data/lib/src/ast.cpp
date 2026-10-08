@@ -1,5 +1,7 @@
 #include <ioj/s7/ast.h>
 
+#include <ioj/is_any.h>
+
 #include <cassert>
 
 namespace ioj::s7 {
@@ -29,8 +31,7 @@ auto Ast::children(NodeIndex const index) const -> std::span<NodeIndex const> {
 }
 auto Ast::text(NodeIndex const index) const -> std::string_view {
     auto const& value{node(index)};
-    assert(value.kind == NodeKind::Symbol || value.kind == NodeKind::Keyword ||
-           value.kind == NodeKind::String);
+    assert(ioj::is_any(value.kind, {NodeKind::Symbol, NodeKind::Keyword, NodeKind::String}));
     assert_range(value, text_bytes.size());
     return std::string_view{text_bytes}.substr(value.offset, value.count);
 }

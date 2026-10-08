@@ -1,4 +1,4 @@
-#include <ioj/s7/detail/script_loader.h>
+#include "script_loader.h"
 
 #include <ioj/s7/interpreter_options.h>
 
