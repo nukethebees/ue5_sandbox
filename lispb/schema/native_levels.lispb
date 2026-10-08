@@ -1,3 +1,28 @@
+(module native_levels_entity_archetype
+  :header "native/levels/lib/include/ioj/levels/entity_archetype.h"
+  :header-include "ioj/levels/entity_archetype.h"
+  :backend standard-library
+  :namespace ioj::levels
+  (enum EntityArchetype std::uint8_t
+    :native-api true
+    (value PlayerFighter :serialized-name "player-fighter")
+    (value CapitalShip :serialized-name "capital-ship")
+    (value StaticTurret :serialized-name "static-turret")))
+
+(module native_levels_team_id
+  :header "native/levels/lib/include/ioj/levels/team_id.h"
+  :header-include "ioj/levels/team_id.h"
+  :backend standard-library
+  :namespace ioj::levels
+  (enum TeamId std::uint8_t
+    :native-api true
+    (value White :serialized-name "white")
+    (value Red :serialized-name "red")
+    (value Green :serialized-name "green")
+    (value Blue :serialized-name "blue")
+    (value Orange :serialized-name "orange")
+    (value Yellow :serialized-name "yellow")))
+
 (module native_levels_level_mission_mode
   :header "native/levels/lib/include/ioj/levels/level_mission_mode.h"
   :header-include "ioj/levels/level_mission_mode.h"

@@ -13,16 +13,15 @@ auto validate_references(std::vector<EntityId> const& references,
     validated.reserve(references.size());
     for (auto const& id : references) {
         if (id.empty() || !entity_ids.contains(id)) {
-            add_error(result,
-                      "level.mission",
-                      DiagnosticCode::MissionEntityNotFound,
-                      "Mission " + std::string{role} + " entity '" + id.value +
-                          "' is not declared");
+            result.emplace_back(DiagnosticCode::MissionEntityNotFound,
+                                "level.mission",
+                                "Mission " + std::string{role} + " entity '" + id.value +
+                                    "' is not declared");
         } else if (!validated.insert(id).second) {
-            add_error(result,
-                      "level.mission",
-                      DiagnosticCode::DuplicateMissionEntityReference,
-                      "Mission " + std::string{role} + " entity '" + id.value + "' is duplicated");
+            result.emplace_back(DiagnosticCode::DuplicateMissionEntityReference,
+                                "level.mission",
+                                "Mission " + std::string{role} + " entity '" + id.value +
+                                    "' is duplicated");
         }
     }
     return validated;
@@ -34,11 +33,10 @@ void validate_initial_spawns(IdSet const& ids,
     for (auto const& id : ids) {
         auto const found{entities.spawn_times_by_id.find(id)};
         if (found != entities.spawn_times_by_id.end() && found->second > 0.0) {
-            add_error(result,
-                      "level.mission",
-                      DiagnosticCode::MissionEventBeforeEntitySpawn,
-                      "Initial mission objective entity '" + id.value +
-                          "' does not spawn at time zero");
+            result.emplace_back(DiagnosticCode::MissionEventBeforeEntitySpawn,
+                                "level.mission",
+                                "Initial mission objective entity '" + id.value +
+                                    "' does not spawn at time zero");
         }
     }
 }
@@ -52,18 +50,16 @@ void validate_mission(LevelMissionDefinition const& mission,
     auto uses_kill_count{false};
     switch (mission.mode) {
         case LevelMissionMode::Unspecified:
-            add_error(result,
-                      "level.mission.mode",
-                      DiagnosticCode::MissingMissionMode,
-                      "Mission definition has no mode");
+            result.emplace_back(DiagnosticCode::MissingMissionMode,
+                                "level.mission.mode",
+                                "Mission definition has no mode");
             break;
         case LevelMissionMode::SurviveTime:
             requires_time_limit = true;
             if (mission.must_survive_entity_ids.empty()) {
-                add_error(result,
-                          "level.mission.must-survive",
-                          DiagnosticCode::MissingMissionSurvivors,
-                          "Survive-time mission has no entities that must survive");
+                result.emplace_back(DiagnosticCode::MissingMissionSurvivors,
+                                    "level.mission.must-survive",
+                                    "Survive-time mission has no entities that must survive");
             }
             break;
         case LevelMissionMode::KillEnemies:
@@ -74,46 +70,40 @@ void validate_mission(LevelMissionDefinition const& mission,
             uses_kill_count = true;
             break;
         default:
-            add_error(result,
-                      "level.mission.mode",
-                      DiagnosticCode::UnsupportedMissionMode,
-                      "Mission definition uses an unsupported mode");
+            result.emplace_back(DiagnosticCode::UnsupportedMissionMode,
+                                "level.mission.mode",
+                                "Mission definition uses an unsupported mode");
             break;
     }
 
     if (requires_time_limit) {
         if (!mission.time_limit_seconds || !std::isfinite(*mission.time_limit_seconds) ||
             *mission.time_limit_seconds <= 0.0f) {
-            add_error(result,
-                      "level.mission.time-limit",
-                      DiagnosticCode::InvalidMissionTimeLimit,
-                      "Mission time limit must be finite and greater than zero");
+            result.emplace_back(DiagnosticCode::InvalidMissionTimeLimit,
+                                "level.mission.time-limit",
+                                "Mission time limit must be finite and greater than zero");
         }
     } else if (mission.time_limit_seconds) {
-        add_error(result,
-                  "level.mission.time-limit",
-                  DiagnosticCode::UnexpectedMissionTimeLimit,
-                  "Untimed mission cannot define a time limit");
+        result.emplace_back(DiagnosticCode::UnexpectedMissionTimeLimit,
+                            "level.mission.time-limit",
+                            "Untimed mission cannot define a time limit");
     }
 
     if (uses_kill_count) {
         if (mission.hero_entity_ids.empty()) {
-            add_error(result,
-                      "level.mission.heroes",
-                      DiagnosticCode::MissingMissionHeroes,
-                      "Kill mission has no hero entities");
+            result.emplace_back(DiagnosticCode::MissingMissionHeroes,
+                                "level.mission.heroes",
+                                "Kill mission has no hero entities");
         }
         if (mission.kill_count && *mission.kill_count <= 0) {
-            add_error(result,
-                      "level.mission.kill-count",
-                      DiagnosticCode::InvalidMissionKillCount,
-                      "Mission kill count must be greater than zero when specified");
+            result.emplace_back(DiagnosticCode::InvalidMissionKillCount,
+                                "level.mission.kill-count",
+                                "Mission kill count must be greater than zero when specified");
         }
     } else if (mission.kill_count) {
-        add_error(result,
-                  "level.mission.kill-count",
-                  DiagnosticCode::UnexpectedMissionKillCount,
-                  "Survive-time mission cannot define a kill count");
+        result.emplace_back(DiagnosticCode::UnexpectedMissionKillCount,
+                            "level.mission.kill-count",
+                            "Survive-time mission cannot define a kill count");
     }
 
     auto const heroes{validate_references(mission.hero_entity_ids, "hero", entities.ids, result)};
@@ -127,11 +117,11 @@ void validate_mission(LevelMissionDefinition const& mission,
 
     for (auto const& id : required) {
         if (heroes.contains(id) || survivors.contains(id)) {
-            add_error(result,
-                      "level.mission",
-                      DiagnosticCode::ConflictingMissionEntityRoles,
-                      "Mission entity '" + id.value +
-                          "' cannot be both required to kill and a hero or must-survive entity");
+            result.emplace_back(
+                DiagnosticCode::ConflictingMissionEntityRoles,
+                "level.mission",
+                "Mission entity '" + id.value +
+                    "' cannot be both required to kill and a hero or must-survive entity");
         }
     }
 
@@ -145,10 +135,10 @@ void validate_mission(LevelMissionDefinition const& mission,
             if (!hero_team) {
                 hero_team = found->second;
             } else if (*hero_team != found->second) {
-                add_error(result,
-                          "level.mission.heroes",
-                          DiagnosticCode::AmbiguousAutomaticKillTeams,
-                          "Automatic kill count requires all hero entities to share a team");
+                result.emplace_back(
+                    DiagnosticCode::AmbiguousAutomaticKillTeams,
+                    "level.mission.heroes",
+                    "Automatic kill count requires all hero entities to share a team");
                 break;
             }
         }
@@ -162,10 +152,9 @@ void validate_mission_events(LevelDefinition const& definition,
         return;
     }
     if (!definition.mission) {
-        add_error(result,
-                  "level.mission-events",
-                  DiagnosticCode::UnexpectedMissionEvent,
-                  "Mission objective events require a mission definition");
+        result.emplace_back(DiagnosticCode::UnexpectedMissionEvent,
+                            "level.mission-events",
+                            "Mission objective events require a mission definition");
         return;
     }
 
@@ -179,24 +168,22 @@ void validate_mission_events(LevelDefinition const& definition,
         auto const& event{definition.mission_events[event_index]};
         auto const error_begin{result.size()};
         if (!std::isfinite(event.time_seconds) || event.time_seconds < 0.0) {
-            add_error(result,
-                      "level.mission-events.at",
-                      DiagnosticCode::InvalidMissionEventTime,
-                      "Mission objective event time must be finite and non-negative");
+            result.emplace_back(DiagnosticCode::InvalidMissionEventTime,
+                                "level.mission-events.at",
+                                "Mission objective event time must be finite and non-negative");
         }
         if (event.kill_target_increase < 0 ||
             (event.kill_target_increase > 0 && !mission.kill_count)) {
-            add_error(result,
-                      "level.mission-events.increase-kill-count",
-                      DiagnosticCode::InvalidMissionKillIncrease,
-                      "Mission kill target increases require an explicit kill count and must be "
-                      "non-negative");
+            result.emplace_back(
+                DiagnosticCode::InvalidMissionKillIncrease,
+                "level.mission-events.increase-kill-count",
+                "Mission kill target increases require an explicit kill count and must be "
+                "non-negative");
         }
         if (mission.time_limit_seconds && event.time_seconds > *mission.time_limit_seconds) {
-            add_error(result,
-                      "level.mission-events.at",
-                      DiagnosticCode::InvalidMissionEventTime,
-                      "Mission objective event occurs after the mission time limit");
+            result.emplace_back(DiagnosticCode::InvalidMissionEventTime,
+                                "level.mission-events.at",
+                                "Mission objective event occurs after the mission time limit");
         }
 
         auto validate_event = [&](std::vector<EntityId> const& references,
@@ -206,31 +193,27 @@ void validate_mission_events(LevelDefinition const& definition,
             for (auto const& id : references) {
                 auto const spawn{entities.spawn_times_by_id.find(id)};
                 if (spawn == entities.spawn_times_by_id.end()) {
-                    add_error(result,
-                              "level.mission",
-                              DiagnosticCode::MissionEntityNotFound,
-                              "Mission event " + std::string{role} + " entity '" + id.value +
-                                  "' is not declared");
+                    result.emplace_back(DiagnosticCode::MissionEntityNotFound,
+                                        "level.mission",
+                                        "Mission event " + std::string{role} + " entity '" +
+                                            id.value + "' is not declared");
                     continue;
                 }
                 if (spawn->second > event.time_seconds) {
-                    add_error(result,
-                              "level.mission",
-                              DiagnosticCode::MissionEventBeforeEntitySpawn,
-                              "Mission event references entity '" + id.value +
-                                  "' before it spawns");
+                    result.emplace_back(DiagnosticCode::MissionEventBeforeEntitySpawn,
+                                        "level.mission",
+                                        "Mission event references entity '" + id.value +
+                                            "' before it spawns");
                 }
                 if (same_role.contains(id)) {
-                    add_error(result,
-                              "level.mission",
-                              DiagnosticCode::DuplicateMissionEntityReference,
-                              "Mission event " + std::string{role} + " entity '" + id.value +
-                                  "' is duplicated");
+                    result.emplace_back(DiagnosticCode::DuplicateMissionEntityReference,
+                                        "level.mission",
+                                        "Mission event " + std::string{role} + " entity '" +
+                                            id.value + "' is duplicated");
                 } else if (conflicting_role.contains(id)) {
-                    add_error(result,
-                              "level.mission",
-                              DiagnosticCode::ConflictingMissionEntityRoles,
-                              "Mission entity '" + id.value + "' has conflicting roles");
+                    result.emplace_back(DiagnosticCode::ConflictingMissionEntityRoles,
+                                        "level.mission",
+                                        "Mission entity '" + id.value + "' has conflicting roles");
                 } else {
                     same_role.insert(id);
                 }

@@ -1258,7 +1258,7 @@ static_assert(static_cast<std::uint8_t>(TraceEntityFilter::None) == 0);
 static_assert(static_cast<std::uint8_t>(TraceEntityFilter::ExcludeFighters) == 1);
 }
 
-namespace ioj::sim::levels::model_contract {
+namespace ioj::levels::model_contract {
 static_assert(
     std::is_same_v<std::underlying_type_t<::ioj::levels::LevelMissionMode>, std::uint8_t>);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::LevelMissionMode::Unspecified) == 0);
@@ -1268,7 +1268,7 @@ static_assert(static_cast<std::uint8_t>(::ioj::levels::LevelMissionMode::KillEne
               3);
 }
 
-namespace ioj::sim::levels::model_contract {
+namespace ioj::levels::model_contract {
 static_assert(std::is_same_v<std::underlying_type_t<::ioj::levels::DiagnosticCode>, std::uint8_t>);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MissingLevelId) == 0);
 static_assert(static_cast<std::uint8_t>(::ioj::levels::DiagnosticCode::MissingTitle) == 1);

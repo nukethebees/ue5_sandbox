@@ -5,9 +5,25 @@
 #include <ioj/s7/interpreter.h>
 
 #include <format>
+#include <utility>
 
 namespace ioj::levels::authoring {
 namespace {
+auto diagnostic_code(s7::AstErrorCode const code) -> DiagnosticCode {
+    switch (code) {
+        case s7::AstErrorCode::EvaluationFailed:
+            return DiagnosticCode::ScriptEvaluationFailed;
+        case s7::AstErrorCode::UnsupportedValue:
+            return DiagnosticCode::UnsupportedValue;
+        case s7::AstErrorCode::ImproperList:
+            return DiagnosticCode::ImproperList;
+        case s7::AstErrorCode::CyclicStructure:
+            return DiagnosticCode::CyclicStructure;
+        case s7::AstErrorCode::LimitExceeded:
+            return DiagnosticCode::LimitExceeded;
+    }
+    std::unreachable();
+}
 auto evaluate(std::string_view const source, std::filesystem::path const& library_root)
     -> std::expected<s7::Ast, Diagnostics> {
     s7::InterpreterOptions options;
@@ -38,25 +54,8 @@ auto evaluate(std::string_view const source, std::filesystem::path const& librar
     if (!ast) {
         Diagnostics errors;
         for (auto& error : ast.error()) {
-            DiagnosticCode code{};
-            switch (error.code) {
-                case s7::AstErrorCode::EvaluationFailed:
-                    code = DiagnosticCode::ScriptEvaluationFailed;
-                    break;
-                case s7::AstErrorCode::UnsupportedValue:
-                    code = DiagnosticCode::UnsupportedValue;
-                    break;
-                case s7::AstErrorCode::ImproperList:
-                    code = DiagnosticCode::ImproperList;
-                    break;
-                case s7::AstErrorCode::CyclicStructure:
-                    code = DiagnosticCode::CyclicStructure;
-                    break;
-                case s7::AstErrorCode::LimitExceeded:
-                    code = DiagnosticCode::LimitExceeded;
-                    break;
-            }
-            errors.push_back({code, std::move(error.node_path), std::move(error.message)});
+            errors.emplace_back(
+                diagnostic_code(error.code), std::move(error.node_path), std::move(error.message));
         }
         return std::unexpected{std::move(errors)};
     }

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_lookup.h"
+
 #include "sandbox/core/enum_traits.h"
 
 #include <array>
@@ -120,11 +122,7 @@ enum class EntityType : std::uint8_t {
         {"capital_ship_fighter", EntityType::Fighter},
         {"tube_spinner", EntityType::TubeSpinner},
     };
-    auto const found{values.find(value)};
-    if (found == values.end()) {
-        return std::nullopt;
-    }
-    return found->second;
+    return ioj::lookup_enum(values, value);
 }
 
 } // namespace ioj::sim

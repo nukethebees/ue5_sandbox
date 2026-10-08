@@ -371,9 +371,7 @@ auto native_enum_declaration(EnumSchema const& schema, TypeRegistry const& types
             }
         }
         output << "    };\n";
-        output << "    auto const found{values.find(value)};\n";
-        output << "    if (found == values.end()) {\n        return std::nullopt;\n    }\n";
-        output << "    return found->second;\n}\n";
+        output << "    return ioj::lookup_enum(values, value);\n}\n";
     }
     return output.str();
 }
@@ -520,7 +518,8 @@ auto lower_enum(EnumSchema const& schema,
         if (std::ranges::any_of(schema.values, [](auto const& value) {
                 return value.serialized_name.has_value();
             })) {
-            prefix.add(Include{"unordered_map", true}, 2);
+            prefix.add(Include{"unordered_map", true}, 2)
+                .add(Include{"ioj/enum_lookup.h", false}, 2);
         }
         emission.header_prefix = prefix.build();
         emission.header = {raw(native_enum_declaration(schema, types))};

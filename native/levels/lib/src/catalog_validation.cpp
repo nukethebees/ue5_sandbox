@@ -17,7 +17,7 @@ struct EntryState {
 void add_issue(EntryState& state, DiagnosticCode const code, std::string message) {
     if (std::ranges::none_of(state.issues,
                              [code](Diagnostic const& issue) { return issue.code == code; })) {
-        state.issues.push_back({code, "catalog", std::move(message)});
+        state.issues.emplace_back(code, "catalog", std::move(message));
     }
 }
 template <typename Definition>
@@ -32,7 +32,7 @@ auto collect(std::span<DecodedCatalogEntry<Definition> const> const entries,
         assert(inserted);
         for (auto& diagnostic : states[index].issues) {
             diagnostic.source_path = entries[index].source_path;
-            result.push_back({entries[index].source_index, std::move(diagnostic)});
+            result.emplace_back(entries[index].source_index, std::move(diagnostic));
         }
     }
     return result;
@@ -66,7 +66,7 @@ auto validate_level_catalog(std::span<LevelCatalogEntry const> const entries)
         if (states[start].visit != EntryState::Visit::Unvisited || !states[start].issues.empty()) {
             continue;
         }
-        stack.push_back({start, 0});
+        stack.emplace_back(start, 0);
         states[start].visit = EntryState::Visit::Active;
         while (!stack.empty()) {
             auto& frame{stack.back()};
@@ -101,7 +101,7 @@ auto validate_level_catalog(std::span<LevelCatalogEntry const> const entries)
                 }
             } else if (states[next].visit == EntryState::Visit::Unvisited) {
                 states[next].visit = EntryState::Visit::Active;
-                stack.push_back({next, 0});
+                stack.emplace_back(next, 0);
             }
         }
     }

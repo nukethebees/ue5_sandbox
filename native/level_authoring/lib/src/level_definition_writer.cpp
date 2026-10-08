@@ -20,9 +20,9 @@ auto canonical_symbol(std::string_view const value) -> bool {
 }
 void check_symbol(Diagnostics& errors, std::string_view const value, std::string path) {
     if (!canonical_symbol(value)) {
-        errors.push_back({DiagnosticCode::InvalidSymbol,
-                          std::move(path),
-                          std::format("'{}' is not a canonical lowercase Lisp symbol", value)});
+        errors.emplace_back(DiagnosticCode::InvalidSymbol,
+                            std::move(path),
+                            std::format("'{}' is not a canonical lowercase Lisp symbol", value));
     }
 }
 auto editor_number(double const value) -> std::string {
@@ -62,15 +62,6 @@ void id_list(SexpressionEmitter& out, Property const key, std::vector<Id> ids) {
     }
     out.end_list();
 }
-auto entity_output_rank(std::string_view const archetype) -> int {
-    if (archetype == "player-fighter") {
-        return 0;
-    }
-    if (archetype == "capital-ship") {
-        return 1;
-    }
-    return 2;
-}
 auto validate_output(LevelDefinition const& definition) -> Diagnostics {
     Diagnostics errors;
     auto validation{validate_level(definition)};
@@ -78,24 +69,21 @@ auto validate_output(LevelDefinition const& definition) -> Diagnostics {
         errors = std::move(validation.error());
     }
     if (definition.metadata.par_time_seconds) {
-        errors.push_back({DiagnosticCode::UnsupportedEditorFeature,
-                          "level.par-time",
-                          "Editor level source does not support par-time"});
+        errors.emplace_back(DiagnosticCode::UnsupportedEditorFeature,
+                            "level.par-time",
+                            "Editor level source does not support par-time");
     }
     if (!definition.unlock_level_ids.empty()) {
-        errors.push_back({DiagnosticCode::UnsupportedEditorFeature,
-                          "level.unlock",
-                          "Editor level source does not support unlock criteria"});
+        errors.emplace_back(DiagnosticCode::UnsupportedEditorFeature,
+                            "level.unlock",
+                            "Editor level source does not support unlock criteria");
     }
     if (!definition.mission_events.empty()) {
-        errors.push_back({DiagnosticCode::UnsupportedEditorFeature,
-                          "level.mission-events",
-                          "Editor level source does not support mission events"});
+        errors.emplace_back(DiagnosticCode::UnsupportedEditorFeature,
+                            "level.mission-events",
+                            "Editor level source does not support mission events");
     }
     check_symbol(errors, definition.metadata.id.value, "level.id");
-    for (auto const& team : definition.teams) {
-        check_symbol(errors, team.value, "level.teams");
-    }
     if (!definition.player_entity_id.empty()) {
         check_symbol(errors, definition.player_entity_id.value, "level.player");
     }
@@ -121,8 +109,6 @@ auto validate_output(LevelDefinition const& definition) -> Diagnostics {
         auto const& entity{definition.entities[index]};
         auto const path{std::format("level.entities[{}]", index)};
         check_symbol(errors, entity.id.value, path + ".id");
-        check_symbol(errors, entity.archetype, path + ".archetype");
-        check_symbol(errors, entity.team.value, path + ".team");
     }
     return errors;
 }
@@ -163,7 +149,14 @@ auto emit_editor_level_source(LevelDefinition const& definition)
         }
         out.end_list();
     }
-    id_list(out, Property::Teams, definition.teams);
+    auto teams{definition.teams};
+    std::ranges::sort(teams, {}, [](TeamId const team) { return to_serialized_string(team); });
+    property(out, Property::Teams);
+    out.begin_quoted_list();
+    for (auto const team : teams) {
+        out.token(to_serialized_string(team));
+    }
+    out.end_list();
     if (!definition.player_entity_id.empty()) {
         property(out, Property::Player);
         symbol(out, definition.player_entity_id.value);
@@ -211,10 +204,10 @@ auto emit_editor_level_source(LevelDefinition const& definition)
         auto const& left{definition.entities[a]};
         auto const& right{definition.entities[b]};
         if (left.team != right.team) {
-            return left.team < right.team;
+            return to_serialized_string(left.team) < to_serialized_string(right.team);
         }
-        auto const left_rank{entity_output_rank(left.archetype)};
-        auto const right_rank{entity_output_rank(right.archetype)};
+        auto const left_rank{static_cast<int>(left.archetype)};
+        auto const right_rank{static_cast<int>(right.archetype)};
         return left_rank != right_rank ? left_rank < right_rank : left.id < right.id;
     });
     property(out, Property::Entities);
@@ -235,17 +228,17 @@ auto emit_editor_level_source(LevelDefinition const& definition)
                 ++group_end;
             }
             out.comment(std::format("Team: {} | Archetype: {} | Count: {}",
-                                    entity.team.value,
-                                    entity.archetype,
+                                    to_serialized_string(entity.team),
+                                    to_serialized_string(entity.archetype),
                                     group_end - position));
         }
         out.begin_list(to_serialized_string(RecordKind::Entity));
         property(out, Property::Id);
         symbol(out, entity.id.value);
         property(out, Property::Archetype);
-        symbol(out, entity.archetype);
+        symbol(out, to_serialized_string(entity.archetype));
         property(out, Property::Team);
-        symbol(out, entity.team.value);
+        symbol(out, to_serialized_string(entity.team));
         property(out, Property::Position);
         vector(out, entity.position.x, entity.position.y, entity.position.z);
         property(out, Property::Rotation);

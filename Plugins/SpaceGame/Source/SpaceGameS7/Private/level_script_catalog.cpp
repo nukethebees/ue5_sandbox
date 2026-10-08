@@ -32,9 +32,12 @@ auto to_native_levels(TArray<FLevelScriptEntry> const& entries) -> std::vector<L
     for (int32 index{}; index < count; ++index) {
         auto const& entry{entries[index]};
         if (entry.definition) {
-            result.push_back({static_cast<CatalogEntryIndex>(index),
-                              std::filesystem::path{*entry.path},
-                              to_native(*entry.definition)});
+            auto definition{to_native(*entry.definition)};
+            // Catalog entries have already passed decoding and semantic validation.
+            check(definition.has_value());
+            result.emplace_back(static_cast<CatalogEntryIndex>(index),
+                                std::filesystem::path{*entry.path},
+                                std::move(*definition));
         }
     }
     return result;

@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_lookup.h"
+
 #include "sandbox/core/enum_traits.h"
 
 #include <array>
@@ -92,11 +94,7 @@ enum class ShipFireRate : std::uint8_t {
         {"burst_3", ShipFireRate::Burst3},
         {"full_auto", ShipFireRate::FullAuto},
     };
-    auto const found{values.find(value)};
-    if (found == values.end()) {
-        return std::nullopt;
-    }
-    return found->second;
+    return ioj::lookup_enum(values, value);
 }
 
 } // namespace ioj::sim

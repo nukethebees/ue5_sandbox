@@ -32,7 +32,9 @@ Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/L
 native/core/include/sandbox/core/sandbox_ismc_render.h
 native/level_authoring/lib/include/ioj/levels/authoring/grammar.h
 native/levels/lib/include/ioj/levels/diagnostic_code.h
+native/levels/lib/include/ioj/levels/entity_archetype.h
 native/levels/lib/include/ioj/levels/level_mission_mode.h
+native/levels/lib/include/ioj/levels/team_id.h
 native/simulation/include/ioj/sim/attack_distance_band.h
 native/simulation/include/ioj/sim/base_sim_config.h
 native/simulation/include/ioj/sim/capital_death_event.h

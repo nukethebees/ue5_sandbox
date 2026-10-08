@@ -10,8 +10,15 @@ auto compile_level_events(FLevelDefinition const& definition,
                           ::ioj::sim::CapitalShipSimConfig const& capital_config,
                           ::ioj::sim::TurretSimConfig const& turret_config)
     -> FLevelEventCompilationResult {
-    auto result{::ioj::sim::levels::compile_level(
-        ::ioj::levels::authoring::to_native(definition), clock, capital_config, turret_config)};
+    auto native{::ioj::levels::authoring::to_native(definition)};
+    if (!native) {
+        FLevelStartErrors errors;
+        for (auto const& error : native.error()) {
+            errors.add(to_fstring(error.message));
+        }
+        return FLevelEventCompilationResult{std::unexpect, MoveTemp(errors)};
+    }
+    auto result{::ioj::levels::compile_level(*native, clock, capital_config, turret_config)};
     if (result) {
         return FLevelEventCompilationResult{std::in_place, std::move(result.value())};
     }

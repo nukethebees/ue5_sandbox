@@ -21,10 +21,11 @@ auto make_level(std::string id, std::vector<LevelId> unlocks = {}) -> LevelDefin
         .metadata = {.id = LevelId{std::move(id)}, .title = "Test Level"},
         .unlock_level_ids = std::move(unlocks),
         .player_entity_id = EntityId{"player"},
-        .teams = {TeamId{"blue"}},
+        .teams = {TeamId::Blue},
     };
-    result.entities.push_back(
-        {.id = EntityId{"player"}, .archetype = "player-fighter", .team = TeamId{"blue"}});
+    result.entities.push_back({.id = EntityId{"player"},
+                               .archetype = EntityArchetype::PlayerFighter,
+                               .team = TeamId::Blue});
     return result;
 }
 auto has_code(Diagnostics const& errors, DiagnosticCode const code) -> bool {
@@ -111,6 +112,25 @@ TEST(NativeLevelAuthoringCampaignReader, DecodesAndValidatesCampaignData) {
     ASSERT_FALSE(duplicate);
     EXPECT_TRUE(has_code(duplicate.error(), DiagnosticCode::DuplicateCampaignLevel));
 }
+TEST(NativeLevelAuthoringReader, ParsesClosedVocabulariesAndPreservesUnpopulatedTeams) {
+    auto source{minimal_source()};
+    source.replace(source.find(":teams '(blue)"), 14, ":teams '(blue red)");
+    auto const result{LevelDefinitionReader{}.read_source(source)};
+    ASSERT_TRUE(result) << format_diagnostics(result.error());
+    EXPECT_EQ(result->teams, (std::vector{TeamId::Blue, TeamId::Red}));
+    ASSERT_EQ(result->entities.size(), 1u);
+    EXPECT_EQ(result->entities.front().team, TeamId::Blue);
+    EXPECT_EQ(result->entities.front().archetype, EntityArchetype::PlayerFighter);
+}
+TEST(NativeLevelAuthoringReader, RejectsUnknownTeamAndArchetypeIndependently) {
+    auto source{minimal_source()};
+    source.replace(source.find("'player-fighter"), 15, "'unknown-ship");
+    source.replace(source.find(":team 'blue"), 11, ":team 'unknown-team");
+    auto const result{LevelDefinitionReader{}.read_source(source)};
+    ASSERT_FALSE(result);
+    EXPECT_TRUE(has_code(result.error(), DiagnosticCode::UnsupportedArchetype));
+    EXPECT_TRUE(has_code(result.error(), DiagnosticCode::UnsupportedTeamId));
+}
 TEST(NativeLevelAuthoringReader, ReportsIndependentMalformedProperties) {
     auto const result{LevelDefinitionReader{}.read_source(R"((level
       :id 17 :title 'not-text :title "duplicate" :unknown 4
@@ -151,10 +171,10 @@ TEST(NativeLevelAuthoringWriter, EmitsDeterministicReadableSource) {
     auto first{make_level("writer-example")};
     first.metadata.title = "Writer \"Example\"";
     first.metadata.description = "Line one\nLine two.";
-    first.teams.emplace_back("red");
+    first.teams.push_back(TeamId::Red);
     first.entities.push_back({.id = EntityId{"red-capital"},
-                              .archetype = "capital-ship",
-                              .team = TeamId{"red"},
+                              .archetype = EntityArchetype::CapitalShip,
+                              .team = TeamId::Red,
                               .position = {1000.0, 200.12349, -300.5},
                               .rotation = {0.0, 90.0, 0.0},
                               .spawn_time_seconds = 2.5});
@@ -224,9 +244,9 @@ TEST(NativeLevelAuthoringCollisionGrid, RejectsMalformedAndInvalidExplicitDimens
 }
 TEST(NativeLevelAuthoringWriter, RoundTripsInitialMissionObjectives) {
     auto definition{make_level("mission")};
-    definition.teams.emplace_back("red");
+    definition.teams.push_back(TeamId::Red);
     definition.entities.push_back(
-        {.id = EntityId{"enemy"}, .archetype = "capital-ship", .team = TeamId{"red"}});
+        {.id = EntityId{"enemy"}, .archetype = EntityArchetype::CapitalShip, .team = TeamId::Red});
     definition.mission = LevelMissionDefinition{.mode = LevelMissionMode::KillEnemies,
                                                 .kill_count = 2,
                                                 .hero_entity_ids = {EntityId{"player"}},

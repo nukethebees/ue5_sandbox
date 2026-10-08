@@ -13,14 +13,15 @@ namespace ioj::sim {
 struct SimClock;
 }
 
-namespace ioj::sim::levels {
+namespace ioj::levels {
 using LevelCompilationErrors = std::vector<std::string>;
-using LevelCompilationResult = std::expected<CompiledLevelEvents, LevelCompilationErrors>;
+using LevelCompilationResult = std::expected<sim::CompiledLevelEvents, LevelCompilationErrors>;
 
-[[nodiscard]] auto to_simulation_team(std::string_view id) noexcept -> Team;
+[[nodiscard]] auto to_simulation_team(TeamId id) noexcept -> sim::Team;
 
-[[nodiscard]] auto compile_level(::ioj::levels::LevelDefinition const& definition,
-                                 SimClock const& clock,
-                                 CapitalShipSimConfig const& capital_config,
-                                 TurretSimConfig const& turret_config) -> LevelCompilationResult;
-} // namespace ioj::sim::levels
+[[nodiscard]] auto compile_level(LevelDefinition const& definition,
+                                 sim::SimClock const& clock,
+                                 sim::CapitalShipSimConfig const& capital_config,
+                                 sim::TurretSimConfig const& turret_config)
+    -> LevelCompilationResult;
+} // namespace ioj::levels

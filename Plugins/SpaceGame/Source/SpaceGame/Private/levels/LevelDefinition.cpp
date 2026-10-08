@@ -6,16 +6,6 @@
 #include <SandboxCoreEngine/strings.h>
 
 namespace ml {
-namespace {
-auto columns_have_equal_size(FLevelEntityTable const& entities) -> bool {
-    auto const count{entities.ids.Num()};
-    return entities.archetypes.Num() == count && entities.teams.Num() == count &&
-           entities.positions.num() == count && entities.rotations.num() == count &&
-           entities.spawn_times_seconds.Num() == count;
-}
-
-} // namespace
-
 void FLevelBuilder::set_metadata(FLevelMetadata const& metadata) {
     definition_.metadata = metadata;
 }
@@ -62,14 +52,7 @@ auto FLevelBuilder::finish() -> FLevelDefinition {
 
 auto validate_level(FLevelDefinition const& definition) -> FLevelValidationResult {
     FLevelValidationResult result;
-    if (!columns_have_equal_size(definition.entities)) {
-        result.errors.Add({.code = ELevelValidationErrorCode::MismatchedEntityColumns,
-                           .message = TEXT("Level entity columns have inconsistent lengths")});
-        return result;
-    }
-
-    auto native_result{
-        ::ioj::levels::validate_level(::ioj::levels::authoring::to_native(definition))};
+    auto native_result{::ioj::levels::authoring::to_native(definition)};
     if (native_result) {
         return result;
     }

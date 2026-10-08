@@ -9,21 +9,22 @@ namespace ioj::levels::authoring {
 namespace {
 using detail::AstParser;
 
-auto vector(AstParser& parser, s7::NodeIndex const node, std::string const& path) -> ml::Vector3d {
-    auto const values{parser.list(node, path)};
+auto vector(AstParser& parser, s7::NodeIndex const node, std::string const& node_path)
+    -> ml::Vector3d {
+    auto const values{parser.list(node, node_path)};
     if (values.size() != 3) {
-        parser.error(DiagnosticCode::InvalidType, path, "Expected three numeric components");
+        parser.error(DiagnosticCode::InvalidType, node_path, "Expected three numeric components");
         return {};
     }
-    return {parser.number(values[0], path + "[0]"),
-            parser.number(values[1], path + "[1]"),
-            parser.number(values[2], path + "[2]")};
+    return {parser.number(values[0], node_path + "[0]"),
+            parser.number(values[1], node_path + "[1]"),
+            parser.number(values[2], node_path + "[2]")};
 }
 
-auto camera(AstParser& parser, s7::NodeIndex const node, std::string const& path)
+auto camera(AstParser& parser, s7::NodeIndex const node, std::string const& node_path)
     -> LevelCameraDefinition {
     LevelCameraDefinition result;
-    auto const fields{parser.record(node, RecordKind::Camera, path)};
+    auto const fields{parser.record(node, RecordKind::Camera, node_path)};
     for (auto const& field : fields) {
         switch (field.property) {
             case Property::LookAt:
@@ -41,15 +42,15 @@ auto camera(AstParser& parser, s7::NodeIndex const node, std::string const& path
         }
     }
     for (auto const property : {Property::LookAt, Property::Distance, Property::OffsetDirection}) {
-        parser.require(fields, property, path);
+        parser.require(fields, property, node_path);
     }
     return result;
 }
 
-auto grid(AstParser& parser, s7::NodeIndex const node, std::string const& path)
+auto grid(AstParser& parser, s7::NodeIndex const node, std::string const& node_path)
     -> LevelCollisionGridDefinition {
     LevelCollisionGridDefinition result;
-    auto const fields{parser.record(node, RecordKind::CollisionGrid, path)};
+    auto const fields{parser.record(node, RecordKind::CollisionGrid, node_path)};
     for (auto const& field : fields) {
         switch (field.property) {
             case Property::LevelSize:
@@ -65,16 +66,16 @@ auto grid(AstParser& parser, s7::NodeIndex const node, std::string const& path)
     }
     if (fields.empty()) {
         parser.error(DiagnosticCode::MissingProperty,
-                     path,
+                     node_path,
                      "Collision grid requires a level-size or cell-size");
     }
     return result;
 }
 
-auto mission(AstParser& parser, s7::NodeIndex const node, std::string const& path)
+auto mission(AstParser& parser, s7::NodeIndex const node, std::string const& node_path)
     -> LevelMissionDefinition {
     LevelMissionDefinition result;
-    auto const fields{parser.record(node, RecordKind::Mission, path)};
+    auto const fields{parser.record(node, RecordKind::Mission, node_path)};
     for (auto const& field : fields) {
         switch (field.property) {
             case Property::Mode: {
@@ -110,14 +111,14 @@ auto mission(AstParser& parser, s7::NodeIndex const node, std::string const& pat
                 break;
         }
     }
-    parser.require(fields, Property::Mode, path);
+    parser.require(fields, Property::Mode, node_path);
     return result;
 }
 
-auto mission_event(AstParser& parser, s7::NodeIndex const node, std::string const& path)
+auto mission_event(AstParser& parser, s7::NodeIndex const node, std::string const& node_path)
     -> LevelMissionObjectiveEvent {
     LevelMissionObjectiveEvent result;
-    auto const fields{parser.record(node, RecordKind::MissionEvent, path)};
+    auto const fields{parser.record(node, RecordKind::MissionEvent, node_path)};
     for (auto const& field : fields) {
         switch (field.property) {
             case Property::At:
@@ -138,24 +139,24 @@ auto mission_event(AstParser& parser, s7::NodeIndex const node, std::string cons
                 break;
         }
     }
-    parser.require(fields, Property::At, path);
+    parser.require(fields, Property::At, node_path);
     return result;
 }
 
-auto entity(AstParser& parser, s7::NodeIndex const node, std::string const& path)
+auto entity(AstParser& parser, s7::NodeIndex const node, std::string const& node_path)
     -> EntitySpawnDefinition {
     EntitySpawnDefinition result;
-    auto const fields{parser.record(node, RecordKind::Entity, path)};
+    auto const fields{parser.record(node, RecordKind::Entity, node_path)};
     for (auto const& field : fields) {
         switch (field.property) {
             case Property::Id:
                 result.id = EntityId{parser.symbol(field.value, field.node_path)};
                 break;
             case Property::Archetype:
-                result.archetype = parser.symbol(field.value, field.node_path);
+                result.archetype = parser.archetype(field.value, field.node_path);
                 break;
             case Property::Team:
-                result.team = TeamId{parser.symbol(field.value, field.node_path)};
+                result.team = parser.team(field.value, field.node_path);
                 break;
             case Property::Position:
                 result.position = vector(parser, field.value, field.node_path);
@@ -178,7 +179,7 @@ auto entity(AstParser& parser, s7::NodeIndex const node, std::string const& path
                                 Property::Team,
                                 Property::Position,
                                 Property::Rotation}) {
-        parser.require(fields, property, path);
+        parser.require(fields, property, node_path);
     }
     return result;
 }
@@ -186,15 +187,16 @@ auto entity(AstParser& parser, s7::NodeIndex const node, std::string const& path
 auto unlocks(AstParser& parser,
              s7::Ast const& ast,
              s7::NodeIndex const node,
-             std::string const& path) -> std::vector<LevelId> {
+             std::string const& node_path) -> std::vector<LevelId> {
     std::vector<LevelId> result;
-    auto const criteria{parser.list(node, path)};
+    auto const criteria{parser.list(node, node_path)};
     if (criteria.empty()) {
-        parser.error(DiagnosticCode::MissingValue, path, "Unlock requires at least one criterion");
+        parser.error(
+            DiagnosticCode::MissingValue, node_path, "Unlock requires at least one criterion");
     }
     auto const count{criteria.size()};
     for (std::size_t index{}; index < count; ++index) {
-        auto const location{std::format("{}[{}]", path, index)};
+        auto const location{std::format("{}[{}]", node_path, index)};
         auto const values{parser.list(criteria[index], location)};
         if (values.size() != 2 || ast.node(values[0]).kind != s7::NodeKind::Keyword ||
             ast.text(values[0]) != to_serialized_string(RecordKind::LevelCompleted)) {
@@ -232,7 +234,7 @@ auto parse_level(s7::Ast const& ast) -> LevelDefinitionReadResult {
                 result.unlock_level_ids = unlocks(parser, ast, field.value, field.node_path);
                 break;
             case Property::Teams:
-                result.teams = parser.ids<TeamId>(field.value, field.node_path);
+                result.teams = parser.teams(field.value, field.node_path);
                 break;
             case Property::Player:
                 result.player_entity_id = EntityId{parser.symbol(field.value, field.node_path)};

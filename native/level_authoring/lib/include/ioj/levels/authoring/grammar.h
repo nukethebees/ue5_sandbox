@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "ioj/enum_lookup.h"
+
 #include "sandbox/core/enum_traits.h"
 
 #include <array>
@@ -405,11 +407,7 @@ enum class Property : std::uint8_t {
         {"rotation", Property::Rotation},
         {"spawn-at", Property::SpawnAt},
     };
-    auto const found{values.find(value)};
-    if (found == values.end()) {
-        return std::nullopt;
-    }
-    return found->second;
+    return ioj::lookup_enum(values, value);
 }
 
 enum class RecordKind : std::uint8_t {
@@ -529,11 +527,7 @@ enum class RecordKind : std::uint8_t {
         {"mission-event", RecordKind::MissionEvent},
         {"level-completed", RecordKind::LevelCompleted},
     };
-    auto const found{values.find(value)};
-    if (found == values.end()) {
-        return std::nullopt;
-    }
-    return found->second;
+    return ioj::lookup_enum(values, value);
 }
 
 } // namespace ioj::levels::authoring

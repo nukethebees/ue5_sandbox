@@ -10,6 +10,7 @@ struct LevelMissionObjectiveEvent {
     double time_seconds{};
     std::vector<EntityId> must_survive_entity_ids{};
     std::vector<EntityId> required_kill_entity_ids{};
+    // Raise the numerical quota independently of specific required-kill targets.
     std::int32_t kill_target_increase{};
 };
 }

@@ -9,11 +9,12 @@
 #include <cassert>
 #include <limits>
 #include <span>
+#include <utility>
 
-namespace ioj::sim::levels {
+namespace ioj::levels {
 namespace {
 struct EventSource {
-    SimTick execution_tick{};
+    sim::SimTick execution_tick{};
     std::uint32_t source_index{};
 };
 
@@ -23,40 +24,38 @@ struct MissionTickValues {
     std::vector<std::int32_t> kill_target_increases{};
 };
 
-auto entity_index(::ioj::levels::LevelDefinition const& definition,
-                  ::ioj::levels::EntityId const& id) -> std::uint32_t {
-    auto const found{
-        std::ranges::find(definition.entities, id, &::ioj::levels::EntitySpawnDefinition::id)};
+auto entity_index(LevelDefinition const& definition, EntityId const& id) -> std::uint32_t {
+    auto const found{std::ranges::find(definition.entities, id, &EntitySpawnDefinition::id)};
     assert(found != definition.entities.end());
     return static_cast<std::uint32_t>(found - definition.entities.begin());
 }
 
 void append_indices(std::vector<std::int32_t>& output,
-                    ::ioj::levels::LevelDefinition const& definition,
-                    std::vector<::ioj::levels::EntityId> const& ids) {
+                    LevelDefinition const& definition,
+                    std::vector<EntityId> const& ids) {
     for (auto const& id : ids) {
         output.push_back(static_cast<std::int32_t>(entity_index(definition, id)));
     }
 }
 
-auto append_mission_groups(LevelEventSchedule& schedule,
+auto append_mission_groups(sim::LevelEventSchedule& schedule,
                            MissionTickValues& values,
                            std::string& error) -> bool {
-    auto const append = [&](LevelMissionEventType const type,
+    auto const append = [&](sim::LevelMissionEventType const type,
                             std::span<std::int32_t const> const event_values,
                             std::string_view const name) {
         if (schedule.add_mission_group(type, event_values)) {
             return true;
         }
-        error = "Level event compilation at tick " +
-                std::to_string(schedule.execution_ticks.back()) + ": " + std::string{name} +
-                " event count " + std::to_string(event_values.size()) +
-                " exceeds the per-tick group limit of " + std::to_string(max_level_event_count);
+        error =
+            "Level event compilation at tick " + std::to_string(schedule.execution_ticks.back()) +
+            ": " + std::string{name} + " event count " + std::to_string(event_values.size()) +
+            " exceeds the per-tick group limit of " + std::to_string(sim::max_level_event_count);
         return false;
     };
-    if (!append(LevelMissionEventType::MustSurvive, values.must_survive, "must-survive") ||
-        !append(LevelMissionEventType::RequiredKill, values.required_kills, "required-kill") ||
-        !append(LevelMissionEventType::IncreaseKillTarget,
+    if (!append(sim::LevelMissionEventType::MustSurvive, values.must_survive, "must-survive") ||
+        !append(sim::LevelMissionEventType::RequiredKill, values.required_kills, "required-kill") ||
+        !append(sim::LevelMissionEventType::IncreaseKillTarget,
                 values.kill_target_increases,
                 "kill-target increase")) {
         return false;
@@ -67,13 +66,13 @@ auto append_mission_groups(LevelEventSchedule& schedule,
     return true;
 }
 
-auto append_spawn_groups(LevelEventSchedule& schedule,
+auto append_spawn_groups(sim::LevelEventSchedule& schedule,
                          std::int32_t& capital_offset,
                          std::int32_t& turret_offset,
                          std::string& error) -> bool {
     auto const capital_end{schedule.capital_spawns.num()};
     auto const turret_end{schedule.turret_spawns.num()};
-    auto const append = [&](EntityType const type,
+    auto const append = [&](sim::EntityType const type,
                             std::int32_t const offset,
                             std::int32_t const count,
                             std::string_view const name) {
@@ -83,12 +82,14 @@ auto append_spawn_groups(LevelEventSchedule& schedule,
         error = "Level event compilation at tick " +
                 std::to_string(schedule.execution_ticks.back()) + ": " + std::string{name} +
                 " spawn count " + std::to_string(count) + " exceeds the per-tick group limit of " +
-                std::to_string(max_level_event_count);
+                std::to_string(sim::max_level_event_count);
         return false;
     };
-    if (!append(
-            EntityType::CapitalShip, capital_offset, capital_end - capital_offset, "CapitalShip") ||
-        !append(EntityType::Turret, turret_offset, turret_end - turret_offset, "Turret")) {
+    if (!append(sim::EntityType::CapitalShip,
+                capital_offset,
+                capital_end - capital_offset,
+                "CapitalShip") ||
+        !append(sim::EntityType::Turret, turret_offset, turret_end - turret_offset, "Turret")) {
         return false;
     }
     capital_offset = capital_end;
@@ -98,30 +99,29 @@ auto append_spawn_groups(LevelEventSchedule& schedule,
 
 } // namespace
 
-auto to_simulation_team(std::string_view const id) noexcept -> Team {
-    if (id == "red") {
-        return Team::Red;
+auto to_simulation_team(TeamId const id) noexcept -> sim::Team {
+    switch (id) {
+        case TeamId::White:
+            return sim::Team::White;
+        case TeamId::Red:
+            return sim::Team::Red;
+        case TeamId::Green:
+            return sim::Team::Green;
+        case TeamId::Blue:
+            return sim::Team::Blue;
+        case TeamId::Orange:
+            return sim::Team::Orange;
+        case TeamId::Yellow:
+            return sim::Team::Yellow;
     }
-    if (id == "green") {
-        return Team::Green;
-    }
-    if (id == "blue") {
-        return Team::Blue;
-    }
-    if (id == "orange") {
-        return Team::Orange;
-    }
-    if (id == "yellow") {
-        return Team::Yellow;
-    }
-    return Team::White;
+    std::unreachable();
 }
 
-auto compile_level(::ioj::levels::LevelDefinition const& definition,
-                   SimClock const& clock,
-                   CapitalShipSimConfig const& capital_config,
-                   TurretSimConfig const& turret_config) -> LevelCompilationResult {
-    auto validation{::ioj::levels::validate_level(definition)};
+auto compile_level(LevelDefinition const& definition,
+                   sim::SimClock const& clock,
+                   sim::CapitalShipSimConfig const& capital_config,
+                   sim::TurretSimConfig const& turret_config) -> LevelCompilationResult {
+    auto validation{validate_level(definition)};
     if (!validation) {
         LevelCompilationErrors errors;
         errors.reserve(validation.error().size());
@@ -131,7 +131,7 @@ auto compile_level(::ioj::levels::LevelDefinition const& definition,
         return std::unexpected{std::move(errors)};
     }
 
-    CompiledLevelEvents compiled;
+    sim::CompiledLevelEvents compiled;
     auto& initialisation{compiled.initialisation};
     auto& initial_spawns{compiled.initial_spawns};
     auto& schedule{compiled.schedule};
@@ -156,8 +156,8 @@ auto compile_level(::ioj::levels::LevelDefinition const& definition,
         append_indices(mission_initialisation.required_kill_entity_indices,
                        definition,
                        mission.required_kill_entity_ids);
-        if ((mission.mode == ::ioj::levels::LevelMissionMode::KillEnemies ||
-             mission.mode == ::ioj::levels::LevelMissionMode::KillEnemiesWithinTime) &&
+        if ((mission.mode == LevelMissionMode::KillEnemies ||
+             mission.mode == LevelMissionMode::KillEnemiesWithinTime) &&
             !mission.kill_count && !mission.hero_entity_ids.empty()) {
             auto const hero_team{
                 definition.entities[entity_index(definition, mission.hero_entity_ids.front())]
@@ -176,7 +176,7 @@ auto compile_level(::ioj::levels::LevelDefinition const& definition,
     sources.reserve(static_cast<std::size_t>(entity_count + mission_event_count));
     for (std::uint32_t index{}; index < entity_count; ++index) {
         auto const& entity{definition.entities[static_cast<std::size_t>(index)]};
-        if (entity.archetype != "player-fighter") {
+        if (entity.archetype != EntityArchetype::PlayerFighter) {
             sources.push_back({clock.duration_to_tick_period(entity.spawn_time_seconds), index});
         }
     }
@@ -198,45 +198,45 @@ auto compile_level(::ioj::levels::LevelDefinition const& definition,
     std::int32_t turret_offset{};
     MissionTickValues mission_values;
     auto const append_entity = [&](std::uint32_t const entity_index_value,
-                                   LevelCapitalSpawnEvents& capital_storage,
-                                   LevelTurretSpawnEvents& turret_storage) {
+                                   sim::LevelCapitalSpawnEvents& capital_storage,
+                                   sim::LevelTurretSpawnEvents& turret_storage) {
         auto const& entity{definition.entities[static_cast<std::size_t>(entity_index_value)]};
-        if (entity.archetype == "capital-ship") {
+        if (entity.archetype == EntityArchetype::CapitalShip) {
             auto const row{capital_storage.num()};
             capital_storage.add_uninitialised(1);
             auto const capital_events{capital_storage.get_view()};
             capital_events.entity_indices()[row] = entity_index_value;
-            capital_events.target_entity_indices()[row] = invalid_level_entity_index;
-            set_vector(capital_events.view_locations(),
-                       row,
-                       ml::make_vector3f(static_cast<float>(entity.position.x),
-                                         static_cast<float>(entity.position.y),
-                                         static_cast<float>(entity.position.z)));
-            set_rotation(capital_events.view_rotations(),
-                         row,
-                         Rotator3f{static_cast<float>(entity.rotation.pitch),
-                                   static_cast<float>(entity.rotation.yaw),
-                                   static_cast<float>(entity.rotation.roll)});
-            capital_events.teams()[row] = to_simulation_team(entity.team.value);
+            capital_events.target_entity_indices()[row] = sim::invalid_level_entity_index;
+            sim::set_vector(capital_events.view_locations(),
+                            row,
+                            ml::make_vector3f(static_cast<float>(entity.position.x),
+                                              static_cast<float>(entity.position.y),
+                                              static_cast<float>(entity.position.z)));
+            sim::set_rotation(capital_events.view_rotations(),
+                              row,
+                              sim::Rotator3f{static_cast<float>(entity.rotation.pitch),
+                                             static_cast<float>(entity.rotation.yaw),
+                                             static_cast<float>(entity.rotation.roll)});
+            capital_events.teams()[row] = to_simulation_team(entity.team);
             capital_events.healths()[row] = capital_config.max_health;
             capital_events.initial_fighter_spawn_delays()[row] = 0.0f;
             capital_events.fighter_spawn_cooldowns()[row] = capital_config.spawn_delay;
-        } else if (entity.archetype == "static-turret") {
+        } else if (entity.archetype == EntityArchetype::StaticTurret) {
             auto const row{turret_storage.num()};
             turret_storage.add_uninitialised(1);
             auto const turret_events{turret_storage.get_view()};
             turret_events.entity_indices()[row] = entity_index_value;
-            set_vector(turret_events.view_locations(),
-                       row,
-                       ml::make_vector3f(static_cast<float>(entity.position.x),
-                                         static_cast<float>(entity.position.y),
-                                         static_cast<float>(entity.position.z)));
-            set_rotation(turret_events.view_rotations(),
-                         row,
-                         Rotator3f{static_cast<float>(entity.rotation.pitch),
-                                   static_cast<float>(entity.rotation.yaw),
-                                   static_cast<float>(entity.rotation.roll)});
-            turret_events.teams()[row] = to_simulation_team(entity.team.value);
+            sim::set_vector(turret_events.view_locations(),
+                            row,
+                            ml::make_vector3f(static_cast<float>(entity.position.x),
+                                              static_cast<float>(entity.position.y),
+                                              static_cast<float>(entity.position.z)));
+            sim::set_rotation(turret_events.view_rotations(),
+                              row,
+                              sim::Rotator3f{static_cast<float>(entity.rotation.pitch),
+                                             static_cast<float>(entity.rotation.yaw),
+                                             static_cast<float>(entity.rotation.roll)});
+            turret_events.teams()[row] = to_simulation_team(entity.team);
             turret_events.healths()[row] = turret_config.max_health;
             turret_events.laser_damages()[row] = turret_config.laser.damage;
         }

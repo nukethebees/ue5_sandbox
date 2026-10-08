@@ -8,8 +8,11 @@
 namespace ioj::levels::authoring {
 auto emit_editor_level_source(ml::FLevelDefinition const& definition)
     -> std::expected<FString, FString> {
-    auto source{::ioj::levels::authoring::emit_editor_level_source(
-        ::ioj::levels::authoring::to_native(definition))};
+    auto native{to_native(definition)};
+    if (!native) {
+        return std::unexpected{ml::to_fstring(format_diagnostics(native.error()))};
+    }
+    auto source{::ioj::levels::authoring::emit_editor_level_source(*native)};
     if (!source) {
         return std::unexpected{ml::to_fstring(format_diagnostics(source.error()))};
     }

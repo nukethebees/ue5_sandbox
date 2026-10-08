@@ -2,8 +2,18 @@
 
 #include <SandboxCoreEngine/strings.h>
 
+#include <algorithm>
+#include <format>
+
 namespace ioj::levels::authoring {
 namespace {
+auto columns_have_equal_size(ml::FLevelEntityTable const& entities) -> bool {
+    auto const count{entities.ids.Num()};
+    return entities.archetypes.Num() == count && entities.teams.Num() == count &&
+           entities.positions.num() == count && entities.rotations.num() == count &&
+           entities.spawn_times_seconds.Num() == count;
+}
+
 auto to_utf8(FString const& value) -> std::string {
     auto const converted{FTCHARToUTF8{*value, value.Len()}};
     return {converted.Get(), static_cast<std::size_t>(converted.Length())};
@@ -16,8 +26,8 @@ auto to_utf8(FName const value) -> std::string {
     return to_utf8(value.ToString().ToLower());
 }
 
-auto to_fname(std::string const& value) -> FName {
-    return FName{ml::to_fstring(value)};
+auto to_fname(std::string_view const value) -> FName {
+    return FName{ml::to_fstring(std::string{value})};
 }
 
 template <typename NativeId, typename Id>
@@ -41,8 +51,16 @@ auto to_unreal_ids(std::vector<NativeId> const& source) -> TArray<Id> {
 }
 } // namespace
 
-auto to_native(ml::FLevelDefinition const& definition) -> ::ioj::levels::LevelDefinition {
-    ::ioj::levels::LevelDefinition result;
+auto to_native(ml::FLevelDefinition const& definition)
+    -> std::expected<LevelDefinition, Diagnostics> {
+    if (!columns_have_equal_size(definition.entities)) {
+        return std::unexpected{Diagnostics{{DiagnosticCode::MismatchedEntityColumns,
+                                            "level.entities",
+                                            "Level entity columns have inconsistent lengths"}}};
+    }
+
+    LevelDefinition result;
+    Diagnostics errors;
     result.metadata.id = LevelId{to_utf8(definition.metadata.id.value)};
     result.metadata.title = to_utf8(definition.metadata.title);
     result.metadata.description = to_utf8(definition.metadata.description);
@@ -59,7 +77,7 @@ auto to_native(ml::FLevelDefinition const& definition) -> ::ioj::levels::LevelDe
 
     if (definition.collision_grid.IsSet()) {
         auto const& grid{definition.collision_grid.GetValue()};
-        ::ioj::levels::LevelCollisionGridDefinition native_grid;
+        LevelCollisionGridDefinition native_grid;
         if (grid.level_size.IsSet()) {
             auto const size{grid.level_size.GetValue()};
             native_grid.level_size = ::ml::Vector3d{size.X, size.Y, size.Z};
@@ -83,7 +101,7 @@ auto to_native(ml::FLevelDefinition const& definition) -> ::ioj::levels::LevelDe
     }
     if (definition.mission.IsSet()) {
         auto const& mission{definition.mission.GetValue()};
-        ::ioj::levels::LevelMissionDefinition native_mission{
+        LevelMissionDefinition native_mission{
             .mode = mission.mode,
             .hero_entity_ids = to_ids<EntityId, ml::FLevelEntityId>(mission.hero_entity_ids),
             .must_survive_entity_ids =
@@ -111,16 +129,43 @@ auto to_native(ml::FLevelDefinition const& definition) -> ::ioj::levels::LevelDe
             .kill_target_increase = event.kill_target_increase,
         });
     }
-    result.teams = to_ids<TeamId, ml::FLevelTeamId>(definition.teams);
+    auto const team_count{definition.teams.Num()};
+    for (int32 index{}; index < team_count; ++index) {
+        auto const name{to_utf8(definition.teams[index].value)};
+        auto const team{try_parse_serialized_team_id(name)};
+        if (team) {
+            result.teams.push_back(*team);
+        } else {
+            errors.emplace_back(name.empty() ? DiagnosticCode::EmptyTeamId
+                                             : DiagnosticCode::UnsupportedTeamId,
+                                std::format("level.teams[{}]", index),
+                                std::format("Unknown team '{}'", name));
+        }
+    }
 
     auto const entities{definition.entities.get_const_view()};
     auto const entity_count{entities.num()};
     result.entities.reserve(entity_count);
     for (int32 index{}; index < entity_count; ++index) {
+        auto const archetype_name{to_utf8(entities.archetypes[index].value)};
+        auto const archetype{try_parse_serialized_entity_archetype(archetype_name)};
+        auto const team_name{to_utf8(entities.teams[index].value)};
+        auto const team{try_parse_serialized_team_id(team_name)};
+        if (!archetype) {
+            errors.emplace_back(archetype_name.empty() ? DiagnosticCode::EmptyArchetypeId
+                                                       : DiagnosticCode::UnsupportedArchetype,
+                                std::format("level.entities[{}].archetype", index),
+                                std::format("Unknown archetype '{}'", archetype_name));
+        }
+        if (!team) {
+            errors.emplace_back(DiagnosticCode::UnknownTeamReference,
+                                std::format("level.entities[{}].team", index),
+                                std::format("Unknown team '{}'", team_name));
+        }
         result.entities.push_back({
             .id = EntityId{to_utf8(entities.ids[index].value)},
-            .archetype = to_utf8(entities.archetypes[index].value),
-            .team = TeamId{to_utf8(entities.teams[index].value)},
+            .archetype = archetype.value_or(EntityArchetype::PlayerFighter),
+            .team = team.value_or(TeamId::White),
             .position = {entities.positions.xs[index],
                          entities.positions.ys[index],
                          entities.positions.zs[index]},
@@ -130,10 +175,23 @@ auto to_native(ml::FLevelDefinition const& definition) -> ::ioj::levels::LevelDe
             .spawn_time_seconds = entities.spawn_times_seconds[index],
         });
     }
+    auto validation{validate_level(result)};
+    if (!validation) {
+        for (auto& diagnostic : validation.error()) {
+            if (std::ranges::none_of(errors, [&](Diagnostic const& error) {
+                    return error.node_path == diagnostic.node_path;
+                })) {
+                errors.push_back(std::move(diagnostic));
+            }
+        }
+    }
+    if (!errors.empty()) {
+        return std::unexpected{std::move(errors)};
+    }
     return result;
 }
 
-auto to_unreal(::ioj::levels::LevelDefinition definition) -> ml::FLevelDefinition {
+auto to_unreal(LevelDefinition definition) -> ml::FLevelDefinition {
     ml::FLevelBuilder builder;
     ml::FLevelMetadata metadata{
         .id = ml::FLevelId{to_fname(definition.metadata.id.value)},
@@ -168,7 +226,7 @@ auto to_unreal(::ioj::levels::LevelDefinition definition) -> ml::FLevelDefinitio
                                           .level_id = ml::FLevelId{to_fname(level_id.value)}}});
     }
     for (auto const& team : definition.teams) {
-        builder.add_team(ml::FLevelTeamId{to_fname(team.value)});
+        builder.add_team(ml::FLevelTeamId{to_fname(to_serialized_string(team))});
     }
     if (!definition.player_entity_id.empty()) {
         builder.set_player_entity(ml::FLevelEntityId{to_fname(definition.player_entity_id.value)});
@@ -216,8 +274,8 @@ auto to_unreal(::ioj::levels::LevelDefinition definition) -> ml::FLevelDefinitio
     for (auto const& source : definition.entities) {
         builder.add_entity(ml::FEntitySpawnDefinition{
             .id = ml::FLevelEntityId{to_fname(source.id.value)},
-            .archetype = ml::FEntityArchetypeId{to_fname(source.archetype)},
-            .team = ml::FLevelTeamId{to_fname(source.team.value)},
+            .archetype = ml::FEntityArchetypeId{to_fname(to_serialized_string(source.archetype))},
+            .team = ml::FLevelTeamId{to_fname(to_serialized_string(source.team))},
             .position = FVector{source.position.x, source.position.y, source.position.z},
             .rotation = FRotator{source.rotation.pitch, source.rotation.yaw, source.rotation.roll},
             .spawn_time_seconds = source.spawn_time_seconds,

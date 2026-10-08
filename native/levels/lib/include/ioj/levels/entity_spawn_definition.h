@@ -1,6 +1,8 @@
 #pragma once
 
+#include <ioj/levels/entity_archetype.h>
 #include <ioj/levels/identifiers.h>
+#include <ioj/levels/team_id.h>
 #include <ioj/rotator3d.h>
 
 #include <sandbox/core/vector3d.h>
@@ -10,7 +12,7 @@
 namespace ioj::levels {
 struct EntitySpawnDefinition {
     EntityId id{};
-    std::string archetype{};
+    EntityArchetype archetype{EntityArchetype::PlayerFighter};
     TeamId team{};
     ml::Vector3d position{};
     ioj::Rotator3d rotation{};

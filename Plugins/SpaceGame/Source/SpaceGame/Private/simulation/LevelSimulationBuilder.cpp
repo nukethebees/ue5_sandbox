@@ -148,12 +148,12 @@ auto proxy_fits_collision_grid(AActor const& actor,
 }
 
 void append_fighter_spawn_slot_errors(
-    std::vector<::ioj::sim::levels::FighterSpawnSlotValidationError> const& validation_errors,
+    std::vector<::ioj::levels::FighterSpawnSlotValidationError> const& validation_errors,
     ::ioj::sim::CapitalShipSimConfig const& capital_config,
     FLevelStartErrors& errors) {
     for (auto const& error : validation_errors) {
         switch (error.kind) {
-            case ::ioj::sim::levels::FighterSpawnSlotValidationErrorKind::IntersectsCapital: {
+            case ::ioj::levels::FighterSpawnSlotValidationErrorKind::IntersectsCapital: {
                 auto const location{::ioj::sim::to_float(
                     capital_config.fighter_spawn_slots_relative_transforms[error.first_slot]
                         .location)};
@@ -164,7 +164,7 @@ void append_fighter_spawn_slot_errors(
                     *ml::to_unreal(location).ToString()));
                 break;
             }
-            case ::ioj::sim::levels::FighterSpawnSlotValidationErrorKind::SlotsOverlap:
+            case ::ioj::levels::FighterSpawnSlotValidationErrorKind::SlotsOverlap:
                 errors.add(FString::Printf(
                     TEXT("fighter spawn slots %d and %d have overlapping collision bounds plus "
                          "%.1f cm clearance"),
@@ -180,10 +180,10 @@ void validate_fighter_spawn_slots(::ioj::sim::CapitalShipSimConfig const& capita
                                   ::ioj::sim::FighterSimConfig const& fighter_config,
                                   ::ioj::sim::collision::EntityAABBs const& entity_bounds,
                                   FLevelStartErrors& errors) {
-    append_fighter_spawn_slot_errors(::ioj::sim::levels::validate_fighter_spawn_slots(
-                                         capital_config, fighter_config, entity_bounds),
-                                     capital_config,
-                                     errors);
+    append_fighter_spawn_slot_errors(
+        ::ioj::levels::validate_fighter_spawn_slots(capital_config, fighter_config, entity_bounds),
+        capital_config,
+        errors);
 }
 }
 

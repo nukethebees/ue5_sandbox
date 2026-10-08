@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace ioj::sim::levels {
+namespace ioj::levels {
 enum class FighterSpawnSlotValidationErrorKind : std::uint8_t {
     IntersectsCapital,
     SlotsOverlap,
@@ -19,8 +19,8 @@ struct FighterSpawnSlotValidationError {
     float clearance{};
 };
 
-[[nodiscard]] auto validate_fighter_spawn_slots(CapitalShipSimConfig const& capital_config,
-                                                FighterSimConfig const& fighter_config,
-                                                collision::EntityAABBs const& entity_bounds)
+[[nodiscard]] auto validate_fighter_spawn_slots(sim::CapitalShipSimConfig const& capital_config,
+                                                sim::FighterSimConfig const& fighter_config,
+                                                sim::collision::EntityAABBs const& entity_bounds)
     -> std::vector<FighterSpawnSlotValidationError>;
-} // namespace ioj::sim::levels
+} // namespace ioj::levels
