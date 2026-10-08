@@ -6,7 +6,6 @@
   :unlock (list
     (level-completed 'strike-carrier-intercept))
 
-
   :player 'player
 
   :mission (mission
@@ -20,28 +19,34 @@
     (mission-event :at 60
       :add-required-kills '(red-capital-2)))
 
-  :entities (list
-    (entity :id 'player :archetype 'player-fighter :team 'blue
-      :position '(0 -95000 8000)
-      :rotation '(0 90 0))
+  :entities (append
+    (list
+      (entity :id 'player :archetype 'player-fighter :team 'blue
+        :position '(0 -95000 8000)
+        :rotation '(0 90 0)))
 
-    (entity :id 'blue-capital-0 :archetype 'capital-ship :team 'blue
-      :position '(-30000 -50000 -4000)
-      :rotation '(0 90 0))
+    (map
+      (lambda (index position)
+        (entity :archetype 'capital-ship :team 'blue
+          :id (string->symbol (format #f "blue-capital-~A" index))
+          :position position
+          :rotation '(0 90 0)))
+      '(0 1)
+      '((-30000 -50000 -4000)
+        (30000 -50000 4000)))
 
-    (entity :id 'blue-capital-1 :archetype 'capital-ship :team 'blue
-      :position '(30000 -50000 4000)
-      :rotation '(0 90 0))
+    (map
+      (lambda (index position)
+        (entity :archetype 'capital-ship :team 'red
+          :id (string->symbol (format #f "red-capital-~A" index))
+          :position position
+          :rotation '(0 -90 0)))
+      '(0 1)
+      '((-30000 70000 4000)
+        (30000 70000 -4000)))
 
-    (entity :id 'red-capital-0 :archetype 'capital-ship :team 'red
-      :position '(-30000 70000 4000)
-      :rotation '(0 -90 0))
-
-    (entity :id 'red-capital-1 :archetype 'capital-ship :team 'red
-      :position '(30000 70000 -4000)
-      :rotation '(0 -90 0))
-
-    (entity :id 'red-capital-2 :archetype 'capital-ship :team 'red
-      :position '(0 150000 8000)
-      :rotation '(0 -90 0)
-      :spawn-at 60)))
+    (list
+      (entity :id 'red-capital-2 :archetype 'capital-ship :team 'red
+        :position '(0 150000 8000)
+        :rotation '(0 -90 0)
+        :spawn-at 60))))

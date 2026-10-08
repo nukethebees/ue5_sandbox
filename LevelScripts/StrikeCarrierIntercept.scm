@@ -6,7 +6,6 @@
   :unlock (list
     (level-completed 'strike-layered-battery))
 
-
   :player 'player
 
   :mission (mission
@@ -16,23 +15,26 @@
     :must-survive '(player)
     :required-kills '(red-capital))
 
-  :entities (list
-    (entity :id 'player :archetype 'player-fighter :team 'blue
-      :position '(0 -85000 6000)
-      :rotation '(0 90 0))
+  :entities (append
+    (list
+      (entity :id 'player :archetype 'player-fighter :team 'blue
+        :position '(0 -85000 6000)
+        :rotation '(0 90 0)))
 
-    (entity :id 'blue-capital :archetype 'capital-ship :team 'blue
-      :position '(0 -40000 0)
-      :rotation '(0 90 0))
+    (list
+      (entity :id 'blue-capital :archetype 'capital-ship :team 'blue
+        :position '(0 -40000 0)
+        :rotation '(0 90 0)))
 
-    (entity :id 'red-capital :archetype 'capital-ship :team 'red
-      :position '(0 60000 0)
-      :rotation '(0 -90 0))
+    (list
+      (entity :id 'red-capital :archetype 'capital-ship :team 'red
+        :position '(0 60000 0)
+        :rotation '(0 -90 0)))
 
-    (entity :id 'red-turret-0 :archetype 'static-turret :team 'red
-      :position '(-7000 48000 -2500)
-      :rotation '(0 -90 0))
-
-    (entity :id 'red-turret-1 :archetype 'static-turret :team 'red
-      :position '(7000 48000 2500)
-      :rotation '(0 -90 0))))
+    (map
+      (lambda (position)
+        (entity :archetype 'static-turret :team 'red
+          :position position
+          :rotation '(0 -90 0)))
+      '((-7000 48000 -2500)
+        (7000 48000 2500)))))

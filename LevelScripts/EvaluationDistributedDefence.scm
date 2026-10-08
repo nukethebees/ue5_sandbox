@@ -6,7 +6,6 @@
   :unlock (list
     (level-completed 'evaluation-break-the-spear))
 
-
   :player 'player
 
   :mission (mission
@@ -32,7 +31,7 @@
       :position '(110000 -20000 0)
       :rotation '(0 90 0))
 
-    (entity :id 'blue-capital-0 :archetype 'capital-ship :team 'blue
+    (entity :archetype 'capital-ship :team 'blue
       :position '(0 -55000 -6000)
       :rotation '(0 90 0))
 

@@ -193,6 +193,109 @@ TEST(NativeLevelAuthoringReader, ParsesClosedVocabulariesWithoutTeamDeclarations
     EXPECT_EQ(result->entities.front().team, Team::Blue);
     EXPECT_EQ(result->entities.front().archetype, EntityArchetype::PlayerFighter);
 }
+TEST(NativeLevelAuthoringReader, GeneratesLevelLocalIdsAndDefaultsRotations) {
+    auto const source{R"((level :id 'defaults :title "Defaults" :player 'player
+      :entities (list
+        (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0))
+        (entity :archetype 'capital-ship :team 'red :position '(1 2 3))
+        (entity :id 'red-capital-ship-0 :archetype 'capital-ship :team 'red :position '(4 5 6))
+        (entity :archetype 'static-turret :team 'red :position '(7 8 9))
+        (entity :archetype 'capital-ship :team 'red :position '(10 11 12) :spawn-at 3)
+        (entity :archetype 'static-turret :team 'blue :position '(13 14 15)))))"};
+    std::vector<EntityId> const expected{EntityId{"player"},
+                                         EntityId{"red-capital-ship-1"},
+                                         EntityId{"red-capital-ship-0"},
+                                         EntityId{"red-static-turret-0"},
+                                         EntityId{"red-capital-ship-2"},
+                                         EntityId{"blue-static-turret-0"}};
+    for (int iteration{}; iteration < 2; ++iteration) {
+        auto const result{DefinitionReader{}.read_level_source(source)};
+        ASSERT_TRUE(result) << format_diagnostics(result.error());
+        ASSERT_EQ(result->entities.size(), expected.size());
+        auto const count{expected.size()};
+        for (std::size_t index{}; index < count; ++index) {
+            auto const& entity{result->entities[index]};
+            EXPECT_EQ(entity.id, expected[index]);
+            EXPECT_DOUBLE_EQ(entity.rotation.pitch, 0.0);
+            EXPECT_DOUBLE_EQ(entity.rotation.yaw, 0.0);
+            EXPECT_DOUBLE_EQ(entity.rotation.roll, 0.0);
+        }
+
+        auto const emitted{emit_editor_level_source(*result)};
+        ASSERT_TRUE(emitted) << format_diagnostics(emitted.error());
+        EXPECT_FALSE(emitted->contains(":rotation"));
+        EXPECT_TRUE(emitted->contains(":id 'red-capital-ship-1"));
+        auto const round_trip{DefinitionReader{}.read_level_source(*emitted)};
+        ASSERT_TRUE(round_trip) << format_diagnostics(round_trip.error());
+        for (auto const& original : result->entities) {
+            auto const found{
+                std::ranges::find(round_trip->entities, original.id, &EntitySpawnDefinition::id)};
+            ASSERT_NE(found, round_trip->entities.end());
+            EXPECT_DOUBLE_EQ(found->position.x, original.position.x);
+            EXPECT_DOUBLE_EQ(found->spawn_time_seconds, original.spawn_time_seconds);
+        }
+    }
+}
+TEST(NativeLevelAuthoringReader, OptionalPropertiesStillRejectMalformedValuesAndDuplicateIds) {
+    for (auto const properties : {":id #f",
+                                  ":id 17",
+                                  ":id (string->symbol \"\")",
+                                  ":id 'player",
+                                  ":rotation #f",
+                                  ":rotation '(0 0)",
+                                  ":rotation '(0 bad 0)",
+                                  ":rotation '(0 +inf.0 0)"}) {
+        auto const source{std::format(R"((level :id 'invalid :title "Invalid" :player 'player
+          :entities (list
+            (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0))
+            (entity :archetype 'static-turret :team 'red :position '(1 2 3) {}))))",
+                                      properties)};
+        EXPECT_FALSE(DefinitionReader{}.read_level_source(source)) << properties;
+    }
+}
+TEST(NativeLevelAuthoringReader, RestartsGeneratedIdsForEachDefinitionInOneRoot) {
+    TemporaryLevelDirectory directory;
+    auto const& root{directory.path()};
+    for (auto const name : {"first", "second"}) {
+        std::ofstream{root / std::format("{}.scm", name)} << std::format(R"(
+          (level :id '{} :title "Generated" :player 'player
+            :entities (list
+              (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0))
+              (entity :archetype 'static-turret :team 'red :position '(1 2 3)))))",
+                                                                         name);
+    }
+    std::ofstream{root / "catalog.scm"} << R"((catalog :levels '("first.scm" "second.scm")))";
+    auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
+    ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
+    ASSERT_EQ(catalog->levels.size(), 2u);
+    for (auto const& entry : catalog->levels) {
+        ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
+        ASSERT_EQ(entry.definition->entities.size(), 2u);
+        EXPECT_EQ(entry.definition->entities.back().id, EntityId{"red-static-turret-0"});
+    }
+}
+TEST(NativeLevelAuthoringReader, MapsPositionsAndConstructsExplicitIdsInScheme) {
+    auto const result{
+        DefinitionReader{}.read_level_source(R"((level :id 'formation :title "Formation"
+      :camera (camera :look-at '(flagship-0 flagship-1) :distance 1000 :offset-direction '(-1 0 0))
+      :entities (append
+        (map (lambda (index)
+               (entity :id (string->symbol (format #f "flagship-~A" index))
+                 :archetype 'capital-ship :team 'blue :position (list (* index 100) 0 0)))
+             '(0 1))
+        (map (lambda (position)
+               (entity :archetype 'static-turret :team 'red :position position))
+             '((200 0 0) (300 10 20))))))")};
+    ASSERT_TRUE(result) << format_diagnostics(result.error());
+    ASSERT_EQ(result->entities.size(), 4u);
+    EXPECT_EQ(result->entities[0].id, EntityId{"flagship-0"});
+    EXPECT_EQ(result->entities[1].id, EntityId{"flagship-1"});
+    EXPECT_DOUBLE_EQ(result->entities[1].position.x, 100.0);
+    EXPECT_EQ(result->entities[2].id, EntityId{"red-static-turret-0"});
+    EXPECT_EQ(result->entities[3].id, EntityId{"red-static-turret-1"});
+    EXPECT_DOUBLE_EQ(result->entities[3].position.y, 10.0);
+    EXPECT_DOUBLE_EQ(result->entities[3].position.z, 20.0);
+}
 TEST(NativeLevelAuthoringReader, DerivesDistinctTeamsIncludingScheduledSpawns) {
     auto definition{make_level("teams")};
     definition.entities.emplace_back(

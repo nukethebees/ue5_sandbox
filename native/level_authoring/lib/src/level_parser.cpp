@@ -4,6 +4,8 @@
 
 #include <array>
 #include <format>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace ioj::levels::authoring {
 namespace {
@@ -151,6 +153,11 @@ auto entity(AstParser& parser, s7::NodeIndex const node, std::string const& node
         switch (field.property) {
             case Property::Id:
                 result.id = EntityId{parser.symbol(field.value, field.node_path)};
+                if (result.id.empty()) {
+                    parser.error(DiagnosticCode::InvalidSymbol,
+                                 field.node_path,
+                                 "Entity id must not be empty");
+                }
                 break;
             case Property::Archetype:
                 result.archetype = parser.archetype(field.value, field.node_path);
@@ -174,14 +181,34 @@ auto entity(AstParser& parser, s7::NodeIndex const node, std::string const& node
                 break;
         }
     }
-    for (auto const property : {Property::Id,
-                                Property::Archetype,
-                                Property::Team,
-                                Property::Position,
-                                Property::Rotation}) {
+    for (auto const property : {Property::Archetype, Property::Team, Property::Position}) {
         parser.require(fields, property, node_path);
     }
     return result;
+}
+
+void assign_generated_entity_ids(std::vector<EntitySpawnDefinition>& entities) {
+    std::unordered_set<EntityId> used_ids;
+    for (auto const& entity : entities) {
+        if (!entity.id.empty()) {
+            used_ids.insert(entity.id);
+        }
+    }
+
+    std::unordered_map<std::string, std::size_t> next_indices;
+    for (auto& entity : entities) {
+        if (!entity.id.empty()) {
+            continue;
+        }
+
+        auto const prefix{std::format(
+            "{}-{}", to_serialized_string(entity.team), to_serialized_string(entity.archetype))};
+        auto& index{next_indices[prefix]};
+        // Reserve explicit IDs before generating names, including IDs on later entities.
+        do {
+            entity.id = EntityId{std::format("{}-{}", prefix, index++)};
+        } while (!used_ids.insert(entity.id).second);
+    }
 }
 
 auto unlocks(AstParser& parser,
@@ -273,6 +300,7 @@ auto parse_level(s7::Ast const& ast) -> LevelDefinitionReadResult {
     if (!parser.errors().empty()) {
         return std::unexpected{parser.take_errors()};
     }
+    assign_generated_entity_ids(result.entities);
     return result;
 }
 }

@@ -73,6 +73,34 @@ auto contains_error(::ioj::levels::authoring::FLevelDefinitionReadResult const& 
 
 TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 {
+    TEST_METHOD(DefaultsAnonymousProceduralEntities)
+    {
+        ::ioj::levels::authoring::FDefinitionReader reader;
+        auto const result{reader.read_level_source(LR"(
+          (level :id 'anonymous :title "Anonymous" :player 'player
+            :entities (cons
+              (entity :id 'player :archetype 'player-fighter :team 'blue :position '(0 0 0))
+              (map (lambda (position)
+                     (entity :archetype 'static-turret :team 'red :position position))
+                   '((1000 0 0) (2000 0 0))))))")};
+        if (!TestRunner->TestTrue(TEXT("Procedural script loads"), result.has_value())) {
+            TestRunner->AddError(ml::to_fstring(::ioj::levels::format_diagnostics(result.error())));
+            return;
+        }
+
+        auto const& entities{result->entities};
+        TestRunner->TestEqual(TEXT("All entities are retained"), entities.num(), 3);
+        TestRunner->TestTrue(TEXT("First generated id reaches Unreal"),
+                             entities.ids[1] == ml::FLevelEntityId{TEXT("red-static-turret-0")});
+        TestRunner->TestTrue(TEXT("Second generated id reaches Unreal"),
+                             entities.ids[2] == ml::FLevelEntityId{TEXT("red-static-turret-1")});
+        TestRunner->TestEqual(
+            TEXT("Default pitch reaches Unreal"), entities.rotations.pitches[1], 0.0);
+        TestRunner->TestEqual(TEXT("Default yaw reaches Unreal"), entities.rotations.yaws[1], 0.0);
+        TestRunner->TestEqual(
+            TEXT("Default roll reaches Unreal"), entities.rotations.rolls[1], 0.0);
+    }
+
     TEST_METHOD(DecodesScheduledSpawnsAndMissionObjectives)
     {
         ::ioj::levels::authoring::FDefinitionReader reader;

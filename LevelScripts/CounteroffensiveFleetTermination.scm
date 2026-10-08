@@ -6,7 +6,6 @@
   :unlock (list
     (level-completed 'counteroffensive-three-axes))
 
-
   :player 'player
 
   :mission (mission
@@ -23,49 +22,44 @@
     (mission-event :at 150
       :add-required-kills '(red-capital-5)))
 
-  :entities (list
-    (entity :id 'player :archetype 'player-fighter :team 'blue
-      :position '(0 -95000 8000)
-      :rotation '(0 90 0))
+  :entities (append
+    (list
+      (entity :id 'player :archetype 'player-fighter :team 'blue
+        :position '(0 -95000 8000)
+        :rotation '(0 90 0)))
 
-    (entity :id 'blue-capital-0 :archetype 'capital-ship :team 'blue
-      :position '(-60000 -55000 -6000)
-      :rotation '(0 90 0))
+    (map
+      (lambda (index position)
+        (entity :archetype 'capital-ship :team 'blue
+          :id (string->symbol (format #f "blue-capital-~A" index))
+          :position position
+          :rotation '(0 90 0)))
+      '(0 1 2 3)
+      '((-60000 -55000 -6000)
+        (-20000 -55000 2000)
+        (20000 -55000 -2000)
+        (60000 -55000 6000)))
 
-    (entity :id 'blue-capital-1 :archetype 'capital-ship :team 'blue
-      :position '(-20000 -55000 2000)
-      :rotation '(0 90 0))
+    (map
+      (lambda (index position)
+        (entity :archetype 'capital-ship :team 'red
+          :id (string->symbol (format #f "red-capital-~A" index))
+          :position position
+          :rotation '(0 -90 0)))
+      '(0 1 2 3)
+      '((-75000 75000 8000)
+        (-25000 75000 -3000)
+        (25000 75000 3000)
+        (75000 75000 -8000)))
 
-    (entity :id 'blue-capital-2 :archetype 'capital-ship :team 'blue
-      :position '(20000 -55000 -2000)
-      :rotation '(0 90 0))
+    (list
+      (entity :id 'red-capital-4 :archetype 'capital-ship :team 'red
+        :position '(-35000 160000 8000)
+        :rotation '(0 -90 0)
+        :spawn-at 75))
 
-    (entity :id 'blue-capital-3 :archetype 'capital-ship :team 'blue
-      :position '(60000 -55000 6000)
-      :rotation '(0 90 0))
-
-    (entity :id 'red-capital-0 :archetype 'capital-ship :team 'red
-      :position '(-75000 75000 8000)
-      :rotation '(0 -90 0))
-
-    (entity :id 'red-capital-1 :archetype 'capital-ship :team 'red
-      :position '(-25000 75000 -3000)
-      :rotation '(0 -90 0))
-
-    (entity :id 'red-capital-2 :archetype 'capital-ship :team 'red
-      :position '(25000 75000 3000)
-      :rotation '(0 -90 0))
-
-    (entity :id 'red-capital-3 :archetype 'capital-ship :team 'red
-      :position '(75000 75000 -8000)
-      :rotation '(0 -90 0))
-
-    (entity :id 'red-capital-4 :archetype 'capital-ship :team 'red
-      :position '(-35000 160000 8000)
-      :rotation '(0 -90 0)
-      :spawn-at 75)
-
-    (entity :id 'red-capital-5 :archetype 'capital-ship :team 'red
-      :position '(35000 180000 -8000)
-      :rotation '(0 -90 0)
-      :spawn-at 150)))
+    (list
+      (entity :id 'red-capital-5 :archetype 'capital-ship :team 'red
+        :position '(35000 180000 -8000)
+        :rotation '(0 -90 0)
+        :spawn-at 150))))

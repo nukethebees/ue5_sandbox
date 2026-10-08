@@ -3,7 +3,6 @@
   :title "Dev: Three-Second Failure"
   :description "Development-only mission that guarantees a timeout after three seconds."
 
-
   :player 'player
 
   :mission (mission
@@ -15,5 +14,4 @@
 
   :entities (list
     (entity :id 'player :archetype 'player-fighter :team 'blue
-      :position '(0 0 0)
-      :rotation '(0 0 0))))
+      :position '(0 0 0))))

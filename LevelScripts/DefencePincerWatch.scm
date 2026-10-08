@@ -6,7 +6,6 @@
   :unlock (list
     (level-completed 'defence-screen-duty))
 
-
   :player 'player
 
   :mission (mission
@@ -14,27 +13,29 @@
     :time-limit 90
     :must-survive '(player blue-capital))
 
-  :entities (list
-    (entity :id 'player :archetype 'player-fighter :team 'blue
-      :position '(0 -95000 8000)
-      :rotation '(0 90 0))
+  :entities (append
+    (list
+      (entity :id 'player :archetype 'player-fighter :team 'blue
+        :position '(0 -95000 8000)
+        :rotation '(0 90 0)))
 
-    (entity :id 'blue-capital :archetype 'capital-ship :team 'blue
-      :position '(0 -50000 0)
-      :rotation '(0 90 0))
+    (list
+      (entity :id 'blue-capital :archetype 'capital-ship :team 'blue
+        :position '(0 -50000 0)
+        :rotation '(0 90 0)))
 
-    (entity :id 'blue-picket-0 :archetype 'static-turret :team 'blue
-      :position '(-3000 -40000 -2000)
-      :rotation '(0 90 0))
+    (map
+      (lambda (position)
+        (entity :archetype 'static-turret :team 'blue
+          :position position
+          :rotation '(0 90 0)))
+      '((-3000 -40000 -2000)
+        (3000 -40000 2000)))
 
-    (entity :id 'blue-picket-1 :archetype 'static-turret :team 'blue
-      :position '(3000 -40000 2000)
-      :rotation '(0 90 0))
-
-    (entity :id 'red-capital-0 :archetype 'capital-ship :team 'red
-      :position '(-40000 70000 5000)
-      :rotation '(0 -90 0))
-
-    (entity :id 'red-capital-1 :archetype 'capital-ship :team 'red
-      :position '(40000 70000 -5000)
-      :rotation '(0 -90 0))))
+    (map
+      (lambda (position)
+        (entity :archetype 'capital-ship :team 'red
+          :position position
+          :rotation '(0 -90 0)))
+      '((-40000 70000 5000)
+        (40000 70000 -5000)))))

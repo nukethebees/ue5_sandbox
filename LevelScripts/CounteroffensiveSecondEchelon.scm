@@ -6,7 +6,6 @@
   :unlock (list
     (level-completed 'counteroffensive-decapitation))
 
-
   :player 'player
 
   :mission (mission
@@ -21,36 +20,30 @@
     (mission-event :at 60
       :add-required-kills '(red-capital-3)))
 
-  :entities (list
-    (entity :id 'player :archetype 'player-fighter :team 'blue
-      :position '(0 -95000 8000)
-      :rotation '(0 90 0))
+  :entities (append
+    (list
+      (entity :id 'player :archetype 'player-fighter :team 'blue
+        :position '(0 -95000 8000)
+        :rotation '(0 90 0)))
 
-    (entity :id 'blue-capital-0 :archetype 'capital-ship :team 'blue
-      :position '(-40000 -55000 -5000)
-      :rotation '(0 90 0))
+    (map
+      (lambda (index)
+        (entity :archetype 'capital-ship :team 'blue
+          :id (string->symbol (format #f "blue-capital-~A" index))
+          :position (list (+ -40000 (* index 40000)) -55000 (+ -5000 (* index 5000)))
+          :rotation '(0 90 0)))
+      '(0 1 2))
 
-    (entity :id 'blue-capital-1 :archetype 'capital-ship :team 'blue
-      :position '(0 -55000 0)
-      :rotation '(0 90 0))
+    (map
+      (lambda (index)
+        (entity :archetype 'capital-ship :team 'red
+          :id (string->symbol (format #f "red-capital-~A" index))
+          :position (list (+ -45000 (* index 45000)) 70000 (+ 6000 (* index -6000)))
+          :rotation '(0 -90 0)))
+      '(0 1 2))
 
-    (entity :id 'blue-capital-2 :archetype 'capital-ship :team 'blue
-      :position '(40000 -55000 5000)
-      :rotation '(0 90 0))
-
-    (entity :id 'red-capital-0 :archetype 'capital-ship :team 'red
-      :position '(-45000 70000 6000)
-      :rotation '(0 -90 0))
-
-    (entity :id 'red-capital-1 :archetype 'capital-ship :team 'red
-      :position '(0 70000 0)
-      :rotation '(0 -90 0))
-
-    (entity :id 'red-capital-2 :archetype 'capital-ship :team 'red
-      :position '(45000 70000 -6000)
-      :rotation '(0 -90 0))
-
-    (entity :id 'red-capital-3 :archetype 'capital-ship :team 'red
-      :position '(0 150000 8000)
-      :rotation '(0 -90 0)
-      :spawn-at 60)))
+    (list
+      (entity :id 'red-capital-3 :archetype 'capital-ship :team 'red
+        :position '(0 150000 8000)
+        :rotation '(0 -90 0)
+        :spawn-at 60))))

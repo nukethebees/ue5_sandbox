@@ -15,6 +15,30 @@ Records use keyword properties, symbols for identifiers, and strings for text:
 ```
 
 Teams are derived from entity assignments, including scheduled spawns; no team list is declared.
+Entity `:rotation` is optional and defaults to `(0 0 0)`. Entity `:id` is also optional:
+the parser assigns `<team>-<archetype>-<number>`, such as `red-static-turret-0`.
+Numbering starts at zero for each team/archetype within each level, follows entity order,
+and skips all explicit IDs, including those on later entities. Use explicit IDs for units
+referenced by the player, camera, or mission: generated names can change when a group is edited.
+
+Use `map` to share entity properties across a formation:
+
+```scheme
+(map (lambda (position)
+       (entity :archetype 'static-turret :team 'red :position position))
+     '((-12000 10000 -2500)
+       (-8000 6000 2500)
+       (-4000 10000 2500)))
+```
+
+For evenly spaced formations, map over indices and calculate coordinates with expressions
+such as `(* index 4000)`. Explicit IDs can also be constructed with
+`(string->symbol (format #f "flagship-~A" index))`. Combine groups with `append`, or use
+`cons` to prepend a single player entity. Keep level-specific helpers inside `let`;
+put helpers shared by several levels in `Libraries/`.
+
+Editor saves expand procedural definitions into explicit entity records and preserve every
+resolved ID. They omit zero rotations; they do not preserve the original loops.
 
 Quote literal lists such as vectors and IDs. Use `list` when members must be evaluated,
 such as entity constructors or computed coordinates. Each keyword takes one value;

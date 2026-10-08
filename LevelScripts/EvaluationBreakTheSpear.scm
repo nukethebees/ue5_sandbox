@@ -6,7 +6,6 @@
   :unlock (list
     (level-completed 'counteroffensive-fleet-termination))
 
-
   :player 'player
 
   :mission (mission
@@ -16,40 +15,45 @@
     :must-survive '(player blue-capital-0 blue-capital-1)
     :required-kills '(red-flagship))
 
-  :entities (list
-    (entity :id 'player :archetype 'player-fighter :team 'blue
-      :position '(0 -95000 8000)
-      :rotation '(0 90 0))
+  :entities (append
+    (list
+      (entity :id 'player :archetype 'player-fighter :team 'blue
+        :position '(0 -95000 8000)
+        :rotation '(0 90 0)))
 
-    (entity :id 'blue-capital-0 :archetype 'capital-ship :team 'blue
-      :position '(-35000 -50000 -4000)
-      :rotation '(0 90 0))
+    (map
+      (lambda (index position)
+        (entity :archetype 'capital-ship :team 'blue
+          :id (string->symbol (format #f "blue-capital-~A" index))
+          :position position
+          :rotation '(0 90 0)))
+      '(0 1)
+      '((-35000 -50000 -4000)
+        (35000 -50000 4000)))
 
-    (entity :id 'blue-capital-1 :archetype 'capital-ship :team 'blue
-      :position '(35000 -50000 4000)
-      :rotation '(0 90 0))
+    (map
+      (lambda (position)
+        (entity :archetype 'static-turret :team 'blue
+          :position position
+          :rotation '(0 90 0)))
+      '((-85000 -20000 0)
+        (85000 -20000 0)))
 
-    (entity :id 'blue-turret-0 :archetype 'static-turret :team 'blue
-      :position '(-85000 -20000 0)
-      :rotation '(0 90 0))
+    (list
+      (entity :id 'red-flagship :archetype 'capital-ship :team 'red
+        :position '(0 115000 5000)
+        :rotation '(0 -90 0)))
 
-    (entity :id 'blue-turret-1 :archetype 'static-turret :team 'blue
-      :position '(85000 -20000 0)
-      :rotation '(0 90 0))
+    (map
+      (lambda (position)
+        (entity :archetype 'capital-ship :team 'red
+          :position position
+          :rotation '(0 -90 0)))
+      '((-70000 95000 -5000)
+        (70000 95000 -5000)))
 
-    (entity :id 'red-flagship :archetype 'capital-ship :team 'red
-      :position '(0 115000 5000)
-      :rotation '(0 -90 0))
-
-    (entity :id 'red-capital-0 :archetype 'capital-ship :team 'red
-      :position '(-70000 95000 -5000)
-      :rotation '(0 -90 0))
-
-    (entity :id 'red-capital-1 :archetype 'capital-ship :team 'red
-      :position '(70000 95000 -5000)
-      :rotation '(0 -90 0))
-
-    (entity :id 'red-capital-2 :archetype 'capital-ship :team 'red
-      :position '(0 165000 -5000)
-      :rotation '(0 -90 0)
-      :spawn-at 75)))
+    (list
+      (entity :archetype 'capital-ship :team 'red
+        :position '(0 165000 -5000)
+        :rotation '(0 -90 0)
+        :spawn-at 75))))

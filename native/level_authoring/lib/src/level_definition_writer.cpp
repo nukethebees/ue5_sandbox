@@ -233,8 +233,11 @@ auto emit_editor_level_source(LevelDefinition const& definition)
         symbol(out, to_serialized_string(entity.team));
         property(out, Property::Position);
         vector(out, entity.position.x, entity.position.y, entity.position.z);
-        property(out, Property::Rotation);
-        vector(out, entity.rotation.pitch, entity.rotation.yaw, entity.rotation.roll);
+        if (entity.rotation.pitch != 0.0 || entity.rotation.yaw != 0.0 ||
+            entity.rotation.roll != 0.0) {
+            property(out, Property::Rotation);
+            vector(out, entity.rotation.pitch, entity.rotation.yaw, entity.rotation.roll);
+        }
         if (entity.spawn_time_seconds != 0.0) {
             property(out, Property::SpawnAt);
             out.token(editor_number(entity.spawn_time_seconds));

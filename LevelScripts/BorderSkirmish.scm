@@ -3,7 +3,6 @@
   :title "Border Skirmish"
   :description "A two-team encounter demonstrating scripted level construction."
 
-
   :player 'player
 
   :mission (mission
@@ -18,8 +17,7 @@
       :rotation '(0 90 0))
 
     (entity :id 'blue-capital :archetype 'capital-ship :team 'blue
-      :position '(-40000 0 0)
-      :rotation '(0 0 0))
+      :position '(-40000 0 0))
 
     (entity :id 'red-capital :archetype 'capital-ship :team 'red
       :position '(40000 0 0)

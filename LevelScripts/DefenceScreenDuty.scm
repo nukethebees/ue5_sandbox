@@ -6,7 +6,6 @@
   :unlock (list
     (level-completed 'strike-reserve-breakthrough))
 
-
   :player 'player
 
   :mission (mission

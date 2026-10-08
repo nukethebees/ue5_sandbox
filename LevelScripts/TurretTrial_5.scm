@@ -6,7 +6,6 @@
   :unlock (list
     (level-completed 'turret-trial-4))
 
-
   :player 'player
 
   :mission (mission
@@ -14,27 +13,18 @@
     :heroes '(player)
     :must-survive '(player))
 
-  :entities (list
+  :entities (cons
     (entity :id 'player :archetype 'player-fighter :team 'blue
       :position '(0 -74000 1000)
       :rotation '(0 90 0))
 
-    (entity :id 'turret-0 :archetype 'static-turret :team 'red
-      :position '(-3000 4000 0)
-      :rotation '(0 -90 0))
-
-    (entity :id 'turret-1 :archetype 'static-turret :team 'red
-      :position '(3000 7000 1500)
-      :rotation '(0 -90 0))
-
-    (entity :id 'turret-2 :archetype 'static-turret :team 'red
-      :position '(-3000 10000 -1500)
-      :rotation '(0 -90 0))
-
-    (entity :id 'turret-3 :archetype 'static-turret :team 'red
-      :position '(3000 13000 1500)
-      :rotation '(0 -90 0))
-
-    (entity :id 'turret-4 :archetype 'static-turret :team 'red
-      :position '(0 16000 -1500)
-      :rotation '(0 -90 0))))
+    (map
+      (lambda (position)
+        (entity :archetype 'static-turret :team 'red
+          :position position
+          :rotation '(0 -90 0)))
+      '((-3000 4000 0)
+        (3000 7000 1500)
+        (-3000 10000 -1500)
+        (3000 13000 1500)
+        (0 16000 -1500)))))
