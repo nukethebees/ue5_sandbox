@@ -61,14 +61,14 @@ static_assert(!std::is_convertible_v<LevelId, CampaignId>);
 static_assert(!std::is_convertible_v<EntityId, TeamId>);
 static_assert(!std::is_convertible_v<std::string, LevelId>);
 
-TEST(NativeLevelAuthoringReader, ReadsFileWithSiblingLibraryDirectory) {
+TEST(NativeLevelAuthoringReader, ReadsFileWithRootRelativeLibrary) {
     TemporaryLevelDirectory directory;
     std::ofstream{directory.path() / "Libraries" / "metadata.scm"}
         << "(define benchmark-title \"Loaded From Library\")";
     auto source{minimal_source()};
     source.replace(source.find("\"Test\""), 6, "benchmark-title");
     auto const path{directory.path() / "level.scm"};
-    std::ofstream{path} << "(load-script \"metadata.scm\")\n" << source;
+    std::ofstream{path} << "(load-script \"Libraries/metadata.scm\")\n" << source;
     auto const result{DefinitionReader{}.read_level_file(path)};
     ASSERT_TRUE(result) << format_diagnostics(result.error());
     EXPECT_EQ(result->metadata.title, "Loaded From Library");
@@ -78,6 +78,78 @@ TEST(NativeLevelAuthoringReader, ReportsMissingFile) {
     ASSERT_FALSE(result);
     EXPECT_EQ(result.error().front().code, DiagnosticCode::FileOpenFailed);
     EXPECT_EQ(result.error().front().source_path, "missing-level.scm");
+}
+TEST(NativeLevelAuthoringReader, RootControlsImportsAndPreservesFailuresAndSourcePaths) {
+    TemporaryLevelDirectory directory;
+    auto const& root{directory.path()};
+    auto source{minimal_source()};
+    source.replace(source.find("\"Test\""), 6, "shared-title");
+    std::ofstream{root / "first.scm"} << "(define shared-title \"Shared\")\n" << source;
+    std::ofstream{root / "second.scm"} << source;
+    std::ofstream{root / "broken.scm"} << "(undefined-function)";
+    std::ofstream{root / "ignored.scm"} << "(error 'ignored \"Must not be loaded\")";
+    std::ofstream{root / "campaign.scm"}
+        << "(campaign :id 'shared :title shared-title :levels '(test))";
+    std::ofstream{root / "catalog.scm"} << R"(
+        (catalog
+          :levels (list "first.scm"
+                        "broken.scm"
+                        "second.scm")
+          :campaigns (list "campaign.scm")))";
+    auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
+    ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
+    ASSERT_EQ(catalog->levels.size(), 3u);
+    ASSERT_EQ(catalog->campaigns.size(), 1u);
+    ASSERT_TRUE(catalog->levels[0].definition);
+    EXPECT_EQ(catalog->levels[0].definition->metadata.title, "Shared");
+    ASSERT_FALSE(catalog->levels[1].definition);
+    EXPECT_EQ(catalog->levels[1].definition.error().front().source_path, root / "broken.scm");
+    ASSERT_TRUE(catalog->levels[2].definition);
+    EXPECT_EQ(catalog->levels[2].definition->metadata.title, "Shared");
+    ASSERT_TRUE(catalog->campaigns[0].definition);
+    EXPECT_EQ(catalog->campaigns[0].definition->title, "Shared");
+
+    std::ofstream{root / "variation.scm"} << "(catalog :levels (list \"second.scm\"))";
+    auto const variation{DefinitionReader{}.read_root_file(root / "variation.scm")};
+    ASSERT_TRUE(variation);
+    ASSERT_FALSE(variation->levels[0].definition);
+    EXPECT_EQ(variation->levels[0].definition.error().front().code,
+              DiagnosticCode::ScriptEvaluationFailed);
+    EXPECT_EQ(catalog->levels[0].definition->metadata.title, "Shared");
+}
+TEST(NativeLevelAuthoringReader, RootLoadsSharedLibrariesOnce) {
+    TemporaryLevelDirectory directory;
+    auto const& root{directory.path()};
+    std::ofstream{root / "Libraries" / "count.scm"}
+        << "(set! library-load-count (+ library-load-count 1))";
+    auto source{minimal_source()};
+    source.replace(source.find("\"Test\""), 6, "(number->string library-load-count)");
+    std::ofstream{root / "level.scm"} << "(load-script \"Libraries/count.scm\")\n" << source;
+    std::ofstream{root / "catalog.scm"} << R"(
+        (define library-load-count 0)
+        (load-script "Libraries/count.scm")
+        (catalog :levels (list "level.scm"
+                               "level.scm")))";
+    auto const catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
+    ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
+    ASSERT_EQ(catalog->levels.size(), 2u);
+    for (auto const& entry : catalog->levels) {
+        ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
+        EXPECT_EQ(entry.definition->metadata.title, "1");
+    }
+}
+TEST(NativeLevelAuthoringReader, RootReportsEvaluationAndGrammarErrors) {
+    TemporaryLevelDirectory directory;
+    auto const root{directory.path() / "catalog.scm"};
+    std::ofstream{root} << "(undefined-root-function)";
+    auto const evaluation{DefinitionReader{}.read_root_file(root)};
+    ASSERT_FALSE(evaluation);
+    EXPECT_EQ(evaluation.error().front().code, DiagnosticCode::ScriptEvaluationFailed);
+    EXPECT_EQ(evaluation.error().front().source_path, root);
+    std::ofstream{root} << "(catalog :levels 42 :unexpected #t)";
+    auto const grammar{DefinitionReader{}.read_root_file(root)};
+    ASSERT_FALSE(grammar);
+    EXPECT_GE(grammar.error().size(), 2u);
 }
 TEST(NativeLevelAuthoringFiles, ReadsEmptyBinaryAndLargeFilesWithExplicitErrors) {
     TemporaryLevelDirectory directory;
@@ -307,25 +379,21 @@ TEST(NativeLevelAuthoringFixtures, ReadsEveryCheckedInLevelAndCampaign) {
     std::filesystem::path const root{IOJ_LEVEL_SCRIPTS};
     std::vector<LevelCatalogEntry> levels;
     std::vector<CampaignCatalogEntry> campaigns;
-    DefinitionReader reader{root / "Libraries"};
-    for (auto const& entry : std::filesystem::recursive_directory_iterator(root)) {
-        if (entry.path().extension() != ".scm" ||
-            entry.path().parent_path().filename() == "Libraries" ||
-            entry.path().parent_path().filename() == "Campaigns") {
-            continue;
-        }
-        auto parsed{reader.read_level_file(entry.path())};
-        ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
-        levels.push_back({levels.size(), entry.path(), std::move(*parsed)});
+    auto catalog{DefinitionReader{}.read_root_file(root / "catalog.scm")};
+    ASSERT_TRUE(catalog) << format_diagnostics(catalog.error());
+    for (auto& entry : catalog->levels) {
+        ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
+        levels.emplace_back(levels.size(), entry.source_path, std::move(*entry.definition));
     }
-    DefinitionReader campaign_reader{root / "Libraries"};
-    for (auto const& entry : std::filesystem::directory_iterator(root / "Campaigns")) {
-        if (entry.path().extension() != ".scm") {
-            continue;
+    for (auto& entry : catalog->campaigns) {
+        ASSERT_TRUE(entry.definition) << format_diagnostics(entry.definition.error());
+        campaigns.emplace_back(campaigns.size(), entry.source_path, std::move(*entry.definition));
+    }
+    for (auto const& entry : std::filesystem::directory_iterator(root / "Benchmarks")) {
+        if (entry.path().extension() == ".scm") {
+            auto const definition{DefinitionReader{root}.read_level_file(entry.path())};
+            ASSERT_TRUE(definition) << format_diagnostics(definition.error());
         }
-        auto parsed{campaign_reader.read_campaign_file(entry.path())};
-        ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
-        campaigns.push_back({campaigns.size(), entry.path(), std::move(*parsed)});
     }
     EXPECT_GT(levels.size(), 30u);
     EXPECT_GT(campaigns.size(), 5u);

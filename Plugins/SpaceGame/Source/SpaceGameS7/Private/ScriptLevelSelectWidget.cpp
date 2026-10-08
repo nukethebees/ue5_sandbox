@@ -15,9 +15,9 @@
 
 namespace ml::s7 {
 using ::ioj::levels::authoring::catalog_category;
-using ::ioj::levels::authoring::discover_level_scripts;
 using ::ioj::levels::authoring::ELevelCatalogCategory;
 using ::ioj::levels::authoring::FLevelScriptEntry;
+using ::ioj::levels::authoring::load_level_script_catalog;
 
 auto level_completion_indicator_state(ml::ioj::FLevelProgressSummary const& progress,
                                       TOptional<float> const par_time_seconds)
@@ -226,7 +226,7 @@ void UScriptLevelSelectWidget::refresh_levels() {
     catalog_directory_.Reset();
     catalog_error_.Reset();
 
-    auto catalog{discover_level_scripts()};
+    auto catalog{load_level_script_catalog()};
     entries_ = MoveTemp(catalog.entries);
     campaigns_ = MoveTemp(catalog.campaigns);
     catalog_directory_ = MoveTemp(catalog.directory);

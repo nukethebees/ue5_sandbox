@@ -29,6 +29,10 @@ enum class Property : std::uint8_t {
     MissionEvents,
     Entities,
     Levels,
+    Campaigns,
+    Path,
+    Value,
+    Error,
     LevelSize,
     CellSize,
     LookAt,
@@ -91,6 +95,18 @@ enum class Property : std::uint8_t {
         }
         case Property::Levels: {
             return "Levels";
+        }
+        case Property::Campaigns: {
+            return "Campaigns";
+        }
+        case Property::Path: {
+            return "Path";
+        }
+        case Property::Value: {
+            return "Value";
+        }
+        case Property::Error: {
+            return "Error";
         }
         case Property::LevelSize: {
             return "LevelSize";
@@ -198,6 +214,18 @@ enum class Property : std::uint8_t {
     if (value == "Levels") {
         return Property::Levels;
     }
+    if (value == "Campaigns") {
+        return Property::Campaigns;
+    }
+    if (value == "Path") {
+        return Property::Path;
+    }
+    if (value == "Value") {
+        return Property::Value;
+    }
+    if (value == "Error") {
+        return Property::Error;
+    }
     if (value == "LevelSize") {
         return Property::LevelSize;
     }
@@ -304,6 +332,18 @@ enum class Property : std::uint8_t {
         case Property::Levels: {
             return "levels";
         }
+        case Property::Campaigns: {
+            return "campaigns";
+        }
+        case Property::Path: {
+            return "path";
+        }
+        case Property::Value: {
+            return "value";
+        }
+        case Property::Error: {
+            return "error";
+        }
         case Property::LevelSize: {
             return "level-size";
         }
@@ -386,6 +426,10 @@ enum class Property : std::uint8_t {
         {"mission-events", Property::MissionEvents},
         {"entities", Property::Entities},
         {"levels", Property::Levels},
+        {"campaigns", Property::Campaigns},
+        {"path", Property::Path},
+        {"value", Property::Value},
+        {"error", Property::Error},
         {"level-size", Property::LevelSize},
         {"cell-size", Property::CellSize},
         {"look-at", Property::LookAt},
@@ -413,6 +457,8 @@ enum class Property : std::uint8_t {
 enum class RecordKind : std::uint8_t {
     Level,
     Campaign,
+    Catalog,
+    IncludedDefinition,
     Entity,
     Mission,
     Camera,
@@ -428,6 +474,12 @@ enum class RecordKind : std::uint8_t {
         }
         case RecordKind::Campaign: {
             return "Campaign";
+        }
+        case RecordKind::Catalog: {
+            return "Catalog";
+        }
+        case RecordKind::IncludedDefinition: {
+            return "IncludedDefinition";
         }
         case RecordKind::Entity: {
             return "Entity";
@@ -460,6 +512,12 @@ enum class RecordKind : std::uint8_t {
     if (value == "Campaign") {
         return RecordKind::Campaign;
     }
+    if (value == "Catalog") {
+        return RecordKind::Catalog;
+    }
+    if (value == "IncludedDefinition") {
+        return RecordKind::IncludedDefinition;
+    }
     if (value == "Entity") {
         return RecordKind::Entity;
     }
@@ -491,6 +549,12 @@ enum class RecordKind : std::uint8_t {
         case RecordKind::Campaign: {
             return "campaign";
         }
+        case RecordKind::Catalog: {
+            return "catalog";
+        }
+        case RecordKind::IncludedDefinition: {
+            return "included-definition";
+        }
         case RecordKind::Entity: {
             return "entity";
         }
@@ -520,6 +584,8 @@ enum class RecordKind : std::uint8_t {
     static std::unordered_map<std::string_view, RecordKind> const values{
         {"level", RecordKind::Level},
         {"campaign", RecordKind::Campaign},
+        {"catalog", RecordKind::Catalog},
+        {"included-definition", RecordKind::IncludedDefinition},
         {"entity", RecordKind::Entity},
         {"mission", RecordKind::Mission},
         {"camera", RecordKind::Camera},
@@ -548,6 +614,10 @@ struct EnumTraits<::ioj::levels::authoring::Property> {
         ::ioj::levels::authoring::Property::MissionEvents,
         ::ioj::levels::authoring::Property::Entities,
         ::ioj::levels::authoring::Property::Levels,
+        ::ioj::levels::authoring::Property::Campaigns,
+        ::ioj::levels::authoring::Property::Path,
+        ::ioj::levels::authoring::Property::Value,
+        ::ioj::levels::authoring::Property::Error,
         ::ioj::levels::authoring::Property::LevelSize,
         ::ioj::levels::authoring::Property::CellSize,
         ::ioj::levels::authoring::Property::LookAt,
@@ -583,6 +653,10 @@ struct EnumTraits<::ioj::levels::authoring::Property> {
         std::string_view{"MissionEvents"},
         std::string_view{"Entities"},
         std::string_view{"Levels"},
+        std::string_view{"Campaigns"},
+        std::string_view{"Path"},
+        std::string_view{"Value"},
+        std::string_view{"Error"},
         std::string_view{"LevelSize"},
         std::string_view{"CellSize"},
         std::string_view{"LookAt"},
@@ -614,6 +688,8 @@ struct EnumTraits<::ioj::levels::authoring::RecordKind> {
     inline static constexpr std::array values{
         ::ioj::levels::authoring::RecordKind::Level,
         ::ioj::levels::authoring::RecordKind::Campaign,
+        ::ioj::levels::authoring::RecordKind::Catalog,
+        ::ioj::levels::authoring::RecordKind::IncludedDefinition,
         ::ioj::levels::authoring::RecordKind::Entity,
         ::ioj::levels::authoring::RecordKind::Mission,
         ::ioj::levels::authoring::RecordKind::Camera,
@@ -624,6 +700,8 @@ struct EnumTraits<::ioj::levels::authoring::RecordKind> {
     inline static constexpr std::array names{
         std::string_view{"Level"},
         std::string_view{"Campaign"},
+        std::string_view{"Catalog"},
+        std::string_view{"IncludedDefinition"},
         std::string_view{"Entity"},
         std::string_view{"Mission"},
         std::string_view{"Camera"},

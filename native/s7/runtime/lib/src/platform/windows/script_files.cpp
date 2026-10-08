@@ -52,7 +52,10 @@ auto open_script_file(std::string_view const root_utf8, std::string_view const r
         }
         component_start = index + 1;
     }
-    if (!requested_path.ends_with(".scm")) {
+    if (path_size < 4 || !std::ranges::equal(requested_path.substr(path_size - 4),
+                                             std::string_view{".scm"},
+                                             {},
+                                             ioj::to_ascii_lower)) {
         return std::unexpected("load-script only accepts .scm files.");
     }
 

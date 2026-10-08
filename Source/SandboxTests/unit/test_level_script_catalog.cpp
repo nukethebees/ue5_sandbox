@@ -18,6 +18,25 @@ struct FTemporaryScriptDirectory {
     ~FTemporaryScriptDirectory() { IFileManager::Get().DeleteDirectory(*path, false, true); }
 };
 
+auto write_test_root(FString const& directory) -> FString {
+    FString source{TEXT("(catalog :levels (list\n")};
+    for (auto const* subdirectory : {TEXT(""), TEXT("Campaigns")}) {
+        TArray<FString> filenames;
+        IFileManager::Get().FindFiles(
+            filenames, *FPaths::Combine(directory, subdirectory, TEXT("*.scm")), true, false);
+        filenames.Sort([](FString const& lhs, FString const& rhs) {
+            return lhs.Compare(rhs, ESearchCase::IgnoreCase) < 0;
+        });
+        for (auto const& filename : filenames) {
+            source += FString::Printf(TEXT("\"%s\"\n"), *FPaths::Combine(subdirectory, filename));
+        }
+        source += *subdirectory == 0 ? TEXT(") :campaigns (list\n") : TEXT("))");
+    }
+    auto const path{FPaths::Combine(directory, TEXT("catalog.scm"))};
+    check(FFileHelper::SaveStringToFile(source, *path));
+    return path;
+}
+
 auto valid_level_script(FStringView const id,
                         FStringView const title,
                         FStringView const unlock = FStringView{}) -> FString {
@@ -43,9 +62,47 @@ auto valid_camera_level_script(FStringView const id, FStringView const title) ->
 
 TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
 {
+    TEST_METHOD(SharesOneEvaluationSessionAcrossLevelsAndCampaigns)
+    {
+        FTemporaryScriptDirectory directory;
+        auto const campaigns{FPaths::Combine(directory.path, TEXT("Campaigns"))};
+        IFileManager::Get().MakeDirectory(*campaigns, true);
+        auto first{FString{TEXT("(define shared-title \"From first level\")\n")} +
+                   valid_level_script(TEXT("first"), TEXT("First"))};
+        auto second{valid_level_script(TEXT("second"), TEXT("Placeholder"))};
+        second.ReplaceInline(TEXT("\"Placeholder\""), TEXT("shared-title"));
+        auto const written{
+            FFileHelper::SaveStringToFile(second,
+                                          *FPaths::Combine(directory.path, TEXT("b.scm"))) &&
+            FFileHelper::SaveStringToFile(first, *FPaths::Combine(directory.path, TEXT("a.scm"))) &&
+            FFileHelper::SaveStringToFile(
+                TEXT("(campaign :id 'shared :title shared-title :levels '(first second))"),
+                *FPaths::Combine(campaigns, TEXT("shared.scm")))};
+        if (!TestRunner->TestTrue(TEXT("Shared-session fixtures are written"), written)) {
+            return;
+        }
+
+        auto const result{
+            ::ioj::levels::authoring::load_level_script_catalog(write_test_root(directory.path))};
+        if (!TestRunner->TestEqual(TEXT("Both levels are discovered"), result.entries.Num(), 2) ||
+            !TestRunner->TestEqual(TEXT("Campaign is discovered"), result.campaigns.Num(), 1)) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Catalog is valid"), result.error.IsEmpty());
+        TestRunner->TestEqual(TEXT("Second level sees the first file's binding"),
+                              result.entries[1].display_title,
+                              FString{TEXT("From first level")});
+        if (TestRunner->TestTrue(TEXT("Campaign shares the level evaluation session"),
+                                 static_cast<bool>(result.campaigns[0]))) {
+            TestRunner->TestEqual(TEXT("Campaign uses the shared binding"),
+                                  result.campaigns[0].definition->title,
+                                  FString{TEXT("From first level")});
+        }
+    }
+
     TEST_METHOD(LoadsCheckedInLevelsAndCampaigns)
     {
-        auto const result{::ioj::levels::authoring::discover_level_scripts()};
+        auto const result{::ioj::levels::authoring::load_level_script_catalog()};
         TestRunner->TestTrue(TEXT("Checked-in script catalog has no errors"),
                              result.error.IsEmpty());
         TestRunner->TestTrue(TEXT("Checked-in script catalog contains levels"),
@@ -63,7 +120,7 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
         }
     }
 
-    TEST_METHOD(DiscoversAndEvaluatesFlatSchemeFiles)
+    TEST_METHOD(LoadsOnlyDefinitionsSelectedByRoot)
     {
         FTemporaryScriptDirectory directory;
         auto const alpha_path{FPaths::Combine(directory.path, TEXT("alpha.scm"))};
@@ -86,15 +143,18 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             return;
         }
 
-        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
+        auto const root{write_test_root(directory.path)};
+        FFileHelper::SaveStringToFile(TEXT("(undefined-unselected-file)"),
+                                      *FPaths::Combine(directory.path, TEXT("unselected.scm")));
+        auto const result{::ioj::levels::authoring::load_level_script_catalog(root)};
         TestRunner->TestTrue(TEXT("Catalog directory is readable"), result.error.IsEmpty());
         TestRunner->TestEqual(
-            TEXT("Only flat Scheme files are discovered"), result.entries.Num(), 3);
+            TEXT("Only files selected by the root are loaded"), result.entries.Num(), 3);
         if (result.entries.Num() != 3) {
             return;
         }
 
-        TestRunner->TestEqual(TEXT("Files are sorted case-insensitively"),
+        TestRunner->TestEqual(TEXT("Root selection order is retained"),
                               result.entries[0].filename,
                               FString{TEXT("alpha.scm")});
         TestRunner->TestEqual(TEXT("Valid metadata title is decoded"),
@@ -103,8 +163,14 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Valid metadata description is decoded"),
                               result.entries[1].description,
                               FString{TEXT("Catalog test")});
-        TestRunner->TestTrue(TEXT("Valid entries retain their native definitions"),
-                             static_cast<bool>(result.entries[0]));
+        if (!TestRunner->TestTrue(
+                *FString::Printf(TEXT("Alpha is valid: %s"), *result.entries[0].error),
+                static_cast<bool>(result.entries[0])) ||
+            !TestRunner->TestTrue(
+                *FString::Printf(TEXT("Bravo is valid: %s"), *result.entries[1].error),
+                static_cast<bool>(result.entries[1]))) {
+            return;
+        }
         TestRunner->TestTrue(
             TEXT("Player levels are catalogued as missions"),
             ::ioj::levels::authoring::catalog_category(result.entries[0].definition.GetValue()) ==
@@ -130,7 +196,8 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
                                       "(define-macro (shared-description text) "
                                       "  `(string-append ,text))\n")};
         auto const level_source{
-            TEXT("(load-script \"level-helpers.scm\")\n(level :id 'library-level        :title "
+            TEXT("(load-script \"Libraries/level-helpers.scm\")\n(level :id 'library-level        "
+                 ":title "
                  "(shared-title \"Level\") :description (shared-description \"From library\") "
                  ":teams '(blue)        :player 'player        :entities (list (entity :id 'player "
                  ":archetype 'player-fighter :team 'blue                          :position '(0 0 "
@@ -144,7 +211,8 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             return;
         }
 
-        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
+        auto const result{
+            ::ioj::levels::authoring::load_level_script_catalog(write_test_root(directory.path))};
         if (!TestRunner->TestTrue(TEXT("Library-backed catalog is valid"),
                                   result.error.IsEmpty()) ||
             !TestRunner->TestEqual(TEXT("Only the level is catalogued"), result.entries.Num(), 1) ||
@@ -175,7 +243,8 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             return;
         }
 
-        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
+        auto const result{
+            ::ioj::levels::authoring::load_level_script_catalog(write_test_root(directory.path))};
         TestRunner->TestEqual(TEXT("Both scripts remain visible"), result.entries.Num(), 2);
         if (result.entries.Num() != 2) {
             return;
@@ -208,7 +277,8 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             return;
         }
 
-        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
+        auto const result{
+            ::ioj::levels::authoring::load_level_script_catalog(write_test_root(directory.path))};
         TestRunner->TestTrue(TEXT("Catalog is valid"), result.error.IsEmpty());
         if (!TestRunner->TestEqual(TEXT("One campaign is discovered"), result.campaigns.Num(), 1) ||
             !TestRunner->TestTrue(TEXT("Campaign is valid"),
@@ -241,7 +311,8 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             return;
         }
 
-        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
+        auto const result{
+            ::ioj::levels::authoring::load_level_script_catalog(write_test_root(directory.path))};
         TestRunner->TestFalse(TEXT("Missing references are reported"), result.error.IsEmpty());
         TestRunner->TestFalse(TEXT("Level with missing prerequisite is invalid"),
                               static_cast<bool>(result.entries[0]));
@@ -267,7 +338,8 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             return;
         }
 
-        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
+        auto const result{
+            ::ioj::levels::authoring::load_level_script_catalog(write_test_root(directory.path))};
         if (!TestRunner->TestEqual(
                 TEXT("Both campaigns remain visible"), result.campaigns.Num(), 2)) {
             return;
@@ -296,7 +368,8 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             return;
         }
 
-        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
+        auto const result{
+            ::ioj::levels::authoring::load_level_script_catalog(write_test_root(directory.path))};
         if (!TestRunner->TestEqual(TEXT("Campaign remains visible"), result.campaigns.Num(), 1)) {
             return;
         }
@@ -325,7 +398,8 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             return;
         }
 
-        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
+        auto const result{
+            ::ioj::levels::authoring::load_level_script_catalog(write_test_root(directory.path))};
         if (!TestRunner->TestEqual(
                 TEXT("Both campaigns are discovered"), result.campaigns.Num(), 2)) {
             return;
@@ -356,7 +430,8 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
             return;
         }
 
-        auto const result{::ioj::levels::authoring::discover_level_scripts(directory.path)};
+        auto const result{
+            ::ioj::levels::authoring::load_level_script_catalog(write_test_root(directory.path))};
         TestRunner->TestFalse(TEXT("Cycle is reported"), result.error.IsEmpty());
         TestRunner->TestTrue(TEXT("Cycle path is readable"), result.error.Contains(TEXT("->")));
         TestRunner->TestFalse(TEXT("First cycle member is invalid"),

@@ -1,4 +1,4 @@
-(load-script "benchmark-fleet.scm")
+(load-script "Libraries/benchmark-fleet.scm")
 
 (define battle-entities (benchmark-fleet-entities 16 4))
 

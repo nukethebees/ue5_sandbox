@@ -189,6 +189,7 @@ void loads_libraries_in_the_same_sandbox(TestContext& test) {
                   "(define-macro (library-twice form) `(begin ,form ,form))\n");
     library.write("counted.scm", "(set! load-count (+ load-count 1))\n");
     library.write("unsafe.scm", "(getenv \"PATH\")\n");
+    library.write("uppercase.SCM", "(set! load-count (+ load-count 1))\nload-count");
 
     Interpreter interpreter{
         InterpreterOptions{.script_library_root_utf8 = library.path().string()}};
@@ -208,6 +209,11 @@ void loads_libraries_in_the_same_sandbox(TestContext& test) {
                 "helper and nested helper files load: " + (loaded ? *loaded : loaded.error()));
     test.expect(loaded == "(42 2 1 1)",
                 "loaded functions and macros remain visible and files load once");
+
+    test.expect(interpreter.evaluate(R"((load-script "uppercase.SCM"))") == "2",
+                "Windows accepts uppercase Scheme file extensions");
+    test.expect(interpreter.evaluate(R"((load-script "UPPERCASE.scm"))") == "2",
+                "Windows caches the same file across filename case differences");
 
     auto const unsafe{interpreter.evaluate("(load-script \"unsafe.scm\")")};
     test.expect(!unsafe, "a loaded file has the same sandbox restrictions");

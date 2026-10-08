@@ -30,9 +30,24 @@ the validated file handle through reading and lives under `runtime/lib/src/platf
 interpreter or simulation. Its parsers accept a valid AST and return `std::expected`
 definitions with structured diagnostics. `native-level-parser-tests` links this boundary
 without s7. The `native-level-authoring-s7` library provides source/file reader entry points;
-its single `DefinitionReader` shares file loading and evaluation for levels and campaigns,
-then destroys the interpreter before parsing and semantic validation. Level and campaign files
-return different record kinds; library scripts are loaded explicitly through `load-script`.
+`DefinitionReader::read_root_file` evaluates one explicit root and its imports in one
+interpreter. `catalog` accepts `:levels` and `:campaigns` filename lists and evaluates
+them in the supplied order. There is no directory discovery or automatic library preloading.
+`load-script` caches each successful file's final value, so repeated imports do not reevaluate
+it. Paths are relative to the root file's directory. Standalone level/campaign reads remain
+available to the editor and benchmark runner.
+
+The evaluated catalog retains definition source paths and per-file evaluation failures.
+It is materialized into the same flat AST, then the interpreter is destroyed before
+`parse_catalog` and semantic validation. The catalog parser belongs to the runtime-free
+authoring library and dispatches to the existing level/campaign parsers. Each selected source
+produces a `DefinitionEntry<T>` containing its path and `std::expected<T, Diagnostics>`.
+Catalog validators still consume only successful definitions.
+
+Bindings are shared during a root load, including changes made before an evaluation error.
+A new root load starts fresh; no interpreter or bindings persist between catalog refreshes.
+The runtime privately roots s7's internal hooks after revoking their public bindings, keeping
+global redefinition and error handling safe across garbage collections.
 
 `native-levels` owns LevelId, CampaignId, EntityId, TeamId, declarative definitions,
 and validation, split into metadata, entity, camera, grid, and mission definitions. It reuses

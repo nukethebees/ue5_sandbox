@@ -19,7 +19,27 @@ Quote literal lists such as vectors and IDs. Use `list` when members must be eva
 such as entity constructors or computed coordinates. Each keyword takes one value;
 nested records retain their constructor, for example `:camera (camera ...)`.
 Campaigns use `(campaign :id 'main :title "Main" :levels '(example next-level))`.
-Shared helpers loaded through `load-script` can construct the same records procedurally.
+The game loads `catalog.scm` as its root. It selects files explicitly:
+
+```scheme
+(load-script "Libraries/helpers.scm")
+(catalog
+  :levels '("Levels/intro.scm" "Levels/battle.scm")
+  :campaigns '("Campaigns/main.scm"))
+```
+
+The example paths are illustrative. Each catalog property accepts a list of filename strings;
+use ordinary Scheme expressions to construct variations. Files are evaluated in list order,
+and catalog properties are processed in the order written. Nothing is discovered automatically.
+All imports, including imports inside another file, are relative to the root file's directory.
+`load-script` evaluates an explicit helper or selection file and returns its last expression;
+successful loads are cached for that interpreter, including their return values.
+
+A root and all its imports share one interpreter. Loading another root starts fresh. The
+evaluated catalog is copied into an owned flat AST, then the interpreter is destroyed before
+native parsing and validation. Source filenames are retained for diagnostics and editor saves.
+Each selected definition reports its own evaluation/parsing errors; failures in the root itself
+fail the root load. Scheme assignments made before an error are not rolled back.
 
 - `Campaigns/` contains gameplay, showcase, evaluation, and development scenarios.
 - `Benchmarks/` contains deterministic workloads used by benchmark runners.

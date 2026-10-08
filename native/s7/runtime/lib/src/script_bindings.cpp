@@ -22,11 +22,12 @@ auto prepare_loader_factory(s7_scheme* const scheme) -> s7_pointer {
               (host-format format)
               (no-value (if #f #f)))
           (lambda (context resolve complete abort)
-            (lambda (path)
+            (let ((results (make-hash-table)))
+             (lambda (path)
               (let* ((resolution (resolve context path))
                      (status (car resolution)))
                 (cond ((= status 0) (error 'load-script-error (cdr resolution)))
-                      ((= status 1) no-value)
+                      ((= status 1) (results (cdr resolution)))
                       (else
                         (let ((token (cadr resolution))
                               (filename (caddr resolution))
@@ -39,20 +40,23 @@ auto prepare_loader_factory(s7_scheme* const scheme) -> s7_pointer {
                             (lambda ()
                               (catch #t
                                 (lambda ()
-                                  (let loop ((form (host-read port)))
-                                    (unless (host-eof? form)
-                                      (host-evaluate form sandbox-root)
-                                      (loop (host-read port))))
-                                  (complete context token)
-                                  (set! finished #t)
-                                  no-value)
+                                  (let ((value
+                                         (let loop ((form (host-read port)) (last no-value))
+                                           (if (host-eof? form)
+                                               last
+                                               (let ((value (host-evaluate form sandbox-root)))
+                                                 (loop (host-read port) value))))))
+                                    (complete context token)
+                                    (set! (results filename) value)
+                                    (set! finished #t)
+                                    value))
                                 (lambda (type info)
                                   (error type "~A: ~A" filename (apply host-format #f info)))))
                             (lambda ()
                               (host-close-input-port port)
                               (unless finished
                                 (abort context token)
-                                (set! finished #t))))))))))))");
+                                (set! finished #t)))))))))))))");
 }
 
 auto load_failure(s7_scheme* const scheme, std::string const& message) -> s7_pointer {
@@ -130,7 +134,9 @@ auto ScriptBindings::resolve(s7_pointer const path) -> s7_pointer {
         return load_failure(scheme_, admission.error());
     }
     if (admission->status == LoadStatus::already_loaded) {
-        return s7_cons(scheme_, s7_make_integer(scheme_, 1), s7_f(scheme_));
+        return s7_cons(scheme_,
+                       s7_make_integer(scheme_, 1),
+                       s7_make_string(scheme_, path_key(file->narrow_path).c_str()));
     }
 
     auto const source{read_script_source(*file)};
@@ -138,7 +144,8 @@ auto ScriptBindings::resolve(s7_pointer const path) -> s7_pointer {
         loader_.abort_load(admission->token);
         return load_failure(scheme_, source.error());
     }
-    GcProtection const filename{scheme_, s7_make_string(scheme_, file->narrow_path.c_str())};
+    GcProtection const filename{scheme_,
+                                s7_make_string(scheme_, path_key(file->narrow_path).c_str())};
     GcProtection const contents{
         scheme_,
         s7_make_string_with_length(scheme_, source->c_str(), static_cast<s7_int>(source->size()))};

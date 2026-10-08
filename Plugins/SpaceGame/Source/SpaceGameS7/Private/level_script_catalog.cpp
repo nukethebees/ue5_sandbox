@@ -1,13 +1,13 @@
 #include <SpaceGameS7/level_script_catalog.h>
 
+#include <ioj/files.h>
+#include <ioj/levels/authoring/definition_reader.h>
 #include <ioj/levels/catalog_validation.h>
 #include <SpaceGame/levels/native_level_definition_conversion.h>
-#include <SpaceGameS7/definition_reader.h>
 
 #include <SandboxCoreEngine/strings.h>
 
 #include <Containers/StringConv.h>
-#include <HAL/FileManager.h>
 #include <Misc/FileHelper.h>
 #include <Misc/Paths.h>
 
@@ -89,36 +89,7 @@ void apply_campaign_issues(FLevelScriptCatalogResult& result) {
     }
 }
 
-void discover_campaigns(FLevelScriptCatalogResult& result) {
-    auto const campaign_directory{FPaths::Combine(result.directory, TEXT("Campaigns"))};
-    auto& file_manager{IFileManager::Get()};
-    if (!file_manager.DirectoryExists(*campaign_directory)) {
-        return;
-    }
-
-    TArray<FString> filenames;
-    file_manager.FindFiles(
-        filenames, *FPaths::Combine(campaign_directory, TEXT("*.scm")), true, false);
-    filenames.Sort([](FString const& lhs, FString const& rhs) {
-        return lhs.Compare(rhs, ESearchCase::IgnoreCase) < 0;
-    });
-
-    FDefinitionReader reader{FPaths::Combine(result.directory, TEXT("Libraries"))};
-    result.campaigns.Reserve(filenames.Num());
-    for (auto const& filename : filenames) {
-        auto const path{FPaths::Combine(campaign_directory, filename)};
-        FCampaignScriptEntry entry{.filename = filename, .path = path};
-        auto read_result{reader.read_campaign_file(path)};
-        if (!read_result) {
-            entry.error = ml::to_fstring(format_diagnostics(read_result.error()));
-            append_error(result.error, FString::Printf(TEXT("%s: %s"), *filename, *entry.error));
-        } else {
-            entry.definition = MoveTemp(*read_result);
-        }
-        result.campaigns.Add(MoveTemp(entry));
-    }
-
-    apply_campaign_issues(result);
+void sort_campaigns(FLevelScriptCatalogResult& result) {
     result.campaigns.Sort([](FCampaignScriptEntry const& lhs, FCampaignScriptEntry const& rhs) {
         if (lhs && rhs) {
             auto const title_order{
@@ -147,55 +118,67 @@ auto default_campaign_script_directory() -> FString {
     return FPaths::Combine(default_level_script_directory(), TEXT("Campaigns"));
 }
 
-auto discover_level_scripts(FStringView const directory) -> FLevelScriptCatalogResult {
+auto default_level_script_root() -> FString {
+    return FPaths::Combine(default_level_script_directory(), TEXT("catalog.scm"));
+}
+
+auto load_level_script_catalog(FStringView const root_path) -> FLevelScriptCatalogResult {
     FLevelScriptCatalogResult result;
-    result.directory = FPaths::ConvertRelativePathToFull(FString{directory});
-    auto& file_manager{IFileManager::Get()};
-    if (!file_manager.DirectoryExists(*result.directory)) {
-        result.error =
-            FString::Printf(TEXT("Level script directory does not exist: %s"), *result.directory);
+    auto const full_path{FPaths::ConvertRelativePathToFull(FString{root_path})};
+    result.directory = FPaths::GetPath(full_path);
+    auto catalog{DefinitionReader{}.read_root_file(std::filesystem::path{*full_path})};
+    if (!catalog) {
+        result.error = ml::to_fstring(format_diagnostics(catalog.error()));
         return result;
     }
 
-    TArray<FString> filenames;
-    file_manager.FindFiles(
-        filenames, *FPaths::Combine(result.directory, TEXT("*.scm")), true, false);
-    filenames.Sort([](FString const& lhs, FString const& rhs) {
-        return lhs.Compare(rhs, ESearchCase::IgnoreCase) < 0;
-    });
-
-    FDefinitionReader reader{FPaths::Combine(result.directory, TEXT("Libraries"))};
-    result.entries.Reserve(filenames.Num());
-    for (auto const& filename : filenames) {
-        auto const path{FPaths::Combine(result.directory, filename)};
+    for (auto& native : catalog->levels) {
+        auto const path{ml::to_fstring(ioj::path_to_utf8(native.source_path))};
         FLevelScriptEntry entry{
-            .filename = filename,
+            .filename = FPaths::GetCleanFilename(path),
             .path = path,
-            .display_title = FPaths::GetBaseFilename(filename),
+            .display_title = FPaths::GetBaseFilename(path),
         };
-        if (!FFileHelper::LoadFileToString(entry.source_text, *path)) {
+        auto const source_read{!path.IsEmpty() &&
+                               FFileHelper::LoadFileToString(entry.source_text, *path)};
+        if (!native.definition) {
+            entry.error = ml::to_fstring(format_diagnostics(native.definition.error()));
+        } else if (!source_read) {
             entry.error = FString::Printf(TEXT("Could not read level script '%s'."), *path);
-            result.entries.Add(MoveTemp(entry));
-            continue;
-        }
-
-        auto read_result{reader.read_level_source(entry.source_text)};
-        if (read_result) {
-            entry.display_title = read_result->metadata.title;
-            entry.description = read_result->metadata.description;
-            entry.definition = MoveTemp(*read_result);
         } else {
-            entry.error = ml::to_fstring(format_diagnostics(read_result.error()));
+            entry.definition = to_unreal(std::move(*native.definition));
+            entry.display_title = entry.definition->metadata.title;
+            entry.description = entry.definition->metadata.description;
         }
         result.entries.Add(MoveTemp(entry));
     }
+    for (auto& native : catalog->campaigns) {
+        auto const path{ml::to_fstring(ioj::path_to_utf8(native.source_path))};
+        FCampaignScriptEntry entry{.filename = FPaths::GetCleanFilename(path), .path = path};
+        if (!native.definition) {
+            entry.error = ml::to_fstring(format_diagnostics(native.definition.error()));
+            append_error(result.error,
+                         FString::Printf(TEXT("%s: %s"), *entry.filename, *entry.error));
+        } else {
+            auto& definition{*native.definition};
+            ml::FCampaignDefinition converted;
+            converted.id = ml::FCampaignId{FName{ml::to_fstring(definition.id.value)}};
+            converted.title = ml::to_fstring(definition.title);
+            for (auto const& id : definition.level_ids) {
+                converted.level_ids.Add(ml::FLevelId{FName{ml::to_fstring(id.value)}});
+            }
+            entry.definition = MoveTemp(converted);
+        }
+        result.campaigns.Add(MoveTemp(entry));
+    }
 
     apply_level_issues(result);
-    discover_campaigns(result);
+    apply_campaign_issues(result);
+    sort_campaigns(result);
     return result;
 }
 
-auto discover_level_scripts() -> FLevelScriptCatalogResult {
-    return discover_level_scripts(default_level_script_directory());
+auto load_level_script_catalog() -> FLevelScriptCatalogResult {
+    return load_level_script_catalog(default_level_script_root());
 }
 } // namespace ioj::levels::authoring
