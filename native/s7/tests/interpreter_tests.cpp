@@ -1,4 +1,4 @@
-#include "script_files_win32.h"
+#include "platform/windows/script_files.h"
 #include <ioj/s7/detail/script_loader.h>
 #include <ioj/s7/interpreter.h>
 #include <ioj/s7/value.h>
@@ -93,6 +93,26 @@ void interpreter_instances_have_independent_state(TestContext& test) {
     auto const lookup{second.evaluate("private-value")};
     test.expect(!lookup, "second interpreter cannot see first interpreter state");
     test.expect(!lookup && !lookup.error().empty(), "missing state reports an error");
+}
+
+void loader_contexts_are_independent(TestContext& test) {
+    TemporaryLibrary first_library;
+    TemporaryLibrary second_library;
+    first_library.write("value.scm", "(define library-value 17)");
+    second_library.write("value.scm", "(define library-value 29)");
+    Interpreter second{
+        InterpreterOptions{.script_library_root_utf8 = second_library.path().string()}};
+    {
+        Interpreter first{
+            InterpreterOptions{.script_library_root_utf8 = first_library.path().string()}};
+        test.expect(first.evaluate(R"((begin (load-script "value.scm") library-value))") == "17",
+                    "first loader uses its own context");
+        test.expect(second.evaluate(R"((begin (load-script "value.scm") library-value))") == "29",
+                    "second loader uses its own context");
+    }
+    second_library.write("later.scm", "(set! library-value (+ library-value 1))");
+    test.expect(second.evaluate(R"((begin (load-script "later.scm") library-value))") == "30",
+                "destroying another interpreter preserves loader context");
 }
 
 void rejects_unsafe_operations_and_remains_usable(TestContext& test) {
@@ -496,6 +516,7 @@ int main() {
     evaluates_scheme_and_preserves_state(test);
     reports_errors_and_remains_usable(test);
     interpreter_instances_have_independent_state(test);
+    loader_contexts_are_independent(test);
     rejects_unsafe_operations_and_remains_usable(test);
     retains_useful_general_scheme(test);
     loads_libraries_in_the_same_sandbox(test);

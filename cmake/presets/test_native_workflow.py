@@ -411,7 +411,7 @@ class NativeWorkflowTests(unittest.TestCase):
         excluded = (
             "third_party/example/src/example.cpp",
             "sbx_mimalloc/src/example.cpp",
-            "s7/lib/src/s7_sandbox.cpp",
+            "s7/third_party/s7_sandbox.cpp",
             "lispb/kernel/tests/standard_anchor_tests.cpp",
             "simulation/src/lasers/phase_interface.cpp",
             "simulation/src/fighters/phase_interface.cpp",
