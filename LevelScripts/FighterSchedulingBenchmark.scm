@@ -1,17 +1,6 @@
 (load-script "Libraries/benchmark-fleet.scm")
 
-(define battle-entities
-  (benchmark-fleet-entities-with-separation 256 16 80000))
-
-(level
-  :id 'fighter-scheduling-benchmark
-  :title "Fighter Scheduling Benchmark"
-  :description "Two dense capital fleets for saturating the configured fighter population cap."
-
-
-  :camera (camera
-    :look-at '(blue-capital-0 red-capital-0)
-    :distance 520000
-    :offset-direction '(-1 -1 0.7))
-
-  :entities battle-entities)
+(benchmark-fleet-level 'fighter-scheduling-benchmark
+  "Fighter Scheduling Benchmark"
+  "Two dense capital fleets for saturating the configured fighter population cap."
+  256 16 :front-separation 80000)

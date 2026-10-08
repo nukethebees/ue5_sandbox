@@ -1,3 +1,5 @@
+(load-script "Libraries/formations.scm")
+
 (let ()
   (define capital-slots
     '((-35000 -45000 -6000)
@@ -26,54 +28,25 @@
       (-2600 1500 1000)
       (2600 1500 -1000)))
 
-  (define (make-capitals team center-x center-y center-z yaw)
-    (map
-      (lambda (slot)
-        (let ((offset-x (car slot))
-              (offset-y (cadr slot))
-              (offset-z (caddr slot)))
-          (entity :archetype 'capital-ship :team team
-            :position (list
-              (+ center-x offset-x)
-              (+ center-y offset-y)
-              (+ center-z offset-z))
-            :rotation (list 0 yaw 0))))
-      capital-slots))
-
-  (define (make-turret-clusters team center-x center-y center-z yaw)
-    (apply append
-      (map
-        (lambda (cluster)
-          (let ((cluster-x (+ center-x (car cluster)))
-                (cluster-y (+ center-y (cadr cluster)))
-                (cluster-z (+ center-z (caddr cluster))))
-            (map
-              (lambda (offset)
-                (let ((offset-x (car offset))
-                      (offset-y (cadr offset))
-                      (offset-z (caddr offset)))
-                  (entity :archetype 'static-turret :team team
-                    :position (list
-                      (+ cluster-x offset-x)
-                      (+ cluster-y offset-y)
-                      (+ cluster-z offset-z))
-                    :rotation (list 0 yaw 0))))
-              turret-offsets)))
-        turret-clusters)))
-
-  (define (make-faction team center-x center-y center-z yaw)
+  (define (make-faction team origin yaw)
     (append
-      (make-capitals team center-x center-y center-z yaw)
-      (make-turret-clusters team center-x center-y center-z yaw)))
+      (entities-at 'capital-ship team (list 0 yaw 0)
+        (translate-positions origin capital-slots))
+      (apply append
+        (map
+          (lambda (center)
+            (entities-at 'static-turret team (list 0 yaw 0)
+              (translate-positions center turret-offsets)))
+          (translate-positions origin turret-clusters)))))
 
   (define armada-entities
     (append
-      (make-faction 'white -300000 -720000 -12000 16)
-      (make-faction 'red 590000 -470000 15000 77)
-      (make-faction 'green 750000 250000 -18000 140)
-      (make-faction 'blue 100000 780000 10000 -159)
-      (make-faction 'orange -680000 500000 -15000 20)
-      (make-faction 'yellow -800000 -300000 18000 -34)))
+      (make-faction 'white '(-300000 -720000 -12000) 16)
+      (make-faction 'red '(590000 -470000 15000) 77)
+      (make-faction 'green '(750000 250000 -18000) 140)
+      (make-faction 'blue '(100000 780000 10000) -159)
+      (make-faction 'orange '(-680000 500000 -15000) 20)
+      (make-faction 'yellow '(-800000 -300000 18000) -34)))
 
   (level
     :id 'six-faction-armada

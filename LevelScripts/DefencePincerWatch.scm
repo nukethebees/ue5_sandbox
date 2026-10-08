@@ -1,3 +1,5 @@
+(load-script "Libraries/formations.scm")
+
 (level
   :id 'defence-pincer-watch
   :title "Defence 02: Pincer Watch"
@@ -24,18 +26,10 @@
         :position '(0 -50000 0)
         :rotation '(0 90 0)))
 
-    (map
-      (lambda (position)
-        (entity :archetype 'static-turret :team 'blue
-          :position position
-          :rotation '(0 90 0)))
+    (entities-at 'static-turret 'blue '(0 90 0)
       '((-3000 -40000 -2000)
         (3000 -40000 2000)))
 
-    (map
-      (lambda (position)
-        (entity :archetype 'capital-ship :team 'red
-          :position position
-          :rotation '(0 -90 0)))
+    (entities-at 'capital-ship 'red '(0 -90 0)
       '((-40000 70000 5000)
         (40000 70000 -5000)))))

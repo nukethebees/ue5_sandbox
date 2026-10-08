@@ -1,17 +1,6 @@
 (load-script "Libraries/benchmark-fleet.scm")
 
-(define battle-entities (benchmark-fleet-entities 104 13))
-
-(level
-  :id 'benchmark-fleet-08
-  :title "Benchmark Fleet 08 — 208 Capitals"
-  :description "208 capital ships across two opposing fleets; up to 1456 entities after all fighter wings deploy."
-
-
-  :camera (camera
-    :look-at '(blue-capital-0 red-capital-0)
-    :distance 520000
-    :offset-direction '(-1 -1 0.7))
-
-  :entities battle-entities)
-
+(benchmark-fleet-level 'benchmark-fleet-08
+  "Benchmark Fleet 08 — 208 Capitals"
+  "208 capital ships across two opposing fleets; up to 1456 entities after all fighter wings deploy."
+  104 13)

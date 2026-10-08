@@ -37,6 +37,28 @@ such as `(* index 4000)`. Explicit IDs can also be constructed with
 `cons` to prepend a single player entity. Keep level-specific helpers inside `let`;
 put helpers shared by several levels in `Libraries/`.
 
+Import `Libraries/formations.scm` for shared formation functions:
+
+```scheme
+(load-script "Libraries/formations.scm")
+(entities-at 'static-turret 'red '(0 -90 0)
+  (positions-on-line 3 '(-5000 12000 0) '(5000 0 0)))
+(named-capitals 'blue '(0 90 0)
+  '((flagship (-30000 -50000 0)) (escort (30000 -50000 0))))
+```
+
+`entities-at` leaves IDs to the parser. `named-capitals` takes `(id position)` rows for
+referenced ships. Both preserve input order. `positions-on-line` takes a non-negative
+integer count, origin, and step vector; `translate-positions` offsets a position list.
+Keep explicit coordinates when they encode deliberate spacing or rounded geometry.
+
+`Libraries/turret-trials.scm` supplies `turret-trial`, taking the trial number, description,
+player position, turret positions, and optional `:time-limit` / `:par-time` arguments.
+`Libraries/benchmark-fleet.scm` supplies `benchmark-fleet-level`, taking ID, title,
+description, capitals per team, columns, and optional `:front-separation`.
+Each level imports its own dependencies so standalone reads work too. Keep mission-specific
+reserve IDs and arrival times in a local `let`, shared by spawns and objective events.
+
 Editor saves expand procedural definitions into explicit entity records and preserve every
 resolved ID. They omit zero rotations; they do not preserve the original loops.
 

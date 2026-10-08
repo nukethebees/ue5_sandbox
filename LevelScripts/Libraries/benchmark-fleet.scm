@@ -1,4 +1,4 @@
-(define (benchmark-fleet-entities-with-separation
+(define (benchmark-fleet-entities
           capital-count-per-team formation-columns front-separation)
   (define column-spacing 24000)
   (define row-spacing 24000)
@@ -33,6 +33,12 @@
     (make-fleet 'blue (- (/ front-separation 2)) -1 90)
     (make-fleet 'red (/ front-separation 2) 1 -90)))
 
-(define (benchmark-fleet-entities capital-count-per-team formation-columns)
-  (benchmark-fleet-entities-with-separation
-    capital-count-per-team formation-columns 240000))
+(define* (benchmark-fleet-level id title description capital-count-per-team formation-columns
+                               (front-separation 240000))
+  (level :id id :title title :description description
+    :camera (camera
+      :look-at '(blue-capital-0 red-capital-0)
+      :distance 520000
+      :offset-direction '(-1 -1 0.7))
+    :entities (benchmark-fleet-entities
+                capital-count-per-team formation-columns front-separation)))

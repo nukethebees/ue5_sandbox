@@ -1,3 +1,5 @@
+(load-script "Libraries/formations.scm")
+
 (level
   :id 'strike-carrier-intercept
   :title "Strike 03: Carrier Intercept"
@@ -31,10 +33,6 @@
         :position '(0 60000 0)
         :rotation '(0 -90 0)))
 
-    (map
-      (lambda (position)
-        (entity :archetype 'static-turret :team 'red
-          :position position
-          :rotation '(0 -90 0)))
+    (entities-at 'static-turret 'red '(0 -90 0)
       '((-7000 48000 -2500)
         (7000 48000 2500)))))

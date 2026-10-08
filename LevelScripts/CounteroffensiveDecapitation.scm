@@ -1,3 +1,5 @@
+(load-script "Libraries/formations.scm")
+
 (level
   :id 'counteroffensive-decapitation
   :title "Counteroffensive 01: Decapitation"
@@ -22,20 +24,11 @@
         :position '(0 -95000 8000)
         :rotation '(0 90 0)))
 
-    (map
-      (lambda (index position)
-        (entity :archetype 'capital-ship :team 'blue
-          :id (string->symbol (format #f "blue-capital-~A" index))
-          :position position
-          :rotation '(0 90 0)))
-      '(0 1)
-      '((-25000 -50000 -4000)
-        (25000 -50000 4000)))
+    (named-capitals 'blue '(0 90 0)
+      '((blue-capital-0 (-25000 -50000 -4000))
+        (blue-capital-1 (25000 -50000 4000))))
 
-    (map
-      (lambda (index)
-        (entity :archetype 'capital-ship :team 'red
-          :id (string->symbol (format #f "red-capital-~A" index))
-          :position (list (+ -45000 (* index 45000)) 70000 (+ 6000 (* index -6000)))
-          :rotation '(0 -90 0)))
-      '(0 1 2))))
+    (named-capitals 'red '(0 -90 0)
+      '((red-capital-0 (-45000 70000 6000))
+        (red-capital-1 (0 70000 0))
+        (red-capital-2 (45000 70000 -6000))))))

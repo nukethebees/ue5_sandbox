@@ -1,3 +1,5 @@
+(load-script "Libraries/formations.scm")
+
 (level
   :id 'defence-dual-custody
   :title "Defence 03: Dual Custody"
@@ -19,31 +21,17 @@
         :position '(0 -95000 8000)
         :rotation '(0 90 0)))
 
-    (map
-      (lambda (index position)
-        (entity :archetype 'capital-ship :team 'blue
-          :id (string->symbol (format #f "blue-capital-~A" index))
-          :position position
-          :rotation '(0 90 0)))
-      '(0 1)
-      '((-25000 -50000 -4000)
-        (25000 -50000 4000)))
+    (named-capitals 'blue '(0 90 0)
+      '((blue-capital-0 (-25000 -50000 -4000))
+        (blue-capital-1 (25000 -50000 4000))))
 
-    (map
-      (lambda (position)
-        (entity :archetype 'static-turret :team 'blue
-          :position position
-          :rotation '(0 90 0)))
+    (entities-at 'static-turret 'blue '(0 90 0)
       '((-32000 -38000 -2000)
         (-18000 -38000 2000)
         (18000 -38000 -2000)
         (32000 -38000 2000)))
 
-    (map
-      (lambda (position)
-        (entity :archetype 'capital-ship :team 'red
-          :position position
-          :rotation '(0 -90 0)))
+    (entities-at 'capital-ship 'red '(0 -90 0)
       '((-30000 70000 4000)
         (30000 70000 -4000)))
 

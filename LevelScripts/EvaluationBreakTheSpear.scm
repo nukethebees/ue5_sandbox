@@ -1,3 +1,5 @@
+(load-script "Libraries/formations.scm")
+
 (level
   :id 'evaluation-break-the-spear
   :title "Evaluation 01: Break the Spear"
@@ -21,21 +23,11 @@
         :position '(0 -95000 8000)
         :rotation '(0 90 0)))
 
-    (map
-      (lambda (index position)
-        (entity :archetype 'capital-ship :team 'blue
-          :id (string->symbol (format #f "blue-capital-~A" index))
-          :position position
-          :rotation '(0 90 0)))
-      '(0 1)
-      '((-35000 -50000 -4000)
-        (35000 -50000 4000)))
+    (named-capitals 'blue '(0 90 0)
+      '((blue-capital-0 (-35000 -50000 -4000))
+        (blue-capital-1 (35000 -50000 4000))))
 
-    (map
-      (lambda (position)
-        (entity :archetype 'static-turret :team 'blue
-          :position position
-          :rotation '(0 90 0)))
+    (entities-at 'static-turret 'blue '(0 90 0)
       '((-85000 -20000 0)
         (85000 -20000 0)))
 
@@ -44,11 +36,7 @@
         :position '(0 115000 5000)
         :rotation '(0 -90 0)))
 
-    (map
-      (lambda (position)
-        (entity :archetype 'capital-ship :team 'red
-          :position position
-          :rotation '(0 -90 0)))
+    (entities-at 'capital-ship 'red '(0 -90 0)
       '((-70000 95000 -5000)
         (70000 95000 -5000)))
 
