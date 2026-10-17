@@ -27,13 +27,14 @@ auto homogeneous_function(std::string name,
                           FunctionQualifiers qualifiers = {},
                           std::optional<std::string> function_template = std::nullopt,
                           FunctionFormatting formatting = {}) -> Node {
+    qualifiers.is_inline = true;
     return header_function(FunctionSpec{
         .name = std::move(name),
         .return_type = std::move(return_type),
         .parameters = std::move(parameters),
         .body = std::move(body),
         .qualifiers = std::move(qualifiers),
-        .is_inline = true,
+        .define_in_header = true,
         .template_parameters = std::move(function_template),
         .formatting = formatting,
     });
@@ -304,10 +305,11 @@ auto homogeneous_storage_copy_nodes(HomogeneousLayoutSchema const& layout) -> No
 
 auto homogeneous_storage_sort_nodes() -> Nodes {
     NodeListBuilder result;
-    result.add(declaration(
-                   FunctionSpec{.name = "apply_permutation",
-                                .return_type = "void",
-                                .parameters = {FunctionParameter{"TArrayView<int32>", "indices"}}}),
+    result.add(declaration(FunctionSpec{
+                   .name = "apply_permutation",
+                   .return_type = "void",
+                   .parameters = {FunctionParameter{"TArrayView<int32>", "indices"}},
+               }),
                1);
     auto sort_body = [](std::string sort_expression) {
         NodeListBuilder body;

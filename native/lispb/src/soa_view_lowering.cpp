@@ -110,8 +110,10 @@ auto soa_equivalent_nodes(TypeRef const& equivalent_reference,
                  .return_type = "auto",
                  .parameters = {FunctionParameter{"int32 const", "index"}},
                  .body = {ReturnStmt{RawExpr{"{" + join(values, ", ") + "}"}}},
-                 .qualifiers = {.trailing_return_type = equivalent, .is_const = true},
-                 .is_inline = true,
+                 .qualifiers = {.trailing_return_type = equivalent,
+                                .is_const = true,
+                                .is_inline = true},
+                 .define_in_header = true,
              }),
              1)
         .add(header_function(FunctionSpec{
@@ -125,8 +127,8 @@ auto soa_equivalent_nodes(TypeRef const& equivalent_reference,
                     ExpressionStmt{RawExpr{"check(index < num())"}},
                     ReturnStmt{RawExpr{"(*this)[index]"}},
                 },
-            .qualifiers = {.trailing_return_type = equivalent, .is_const = true},
-            .is_inline = true,
+            .qualifiers = {.trailing_return_type = equivalent, .is_const = true, .is_inline = true},
+            .define_in_header = true,
         }));
     return result.build();
 }

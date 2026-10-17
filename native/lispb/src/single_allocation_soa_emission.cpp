@@ -27,7 +27,8 @@ auto section_header(std::string title) -> Nodes {
 }
 
 auto inline_function(FunctionSpec spec) -> Node {
-    spec.is_inline = true;
+    spec.qualifiers.is_inline = true;
+    spec.define_in_header = true;
     return header_function(std::move(spec));
 }
 
@@ -212,8 +213,9 @@ auto column_pointer_nodes(SingleAllocationModel const& model) -> Nodes {
         .parameters = {FunctionParameter{"Byte* const", "data"},
                        FunctionParameter{"byte_size_type const", "blocks"}},
         .body = make_data_body.build(),
-        .qualifiers = {.trailing_return_type = CppType{"DataPointers<Byte>"}, .is_noexcept = true},
-        .is_static = true,
+        .qualifiers = {.trailing_return_type = CppType{"DataPointers<Byte>"},
+                       .is_noexcept = true,
+                       .is_static = true},
         .template_parameters = "typename Byte",
     }};
     auto capacity_blocks{FunctionSpec{
@@ -289,7 +291,7 @@ auto column_copying_nodes(SingleAllocationModel const& model) -> Nodes {
                        FunctionParameter{"DataPointers<Byte> const&", "source"},
                        FunctionParameter{"size_type", "count"}},
         .body = copy_body.build(),
-        .is_static = true,
+        .qualifiers = {.is_static = true},
         .template_parameters = "bool Overlapping, typename Byte",
     })};
     auto copy{compact_function(FunctionSpec{
@@ -300,7 +302,7 @@ auto column_copying_nodes(SingleAllocationModel const& model) -> Nodes {
                        FunctionParameter{"size_type", "source"},
                        FunctionParameter{"size_type", "move_count"}},
         .body = {raw("transfer_columns<false>(columns + index, columns + source, move_count);")},
-        .is_static = true,
+        .qualifiers = {.is_static = true},
     })};
 
     auto remove_indices{inline_function(FunctionSpec{
@@ -332,8 +334,8 @@ auto source_pointers_node(SingleAllocationModel const& model) -> Node {
         .return_type = "auto",
         .parameters = {FunctionParameter{"Columns const&", "source"}},
         .body = body.build(),
-        .qualifiers = {.trailing_return_type = CppType{"DataPointers<std::byte const>"}},
-        .is_static = true,
+        .qualifiers = {.trailing_return_type = CppType{"DataPointers<std::byte const>"},
+                       .is_static = true},
         .template_parameters = "typename Columns",
         .requires_clause =
             "ml::soa_storage_detail::SoaSourceFor<Columns, " + model.owner_name + ", size_type>",
@@ -640,9 +642,9 @@ auto emit_single_allocation_layout(SingleAllocationModel const& model) -> Nodes 
                     RawExpr{"blocks == 0 ? 0 : " + model.columns.back().layout_identifier +
                             ".data_end(blocks)"}}},
                 .qualifiers = {.trailing_return_type = CppType{"byte_size_type"},
-                               .is_noexcept = true},
-                .is_static = true,
-                .is_constexpr = true,
+                               .is_noexcept = true,
+                               .is_static = true,
+                               .is_constexpr = true},
             }),
         }))
         .new_lines(1)

@@ -157,7 +157,8 @@ auto lower_soa_api(SoaSchema const& schema,
                 }
                 source.add(definition(spec, type_name)).new_lines(2);
             } else {
-                spec.is_inline = spec.is_inline || !function.body_lines.empty();
+                spec.define_in_header = spec.define_in_header || !function.body_lines.empty();
+                spec.qualifiers.is_inline = spec.define_in_header;
                 header.add(header_function(spec)).new_lines(1);
             }
         }
@@ -199,8 +200,9 @@ auto lower_soa_api(SoaSchema const& schema,
                     "index"}},
                 .body = {raw("return " + expression + ";")},
                 .qualifiers = {.trailing_return_type = CppType{"equivalent_type"},
-                               .is_const = true},
-                .is_inline = true,
+                               .is_const = true,
+                               .is_inline = true},
+                .define_in_header = true,
             }))
             .new_lines(1);
     }

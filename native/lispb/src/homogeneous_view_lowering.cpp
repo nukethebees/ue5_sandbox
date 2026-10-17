@@ -28,13 +28,14 @@ auto homogeneous_function(std::string name,
                           FunctionFormatting formatting = {},
                           std::vector<TypeDependency> dependencies = {},
                           std::optional<std::string> requires_clause = std::nullopt) -> Node {
+    qualifiers.is_inline = true;
     return header_function(FunctionSpec{
         .name = std::move(name),
         .return_type = std::move(return_type),
         .parameters = std::move(parameters),
         .body = {raw(std::move(body), std::move(dependencies))},
         .qualifiers = std::move(qualifiers),
-        .is_inline = true,
+        .define_in_header = true,
         .template_parameters = std::move(function_template),
         .requires_clause = std::move(requires_clause),
         .formatting = formatting,

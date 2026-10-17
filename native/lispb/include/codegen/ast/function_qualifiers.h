@@ -17,6 +17,10 @@ struct FunctionQualifiers {
     bool is_noexcept{false};
     FunctionDisposition disposition{FunctionDisposition::normal};
     RefQualifier ref_qualifier{RefQualifier::none};
+    bool is_static{false};
+    bool is_constexpr{false};
+    bool is_inline{false};
+    bool is_nodiscard{false};
 };
 
 } // namespace codegen

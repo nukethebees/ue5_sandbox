@@ -74,10 +74,10 @@ void validate_function(Function const& function) {
         throw std::invalid_argument{context +
                                     " trailing return type requires an 'auto' return type"};
     }
-    if (spec.is_static && qualifiers.is_const) {
+    if (spec.qualifiers.is_static && qualifiers.is_const) {
         throw std::invalid_argument{context + " static function cannot be const"};
     }
-    if (spec.is_static && qualifiers.ref_qualifier != RefQualifier::none) {
+    if (spec.qualifiers.is_static && qualifiers.ref_qualifier != RefQualifier::none) {
         throw std::invalid_argument{context + " static function cannot be ref-qualified"};
     }
     if (qualifiers.disposition != FunctionDisposition::normal) {
@@ -117,12 +117,12 @@ auto render_signature(Function const& function) -> std::string {
 
     auto const qualified_name{function.owner.has_value() ? *function.owner + "::" + spec.name
                                                          : spec.name};
-    auto signature{declaration_specifier_prefix(spec.is_static && !function.owner.has_value(),
-                                                spec.is_constexpr)};
-    if (spec.is_inline && function.owner.has_value() && function.is_header) {
+    auto signature{declaration_specifier_prefix(
+        spec.qualifiers.is_static && !function.owner.has_value(), spec.qualifiers.is_constexpr)};
+    if (spec.qualifiers.is_inline && function.owner.has_value() && function.is_header) {
         signature = "inline " + signature;
     }
-    if (spec.is_nodiscard) {
+    if (spec.qualifiers.is_nodiscard) {
         signature = "[[nodiscard]] " + signature;
     }
     if (spec.export_specifier.has_value() && (function.declaration || function.is_header)) {
@@ -710,7 +710,7 @@ auto declaration(FunctionSpec spec) -> Node {
 }
 
 auto header_function(FunctionSpec spec) -> Node {
-    if (!spec.is_inline) {
+    if (!spec.define_in_header) {
         return declaration(std::move(spec));
     }
     return Function{std::move(spec), std::nullopt, false, true};

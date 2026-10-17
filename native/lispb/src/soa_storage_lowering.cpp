@@ -103,8 +103,8 @@ auto soa_set_spec(SoaSchema const& schema,
         .return_type = "void",
         .parameters = std::move(parameters),
         .body = body.build(),
-        .qualifiers = {.is_const = is_const},
-        .is_inline = true,
+        .qualifiers = {.is_const = is_const, .is_inline = true},
+        .define_in_header = true,
     };
 }
 
@@ -146,8 +146,8 @@ auto soa_add_spec(SoaSchema const& schema, std::vector<ResolvedMember> const& me
         .return_type = "auto",
         .parameters = std::move(parameters),
         .body = body.build(),
-        .qualifiers = {.trailing_return_type = CppType{"int32"}},
-        .is_inline = true,
+        .qualifiers = {.trailing_return_type = CppType{"int32"}, .is_inline = true},
+        .define_in_header = true,
     };
 }
 
@@ -160,7 +160,10 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
     };
     if (contains(StorageOperation::reset)) {
         result.push_back(FunctionSpec{
-            .name = "reset", .return_type = "void", .body = storage_operation_body("reset")});
+            .name = "reset",
+            .return_type = "void",
+            .body = storage_operation_body("reset"),
+        });
     }
     if (contains(StorageOperation::reserve)) {
         result.push_back(FunctionSpec{
@@ -199,7 +202,8 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
                            FunctionParameter{CppType{"EAllowShrinking const", {allow_shrinking}},
                                              "allow_shrinking"}},
             .body = std::move(body),
-            .is_inline = true,
+            .qualifiers = {.is_inline = true},
+            .define_in_header = true,
         });
     }
     if (contains(StorageOperation::set_num)) {
@@ -237,7 +241,8 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
                            FunctionParameter{"Other const&", "other"},
                            FunctionParameter{"int32 const", "src_i"}},
             .body = copy_one.build(),
-            .is_inline = true,
+            .qualifiers = {.is_inline = true},
+            .define_in_header = true,
             .template_parameters = "typename Other",
         });
         result.push_back(FunctionSpec{
@@ -248,7 +253,8 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
                            FunctionParameter{"int32 const", "src_i"},
                            FunctionParameter{"int32 const", "count"}},
             .body = copy_range.build(),
-            .is_inline = true,
+            .qualifiers = {.is_inline = true},
+            .define_in_header = true,
             .template_parameters = "typename Other",
         });
         result.push_back(FunctionSpec{
@@ -270,7 +276,8 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
                               literal("0"),
                               named("count")})},
                 },
-            .is_inline = true,
+            .qualifiers = {.is_inline = true},
+            .define_in_header = true,
             .template_parameters = "typename Other",
         });
     }
@@ -292,7 +299,8 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
             .return_type = "void",
             .parameters = {FunctionParameter{"Other const&", "other"}},
             .body = calls.build(),
-            .is_inline = true,
+            .qualifiers = {.is_inline = true},
+            .define_in_header = true,
             .template_parameters = "typename Other",
             .requires_clause = "ml::SupportsApplyArrayPairsWith<" + schema.name + ", Other>",
             .dependencies = {soa_concepts},
@@ -320,7 +328,8 @@ auto soa_permutation_specs(std::vector<ResolvedMember> const&) -> std::vector<Fu
             .body = {raw("ml::soa_ops::sort(*this, std::forward<Compare>(compare), "
                          "scratch_indices);",
                          {soa_storage_ops, TypeDependency{"std::forward", "utility", {}}})},
-            .is_inline = true,
+            .qualifiers = {.is_inline = true},
+            .define_in_header = true,
             .template_parameters = "typename Compare",
         },
         FunctionSpec{
@@ -329,7 +338,8 @@ auto soa_permutation_specs(std::vector<ResolvedMember> const&) -> std::vector<Fu
             .parameters = {FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}},
                                              "scratch_indices"}},
             .body = {raw("ml::soa_ops::sort<Compare>(*this, scratch_indices);", {soa_storage_ops})},
-            .is_inline = true,
+            .qualifiers = {.is_inline = true},
+            .define_in_header = true,
             .template_parameters = "auto Compare",
         },
     };
@@ -362,11 +372,11 @@ auto soa_storage_node(SoaSchema const& schema,
     }
     auto operations{soa_storage_operation_specs(schema, members)};
     for (auto const& spec : operations) {
-        nodes.add(spec.is_inline ? header_function(spec) : declaration(spec), 2);
+        nodes.add(spec.define_in_header ? header_function(spec) : declaration(spec), 2);
     }
     auto permutations{soa_permutation_specs(members)};
     for (auto const& spec : permutations) {
-        nodes.add(spec.is_inline ? header_function(spec) : declaration(spec), 2);
+        nodes.add(spec.define_in_header ? header_function(spec) : declaration(spec), 2);
     }
     nodes.append(soa_storage_view_nodes(members)).new_lines(2);
     for (std::size_t index{0}; index < members.size(); ++index) {

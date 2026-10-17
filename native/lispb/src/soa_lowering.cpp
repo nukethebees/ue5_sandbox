@@ -226,7 +226,7 @@ auto lower_soa_impl(SoaSchema const& schema,
     append_definitions(soa_view_specs(members, true), const_view_name);
     append_definitions(soa_view_specs(members, false), view_name);
     for (auto const& spec : soa_storage_operation_specs(schema, members)) {
-        if (!spec.is_inline) {
+        if (!spec.define_in_header) {
             add_definition(spec, schema.name);
         }
     }

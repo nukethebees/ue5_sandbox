@@ -73,23 +73,28 @@ TEST(Expr, RendersUnaryPointerAccessAndLogicalPrecedence) {
 }
 
 TEST(Ast, RendersRefQualifiedMethodsAndInlineOutOfLineConstructors) {
-    FunctionSpec spec{.name = "view",
-                      .return_type = "auto",
-                      .qualifiers = {.trailing_return_type = CppType{"View"},
-                                     .is_const = true,
-                                     .is_noexcept = true,
-                                     .ref_qualifier = RefQualifier::lvalue}};
+    FunctionSpec spec{
+        .name = "view",
+        .return_type = "auto",
+        .qualifiers = {.trailing_return_type = CppType{"View"},
+                       .is_const = true,
+                       .is_noexcept = true,
+                       .ref_qualifier = RefQualifier::lvalue},
+    };
     EXPECT_EQ(render(declaration(spec)), "auto view() const & noexcept -> View;");
     spec.qualifiers.ref_qualifier = RefQualifier::rvalue;
     spec.qualifiers.disposition = FunctionDisposition::deleted;
     EXPECT_EQ(render(Function{spec}), "auto view() const && noexcept -> View = delete;");
-    spec.is_static = true;
+    spec.qualifiers.is_static = true;
     spec.qualifiers.is_const = false;
     EXPECT_THROW(render(Function{spec}), std::invalid_argument);
     Function const constructor{
-        FunctionSpec{.name = "View",
-                     .is_inline = true,
-                     .formatting = {.body_layout = FunctionFormatting::BodyLayout::compact}},
+        FunctionSpec{
+            .name = "View",
+            .qualifiers = {.is_inline = true},
+            .define_in_header = true,
+            .formatting = {.body_layout = FunctionFormatting::BodyLayout::compact},
+        },
         "View",
         false,
         true};
@@ -118,12 +123,13 @@ TEST(Expr, CollectsSizeofTypeDependenciesThroughArithmetic) {
         .path = "Example.h",
         .nodes = {
             IncludeDependencies{},
-            Function{FunctionSpec{.name = "bytes",
-                                  .return_type = "auto",
-                                  .body = {ReturnStmt{binary(
-                                      BinaryOperator::multiply,
-                                      literal("2"),
-                                      sizeof_type(CppType{"Element", "Project/Element.h"}))}}}}}};
+            Function{FunctionSpec{
+                .name = "bytes",
+                .return_type = "auto",
+                .body = {ReturnStmt{binary(BinaryOperator::multiply,
+                                           literal("2"),
+                                           sizeof_type(CppType{"Element", "Project/Element.h"}))}},
+            }}}};
     auto const output{render(file)};
     EXPECT_NE(output.find("#include \"Project/Element.h\""), std::string::npos);
     EXPECT_NE(output.find("return 2 * sizeof(Element);"), std::string::npos);
@@ -346,7 +352,10 @@ TEST(Ast, DeduplicatesSharedSymbolDependenciesAndTheirNestedHeaders) {
         .nodes = {IncludeDependencies{},
                   Member{"auto", "value", expression},
                   Function{FunctionSpec{
-                      .name = "f", .return_type = "auto", .body = {ReturnStmt{expression}}}}},
+                      .name = "f",
+                      .return_type = "auto",
+                      .body = {ReturnStmt{expression}},
+                  }}},
     };
     auto const output{render(file)};
     for (auto const* header : {"Project/Make.h", "Project/Value.h"}) {

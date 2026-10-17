@@ -18,7 +18,8 @@ auto lower_facade_impl(FacadeSchema const& facade, TypeRegistry const& types)
         .body = facade.reference_target ? Nodes{raw("")}
                                         : Nodes{AssignmentStmt{RawExpr{facade.target_member_name},
                                                                RawExpr{"&new_target"}}},
-        .is_inline = !definitions_in_source,
+        .qualifiers = {.is_inline = !definitions_in_source},
+        .define_in_header = !definitions_in_source,
         .member_initializers =
             facade.reference_target
                 ? std::vector<std::pair<std::string, std::string>>{{facade.target_member_name,
@@ -59,8 +60,10 @@ auto lower_facade_impl(FacadeSchema const& facade, TypeRegistry const& types)
             .return_type = return_type,
             .parameters = std::move(parameters),
             .body = body.build(),
-            .qualifiers = {.is_const = method.is_const, .is_noexcept = method.is_noexcept},
-            .is_inline = !definitions_in_source,
+            .qualifiers = {.is_const = method.is_const,
+                           .is_noexcept = method.is_noexcept,
+                           .is_inline = !definitions_in_source},
+            .define_in_header = !definitions_in_source,
         });
     }
 
@@ -69,7 +72,7 @@ auto lower_facade_impl(FacadeSchema const& facade, TypeRegistry const& types)
     bool has_public_nodes{};
     auto add_method = [&](std::string const& access, FunctionSpec const& spec) {
         auto& destination{access == "public" ? public_nodes : private_nodes};
-        destination.add(spec.is_inline ? header_function(spec) : declaration(spec), 2);
+        destination.add(spec.define_in_header ? header_function(spec) : declaration(spec), 2);
         has_public_nodes = has_public_nodes || access == "public";
     };
     add_method(facade.bind_access, binding);

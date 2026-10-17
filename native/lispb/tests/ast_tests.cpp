@@ -122,12 +122,10 @@ TEST(Ast, RendersBraceInitialisedTree) {
                                         .name = "get",
                                         .return_type = "auto",
                                         .body = {raw("return value;")},
-                                        .qualifiers =
-                                            {
-                                                .trailing_return_type = CppType{"int32"},
-                                                .is_const = true,
-                                            },
-                                        .is_inline = true,
+                                        .qualifiers = {.trailing_return_type = CppType{"int32"},
+                                                       .is_const = true,
+                                                       .is_inline = true},
+                                        .define_in_header = true,
                                     }),
                                 },
                         },
@@ -226,8 +224,15 @@ TEST(Ast, InfersSystemIncludesFromExtensionlessPaths) {
 TEST(Ast, VisitsChildrenForNestedAndDefinedNodes) {
     Node const structure{Struct{.name = "FData", .children = {raw("int value;")}}};
     Node const name_space{Namespace{"example", {raw("int value;")}}};
-    Node const function{Function{.spec = FunctionSpec{.name = "f", .body = {raw("return;")}}}};
-    Node const declaration_node{Function{.spec = FunctionSpec{.name = "f"}, .declaration = true}};
+    Node const function{Function{.spec = FunctionSpec{
+                                     .name = "f",
+                                     .body = {raw("return;")},
+                                 }}};
+    Node const declaration_node{Function{.spec =
+                                             FunctionSpec{
+                                                 .name = "f",
+                                             },
+                                         .declaration = true}};
     Node const leaf{raw("int value;")};
 
     auto child_count = [](Node const& node) {
@@ -288,7 +293,8 @@ TEST(Ast, RendersTemplatedConstrainedFunctions) {
         .return_type = "void",
         .parameters = {FunctionParameter{"Other const&", "other"}},
         .body = {raw("append_from(other);")},
-        .is_inline = true,
+        .qualifiers = {.is_inline = true},
+        .define_in_header = true,
         .template_parameters = "typename Other",
         .requires_clause = "Appendable<Other>",
     };
@@ -304,7 +310,8 @@ TEST(Ast, RendersTypedFunctionFormattingPolicies) {
         .name = "apply",
         .return_type = "void",
         .body = {raw("func();")},
-        .is_inline = true,
+        .qualifiers = {.is_inline = true},
+        .define_in_header = true,
         .template_parameters = "typename TFunc",
         .requires_clause = "Invocable<TFunc>",
         .formatting =
@@ -361,7 +368,8 @@ TEST(Ast, RendersConstrainedStructuresAndSpecialMembers) {
                     .return_type = "void",
                     .parameters = {FunctionParameter{"TFunc&&", "func"}},
                     .body = {raw("func();")},
-                    .is_inline = true,
+                    .qualifiers = {.is_inline = true},
+                    .define_in_header = true,
                     .template_parameters = "typename TFunc",
                     .formatting =
                         FunctionFormatting{
@@ -478,17 +486,16 @@ TEST(Ast, RejectsInvalidFunctionQualifierCombinations) {
     EXPECT_EQ(render(declaration(FunctionSpec{
                   .name = "qualified_placeholder_return",
                   .return_type = "auto",
-                  .qualifiers = {.trailing_return_type = CppType{"int32"}},
-                  .is_static = true,
-                  .is_constexpr = true,
+                  .qualifiers = {.trailing_return_type = CppType{"int32"},
+                                 .is_static = true,
+                                 .is_constexpr = true},
               })),
               "static constexpr auto qualified_placeholder_return() -> int32;");
 
     expect_error(declaration(FunctionSpec{
                      .name = "static_const",
                      .return_type = "void",
-                     .qualifiers = {.is_const = true},
-                     .is_static = true,
+                     .qualifiers = {.is_const = true, .is_static = true},
                  }),
                  "static function cannot be const");
 
@@ -558,8 +565,8 @@ TEST(Ast, AppliesStaticAndDefaultArgumentRulesToFunctionForms) {
         .return_type = "int32",
         .parameters = {FunctionParameter{"int32 const", "value", "7"}},
         .body = {ReturnStmt{RawExpr{"value"}}},
-        .is_static = true,
-        .is_inline = true,
+        .qualifiers = {.is_static = true, .is_inline = true},
+        .define_in_header = true,
     };
 
     EXPECT_EQ(render(header_function(spec)),

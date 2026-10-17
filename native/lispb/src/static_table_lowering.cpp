@@ -28,8 +28,8 @@ auto group_getter(StaticTableGroupSchema const& group, TypeRegistry const& types
         .return_type = "auto",
         .parameters = {FunctionParameter{CppType{"int32 const", "CoreMinimal.h"}, "index"}},
         .body = {ReturnStmt{RawExpr{result_type.spelling + "{" + join(arguments, ", ") + "}"}}},
-        .qualifiers = {.trailing_return_type = result_type, .is_const = true},
-        .is_inline = true,
+        .qualifiers = {.trailing_return_type = result_type, .is_const = true, .is_inline = true},
+        .define_in_header = true,
     });
 }
 
@@ -54,14 +54,12 @@ auto table_node(StaticTableSchema const& table, TypeRegistry const& types) -> No
                      .name = "num",
                      .return_type = "auto",
                      .body = {ReturnStmt{RawExpr{"num_rows"}}},
-                     .qualifiers =
-                         {
-                             .trailing_return_type = int32_type,
-                             .is_noexcept = true,
-                         },
-                     .is_static = true,
-                     .is_constexpr = true,
-                     .is_inline = true,
+                     .qualifiers = {.trailing_return_type = int32_type,
+                                    .is_noexcept = true,
+                                    .is_static = true,
+                                    .is_constexpr = true,
+                                    .is_inline = true},
+                     .define_in_header = true,
                  }),
                  2);
 

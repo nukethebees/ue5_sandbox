@@ -113,13 +113,14 @@ auto fixed_storage_node(FixedLayout const& layout) -> Node {
                        FunctionQualifiers qualifiers = {},
                        std::vector<TypeDependency> dependencies = {},
                        std::optional<std::string> function_template = std::nullopt) {
+        qualifiers.is_inline = true;
         return header_function(FunctionSpec{
             .name = std::move(name),
             .return_type = std::move(return_type),
             .parameters = std::move(parameters),
             .body = {raw(std::move(body), std::move(dependencies))},
             .qualifiers = std::move(qualifiers),
-            .is_inline = true,
+            .define_in_header = true,
             .template_parameters = std::move(function_template),
         });
     };

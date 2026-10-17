@@ -89,8 +89,8 @@ auto column_apply_arrays_function(std::vector<std::string> const& columns) -> No
         .parameters = {FunctionParameter{"this auto&&", "self"},
                        FunctionParameter{"TFunc&&", "func"}},
         .body = {raw(join_lines(body), {TypeDependency{"std::forward", "utility", {}}})},
-        .qualifiers = {.trailing_return_type = CppType{"decltype(auto)"}},
-        .is_inline = true,
+        .qualifiers = {.trailing_return_type = CppType{"decltype(auto)"}, .is_inline = true},
+        .define_in_header = true,
         .template_parameters = "typename TFunc",
     });
 }
@@ -110,8 +110,8 @@ auto column_apply_array_pairs_function(std::vector<std::string> const& columns) 
                        FunctionParameter{"Other&&", "other"},
                        FunctionParameter{"TFunc&&", "func"}},
         .body = {raw(join_lines(body), {TypeDependency{"std::forward", "utility", {}}})},
-        .qualifiers = {.trailing_return_type = CppType{"decltype(auto)"}},
-        .is_inline = true,
+        .qualifiers = {.trailing_return_type = CppType{"decltype(auto)"}, .is_inline = true},
+        .define_in_header = true,
         .template_parameters = "typename Self, typename Other, typename TFunc",
         .formatting =
             {
@@ -144,13 +144,14 @@ auto schema_function_spec(FunctionSchema const& schema, TypeRegistry const& type
                                                        *schema.trailing_return_type, types)}
                                                  : std::nullopt,
                        .is_const = schema.is_const,
-                       .is_noexcept = schema.is_noexcept},
-        .is_static = schema.is_static,
-        .is_constexpr = schema.is_constexpr,
-        .is_inline = schema.is_inline,
+                       .is_noexcept = schema.is_noexcept,
+                       .is_static = schema.is_static,
+                       .is_constexpr = schema.is_constexpr,
+                       .is_inline = schema.is_inline,
+                       .is_nodiscard = schema.is_nodiscard},
+        .define_in_header = schema.is_inline,
         .template_parameters = schema.template_parameters,
         .requires_clause = schema.requires_clause,
-        .is_nodiscard = schema.is_nodiscard,
     };
 }
 

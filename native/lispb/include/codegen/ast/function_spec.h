@@ -19,9 +19,8 @@ struct FunctionSpec {
     std::vector<FunctionParameter> parameters;
     Nodes body;
     FunctionQualifiers qualifiers;
-    bool is_static{false};
-    bool is_constexpr{false};
-    bool is_inline{false};
+    // Emit a definition in the header independently of the inline keyword.
+    bool define_in_header{false};
     std::optional<std::string> export_specifier;
     std::optional<std::string> template_parameters;
     std::optional<std::string> requires_clause;
@@ -29,7 +28,6 @@ struct FunctionSpec {
     std::vector<std::pair<std::string, std::string>> member_initializers;
     // Dependencies in unstructured declaration syntax, such as requires clauses.
     std::vector<TypeDependency> dependencies;
-    bool is_nodiscard{false};
 };
 
 } // namespace codegen

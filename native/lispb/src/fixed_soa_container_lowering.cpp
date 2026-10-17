@@ -95,13 +95,14 @@ auto fixed_function(std::string name,
                     std::optional<std::string> function_template = std::nullopt,
                     std::optional<std::string> requires_clause = std::nullopt,
                     FunctionFormatting formatting = {}) -> Node {
+    qualifiers.is_inline = true;
     return header_function(FunctionSpec{
         .name = std::move(name),
         .return_type = std::move(return_type),
         .parameters = std::move(parameters),
         .body = {raw(std::move(body))},
         .qualifiers = std::move(qualifiers),
-        .is_inline = true,
+        .define_in_header = true,
         .template_parameters = std::move(function_template),
         .requires_clause = std::move(requires_clause),
         .formatting = formatting,
@@ -298,18 +299,19 @@ auto fixed_container_lifecycle_nodes(FixedLayout const&, std::string const& name
 
 auto fixed_container_access_nodes(SoaSchema const& schema) -> Nodes {
     NodeListBuilder result;
-    result.add(
-        header_function(FunctionSpec{
-            .name = "capacity",
-            .return_type = "auto",
-            .body = {raw("return capacity_value;")},
-            .qualifiers = {.trailing_return_type = CppType{"size_type"}, .is_noexcept = true},
-            .is_static = true,
-            .is_constexpr = true,
-            .is_inline = true,
-            .formatting = compact_function_formatting(),
-        }),
-        1);
+    result.add(header_function(FunctionSpec{
+                   .name = "capacity",
+                   .return_type = "auto",
+                   .body = {raw("return capacity_value;")},
+                   .qualifiers = {.trailing_return_type = CppType{"size_type"},
+                                  .is_noexcept = true,
+                                  .is_static = true,
+                                  .is_constexpr = true,
+                                  .is_inline = true},
+                   .define_in_header = true,
+                   .formatting = compact_function_formatting(),
+               }),
+               1);
     add_compact_function(
         result,
         "num",
