@@ -5,8 +5,12 @@
 namespace ioj::sim::tests {
 
 TEST(ShipHealth, PreservesExistingClampBehaviour) {
-    EXPECT_EQ(clamp_health_to_max(50, 100), 100);
-    EXPECT_EQ(clamp_health_to_max(120, 100), 120);
+    ShipHealth below_max{50, 100};
+    below_max.clamp_to_max();
+    EXPECT_EQ(below_max.health, 100);
+    ShipHealth above_max{120, 100};
+    above_max.clamp_to_max();
+    EXPECT_EQ(above_max.health, 120);
 }
 
 } // namespace tests

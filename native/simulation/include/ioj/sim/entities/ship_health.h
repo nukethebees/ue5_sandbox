@@ -5,8 +5,6 @@
 #include <cstdint>
 
 namespace ioj::sim {
-[[nodiscard]] auto clamp_health_to_max(Health health, Health max_health) noexcept -> Health;
-
 struct ShipHealth {
     inline static constexpr Health default_max_health{100};
     inline static constexpr Health upgraded_max_health{150};
@@ -22,7 +20,7 @@ struct ShipHealth {
     auto operator==(ShipHealth const&) const noexcept -> bool = default;
     void upgrade_max_health() { max_health = upgraded_max_health; }
     auto is_alive() const noexcept -> bool { return sim::is_alive(health); }
-    void clamp_to_max() noexcept { health = clamp_health_to_max(health, max_health); }
+    void clamp_to_max() noexcept;
 
     Health health{default_max_health};
     Health max_health{default_max_health};
