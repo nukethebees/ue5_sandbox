@@ -18,6 +18,8 @@ struct SpatialQueryManager;
 }
 
 namespace ioj::sim::lasers {
+using LaserIndex = std::uint32_t;
+
 class PhaseInterface;
 
 struct Sim {
@@ -80,7 +82,7 @@ struct Sim {
     void expire_instances(float dt, ml::FrameMemoryResource* const scratch_resource);
     void update_locations(float dt);
     void handle_collisions(float dt, ml::FrameMemoryResource* const scratch_resource);
-    void remove_instances(std::span<std::uint32_t const> indices);
+    void remove_instances(std::span<LaserIndex const> indices);
 
     /* **************************************** */
     // Buffer cleanup
@@ -101,6 +103,6 @@ struct Sim {
     FrameOutput frame_output_;
 
     std::uint32_t number_spawned{0};
-    std::vector<std::uint32_t> pending_removals_;
+    std::vector<LaserIndex> pending_removals_;
 };
 } // namespace ioj::sim::lasers

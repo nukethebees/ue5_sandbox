@@ -285,7 +285,7 @@ void Sim::handle_collisions(float const dt, ml::FrameMemoryResource* const scrat
 
     frame_output_.append_hits(hit_details, simulation_clock.get_completed_ticks());
 }
-void Sim::remove_instances(std::span<std::uint32_t const> const indices) {
+void Sim::remove_instances(std::span<LaserIndex const> const indices) {
     assert(std::ranges::is_sorted(indices, std::greater{}));
     for (auto const index : indices) {
         entities.remove_at_swap(index, 1);
