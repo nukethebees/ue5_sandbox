@@ -704,6 +704,15 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
             }
         }
 
+        auto const query_aabb{[&](Vector3f const minimum, Vector3f const maximum) {
+            if constexpr (Kind == TraceKind::Sweep) {
+                return sweep_aabb(
+                    start, inverse_delta, delta, minimum, maximum, moving_half_extent);
+            } else {
+                return trace_aabb(start, inverse_delta, delta, minimum, maximum);
+            }
+        }};
+
         auto nearest_t{no_trace_hit};
         EntityUniqueId nearest_entity;
         StaticGeometryIndex nearest_static_index{invalid_static_geometry_index};
@@ -735,16 +744,12 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
                     }
 
                     auto const aabb_index{aabb_offset + entity_index};
-                    auto const hit_t{trace_aabb(start,
-                                                inverse_delta,
-                                                delta,
-                                                ml::make_vector3f(entity_min_xs[aabb_index],
+                    auto const hit_t{query_aabb(ml::make_vector3f(entity_min_xs[aabb_index],
                                                                   entity_min_ys[aabb_index],
                                                                   entity_min_zs[aabb_index]),
                                                 ml::make_vector3f(entity_max_xs[aabb_index],
                                                                   entity_max_ys[aabb_index],
-                                                                  entity_max_zs[aabb_index]),
-                                                moving_half_extent)};
+                                                                  entity_max_zs[aabb_index]))};
                     if (hit_t < nearest_t ||
                         (std::isfinite(hit_t) && hit_t == nearest_t && id < nearest_entity)) {
                         nearest_t = hit_t;
@@ -757,16 +762,12 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
             auto const static_indices{static_storage_.aabb_indices_for_cell(cell_index)};
             for (auto const static_index : static_indices) {
                 auto const static_aabb_index{static_cast<StaticGeometryIndex>(static_index)};
-                auto const hit_t{trace_aabb(start,
-                                            inverse_delta,
-                                            delta,
-                                            ml::make_vector3f(static_min_xs[static_aabb_index],
+                auto const hit_t{query_aabb(ml::make_vector3f(static_min_xs[static_aabb_index],
                                                               static_min_ys[static_aabb_index],
                                                               static_min_zs[static_aabb_index]),
                                             ml::make_vector3f(static_max_xs[static_aabb_index],
                                                               static_max_ys[static_aabb_index],
-                                                              static_max_zs[static_aabb_index]),
-                                            moving_half_extent)};
+                                                              static_max_zs[static_aabb_index]))};
                 if (hit_t < nearest_t) {
                     nearest_t = hit_t;
                     nearest_entity = EntityUniqueId{};

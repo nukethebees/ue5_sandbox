@@ -52,7 +52,14 @@ void are_spheres_in_bounds(GridGeometry geometry,
                               Vector3f inverse_trace_delta,
                               Vector3f trace_delta,
                               Vector3f aabb_min,
+                              Vector3f aabb_max) noexcept -> float;
+
+// Sweep the moving half extent along the trace against the target bounds.
+[[nodiscard]] auto sweep_aabb(Vector3f trace_start,
+                              Vector3f inverse_trace_delta,
+                              Vector3f trace_delta,
+                              Vector3f aabb_min,
                               Vector3f aabb_max,
-                              Vector3f expansion = {}) noexcept -> float;
+                              Vector3f moving_half_extent) noexcept -> float;
 
 }

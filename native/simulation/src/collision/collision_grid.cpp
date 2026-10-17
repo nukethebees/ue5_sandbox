@@ -158,14 +158,13 @@ auto trace_aabb(Vector3f const trace_start,
                 Vector3f const inverse_trace_delta,
                 Vector3f const trace_delta,
                 Vector3f const aabb_min,
-                Vector3f const aabb_max,
-                Vector3f const expansion) noexcept -> float {
+                Vector3f const aabb_max) noexcept -> float {
     float minimum_t{};
     float maximum_t{1.0f};
 
     for (std::size_t axis{}; axis < axis_count; ++axis) {
-        auto const slab_min{aabb_min.Elements[axis] - expansion.Elements[axis]};
-        auto const slab_max{aabb_max.Elements[axis] + expansion.Elements[axis]};
+        auto const slab_min{aabb_min.Elements[axis]};
+        auto const slab_max{aabb_max.Elements[axis]};
         auto const start{trace_start.Elements[axis]};
         auto const axis_delta{trace_delta.Elements[axis]};
         if (axis_delta == 0.0f) {
@@ -187,6 +186,19 @@ auto trace_aabb(Vector3f const trace_start,
         }
     }
     return minimum_t;
+}
+
+auto sweep_aabb(Vector3f const trace_start,
+                Vector3f const inverse_trace_delta,
+                Vector3f const trace_delta,
+                Vector3f const aabb_min,
+                Vector3f const aabb_max,
+                Vector3f const moving_half_extent) noexcept -> float {
+    return trace_aabb(trace_start,
+                      inverse_trace_delta,
+                      trace_delta,
+                      aabb_min - moving_half_extent,
+                      aabb_max + moving_half_extent);
 }
 
 }
