@@ -4,17 +4,17 @@
 #include <ioj/countdown.h>
 #include <ioj/frame_array.h>
 #include <ioj/sim/batch_operations.h>
+#include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
-#include <ioj/sim/entity_ledger.h>
-#include <ioj/sim/fighter_diagnostics.h>
-#include <ioj/sim/fighter_frame_spawn_queue.h>
+#include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/entities/health.h>
+#include <ioj/sim/fighters/fighter_diagnostics.h>
+#include <ioj/sim/fighters/fighter_frame_spawn_queue.h>
 #include <ioj/sim/fighters/sim.h>
-#include <ioj/sim/health.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/rotator_math.h>
 #include <ioj/sim/sim_config.h>
-#include <ioj/sim/spatial_query_manager.h>
 
 #include <algorithm>
 #include <cassert>

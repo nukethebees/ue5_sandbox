@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/sim/column_math.h>
-#include <ioj/sim/laser_soa.h>
+#include <ioj/sim/lasers/laser_soa.h>
 
 namespace ioj::sim::tests {
 inline void add_laser_spawn(lasers::LaserSpawnRequests& requests,

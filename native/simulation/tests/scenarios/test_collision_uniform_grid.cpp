@@ -5,14 +5,14 @@
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/collision/collision_system.h>
 #include <ioj/sim/collision/collision_uniform_grid.h>
+#include <ioj/sim/collision/entity_cell_data_operations.h>
+#include <ioj/sim/collision/spatial_query_manager.h>
+#include <ioj/sim/collision/trace_hits.h>
+#include <ioj/sim/collision/world_aabb_operations.h>
 #include <ioj/sim/column_math.h>
-#include <ioj/sim/entity_cell_data_operations.h>
 #include <ioj/sim/fighters/sim.h>
-#include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/spatial_query_manager_test_access.h>
-#include <ioj/sim/trace_hits.h>
-#include <ioj/sim/world_aabb_operations.h>
 
 #include <array>
 #include <bit>

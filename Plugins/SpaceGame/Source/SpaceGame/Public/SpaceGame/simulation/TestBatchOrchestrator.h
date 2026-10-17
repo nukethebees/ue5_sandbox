@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/sim/level_sim.h>
+#include <ioj/sim/levels/level_sim.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>
 #include <SpaceGame/missions/MissionCompletion.h>

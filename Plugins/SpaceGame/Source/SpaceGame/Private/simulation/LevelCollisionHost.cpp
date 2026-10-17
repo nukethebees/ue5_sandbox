@@ -1,8 +1,8 @@
 #include "SpaceGame/simulation/LevelCollisionHost.h"
 
-#include <ioj/sim/entity_type.h>
-#include <ioj/sim/world_aabb_operations.h>
-#include <ioj/sim/world_aabbs.h>
+#include <ioj/sim/collision/world_aabb_operations.h>
+#include <ioj/sim/collision/world_aabbs.h>
+#include <ioj/sim/entities/entity_type.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 

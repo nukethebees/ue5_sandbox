@@ -1,0 +1,37 @@
+#include "ioj/sim/collision/entity_world_bounds.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace ioj::sim::collision {
+namespace {
+auto rotate_vector(Quaternion4f const orientation, Vector3f const vector) noexcept -> Vector3f {
+    auto const quaternion_vector{ml::make_vector3f(orientation.X, orientation.Y, orientation.Z)};
+    auto const twice_cross{HMM_MulV3F(HMM_Cross(quaternion_vector, vector), 2.0f)};
+    return HMM_AddV3(HMM_AddV3(vector, HMM_MulV3F(twice_cross, orientation.W)),
+                     HMM_Cross(quaternion_vector, twice_cross));
+}
+
+auto absolute(Vector3f const vector) noexcept -> Vector3f {
+    return ml::make_vector3f(std::abs(vector.X), std::abs(vector.Y), std::abs(vector.Z));
+}
+}
+
+auto make_entity_world_bounds(EntityAABBs const& bounds,
+                              EntityType const type,
+                              Vector3f const position,
+                              Quaternion4f const orientation) noexcept -> WorldAABB {
+    auto const centre{position + rotate_vector(orientation, bounds.get_centre(type))};
+    auto const local_extent{bounds.get_half_extents(type)};
+    auto const extent{
+        absolute(rotate_vector(orientation, ml::make_vector3f(local_extent.X, 0.0f, 0.0f))) +
+        absolute(rotate_vector(orientation, ml::make_vector3f(0.0f, local_extent.Y, 0.0f))) +
+        absolute(rotate_vector(orientation, ml::make_vector3f(0.0f, 0.0f, local_extent.Z)))};
+    return {centre - extent, centre + extent};
+}
+
+auto get_entity_radius(EntityAABBs const& bounds, EntityType const type) noexcept -> float {
+    auto const half_extents{bounds.get_half_extents(type)};
+    return std::max({half_extents.X, half_extents.Y, half_extents.Z});
+}
+} // namespace collision

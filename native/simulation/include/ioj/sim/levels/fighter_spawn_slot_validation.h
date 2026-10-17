@@ -2,7 +2,7 @@
 
 // Check authored fighter spawn slots for capital hull intersections and mutual overlap.
 
-#include <ioj/sim/entity_aabbs.h>
+#include <ioj/sim/collision/entity_aabbs.h>
 #include <ioj/sim/sim_config.h>
 
 #include <cstdint>

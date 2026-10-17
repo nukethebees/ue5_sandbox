@@ -1,11 +1,11 @@
 #pragma once
 
-#include <ioj/sim/entity_types.h>
-#include <ioj/sim/level_telemetry_run_data.h>
+#include <ioj/sim/entities/entity_types.h>
 #include <ioj/sim/missions/mission_fail_reason.h>
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>
 #include <ioj/sim/sim_tick.h>
+#include <ioj/sim/telemetry/level_telemetry_run_data.h>
 #include <ioj/sim/telemetry/level_telemetry_run_end_reason.h>
 
 #include <cstdint>

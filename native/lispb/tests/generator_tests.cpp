@@ -621,10 +621,10 @@ TEST(Generator, RendersCompleteProductionManifest) {
     EXPECT_EQ(files.back().path,
               "Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp");
     EXPECT_TRUE(std::ranges::any_of(files, [](GeneratedFile const& file) {
-        return file.path == "native/simulation/include/ioj/sim/entity_unique_id.h";
+        return file.path == "native/simulation/include/ioj/sim/entities/entity_unique_id.h";
     }));
     EXPECT_TRUE(std::ranges::any_of(files, [](auto const& file) {
-        return file.path == "native/simulation/include/ioj/sim/entity_type.h";
+        return file.path == "native/simulation/include/ioj/sim/entities/entity_type.h";
     }));
     EXPECT_EQ(files, render_modules(lower_modules(manifest)));
 }

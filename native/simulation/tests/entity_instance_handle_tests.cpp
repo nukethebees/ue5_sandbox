@@ -1,4 +1,4 @@
-#include <ioj/sim/entity_instance_handle.h>
+#include <ioj/sim/entities/entity_instance_handle.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/testing/sim_clock_test_access.h>
 

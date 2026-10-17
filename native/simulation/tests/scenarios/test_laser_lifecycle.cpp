@@ -1,12 +1,12 @@
 #include "test_laser_lifecycle.h"
 
 #include "../support/simulation_test_support.h"
+#include <ioj/sim/collision/world_aabb_operations.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
-#include <ioj/sim/world_aabb_operations.h>
 
 namespace ioj::sim {
 namespace {

@@ -1,7 +1,7 @@
 #include "test_hud_manager_scenario.h"
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/mission_manager.h>
 #include <ioj/sim/missions/mission_fail_reason.h>
+#include <ioj/sim/missions/mission_manager.h>
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>
 #include <ioj/time_series_data.h>

@@ -1,9 +1,9 @@
 #include "ioj/sim/batch_operations.h"
 
 #include <ioj/sim/direct_damage_events.h>
-#include <ioj/sim/entity_death_info.h>
-#include <ioj/sim/entity_ledger.h>
-#include <ioj/sim/health.h>
+#include <ioj/sim/entities/entity_death_info.h>
+#include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/entities/health.h>
 #include <ioj/sim/profiling.h>
 
 #include <algorithm>

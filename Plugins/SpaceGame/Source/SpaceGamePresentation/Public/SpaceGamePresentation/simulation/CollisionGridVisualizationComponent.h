@@ -1,7 +1,7 @@
 #pragma once
 
-#include <ioj/sim/entity_cell_data.h>
-#include <ioj/sim/world_aabbs.h>
+#include <ioj/sim/collision/entity_cell_data.h>
+#include <ioj/sim/collision/world_aabbs.h>
 
 #include <Components/PrimitiveComponent.h>
 

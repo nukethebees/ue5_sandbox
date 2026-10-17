@@ -1,5 +1,5 @@
 (module native_entity_cell_data
-  :header "native/simulation/include/ioj/sim/entity_cell_data.h"
+  :header "native/simulation/include/ioj/sim/collision/entity_cell_data.h"
   :backend standard-library
   :namespace ioj::sim::collision
   (struct EntityCellDataColumns

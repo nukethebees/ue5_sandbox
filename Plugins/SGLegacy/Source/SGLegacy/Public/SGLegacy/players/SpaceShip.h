@@ -6,7 +6,7 @@
 #include "SpaceGame/ships/common/ShipLaserMode.h"
 #include "SpaceGameSimulation/ships/common/LaserFiringState.h"
 #include "SpaceGameSimulation/ships/common/SpaceShipCommon.h"
-#include <ioj/sim/ship_flight_model.h>
+#include <ioj/sim/player/ship_flight_model.h>
 
 #include "SandboxCoreEngine/SpeedResponse.h"
 

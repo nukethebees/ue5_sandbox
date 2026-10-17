@@ -1,5 +1,5 @@
 #include "support/simulation_test_support.h"
-#include <ioj/sim/level_sim.h>
+#include <ioj/sim/levels/level_sim.h>
 #include <ioj/sim/player/flight_model_evaluator.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 

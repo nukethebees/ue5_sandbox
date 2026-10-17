@@ -1,9 +1,9 @@
+#include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/combat_events.h>
-#include <ioj/sim/entity_ledger.h>
-#include <ioj/sim/entity_tables.h>
+#include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
-#include <ioj/sim/spatial_query_manager.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>

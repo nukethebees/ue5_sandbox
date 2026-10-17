@@ -1,5 +1,5 @@
 (module native_entity_life_state
-  :header "native/simulation/include/ioj/sim/entity_life_state.h"
+  :header "native/simulation/include/ioj/sim/entities/entity_life_state.h"
   :namespace ioj::sim
   (enum LifeState @native_uint8
     (value Alive)

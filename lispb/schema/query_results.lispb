@@ -1,5 +1,5 @@
 (module query_results
-  :header "native/simulation/include/ioj/sim/query_result_types.h"
+  :header "native/simulation/include/ioj/sim/collision/query_result_types.h"
   :backend standard-library
   :namespace ioj::sim
   (integer-scalar TraceHit

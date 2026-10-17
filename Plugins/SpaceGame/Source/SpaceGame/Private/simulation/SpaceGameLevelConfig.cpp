@@ -1,6 +1,6 @@
 #include "SpaceGame/simulation/SpaceGameLevelConfig.h"
 
-#include <ioj/sim/collision_grid.h>
+#include <ioj/sim/collision/collision_grid.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>

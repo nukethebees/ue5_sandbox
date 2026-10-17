@@ -1,6 +1,6 @@
 (module fighter_navigation_types
-  :header "native/simulation/include/ioj/sim/fighter_navigation_types.h"
-  :header-include "ioj/sim/fighter_navigation_types.h"
+  :header "native/simulation/include/ioj/sim/fighters/fighter_navigation_types.h"
+  :header-include "ioj/sim/fighters/fighter_navigation_types.h"
   :backend standard-library
   :namespace ioj::sim::fighters
   (enum NavigationRiskTier @native_uint8

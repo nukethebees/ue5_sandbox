@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ioj/sim/entity_telemetry.h"
+#include "ioj/sim/entities/entity_telemetry.h"
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 

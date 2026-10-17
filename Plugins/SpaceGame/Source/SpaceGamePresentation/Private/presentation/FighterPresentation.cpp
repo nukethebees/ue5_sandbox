@@ -1,7 +1,7 @@
 #include "SpaceGamePresentation/presentation/FighterPresentation.h"
 
 #include <ioj/sim/column_math.h>
-#include <ioj/sim/entity_types.h>
+#include <ioj/sim/entities/entity_types.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>

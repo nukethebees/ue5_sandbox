@@ -1,4 +1,4 @@
-#include "ioj/sim/entity_type.h"
+#include "ioj/sim/entities/entity_type.h"
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>

@@ -2,9 +2,9 @@
 #include <ioj/sim/batch_operations.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/damage_queue.h>
-#include <ioj/sim/entity_death_info.h>
-#include <ioj/sim/entity_ledger.h>
-#include <ioj/sim/entity_lookup_table.h>
+#include <ioj/sim/entities/entity_death_info.h>
+#include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/entities/entity_lookup_table.h>
 
 #include <gtest/gtest.h>
 

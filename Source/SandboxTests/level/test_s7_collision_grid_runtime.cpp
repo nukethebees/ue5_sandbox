@@ -1,4 +1,4 @@
-#include <ioj/sim/spatial_query_manager.h>
+#include <ioj/sim/collision/spatial_query_manager.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelLoader.h>

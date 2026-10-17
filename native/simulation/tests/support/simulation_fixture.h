@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/sim/reference_level_simulation_data.h>
+#include <ioj/sim/levels/reference_level_simulation_data.h>
 
 namespace ioj::sim::tests {
 using SimulationFixture = ReferenceLevelSimulationData;

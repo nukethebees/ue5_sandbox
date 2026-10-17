@@ -1,17 +1,17 @@
 #include "ioj/sim/player/sim.h"
 
 #include <ioj/diagnostics.h>
+#include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/direct_damage_events.h>
-#include <ioj/sim/entity_death_info.h>
-#include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/entities/entity_death_info.h>
+#include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/entities/ship_health.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/player/flight_model_evaluator.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/rotator_math.h>
-#include <ioj/sim/ship_health.h>
-#include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/transform3d.h>
 #include <ioj/vector2d.h>
 #include <ioj/vector3d.h>

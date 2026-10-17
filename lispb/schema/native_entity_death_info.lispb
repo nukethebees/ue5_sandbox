@@ -1,5 +1,5 @@
 (module native_entity_death_info
-  :header "native/simulation/include/ioj/sim/entity_death_info.h"
+  :header "native/simulation/include/ioj/sim/entities/entity_death_info.h"
   :backend standard-library
   :namespace ioj::sim
   (struct EntityDeathInfo

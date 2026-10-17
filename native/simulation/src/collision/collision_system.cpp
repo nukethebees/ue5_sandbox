@@ -2,8 +2,8 @@
 
 #include <ioj/frame_array.h>
 #include <ioj/frame_memory_resource.h>
-#include <ioj/sim/entity_cell_data_operations.h>
-#include <ioj/sim/entity_tables.h>
+#include <ioj/sim/collision/entity_cell_data_operations.h>
+#include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/soa_permutation.h>
 

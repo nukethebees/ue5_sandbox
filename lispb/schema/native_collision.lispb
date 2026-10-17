@@ -1,5 +1,5 @@
 (module native_entity_overlaps
-  :header "native/simulation/include/ioj/sim/entity_overlaps.h"
+  :header "native/simulation/include/ioj/sim/collision/entity_overlaps.h"
   :backend standard-library
   :namespace ioj::sim::collision
   (struct EntityEntityOverlaps

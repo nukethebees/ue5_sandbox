@@ -1,5 +1,5 @@
 #include <ioj/levels/team.h>
-#include <ioj/sim/entity_type.h>
+#include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/missions/mission_fail_reason.h>
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>

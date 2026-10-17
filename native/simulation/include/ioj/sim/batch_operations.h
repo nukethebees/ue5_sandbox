@@ -1,7 +1,7 @@
 #pragma once
 #include <ioj/sim/direct_damage_events.h>
-#include <ioj/sim/entity_lookup_table.h>
-#include <ioj/sim/health_table.h>
+#include <ioj/sim/entities/entity_lookup_table.h>
+#include <ioj/sim/entities/health_table.h>
 
 #include <cstdint>
 #include <span>

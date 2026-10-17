@@ -1,6 +1,6 @@
 #pragma once
-#include <ioj/sim/level_sim.h>
-#include <ioj/sim/world_aabbs.h>
+#include <ioj/sim/collision/world_aabbs.h>
+#include <ioj/sim/levels/level_sim.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/levels/LevelDefinition.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>

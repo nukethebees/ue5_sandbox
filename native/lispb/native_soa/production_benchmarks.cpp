@@ -1,7 +1,7 @@
-#include <ioj/sim/fighter_entity_data.h>
-#include <ioj/sim/laser_frame_output.h>
-#include <ioj/sim/laser_soa.h>
-#include <ioj/sim/spinner_entity_data.h>
+#include <ioj/sim/fighters/fighter_entity_data.h>
+#include <ioj/sim/lasers/laser_frame_output.h>
+#include <ioj/sim/lasers/laser_soa.h>
+#include <ioj/sim/spinners/spinner_entity_data.h>
 
 #include <benchmark/benchmark.h>
 

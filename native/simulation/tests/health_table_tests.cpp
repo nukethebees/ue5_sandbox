@@ -1,4 +1,4 @@
-#include <ioj/sim/entity_tables.h>
+#include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/testing/sim_clock_test_access.h>
 
 #include <gtest/gtest.h>

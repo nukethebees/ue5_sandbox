@@ -1,0 +1,67 @@
+#pragma once
+
+#include "ioj/sim/collision/collision_grid.h"
+#include "ioj/sim/collision/collision_types.h"
+#include "ioj/sim/collision/world_aabbs.h"
+
+#include <cstdint>
+#include <expected>
+#include <limits>
+#include <span>
+#include <vector>
+
+namespace ioj::sim::collision {
+enum class StaticGridBuildErrorCode : std::uint8_t {
+    AabbOutOfBounds,
+    CellCountOverflow,
+    MembershipCountOverflow,
+    InconsistentWriteIndex,
+};
+
+struct StaticGridBuildError {
+    using MembershipCount = std::int64_t;
+
+    StaticGridBuildErrorCode code;
+    StaticGeometryIndex aabb_index{invalid_static_geometry_index};
+    CellIndex cell_index{invalid_cell_index};
+    MembershipCount count{};
+};
+
+class CollisionGridStaticStorage {
+  public:
+    using CellRangeIndex = std::uint32_t;
+    using AabbIndex = std::uint16_t;
+    using RangeOffset = std::uint32_t;
+    using RangeCount = std::uint16_t;
+    using CellMembershipCount = std::uint32_t;
+
+    inline static constexpr CellRangeIndex invalid_cell_range_index{
+        std::numeric_limits<std::uint32_t>::max()};
+
+    inline static constexpr AabbIndex invalid_aabb_index{std::numeric_limits<AabbIndex>::max()};
+
+    /* **************************************** */
+    // Storage lifecycle and building
+    /* **************************************** */
+    void reset() noexcept;
+    void set_aabbs(WorldAABBs aabbs) noexcept;
+    auto add_aabb(Vector3f min_point, Vector3f max_point) -> StaticGeometryIndex;
+    [[nodiscard]] auto rebuild(GridGeometry geometry) -> std::expected<void, StaticGridBuildError>;
+
+    /* **************************************** */
+    // Accessors
+    /* **************************************** */
+    [[nodiscard]] auto aabbs() const noexcept -> WorldAABBs const&;
+    [[nodiscard]] auto aabb_indices_for_cell(CellIndex cell_index) const noexcept
+        -> std::span<AabbIndex const>;
+  private:
+    /* **************************************** */
+    // State
+    /* **************************************** */
+    WorldAABBs aabbs_;
+    std::vector<CellRangeIndex> cell_range_indices_;
+    std::vector<RangeOffset> range_offsets_;
+    std::vector<RangeCount> range_counts_;
+    std::vector<AabbIndex> aabb_indices_;
+};
+} // namespace ioj::sim::collision

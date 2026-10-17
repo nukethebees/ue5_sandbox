@@ -2,8 +2,8 @@
 #include "simulation_fixture.h"
 #include "simulation_test_data.h"
 #include "worldless_simulation_test.h"
-#include <ioj/sim/entity_world_bounds.h>
-#include <ioj/sim/line_traces.h>
+#include <ioj/sim/collision/entity_world_bounds.h>
+#include <ioj/sim/collision/line_traces.h>
 #include <ioj/sim/rotator_math.h>
 #include <ioj/time_series_data.h>
 

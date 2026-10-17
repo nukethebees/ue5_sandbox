@@ -1,6 +1,6 @@
-#include "ioj/sim/collision_grid.h"
-#include "ioj/sim/spatial.h"
-#include "ioj/sim/trace_hits.h"
+#include "ioj/sim/collision/collision_grid.h"
+#include "ioj/sim/collision/spatial.h"
+#include "ioj/sim/collision/trace_hits.h"
 
 #include <gtest/gtest.h>
 

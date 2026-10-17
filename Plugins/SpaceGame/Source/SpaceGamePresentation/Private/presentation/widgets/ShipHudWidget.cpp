@@ -1,6 +1,6 @@
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
 
-#include "ioj/sim/entity_telemetry.h"
+#include "ioj/sim/entities/entity_telemetry.h"
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SpaceGamePresentation/presentation/widgets/DebugGraphWidget.h"

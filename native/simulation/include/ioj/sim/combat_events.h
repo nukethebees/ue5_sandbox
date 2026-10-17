@@ -2,7 +2,7 @@
 
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/damage_queue.h>
-#include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/entities/entity_ledger.h>
 
 namespace ioj::sim {
 // Tick-local damage transport. Owning simulations record applied damage during resolution.

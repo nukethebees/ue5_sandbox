@@ -2,7 +2,7 @@
 
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/mission_manager.h>
+#include <ioj/sim/missions/mission_manager.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
 

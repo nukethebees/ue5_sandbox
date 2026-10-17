@@ -2,10 +2,10 @@
 
 #include "../support/simulation_test_support.h"
 #include <ioj/sim/capital_ships/sim.h>
+#include <ioj/sim/collision/world_aabb_operations.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/rotator_math.h>
-#include <ioj/sim/world_aabb_operations.h>
 
 namespace ioj::sim {
 namespace fighter_navigation_test {

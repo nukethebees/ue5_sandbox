@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/spatial_query_manager.h>
+#include <ioj/sim/collision/spatial_query_manager.h>
 
 namespace ioj::sim {
 struct SpatialQueryManagerTestAccess {

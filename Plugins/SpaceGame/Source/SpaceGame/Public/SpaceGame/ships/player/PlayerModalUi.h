@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/level_telemetry_snapshot.h>
+#include <ioj/sim/telemetry/level_telemetry_snapshot.h>
 #include <SpaceGame/ships/player/PlayerControlContext.h>
 
 #include <CoreMinimal.h>

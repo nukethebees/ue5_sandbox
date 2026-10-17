@@ -3,12 +3,12 @@
 
 #pragma once
 
-#include "ioj/sim/entity_unique_id.h"
-#include "ioj/sim/fighter_frame_spawn_queue.h"
-#include "ioj/sim/fighter_order_queue.h"
-#include "ioj/sim/fighter_spawn_queue.h"
+#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/entities/health_table.h"
+#include "ioj/sim/fighters/fighter_frame_spawn_queue.h"
+#include "ioj/sim/fighters/fighter_order_queue.h"
+#include "ioj/sim/fighters/fighter_spawn_queue.h"
 #include "ioj/sim/fighters/sim.h"
-#include "ioj/sim/health_table.h"
 
 #include <cstdint>
 

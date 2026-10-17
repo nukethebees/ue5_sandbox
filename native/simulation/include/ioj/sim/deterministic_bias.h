@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ioj/sim/entity_unique_id.h"
+#include "ioj/sim/entities/entity_unique_id.h"
 
 #include <cstdint>
 #include <span>

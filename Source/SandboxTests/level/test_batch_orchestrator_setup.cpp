@@ -1,13 +1,13 @@
 #include "test_batch_orchestrator_setup_scenario.h"
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/combat_events.h>
-#include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/lasers/sim.h>
-#include <ioj/sim/level_telemetry_manager.h>
-#include <ioj/sim/mission_manager.h>
+#include <ioj/sim/missions/mission_manager.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spinners/sim.h>
+#include <ioj/sim/telemetry/level_telemetry_manager.h>
 #include <ioj/sim/turrets/sim.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>

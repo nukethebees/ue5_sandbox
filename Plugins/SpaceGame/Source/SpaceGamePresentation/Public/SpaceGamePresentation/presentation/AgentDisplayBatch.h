@@ -1,8 +1,8 @@
 #pragma once
 
 #include <ioj/sim/column_math.h>
-#include <ioj/sim/entity_types.h>
-#include <ioj/sim/health_table.h>
+#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/entities/health_table.h>
 #include <ioj/sim/vectors3f.h>
 
 #include <span>

@@ -4,10 +4,10 @@
 #include "SpaceGame/system/GameSubsystem.h"
 #include <ioj/invoke.h>
 #include <ioj/sim/column_math.h>
-#include <ioj/sim/entity_ledger.h>
-#include <ioj/sim/entity_types.h>
+#include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/entities/entity_types.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
-#include <ioj/sim/mission_manager.h>
+#include <ioj/sim/missions/mission_manager.h>
 #include <ioj/sim/sim_time.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>

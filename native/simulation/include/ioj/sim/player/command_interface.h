@@ -4,7 +4,7 @@
 #pragma once
 
 #include "ioj/levels/team.h"
-#include "ioj/sim/health.h"
+#include "ioj/sim/entities/health.h"
 #include "ioj/sim/player/sim.h"
 
 namespace ioj::sim::player {

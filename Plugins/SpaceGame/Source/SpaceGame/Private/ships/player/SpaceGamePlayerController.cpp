@@ -1,6 +1,6 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 
-#include <ioj/sim/mission_manager.h>
+#include <ioj/sim/missions/mission_manager.h>
 #include <SandboxGameShared/utilities/macros/null_checks.hpp>
 #include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>

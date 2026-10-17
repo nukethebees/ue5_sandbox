@@ -1,5 +1,5 @@
 (module collision_scalars
-  :header "native/simulation/include/ioj/sim/collision_scalar_types.h"
+  :header "native/simulation/include/ioj/sim/collision/collision_scalar_types.h"
   :backend standard-library
   :namespace ioj::sim::collision
   (integer-scalar StaticGeometryIndex

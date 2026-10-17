@@ -1,5 +1,5 @@
 #include <ioj/sim/collision/collision_uniform_grid.h>
-#include <ioj/sim/entity_tables.h>
+#include <ioj/sim/entities/entity_tables.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestCollisionActor.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>

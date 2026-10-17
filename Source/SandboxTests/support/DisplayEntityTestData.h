@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/fighter_entity_data.h>
+#include <ioj/sim/fighters/fighter_entity_data.h>
 #include <SpaceGamePresentation/presentation/AgentDisplayBatch.h>
 
 #include <cstdint>

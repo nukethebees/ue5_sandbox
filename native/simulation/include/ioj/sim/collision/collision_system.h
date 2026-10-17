@@ -1,10 +1,10 @@
 #pragma once
 
+#include <ioj/sim/collision/collision_events.h>
 #include <ioj/sim/collision/collision_uniform_grid.h>
-#include <ioj/sim/collision_events.h>
-#include <ioj/sim/entity_overlaps.h>
-#include <ioj/sim/entity_types.h>
-#include <ioj/sim/line_traces.h>
+#include <ioj/sim/collision/entity_overlaps.h>
+#include <ioj/sim/collision/line_traces.h>
+#include <ioj/sim/entities/entity_types.h>
 
 #include <cstdint>
 #include <span>

@@ -1,6 +1,6 @@
 #include "support/simulation_test_support.h"
 #include <ioj/sim/column_math.h>
-#include <ioj/sim/level_sim.h>
+#include <ioj/sim/levels/level_sim.h>
 #include <ioj/sim/rotator_math.h>
 
 #include <map>

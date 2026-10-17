@@ -1,5 +1,5 @@
 #include <ioj/range_fits.h>
-#include <ioj/sim/entity_types.h>
+#include <ioj/sim/entities/entity_types.h>
 
 #include <gtest/gtest.h>
 

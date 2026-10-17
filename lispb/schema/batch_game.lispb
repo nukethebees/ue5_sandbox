@@ -1,5 +1,5 @@
 (module fighters_soa
-  :header "native/simulation/include/ioj/sim/fighter_entity_data.h"
+  :header "native/simulation/include/ioj/sim/fighters/fighter_entity_data.h"
   :backend standard-library
   :namespace ioj::sim
   (struct Vectors3f
@@ -52,7 +52,7 @@
     (single-allocation FighterEntityData)))
 
 (module capital_ships_soa
-  :header "native/simulation/include/ioj/sim/capital_entity_data.h"
+  :header "native/simulation/include/ioj/sim/capital_ships/capital_entity_data.h"
   :backend standard-library
   :namespace ioj::sim
   (struct Vectors3f
@@ -80,7 +80,7 @@
     (single-allocation CapitalEntityData)))
 
 (module lasers_soa
-  :header "native/simulation/include/ioj/sim/laser_soa.h"
+  :header "native/simulation/include/ioj/sim/lasers/laser_soa.h"
   :backend standard-library
   :namespace ioj::sim::lasers
   (struct Vectors3f
@@ -123,7 +123,7 @@
     (single-allocation LaserEntities)))
 
 (module fighter_spawn_queue_soa
-  :header "native/simulation/include/ioj/sim/fighter_spawn_queue.h"
+  :header "native/simulation/include/ioj/sim/fighters/fighter_spawn_queue.h"
   :backend standard-library
   :namespace ioj::sim
   (struct Vectors3f
@@ -148,7 +148,7 @@
     (single-allocation FighterSpawnQueue)))
 
 (module turrets_soa
-  :header "native/simulation/include/ioj/sim/turret_entity_data.h"
+  :header "native/simulation/include/ioj/sim/turrets/turret_entity_data.h"
   :backend standard-library
   :namespace ioj::sim
   (struct Vectors3f
@@ -181,7 +181,7 @@
     (single-allocation TurretEntityData)))
 
 (module spinners_soa
-  :header "native/simulation/include/ioj/sim/spinner_entity_data.h"
+  :header "native/simulation/include/ioj/sim/spinners/spinner_entity_data.h"
   :backend standard-library
   :namespace ioj::sim
   (struct Vectors3f
@@ -206,7 +206,7 @@
     (single-allocation SpinnerEntityData)))
 
 (module laser_hit_details
-  :header "native/simulation/include/ioj/sim/laser_hit_details.h"
+  :header "native/simulation/include/ioj/sim/lasers/laser_hit_details.h"
   :backend standard-library
   :namespace ioj::sim
   (struct Vectors3f

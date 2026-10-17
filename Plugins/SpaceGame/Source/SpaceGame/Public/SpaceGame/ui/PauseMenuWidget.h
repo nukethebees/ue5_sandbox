@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ioj/sim/entity_telemetry.h"
-#include "ioj/sim/level_telemetry_snapshot.h"
+#include "ioj/sim/entities/entity_telemetry.h"
+#include "ioj/sim/telemetry/level_telemetry_snapshot.h"
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGamePresentation/entities/TeamColours.h"

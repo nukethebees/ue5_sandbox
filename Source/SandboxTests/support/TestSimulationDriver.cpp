@@ -2,7 +2,7 @@
 
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/direct_damage_events.h>
-#include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/fighters/sim.h>
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SandboxTests/SandboxTestLogCategories.h>

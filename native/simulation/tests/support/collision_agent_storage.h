@@ -2,8 +2,8 @@
 #pragma once
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
-#include <ioj/sim/entity_ledger.h>
-#include <ioj/sim/entity_tables.h>
+#include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/spatial_query_manager_test_access.h>
 

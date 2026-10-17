@@ -1,6 +1,6 @@
 #include <SpaceGame/ships/player/PlayerModalUi.h>
 
-#include <ioj/sim/mission_manager.h>
+#include <ioj/sim/missions/mission_manager.h>
 #include <SpaceGame/missions/MissionCompletion.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>

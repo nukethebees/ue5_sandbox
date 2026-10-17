@@ -1,6 +1,6 @@
 #include <ioj/sim/levels/fighter_spawn_slot_validation.h>
 
-#include <ioj/sim/entity_world_bounds.h>
+#include <ioj/sim/collision/entity_world_bounds.h>
 #include <ioj/sim/rotator_math.h>
 #include <ioj/sim/transform3d.h>
 

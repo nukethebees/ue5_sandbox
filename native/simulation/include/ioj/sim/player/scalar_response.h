@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/sim/player/flight_model_config.h>
-#include <ioj/sim/ship_flight_model.h>
+#include <ioj/sim/player/ship_flight_model.h>
 
 namespace ioj::sim::player {
 class ScalarResponse {

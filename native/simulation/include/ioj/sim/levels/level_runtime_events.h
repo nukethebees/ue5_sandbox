@@ -5,9 +5,9 @@
 
 #include "ioj/levels/team.h"
 #include "ioj/native_soa/storage.h"
-#include "ioj/sim/entity_type.h"
-#include "ioj/sim/health.h"
-#include "ioj/sim/level_event_types.h"
+#include "ioj/sim/entities/entity_type.h"
+#include "ioj/sim/entities/health.h"
+#include "ioj/sim/levels/level_event_types.h"
 #include "ioj/vector_soa_view.h"
 
 #include <cassert>

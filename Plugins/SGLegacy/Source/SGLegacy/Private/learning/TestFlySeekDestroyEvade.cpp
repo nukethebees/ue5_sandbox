@@ -6,7 +6,7 @@
 #include "SandboxGameShared/utilities/vision_maths.h"
 #include "SGLegacy/combat/weapons/ShipLaser.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
-#include <ioj/sim/spatial.h>
+#include <ioj/sim/collision/spatial.h>
 
 #include "SandboxCoreEngine/enums.h"
 

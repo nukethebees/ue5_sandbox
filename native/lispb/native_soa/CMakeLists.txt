@@ -53,7 +53,7 @@ add_executable(native-soa-benchmarks)
 target_sources(native-soa-benchmarks
   PRIVATE
     production_benchmarks.cpp
-    "${PROJECT_SOURCE_DIR}/native/simulation/src/laser_frame_output.cpp"
+    "${PROJECT_SOURCE_DIR}/native/simulation/src/lasers/laser_frame_output.cpp"
 )
 set_target_properties(native-soa-benchmarks PROPERTIES UNITY_BUILD OFF)
 ioj_enable_warnings(native-soa-benchmarks)

@@ -1,8 +1,8 @@
 #pragma once
-#include <ioj/sim/collision_grid.h>
-#include <ioj/sim/entity_aabbs.h>
-#include <ioj/sim/entity_type.h>
-#include <ioj/sim/world_aabbs.h>
+#include <ioj/sim/collision/collision_grid.h>
+#include <ioj/sim/collision/entity_aabbs.h>
+#include <ioj/sim/collision/world_aabbs.h>
+#include <ioj/sim/entities/entity_type.h>
 #include <SpaceGame/simulation/StaticCollisionSources.h>
 #include <SpaceGameSimulation/levels/LevelStartErrors.h>
 

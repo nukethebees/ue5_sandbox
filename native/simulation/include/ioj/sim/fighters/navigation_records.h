@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "ioj/sim/entity_unique_id.h"
-#include "ioj/sim/fighter_navigation_types.h"
+#include "ioj/sim/entities/entity_unique_id.h"
+#include "ioj/sim/fighters/fighter_navigation_types.h"
 #include "ioj/sim/vector_types.h"
 
 #include <cstdint>

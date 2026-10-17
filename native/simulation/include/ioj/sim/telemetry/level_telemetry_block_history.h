@@ -2,7 +2,7 @@
 
 #include "ioj/sim/memory/game_memory.h"
 #include "ioj/sim/telemetry/level_telemetry_history.h"
-#include <ioj/sim/level_telemetry_block_history_types.h>
+#include <ioj/sim/telemetry/level_telemetry_block_history_types.h>
 
 #include <cstddef>
 #include <cstdint>

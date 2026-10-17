@@ -1,14 +1,14 @@
 #include "SpaceGamePresentation/presentation/HUDManager.h"
 
-#include "ioj/sim/mission_manager.h"
+#include "ioj/sim/collision/spatial_query_manager.h"
+#include "ioj/sim/missions/mission_manager.h"
 #include "ioj/sim/player/sim.h"
-#include "ioj/sim/spatial_query_manager.h"
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entity_types.h>
+#include <ioj/sim/entities/entity_types.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/turrets/sim.h>

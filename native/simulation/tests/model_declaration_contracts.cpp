@@ -2,26 +2,26 @@
 // Keep these expectations independent of the LispB schema.
 #include <ioj/levels/diagnostic_code.h>
 #include <ioj/levels/level_mission_mode.h>
-#include <ioj/sim/attack_distance_band.h>
 #include <ioj/sim/base_sim_config.h>
-#include <ioj/sim/capital_death_event.h>
+#include <ioj/sim/capital_ships/capital_death_event.h>
 #include <ioj/sim/collision/grid_geometry.h>
+#include <ioj/sim/collision/line_trace_result.h>
+#include <ioj/sim/collision/line_traces.h>
 #include <ioj/sim/collision/trace_entity_filter.h>
+#include <ioj/sim/collision/trace_hits.h>
 #include <ioj/sim/collision/world_aabb.h>
-#include <ioj/sim/entity_types.h>
+#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/fighters/attack_distance_band.h>
 #include <ioj/sim/fighters/navigation_records.h>
 #include <ioj/sim/index_span.h>
-#include <ioj/sim/laser_source.h>
-#include <ioj/sim/level_telemetry_current_state.h>
-#include <ioj/sim/line_trace_result.h>
-#include <ioj/sim/line_traces.h>
-#include <ioj/sim/navigation_telemetry.h>
+#include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/player/flight_model_data.h>
 #include <ioj/sim/player/flight_model_enums.h>
 #include <ioj/sim/player/flight_model_runtime.h>
 #include <ioj/sim/sim_state.h>
 #include <ioj/sim/simulation_phase.h>
-#include <ioj/sim/trace_hits.h>
+#include <ioj/sim/telemetry/level_telemetry_current_state.h>
+#include <ioj/sim/telemetry/navigation_telemetry.h>
 
 #include <gtest/gtest.h>
 

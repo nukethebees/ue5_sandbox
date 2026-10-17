@@ -2,11 +2,11 @@
 
 (type level_telemetry_entity_type_counts
   :spelling "ioj::sim::telemetry::EntityTypeCounts"
-  :header "ioj/sim/entity_telemetry.h")
+  :header "ioj/sim/entities/entity_telemetry.h")
 
 (type level_telemetry_entity_counts
   :spelling "ioj::sim::telemetry::EntityCounts"
-  :header "ioj/sim/entity_telemetry.h")
+  :header "ioj/sim/entities/entity_telemetry.h")
 
 (type collision_enabled
   :spelling "ECollisionEnabled::Type"
@@ -17,13 +17,13 @@
 
 (type fighter_order_queue
   :spelling "FighterOrderQueue"
-  :header "ioj/sim/fighter_order_queue.h"
+  :header "ioj/sim/fighters/fighter_order_queue.h"
   (operation remove-at-swap remove_at_swap))
 
 
 (type fighter_spawn_queue_const_view
   :spelling "FighterSpawnQueue::ConstView"
-  :header "ioj/sim/fighter_spawn_queue.h"
+  :header "ioj/sim/fighters/fighter_spawn_queue.h"
   :pass-by value)
 
 
@@ -58,7 +58,7 @@
 
 (type native_level_event_count
   :spelling "LevelEventCount"
-  :header "ioj/sim/level_event_types.h"
+  :header "ioj/sim/levels/level_event_types.h"
   :pass-by value)
 
 (type native_sim_tick
@@ -92,22 +92,22 @@
 
 (type native_level_mission_event_type
   :spelling "LevelMissionEventType"
-  :header "ioj/sim/level_event_types.h"
+  :header "ioj/sim/levels/level_event_types.h"
   :pass-by value)
 
 (type native_death_reason
   :spelling "DeathReason"
-  :header "ioj/sim/entity_life_state.h"
+  :header "ioj/sim/entities/entity_life_state.h"
   :pass-by value)
 
 (type native_life_state
   :spelling "LifeState"
-  :header "ioj/sim/entity_life_state.h"
+  :header "ioj/sim/entities/entity_life_state.h"
   :pass-by value)
 
 (type native_entity_type
   :spelling "ioj::sim::EntityType"
-  :header "ioj/sim/entity_type.h"
+  :header "ioj/sim/entities/entity_type.h"
   :pass-by value)
 
 (type native_team
@@ -117,7 +117,7 @@
 
 (type native_health
   :spelling "Health"
-  :header "ioj/sim/health.h"
+  :header "ioj/sim/entities/health.h"
   :pass-by value)
 
 ; The explicit constructor and private representation remain owned by C++.
@@ -125,22 +125,22 @@
 
 (type native_health_const_view
   :spelling "HealthConstView"
-  :header "ioj/sim/health_table.h"
+  :header "ioj/sim/entities/health_table.h"
   :pass-by value)
 
 (type native_unique_id
   :spelling "EntityUniqueId"
-  :header "ioj/sim/entity_unique_id.h"
+  :header "ioj/sim/entities/entity_unique_id.h"
   :pass-by value)
 
 (type native_fighter_order
   :spelling "FighterOrder"
-  :header "ioj/sim/fighter_types.h"
+  :header "ioj/sim/fighters/fighter_types.h"
   :pass-by value)
 
 (type native_fighter_task
   :spelling "FighterTask"
-  :header "ioj/sim/fighter_types.h"
+  :header "ioj/sim/fighters/fighter_types.h"
   :pass-by value)
 
 (type native_vector_3f
@@ -155,7 +155,7 @@
 
 (type native_static_geometry_index
   :spelling "ioj::sim::collision::StaticGeometryIndex"
-  :header "ioj/sim/collision_types.h"
+  :header "ioj/sim/collision/collision_types.h"
   :pass-by value)
 
 (type native_vectors_3f
@@ -276,17 +276,17 @@
 
 (type laser_source
   :spelling "ioj::sim::LaserSource"
-  :header "ioj/sim/laser_source.h"
+  :header "ioj/sim/lasers/laser_source.h"
   :pass-by value)
 
 (type frame_fighter_spawn_queue
   :spelling "FrameSpawnQueue"
-  :header "ioj/sim/fighter_frame_spawn_queue.h")
+  :header "ioj/sim/fighters/fighter_frame_spawn_queue.h")
 
 (type native_scalar_response :spelling "ioj::sim::player::ScalarResponse" :header "ioj/sim/player/scalar_response.h")
-(type native_trace_hit :spelling "ioj::sim::TraceHit" :header "ioj/sim/query_result_types.h" :pass-by value)
-(type native_navigation_risk_code :spelling "ioj::sim::fighters::NavigationRiskCode" :header "ioj/sim/fighter_navigation_types.h" :pass-by value)
-(type native_navigation_scan_count :spelling "ioj::sim::fighters::NavigationScanCount" :header "ioj/sim/fighter_navigation_types.h" :pass-by value)
-(type native_avoidance_choice :spelling "ioj::sim::fighters::AvoidanceChoice" :header "ioj/sim/fighter_navigation_types.h" :pass-by value)
+(type native_trace_hit :spelling "ioj::sim::TraceHit" :header "ioj/sim/collision/query_result_types.h" :pass-by value)
+(type native_navigation_risk_code :spelling "ioj::sim::fighters::NavigationRiskCode" :header "ioj/sim/fighters/fighter_navigation_types.h" :pass-by value)
+(type native_navigation_scan_count :spelling "ioj::sim::fighters::NavigationScanCount" :header "ioj/sim/fighters/fighter_navigation_types.h" :pass-by value)
+(type native_avoidance_choice :spelling "ioj::sim::fighters::AvoidanceChoice" :header "ioj/sim/fighters/fighter_navigation_types.h" :pass-by value)
 (type native_transform3d :spelling "ioj::sim::Transform3d" :header "ioj/sim/transform3d.h")
 (type native_vector3d :spelling "ml::Vector3d" :header "ioj/vector3d.h")

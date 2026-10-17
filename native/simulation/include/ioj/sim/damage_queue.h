@@ -3,7 +3,7 @@
 #include <ioj/enum_array.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/direct_damage_events.h>
-#include <ioj/sim/entity_lookup_table.h>
+#include <ioj/sim/entities/entity_lookup_table.h>
 #include <ioj/sim/index_span.h>
 
 namespace ioj::sim {

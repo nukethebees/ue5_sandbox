@@ -3,7 +3,7 @@
 #include "../support/collision_agent_storage.h"
 #include "../support/simulation_test_support.h"
 #include <ioj/frame_memory_resource.h>
-#include <ioj/sim/spatial_query_manager.h>
+#include <ioj/sim/collision/spatial_query_manager.h>
 
 #include <array>
 

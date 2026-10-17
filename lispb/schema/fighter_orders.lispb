@@ -1,5 +1,5 @@
 (module fighter_orders
-  :header "native/simulation/include/ioj/sim/fighter_orders.h"
+  :header "native/simulation/include/ioj/sim/fighters/fighter_orders.h"
   :backend standard-library
   :namespace ioj::sim
   (enum FighterTask @native_uint8

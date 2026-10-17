@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ioj/sim/entity_type_radii.h"
-#include "ioj/sim/entity_unique_id.h"
+#include "ioj/sim/entities/entity_type_radii.h"
+#include "ioj/sim/entities/entity_unique_id.h"
 #include "SpaceGamePresentation/entities/TeamColours.h"
 #include "SpaceGamePresentation/presentation/AgentDisplayBatch.h"
 

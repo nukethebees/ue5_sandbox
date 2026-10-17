@@ -1,5 +1,5 @@
 (module level_events
-  :header "native/simulation/include/ioj/sim/level_event_values.h"
+  :header "native/simulation/include/ioj/sim/levels/level_event_values.h"
   :backend standard-library
   :namespace ioj::sim
   (integer-scalar LevelEventCount

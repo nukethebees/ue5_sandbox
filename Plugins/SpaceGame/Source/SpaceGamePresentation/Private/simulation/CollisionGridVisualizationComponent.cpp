@@ -1,9 +1,9 @@
 #include "SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h"
 
-#include <ioj/sim/collision_grid.h>
-#include <ioj/sim/entity_cell_data_operations.h>
-#include <ioj/sim/world_aabb_operations.h>
-#include <ioj/sim/world_aabbs.h>
+#include <ioj/sim/collision/collision_grid.h>
+#include <ioj/sim/collision/entity_cell_data_operations.h>
+#include <ioj/sim/collision/world_aabb_operations.h>
+#include <ioj/sim/collision/world_aabbs.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include <Engine/EngineTypes.h>

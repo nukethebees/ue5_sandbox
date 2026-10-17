@@ -2,8 +2,8 @@
 
 #include <ioj/multi_buffer.h>
 #include <ioj/periodic_tick_countdown.h>
-#include <ioj/sim/entity_ledger.h>
-#include <ioj/sim/entity_type.h>
+#include <ioj/sim/entities/entity_ledger.h>
+#include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/fixed_tick_loop.h>
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>

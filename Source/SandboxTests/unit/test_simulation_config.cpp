@@ -1,4 +1,4 @@
-#include <ioj/sim/entity_world_bounds.h>
+#include <ioj/sim/collision/entity_world_bounds.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SpaceGame/combat/lasers/TestLasersConfig.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnersConfig.h>

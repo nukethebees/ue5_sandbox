@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/attack_distance_band.h>
+#include <ioj/sim/fighters/attack_distance_band.h>
 
 #include <CoreMinimal.h>
 

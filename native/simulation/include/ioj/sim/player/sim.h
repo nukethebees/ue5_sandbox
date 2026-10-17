@@ -1,13 +1,13 @@
-#include <ioj/sim/entity_tables.h>
+#include <ioj/sim/entities/entity_tables.h>
 #pragma once
-#include <ioj/sim/entity_types.h>
-#include <ioj/sim/health_table.h>
+#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/entities/health_table.h>
+#include <ioj/sim/entities/ship_health.h>
 #include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/flight_model_runtime.h>
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/player/space_ship_common.h>
-#include <ioj/sim/ship_health.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/sim_config.h>
 #include <ioj/sim/transform3d.h>

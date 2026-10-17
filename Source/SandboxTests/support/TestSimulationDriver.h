@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/sim/entity_unique_id.h>
+#include <ioj/sim/entities/entity_unique_id.h>
 #include <ioj/test_timeline.h>
 
 #include <HAL/Platform.h>

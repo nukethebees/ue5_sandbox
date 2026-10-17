@@ -1,13 +1,13 @@
 #pragma once
 #include <ioj/frame_memory_resource.h>
-#include <ioj/sim/entity_death_info.h>
-#include <ioj/sim/entity_frame_change.h>
-#include <ioj/sim/entity_tables.h>
+#include <ioj/sim/entities/entity_death_info.h>
+#include <ioj/sim/entities/entity_frame_change.h>
+#include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/levels/level_runtime_events.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/sim_config.h>
-#include <ioj/sim/turret_entity_data.h>
+#include <ioj/sim/turrets/turret_entity_data.h>
 
 #include <cstdint>
 #include <memory_resource>

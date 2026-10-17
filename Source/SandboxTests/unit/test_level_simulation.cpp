@@ -1,12 +1,12 @@
+#include <ioj/sim/collision/world_aabb_operations.h>
 #include <ioj/sim/column_math.h>
-#include <ioj/sim/entity_type.h>
-#include <ioj/sim/entity_types.h>
-#include <ioj/sim/laser_source.h>
-#include <ioj/sim/level_sim.h>
+#include <ioj/sim/entities/entity_type.h>
+#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/levels/level_event_manager.h>
+#include <ioj/sim/levels/level_sim.h>
 #include <ioj/sim/testing/laser_spawns.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
-#include <ioj/sim/world_aabb_operations.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>

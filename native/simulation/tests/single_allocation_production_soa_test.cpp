@@ -1,17 +1,17 @@
 #include "support/simulation_test_support.h"
 #include <ioj/frame_memory_resource.h>
-#include <ioj/sim/capital_entity_data.h>
+#include <ioj/sim/capital_ships/capital_entity_data.h>
+#include <ioj/sim/collision/frame_hit_details.h>
 #include <ioj/sim/column_math.h>
-#include <ioj/sim/fighter_entity_data.h>
-#include <ioj/sim/fighter_spawn_queue.h>
-#include <ioj/sim/frame_hit_details.h>
-#include <ioj/sim/laser_frame_output.h>
-#include <ioj/sim/laser_hit_details.h>
-#include <ioj/sim/laser_soa.h>
+#include <ioj/sim/fighters/fighter_entity_data.h>
+#include <ioj/sim/fighters/fighter_spawn_queue.h>
+#include <ioj/sim/lasers/laser_frame_output.h>
+#include <ioj/sim/lasers/laser_hit_details.h>
+#include <ioj/sim/lasers/laser_soa.h>
 #include <ioj/sim/levels/compiled_level_events.h>
 #include <ioj/sim/memory/game_memory.h>
-#include <ioj/sim/spinner_entity_data.h>
-#include <ioj/sim/turret_entity_data.h>
+#include <ioj/sim/spinners/spinner_entity_data.h>
+#include <ioj/sim/turrets/turret_entity_data.h>
 
 #include <type_traits>
 #include <utility>

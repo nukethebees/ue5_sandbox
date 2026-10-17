@@ -1,10 +1,10 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
 
+#include <ioj/sim/collision/entity_world_bounds.h>
 #include <ioj/sim/column_math.h>
-#include <ioj/sim/entity_type.h>
-#include <ioj/sim/entity_types.h>
-#include <ioj/sim/entity_world_bounds.h>
-#include <ioj/sim/laser_source.h>
+#include <ioj/sim/entities/entity_type.h>
+#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/levels/fighter_spawn_slot_validation.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
 #include <ioj/sim/missions/mission_fail_reason.h>

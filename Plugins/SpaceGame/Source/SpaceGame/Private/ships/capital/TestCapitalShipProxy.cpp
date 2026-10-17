@@ -19,7 +19,7 @@
 #include <EngineUtils.h>
 
 #if WITH_EDITOR
-#include <ioj/sim/entity_world_bounds.h>
+#include <ioj/sim/collision/entity_world_bounds.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 
 #include <ScopedTransaction.h>

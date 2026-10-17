@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/laser_source.h>
+#include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/lasers/sim.h>
 #include <SpaceGamePresentation/entities/TeamColours.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>

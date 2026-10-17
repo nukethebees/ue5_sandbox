@@ -1,137 +1,137 @@
 target_sources(native-simulation PRIVATE
-  entity_ledger.cpp
-  ../include/ioj/sim/entity_ledger.h
+  entities/entity_ledger.cpp
+  ../include/ioj/sim/entities/entity_ledger.h
   damage_queue.cpp
   ../include/ioj/sim/combat_events.h
   ../include/ioj/sim/damage_queue.h
-  ../include/ioj/sim/entity_lookup_table.h
-  ../include/ioj/sim/entity_type_runs.h
-  ../include/ioj/sim/player_spatial_data.h
-  ../include/ioj/sim/attack_distance_band.h
+  ../include/ioj/sim/entities/entity_lookup_table.h
+  ../include/ioj/sim/entities/entity_type_runs.h
+  ../include/ioj/sim/player/player_spatial_data.h
+  ../include/ioj/sim/fighters/attack_distance_band.h
   ../include/ioj/sim/base_sim_config.h
   ../include/ioj/sim/batch_operations.h
-  ../include/ioj/sim/capital_death_event.h
-  ../include/ioj/sim/capital_entity_data.h
-  ../include/ioj/sim/collision_events.h
-  ../include/ioj/sim/collision_types.h
-  ../include/ioj/sim/collision_grid_entity_storage.h
-  ../include/ioj/sim/collision_grid_static_storage.h
-  ../include/ioj/sim/collision_grid.h
+  ../include/ioj/sim/capital_ships/capital_death_event.h
+  ../include/ioj/sim/capital_ships/capital_entity_data.h
+  ../include/ioj/sim/collision/collision_events.h
+  ../include/ioj/sim/collision/collision_types.h
+  ../include/ioj/sim/collision/collision_grid_entity_storage.h
+  ../include/ioj/sim/collision/collision_grid_static_storage.h
+  ../include/ioj/sim/collision/collision_grid.h
   ../include/ioj/sim/deterministic_bias.h
   ../include/ioj/sim/direct_damage_events.h
-  ../include/ioj/sim/entity_aabbs.h
-  ../include/ioj/sim/entity_cell_data_operations.h
-  ../include/ioj/sim/entity_cell_data.h
-  ../include/ioj/sim/entity_death_info.h
-  ../include/ioj/sim/entity_history.h
-  ../include/ioj/sim/entity_life_state.h
-  ../include/ioj/sim/entity_overlaps.h
+  ../include/ioj/sim/collision/entity_aabbs.h
+  ../include/ioj/sim/collision/entity_cell_data_operations.h
+  ../include/ioj/sim/collision/entity_cell_data.h
+  ../include/ioj/sim/entities/entity_death_info.h
+  ../include/ioj/sim/entities/entity_history.h
+  ../include/ioj/sim/entities/entity_life_state.h
+  ../include/ioj/sim/collision/entity_overlaps.h
   ../include/ioj/sim/combat_statistics.h
-  ../include/ioj/sim/entity_telemetry.h
-  ../include/ioj/sim/entity_types.h
-  ../include/ioj/sim/entity_world_bounds.h
-  ../include/ioj/sim/fighter_diagnostics.h
-  ../include/ioj/sim/fighter_entity_data.h
-  ../include/ioj/sim/fighter_frame_spawn_queue.h
-  ../include/ioj/sim/fighter_navigation_scratch.h
-  ../include/ioj/sim/fighter_navigation.h
-  ../include/ioj/sim/fighter_order_queue.h
-  ../include/ioj/sim/fighter_spawn_queue.h
-  ../include/ioj/sim/fighter_types.h
+  ../include/ioj/sim/entities/entity_telemetry.h
+  ../include/ioj/sim/entities/entity_types.h
+  ../include/ioj/sim/collision/entity_world_bounds.h
+  ../include/ioj/sim/fighters/fighter_diagnostics.h
+  ../include/ioj/sim/fighters/fighter_entity_data.h
+  ../include/ioj/sim/fighters/fighter_frame_spawn_queue.h
+  ../include/ioj/sim/fighters/fighter_navigation_scratch.h
+  ../include/ioj/sim/fighters/fighter_navigation.h
+  ../include/ioj/sim/fighters/fighter_order_queue.h
+  ../include/ioj/sim/fighters/fighter_spawn_queue.h
+  ../include/ioj/sim/fighters/fighter_types.h
   ../include/ioj/sim/fixed_tick_loop.h
   ../include/ioj/sim/fixed_tick.h
-  ../include/ioj/sim/frame_collision_scratch.h
-  ../include/ioj/sim/frame_hit_details.h
-  ../include/ioj/sim/frame_laser_spawn_requests.h
+  ../include/ioj/sim/collision/frame_collision_scratch.h
+  ../include/ioj/sim/collision/frame_hit_details.h
+  ../include/ioj/sim/lasers/frame_laser_spawn_requests.h
   ../include/ioj/sim/frame_rotators3f.h
   ../include/ioj/sim/frame_vectors3f.h
-  ../include/ioj/sim/frame_range_query_results.h
-  ../include/ioj/sim/entity_tables.h
-  ../include/ioj/sim/health_table.h
+  ../include/ioj/sim/collision/frame_range_query_results.h
+  ../include/ioj/sim/entities/entity_tables.h
+  ../include/ioj/sim/entities/health_table.h
   ../include/ioj/sim/index_span.h
-  ../include/ioj/sim/laser_frame_output.h
-  ../include/ioj/sim/laser_hit_details.h
-  ../include/ioj/sim/laser_soa.h
-  ../include/ioj/sim/laser_source.h
-  ../include/ioj/sim/level_event_types.h
-  ../include/ioj/sim/level_read_access.h
-  ../include/ioj/sim/level_sim.h
-  ../include/ioj/sim/level_telemetry_block_history_types.h
-  ../include/ioj/sim/level_telemetry_current_state.h
-  ../include/ioj/sim/level_telemetry_history_stats.h
-  ../include/ioj/sim/level_telemetry_manager.h
-  ../include/ioj/sim/level_telemetry_run_data.h
-  ../include/ioj/sim/level_telemetry_snapshot.h
-  ../include/ioj/sim/line_trace_batch.h
-  ../include/ioj/sim/line_traces.h
-  ../include/ioj/sim/mission_manager.h
-  ../include/ioj/sim/navigation_telemetry.h
+  ../include/ioj/sim/lasers/laser_frame_output.h
+  ../include/ioj/sim/lasers/laser_hit_details.h
+  ../include/ioj/sim/lasers/laser_soa.h
+  ../include/ioj/sim/lasers/laser_source.h
+  ../include/ioj/sim/levels/level_event_types.h
+  ../include/ioj/sim/levels/level_read_access.h
+  ../include/ioj/sim/levels/level_sim.h
+  ../include/ioj/sim/telemetry/level_telemetry_block_history_types.h
+  ../include/ioj/sim/telemetry/level_telemetry_current_state.h
+  ../include/ioj/sim/telemetry/level_telemetry_history_stats.h
+  ../include/ioj/sim/telemetry/level_telemetry_manager.h
+  ../include/ioj/sim/telemetry/level_telemetry_run_data.h
+  ../include/ioj/sim/telemetry/level_telemetry_snapshot.h
+  ../include/ioj/sim/collision/line_trace_batch.h
+  ../include/ioj/sim/collision/line_traces.h
+  ../include/ioj/sim/missions/mission_manager.h
+  ../include/ioj/sim/telemetry/navigation_telemetry.h
   ../include/ioj/sim/overlap_handler.h
-        ../include/ioj/sim/entity_type.h
-        ../include/ioj/sim/entity_unique_id.h
-  ../include/ioj/sim/entity_unique_id_checks.h
-  ../include/ioj/sim/team_checks.h
+        ../include/ioj/sim/entities/entity_type.h
+        ../include/ioj/sim/entities/entity_unique_id.h
+  ../include/ioj/sim/entities/entity_unique_id_checks.h
+  ../include/ioj/sim/entities/team_checks.h
   ../include/ioj/sim/profiling.h
-  ../include/ioj/sim/reference_level_simulation_data.h
+  ../include/ioj/sim/levels/reference_level_simulation_data.h
   ../include/ioj/sim/rotator_math.h
   ../include/ioj/sim/rotator_types.h
   ../include/ioj/sim/rotators3f.h
-  ../include/ioj/sim/ship_flight_model.h
-  ../include/ioj/sim/ship_health.h
+  ../include/ioj/sim/player/ship_flight_model.h
+  ../include/ioj/sim/entities/ship_health.h
   ../include/ioj/sim/sim_clock.h
   ../include/ioj/sim/sim_config.h
   ../include/ioj/sim/sim_state.h
   ../include/ioj/sim/sim_tick.h
   ../include/ioj/sim/sim_time.h
-  ../include/ioj/sim/spatial_query_manager.h
-  ../include/ioj/sim/spatial.h
-  ../include/ioj/sim/spinner_entity_data.h
+  ../include/ioj/sim/collision/spatial_query_manager.h
+  ../include/ioj/sim/collision/spatial.h
+  ../include/ioj/sim/spinners/spinner_entity_data.h
   ../include/ioj/sim/step_response.h
-  ../include/ioj/sim/entity_frame_change.h
+  ../include/ioj/sim/entities/entity_frame_change.h
   ../include/ioj/sim/testing/level_sim_test_access.h
   ../include/ioj/sim/testing/laser_spawns.h
   ../include/ioj/sim/testing/spatial_query_manager_test_access.h
-  ../include/ioj/sim/trace_hits.h
+  ../include/ioj/sim/collision/trace_hits.h
   ../include/ioj/sim/transform3d.h
-  ../include/ioj/sim/turret_entity_data.h
+  ../include/ioj/sim/turrets/turret_entity_data.h
   ../include/ioj/sim/vector_operations.h
   ../include/ioj/sim/column_math.h
   ../include/ioj/sim/vector_types.h
   ../include/ioj/sim/vectors3f.h
-  ../include/ioj/sim/world_aabb_operations.h
-  ../include/ioj/sim/world_aabbs.h
-  attack_distance_band.cpp
+  ../include/ioj/sim/collision/world_aabb_operations.h
+  ../include/ioj/sim/collision/world_aabbs.h
+  fighters/attack_distance_band.cpp
   batch_operations.cpp
-  collision_events.cpp
-  collision_grid_static_storage.cpp
-  collision_grid.cpp
+  collision/collision_events.cpp
+  collision/collision_grid_static_storage.cpp
+  collision/collision_grid.cpp
   deterministic_bias.cpp
   combat_statistics.cpp
-  entity_world_bounds.cpp
-  fighter_frame_spawn_queue.cpp
-  fighter_navigation.cpp
+  collision/entity_world_bounds.cpp
+  fighters/fighter_frame_spawn_queue.cpp
+  fighters/fighter_navigation.cpp
   fixed_tick.cpp
-  frame_collision_scratch.cpp
-  frame_hit_details.cpp
-  frame_laser_spawn_requests.cpp
+  collision/frame_collision_scratch.cpp
+  collision/frame_hit_details.cpp
+  lasers/frame_laser_spawn_requests.cpp
   frame_rotators3f.cpp
   frame_vectors3f.cpp
-  laser_frame_output.cpp
-  level_event_types.cpp
-  level_read_access.cpp
-  level_sim.cpp
-  level_sim_invariants.cpp
-  level_telemetry_manager.cpp
-  mission_manager.cpp
+  lasers/laser_frame_output.cpp
+  levels/level_event_types.cpp
+  levels/level_read_access.cpp
+  levels/level_sim.cpp
+  levels/level_sim_invariants.cpp
+  telemetry/level_telemetry_manager.cpp
+  missions/mission_manager.cpp
   overlap_handler.cpp
-  reference_level_simulation_data.cpp
+  levels/reference_level_simulation_data.cpp
   rotator_math.cpp
-  ship_flight_model.cpp
-  ship_health.cpp
+  player/ship_flight_model.cpp
+  entities/ship_health.cpp
   sim_time.cpp
-  spatial_query_manager.cpp
-  spatial_range_queries.cpp
-  spatial.cpp
+  collision/spatial_query_manager.cpp
+  collision/spatial_range_queries.cpp
+  collision/spatial.cpp
   step_response.cpp
   transform3d.cpp
 )

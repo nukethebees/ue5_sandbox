@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/entity_type.h>
+#include <ioj/sim/entities/entity_type.h>
 #include <ioj/time_series_data.h>
 #include <SandboxTests/support/SimulationTestScenario.h>
 #include <SpaceGame/missions/TestMissionState.h>

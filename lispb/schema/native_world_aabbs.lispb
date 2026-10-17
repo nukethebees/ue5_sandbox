@@ -1,5 +1,5 @@
 (module native_world_aabbs
-  :header "native/simulation/include/ioj/sim/world_aabbs.h"
+  :header "native/simulation/include/ioj/sim/collision/world_aabbs.h"
   :backend standard-library
   :namespace ioj::sim::collision
   (struct WorldAABBsColumns

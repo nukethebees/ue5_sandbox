@@ -1,0 +1,327 @@
+#include "ioj/sim/collision/collision_grid.h"
+
+#include "ioj/sim/vectors3f.h"
+#include <ioj/levels/grid_dimensions.h>
+
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <limits>
+#include <utility>
+
+namespace ioj::sim::collision {
+namespace {
+/* **************************************** */
+// Internal helpers
+/* **************************************** */
+constexpr std::size_t axis_count{3};
+
+auto to_cell(float const value, float const cell_dimension, float const half_grid_extent) noexcept
+    -> int {
+    return static_cast<int>(std::floor((value + half_grid_extent) / cell_dimension));
+}
+auto to_closed_max_cell(float const value,
+                        float const cell_dimension,
+                        int const grid_dimension,
+                        float const half_grid_extent) noexcept -> int {
+    if (value == half_grid_extent) {
+        return grid_dimension - 1;
+    }
+    return to_cell(value, cell_dimension, half_grid_extent);
+}
+auto grid_half_size(GridGeometry const geometry) noexcept -> Vector3f {
+    return ml::make_vector3f(
+        static_cast<float>(geometry.dimensions.x) * geometry.cell_dimensions.X * 0.5f,
+        static_cast<float>(geometry.dimensions.y) * geometry.cell_dimensions.Y * 0.5f,
+        static_cast<float>(geometry.dimensions.z) * geometry.cell_dimensions.Z * 0.5f);
+}
+auto clip_segment(Vector3f const start,
+                  Vector3f const end,
+                  Vector3f const bounds_min,
+                  Vector3f const bounds_max_inside,
+                  Vector3f& clipped_start,
+                  Vector3f& clipped_end) noexcept -> bool {
+    auto const delta{ml::make_vector3f(end.X - start.X, end.Y - start.Y, end.Z - start.Z)};
+    float entry_t{};
+    float exit_t{1.0f};
+
+    for (std::size_t axis{}; axis < axis_count; ++axis) {
+        auto const axis_delta{delta.Elements[axis]};
+        if (axis_delta == 0.0f) {
+            if (start.Elements[axis] < bounds_min.Elements[axis] ||
+                start.Elements[axis] > bounds_max_inside.Elements[axis]) {
+                return false;
+            }
+            continue;
+        }
+
+        auto axis_entry_t{(bounds_min.Elements[axis] - start.Elements[axis]) / axis_delta};
+        auto axis_exit_t{(bounds_max_inside.Elements[axis] - start.Elements[axis]) / axis_delta};
+        if (axis_entry_t > axis_exit_t) {
+            std::swap(axis_entry_t, axis_exit_t);
+        }
+
+        entry_t = std::max(entry_t, axis_entry_t);
+        exit_t = std::min(exit_t, axis_exit_t);
+        if (entry_t > exit_t) {
+            return false;
+        }
+    }
+
+    for (std::size_t axis{}; axis < axis_count; ++axis) {
+        clipped_start.Elements[axis] =
+            std::clamp(start.Elements[axis] + delta.Elements[axis] * entry_t,
+                       bounds_min.Elements[axis],
+                       bounds_max_inside.Elements[axis]);
+        clipped_end.Elements[axis] =
+            std::clamp(start.Elements[axis] + delta.Elements[axis] * exit_t,
+                       bounds_min.Elements[axis],
+                       bounds_max_inside.Elements[axis]);
+    }
+    return true;
+}
+}
+
+/* **************************************** */
+// Grid geometry
+/* **************************************** */
+auto CellCoord::operator[](std::size_t const index) noexcept -> int& {
+    if (index == 0) {
+        return x;
+    }
+    if (index == 1) {
+        return y;
+    }
+    return z;
+}
+auto CellCoord::operator[](std::size_t const index) const noexcept -> int {
+    if (index == 0) {
+        return x;
+    }
+    if (index == 1) {
+        return y;
+    }
+    return z;
+}
+auto is_configured(GridGeometry const geometry) noexcept -> bool {
+    if (geometry.dimensions.x <= 0 || geometry.dimensions.y <= 0 || geometry.dimensions.z <= 0 ||
+        !std::isfinite(geometry.cell_dimensions.X) || !std::isfinite(geometry.cell_dimensions.Y) ||
+        !std::isfinite(geometry.cell_dimensions.Z) || geometry.cell_dimensions.X <= 0.0f ||
+        geometry.cell_dimensions.Y <= 0.0f || geometry.cell_dimensions.Z <= 0.0f) {
+        return false;
+    }
+
+    return ioj::levels::grid_cell_count_fits(
+        geometry.dimensions.x, geometry.dimensions.y, geometry.dimensions.z);
+}
+auto calculate_grid_dimensions(Vector3f const grid_size, Vector3f const cell_size) noexcept
+    -> CellCoord {
+    return {ioj::levels::grid_axis_count(grid_size.X, cell_size.X),
+            ioj::levels::grid_axis_count(grid_size.Y, cell_size.Y),
+            ioj::levels::grid_axis_count(grid_size.Z, cell_size.Z)};
+}
+auto num_cells(GridGeometry const geometry) noexcept -> GridCellCount {
+    return geometry.dimensions.x * geometry.dimensions.y * geometry.dimensions.z;
+}
+auto to_index(GridGeometry const geometry, CellCoord const coordinate) noexcept -> CellIndex {
+    return coordinate.x + coordinate.y * geometry.dimensions.x +
+           coordinate.z * geometry.dimensions.x * geometry.dimensions.y;
+}
+auto to_cell_coord(float const value, float const cell_dimension, int const grid_dimension) noexcept
+    -> int {
+    auto const half_extent{static_cast<float>(grid_dimension) * cell_dimension * 0.5f};
+    return to_cell(value, cell_dimension, half_extent);
+}
+auto to_cell_coord(GridGeometry const geometry, Vector3f const position) noexcept -> CellCoord {
+    auto const half_size{grid_half_size(geometry)};
+    return {
+        to_cell(position.X, geometry.cell_dimensions.X, half_size.X),
+        to_cell(position.Y, geometry.cell_dimensions.Y, half_size.Y),
+        to_cell(position.Z, geometry.cell_dimensions.Z, half_size.Z),
+    };
+}
+auto to_max_cell_coord(GridGeometry const geometry, Vector3f const position) noexcept -> CellCoord {
+    auto const half_size{grid_half_size(geometry)};
+    return {
+        to_closed_max_cell(
+            position.X, geometry.cell_dimensions.X, geometry.dimensions.x, half_size.X),
+        to_closed_max_cell(
+            position.Y, geometry.cell_dimensions.Y, geometry.dimensions.y, half_size.Y),
+        to_closed_max_cell(
+            position.Z, geometry.cell_dimensions.Z, geometry.dimensions.z, half_size.Z),
+    };
+}
+auto to_cell_coord_bounds(GridGeometry const geometry,
+                          Vector3f const min_point,
+                          Vector3f const max_point) noexcept -> CellCoordBounds {
+    return {to_cell_coord(geometry, min_point), to_max_cell_coord(geometry, max_point)};
+}
+auto to_cell_min(int const coordinate,
+                 float const cell_dimension,
+                 int const grid_dimension) noexcept -> float {
+    auto const half_extent{static_cast<float>(grid_dimension) * cell_dimension * 0.5f};
+    return static_cast<float>(coordinate) * cell_dimension - half_extent;
+}
+auto to_cell_min(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vector3f {
+    auto const half_size{grid_half_size(geometry)};
+    return ml::make_vector3f(
+        static_cast<float>(coordinate.x) * geometry.cell_dimensions.X - half_size.X,
+        static_cast<float>(coordinate.y) * geometry.cell_dimensions.Y - half_size.Y,
+        static_cast<float>(coordinate.z) * geometry.cell_dimensions.Z - half_size.Z);
+}
+auto to_cell_centre(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vector3f {
+    auto result{to_cell_min(geometry, coordinate)};
+    result.X += geometry.cell_dimensions.X * 0.5f;
+    result.Y += geometry.cell_dimensions.Y * 0.5f;
+    result.Z += geometry.cell_dimensions.Z * 0.5f;
+    return result;
+}
+
+/* **************************************** */
+// Bounds queries
+/* **************************************** */
+auto is_cell_coord_in_bounds(GridGeometry const geometry, CellCoord const coordinate) noexcept
+    -> bool {
+    return coordinate.x >= 0 && coordinate.x < geometry.dimensions.x && coordinate.y >= 0 &&
+           coordinate.y < geometry.dimensions.y && coordinate.z >= 0 &&
+           coordinate.z < geometry.dimensions.z;
+}
+void are_spheres_in_bounds(GridGeometry const geometry,
+                           Vectors3fConstView const centres,
+                           float const radius,
+                           std::span<SphereInBoundsResult> const results) noexcept {
+    assert(static_cast<std::size_t>(centres.num()) == results.size());
+    assert(std::isfinite(radius));
+    assert(radius >= 0.0f);
+
+    auto const half_size{grid_half_size(geometry)};
+    auto const min_x{-half_size.X + radius};
+    auto const min_y{-half_size.Y + radius};
+    auto const min_z{-half_size.Z + radius};
+    auto const max_x{half_size.X - radius};
+    auto const max_y{half_size.Y - radius};
+    auto const max_z{half_size.Z - radius};
+
+    auto const count{static_cast<std::size_t>(centres.num())};
+    auto const xs{centres.xs()};
+    auto const ys{centres.ys()};
+    auto const zs{centres.zs()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const is_in_bounds{xs[index] >= min_x && xs[index] <= max_x && ys[index] >= min_y &&
+                                ys[index] <= max_y && zs[index] >= min_z && zs[index] <= max_z};
+        results[index] = static_cast<SphereInBoundsResult>(is_in_bounds);
+    }
+}
+
+/* **************************************** */
+// AABB tracing
+/* **************************************** */
+auto trace_aabb(Vector3f const trace_start,
+                Vector3f const inverse_trace_delta,
+                Vector3f const trace_delta,
+                Vector3f const aabb_min,
+                Vector3f const aabb_max,
+                Vector3f const expansion) noexcept -> float {
+    float minimum_t{};
+    float maximum_t{1.0f};
+
+    for (std::size_t axis{}; axis < axis_count; ++axis) {
+        auto const slab_min{aabb_min.Elements[axis] - expansion.Elements[axis]};
+        auto const slab_max{aabb_max.Elements[axis] + expansion.Elements[axis]};
+        auto const start{trace_start.Elements[axis]};
+        auto const axis_delta{trace_delta.Elements[axis]};
+        if (axis_delta == 0.0f) {
+            if (start < slab_min || start > slab_max) {
+                return no_trace_hit;
+            }
+            continue;
+        }
+
+        auto first_t{(slab_min - start) * inverse_trace_delta.Elements[axis]};
+        auto second_t{(slab_max - start) * inverse_trace_delta.Elements[axis]};
+        if (first_t > second_t) {
+            std::swap(first_t, second_t);
+        }
+        minimum_t = std::max(minimum_t, first_t);
+        maximum_t = std::min(maximum_t, second_t);
+        if (minimum_t > maximum_t) {
+            return no_trace_hit;
+        }
+    }
+    return minimum_t;
+}
+
+/* **************************************** */
+// Grid traversal
+/* **************************************** */
+auto GridTraversal::create(GridGeometry const geometry,
+                           Vector3f const start,
+                           Vector3f const end,
+                           GridTraversal& result) noexcept -> bool {
+    if (!is_configured(geometry)) {
+        return false;
+    }
+
+    auto const half_size{grid_half_size(geometry)};
+    auto const bounds_min{ml::make_vector3f(-half_size.X, -half_size.Y, -half_size.Z)};
+    Vector3f bounds_max_inside{half_size};
+    for (std::size_t axis{}; axis < axis_count; ++axis) {
+        bounds_max_inside.Elements[axis] =
+            std::nextafter(bounds_max_inside.Elements[axis], bounds_min.Elements[axis]);
+    }
+
+    Vector3f clipped_start;
+    Vector3f clipped_end;
+    if (!clip_segment(start, end, bounds_min, bounds_max_inside, clipped_start, clipped_end)) {
+        return false;
+    }
+
+    auto clamp_cell = [geometry](Vector3f const point) {
+        return to_cell_coord(geometry, point).clamped({}, geometry.dimensions - 1);
+    };
+
+    result.current_cell_ = clamp_cell(clipped_start);
+    result.end_cell_ = clamp_cell(clipped_end);
+    auto const cell_min{to_cell_min(geometry, result.current_cell_)};
+    auto const delta{ml::make_vector3f(clipped_end.X - clipped_start.X,
+                                       clipped_end.Y - clipped_start.Y,
+                                       clipped_end.Z - clipped_start.Z)};
+    for (std::size_t axis{}; axis < axis_count; ++axis) {
+        if (delta.Elements[axis] == 0.0f) {
+            result.steps_[axis] = 0;
+            result.next_t_.Elements[axis] = no_axis_crossing_t;
+            result.t_deltas_.Elements[axis] = no_axis_crossing_t;
+            continue;
+        }
+
+        result.steps_[axis] = delta.Elements[axis] > 0.0f ? 1 : -1;
+        auto const next_boundary{
+            cell_min.Elements[axis] +
+            (result.steps_[axis] > 0 ? geometry.cell_dimensions.Elements[axis] : 0.0f)};
+        result.next_t_.Elements[axis] =
+            (next_boundary - clipped_start.Elements[axis]) / delta.Elements[axis];
+        result.t_deltas_.Elements[axis] =
+            geometry.cell_dimensions.Elements[axis] / std::abs(delta.Elements[axis]);
+    }
+    return true;
+}
+auto GridTraversal::current_cell() const noexcept -> CellCoord {
+    return current_cell_;
+}
+auto GridTraversal::advance() noexcept -> bool {
+    if (current_cell_ == end_cell_) {
+        return false;
+    }
+    auto const next_t{std::min({next_t_.X, next_t_.Y, next_t_.Z})};
+    if (next_t > 1.0f) {
+        return false;
+    }
+    for (std::size_t axis{}; axis < axis_count; ++axis) {
+        if (next_t_.Elements[axis] == next_t) {
+            current_cell_[axis] += steps_[axis];
+            next_t_.Elements[axis] += t_deltas_.Elements[axis];
+        }
+    }
+    return true;
+}
+}

@@ -1,4 +1,4 @@
-#include "ioj/sim/ship_health.h"
+#include "ioj/sim/entities/ship_health.h"
 
 #include <gtest/gtest.h>
 

@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "ioj/sim/attack_distance_band.h"
-#include "ioj/sim/health.h"
+#include "ioj/sim/entities/health.h"
+#include "ioj/sim/fighters/attack_distance_band.h"
 
 #include <cstdint>
 

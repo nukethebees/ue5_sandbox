@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/entity_type.h>
+#include <ioj/sim/entities/entity_type.h>
 
 #include <Containers/UnrealString.h>
 
