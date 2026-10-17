@@ -12,6 +12,10 @@ target_include_directories(native-core-headers
 )
 target_sources(native-core
   PRIVATE
+    include/ioj/rotator_types.h
+    include/ioj/rotators3f.h
+    include/ioj/rotator_math.h
+    src/rotator_math.cpp
     include/ioj/vector_types.h
     include/ioj/transform3d.h
     src/transform3d.cpp

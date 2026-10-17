@@ -1,4 +1,5 @@
 #include "support/simulation_test_support.h"
+#include <ioj/rotator_math.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
@@ -7,7 +8,6 @@
 #include <ioj/sim/frame_vectors3f.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/memory/game_memory.h>
-#include <ioj/sim/rotator_math.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/tick_countdown.h>

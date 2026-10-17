@@ -4,9 +4,9 @@
 #pragma once
 
 #include "ioj/native_soa/storage.h"
+#include "ioj/rotator_types.h"
 #include "ioj/sim/entities/entity_unique_id.h"
 #include "ioj/sim/lasers/laser_source.h"
-#include "ioj/sim/rotator_types.h"
 #include "ioj/vector_soa_view.h"
 
 #include <cassert>

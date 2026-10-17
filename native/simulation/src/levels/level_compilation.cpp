@@ -1,8 +1,8 @@
 #include <ioj/sim/levels/level_compilation.h>
 
+#include <ioj/rotator_types.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/levels/level_event_schedule.h>
-#include <ioj/sim/rotator_types.h>
 #include <ioj/sim/sim_clock.h>
 
 #include <algorithm>
@@ -201,7 +201,7 @@ auto compile_level(LevelDefinition const& definition,
                                               static_cast<float>(entity.position.z)));
             sim::set_rotation(capital_events.view_rotations(),
                               row,
-                              sim::Rotator3f{static_cast<float>(entity.rotation.pitch),
+                              ioj::Rotator3f{static_cast<float>(entity.rotation.pitch),
                                              static_cast<float>(entity.rotation.yaw),
                                              static_cast<float>(entity.rotation.roll)});
             capital_events.teams()[row] = entity.team;
@@ -220,7 +220,7 @@ auto compile_level(LevelDefinition const& definition,
                                               static_cast<float>(entity.position.z)));
             sim::set_rotation(turret_events.view_rotations(),
                               row,
-                              sim::Rotator3f{static_cast<float>(entity.rotation.pitch),
+                              ioj::Rotator3f{static_cast<float>(entity.rotation.pitch),
                                              static_cast<float>(entity.rotation.yaw),
                                              static_cast<float>(entity.rotation.roll)});
             turret_events.teams()[row] = entity.team;

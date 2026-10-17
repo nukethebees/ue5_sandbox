@@ -1,10 +1,10 @@
 #pragma once
 
-#include "ioj/sim/rotator_types.h"
+#include "ioj/rotator_types.h"
 #include "ioj/vector_types.h"
 #include <ioj/rotator3d.h>
 
-namespace ioj::sim {
+namespace ioj {
 inline auto to_float(Rotator3d const rotation) noexcept -> Rotator3f {
     return {static_cast<float>(rotation.pitch),
             static_cast<float>(rotation.yaw),

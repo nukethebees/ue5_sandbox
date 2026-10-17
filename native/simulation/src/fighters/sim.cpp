@@ -6,6 +6,7 @@
 #include <ioj/generated/array_math_kernels.h>
 #include <ioj/periodic_tick_countdown.h>
 #include <ioj/projectile_intercept.h>
+#include <ioj/rotator_math.h>
 #include <ioj/sim/batch_operations.h>
 #include <ioj/sim/collision/frame_range_query_results.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
@@ -21,7 +22,6 @@
 #include <ioj/sim/lasers/frame_laser_spawn_requests.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/profiling.h>
-#include <ioj/sim/rotator_math.h>
 #include <ioj/sim/vector_operations.h>
 #include <ioj/tick_countdown.h>
 #include <ioj/vector_math.h>

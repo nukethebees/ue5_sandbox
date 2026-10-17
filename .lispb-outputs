@@ -86,7 +86,7 @@ native/simulation/include/ioj/sim/player/phase_interface.h
 native/simulation/include/ioj/sim/player/ship_laser_mode.h
 native/simulation/include/ioj/sim/player/space_ship_common.h
 native/simulation/include/ioj/sim/collision/query_result_types.h
-native/simulation/include/ioj/sim/rotators3f.h
+native/core/include/ioj/rotators3f.h
 native/simulation/include/ioj/sim/sim_state.h
 native/simulation/include/ioj/sim/sim_tick.h
 native/simulation/include/ioj/sim/simulation_phase.h

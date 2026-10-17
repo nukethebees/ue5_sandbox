@@ -73,9 +73,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/entities/team_checks.h
   ../include/ioj/sim/profiling.h
   ../include/ioj/sim/levels/reference_level_simulation_data.h
-  ../include/ioj/sim/rotator_math.h
-  ../include/ioj/sim/rotator_types.h
-  ../include/ioj/sim/rotators3f.h
   ../include/ioj/sim/player/ship_flight_model.h
   ../include/ioj/sim/entities/ship_health.h
   ../include/ioj/sim/sim_clock.h
@@ -123,7 +120,6 @@ target_sources(native-simulation PRIVATE
   missions/mission_manager.cpp
   overlap_handler.cpp
   levels/reference_level_simulation_data.cpp
-  rotator_math.cpp
   player/ship_flight_model.cpp
   entities/ship_health.cpp
   sim_time.cpp

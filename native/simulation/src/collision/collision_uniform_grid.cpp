@@ -1,6 +1,7 @@
 #include "ioj/sim/collision/collision_uniform_grid.h"
 
 #include <ioj/diagnostics.h>
+#include <ioj/rotator_math.h>
 #include <ioj/sim/collision/collision_grid.h>
 #include <ioj/sim/collision/entity_cell_data_operations.h>
 #include <ioj/sim/collision/grid_traversal.h>
@@ -11,7 +12,6 @@
 #include <ioj/sim/entities/health.h>
 #include <ioj/sim/levels/level_read_access.h>
 #include <ioj/sim/profiling.h>
-#include <ioj/sim/rotator_math.h>
 
 #include <algorithm>
 #include <cassert>

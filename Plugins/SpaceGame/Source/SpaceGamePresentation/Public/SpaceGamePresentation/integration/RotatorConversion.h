@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/rotator_types.h>
+#include <ioj/rotator_types.h>
 
 #include <CoreMinimal.h>
 

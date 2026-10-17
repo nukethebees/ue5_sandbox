@@ -1,5 +1,6 @@
 #pragma once
 #include <ioj/frame_memory_resource.h>
+#include <ioj/rotator_math.h>
 #include <ioj/sim/capital_ships/phase_interface.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
@@ -22,7 +23,6 @@
 #include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/phase_interface.h>
 #include <ioj/sim/player/sim.h>
-#include <ioj/sim/rotator_math.h>
 #include <ioj/sim/sim_state.h>
 #include <ioj/sim/spinners/phase_interface.h>
 #include <ioj/sim/spinners/sim.h>

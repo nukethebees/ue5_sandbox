@@ -164,11 +164,11 @@
 
 (type native_rotators_3f
   :spelling "Rotators3f"
-  :header "ioj/sim/rotators3f.h")
+  :header "ioj/rotators3f.h")
 
 (type native_rotator_3f
   :spelling "Rotator3f"
-  :header "ioj/sim/rotator_types.h"
+  :header "ioj/rotator_types.h"
   :pass-by value)
 
 

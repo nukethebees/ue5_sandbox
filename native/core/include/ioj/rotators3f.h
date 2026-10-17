@@ -5,12 +5,12 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/native_soa/vector_storage_ops.h"
-#include "ioj/sim/rotator_types.h"
+#include "ioj/rotator_types.h"
 
 #include <cassert>
 #include <utility>
 
-namespace ioj::sim {
+namespace ioj {
 struct Rotators3fView;
 struct Rotators3fConstView;
 struct Rotators3fConstView {
@@ -271,4 +271,4 @@ struct Rotators3f {
     }
 };
 
-} // namespace ioj::sim
+} // namespace ioj

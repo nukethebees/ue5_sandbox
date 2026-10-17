@@ -1,9 +1,9 @@
 #pragma once
 
+#include <ioj/rotator_math.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/levels/level_sim.h>
-#include <ioj/sim/rotator_math.h>
 
 #include <optional>
 

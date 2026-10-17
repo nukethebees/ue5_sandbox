@@ -1,5 +1,6 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
 
+#include <ioj/rotator_math.h>
 #include <ioj/sim/collision/entity_world_bounds.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entities/entity_type.h>
@@ -10,7 +11,6 @@
 #include <ioj/sim/missions/mission_fail_reason.h>
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>
-#include <ioj/sim/rotator_math.h>
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>

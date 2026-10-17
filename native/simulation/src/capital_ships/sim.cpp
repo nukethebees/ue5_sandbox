@@ -3,6 +3,7 @@
 #include <ioj/array_math.h>
 #include <ioj/countdown.h>
 #include <ioj/frame_array.h>
+#include <ioj/rotator_math.h>
 #include <ioj/sim/batch_operations.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/column_math.h>
@@ -13,7 +14,6 @@
 #include <ioj/sim/fighters/fighter_frame_spawn_queue.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/profiling.h>
-#include <ioj/sim/rotator_math.h>
 #include <ioj/sim/sim_config.h>
 
 #include <algorithm>

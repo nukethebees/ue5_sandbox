@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ioj/frame_array.h"
-#include "ioj/sim/rotator_types.h"
-#include "ioj/sim/rotators3f.h"
+#include "ioj/rotator_types.h"
+#include "ioj/rotators3f.h"
 
 #include <cassert>
 #include <cstdint>

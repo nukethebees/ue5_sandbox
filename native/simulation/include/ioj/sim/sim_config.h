@@ -1,6 +1,6 @@
 #pragma once
+#include <ioj/rotator_types.h>
 #include <ioj/sim/base_sim_config.h>
-#include <ioj/sim/rotator_types.h>
 #include <ioj/transform3d.h>
 
 #include <cstdint>
