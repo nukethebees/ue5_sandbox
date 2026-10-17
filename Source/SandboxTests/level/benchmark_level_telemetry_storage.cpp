@@ -1,5 +1,5 @@
-#include <ioj/sim/telemetry/level_telemetry_block_history.h>
-#include <ioj/sim/telemetry/level_telemetry_manager.h>
+#include <ioj/sim/telemetry/block_history.h>
+#include <ioj/sim/telemetry/manager.h>
 #include <ioj/time_series_data.h>
 
 #include <sbx/memory_resource.h>

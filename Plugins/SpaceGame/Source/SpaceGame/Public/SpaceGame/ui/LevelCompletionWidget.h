@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ioj/sim/telemetry/level_telemetry_snapshot.h"
+#include "ioj/sim/telemetry/snapshot.h"
 #include "SpaceGame/missions/TestMissionFailReason.h"
 #include "SpaceGame/missions/TestMissionState.h"
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"

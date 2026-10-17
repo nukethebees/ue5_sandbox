@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/sim/telemetry/level_telemetry_run_record.h>
+#include <ioj/sim/telemetry/run_record.h>
 
 #include <CoreMinimal.h>
 

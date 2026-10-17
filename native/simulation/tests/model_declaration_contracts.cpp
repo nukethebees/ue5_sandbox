@@ -20,7 +20,7 @@
 #include <ioj/sim/player/flight_model_runtime.h>
 #include <ioj/sim/sim_state.h>
 #include <ioj/sim/simulation_phase.h>
-#include <ioj/sim/telemetry/level_telemetry_current_state.h>
+#include <ioj/sim/telemetry/current_state.h>
 #include <ioj/sim/telemetry/navigation_telemetry.h>
 
 #include <gtest/gtest.h>

@@ -7,7 +7,7 @@
 #include <ioj/sim/missions/mission_manager.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spinners/sim.h>
-#include <ioj/sim/telemetry/level_telemetry_manager.h>
+#include <ioj/sim/telemetry/manager.h>
 #include <ioj/sim/turrets/sim.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>

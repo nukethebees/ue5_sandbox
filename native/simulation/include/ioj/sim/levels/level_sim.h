@@ -25,7 +25,7 @@
 #include <ioj/sim/sim_state.h>
 #include <ioj/sim/spinners/phase_interface.h>
 #include <ioj/sim/spinners/sim.h>
-#include <ioj/sim/telemetry/level_telemetry_manager.h>
+#include <ioj/sim/telemetry/manager.h>
 #include <ioj/sim/turrets/phase_interface.h>
 #include <ioj/sim/turrets/sim.h>
 

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "ioj/sim/memory/game_memory.h"
-#include "ioj/sim/telemetry/level_telemetry_history.h"
-#include <ioj/sim/telemetry/level_telemetry_block_history_types.h>
+#include "ioj/sim/telemetry/history.h"
+#include <ioj/sim/telemetry/block_history_types.h>
 
 #include <cstddef>
 #include <cstdint>

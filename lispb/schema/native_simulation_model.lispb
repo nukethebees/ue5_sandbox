@@ -458,8 +458,8 @@
     (member hard_trace_count std::int32_t :initializer "")))
 
 (module native_level_telemetry_current_state
-  :header "native/simulation/include/ioj/sim/telemetry/level_telemetry_current_state.h"
-  :header-include "ioj/sim/telemetry/level_telemetry_current_state.h"
+  :header "native/simulation/include/ioj/sim/telemetry/current_state.h"
+  :header-include "ioj/sim/telemetry/current_state.h"
   :backend standard-library
   :namespace ioj::sim
   (record LevelTelemetryCurrentState

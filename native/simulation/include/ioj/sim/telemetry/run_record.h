@@ -5,8 +5,8 @@
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>
 #include <ioj/sim/sim_tick.h>
-#include <ioj/sim/telemetry/level_telemetry_run_data.h>
-#include <ioj/sim/telemetry/level_telemetry_run_end_reason.h>
+#include <ioj/sim/telemetry/run_data.h>
+#include <ioj/sim/telemetry/run_end_reason.h>
 
 #include <cstdint>
 #include <optional>

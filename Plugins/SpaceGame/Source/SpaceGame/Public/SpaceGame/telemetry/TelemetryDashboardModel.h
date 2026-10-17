@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/telemetry/level_telemetry_run_end_reason.h>
+#include <ioj/sim/telemetry/run_end_reason.h>
 #include <SpaceGame/telemetry/LevelTelemetryReport.h>
 
 #include <expected>

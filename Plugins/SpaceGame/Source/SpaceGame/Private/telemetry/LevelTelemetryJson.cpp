@@ -1,8 +1,8 @@
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 
 #include <ioj/sim/entities/entity_types.h>
-#include <ioj/sim/telemetry/level_telemetry_json_validation.h>
-#include <ioj/sim/telemetry/level_telemetry_run_end_reason.h>
+#include <ioj/sim/telemetry/json_validation.h>
+#include <ioj/sim/telemetry/run_end_reason.h>
 #include <SpaceGame/missions/TestMissionFailReasonConversion.h>
 #include <SpaceGame/missions/TestMissionModeConversion.h>
 #include <SpaceGame/missions/TestMissionStateConversion.h>

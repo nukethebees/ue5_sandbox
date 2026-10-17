@@ -1,11 +1,11 @@
 #pragma once
-#include "ioj/sim/telemetry/level_telemetry_snapshot.h"
+#include "ioj/sim/telemetry/snapshot.h"
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/sim_tick.h>
-#include <ioj/sim/telemetry/level_telemetry_block_history.h>
-#include <ioj/sim/telemetry/level_telemetry_current_state.h>
-#include <ioj/sim/telemetry/level_telemetry_history_stats.h>
-#include <ioj/sim/telemetry/level_telemetry_run_record.h>
+#include <ioj/sim/telemetry/block_history.h>
+#include <ioj/sim/telemetry/current_state.h>
+#include <ioj/sim/telemetry/history_stats.h>
+#include <ioj/sim/telemetry/run_record.h>
 #include <ioj/time_series_data.h>
 
 #include <array>

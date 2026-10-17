@@ -68,7 +68,7 @@ native/simulation/include/ioj/sim/lasers/laser_soa.h
 native/simulation/include/ioj/sim/lasers/laser_source.h
 native/simulation/include/ioj/sim/lasers/phase_interface.h
 native/simulation/include/ioj/sim/levels/level_event_values.h
-native/simulation/include/ioj/sim/telemetry/level_telemetry_current_state.h
+native/simulation/include/ioj/sim/telemetry/current_state.h
 native/simulation/include/ioj/sim/levels/level_runtime_events.h
 native/simulation/include/ioj/sim/collision/line_trace_result.h
 native/simulation/include/ioj/sim/collision/line_traces.h
@@ -92,8 +92,8 @@ native/simulation/include/ioj/sim/sim_tick.h
 native/simulation/include/ioj/sim/simulation_phase.h
 native/simulation/include/ioj/sim/spinners/spinner_entity_data.h
 native/simulation/include/ioj/sim/spinners/phase_interface.h
-native/simulation/include/ioj/sim/telemetry/level_telemetry_history.h
-native/simulation/include/ioj/sim/telemetry/level_telemetry_run_end_reason.h
+native/simulation/include/ioj/sim/telemetry/history.h
+native/simulation/include/ioj/sim/telemetry/run_end_reason.h
 native/simulation/include/ioj/sim/collision/trace_hits.h
 native/simulation/include/ioj/sim/turrets/turret_entity_data.h
 native/simulation/include/ioj/sim/turrets/phase_interface.h

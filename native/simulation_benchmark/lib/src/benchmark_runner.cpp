@@ -8,7 +8,7 @@
 #include <ioj/sim/levels/reference_level_simulation_data.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_clock.h>
-#include <ioj/sim/telemetry/level_telemetry_run_end_reason.h>
+#include <ioj/sim/telemetry/run_end_reason.h>
 
 #include <algorithm>
 #include <chrono>

@@ -56,12 +56,12 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/levels/level_event_types.h
   ../include/ioj/sim/levels/level_read_access.h
   ../include/ioj/sim/levels/level_sim.h
-  ../include/ioj/sim/telemetry/level_telemetry_block_history_types.h
-  ../include/ioj/sim/telemetry/level_telemetry_current_state.h
-  ../include/ioj/sim/telemetry/level_telemetry_history_stats.h
-  ../include/ioj/sim/telemetry/level_telemetry_manager.h
-  ../include/ioj/sim/telemetry/level_telemetry_run_data.h
-  ../include/ioj/sim/telemetry/level_telemetry_snapshot.h
+  ../include/ioj/sim/telemetry/block_history_types.h
+  ../include/ioj/sim/telemetry/current_state.h
+  ../include/ioj/sim/telemetry/history_stats.h
+  ../include/ioj/sim/telemetry/manager.h
+  ../include/ioj/sim/telemetry/run_data.h
+  ../include/ioj/sim/telemetry/snapshot.h
   ../include/ioj/sim/collision/line_trace_batch.h
   ../include/ioj/sim/collision/line_traces.h
   ../include/ioj/sim/missions/mission_manager.h
@@ -121,7 +121,7 @@ target_sources(native-simulation PRIVATE
   levels/level_read_access.cpp
   levels/level_sim.cpp
   levels/level_sim_invariants.cpp
-  telemetry/level_telemetry_manager.cpp
+  telemetry/manager.cpp
   missions/mission_manager.cpp
   overlap_handler.cpp
   levels/reference_level_simulation_data.cpp

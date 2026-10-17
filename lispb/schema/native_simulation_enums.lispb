@@ -104,7 +104,7 @@
     (value FullAuto :value "2" :display-name "Full Auto" :serialized-name "full_auto")))
 
 (module native_level_telemetry_run_end_reason
-  :header "native/simulation/include/ioj/sim/telemetry/level_telemetry_run_end_reason.h"
+  :header "native/simulation/include/ioj/sim/telemetry/run_end_reason.h"
   :namespace ioj::sim
   (enum LevelTelemetryRunEndReason @native_uint8
     :native-api true

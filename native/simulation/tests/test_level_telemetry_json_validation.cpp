@@ -1,4 +1,4 @@
-#include <ioj/sim/telemetry/level_telemetry_json_validation.h>
+#include <ioj/sim/telemetry/json_validation.h>
 
 #include <gtest/gtest.h>
 

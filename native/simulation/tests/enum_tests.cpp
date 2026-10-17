@@ -7,7 +7,7 @@
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/player/space_ship_common.h>
-#include <ioj/sim/telemetry/level_telemetry_run_end_reason.h>
+#include <ioj/sim/telemetry/run_end_reason.h>
 
 #include <gtest/gtest.h>
 
