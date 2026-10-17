@@ -135,7 +135,7 @@ fn outside_worktree_fails_without_removing_out() {
 }
 
 #[test]
-fn nested_linked_worktree_cleans_only_its_root_out_and_runs_phases_in_order() {
+fn nested_linked_worktree_preserves_build_output_and_runs_preparation() {
     let directory = fixture();
     git(&directory.0, &["add", "."]);
     git(
@@ -179,7 +179,10 @@ fn nested_linked_worktree_cleans_only_its_root_out_and_runs_phases_in_order() {
         .output()
         .unwrap();
     assert!(output.status.success(), "{output:?}");
-    assert!(!root.join("out/keep.txt").exists());
+    assert_eq!(
+        fs::read_to_string(root.join("out/keep.txt")).unwrap(),
+        "original"
+    );
     assert_eq!(
         fs::read_to_string(settings).unwrap(),
         "[/Script/LiveCoding.LiveCodingSettings]\r\nbEnabled=False ; keep\r\n"
@@ -198,8 +201,8 @@ fn nested_linked_worktree_cleans_only_its_root_out_and_runs_phases_in_order() {
         ["presets", "generate-code"]
     );
     let stdout = String::from_utf8_lossy(&output.stdout);
-    for phase in 1..=5 {
-        assert!(stdout.contains(&format!("[{phase}/5]")), "{stdout}");
+    for phase in 1..=4 {
+        assert!(stdout.contains(&format!("[{phase}/4]")), "{stdout}");
     }
 }
 
@@ -285,17 +288,6 @@ add_custom_target(jobserverd COMMAND "${{CMAKE_COMMAND}}" -E touch "${{CMAKE_SOU
         assert!(sync < update && update < configure);
         assert!(!stdout.contains("Installing canonical jobserver"));
     }
-}
-
-#[test]
-fn failed_cleanup_stops_before_submodules() {
-    let directory = fixture();
-    fs::write(directory.0.join("out"), "not a directory").unwrap();
-    let output = invoke(&directory.0, &["prepare-worktree"]);
-    assert!(!output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("Could not remove"));
-    assert!(!String::from_utf8_lossy(&output.stdout).contains("Synchronizing submodules"));
-    assert!(directory.0.join("out").is_file());
 }
 
 #[test]

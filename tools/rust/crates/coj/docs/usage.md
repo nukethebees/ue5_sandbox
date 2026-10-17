@@ -28,12 +28,13 @@ end; subsequent installs remove retired copies once they are no longer in use.
 
 ## Worktree preparation and central tools
 
-Run `coj prepare-worktree` from anywhere inside the current worktree. It removes the
-root `out` directory, synchronizes and initializes/updates recursive submodules, regenerates
+Run `coj prepare-worktree` from anywhere inside the current worktree. It preserves incremental build output in
+`out`, synchronizes and initializes/updates recursive submodules, regenerates
 CMake presets, disables Live Coding in existing saved Editor settings, and generates code.
 It stops on the first failure, except a saved-settings failure warns and allows generation
 to continue. Git, Python, CMake, and the repository build prerequisites must be available.
-It does not perform a broad project/test build.
+It does not perform a broad project/test build. Clean compiled output explicitly with
+`cmake --build --preset native --target clean` when needed.
 
 After preparation, the maintainer can run `coj install central-tools`. This repeats
 submodule synchronization/update, configures `native`, and builds the C++ `jobserverd`

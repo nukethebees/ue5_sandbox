@@ -38,7 +38,7 @@ engine-tool paths, and package-artifact paths.
 native compilation, `ctest --preset native-simulation-tests` or `native-core-tests` for focused
 tests, and `cmake --workflow --preset native-tests` for the full native suite. The detailed native
 preset matrix remains available for explicit compiler, configuration, unity, and ASan choices.
-Begin a new task with `coj prepare-worktree` to clear the worktree's `out`, initialize/update
+Begin a new task with `coj prepare-worktree` to preserve incremental output, initialize/update
 submodules, and regenerate presets and code. It does not perform a broad project/test build;
 build only the task's relevant targets afterward. See the
 [Rust tooling instructions](../tools/rust/README.md) for installation.

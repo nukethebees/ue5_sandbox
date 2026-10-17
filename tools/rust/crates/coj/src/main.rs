@@ -1,5 +1,3 @@
-use std::fs;
-use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
@@ -31,7 +29,7 @@ mod workspace;
 
 mod codex;
 
-const USAGE: &str = "Usage: coj <command>\n\nCommands:\n  presets [--check]      Generate/check CMake presets\n  tidy [options]        Run LLVM analysis\n  unreal <operation>    Generate project files or authored assets\n  editor [options]      Build and launch the editor\n  run-staged [options]  Launch an existing staged game\n  benchmark <operation> Delegate to revision-local benchmark-tools\n  format [options]      Format sources using revision-local policy\n  unreal-build [options] Invoke the Unreal build script\n  prepare-worktree       Clean and initialize the current worktree\n  install <tool>         Install/update canonical per-user build tools\n  codex <command>        Launch, inspect, or clean named Codex sessions\n  jobs <command>         Cooperative jobs board (coj jobs --help)\n  git <command>          Run supported feature Git operations (coj git --help)\n  integrate [--keep-branch]  Privileged dev transaction; explicit user authorization required";
+const USAGE: &str = "Usage: coj <command>\n\nCommands:\n  presets [--check]      Generate/check CMake presets\n  tidy [options]        Run LLVM analysis\n  unreal <operation>    Generate project files or authored assets\n  editor [options]      Build and launch the editor\n  run-staged [options]  Launch an existing staged game\n  benchmark <operation> Delegate to revision-local benchmark-tools\n  format [options]      Format sources using revision-local policy\n  unreal-build [options] Invoke the Unreal build script\n  prepare-worktree       Initialize the current worktree, retaining builds\n  install <tool>         Install/update canonical per-user build tools\n  codex <command>        Launch, inspect, or clean named Codex sessions\n  jobs <command>         Cooperative jobs board (coj jobs --help)\n  git <command>          Run supported feature Git operations (coj git --help)\n  integrate [--keep-branch]  Privileged dev transaction; explicit user authorization required";
 
 fn worktree_root() -> Result<PathBuf, String> {
     let output = Command::new("git")
@@ -80,28 +78,20 @@ fn update_submodules(root: &Path) -> Result<(), String> {
 fn prepare_worktree() -> Result<(), String> {
     let root = worktree_root()?;
 
-    println!("[1/5] Clearing build output");
-    let output = root.join("out");
-    match fs::remove_dir_all(&output) {
-        Ok(()) => {}
-        Err(error) if error.kind() == ErrorKind::NotFound => {}
-        Err(error) => return Err(format!("Could not remove '{}': {error}", output.display())),
-    }
-
-    println!("[2/5] Preparing submodules");
+    println!("[1/4] Preparing submodules");
     update_submodules(&root)?;
 
-    println!("[3/5] Generating CMake presets");
+    println!("[2/4] Generating CMake presets");
     presets::generate(&root, false)?;
 
-    println!("[4/5] Disabling Live Coding if saved settings exist");
+    println!("[3/4] Disabling Live Coding if saved settings exist");
     if let Err(error) = live_coding::disable(
         &root.join("Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"),
     ) {
         eprintln!("coj: warning: Could not disable Live Coding in saved settings: {error}");
     }
 
-    println!("[5/5] Generating code");
+    println!("[4/4] Generating code");
     run(&root, "cmake", &["--workflow", "--preset", "generate-code"])
 }
 
