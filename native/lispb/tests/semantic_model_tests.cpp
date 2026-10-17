@@ -496,7 +496,7 @@ TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
     for (auto const& column : vector_type.columns) {
         EXPECT_EQ(graph.type(column.semantic_type.type).cpp_spelling, "float");
     }
-    auto const local_vectors{graph.find_declared("lasers_soa", "Vectors3f")};
+    auto const local_vectors{graph.find_declared("lasers_soa_entities", "Vectors3f")};
     ASSERT_TRUE(local_vectors.has_value());
     auto const& local{std::get<SoaType>(graph.type(*local_vectors).definition)};
     EXPECT_EQ(local.source_kind, SoaSourceKind::structure);
@@ -517,7 +517,7 @@ TEST(SemanticTypeGraph, RejectsVectorComponentsThatDisagreeWithDeclaredEquivalen
     auto manifest{codegen::load_sources(project.root / target.types, sources)};
     for (auto& module : manifest.modules) {
         auto* soa{std::get_if<codegen::NormalModuleSchema>(&module)};
-        if (soa == nullptr || soa->settings.name != "lasers_soa") {
+        if (soa == nullptr || soa->settings.name != "lasers_soa_entities") {
             continue;
         }
         auto& vectors{std::get<codegen::SoaSchema>(soa->declarations.front())};

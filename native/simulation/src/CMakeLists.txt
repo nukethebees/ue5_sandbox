@@ -49,7 +49,8 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/index_span.h
   ../include/ioj/sim/lasers/laser_frame_output.h
   ../include/ioj/sim/lasers/laser_hit_details.h
-  ../include/ioj/sim/lasers/laser_soa.h
+  ../include/ioj/sim/lasers/laser_spawn_requests.h
+  ../include/ioj/sim/lasers/laser_entities.h
   ../include/ioj/sim/lasers/laser_source.h
   ../include/ioj/sim/levels/level_event_types.h
   ../include/ioj/sim/levels/level_read_access.h

@@ -79,8 +79,8 @@
     (member target_ids array @native_unique_id)
     (single-allocation CapitalEntityData)))
 
-(module lasers_soa
-  :header "native/simulation/include/ioj/sim/lasers/laser_soa.h"
+(module lasers_soa_spawn_requests
+  :header "native/simulation/include/ioj/sim/lasers/laser_spawn_requests.h"
   :backend standard-library
   :namespace ioj::sim::lasers
   (struct Vectors3f
@@ -107,7 +107,26 @@
     (member max_distances array float)
     (member instigator_ids array @native_unique_id)
     (member sources array @laser_source)
-    (single-allocation LaserSpawnRequests))
+    (single-allocation LaserSpawnRequests)))
+
+(module lasers_soa_entities
+  :header "native/simulation/include/ioj/sim/lasers/laser_entities.h"
+  :backend standard-library
+  :namespace ioj::sim::lasers
+  (struct Vectors3f
+    :layout-only true
+    :equivalent-type @native_vector_3f
+    :vector-components (xs ys zs)
+    (member xs array float)
+    (member ys array float)
+    (member zs array float))
+  (struct Rotators3f
+    :layout-only true
+    :vector-components (pitches yaws rolls)
+    :equivalent-type @native_rotator_3f
+    (member pitches array float)
+    (member yaws array float)
+    (member rolls array float))
   (struct Entities
     :operations (all)
     (member active array uint8)
