@@ -3,6 +3,7 @@
 #include <ioj/column_math.h>
 #include <ioj/countdown.h>
 #include <ioj/frame_array.h>
+#include <ioj/rotator_math.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/lasers/frame_laser_spawn_requests.h>
 #include <ioj/sim/profiling.h>
@@ -181,13 +182,18 @@ void Sim::materialize_fire_commands(ml::FrameMemoryResource* const scratch_resou
                static_cast<std::uint32_t>(next_fire_point) < fire_point_count);
         auto const& fire_point{
             config.fire_point_offsets[static_cast<std::size_t>(next_fire_point)]};
-        set_vector(
-            laser_locations, request_index, vector_at(locations, index) + fire_point.location);
+        auto const heading{forward_direction({0.f, yaws[element], 0.f})};
+        auto const rotate_offset{[heading](Vector3f const local) {
+            return HMM_V3(heading.X * local.X - heading.Y * local.Y,
+                          heading.Y * local.X + heading.X * local.Y,
+                          local.Z);
+        }};
+        set_vector(laser_locations,
+                   request_index,
+                   vector_at(locations, index) + rotate_offset(fire_point.location));
         set_rotation(laser_rotations,
                      request_index,
-                     {fire_point.rotation.pitch,
-                      fire_point.rotation.yaw + yaws[element],
-                      fire_point.rotation.roll});
+                     direction_to_rotation(rotate_offset(forward_direction(fire_point.rotation))));
         set_vector(laser_base_velocities, request_index, HMM_V3(0.f, 0.f, 0.f));
         laser_damages[request_index] = config.laser.damage;
         laser_speeds[request_index] = config.laser.projectile_speed;
