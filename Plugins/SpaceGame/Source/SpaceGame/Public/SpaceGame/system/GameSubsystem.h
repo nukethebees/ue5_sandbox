@@ -134,7 +134,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     virtual void Deinitialize() override;
 
     static auto get(UGameInstance const* game_instance) -> UGameSubsystem*;
-    auto get_game_memory() noexcept -> ioj::sim::GameMemory&;
+    auto get_game_memory() noexcept -> sim::GameMemory&;
     auto get_platform_capabilities() const -> FGameCapabilities const&;
     auto get_save_game_browser() -> FSaveGameBrowser&;
     auto get_audio() -> FGameAudioFacade;
@@ -177,7 +177,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     /* **************************************** */
     FGameAudio audio_;
     FGameCapabilities platform_capabilities_;
-    TUniquePtr<ioj::sim::GameMemory> game_memory_{};
+    TUniquePtr<sim::GameMemory> game_memory_{};
     FSaveGameBrowser save_game_browser_;
     TOptional<FPendingLevelDefinition> pending_level_{NullOpt};
     TOptional<FLevelSelectRequest> level_select_request_{NullOpt};

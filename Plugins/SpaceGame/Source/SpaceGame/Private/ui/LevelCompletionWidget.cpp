@@ -17,7 +17,7 @@ ULevelCompletionWidget::ULevelCompletionWidget() {
 void ULevelCompletionWidget::prepare_for_open(FString level_display_name,
                                               ETestMissionState const state,
                                               ETestMissionFailReason const fail_reason,
-                                              ioj::sim::LevelTelemetrySnapshot snapshot,
+                                              sim::LevelTelemetrySnapshot snapshot,
                                               TOptional<float> const par_time_seconds,
                                               bool const new_best_time) {
     level_display_name_ = MoveTemp(level_display_name);

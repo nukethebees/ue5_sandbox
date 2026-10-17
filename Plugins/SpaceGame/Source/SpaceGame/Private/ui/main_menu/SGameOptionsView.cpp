@@ -766,15 +766,15 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
     if (controls_scope_ != EShipControlScope::General) {
         auto const flight_scope{controls_scope_};
 
-        using FlightConfig = ioj::sim::player::FlightModelConfig;
-        using TranslationAxis = ioj::sim::player::TranslationAxisConfig;
-        using TranslationAxes = ioj::sim::player::TranslationAxesConfig;
-        using RotationAxis = ioj::sim::player::RotationAxisConfig;
-        using RotationAxes = ioj::sim::player::RotationAxesConfig;
-        using TranslationSemantic = ioj::sim::player::TranslationSemantic;
-        using RotationSemantic = ioj::sim::player::RotationSemantic;
-        using ResponseMode = ioj::sim::player::ResponseMode;
-        using FacingCoupling = ioj::sim::player::FacingVelocityCoupling;
+        using FlightConfig = sim::player::FlightModelConfig;
+        using TranslationAxis = sim::player::TranslationAxisConfig;
+        using TranslationAxes = sim::player::TranslationAxesConfig;
+        using RotationAxis = sim::player::RotationAxisConfig;
+        using RotationAxes = sim::player::RotationAxesConfig;
+        using TranslationSemantic = sim::player::TranslationSemantic;
+        using RotationSemantic = sim::player::RotationSemantic;
+        using ResponseMode = sim::player::ResponseMode;
+        using FacingCoupling = sim::player::FacingVelocityCoupling;
 
         auto flight_rows{SNew(SVerticalBox)};
         auto const weak_settings{settings_};
@@ -889,7 +889,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                                          auto getter,
                                          auto setter) {
             auto const unlimited{getter(settings->flight_model_profile(flight_scope).config) ==
-                                 ioj::sim::player::effectively_unlimited_speed};
+                                 sim::player::effectively_unlimited_speed};
             add_flight_toggle(
                 field_label(label, NSLOCTEXT("OptionsMenu", "UnlimitedSuffix", "Unlimited")),
                 NSLOCTEXT("OptionsMenu",
@@ -897,14 +897,14 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                           "Use the largest finite float as an effective cap without changing the "
                           "requested speed."),
                 [getter](FlightConfig const& config) {
-                    return getter(config) == ioj::sim::player::effectively_unlimited_speed;
+                    return getter(config) == sim::player::effectively_unlimited_speed;
                 },
                 [getter, setter](FlightConfig& config, bool const enabled) {
                     auto const current{getter(config)};
                     setter(config,
-                           enabled ? ioj::sim::player::effectively_unlimited_speed
-                           : current == ioj::sim::player::effectively_unlimited_speed ? 100000.f
-                                                                                      : current);
+                           enabled ? sim::player::effectively_unlimited_speed
+                           : current == sim::player::effectively_unlimited_speed ? 100000.f
+                                                                                 : current);
                 });
             if (!unlimited) {
                 add_flight_slider(label, tooltip, 0.f, 1000000.f, 100.f, getter, setter);
@@ -998,7 +998,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
             auto const axis = [member](auto& config) -> auto& {
                 return config.translation.*member;
             };
-            auto const baseline{ioj::sim::player::make_flight_model_profile(
+            auto const baseline{sim::player::make_flight_model_profile(
                 settings->flight_model_profile(flight_scope).base_preset)};
             auto const& authored_axis{axis(baseline.config)};
             if (authored_axis.manual.semantic == TranslationSemantic::Disabled &&
@@ -1203,7 +1203,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
         auto const add_rotation_axis = [&](FText const& axis_name,
                                            RotationAxis RotationAxes::* member) {
             auto const axis = [member](auto& config) -> auto& { return config.rotation.*member; };
-            auto const baseline{ioj::sim::player::make_flight_model_profile(
+            auto const baseline{sim::player::make_flight_model_profile(
                 settings->flight_model_profile(flight_scope).base_preset)};
             if (axis(baseline.config).manual_semantic == RotationSemantic::Disabled) {
                 return;

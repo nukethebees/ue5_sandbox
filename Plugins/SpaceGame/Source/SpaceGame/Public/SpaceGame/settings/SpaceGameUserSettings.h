@@ -37,8 +37,8 @@ class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
     auto bees() const -> int32;
     void set_bees(int32 value);
 
-    auto flight_model_loadout() const -> ioj::sim::player::FlightModelLoadout;
-    void set_flight_model_loadout(ioj::sim::player::FlightModelLoadout const& loadout);
+    auto flight_model_loadout() const -> sim::player::FlightModelLoadout;
+    void set_flight_model_loadout(sim::player::FlightModelLoadout const& loadout);
   private:
     UPROPERTY(Config)
     int32 anti_aliasing_method_{};

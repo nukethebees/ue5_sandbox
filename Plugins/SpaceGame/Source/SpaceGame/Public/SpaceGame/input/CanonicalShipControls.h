@@ -16,8 +16,7 @@ SPACEGAME_API auto canonical_ship_control_contexts()
     -> TConstArrayView<FCanonicalShipControlContext>;
 SPACEGAME_API auto canonical_ship_control_context(EShipControlScope scope)
     -> FCanonicalShipControlContext const&;
-SPACEGAME_API auto flight_control_scope(ioj::sim::player::FlightModelSlot slot)
-    -> EShipControlScope;
-SPACEGAME_API auto flight_model_slot(EShipControlScope scope) -> ioj::sim::player::FlightModelSlot;
+SPACEGAME_API auto flight_control_scope(sim::player::FlightModelSlot slot) -> EShipControlScope;
+SPACEGAME_API auto flight_model_slot(EShipControlScope scope) -> sim::player::FlightModelSlot;
 SPACEGAME_API auto load_ship_control_context(EShipControlScope scope) -> UInputMappingContext*;
 } // namespace ioj

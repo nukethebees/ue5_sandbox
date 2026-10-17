@@ -22,7 +22,7 @@
 
 namespace ioj {
 namespace {
-using EntityAABBs = ioj::sim::collision::EntityAABBs;
+using EntityAABBs = sim::collision::EntityAABBs;
 
 auto get_aabb(FKAggregateGeom const& geometry, FTransform const& local_to_world) -> FBox {
     auto const scale{local_to_world.GetScale3D()};
@@ -87,13 +87,13 @@ auto get_aabb(UStaticMesh const& mesh) -> FBox {
     return get_aabb(body_setup->AggGeom, FTransform::Identity);
 }
 
-void clear_aabb(EntityAABBs& aabbs, ioj::sim::EntityType const type) {
+void clear_aabb(EntityAABBs& aabbs, sim::EntityType const type) {
     aabbs.set_centre(type, ml::make_vector3f(0.f, 0.f, 0.f));
     aabbs.set_half_extents(type, ml::make_vector3f(0.f, 0.f, 0.f));
 }
 
 void set_mesh_aabb(EntityAABBs& aabbs,
-                   ioj::sim::EntityType const type,
+                   sim::EntityType const type,
                    TCHAR const* const entity_name,
                    UStaticMesh const* const mesh,
                    ml::FLevelStartErrors& errors) {
@@ -135,7 +135,7 @@ struct FStaticCollisionComponentData {
 };
 
 auto extract_static_collision_component(UPrimitiveComponent& component,
-                                        ioj::sim::collision::GridGeometry const grid_geometry,
+                                        sim::collision::GridGeometry const grid_geometry,
                                         AActor const* const expected_owner,
                                         TCHAR const*& rejection_reason)
     -> TOptional<FStaticCollisionComponentData> {
@@ -184,13 +184,13 @@ auto extract_static_collision_component(UPrimitiveComponent& component,
 
     FVector3f const min_point{aabb.Min};
     FVector3f const max_point{aabb.Max};
-    auto const [min_coord, max_coord]{ioj::sim::collision::to_cell_coord_bounds(
+    auto const [min_coord, max_coord]{sim::collision::to_cell_coord_bounds(
         grid_geometry,
         ml::make_vector3f(min_point.X, min_point.Y, min_point.Z),
         ml::make_vector3f(max_point.X, max_point.Y, max_point.Z))};
     if (min_point.ContainsNaN() || max_point.ContainsNaN() ||
-        !ioj::sim::collision::is_cell_coord_in_bounds(grid_geometry, min_coord) ||
-        !ioj::sim::collision::is_cell_coord_in_bounds(grid_geometry, max_coord)) {
+        !sim::collision::is_cell_coord_in_bounds(grid_geometry, min_coord) ||
+        !sim::collision::is_cell_coord_in_bounds(grid_geometry, max_coord)) {
         rejection_reason = TEXT("world AABB is invalid or outside the collision grid");
         return {};
     }
@@ -208,8 +208,8 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
     FEntityBoundsExtractionResult result{std::in_place};
     auto& bounds{result.value()};
     ml::FLevelStartErrors errors;
-    for (auto const entity_type : ml::EnumTraits<ioj::sim::EntityType>::values) {
-        auto const entity_name{ml::to_fstring(ioj::sim::to_string(entity_type))};
+    for (auto const entity_type : ml::EnumTraits<sim::EntityType>::values) {
+        auto const entity_name{ml::to_fstring(sim::to_string(entity_type))};
         set_mesh_aabb(bounds, entity_type, *entity_name, meshes[entity_type], errors);
     }
     if (errors.has_errors()) {
@@ -220,7 +220,7 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
 auto FLevelCollisionHost::initialise_static_geometry(
     UWorld& world,
     FCollisionGridConfig const& config,
-    ioj::sim::collision::GridGeometry const grid_geometry) -> ioj::sim::collision::WorldAABBs {
+    sim::collision::GridGeometry const grid_geometry) -> sim::collision::WorldAABBs {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::ioj::sim::FLevelCollisionHost::initialise_static_geometry);
     checkf(config.is_valid(), TEXT("Cannot harvest static collision with an invalid grid config"));
@@ -234,7 +234,7 @@ auto FLevelCollisionHost::initialise_static_geometry(
     }
     static_collision_sources_.reset();
 
-    ioj::sim::collision::WorldAABBs static_aabbs;
+    sim::collision::WorldAABBs static_aabbs;
     int32 unexpected_actor_count{};
     int32 unsupported_component_count{};
 
@@ -292,9 +292,9 @@ auto FLevelCollisionHost::initialise_static_geometry(
                 continue;
             }
 
-            ioj::sim::collision::add(static_aabbs,
-                                     {data->min_point.X, data->min_point.Y, data->min_point.Z},
-                                     {data->max_point.X, data->max_point.Y, data->max_point.Z});
+            sim::collision::add(static_aabbs,
+                                {data->min_point.X, data->min_point.Y, data->min_point.Z},
+                                {data->max_point.X, data->max_point.Y, data->max_point.Z});
             static_collision_sources_.add(component, data->original_collision_mode);
         }
     }

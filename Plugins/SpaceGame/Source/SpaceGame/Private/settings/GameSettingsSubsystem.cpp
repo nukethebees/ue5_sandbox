@@ -22,7 +22,7 @@ void UGameSettingsSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     if (auto* const settings{Cast<USpaceGameUserSettings>(GEngine->GetGameUserSettings())}) {
         flight_model_loadout_ = settings->flight_model_loadout();
     } else {
-        flight_model_loadout_ = ioj::sim::player::make_default_flight_model_loadout();
+        flight_model_loadout_ = sim::player::make_default_flight_model_loadout();
     }
     applied_flight_model_loadout_ = flight_model_loadout_;
 }
@@ -124,7 +124,7 @@ void UGameSettingsSubsystem::reset_category(EGameSettingCategory const category)
     auto const before{edit_state_.pending()};
     edit_state_.reset_category(category);
     if (category == EGameSettingCategory::Controls) {
-        flight_model_loadout_ = ioj::sim::player::make_default_flight_model_loadout();
+        flight_model_loadout_ = sim::player::make_default_flight_model_loadout();
         flight_model_config_changed.Broadcast();
         reset_all_control_bindings();
     }
@@ -247,38 +247,37 @@ auto UGameSettingsSubsystem::is_at_defaults(EGameSettingCategory const category)
         auto const has_modified_binding{
             bindings.ContainsByPredicate([](auto const& binding) { return binding.modified; })};
         return edit_state_.is_at_defaults(category) && !has_modified_binding &&
-               flight_model_loadout_ == ioj::sim::player::make_default_flight_model_loadout();
+               flight_model_loadout_ == sim::player::make_default_flight_model_loadout();
     }
     return edit_state_.is_at_defaults(category);
 }
 
 auto UGameSettingsSubsystem::flight_model_profile(EShipControlScope const scope) const
-    -> ioj::sim::player::FlightModelProfile const& {
+    -> sim::player::FlightModelProfile const& {
     check(scope != EShipControlScope::General);
-    return ioj::sim::player::flight_model_profile(flight_model_loadout_, flight_model_slot(scope));
+    return sim::player::flight_model_profile(flight_model_loadout_, flight_model_slot(scope));
 }
 
 auto UGameSettingsSubsystem::flight_model_loadout() const
-    -> ioj::sim::player::FlightModelLoadout const& {
+    -> sim::player::FlightModelLoadout const& {
     return flight_model_loadout_;
 }
 
 auto UGameSettingsSubsystem::set_flight_model_profile(EShipControlScope const scope,
-                                                      ioj::sim::player::FlightModelProfile profile)
+                                                      sim::player::FlightModelProfile profile)
     -> bool {
     if (!editing_ || awaiting_display_confirmation_ || scope == EShipControlScope::General) {
         return false;
     }
     auto const slot{flight_model_slot(scope)};
-    auto const preset{
-        ioj::sim::player::flight_model_profile(flight_model_loadout_, slot).base_preset};
+    auto const preset{sim::player::flight_model_profile(flight_model_loadout_, slot).base_preset};
     if (profile.base_preset != preset ||
-        !ioj::sim::player::matches_authored_flight_model_topology(profile.config, preset) ||
-        !ioj::sim::player::validate_flight_model_config(profile.config)) {
+        !sim::player::matches_authored_flight_model_topology(profile.config, preset) ||
+        !sim::player::validate_flight_model_config(profile.config)) {
         return false;
     }
     profile.customized = true;
-    ioj::sim::player::flight_model_profile(flight_model_loadout_, slot) = profile;
+    sim::player::flight_model_profile(flight_model_loadout_, slot) = profile;
     flight_model_config_changed.Broadcast();
     settings_changed.Broadcast();
     return true;

@@ -14,7 +14,7 @@ void apply_activity_graph_style(SGraphPlot& graph,
                                 FVector2f desired_size);
 
 void update_activity_graph(SGraphPlot& graph,
-                           ioj::sim::LevelTelemetrySnapshot const& snapshot,
+                           sim::LevelTelemetrySnapshot const& snapshot,
                            FLinearColor active_entity_color,
                            FLinearColor kills_color);
 }

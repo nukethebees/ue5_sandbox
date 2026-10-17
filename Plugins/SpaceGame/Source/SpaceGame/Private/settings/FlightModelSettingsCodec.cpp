@@ -6,7 +6,7 @@
 
 namespace ioj::flight_model_settings_codec {
 namespace detail {
-using namespace ioj::sim::player;
+using namespace sim::player;
 
 template <typename Enum>
 void transfer_enum(FArchive& archive, Enum& value) {
@@ -112,7 +112,7 @@ void transfer(FArchive& archive, FlightModelProfile& value) {
 }
 } // namespace detail
 
-auto encode(ioj::sim::player::FlightModelProfile const& profile) -> FString {
+auto encode(sim::player::FlightModelProfile const& profile) -> FString {
     TArray<uint8> bytes;
     FMemoryWriter archive{bytes, true};
     uint32 version{1};
@@ -122,7 +122,7 @@ auto encode(ioj::sim::player::FlightModelProfile const& profile) -> FString {
     return FBase64::Encode(bytes);
 }
 
-auto decode(FString const& data, ioj::sim::player::FlightModelProfile& profile) -> bool {
+auto decode(FString const& data, sim::player::FlightModelProfile& profile) -> bool {
     TArray<uint8> bytes;
     if (data.IsEmpty() || !FBase64::Decode(data, bytes) || bytes.Num() > 1024) {
         return false;
@@ -136,7 +136,7 @@ auto decode(FString const& data, ioj::sim::player::FlightModelProfile& profile) 
     auto candidate{profile};
     detail::transfer(archive, candidate);
     if (archive.IsError() || archive.Tell() != bytes.Num() ||
-        !ioj::sim::player::validate_flight_model_config(candidate.config)) {
+        !sim::player::validate_flight_model_config(candidate.config)) {
         return false;
     }
     profile = candidate;

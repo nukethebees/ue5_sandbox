@@ -22,35 +22,35 @@ auto canonical_ship_control_context(EShipControlScope const scope)
     check(index >= 0 && index < UE_ARRAY_COUNT(ship_control_context_details::contexts));
     return ship_control_context_details::contexts[index];
 }
-auto flight_control_scope(ioj::sim::player::FlightModelSlot const slot) -> EShipControlScope {
+auto flight_control_scope(sim::player::FlightModelSlot const slot) -> EShipControlScope {
     switch (slot) {
-        case ioj::sim::player::FlightModelSlot::Up:
+        case sim::player::FlightModelSlot::Up:
             return EShipControlScope::Starfox;
-        case ioj::sim::player::FlightModelSlot::Right:
+        case sim::player::FlightModelSlot::Right:
             return EShipControlScope::Fighter;
-        case ioj::sim::player::FlightModelSlot::Down:
+        case sim::player::FlightModelSlot::Down:
             return EShipControlScope::Skater;
-        case ioj::sim::player::FlightModelSlot::Left:
+        case sim::player::FlightModelSlot::Left:
             return EShipControlScope::Gunship;
     }
     checkNoEntry();
     return EShipControlScope::Starfox;
 }
-auto flight_model_slot(EShipControlScope const scope) -> ioj::sim::player::FlightModelSlot {
+auto flight_model_slot(EShipControlScope const scope) -> sim::player::FlightModelSlot {
     switch (scope) {
         case EShipControlScope::Starfox:
-            return ioj::sim::player::FlightModelSlot::Up;
+            return sim::player::FlightModelSlot::Up;
         case EShipControlScope::Fighter:
-            return ioj::sim::player::FlightModelSlot::Right;
+            return sim::player::FlightModelSlot::Right;
         case EShipControlScope::Skater:
-            return ioj::sim::player::FlightModelSlot::Down;
+            return sim::player::FlightModelSlot::Down;
         case EShipControlScope::Gunship:
-            return ioj::sim::player::FlightModelSlot::Left;
+            return sim::player::FlightModelSlot::Left;
         case EShipControlScope::General:
             break;
     }
     checkNoEntry();
-    return ioj::sim::player::FlightModelSlot::Up;
+    return sim::player::FlightModelSlot::Up;
 }
 auto load_ship_control_context(EShipControlScope const scope) -> UInputMappingContext* {
     auto const& definition{canonical_ship_control_context(scope)};

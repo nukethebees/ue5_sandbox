@@ -34,7 +34,7 @@ class SLevelCompletionView final : public SCompoundWidget {
     void update_report(FString const& level_display_name,
                        ETestMissionState state,
                        ETestMissionFailReason fail_reason,
-                       ioj::sim::LevelTelemetrySnapshot const& snapshot,
+                       sim::LevelTelemetrySnapshot const& snapshot,
                        TOptional<float> par_time_seconds,
                        bool new_best_time);
     void focus_primary_action();

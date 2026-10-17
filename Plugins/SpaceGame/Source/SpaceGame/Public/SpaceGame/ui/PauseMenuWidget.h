@@ -25,8 +25,8 @@ namespace ioj {
 class UMenuButtonWidget;
 
 struct FPauseMenuData {
-    ioj::sim::LevelTelemetrySnapshot telemetry;
-    ioj::sim::telemetry::EntityCounts alive_per_team_and_type{};
+    sim::LevelTelemetrySnapshot telemetry;
+    sim::telemetry::EntityCounts alive_per_team_and_type{};
     ml::ship_hud::FTopKillerEntries top_killers;
     ml::ship_hud::FTeamKillMatrix team_kill_matrix;
     FTeamColours team_colours;
