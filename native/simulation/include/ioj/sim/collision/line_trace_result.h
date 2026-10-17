@@ -5,7 +5,7 @@
 
 #include "ioj/sim/collision/collision_types.h"
 #include "ioj/sim/entities/entity_unique_id.h"
-#include "ioj/sim/vector_types.h"
+#include "ioj/vector_types.h"
 
 namespace ioj::sim {
 struct LineTraceResult {

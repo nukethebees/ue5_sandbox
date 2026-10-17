@@ -10,7 +10,7 @@
 #include <ioj/sim/player/space_ship_common.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/sim_config.h>
-#include <ioj/sim/transform3d.h>
+#include <ioj/transform3d.h>
 #include <ioj/vector2d.h>
 
 #include <cstdint>

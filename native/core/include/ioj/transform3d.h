@@ -2,9 +2,9 @@
 
 #include <ioj/math_types.h>
 #include <ioj/rotator3d.h>
-#include <ioj/sim/vector_types.h>
+#include <ioj/vector_types.h>
 
-namespace ioj::sim {
+namespace ioj {
 struct Transform3d {
     ml::Quaternion4d rotation{};
     ml::Vector3d location{};

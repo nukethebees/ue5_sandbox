@@ -5,14 +5,14 @@
 
 #include "ioj/sim/player/scalar_response.h"
 #include "ioj/sim/player/space_ship_common.h"
-#include "ioj/sim/transform3d.h"
+#include "ioj/transform3d.h"
 #include "ioj/vector3d.h"
 
 #include <cstdint>
 
 namespace ioj::sim::player {
 struct PhysicalMovementState {
-    ioj::sim::Transform3d transform{};
+    ioj::Transform3d transform{};
 
     ml::Vector3d velocity{};
 };
@@ -80,7 +80,7 @@ struct PlayerResourceState {
 };
 
 struct PlayerPresentationState {
-    ioj::sim::Transform3d body_transform{};
+    ioj::Transform3d body_transform{};
 
     std::uint64_t boost_start_sequence{};
 };

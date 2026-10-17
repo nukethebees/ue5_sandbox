@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ioj/sim/collision/world_aabbs.h"
-#include "ioj/sim/vector_types.h"
+#include "ioj/vector_types.h"
 
 namespace ioj::sim::collision {
 inline void

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/vector_types.h>
+#include <ioj/vector_types.h>
 
 #include <CoreMinimal.h>
 

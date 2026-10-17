@@ -2,7 +2,7 @@
 
 #include "ioj/sim/collision/collision_grid.h"
 #include "ioj/sim/collision/entity_cell_data.h"
-#include "ioj/sim/vector_types.h"
+#include "ioj/vector_types.h"
 
 namespace ioj::sim::collision {
 inline void add(EntityCellData& data,

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/sim/rotator_types.h>
-#include <ioj/sim/vector_types.h>
+#include <ioj/vector_types.h>
 
 #include <concepts>
 #include <cstdint>

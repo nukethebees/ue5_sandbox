@@ -12,6 +12,9 @@ target_include_directories(native-core-headers
 )
 target_sources(native-core
   PRIVATE
+    include/ioj/vector_types.h
+    include/ioj/transform3d.h
+    src/transform3d.cpp
     include/ioj/container_ops.h
     include/ioj/monotonic_clock.h
     include/ioj/speed_response.h

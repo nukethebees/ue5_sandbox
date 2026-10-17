@@ -2,7 +2,7 @@
 #include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_unique_id.h>
 #include <ioj/sim/rotator_types.h>
-#include <ioj/sim/vector_types.h>
+#include <ioj/vector_types.h>
 
 namespace ioj::sim {
 enum class EntityFrameChangeKind : std::uint8_t { Spawn, RemoveSwap };

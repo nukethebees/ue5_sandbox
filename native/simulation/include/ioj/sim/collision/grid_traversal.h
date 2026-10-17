@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/sim/collision/grid_geometry.h>
-#include <ioj/sim/vector_types.h>
+#include <ioj/vector_types.h>
 
 #include <limits>
 

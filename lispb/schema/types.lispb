@@ -145,7 +145,7 @@
 
 (type native_vector_3f
   :spelling "Vector3f"
-  :header "ioj/sim/vector_types.h"
+  :header "ioj/vector_types.h"
   :pass-by value)
 
 (type native_index_span
@@ -288,5 +288,5 @@
 (type native_navigation_risk_code :spelling "ioj::sim::fighters::NavigationRiskCode" :header "ioj/sim/fighters/fighter_navigation_types.h" :pass-by value)
 (type native_navigation_scan_count :spelling "ioj::sim::fighters::NavigationScanCount" :header "ioj/sim/fighters/fighter_navigation_types.h" :pass-by value)
 (type native_avoidance_choice :spelling "ioj::sim::fighters::AvoidanceChoice" :header "ioj/sim/fighters/fighter_navigation_types.h" :pass-by value)
-(type native_transform3d :spelling "ioj::sim::Transform3d" :header "ioj/sim/transform3d.h")
+(type native_transform3d :spelling "ioj::Transform3d" :header "ioj/transform3d.h")
 (type native_vector3d :spelling "ml::Vector3d" :header "ioj/vector3d.h")

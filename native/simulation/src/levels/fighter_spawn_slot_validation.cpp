@@ -2,7 +2,7 @@
 
 #include <ioj/sim/collision/entity_world_bounds.h>
 #include <ioj/sim/rotator_math.h>
-#include <ioj/sim/transform3d.h>
+#include <ioj/transform3d.h>
 
 namespace ioj::levels {
 namespace {
@@ -41,8 +41,8 @@ auto validate_fighter_spawn_slots(sim::CapitalShipSimConfig const& capital_confi
         fighter_bounds.push_back(sim::collision::make_entity_world_bounds(
             entity_bounds,
             sim::EntityType::Fighter,
-            sim::to_float(slot.location),
-            sim::to_quaternion(sim::to_float(ioj::to_rotator(slot.rotation)))));
+            ioj::to_float(slot.location),
+            sim::to_quaternion(ioj::to_float(ioj::to_rotator(slot.rotation)))));
         if (intersects(capital_bounds, fighter_bounds.back(), 0.0f, clearance)) {
             errors.push_back({.kind = FighterSpawnSlotValidationErrorKind::IntersectsCapital,
                               .first_slot = static_cast<FighterSpawnSlotIndex>(index),

@@ -4,7 +4,7 @@
 #include "ioj/sim/frame_vectors3f.h"
 #include "ioj/sim/lasers/laser_hit_details.h"
 #include "ioj/sim/lasers/laser_source.h"
-#include "ioj/sim/vector_types.h"
+#include "ioj/vector_types.h"
 
 #include <cassert>
 #include <cstdint>

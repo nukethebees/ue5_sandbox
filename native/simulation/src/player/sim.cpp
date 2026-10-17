@@ -12,7 +12,7 @@
 #include <ioj/sim/player/flight_model_evaluator.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/rotator_math.h>
-#include <ioj/sim/transform3d.h>
+#include <ioj/transform3d.h>
 #include <ioj/vector2d.h>
 #include <ioj/vector3d.h>
 

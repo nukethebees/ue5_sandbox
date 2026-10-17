@@ -5,8 +5,8 @@
 
 #include "ioj/native_soa/storage.h"
 #include "ioj/native_soa/vector_storage_ops.h"
-#include "ioj/sim/vector_types.h"
 #include "ioj/vector_soa_view.h"
+#include "ioj/vector_types.h"
 
 #include <cassert>
 #include <utility>

@@ -27,8 +27,8 @@ enum class QueryMode : std::uint8_t {
 struct TraceRequest {
     ioj::sim::Vectors3fConstView start_locations{};
     ioj::sim::Vectors3fConstView end_locations{};
-    ioj::sim::Vector3f scalar_start{};
-    ioj::sim::Vector3f scalar_end{};
+    ioj::Vector3f scalar_start{};
+    ioj::Vector3f scalar_end{};
     std::span<ioj::sim::EntityUniqueId const> targets{};
     std::span<ioj::sim::EntityUniqueId const> ignored_entities{};
     std::span<ioj::sim::EntityUniqueId> out_entity_ids{};
@@ -124,7 +124,7 @@ auto trace_impl(ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
 }
 
 void validate_grid_for_range_query(ioj::sim::collision::CollisionUniformGrid const& grid,
-                                   ioj::sim::Vector3f const& origin,
+                                   ioj::Vector3f const& origin,
                                    float const radius) {
     if (!grid.is_configured()) {
         ml::fatal_error(std::format(

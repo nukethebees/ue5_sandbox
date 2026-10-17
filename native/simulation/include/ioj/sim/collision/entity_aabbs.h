@@ -2,7 +2,7 @@
 
 #include "ioj/enum_array.h"
 #include "ioj/sim/entities/entity_type.h"
-#include "ioj/sim/vector_types.h"
+#include "ioj/vector_types.h"
 
 #include <cstddef>
 

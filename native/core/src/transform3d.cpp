@@ -1,9 +1,9 @@
-#include <ioj/sim/transform3d.h>
+#include <ioj/transform3d.h>
 
 #include <array>
 #include <cmath>
 
-namespace ioj::sim {
+namespace ioj {
 auto Transform3d::operator*(Transform3d const& parent) const -> Transform3d {
     Transform3d result{parent.rotation * rotation,
                        parent.rotation.rotate_vector(parent.scale * location) + parent.location,
