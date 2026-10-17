@@ -10,7 +10,7 @@ namespace ioj::sim {
 
 struct SimClock {
     using tick_type = SimTick;
-    using time_type = double;
+    using time_type = SimTime;
 
     void initialise(FixedTickLoop const& settings) {
         tick_loop = settings;
