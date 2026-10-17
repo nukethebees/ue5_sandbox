@@ -8,25 +8,32 @@
 namespace ioj::sim::turrets {
 class PhaseInterface {
   private:
-    PhaseInterface(Sim& new_target);
+    PhaseInterface(Sim& new_target)
+        : simulation{new_target} {}
 
-    void begin_play();
+    void begin_play() { simulation.begin_play(); }
 
-    void prepare_tick(float const dt);
+    void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
 
-    void think(float const dt, ml::FrameMemoryResource* const scratch_resource);
+    void think(float const dt, ml::FrameMemoryResource* const scratch_resource) {
+        simulation.think(dt, scratch_resource);
+    }
 
-    void generate_fire_commands(ml::FrameMemoryResource* const scratch_resource);
+    void generate_fire_commands(ml::FrameMemoryResource* const scratch_resource) {
+        simulation.generate_fire_commands(scratch_resource);
+    }
 
-    void resolve_damage_events(ml::FrameMemoryResource* const scratch_resource);
+    void resolve_damage_events(ml::FrameMemoryResource* const scratch_resource) {
+        simulation.resolve_damage_events(scratch_resource);
+    }
 
-    void publish_deaths();
+    void publish_deaths() { simulation.publish_deaths(); }
 
-    void remove_components();
+    void remove_components() { simulation.remove_components(); }
 
-    void remove_entities();
+    void remove_entities() { simulation.remove_entities(); }
 
-    void finish_action();
+    void finish_action() { simulation.finish_action(); }
 
     friend struct sim::LevelSim;
     Sim& simulation;

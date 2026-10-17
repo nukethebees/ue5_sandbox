@@ -17,7 +17,6 @@ target_sources(native-simulation PRIVATE
   ../../include/ioj/sim/player/space_ship_common.h
   flight_model_config.cpp
   flight_model_evaluator.cpp
-  phase_interface.cpp
   scalar_response.cpp
   sim.cpp
 )

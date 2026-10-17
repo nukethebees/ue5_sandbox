@@ -8,19 +8,22 @@
 namespace ioj::sim::player {
 class PhaseInterface {
   public:
-    PhaseInterface(Sim& new_target);
+    PhaseInterface(Sim& new_target)
+        : simulation{new_target} {}
   private:
-    void begin_play();
+    void begin_play() { simulation.begin_play(); }
 
-    void prepare_tick(float const dt);
+    void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
 
-    void think(float const dt);
+    void think(float const dt) { simulation.think(dt); }
 
-    void apply_movement();
+    void apply_movement() { simulation.apply_movement(); }
 
-    void generate_fire_commands();
+    void generate_fire_commands() { simulation.generate_fire_commands(); }
 
-    void resolve_damage_events(ml::FrameMemoryResource* const scratch_resource);
+    void resolve_damage_events(ml::FrameMemoryResource* const scratch_resource) {
+        simulation.resolve_damage_events(scratch_resource);
+    }
 
     friend struct sim::LevelSim;
     Sim& simulation;

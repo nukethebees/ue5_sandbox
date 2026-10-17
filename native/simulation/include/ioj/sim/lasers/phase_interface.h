@@ -8,17 +8,20 @@
 namespace ioj::sim::lasers {
 class PhaseInterface {
   private:
-    PhaseInterface(Sim& new_target);
+    PhaseInterface(Sim& new_target)
+        : simulation{new_target} {}
 
-    void begin_play();
+    void begin_play() { simulation.begin_play(); }
 
-    void simulate(float const dt, ml::FrameMemoryResource* const scratch_resource);
+    void simulate(float const dt, ml::FrameMemoryResource* const scratch_resource) {
+        simulation.simulate(dt, scratch_resource);
+    }
 
-    void commit_spawns();
+    void commit_spawns() { simulation.commit_spawns(); }
 
-    void cleanup_entities();
+    void cleanup_entities() { simulation.cleanup_entities(); }
 
-    void finish_action();
+    void finish_action() { simulation.finish_action(); }
 
     friend struct sim::LevelSim;
     Sim& simulation;

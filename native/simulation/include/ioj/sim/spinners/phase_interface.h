@@ -8,19 +8,22 @@
 namespace ioj::sim::spinners {
 class PhaseInterface {
   private:
-    PhaseInterface(Sim& new_target);
+    PhaseInterface(Sim& new_target)
+        : simulation{new_target} {}
 
-    void begin_play();
+    void begin_play() { simulation.begin_play(); }
 
-    void prepare_tick(float const dt);
+    void prepare_tick(float const dt) { simulation.prepare_tick(dt); }
 
-    void think(float const dt);
+    void think(float const dt) { simulation.think(dt); }
 
-    void apply_movement(ml::FrameMemoryResource* const scratch_resource);
+    void apply_movement(ml::FrameMemoryResource* const scratch_resource) {
+        simulation.apply_movement(scratch_resource);
+    }
 
-    void generate_fire_commands();
+    void generate_fire_commands() { simulation.generate_fire_commands(); }
 
-    void finish_action();
+    void finish_action() { simulation.finish_action(); }
 
     friend struct sim::LevelSim;
     Sim& simulation;

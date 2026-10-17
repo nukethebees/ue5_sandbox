@@ -72,15 +72,12 @@
 
 (module player_phase_interface
   :header "native/simulation/include/ioj/sim/player/phase_interface.h"
-  :source "native/simulation/src/player/phase_interface.cpp"
-  :header-include "ioj/sim/player/phase_interface.h"
   :namespace ioj::sim::player
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
   (facade PhaseInterface @player_sim simulation
     :method-access private
     :friends ("sim::LevelSim")
     :friend-kind struct
-    :definitions-in-source true
     :target-storage reference
     (method begin_play void)
     (method prepare_tick void
@@ -94,8 +91,6 @@
 
 (module lasers_phase_interface
   :header "native/simulation/include/ioj/sim/lasers/phase_interface.h"
-  :source "native/simulation/src/lasers/phase_interface.cpp"
-  :header-include "ioj/sim/lasers/phase_interface.h"
   :namespace ioj::sim::lasers
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
   (facade PhaseInterface @lasers_sim simulation
@@ -103,7 +98,6 @@
     :method-access private
     :friends ("sim::LevelSim")
     :friend-kind struct
-    :definitions-in-source true
     :target-storage reference
     (method begin_play void)
     (method simulate void
@@ -115,8 +109,6 @@
 
 (module capital_ships_phase_interface
   :header "native/simulation/include/ioj/sim/capital_ships/phase_interface.h"
-  :source "native/simulation/src/capital_ships/phase_interface.cpp"
-  :header-include "ioj/sim/capital_ships/phase_interface.h"
   :namespace ioj::sim::capital_ships
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
   (facade PhaseInterface @capital_ships_sim simulation
@@ -124,7 +116,6 @@
     :method-access private
     :friends ("sim::LevelSim")
     :friend-kind struct
-    :definitions-in-source true
     :target-storage reference
     (method begin_play void)
     (method prepare_tick void
@@ -142,8 +133,6 @@
 
 (module fighters_phase_interface
   :header "native/simulation/include/ioj/sim/fighters/phase_interface.h"
-  :source "native/simulation/src/fighters/phase_interface.cpp"
-  :header-include "ioj/sim/fighters/phase_interface.h"
   :namespace ioj::sim::fighters
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
   (facade PhaseInterface @fighters_sim simulation
@@ -151,7 +140,6 @@
     :method-access private
     :friends ("sim::LevelSim")
     :friend-kind struct
-    :definitions-in-source true
     :target-storage reference
     (method begin_play void)
     (method commit_orders void)
@@ -174,8 +162,6 @@
 
 (module turrets_phase_interface
   :header "native/simulation/include/ioj/sim/turrets/phase_interface.h"
-  :source "native/simulation/src/turrets/phase_interface.cpp"
-  :header-include "ioj/sim/turrets/phase_interface.h"
   :namespace ioj::sim::turrets
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
   (facade PhaseInterface @turrets_sim simulation
@@ -183,7 +169,6 @@
     :method-access private
     :friends ("sim::LevelSim")
     :friend-kind struct
-    :definitions-in-source true
     :target-storage reference
     (method begin_play void)
     (method prepare_tick void
@@ -202,8 +187,6 @@
 
 (module spinners_phase_interface
   :header "native/simulation/include/ioj/sim/spinners/phase_interface.h"
-  :source "native/simulation/src/spinners/phase_interface.cpp"
-  :header-include "ioj/sim/spinners/phase_interface.h"
   :namespace ioj::sim::spinners
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
   (facade PhaseInterface @spinners_sim simulation
@@ -211,7 +194,6 @@
     :method-access private
     :friends ("sim::LevelSim")
     :friend-kind struct
-    :definitions-in-source true
     :target-storage reference
     (method begin_play void)
     (method prepare_tick void
