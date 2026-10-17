@@ -117,7 +117,7 @@ void expect_health_mappings(LevelSim const& simulation) {
 TEST(NativeSimulation, LevelSimFrameMemoryUsesAndReturnsGameMemoryBlock) {
     constexpr std::size_t frame_capacity{1024 * 1024};
     GameMemory memory{{.root_capacity_bytes = frame_capacity * 2}};
-    auto const* const backing_address{memory.backing_address()};
+    auto const* const backing_data{memory.backing_data()};
     auto data{make_battle()};
     data.frame_memory_capacity_bytes = frame_capacity;
 
@@ -136,7 +136,7 @@ TEST(NativeSimulation, LevelSimFrameMemoryUsesAndReturnsGameMemoryBlock) {
     EXPECT_GE(released.reusable_range_count, 1);
 
     auto reused{memory.acquire_block(frame_capacity, ml::FrameMemoryResource::backing_alignment)};
-    EXPECT_EQ(reused.data(), backing_address);
+    EXPECT_EQ(reused.data(), backing_data);
 }
 
 TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {

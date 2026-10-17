@@ -1,8 +1,8 @@
 add_library(native-memory STATIC)
 target_sources(native-memory
   PRIVATE
-    src/backing_lease.cpp
     src/backing.cpp
+    src/retained_backing_resource.cpp
     src/block.cpp
     src/root_arena.cpp
 )

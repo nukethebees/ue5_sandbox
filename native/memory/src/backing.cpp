@@ -10,48 +10,36 @@
 
 namespace ioj::memory {
 namespace {
-auto allocate_backing(std::size_t const capacity_bytes) -> std::byte* {
+auto allocate_backing(std::size_t const capacity_bytes, std::pmr::memory_resource& upstream)
+    -> std::byte* {
     if (capacity_bytes == 0) {
         throw std::invalid_argument{"Backing capacity must be greater than zero"};
     }
 
-    auto* const allocation{static_cast<std::byte*>(
-        ::operator new(capacity_bytes, std::align_val_t{Backing::alignment}))};
+    auto* const allocation{
+        static_cast<std::byte*>(upstream.allocate(capacity_bytes, Backing::alignment))};
 #if defined(IOJ_WITH_TRACY)
-    ml::profiling::record_memory_allocation(
-        ml::profiling::MemoryDomain::PersistentRoot, allocation, capacity_bytes);
+    // Attribute retained backing to its physical allocation, not each borrower.
+    if (&upstream == std::pmr::new_delete_resource()) {
+        ml::profiling::record_memory_allocation(
+            ml::profiling::MemoryDomain::PersistentRoot, allocation, capacity_bytes);
+    }
 #endif
     return allocation;
 }
 }
 
-auto Backing::create(std::size_t const capacity_bytes) -> std::unique_ptr<Backing> {
-    return std::unique_ptr<Backing>{new Backing{capacity_bytes}};
-}
-
-Backing::Backing(std::size_t const capacity_bytes)
-    : data_{allocate_backing(capacity_bytes)}
+Backing::Backing(std::size_t const capacity_bytes, std::pmr::memory_resource& upstream)
+    : upstream_{upstream}
+    , data_{allocate_backing(capacity_bytes, upstream)}
     , capacity_bytes_{capacity_bytes} {}
 
 Backing::~Backing() {
-    assert(!leased_);
 #if defined(IOJ_WITH_TRACY)
-    ml::profiling::record_memory_free(ml::profiling::MemoryDomain::PersistentRoot, data_);
-#endif
-    ::operator delete(data_, std::align_val_t{alignment});
-}
-
-auto Backing::try_acquire_lease() -> std::optional<BackingLease> {
-    if (leased_) {
-        return std::nullopt;
+    if (&upstream_ == std::pmr::new_delete_resource()) {
+        ml::profiling::record_memory_free(ml::profiling::MemoryDomain::PersistentRoot, data_);
     }
-
-    leased_ = true;
-    return std::optional<BackingLease>{BackingLease{*this}};
-}
-
-void Backing::release_lease() noexcept {
-    assert(leased_);
-    leased_ = false;
+#endif
+    upstream_.deallocate(data_, capacity_bytes_, alignment);
 }
 }

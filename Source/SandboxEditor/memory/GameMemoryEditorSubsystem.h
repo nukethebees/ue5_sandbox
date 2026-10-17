@@ -1,7 +1,7 @@
 #pragma once
 
-#include "native/memory/backing.h"
 #include "native/memory/config.h"
+#include "native/memory/retained_backing_resource.h"
 
 #include "EditorSubsystem.h"
 
@@ -14,11 +14,11 @@ class SANDBOXEDITOR_API USandboxEditorGameMemorySubsystem : public UEditorSubsys
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
     virtual void Deinitialize() override;
 
-    auto acquire_backing() -> std::optional<ioj::memory::BackingLease>;
-    auto backing_address() const noexcept -> std::byte*;
+    auto upstream_resource(std::size_t capacity_bytes) -> std::pmr::memory_resource*;
+    auto backing_data() const noexcept -> std::byte*;
   private:
     void handle_editor_pre_exit();
-    void end_active_pie_if_leased();
+    void end_active_pie_if_memory_in_use();
 
-    std::unique_ptr<ioj::memory::Backing> backing_{};
+    std::unique_ptr<ioj::memory::RetainedBackingResource> backing_{};
 };

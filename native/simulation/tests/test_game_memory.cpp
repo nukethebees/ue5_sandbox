@@ -1,11 +1,11 @@
 #include "support/simulation_test_support.h"
 #include <ioj/sim/memory/game_memory.h>
+#include <native/memory/retained_backing_resource.h>
 
 namespace ioj::sim::tests {
 
 TEST(NativeSimulation, GameMemoryTest) {
     GameMemory memory{{.root_capacity_bytes = 512}};
-    EXPECT_TRUE(memory.owns_backing_locally()) << "Direct game memory owns its backing locally";
 
     std::byte* first_address{};
     {
@@ -28,34 +28,23 @@ TEST(NativeSimulation, GameMemoryTest) {
     EXPECT_EQ(failure->total_capacity_bytes, std::size_t{512})
         << "Diagnostic records total capacity";
 
-    auto backing{memory::Backing::create(1024)};
-    auto first_lease{backing->try_acquire_lease()};
-    EXPECT_TRUE(first_lease.has_value()) << "The first backing lease succeeds";
-    EXPECT_FALSE(backing->try_acquire_lease().has_value()) << "A simultaneous backing lease fails";
-    auto* const backing_address{first_lease->get().data()};
-
-    auto moved_lease{std::move(first_lease.value())};
-    EXPECT_FALSE(static_cast<bool>(first_lease.value())) << "A moved-from lease is empty";
-    first_lease.reset();
-    EXPECT_TRUE(backing->is_leased()) << "The moved lease keeps the backing occupied";
-    moved_lease = {};
-
-    auto second_lease{backing->try_acquire_lease()};
-    EXPECT_TRUE(second_lease.has_value()) << "A sequential backing lease succeeds";
-    EXPECT_EQ(second_lease->get().data(), backing_address)
-        << "Sequential leases expose the persistent address";
-
-    second_lease.reset();
+    memory::RetainedBackingResource upstream{1024};
+    auto* const backing_data{upstream.data()};
     {
-        auto external_lease{backing->try_acquire_lease()};
-        EXPECT_TRUE(external_lease.has_value()) << "A lease for external game memory succeeds";
-        GameMemory external_memory{std::move(external_lease.value()), {.root_capacity_bytes = 256}};
-        EXPECT_FALSE(external_memory.owns_backing_locally())
-            << "External game memory does not own its backing locally";
-        EXPECT_EQ(external_memory.backing_address(), backing_address)
-            << "External game memory uses the leased backing";
+        GameMemory first{{.root_capacity_bytes = 256}, upstream};
+        EXPECT_TRUE(upstream.is_in_use());
+        EXPECT_FALSE(upstream.can_allocate(256, memory::Backing::alignment));
+        EXPECT_EQ(first.backing_data(), backing_data);
     }
-    EXPECT_FALSE(backing->is_leased()) << "Destroying external game memory releases its lease";
+    EXPECT_FALSE(upstream.is_in_use());
+    EXPECT_FALSE(upstream.can_allocate(2048, memory::Backing::alignment));
+    EXPECT_FALSE(upstream.can_allocate(256, memory::Backing::alignment * 2));
+    {
+        GameMemory second{{.root_capacity_bytes = 512}, upstream};
+        EXPECT_EQ(second.backing_data(), backing_data)
+            << "Sequential game-memory instances reuse the retained allocation";
+    }
+    EXPECT_FALSE(upstream.is_in_use());
 }
 
 } // namespace tests

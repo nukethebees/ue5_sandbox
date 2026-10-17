@@ -2,39 +2,13 @@
 
 #include <ioj/diagnostics.h>
 
-#include <cassert>
 #include <format>
 
 namespace ioj::sim {
 
-namespace game_memory_detail {
-auto checked_capacity(memory::Backing& backing, memory::Config const config) -> std::size_t {
-    if (backing.capacity_bytes() < config.root_capacity_bytes) {
-        ml::fatal_error(std::format("Game-memory backing has {} bytes; {} bytes requested",
-                                    backing.capacity_bytes(),
-                                    config.root_capacity_bytes));
-    }
-    return config.root_capacity_bytes;
-}
-}
-
-GameMemory::GameMemory(memory::Config const config)
-    : local_backing_{memory::Backing::create(config.root_capacity_bytes)}
-    , backing_{local_backing_.get()}
-    , root_arena_{backing_->data(), game_memory_detail::checked_capacity(*backing_, config)} {
-    assert(static_cast<bool>(local_backing_));
-    assert(!external_lease_);
-    assert(backing_ != nullptr);
-}
-
-GameMemory::GameMemory(memory::BackingLease lease, memory::Config const config)
-    : external_lease_{std::move(lease)}
-    , backing_{&external_lease_.get()}
-    , root_arena_{backing_->data(), game_memory_detail::checked_capacity(*backing_, config)} {
-    assert(!static_cast<bool>(local_backing_));
-    assert(external_lease_);
-    assert(backing_ != nullptr);
-}
+GameMemory::GameMemory(memory::Config const config, std::pmr::memory_resource& upstream)
+    : backing_{config.root_capacity_bytes, upstream}
+    , root_arena_{backing_.data(), backing_.capacity_bytes()} {}
 
 GameMemory::~GameMemory() = default;
 

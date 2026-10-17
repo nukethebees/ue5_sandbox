@@ -12,8 +12,9 @@ namespace ioj::sim {
 
 class GameMemory {
   public:
-    explicit GameMemory(memory::Config config = {});
-    GameMemory(memory::BackingLease lease, memory::Config config);
+    // Keep upstream alive until after GameMemory and all of its blocks are destroyed.
+    explicit GameMemory(memory::Config config = {},
+                        std::pmr::memory_resource& upstream = *std::pmr::new_delete_resource());
     ~GameMemory();
     GameMemory(GameMemory const&) = delete;
     GameMemory(GameMemory&&) = delete;
@@ -26,12 +27,9 @@ class GameMemory {
     auto memory_resource() noexcept -> std::pmr::memory_resource&;
     auto get_stats() const noexcept -> memory::Statistics;
     auto get_last_allocation_failure() const noexcept -> std::optional<memory::AllocationFailure>;
-    auto owns_backing_locally() const noexcept -> bool { return static_cast<bool>(local_backing_); }
-    auto backing_address() const noexcept -> std::byte* { return backing_->data(); }
+    auto backing_data() const noexcept -> std::byte* { return backing_.data(); }
   private:
-    std::unique_ptr<memory::Backing> local_backing_{};
-    memory::BackingLease external_lease_{};
-    memory::Backing* backing_{};
+    memory::Backing backing_;
     memory::RootArena root_arena_;
 };
 } // namespace ioj::sim

@@ -164,7 +164,7 @@ auto RootArena::get_last_allocation_failure() const noexcept -> AllocationFailur
     return impl_->last_allocation_failure_ ? &*impl_->last_allocation_failure_ : nullptr;
 }
 
-auto RootArena::backing_address() const noexcept -> std::byte* {
+auto RootArena::backing_data() const noexcept -> std::byte* {
     return impl_->backing_.data();
 }
 

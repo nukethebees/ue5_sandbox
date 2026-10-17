@@ -1,17 +1,16 @@
 #include "SpaceGameSimulation/memory/GameMemoryBootstrap.h"
 
-auto FGameMemoryBootstrap::acquire_backing_delegate() -> FAcquireGameMemoryBackingDelegate& {
-    static FAcquireGameMemoryBackingDelegate delegate;
+auto FGameMemoryBootstrap::upstream_resource_delegate() -> FGameMemoryUpstreamDelegate& {
+    static FGameMemoryUpstreamDelegate delegate;
     return delegate;
 }
 
 auto FGameMemoryBootstrap::create_game_memory(ioj::memory::Config config)
     -> TUniquePtr<::ioj::sim::GameMemory> {
-    auto& delegate{acquire_backing_delegate()};
+    auto& delegate{upstream_resource_delegate()};
     if (delegate.IsBound()) {
-        auto lease{delegate.Execute()};
-        if (lease.has_value() && lease->get().capacity_bytes() >= config.root_capacity_bytes) {
-            return MakeUnique<::ioj::sim::GameMemory>(MoveTemp(lease.value()), config);
+        if (auto* const upstream{delegate.Execute(config.root_capacity_bytes)}) {
+            return MakeUnique<::ioj::sim::GameMemory>(config, *upstream);
         }
     }
 

@@ -22,7 +22,7 @@ class RootArena {
     auto memory_resource() noexcept -> std::pmr::memory_resource&;
     auto get_statistics() const noexcept -> Statistics;
     auto get_last_allocation_failure() const noexcept -> AllocationFailure const*;
-    auto backing_address() const noexcept -> std::byte*;
+    auto backing_data() const noexcept -> std::byte*;
   private:
     friend class Block;
 
