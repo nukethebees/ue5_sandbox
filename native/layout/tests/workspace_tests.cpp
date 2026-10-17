@@ -26,7 +26,8 @@ auto enumeration(std::string name) -> codegen::EnumSchema {
             .reflection = codegen::EnumReflection::none,
             .signedness = std::nullopt,
             .enum_array = false,
-            .native_api = false};
+            .native_api = false,
+            .helpers = {}};
 }
 
 auto graph(bool const insert_before_target,
