@@ -2,11 +2,12 @@
 
 #include <ioj/column_math.h>
 #include <ioj/frame_array.h>
+#include <ioj/frame_vectors3f.h>
 #include <ioj/generated/array_math_kernels.h>
 #include <ioj/parallel_for.h>
-#include <ioj/sim/collision/frame_collision_scratch.h>
 #include <ioj/sim/collision/frame_hit_details.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
+#include <ioj/sim/collision/trace_hits.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/profiling.h>
@@ -200,8 +201,12 @@ void Sim::handle_collisions(float const dt, ml::FrameMemoryResource* const scrat
         return;
     }
 
-    FrameCollisionScratch collision_scratch{scratch_resource};
-    collision_scratch.set_num(n);
+    FrameVectors3f end_storage{scratch_resource};
+    TraceHits hit_storage{scratch_resource};
+    end_storage.set_num(n);
+    hit_storage.set_num(n);
+    auto const trace_ends{end_storage.get_view()};
+    auto const trace_results{hit_storage.get_view()};
     auto const entities{this->entities.get_const_view()};
     auto const locations{entities.view_locations().get_const_view()};
     auto const velocities{entities.view_velocities().get_const_view()};
@@ -209,42 +214,32 @@ void Sim::handle_collisions(float const dt, ml::FrameMemoryResource* const scrat
     auto const lifetimes{entities.lifetimes_remaining()};
     auto const instigator_ids{entities.instigator_ids()};
 
-    ml::parallel_for(
-        n, [=, this, &collision_scratch](std::uint32_t const begin, std::uint32_t const end) {
-            SANDBOX_PROFILE_SCOPE("trace_job");
+    ml::parallel_for(n, [=, this](std::uint32_t const begin, std::uint32_t const end) {
+        SANDBOX_PROFILE_SCOPE("trace_job");
 
-            auto const trace_count{end - begin};
-            auto const trace_locations{locations.slice(begin, trace_count)};
-            auto const trace_velocities{velocities.slice(begin, trace_count)};
-            auto const trace_starts{
-                collision_scratch.trace_starts.get_view().slice(begin, trace_count)};
-            auto const trace_ends{
-                collision_scratch.trace_ends.get_view().slice(begin, trace_count)};
-            for (std::uint32_t trace_index{}; trace_index < trace_count; ++trace_index) {
-                auto const start{vector_at(trace_locations, trace_index)};
-                trace_starts.set(trace_index, start);
-                auto const index{begin + trace_index};
-                auto const step{
-                    active_rows[index] != 0 ? std::min(dt, std::max(0.f, lifetimes[index])) : 0.f};
-                trace_ends.set(trace_index,
-                               start + vector_at(trace_velocities, trace_index) * step);
-            }
+        auto const trace_count{end - begin};
+        auto const trace_locations{locations.slice(begin, trace_count)};
+        auto const trace_velocities{velocities.slice(begin, trace_count)};
+        auto const ends{trace_ends.slice(begin, trace_count)};
+        for (std::uint32_t trace_index{}; trace_index < trace_count; ++trace_index) {
+            auto const start{vector_at(trace_locations, trace_index)};
+            auto const index{begin + trace_index};
+            auto const step{active_rows[index] != 0 ? std::min(dt, std::max(0.f, lifetimes[index]))
+                                                    : 0.f};
+            ends.set(trace_index, start + vector_at(trace_velocities, trace_index) * step);
+        }
 
-            auto const trace_starts_view{
-                collision_scratch.trace_starts.get_const_view().slice(begin, trace_count)};
-            auto const trace_ends_view{
-                collision_scratch.trace_ends.get_const_view().slice(begin, trace_count)};
-            auto const hits{collision_scratch.trace_hits.get_view().slice(begin, trace_count)};
-            auto const ignored_entities{
-                std::span<EntityUniqueId const>{instigator_ids}.subspan(begin, trace_count)};
-            query_manager.trace_closest_lines(
-                trace_starts_view, trace_ends_view, hits, ignored_entities);
-        });
+        auto const hits{trace_results.slice(begin, trace_count)};
+        auto const ignored_entities{
+            std::span<EntityUniqueId const>{instigator_ids}.subspan(begin, trace_count)};
+        query_manager.trace_closest_lines(
+            trace_locations, ends.get_const_view(), hits, ignored_entities);
+    });
 
     ml::FrameArray<std::uint32_t> to_remove{scratch_resource};
     FrameHitDetails hit_details{scratch_resource};
     DirectDamageEvents collision_damage_events{scratch_resource};
-    auto const trace_hits{collision_scratch.trace_hits.get_const_view()};
+    auto const trace_hits{hit_storage.get_const_view()};
     auto const hit_flags{trace_hits.hits()};
     auto const hit_entities{trace_hits.entities()};
     auto const hit_locations{trace_hits.view_locations()};
