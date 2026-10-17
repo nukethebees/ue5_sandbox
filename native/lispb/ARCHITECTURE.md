@@ -33,7 +33,7 @@ Record and SoA owner/view functions share qualifier, return-type, parameter, ove
 validation, with receiver-specific restrictions applied separately.
 
 The simulation schema owns aggregate data, enums, and ordinary scalar aliases. Strong wrappers
-such as `HealthIndex` and `EntityOwnerId` remain C++ declarations because their constructors,
+such as `HealthIndex` remain C++ declarations because their constructors,
 private representation or nested constants are outside this record model; external integer
 registrations expose their domains and invalid sentinels. Telemetry `std::array` aliases also
 remain handwritten: record fixed counts generate member arrays, while homogeneous layouts emit
