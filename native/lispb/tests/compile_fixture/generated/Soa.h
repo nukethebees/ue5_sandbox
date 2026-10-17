@@ -3,13 +3,13 @@
 
 #pragma once
 
+#include "ioj/fixed_storage.h"
+#include "ioj/single_allocation/removal.h"
+#include "ioj/soa_concepts.h"
 #include "Project/RestrictedLeaf.h"
 #include "Project/Row.h"
 #include "Project/Tracked.h"
 
-#include "ioj/fixed_storage.h"
-#include "ioj/single_allocation/removal.h"
-#include "ioj/soa_concepts.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/single_allocation/operations.h"
 #include "SandboxCore/single_allocation/vector_views.h"
@@ -90,27 +90,26 @@ struct ApiRowsSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
 
-    inline static constexpr size_type capacity_granularity{
+    static constexpr size_type capacity_granularity{
         ml::soa_storage::LayoutPolicy::capacity_granularity};
-    inline static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
+    static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
 
     template <typename T>
     using ColLayout = ml::soa_storage::ColumnLayout<T>;
-    inline static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{};
+    static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<float> ValuesColumn{LayoutStart};
-    inline static constexpr ColLayout<ApiMask> MasksColumn{ValuesColumn};
-    inline static constexpr ColLayout<float> PositionsXsColumn{MasksColumn};
-    inline static constexpr ColLayout<float> PositionsYsColumn{PositionsXsColumn};
+    static constexpr ColLayout<float> ValuesColumn{LayoutStart};
+    static constexpr ColLayout<ApiMask> MasksColumn{ValuesColumn};
+    static constexpr ColLayout<float> PositionsXsColumn{MasksColumn};
+    static constexpr ColLayout<float> PositionsYsColumn{PositionsXsColumn};
 
-    inline static constexpr byte_size_type allocation_alignment{
-        PositionsYsColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{PositionsYsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
-    inline static constexpr byte_size_type capacity_block_bound{
+    static constexpr byte_size_type capacity_block_bound{
         ml::soa_storage::capacity_block_bound(PositionsYsColumn)};
-    inline static constexpr size_type max_capacity{
+    static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : PositionsYsColumn.data_end(blocks);
@@ -268,10 +267,10 @@ struct COMPILE_FIXTURE_API ApiOwner
     using Layout = ApiRowsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
@@ -441,24 +440,24 @@ struct EquivalentRowsSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
 
-    inline static constexpr size_type capacity_granularity{
+    static constexpr size_type capacity_granularity{
         ml::soa_storage::LayoutPolicy::capacity_granularity};
-    inline static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
+    static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
 
     template <typename T>
     using ColLayout = ml::soa_storage::ColumnLayout<T>;
-    inline static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{};
+    static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<float> XsColumn{LayoutStart};
-    inline static constexpr ColLayout<float> YsColumn{XsColumn};
+    static constexpr ColLayout<float> XsColumn{LayoutStart};
+    static constexpr ColLayout<float> YsColumn{XsColumn};
 
-    inline static constexpr byte_size_type allocation_alignment{YsColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{YsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
-    inline static constexpr byte_size_type capacity_block_bound{
+    static constexpr byte_size_type capacity_block_bound{
         ml::soa_storage::capacity_block_bound(YsColumn)};
-    inline static constexpr size_type max_capacity{
+    static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : YsColumn.data_end(blocks);
@@ -536,10 +535,10 @@ struct EquivalentOwner
     using Layout = EquivalentRowsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
@@ -1189,25 +1188,24 @@ struct FParentsSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
 
-    inline static constexpr size_type capacity_granularity{
+    static constexpr size_type capacity_granularity{
         ml::soa_storage::LayoutPolicy::capacity_granularity};
-    inline static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
+    static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
 
     template <typename T>
     using ColLayout = ml::soa_storage::ColumnLayout<T>;
-    inline static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{};
+    static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<int32> KeysColumn{LayoutStart};
-    inline static constexpr ColLayout<int32> ChildrenValuesColumn{KeysColumn};
+    static constexpr ColLayout<int32> KeysColumn{LayoutStart};
+    static constexpr ColLayout<int32> ChildrenValuesColumn{KeysColumn};
 
-    inline static constexpr byte_size_type allocation_alignment{
-        ChildrenValuesColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{ChildrenValuesColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
-    inline static constexpr byte_size_type capacity_block_bound{
+    static constexpr byte_size_type capacity_block_bound{
         ml::soa_storage::capacity_block_bound(ChildrenValuesColumn)};
-    inline static constexpr size_type max_capacity{
+    static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : ChildrenValuesColumn.data_end(blocks);
@@ -1329,10 +1327,10 @@ struct SingleParents
     using Layout = FParentsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }
@@ -2481,24 +2479,23 @@ struct RestrictionRowsSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
 
-    inline static constexpr size_type capacity_granularity{
+    static constexpr size_type capacity_granularity{
         ml::soa_storage::LayoutPolicy::capacity_granularity};
-    inline static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
+    static constexpr byte_size_type column_gap{ml::soa_storage::LayoutPolicy::column_gap};
 
     template <typename T>
     using ColLayout = ml::soa_storage::ColumnLayout<T>;
-    inline static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{};
+    static constexpr ml::soa_storage::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<RestrictedLeaf> RestrictedColumn{LayoutStart};
+    static constexpr ColLayout<RestrictedLeaf> RestrictedColumn{LayoutStart};
 
-    inline static constexpr byte_size_type allocation_alignment{
-        RestrictedColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{RestrictedColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
-    inline static constexpr byte_size_type capacity_block_bound{
+    static constexpr byte_size_type capacity_block_bound{
         ml::soa_storage::capacity_block_bound(RestrictedColumn)};
-    inline static constexpr size_type max_capacity{
+    static constexpr size_type max_capacity{
         ml::soa_storage::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : RestrictedColumn.data_end(blocks);
@@ -2563,10 +2560,10 @@ struct SingleRestrictionRows
     using Layout = RestrictionRowsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }

@@ -25,40 +25,38 @@ struct EntitiesSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
-    inline static constexpr size_type capacity_granularity{
+    static constexpr size_type capacity_granularity{
         ml::native_soa::LayoutPolicy::capacity_granularity};
-    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+    static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
     template <typename T>
     using ColLayout = ml::native_soa::ColumnLayout<T>;
-    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<std::uint8_t> ActiveColumn{LayoutStart};
-    inline static constexpr ColLayout<ioj::sim::LaserSource> SourcesColumn{ActiveColumn};
-    inline static constexpr ColLayout<float> LocationsXsColumn{SourcesColumn};
-    inline static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
-    inline static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
-    inline static constexpr ColLayout<float> RotationsPitchesColumn{LocationsZsColumn};
-    inline static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
-    inline static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
-    inline static constexpr ColLayout<float> VelocitiesXsColumn{RotationsRollsColumn};
-    inline static constexpr ColLayout<float> VelocitiesYsColumn{VelocitiesXsColumn};
-    inline static constexpr ColLayout<float> VelocitiesZsColumn{VelocitiesYsColumn};
-    inline static constexpr ColLayout<std::int32_t> DamagesColumn{VelocitiesZsColumn};
-    inline static constexpr ColLayout<float> LifetimesRemainingColumn{DamagesColumn};
-    inline static constexpr ColLayout<EntityUniqueId> InstigatorIdsColumn{LifetimesRemainingColumn};
-    inline static constexpr ColLayout<float> InitialLifetimesColumn{InstigatorIdsColumn};
-    inline static constexpr ColLayout<float> SpawnTimesColumn{InitialLifetimesColumn};
+    static constexpr ColLayout<std::uint8_t> ActiveColumn{LayoutStart};
+    static constexpr ColLayout<ioj::sim::LaserSource> SourcesColumn{ActiveColumn};
+    static constexpr ColLayout<float> LocationsXsColumn{SourcesColumn};
+    static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
+    static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
+    static constexpr ColLayout<float> RotationsPitchesColumn{LocationsZsColumn};
+    static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
+    static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
+    static constexpr ColLayout<float> VelocitiesXsColumn{RotationsRollsColumn};
+    static constexpr ColLayout<float> VelocitiesYsColumn{VelocitiesXsColumn};
+    static constexpr ColLayout<float> VelocitiesZsColumn{VelocitiesYsColumn};
+    static constexpr ColLayout<std::int32_t> DamagesColumn{VelocitiesZsColumn};
+    static constexpr ColLayout<float> LifetimesRemainingColumn{DamagesColumn};
+    static constexpr ColLayout<EntityUniqueId> InstigatorIdsColumn{LifetimesRemainingColumn};
+    static constexpr ColLayout<float> InitialLifetimesColumn{InstigatorIdsColumn};
+    static constexpr ColLayout<float> SpawnTimesColumn{InitialLifetimesColumn};
 
-    inline static constexpr byte_size_type allocation_alignment{
-        SpawnTimesColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{SpawnTimesColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
-    inline static constexpr byte_size_type capacity_block_bound{
+    static constexpr byte_size_type capacity_block_bound{
         ml::native_soa::capacity_block_bound(SpawnTimesColumn)};
-    inline static constexpr size_type max_capacity{
-        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : SpawnTimesColumn.data_end(blocks);
     }
@@ -194,10 +192,10 @@ struct LaserEntities
     using Layout = EntitiesSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }

@@ -20,29 +20,28 @@ struct LineTracesSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
-    inline static constexpr size_type capacity_granularity{
+    static constexpr size_type capacity_granularity{
         ml::native_soa::LayoutPolicy::capacity_granularity};
-    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+    static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
     template <typename T>
     using ColLayout = ml::native_soa::ColumnLayout<T>;
-    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<float> StartsXsColumn{LayoutStart};
-    inline static constexpr ColLayout<float> StartsYsColumn{StartsXsColumn};
-    inline static constexpr ColLayout<float> StartsZsColumn{StartsYsColumn};
-    inline static constexpr ColLayout<float> EndsXsColumn{StartsZsColumn};
-    inline static constexpr ColLayout<float> EndsYsColumn{EndsXsColumn};
-    inline static constexpr ColLayout<float> EndsZsColumn{EndsYsColumn};
+    static constexpr ColLayout<float> StartsXsColumn{LayoutStart};
+    static constexpr ColLayout<float> StartsYsColumn{StartsXsColumn};
+    static constexpr ColLayout<float> StartsZsColumn{StartsYsColumn};
+    static constexpr ColLayout<float> EndsXsColumn{StartsZsColumn};
+    static constexpr ColLayout<float> EndsYsColumn{EndsXsColumn};
+    static constexpr ColLayout<float> EndsZsColumn{EndsYsColumn};
 
-    inline static constexpr byte_size_type allocation_alignment{EndsZsColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{EndsZsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
-    inline static constexpr byte_size_type capacity_block_bound{
+    static constexpr byte_size_type capacity_block_bound{
         ml::native_soa::capacity_block_bound(EndsZsColumn)};
-    inline static constexpr size_type max_capacity{
-        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : EndsZsColumn.data_end(blocks);
     }
@@ -126,10 +125,10 @@ struct LineTraces
     using Layout = LineTracesSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }

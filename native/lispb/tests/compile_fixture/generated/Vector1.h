@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "ioj/soa_concepts.h"
 #include "Project/Scalar1f.h"
 
-#include "ioj/soa_concepts.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_storage_ops.h"
 

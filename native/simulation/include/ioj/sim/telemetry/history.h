@@ -89,37 +89,34 @@ struct HistoryRowsSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
-    inline static constexpr size_type capacity_granularity{
+    static constexpr size_type capacity_granularity{
         ml::native_soa::LayoutPolicy::capacity_granularity};
-    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+    static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
     template <typename T>
     using ColLayout = ml::native_soa::ColumnLayout<T>;
-    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<SimTick> CompletedTicksColumn{LayoutStart};
-    inline static constexpr ColLayout<HistoryFieldMask> ValidityMasksColumn{CompletedTicksColumn};
-    inline static constexpr ColLayout<std::int32_t> ActiveEntitiesColumn{ValidityMasksColumn};
-    inline static constexpr ColLayout<EntityTypeCounts> ActiveEntitiesByTypeColumn{
-        ActiveEntitiesColumn};
-    inline static constexpr ColLayout<EntityCounts> ActiveEntitiesByTeamAndTypeColumn{
+    static constexpr ColLayout<SimTick> CompletedTicksColumn{LayoutStart};
+    static constexpr ColLayout<HistoryFieldMask> ValidityMasksColumn{CompletedTicksColumn};
+    static constexpr ColLayout<std::int32_t> ActiveEntitiesColumn{ValidityMasksColumn};
+    static constexpr ColLayout<EntityTypeCounts> ActiveEntitiesByTypeColumn{ActiveEntitiesColumn};
+    static constexpr ColLayout<EntityCounts> ActiveEntitiesByTeamAndTypeColumn{
         ActiveEntitiesByTypeColumn};
-    inline static constexpr ColLayout<std::int32_t> SpawnedEntitiesColumn{
+    static constexpr ColLayout<std::int32_t> SpawnedEntitiesColumn{
         ActiveEntitiesByTeamAndTypeColumn};
-    inline static constexpr ColLayout<std::int32_t> DestroyedEntitiesColumn{SpawnedEntitiesColumn};
-    inline static constexpr ColLayout<std::int32_t> KillsColumn{DestroyedEntitiesColumn};
-    inline static constexpr ColLayout<std::int32_t> ActiveLasersColumn{KillsColumn};
-    inline static constexpr ColLayout<std::int32_t> LasersFiredColumn{ActiveLasersColumn};
+    static constexpr ColLayout<std::int32_t> DestroyedEntitiesColumn{SpawnedEntitiesColumn};
+    static constexpr ColLayout<std::int32_t> KillsColumn{DestroyedEntitiesColumn};
+    static constexpr ColLayout<std::int32_t> ActiveLasersColumn{KillsColumn};
+    static constexpr ColLayout<std::int32_t> LasersFiredColumn{ActiveLasersColumn};
 
-    inline static constexpr byte_size_type allocation_alignment{
-        LasersFiredColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{LasersFiredColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
-    inline static constexpr byte_size_type capacity_block_bound{
+    static constexpr byte_size_type capacity_block_bound{
         ml::native_soa::capacity_block_bound(LasersFiredColumn)};
-    inline static constexpr size_type max_capacity{
-        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : LasersFiredColumn.data_end(blocks);
     }
@@ -227,10 +224,10 @@ struct HistoryRows
     using Layout = HistoryRowsSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }

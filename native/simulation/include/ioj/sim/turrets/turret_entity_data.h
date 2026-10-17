@@ -24,50 +24,49 @@ struct TurretEntityDataSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
-    inline static constexpr size_type capacity_granularity{
+    static constexpr size_type capacity_granularity{
         ml::native_soa::LayoutPolicy::capacity_granularity};
-    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+    static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
     template <typename T>
     using ColLayout = ml::native_soa::ColumnLayout<T>;
-    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<EntityUniqueId> EntityIdsColumn{LayoutStart};
-    inline static constexpr ColLayout<std::uint32_t> IntegralBiasesColumn{EntityIdsColumn};
-    inline static constexpr ColLayout<float> LocationsXsColumn{IntegralBiasesColumn};
-    inline static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
-    inline static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
-    inline static constexpr ColLayout<float> FirePointLocationsXsColumn{LocationsZsColumn};
-    inline static constexpr ColLayout<float> FirePointLocationsYsColumn{FirePointLocationsXsColumn};
-    inline static constexpr ColLayout<float> FirePointLocationsZsColumn{FirePointLocationsYsColumn};
-    inline static constexpr ColLayout<float> RotationsPitchesColumn{FirePointLocationsZsColumn};
-    inline static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
-    inline static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
-    inline static constexpr ColLayout<::ioj::Team> TeamsColumn{RotationsRollsColumn};
-    inline static constexpr ColLayout<std::int16_t> LaserCooldownsColumn{TeamsColumn};
-    inline static constexpr ColLayout<std::int32_t> LaserDamagesColumn{LaserCooldownsColumn};
-    inline static constexpr ColLayout<std::int16_t> TargetRefreshCountdownsPeriodsColumn{
+    static constexpr ColLayout<EntityUniqueId> EntityIdsColumn{LayoutStart};
+    static constexpr ColLayout<std::uint32_t> IntegralBiasesColumn{EntityIdsColumn};
+    static constexpr ColLayout<float> LocationsXsColumn{IntegralBiasesColumn};
+    static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
+    static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
+    static constexpr ColLayout<float> FirePointLocationsXsColumn{LocationsZsColumn};
+    static constexpr ColLayout<float> FirePointLocationsYsColumn{FirePointLocationsXsColumn};
+    static constexpr ColLayout<float> FirePointLocationsZsColumn{FirePointLocationsYsColumn};
+    static constexpr ColLayout<float> RotationsPitchesColumn{FirePointLocationsZsColumn};
+    static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
+    static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
+    static constexpr ColLayout<::ioj::Team> TeamsColumn{RotationsRollsColumn};
+    static constexpr ColLayout<std::int16_t> LaserCooldownsColumn{TeamsColumn};
+    static constexpr ColLayout<std::int32_t> LaserDamagesColumn{LaserCooldownsColumn};
+    static constexpr ColLayout<std::int16_t> TargetRefreshCountdownsPeriodsColumn{
         LaserDamagesColumn};
-    inline static constexpr ColLayout<std::int16_t> TargetRefreshCountdownsRemainingTicksColumn{
+    static constexpr ColLayout<std::int16_t> TargetRefreshCountdownsRemainingTicksColumn{
         TargetRefreshCountdownsPeriodsColumn};
-    inline static constexpr ColLayout<EntityUniqueId> TargetIdsColumn{
+    static constexpr ColLayout<EntityUniqueId> TargetIdsColumn{
         TargetRefreshCountdownsRemainingTicksColumn};
-    inline static constexpr ColLayout<float> TargetLocationsXsColumn{TargetIdsColumn};
-    inline static constexpr ColLayout<float> TargetLocationsYsColumn{TargetLocationsXsColumn};
-    inline static constexpr ColLayout<float> TargetLocationsZsColumn{TargetLocationsYsColumn};
-    inline static constexpr ColLayout<float> TargetVelocitiesXsColumn{TargetLocationsZsColumn};
-    inline static constexpr ColLayout<float> TargetVelocitiesYsColumn{TargetVelocitiesXsColumn};
-    inline static constexpr ColLayout<float> TargetVelocitiesZsColumn{TargetVelocitiesYsColumn};
+    static constexpr ColLayout<float> TargetLocationsXsColumn{TargetIdsColumn};
+    static constexpr ColLayout<float> TargetLocationsYsColumn{TargetLocationsXsColumn};
+    static constexpr ColLayout<float> TargetLocationsZsColumn{TargetLocationsYsColumn};
+    static constexpr ColLayout<float> TargetVelocitiesXsColumn{TargetLocationsZsColumn};
+    static constexpr ColLayout<float> TargetVelocitiesYsColumn{TargetVelocitiesXsColumn};
+    static constexpr ColLayout<float> TargetVelocitiesZsColumn{TargetVelocitiesYsColumn};
 
-    inline static constexpr byte_size_type allocation_alignment{
+    static constexpr byte_size_type allocation_alignment{
         TargetVelocitiesZsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
-    inline static constexpr byte_size_type capacity_block_bound{
+    static constexpr byte_size_type capacity_block_bound{
         ml::native_soa::capacity_block_bound(TargetVelocitiesZsColumn)};
-    inline static constexpr size_type max_capacity{
-        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : TargetVelocitiesZsColumn.data_end(blocks);
     }
@@ -236,10 +235,10 @@ struct TurretEntityData
     using Layout = TurretEntityDataSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }

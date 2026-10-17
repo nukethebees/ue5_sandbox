@@ -26,96 +26,88 @@ struct FighterEntityDataSingleLayout {
     using size_type = std::uint32_t;
     using byte_size_type = std::size_t;
 
-    inline static constexpr size_type capacity_granularity{
+    static constexpr size_type capacity_granularity{
         ml::native_soa::LayoutPolicy::capacity_granularity};
-    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
+    static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
     template <typename T>
     using ColLayout = ml::native_soa::ColumnLayout<T>;
-    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
+    static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<EntityUniqueId> EntityIdsColumn{LayoutStart};
-    inline static constexpr ColLayout<std::uint32_t> IntegralBiasesColumn{EntityIdsColumn};
-    inline static constexpr ColLayout<float> FloatBiasesColumn{IntegralBiasesColumn};
-    inline static constexpr ColLayout<FighterTask> TasksColumn{FloatBiasesColumn};
-    inline static constexpr ColLayout<float> LocationsXsColumn{TasksColumn};
-    inline static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
-    inline static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
-    inline static constexpr ColLayout<float> DesiredMoveLocationsXsColumn{LocationsZsColumn};
-    inline static constexpr ColLayout<float> DesiredMoveLocationsYsColumn{
-        DesiredMoveLocationsXsColumn};
-    inline static constexpr ColLayout<float> DesiredMoveLocationsZsColumn{
-        DesiredMoveLocationsYsColumn};
-    inline static constexpr ColLayout<float> AimDirectionsXsColumn{DesiredMoveLocationsZsColumn};
-    inline static constexpr ColLayout<float> AimDirectionsYsColumn{AimDirectionsXsColumn};
-    inline static constexpr ColLayout<float> AimDirectionsZsColumn{AimDirectionsYsColumn};
-    inline static constexpr ColLayout<float> PlannedAimDirectionsXsColumn{AimDirectionsZsColumn};
-    inline static constexpr ColLayout<float> PlannedAimDirectionsYsColumn{
-        PlannedAimDirectionsXsColumn};
-    inline static constexpr ColLayout<float> PlannedAimDirectionsZsColumn{
-        PlannedAimDirectionsYsColumn};
-    inline static constexpr ColLayout<float> DesiredAimingDirectionsXsColumn{
-        PlannedAimDirectionsZsColumn};
-    inline static constexpr ColLayout<float> DesiredAimingDirectionsYsColumn{
+    static constexpr ColLayout<EntityUniqueId> EntityIdsColumn{LayoutStart};
+    static constexpr ColLayout<std::uint32_t> IntegralBiasesColumn{EntityIdsColumn};
+    static constexpr ColLayout<float> FloatBiasesColumn{IntegralBiasesColumn};
+    static constexpr ColLayout<FighterTask> TasksColumn{FloatBiasesColumn};
+    static constexpr ColLayout<float> LocationsXsColumn{TasksColumn};
+    static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
+    static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
+    static constexpr ColLayout<float> DesiredMoveLocationsXsColumn{LocationsZsColumn};
+    static constexpr ColLayout<float> DesiredMoveLocationsYsColumn{DesiredMoveLocationsXsColumn};
+    static constexpr ColLayout<float> DesiredMoveLocationsZsColumn{DesiredMoveLocationsYsColumn};
+    static constexpr ColLayout<float> AimDirectionsXsColumn{DesiredMoveLocationsZsColumn};
+    static constexpr ColLayout<float> AimDirectionsYsColumn{AimDirectionsXsColumn};
+    static constexpr ColLayout<float> AimDirectionsZsColumn{AimDirectionsYsColumn};
+    static constexpr ColLayout<float> PlannedAimDirectionsXsColumn{AimDirectionsZsColumn};
+    static constexpr ColLayout<float> PlannedAimDirectionsYsColumn{PlannedAimDirectionsXsColumn};
+    static constexpr ColLayout<float> PlannedAimDirectionsZsColumn{PlannedAimDirectionsYsColumn};
+    static constexpr ColLayout<float> DesiredAimingDirectionsXsColumn{PlannedAimDirectionsZsColumn};
+    static constexpr ColLayout<float> DesiredAimingDirectionsYsColumn{
         DesiredAimingDirectionsXsColumn};
-    inline static constexpr ColLayout<float> DesiredAimingDirectionsZsColumn{
+    static constexpr ColLayout<float> DesiredAimingDirectionsZsColumn{
         DesiredAimingDirectionsYsColumn};
-    inline static constexpr ColLayout<float> MovementDirectionsXsColumn{
-        DesiredAimingDirectionsZsColumn};
-    inline static constexpr ColLayout<float> MovementDirectionsYsColumn{MovementDirectionsXsColumn};
-    inline static constexpr ColLayout<float> MovementDirectionsZsColumn{MovementDirectionsYsColumn};
-    inline static constexpr ColLayout<float> VelocitiesXsColumn{MovementDirectionsZsColumn};
-    inline static constexpr ColLayout<float> VelocitiesYsColumn{VelocitiesXsColumn};
-    inline static constexpr ColLayout<float> VelocitiesZsColumn{VelocitiesYsColumn};
-    inline static constexpr ColLayout<float> MoveDistancesColumn{VelocitiesZsColumn};
-    inline static constexpr ColLayout<float> SpeedsColumn{MoveDistancesColumn};
-    inline static constexpr ColLayout<::ioj::Team> TeamsColumn{SpeedsColumn};
-    inline static constexpr ColLayout<EntityUniqueId> ParentIdsColumn{TeamsColumn};
-    inline static constexpr ColLayout<std::int8_t> AwarenessScanCountdownsColumn{ParentIdsColumn};
-    inline static constexpr ColLayout<std::int16_t> NavigationUpdateCountdownsRemainingTicksColumn{
+    static constexpr ColLayout<float> MovementDirectionsXsColumn{DesiredAimingDirectionsZsColumn};
+    static constexpr ColLayout<float> MovementDirectionsYsColumn{MovementDirectionsXsColumn};
+    static constexpr ColLayout<float> MovementDirectionsZsColumn{MovementDirectionsYsColumn};
+    static constexpr ColLayout<float> VelocitiesXsColumn{MovementDirectionsZsColumn};
+    static constexpr ColLayout<float> VelocitiesYsColumn{VelocitiesXsColumn};
+    static constexpr ColLayout<float> VelocitiesZsColumn{VelocitiesYsColumn};
+    static constexpr ColLayout<float> MoveDistancesColumn{VelocitiesZsColumn};
+    static constexpr ColLayout<float> SpeedsColumn{MoveDistancesColumn};
+    static constexpr ColLayout<::ioj::Team> TeamsColumn{SpeedsColumn};
+    static constexpr ColLayout<EntityUniqueId> ParentIdsColumn{TeamsColumn};
+    static constexpr ColLayout<std::int8_t> AwarenessScanCountdownsColumn{ParentIdsColumn};
+    static constexpr ColLayout<std::int16_t> NavigationUpdateCountdownsRemainingTicksColumn{
         AwarenessScanCountdownsColumn};
-    inline static constexpr ColLayout<std::int16_t> NavigationUpdateCountdownsPeriodsColumn{
+    static constexpr ColLayout<std::int16_t> NavigationUpdateCountdownsPeriodsColumn{
         NavigationUpdateCountdownsRemainingTicksColumn};
-    inline static constexpr ColLayout<float> SeparationSteeringXsColumn{
+    static constexpr ColLayout<float> SeparationSteeringXsColumn{
         NavigationUpdateCountdownsPeriodsColumn};
-    inline static constexpr ColLayout<float> SeparationSteeringYsColumn{SeparationSteeringXsColumn};
-    inline static constexpr ColLayout<float> SeparationSteeringZsColumn{SeparationSteeringYsColumn};
-    inline static constexpr ColLayout<fighters::NavigationRiskCode> NavigationRiskTiersColumn{
+    static constexpr ColLayout<float> SeparationSteeringYsColumn{SeparationSteeringXsColumn};
+    static constexpr ColLayout<float> SeparationSteeringZsColumn{SeparationSteeringYsColumn};
+    static constexpr ColLayout<fighters::NavigationRiskCode> NavigationRiskTiersColumn{
         SeparationSteeringZsColumn};
-    inline static constexpr ColLayout<fighters::NavigationScanCount>
-        NavigationLowerRiskScanCountsColumn{NavigationRiskTiersColumn};
-    inline static constexpr ColLayout<fighters::AvoidanceChoice> AvoidanceChoiceIndicesColumn{
+    static constexpr ColLayout<fighters::NavigationScanCount> NavigationLowerRiskScanCountsColumn{
+        NavigationRiskTiersColumn};
+    static constexpr ColLayout<fighters::AvoidanceChoice> AvoidanceChoiceIndicesColumn{
         NavigationLowerRiskScanCountsColumn};
-    inline static constexpr ColLayout<fighters::NavigationScanCount> AvoidanceClearScanCountsColumn{
+    static constexpr ColLayout<fighters::NavigationScanCount> AvoidanceClearScanCountsColumn{
         AvoidanceChoiceIndicesColumn};
-    inline static constexpr ColLayout<std::int16_t> AttackRepositionCountdownsColumn{
+    static constexpr ColLayout<std::int16_t> AttackRepositionCountdownsColumn{
         AvoidanceClearScanCountsColumn};
-    inline static constexpr ColLayout<std::int16_t> AttackCooldownsColumn{
+    static constexpr ColLayout<std::int16_t> AttackCooldownsColumn{
         AttackRepositionCountdownsColumn};
-    inline static constexpr ColLayout<EntityUniqueId> TargetIdsColumn{AttackCooldownsColumn};
-    inline static constexpr ColLayout<float> TargetLocationsXsColumn{TargetIdsColumn};
-    inline static constexpr ColLayout<float> TargetLocationsYsColumn{TargetLocationsXsColumn};
-    inline static constexpr ColLayout<float> TargetLocationsZsColumn{TargetLocationsYsColumn};
-    inline static constexpr ColLayout<float> TargetVelocitiesXsColumn{TargetLocationsZsColumn};
-    inline static constexpr ColLayout<float> TargetVelocitiesYsColumn{TargetVelocitiesXsColumn};
-    inline static constexpr ColLayout<float> TargetVelocitiesZsColumn{TargetVelocitiesYsColumn};
-    inline static constexpr ColLayout<float> TargetDirectionsXsColumn{TargetVelocitiesZsColumn};
-    inline static constexpr ColLayout<float> TargetDirectionsYsColumn{TargetDirectionsXsColumn};
-    inline static constexpr ColLayout<float> TargetDirectionsZsColumn{TargetDirectionsYsColumn};
-    inline static constexpr ColLayout<float> InterceptTimesColumn{TargetDirectionsZsColumn};
-    inline static constexpr ColLayout<float> TargetDistanceSqColumn{InterceptTimesColumn};
-    inline static constexpr ColLayout<float> TargetDistancesColumn{TargetDistanceSqColumn};
-    inline static constexpr ColLayout<float> TargetRadiiColumn{TargetDistancesColumn};
+    static constexpr ColLayout<EntityUniqueId> TargetIdsColumn{AttackCooldownsColumn};
+    static constexpr ColLayout<float> TargetLocationsXsColumn{TargetIdsColumn};
+    static constexpr ColLayout<float> TargetLocationsYsColumn{TargetLocationsXsColumn};
+    static constexpr ColLayout<float> TargetLocationsZsColumn{TargetLocationsYsColumn};
+    static constexpr ColLayout<float> TargetVelocitiesXsColumn{TargetLocationsZsColumn};
+    static constexpr ColLayout<float> TargetVelocitiesYsColumn{TargetVelocitiesXsColumn};
+    static constexpr ColLayout<float> TargetVelocitiesZsColumn{TargetVelocitiesYsColumn};
+    static constexpr ColLayout<float> TargetDirectionsXsColumn{TargetVelocitiesZsColumn};
+    static constexpr ColLayout<float> TargetDirectionsYsColumn{TargetDirectionsXsColumn};
+    static constexpr ColLayout<float> TargetDirectionsZsColumn{TargetDirectionsYsColumn};
+    static constexpr ColLayout<float> InterceptTimesColumn{TargetDirectionsZsColumn};
+    static constexpr ColLayout<float> TargetDistanceSqColumn{InterceptTimesColumn};
+    static constexpr ColLayout<float> TargetDistancesColumn{TargetDistanceSqColumn};
+    static constexpr ColLayout<float> TargetRadiiColumn{TargetDistancesColumn};
 
-    inline static constexpr byte_size_type allocation_alignment{
-        TargetRadiiColumn.allocation_alignment};
+    static constexpr byte_size_type allocation_alignment{TargetRadiiColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
-    inline static constexpr byte_size_type capacity_block_bound{
+    static constexpr byte_size_type capacity_block_bound{
         ml::native_soa::capacity_block_bound(TargetRadiiColumn)};
-    inline static constexpr size_type max_capacity{
-        ml::native_soa::maximum_capacity(capacity_block_bound)};
+    static constexpr size_type max_capacity{ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return blocks == 0 ? 0 : TargetRadiiColumn.data_end(blocks);
     }
@@ -437,10 +429,10 @@ struct FighterEntityData
     using Layout = FighterEntityDataSingleLayout;
     using size_type = Layout::size_type;
     using byte_size_type = Layout::byte_size_type;
-    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
-    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
-    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
-    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    static constexpr auto max_capacity = Layout::max_capacity;
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
         return Layout::layout_bytes(blocks);
     }

@@ -3,10 +3,9 @@
 
 #pragma once
 
-#include "PackedEnums.h"
-
 #include "ioj/packed_value.h"
 #include "ioj/range_fits.h"
+#include "PackedEnums.h"
 
 #include <cassert>
 #include <cmath>

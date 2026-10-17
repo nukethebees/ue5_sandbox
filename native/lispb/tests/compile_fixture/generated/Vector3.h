@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "Project/Vector3f.h"
-
 #include "ioj/fixed_storage.h"
 #include "ioj/soa_concepts.h"
+#include "Project/Vector3f.h"
+
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_storage_ops.h"
 

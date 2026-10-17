@@ -575,11 +575,11 @@ auto emit_single_allocation_layout(SingleAllocationModel const& model) -> Nodes 
             Member{"size_type",
                    "capacity_granularity",
                    named(dialect.runtime_namespace + "LayoutPolicy::capacity_granularity"),
-                   {.is_inline = true, .is_static = true, .is_constexpr = true}},
+                   {.is_static = true, .is_constexpr = true}},
             Member{"byte_size_type",
                    "column_gap",
                    named(dialect.runtime_namespace + "LayoutPolicy::column_gap"),
-                   {.is_inline = true, .is_static = true, .is_constexpr = true}},
+                   {.is_static = true, .is_constexpr = true}},
         }))
         .new_lines(2)
         .add(raw("template <typename T>\nusing ColLayout = " + dialect.runtime_namespace +
@@ -588,7 +588,7 @@ auto emit_single_allocation_layout(SingleAllocationModel const& model) -> Nodes 
         .add(Member{dialect.runtime_namespace + "ColumnLayoutStart",
                     "LayoutStart",
                     RawExpr{""},
-                    {.is_inline = true, .is_static = true, .is_constexpr = true}})
+                    {.is_static = true, .is_constexpr = true}})
         .new_lines(2);
 
     std::string previous_column{"LayoutStart"};
@@ -598,7 +598,7 @@ auto emit_single_allocation_layout(SingleAllocationModel const& model) -> Nodes 
         children.add(Member{"ColLayout<" + column.type.spelling + ">",
                             column.layout_identifier,
                             named(previous_column),
-                            {.is_inline = true, .is_static = true, .is_constexpr = true}});
+                            {.is_static = true, .is_constexpr = true}});
         if (index + 1 < column_count) {
             children.new_lines(1);
         }
@@ -609,7 +609,7 @@ auto emit_single_allocation_layout(SingleAllocationModel const& model) -> Nodes 
             "byte_size_type",
             "allocation_alignment",
             member_access(named(model.columns.back().layout_identifier), "allocation_alignment"),
-            {.is_inline = true, .is_static = true, .is_constexpr = true}})
+            {.is_static = true, .is_constexpr = true}})
         .new_lines(2)
         .add(LineComment{
             "Conservative per-block bound for checked capacity arithmetic; gaps do not scale "
@@ -620,12 +620,12 @@ auto emit_single_allocation_layout(SingleAllocationModel const& model) -> Nodes 
                    "capacity_block_bound",
                    call(named(dialect.runtime_namespace + "capacity_block_bound"),
                         {named(model.columns.back().layout_identifier)}),
-                   {.is_inline = true, .is_static = true, .is_constexpr = true}},
+                   {.is_static = true, .is_constexpr = true}},
             Member{"size_type",
                    "max_capacity",
                    call(named(dialect.runtime_namespace + "maximum_capacity"),
                         {named("capacity_block_bound")}),
-                   {.is_inline = true, .is_static = true, .is_constexpr = true}},
+                   {.is_static = true, .is_constexpr = true}},
             inline_function(FunctionSpec{
                 .name = "layout_bytes",
                 .return_type = "auto",
@@ -745,13 +745,13 @@ auto emit_single_allocation_container(SingleAllocationModel const& model, NodeLi
                  ";\n"
                  "using size_type = Layout::size_type;\n"
                  "using byte_size_type = Layout::byte_size_type;\n"
-                 "inline static constexpr auto capacity_granularity = "
+                 "static constexpr auto capacity_granularity = "
                  "Layout::capacity_granularity;\n"
-                 "inline static constexpr auto allocation_alignment = "
+                 "static constexpr auto allocation_alignment = "
                  "Layout::allocation_alignment;\n"
-                 "inline static constexpr auto capacity_block_bound = "
+                 "static constexpr auto capacity_block_bound = "
                  "Layout::capacity_block_bound;\n"
-                 "inline static constexpr auto max_capacity = Layout::max_capacity;\n"
+                 "static constexpr auto max_capacity = Layout::max_capacity;\n"
                  "static constexpr auto layout_bytes(byte_size_type blocks) noexcept "
                  "-> byte_size_type { return Layout::layout_bytes(blocks); }"))
         .new_lines(1)
