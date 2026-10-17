@@ -29,6 +29,8 @@ auto angular_error(Quaternion4f original, Quaternion4f decoded) -> double {
 }
 
 TEST(SandboxISMCPacking, GoldenQuaternionsAndSignEquivalence) {
+    EXPECT_EQ(Quaternion4f{}, ml::make_quaternion4f(0, 0, 0, 1));
+    EXPECT_EQ(pack_normalized_quat32(Quaternion4f{}).bits, 0x80200803U);
     for (auto index{0U}; index < 4; ++index) {
         auto quaternion{ml::make_quaternion4f(0, 0, 0, 0)};
         quaternion[index] = 1.0f;

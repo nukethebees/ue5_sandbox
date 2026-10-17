@@ -39,6 +39,8 @@ TEST(NativeCoreVector3d, ChecksFinitePositiveDimensions) {
     EXPECT_FALSE(ml::is_positive_finite(ml::Vector3d{1.0, -2.0, 3.0}));
     auto const infinity{std::numeric_limits<double>::infinity()};
     auto const nan{std::numeric_limits<double>::quiet_NaN()};
+    ml::Vector3d const unordered{nan, 0.0, 0.0};
+    EXPECT_EQ(unordered <=> unordered, std::partial_ordering::unordered);
     for (auto const value : {ml::Vector3d{infinity, 2.0, 3.0},
                              ml::Vector3d{1.0, nan, 3.0},
                              ml::Vector3d{1.0, 2.0, -infinity}}) {

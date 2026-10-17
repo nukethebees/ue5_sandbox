@@ -72,11 +72,6 @@ template <typename T, std::size_t N>
     return lhs;
 }
 template <typename T, std::size_t N>
-constexpr auto operator*=(Vector<T, N>& lhs, Vector<T, N> const rhs) noexcept -> Vector<T, N>& {
-    lhs = lhs * rhs;
-    return lhs;
-}
-template <typename T, std::size_t N>
 [[nodiscard]] constexpr auto operator*(Vector<T, N> lhs, std::type_identity_t<T> const rhs) noexcept
     -> Vector<T, N> {
     for (std::size_t i{}; i < N; ++i) {
@@ -88,19 +83,6 @@ template <typename T, std::size_t N>
 constexpr auto operator*=(Vector<T, N>& lhs, std::type_identity_t<T> const rhs) noexcept
     -> Vector<T, N>& {
     lhs = lhs * rhs;
-    return lhs;
-}
-template <typename T, std::size_t N>
-[[nodiscard]] constexpr auto operator/(Vector<T, N> lhs, Vector<T, N> const rhs) noexcept
-    -> Vector<T, N> {
-    for (std::size_t i{}; i < N; ++i) {
-        lhs[i] /= rhs[i];
-    }
-    return lhs;
-}
-template <typename T, std::size_t N>
-constexpr auto operator/=(Vector<T, N>& lhs, Vector<T, N> const rhs) noexcept -> Vector<T, N>& {
-    lhs = lhs / rhs;
     return lhs;
 }
 template <typename T, std::size_t N>
@@ -117,6 +99,7 @@ constexpr auto operator/=(Vector<T, N>& lhs, std::type_identity_t<T> const rhs) 
     lhs = lhs / rhs;
     return lhs;
 }
+
 template <typename T, std::size_t N>
 [[nodiscard]] constexpr auto operator-(Vector<T, N> value) noexcept -> Vector<T, N> {
     for (auto& element : value.elements) {
@@ -214,12 +197,6 @@ template <typename T, std::size_t N>
                                      Vector<T, N> const minimum,
                                      Vector<T, N> const maximum) noexcept -> Vector<T, N> {
     return component_min(component_max(value, minimum), maximum);
-}
-template <std::floating_point T, std::size_t N>
-[[nodiscard]] auto clamped_to_max_size(Vector<T, N> const value, T const maximum) noexcept
-    -> Vector<T, N> {
-    auto const squared{size_squared(value)};
-    return squared > maximum * maximum ? value * (maximum / std::sqrt(squared)) : value;
 }
 template <std::floating_point T, std::size_t N>
 [[nodiscard]] auto move_towards(Vector<T, N> const current,
