@@ -12,6 +12,8 @@ target_include_directories(native-core-headers
 )
 target_sources(native-core
   PRIVATE
+    include/ioj/vectors3f.h
+    include/ioj/vector_operations.h
     include/ioj/column_math.h
     include/ioj/rotator_types.h
     include/ioj/rotators3f.h

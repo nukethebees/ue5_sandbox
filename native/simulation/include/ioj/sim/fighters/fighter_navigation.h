@@ -4,8 +4,8 @@
 #include "ioj/sim/collision/trace_hits.h"
 #include "ioj/sim/entities/entity_unique_id.h"
 #include "ioj/sim/fighters/fighter_navigation_types.h"
-#include "ioj/sim/vectors3f.h"
 #include "ioj/vector_types.h"
+#include "ioj/vectors3f.h"
 #include <ioj/sim/fighters/navigation_records.h>
 
 #include <array>

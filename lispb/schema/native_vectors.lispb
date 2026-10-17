@@ -1,7 +1,7 @@
 (module native_vectors_3f
-  :header "native/simulation/include/ioj/sim/vectors3f.h"
+  :header "native/core/include/ioj/vectors3f.h"
   :backend standard-library
-  :namespace ioj::sim
+  :namespace ioj
   (vector-soa Vectors3f
     :value-type float
     :components (xs ys zs)

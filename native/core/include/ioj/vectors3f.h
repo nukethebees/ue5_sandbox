@@ -11,7 +11,7 @@
 #include <cassert>
 #include <utility>
 
-namespace ioj::sim {
+namespace ioj {
 using Vectors3fView = ml::Vector3fSoAView;
 using Vectors3fConstView = ml::Vector3fSoAConstView;
 struct Vectors3f {
@@ -153,4 +153,4 @@ struct Vectors3f {
     }
 };
 
-} // namespace ioj::sim
+} // namespace ioj

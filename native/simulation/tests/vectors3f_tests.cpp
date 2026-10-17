@@ -1,4 +1,4 @@
-#include "ioj/sim/vector_operations.h"
+#include "ioj/vector_operations.h"
 
 #include <gtest/gtest.h>
 

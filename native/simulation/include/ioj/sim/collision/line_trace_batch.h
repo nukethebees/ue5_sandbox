@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ioj/sim/collision/line_traces.h"
-#include "ioj/sim/vectors3f.h"
+#include "ioj/vectors3f.h"
 
 #include <cassert>
 

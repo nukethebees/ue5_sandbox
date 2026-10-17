@@ -6,7 +6,7 @@
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/entities/team_checks.h>
 #include <ioj/sim/profiling.h>
-#include <ioj/sim/vector_operations.h>
+#include <ioj/vector_operations.h>
 
 #include <oneapi/tbb/blocked_range.h>
 #include <oneapi/tbb/parallel_for.h>

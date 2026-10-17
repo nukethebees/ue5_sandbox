@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ioj/sim/collision/collision_scalar_types.h"
-#include "ioj/sim/vectors3f.h"
+#include "ioj/vectors3f.h"
 #include <ioj/sim/collision/grid_geometry.h>
 
 #include <cstdint>

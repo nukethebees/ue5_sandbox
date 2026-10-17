@@ -97,7 +97,7 @@ native/simulation/include/ioj/sim/telemetry/run_end_reason.h
 native/simulation/include/ioj/sim/collision/trace_hits.h
 native/simulation/include/ioj/sim/turrets/turret_entity_data.h
 native/simulation/include/ioj/sim/turrets/phase_interface.h
-native/simulation/include/ioj/sim/vectors3f.h
+native/core/include/ioj/vectors3f.h
 native/simulation/include/ioj/sim/collision/world_aabbs.h
 native/simulation/src/capital_ships/phase_interface.cpp
 native/simulation/src/fighters/phase_interface.cpp

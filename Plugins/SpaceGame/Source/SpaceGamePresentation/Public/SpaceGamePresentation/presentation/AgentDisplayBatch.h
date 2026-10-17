@@ -3,7 +3,7 @@
 #include <ioj/column_math.h>
 #include <ioj/sim/entities/entity_types.h>
 #include <ioj/sim/entities/health_table.h>
-#include <ioj/sim/vectors3f.h>
+#include <ioj/vectors3f.h>
 
 #include <span>
 

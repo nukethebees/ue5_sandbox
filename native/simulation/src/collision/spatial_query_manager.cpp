@@ -25,8 +25,8 @@ enum class QueryMode : std::uint8_t {
 };
 
 struct TraceRequest {
-    ioj::sim::Vectors3fConstView start_locations{};
-    ioj::sim::Vectors3fConstView end_locations{};
+    ioj::Vectors3fConstView start_locations{};
+    ioj::Vectors3fConstView end_locations{};
     ioj::Vector3f scalar_start{};
     ioj::Vector3f scalar_end{};
     std::span<ioj::sim::EntityUniqueId const> targets{};

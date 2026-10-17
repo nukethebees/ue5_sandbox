@@ -1,6 +1,6 @@
 #include "ioj/sim/collision/collision_grid.h"
 
-#include "ioj/sim/vectors3f.h"
+#include "ioj/vectors3f.h"
 #include <ioj/levels/grid_dimensions.h>
 
 #include <algorithm>

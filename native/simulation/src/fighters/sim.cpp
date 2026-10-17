@@ -22,10 +22,10 @@
 #include <ioj/sim/lasers/frame_laser_spawn_requests.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/profiling.h>
-#include <ioj/sim/vector_operations.h>
 #include <ioj/tick_countdown.h>
 #include <ioj/vector_math.h>
 #include <ioj/vector_normalization.h>
+#include <ioj/vector_operations.h>
 #include <ioj/vector_soa_view.h>
 
 #include <algorithm>

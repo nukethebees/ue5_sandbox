@@ -1,6 +1,6 @@
 #pragma once
 #include <ioj/column_math.h>
-#include <ioj/sim/vectors3f.h>
+#include <ioj/vectors3f.h>
 
 #include <vector>
 

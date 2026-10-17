@@ -3,14 +3,14 @@
 #include <ioj/generated/vector_lerp_kernels.h>
 #include <ioj/rotator_math.h>
 #include <ioj/rotators3f.h>
-#include <ioj/sim/vectors3f.h>
 #include <ioj/vector_math.h>
+#include <ioj/vectors3f.h>
 
 #include <cassert>
 #include <cmath>
 #include <span>
 
-namespace ioj::sim {
+namespace ioj {
 inline void copy_vectors(VectorColumns auto const& destination, VectorColumns auto const& source) {
     assert(destination.num() == source.num());
     std::ranges::copy(source.xs(), destination.xs().begin());

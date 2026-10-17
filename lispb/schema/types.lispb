@@ -160,7 +160,7 @@
 
 (type native_vectors_3f
   :spelling "Vectors3f"
-  :header "ioj/sim/vectors3f.h")
+  :header "ioj/vectors3f.h")
 
 (type native_rotators_3f
   :spelling "Rotators3f"
