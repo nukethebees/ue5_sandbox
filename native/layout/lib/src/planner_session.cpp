@@ -1,5 +1,7 @@
 #include <ioj/layout/planner_session.hpp>
 
+#include <codegen/schema.h>
+
 #include <algorithm>
 #include <iterator>
 #include <limits>

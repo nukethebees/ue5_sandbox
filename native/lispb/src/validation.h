@@ -1,6 +1,7 @@
 #pragma once
 
 #include <codegen/schema.h>
+#include <codegen/schema/manifest.h>
 
 namespace codegen::detail {
 

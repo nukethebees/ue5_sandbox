@@ -1,4 +1,6 @@
 #include <codegen/generator.h>
+#include <codegen/schema.h>
+#include <codegen/schema/schema_version.h>
 #include <lispb/schema/type_graph.h>
 
 #include <gtest/gtest.h>

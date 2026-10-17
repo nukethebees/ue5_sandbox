@@ -1,6 +1,7 @@
 #pragma once
 
 #include <codegen/schema.h>
+#include <codegen/schema/soa_member_kind.h>
 
 namespace codegen::detail {
 

@@ -1,6 +1,21 @@
 #pragma once
 
 #include <codegen/schema.h>
+#include <codegen/schema/declaration_schema.h>
+#include <codegen/schema/fixed_point_schema.h>
+#include <codegen/schema/integer_varint_schema.h>
+#include <codegen/schema/linear_quantized_schema.h>
+#include <codegen/schema/manifest.h>
+#include <codegen/schema/packed_field_kind.h>
+#include <codegen/schema/packed_field_schema.h>
+#include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/packed_order.h>
+#include <codegen/schema/physical_type_use.h>
+#include <codegen/schema/registered_type_schema.h>
+#include <codegen/schema/semantic_relation_schema.h>
+#include <codegen/schema/soa_backend.h>
+#include <codegen/schema/soa_member_kind.h>
+#include <codegen/schema/type_ref.h>
 
 #include <compare>
 #include <cstdint>

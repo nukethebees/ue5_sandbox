@@ -2,6 +2,7 @@
 
 #include "fixed_leaf.h"
 #include "resolved_member.h"
+#include <codegen/schema/soa_member_schema.h>
 
 #include <optional>
 #include <string>

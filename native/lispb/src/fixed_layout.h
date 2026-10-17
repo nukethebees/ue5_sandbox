@@ -1,6 +1,7 @@
 #pragma once
 
 #include "fixed_member_layout.h"
+#include <codegen/schema/soa_schema.h>
 
 #include <vector>
 

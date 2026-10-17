@@ -1,3 +1,4 @@
+#include <codegen/schema/schema_version.h>
 #include <codegen/source_loader.h>
 #include <lispb/project.h>
 #include <lispb/schema/type_graph.h>

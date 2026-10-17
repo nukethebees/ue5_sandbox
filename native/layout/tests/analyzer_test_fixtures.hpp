@@ -2,6 +2,8 @@
 
 #include <ioj/layout/analyzer.hpp>
 
+#include <codegen/schema/schema_version.h>
+
 #include <gtest/gtest.h>
 
 #include <array>
@@ -130,11 +132,11 @@ inline auto signed_delta_type(bool const constrained = false, bool const full_ra
         .kind = codegen::PackedFieldKind::signed_integer,
         .range_helper = false,
         .minimum_value = full_range  ? std::optional<codegen::PackedIntegerValue>{(
-                                          std::numeric_limits<std::int64_t>::min)()}
+                                           std::numeric_limits<std::int64_t>::min)()}
                        : constrained ? std::optional<codegen::PackedIntegerValue>{-100}
                                      : std::nullopt,
         .maximum_value = full_range  ? std::optional<codegen::PackedIntegerValue>{(
-                                          std::numeric_limits<std::int64_t>::max)()}
+                                           std::numeric_limits<std::int64_t>::max)()}
                        : constrained ? std::optional<codegen::PackedIntegerValue>{100}
                                      : std::nullopt,
         .named_codes = constrained ? std::vector<codegen::PackedNamedCodeSchema>{{.name = "Unknown",

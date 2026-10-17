@@ -2,6 +2,11 @@
 
 #include "schema_internal.h"
 
+#include <codegen/schema/physical_type_use.h>
+#include <codegen/schema/registered_type_schema.h>
+#include <codegen/schema/storage_operation.h>
+#include <codegen/schema/type_ref.h>
+
 #include <algorithm>
 #include <array>
 #include <cctype>

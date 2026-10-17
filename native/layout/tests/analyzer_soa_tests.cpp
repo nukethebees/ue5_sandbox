@@ -1,5 +1,7 @@
 #include "analyzer_test_fixtures.hpp"
 
+#include <codegen/schema/schema_version.h>
+
 namespace ioj::layout {
 namespace {
 

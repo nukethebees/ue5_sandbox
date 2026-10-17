@@ -1,4 +1,5 @@
 #include <codegen/generator.h>
+#include <codegen/schema/schema_version.h>
 #include <codegen/validation.h>
 
 #include <gtest/gtest.h>

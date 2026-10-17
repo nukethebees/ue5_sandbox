@@ -1,3 +1,4 @@
+#include <codegen/schema.h>
 #include <lispb/schema/editable_document.h>
 
 #include <gtest/gtest.h>

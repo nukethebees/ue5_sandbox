@@ -3,6 +3,7 @@
 #include <codegen/ast.h>
 #include <codegen/generated_file.h>
 #include <codegen/schema.h>
+#include <codegen/schema/manifest.h>
 #include <lispb/output.h>
 
 #include <filesystem>

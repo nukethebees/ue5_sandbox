@@ -1,5 +1,7 @@
 #include "analyzer_internal.hpp"
 
+#include <codegen/schema.h>
+
 namespace ioj::layout {
 
 PhysicalFactsResolver::PhysicalFactsResolver(lispb::schema::TypeGraph const& types,

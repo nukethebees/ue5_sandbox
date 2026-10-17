@@ -1,6 +1,9 @@
 #pragma once
 
 #include <codegen/schema.h>
+#include <codegen/schema/manifest.h>
+#include <codegen/schema/module_schema.h>
+#include <codegen/schema/registered_type_schema.h>
 
 #include <filesystem>
 #include <span>

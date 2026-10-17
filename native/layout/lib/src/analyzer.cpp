@@ -1,5 +1,7 @@
 #include "analyzer_internal.hpp"
 
+#include <codegen/schema.h>
+
 namespace ioj::layout {
 
 auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema::TypeId const type)

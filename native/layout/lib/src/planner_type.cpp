@@ -2,6 +2,8 @@
 
 #include <ioj/layout/analyzer.hpp>
 
+#include <codegen/schema.h>
+
 #include <algorithm>
 #include <type_traits>
 #include <variant>

@@ -1,6 +1,15 @@
 #pragma once
 
 #include <codegen/schema.h>
+#include <codegen/schema/enum_schema.h>
+#include <codegen/schema/fixed_point_schema.h>
+#include <codegen/schema/linear_quantized_schema.h>
+#include <codegen/schema/mini_float_schema.h>
+#include <codegen/schema/module_schema.h>
+#include <codegen/schema/packed_field_schema.h>
+#include <codegen/schema/packed_value_schema.h>
+#include <codegen/schema/registered_type_schema.h>
+#include <codegen/schema/type_ref.h>
 
 #include <optional>
 #include <string_view>
