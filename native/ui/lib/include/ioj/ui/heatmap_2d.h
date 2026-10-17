@@ -14,8 +14,11 @@ inline constexpr std::size_t maximum_cells_per_batch{
     (static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max()) + 1U) / 4U};
 
 struct Grid {
-    std::int32_t columns{};
-    std::int32_t rows{};
+    using ColumnCount = std::int32_t;
+    using RowCount = std::int32_t;
+
+    ColumnCount columns{};
+    RowCount rows{};
     std::vector<float> values;
 };
 
