@@ -121,7 +121,6 @@ target_sources(native-simulation PRIVATE
   overlap_handler.cpp
   levels/reference_level_simulation_data.cpp
   player/ship_flight_model.cpp
-  entities/ship_health.cpp
   sim_time.cpp
   collision/spatial_query_manager.cpp
   collision/spatial_range_queries.cpp

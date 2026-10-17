@@ -1,7 +1,7 @@
 #include "SpaceGamePresentation/entities/ShipHealth.h"
 
-#include <ioj/sim/entities/ship_health.h>
+#include <algorithm>
 
 void FShipHealth::clamp_to_max() noexcept {
-    health = ::ioj::sim::clamp_health_to_max(health, max_health);
+    health = std::max(health, max_health);
 }

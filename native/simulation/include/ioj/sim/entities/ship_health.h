@@ -2,7 +2,7 @@
 
 #include <ioj/sim/entities/health.h>
 
-#include <cstdint>
+#include <algorithm>
 
 namespace ioj::sim {
 struct ShipHealth {
@@ -20,7 +20,7 @@ struct ShipHealth {
     auto operator==(ShipHealth const&) const noexcept -> bool = default;
     void upgrade_max_health() { max_health = upgraded_max_health; }
     auto is_alive() const noexcept -> bool { return sim::is_alive(health); }
-    void clamp_to_max() noexcept;
+    void clamp_to_max() noexcept { health = std::max(health, max_health); }
 
     Health health{default_max_health};
     Health max_health{default_max_health};
