@@ -519,7 +519,7 @@ def make_unreal_document() -> dict[str, Any]:
     for suffix in ("", "-msvc"):
         for name, label in (
             ("level-tests", "^level$"),
-            ("unit-tests", "unit"),
+            ("unit-tests", "^unit$"),
         ):
             test_presets.append(
                 {

@@ -348,7 +348,7 @@
       "configurePreset": "debug-game",
       "filter": {
         "include": {
-          "label": "unit"
+          "label": "^unit$"
         },
         "exclude": {
           "label": "^developer-tool$"
@@ -374,7 +374,7 @@
       "configurePreset": "debug-game-msvc",
       "filter": {
         "include": {
-          "label": "unit"
+          "label": "^unit$"
         },
         "exclude": {
           "label": "^developer-tool$"

@@ -130,7 +130,7 @@ add_unreal_automation_test(
 add_unreal_automation_test(
   SandboxISMC.UnitTests
   FILTERS SandboxISMC.UnitTests Sandbox.UnitTests.LaserPresentation
-  LABELS unit ismc
+  LABELS ismc
 )
 add_unreal_automation_test(
   Sandbox.LevelTests

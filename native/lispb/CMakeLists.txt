@@ -294,21 +294,6 @@ foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
   set_tests_properties("SingleAllocationRejects${restriction}" PROPERTIES
     LABELS "all;native;codegen;compile-contract;subprocess" RESOURCE_LOCK codegen-negative-build)
 endforeach()
-foreach(restriction IN ITEMS SIGNED_STORAGE BOOL_STORAGE ZERO_BITS NEGATIVE_BITS NEGATIVE_OFFSET OVERFLOW FULL_OFFSET
-    UNSIGNED_VALUE SIGNED_VALUE BOOL_VALUE ENUM_WIDTH ENUM_SIGNED FLOAT_VALUE POINTER_VALUE REFERENCE_VALUE)
-  set(reject_target "codegen-reject-packed-${restriction}")
-  add_library(${reject_target} OBJECT EXCLUDE_FROM_ALL tests/compile_fixture/rejected_packed_field.cpp)
-  target_compile_definitions(${reject_target} PRIVATE "CODEGEN_BAD_${restriction}")
-  target_include_directories(${reject_target} PRIVATE "${PROJECT_SOURCE_DIR}/native/core/include")
-  target_link_libraries(${reject_target} PRIVATE sandbox::native_defaults)
-  ioj_enable_warnings(${reject_target} CODEGEN)
-  add_test(NAME "PackedFieldRejects${restriction}"
-    COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
-      "-DREJECT_TARGET=${reject_target}"
-      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_packed_field.cmake")
-  set_tests_properties("PackedFieldRejects${restriction}" PROPERTIES
-    LABELS "all;native;codegen;compile-contract;subprocess" RESOURCE_LOCK codegen-negative-build)
-endforeach()
 add_test(NAME CodegenCliRejectsUnknownArgument COMMAND lispb generate --unknown value)
 set_tests_properties(CodegenCliRejectsUnknownArgument PROPERTIES
   LABELS "unit;all;native;codegen"

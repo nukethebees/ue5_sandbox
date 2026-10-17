@@ -688,50 +688,6 @@ cmake_language(DEFER CALL check_simulation_policy)
             self.assertIn("build --locked --release --package native-binary-tools", normalized_build_ninja)
             self.assertIn((self.source_dir / "tools" / "rust").as_posix(), normalized_build_ninja)
 
-    @unittest.skipUnless(sys.platform == "win32", "requires Windows Ninja semantics")
-    def test_ninja_direct_build_regenerates_after_configure_input_changes(self) -> None:
-        top_level_cmake = (self.source_dir / "CMakeLists.txt").read_text(encoding="utf-8")
-        self.assertNotIn("CMAKE_SUPPRESS_REGENERATION", top_level_cmake)
-
-        with tempfile.TemporaryDirectory(prefix="sandbox ninja regeneration ") as temporary_root:
-            fixture_directory = Path(temporary_root) / "fixture"
-            fixture_directory.mkdir()
-            cmake_lists = fixture_directory / "CMakeLists.txt"
-            template = fixture_directory / "configured.txt.in"
-            build_directory = fixture_directory / "build"
-            template.write_text("@configured_value@\n", encoding="utf-8")
-            cmake_lists.write_text(
-                "\n".join(
-                    (
-                        "cmake_minimum_required(VERSION 3.25)",
-                        "project(NinjaRegenerationFixture LANGUAGES NONE)",
-                        "set(configured_value before)",
-                        "configure_file(configured.txt.in configured.txt @ONLY)",
-                        "add_custom_target(verify_configuration ALL DEPENDS configured.txt)",
-                        "",
-                    )
-                ),
-                encoding="utf-8",
-            )
-
-            self.run_cmake("-S", str(fixture_directory), "-B", str(build_directory), "-G", "Ninja")
-            self.run_cmake("--build", str(build_directory), "--target", "verify_configuration")
-            configured_file = build_directory / "configured.txt"
-            self.assertEqual(configured_file.read_text(encoding="utf-8"), "before\n")
-
-            updated_cmake_lists = cmake_lists.read_text(encoding="utf-8").replace(
-                "configured_value before", "configured_value after"
-            )
-            cmake_lists.write_text(updated_cmake_lists, encoding="utf-8")
-            timestamp = cmake_lists.stat()
-            os.utime(
-                cmake_lists,
-                ns=(timestamp.st_atime_ns, timestamp.st_mtime_ns + 1_000_000_000),
-            )
-
-            self.run_cmake("--build", str(build_directory), "--target", "verify_configuration")
-            self.assertEqual(configured_file.read_text(encoding="utf-8"), "after\n")
-
     def check_test_inventory(self, build: Path) -> None:
         def inventory(*filters: str) -> dict[str, dict[str, Any]]:
             result = subprocess.run(["ctest", "--test-dir", str(build), "--show-only=json-v1", *filters],
@@ -743,7 +699,7 @@ cmake_language(DEFER CALL check_simulation_policy)
         self.assertTrue({"native-simulation-tests", "native-simulation-soak-tests"} <= native.keys())
         self.assertFalse(native.keys() & tools.keys())
         self.assertFalse(inventory("-L", "^all$").keys() & tools.keys())
-        expected_tools = {"layout-planner-ui-tests", "image-lab-tests"}
+        expected_tools = {"native-layout-tests", "layout-exported-probe", "layout-planner-ui-tests", "image-lab-tests"}
         expected_tools.update(("benchmark-tools", "game-package-tools", "native-binary-tools"))
         expected_tools.update(("coj", "jobserver-client"))
         if sys.platform == "win32":

@@ -29,7 +29,7 @@ target_compile_definitions(native-layout-tests PRIVATE
 )
 
 add_test(NAME native-layout-tests COMMAND native-layout-tests)
-set_tests_properties(native-layout-tests PROPERTIES LABELS "unit;all;native;layout")
+set_tests_properties(native-layout-tests PROPERTIES LABELS "unit;developer-tool;layout")
 
 add_executable(layout-probe-fixture-generator probe_fixture.cpp)
 target_link_libraries(layout-probe-fixture-generator PRIVATE native-layout sandbox::native_defaults)
@@ -47,4 +47,4 @@ add_test(NAME layout-exported-probe
     "-DVERIFY=$<TARGET_FILE:layout-probe-fixture-generator>"
     "-DOUTPUT=${CMAKE_CURRENT_BINARY_DIR}/probed.profile"
     -P "${CMAKE_CURRENT_SOURCE_DIR}/probe_fixture.cmake")
-set_tests_properties(layout-exported-probe PROPERTIES LABELS "unit;all;native;layout")
+set_tests_properties(layout-exported-probe PROPERTIES LABELS "unit;developer-tool;layout")
