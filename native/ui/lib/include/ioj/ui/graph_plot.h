@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/min_max.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -18,12 +20,7 @@ enum class Interpolation : std::uint8_t {
     StepAfter,
 };
 
-struct Range {
-    double min{0.0};
-    double max{1.0};
-
-    auto operator==(Range const&) const -> bool = default;
-};
+using Range = MinMax<double>;
 
 struct AxisSettings {
     RangeMode range_mode{RangeMode::Auto};
