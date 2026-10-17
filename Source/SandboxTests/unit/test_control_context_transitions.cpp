@@ -21,9 +21,6 @@
 #include <UObject/UnrealType.h>
 
 struct FPlayerControlContextsTestAccess {
-    static void fail_next_bind(FPlayerControlContexts& contexts, EPlayerControlContext context) {
-        contexts.fail_bind_mask_ |= static_cast<uint8>(1u << static_cast<uint8>(context));
-    }
     static auto ship_context(FPlayerControlContexts& contexts) -> FShipControlContext& {
         return contexts.ship_;
     }
@@ -271,89 +268,9 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
                              subsystem_->HasMappingContext(benchmark_input_.mapping_context));
     }
 
-    TEST_METHOD(FailedBindRestoresPreviousContextAndGlobalPolicy)
+    TEST_METHOD(NoneRetainsGlobalPolicyAcrossTransitions)
     {
         contexts_.set_camera(camera_);
-        contexts_.set_control_context(EPlayerControlContext::Benchmark);
-        FPlayerControlContextsTestAccess::fail_next_bind(contexts_,
-                                                         EPlayerControlContext::Observer);
-        TestRunner->AddExpectedError(
-            TEXT("Failed to bind requested context"), EAutomationExpectedErrorFlags::Contains, 1);
-        TestRunner->TestFalse(TEXT("Failed Observer bind is reported"),
-                              contexts_.set_control_context(EPlayerControlContext::Observer));
-        TestRunner->TestTrue(TEXT("Benchmark is restored"),
-                             contexts_.get_active_context() == EPlayerControlContext::Benchmark);
-        TestRunner->TestTrue(TEXT("Benchmark mapping is restored"),
-                             subsystem_->HasMappingContext(benchmark_input_.mapping_context));
-        TestRunner->TestFalse(TEXT("Failed Observer leaves no mapping"),
-                              subsystem_->HasMappingContext(observer_input_.mapping_context));
-        TestRunner->TestFalse(TEXT("Global mapping remains disabled"),
-                              subsystem_->HasMappingContext(global_input_.mapping_context));
-        TestRunner->TestEqual(TEXT("Only global and Benchmark bindings remain"),
-                              component_->GetActionEventBindings().Num(),
-                              2);
-    }
-
-    TEST_METHOD(FailedRollbackLeavesNoneWithNoGameplayBindings)
-    {
-        contexts_.set_camera(camera_);
-        contexts_.set_control_context(EPlayerControlContext::Benchmark);
-        FPlayerControlContextsTestAccess::fail_next_bind(contexts_,
-                                                         EPlayerControlContext::Observer);
-        FPlayerControlContextsTestAccess::fail_next_bind(contexts_,
-                                                         EPlayerControlContext::Benchmark);
-        TestRunner->AddExpectedError(
-            TEXT("Failed to bind requested context"), EAutomationExpectedErrorFlags::Contains, 1);
-        TestRunner->AddExpectedError(
-            TEXT("Failed to restore previous context"), EAutomationExpectedErrorFlags::Contains, 1);
-        TestRunner->TestFalse(TEXT("Rollback failure is reported"),
-                              contexts_.set_control_context(EPlayerControlContext::Observer));
-        TestRunner->TestTrue(TEXT("Failed rollback leaves None"),
-                             contexts_.get_active_context() == EPlayerControlContext::None);
-        TestRunner->TestFalse(TEXT("Benchmark mapping is removed"),
-                              subsystem_->HasMappingContext(benchmark_input_.mapping_context));
-        TestRunner->TestFalse(TEXT("Observer mapping is absent"),
-                              subsystem_->HasMappingContext(observer_input_.mapping_context));
-        TestRunner->TestEqual(
-            TEXT("Only global handler remains"), component_->GetActionEventBindings().Num(), 1);
-    }
-
-    TEST_METHOD(FailedBindRestoresShipAndCleansRequestedBindings)
-    {
-        contexts_.set_ship(ship_);
-        contexts_.set_camera(camera_);
-        contexts_.set_control_context(EPlayerControlContext::Player);
-        auto const count{component_->GetActionEventBindings().Num()};
-        FPlayerControlContextsTestAccess::fail_next_bind(contexts_,
-                                                         EPlayerControlContext::Observer);
-        TestRunner->AddExpectedError(
-            TEXT("Failed to bind requested context"), EAutomationExpectedErrorFlags::Contains, 1);
-        TestRunner->TestFalse(TEXT("Failed Observer transition is reported"),
-                              contexts_.set_control_context(EPlayerControlContext::Observer));
-        TestRunner->TestTrue(TEXT("Ship context is restored"),
-                             contexts_.get_active_context() == EPlayerControlContext::Player);
-        TestRunner->TestTrue(TEXT("Ship mapping is restored"),
-                             subsystem_->HasMappingContext(ship_input_.starfox));
-        TestRunner->TestFalse(TEXT("Requested Observer mapping is cleaned up"),
-                              subsystem_->HasMappingContext(observer_input_.mapping_context));
-        TestRunner->TestEqual(TEXT("Ship binding count is restored"),
-                              component_->GetActionEventBindings().Num(),
-                              count);
-    }
-
-    TEST_METHOD(NoneRetainsGlobalPolicyAcrossFailedAndSuccessfulTransitions)
-    {
-        contexts_.set_camera(camera_);
-        FPlayerControlContextsTestAccess::fail_next_bind(contexts_,
-                                                         EPlayerControlContext::Benchmark);
-        TestRunner->AddExpectedError(
-            TEXT("Failed to bind requested context"), EAutomationExpectedErrorFlags::Contains, 1);
-        TestRunner->TestFalse(TEXT("Failed bind from None is reported"),
-                              contexts_.set_control_context(EPlayerControlContext::Benchmark));
-        TestRunner->TestTrue(TEXT("None is restored"),
-                             contexts_.get_active_context() == EPlayerControlContext::None);
-        TestRunner->TestTrue(TEXT("None restores previously enabled global mapping"),
-                             subsystem_->HasMappingContext(global_input_.mapping_context));
         contexts_.set_control_context(EPlayerControlContext::Benchmark);
         contexts_.set_control_context(EPlayerControlContext::None);
         TestRunner->TestFalse(TEXT("Successful Benchmark to None retains disabled global mapping"),

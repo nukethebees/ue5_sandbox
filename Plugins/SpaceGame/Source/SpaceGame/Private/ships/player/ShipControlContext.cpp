@@ -50,21 +50,15 @@ auto FShipControlContext::can_bind() const -> bool {
     return IsValid(input_->starfox) && IsValid(input_->fighter) && IsValid(input_->skater) &&
            IsValid(input_->gunship);
 }
-auto FShipControlContext::bind() -> bool {
+void FShipControlContext::bind() {
     if (bound_) {
         verify_mode_invariant();
-        return true;
+        return;
     }
-    if (!can_bind()) {
-        UE_LOG(LogSandboxController, Error, TEXT("Ship input cannot bind."));
-        return false;
-    }
+    check(can_bind());
 
     auto* const mapping{context_for_slot(ship_->get_active_flight_model_slot())};
-    if (!IsValid(mapping)) {
-        UE_LOG(LogSandboxController, Error, TEXT("Selected flight mode IMC is invalid."));
-        return false;
-    }
+    check(IsValid(mapping));
 
     bound_ = true;
     bind_actions();
@@ -76,7 +70,6 @@ auto FShipControlContext::bind() -> bool {
     if (auto* const owner{owner_.Get()}) {
         owner->on_player_ship_flight_model_selected();
     }
-    return true;
 }
 void FShipControlContext::unbind() {
     if (!bound_) {

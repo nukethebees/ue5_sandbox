@@ -24,7 +24,7 @@ struct SPACEGAME_API FPlayerControlContexts {
     auto get_observer_speed() const -> float { return observer_.get_movement_speed(); }
   private:
     friend struct FPlayerControlContextsTestAccess;
-    auto bind_context(EPlayerControlContext context) -> bool;
+    void bind_context(EPlayerControlContext context);
     void unbind_context(EPlayerControlContext context);
 
     FShipControlContext ship_;
@@ -37,7 +37,4 @@ struct SPACEGAME_API FPlayerControlContexts {
     TWeakObjectPtr<ATestSpaceShip> player_ship_;
     TWeakObjectPtr<ACameraActor> camera_;
     bool initialised_{false};
-#if WITH_DEV_AUTOMATION_TESTS
-    uint8 fail_bind_mask_{0};
-#endif
 };

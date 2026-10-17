@@ -88,37 +88,27 @@ auto FPlayerControlContexts::can_bind_context(EPlayerControlContext const contex
     }
     return false;
 }
-auto FPlayerControlContexts::bind_context(EPlayerControlContext const context) -> bool {
-    bool bound{false};
+void FPlayerControlContexts::bind_context(EPlayerControlContext const context) {
     switch (context) {
         case EPlayerControlContext::None: {
-            return true;
+            return;
         }
         case EPlayerControlContext::Player: {
             global_.set_mapping_enabled(true);
-            bound = ship_.bind();
+            ship_.bind();
             break;
         }
         case EPlayerControlContext::Observer: {
             global_.set_mapping_enabled(true);
-            bound = observer_.bind();
+            observer_.bind();
             break;
         }
         case EPlayerControlContext::Benchmark: {
             global_.set_mapping_enabled(false);
-            bound = benchmark_.bind();
+            benchmark_.bind();
             break;
         }
     }
-#if WITH_DEV_AUTOMATION_TESTS
-    // Fail after binding to exercise cleanup of partially acquired input resources.
-    auto const failure_bit{static_cast<uint8>(1u << static_cast<uint8>(context))};
-    if ((fail_bind_mask_ & failure_bit) != 0) {
-        fail_bind_mask_ &= static_cast<uint8>(~failure_bit);
-        return false;
-    }
-#endif
-    return bound;
 }
 void FPlayerControlContexts::unbind_context(EPlayerControlContext const context) {
     switch (context) {
@@ -140,36 +130,18 @@ void FPlayerControlContexts::unbind_context(EPlayerControlContext const context)
     }
 }
 auto FPlayerControlContexts::set_control_context(EPlayerControlContext const context) -> bool {
-    if (context == active_context_) {
-        return bind_context(context);
-    }
     if (!can_bind_context(context)) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("FPlayerControlContexts::set_control_context: Requested context cannot bind."));
         return false;
     }
-    auto const previous_context{active_context_};
-    auto const global_enabled{global_.is_mapping_enabled()};
-    unbind_context(previous_context);
-    active_context_ = EPlayerControlContext::None;
-    if (bind_context(context)) {
-        active_context_ = context;
+    if (context == active_context_) {
         return true;
     }
-    UE_LOG(LogSandboxController,
-           Error,
-           TEXT("FPlayerControlContexts::set_control_context: Failed to bind requested context."));
-    unbind_context(context);
-    if (bind_context(previous_context)) {
-        active_context_ = previous_context;
-    } else {
-        unbind_context(previous_context);
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("FPlayerControlContexts::set_control_context: Failed to restore previous "
-                    "context."));
-    }
-    global_.set_mapping_enabled(global_enabled);
-    return false;
+
+    unbind_context(active_context_);
+    bind_context(context);
+    active_context_ = context;
+    return true;
 }

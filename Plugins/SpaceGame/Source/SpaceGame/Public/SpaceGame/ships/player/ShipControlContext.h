@@ -24,7 +24,8 @@ struct SPACEGAME_API FShipControlContext {
                     UEnhancedInputComponent& input_component,
                     IEnhancedInputSubsystemInterface& input_subsystem,
                     FSpaceShipControllerInputs const& input) -> bool;
-    auto bind() -> bool;
+    // Require successful can_bind() preflight on the game thread.
+    void bind();
     void unbind();
     void shutdown();
     void set_ship(ATestSpaceShip* ship);

@@ -35,16 +35,11 @@ auto FBenchmarkControlContext::can_bind() const -> bool {
     return owner_.IsValid() && component_.IsValid() && subsystem_object_.IsValid() && input_ &&
            input_->is_valid();
 }
-auto FBenchmarkControlContext::bind() -> bool {
+void FBenchmarkControlContext::bind() {
     if (bound_) {
-        return true;
+        return;
     }
-    if (!can_bind()) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("FBenchmarkControlContext::bind: Input dependencies are invalid."));
-        return false;
-    }
+    check(can_bind());
     binding_handle_ = component_
                           ->BindAction(input_->exit,
                                        ETriggerEvent::Started,
@@ -54,7 +49,6 @@ auto FBenchmarkControlContext::bind() -> bool {
     registered_mapping_ = input_->mapping_context;
     subsystem_->AddMappingContext(registered_mapping_.Get(), mapping_priority_);
     bound_ = true;
-    return true;
 }
 void FBenchmarkControlContext::unbind() {
     if (!bound_) {

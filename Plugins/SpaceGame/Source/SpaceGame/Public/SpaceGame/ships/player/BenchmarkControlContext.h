@@ -34,7 +34,8 @@ struct SPACEGAME_API FBenchmarkControlContext {
                     IEnhancedInputSubsystemInterface& subsystem,
                     FBenchmarkControlInputs const& input) -> bool;
     auto can_bind() const -> bool;
-    auto bind() -> bool;
+    // Require successful can_bind() preflight on the game thread.
+    void bind();
     void unbind();
     void shutdown();
     auto is_bound() const -> bool { return bound_; }

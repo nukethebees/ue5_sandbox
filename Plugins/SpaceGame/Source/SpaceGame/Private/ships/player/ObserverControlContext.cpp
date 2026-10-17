@@ -47,25 +47,18 @@ auto FObserverControlContext::can_bind() const -> bool {
            IsValid(input_->engage_look) && IsValid(input_->adjust_speed) && IsValid(input_->boost);
 }
 
-auto FObserverControlContext::bind() -> bool {
+void FObserverControlContext::bind() {
     if (bound_) {
-        return true;
+        return;
     }
-    if (!can_bind()) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("FObserverControlContext::bind: Context dependencies are invalid."));
-        return false;
-    }
+    check(can_bind());
 
     bound_ = true;
     bind_actions();
     registered_mapping_ = input_->mapping_context;
     input_subsystem_->AddMappingContext(registered_mapping_.Get(), 0);
     publish_speed();
-    return true;
 }
-
 void FObserverControlContext::unbind() {
     if (!bound_) {
         return;

@@ -54,7 +54,8 @@ struct SPACEGAME_API FObserverControlContext {
                     UEnhancedInputComponent& input_component,
                     IEnhancedInputSubsystemInterface& input_subsystem,
                     FObserverControlInputs const& input) -> bool;
-    auto bind() -> bool;
+    // Require successful can_bind() preflight on the game thread.
+    void bind();
     void unbind();
     void shutdown();
     void set_camera(ACameraActor* camera);
