@@ -7,6 +7,7 @@
 #include <codegen/schema/fixed_point_value.h>
 #include <codegen/schema/soa_allocator_variants.h>
 #include <lispb/schema/enum_domain.h>
+#include <lispb/schema/enum_storage_requirement.h>
 
 #include <algorithm>
 #include <cctype>

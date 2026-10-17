@@ -33,6 +33,8 @@ target_sources(lispb-schema PRIVATE
   src/cpp_type.cpp
   src/declaration_schema.cpp
   src/editable_document.cpp
+  src/enum_storage_requirement.cpp
+  src/enum_code.cpp
   src/enum_domain.cpp
   src/fixed_point_value.cpp
   src/packed_value_internal.cpp
@@ -40,6 +42,7 @@ target_sources(lispb-schema PRIVATE
   src/physical_type_use.cpp
   src/soa_allocator_variants.cpp
   src/source_loader.cpp
+  src/type_node.cpp
   src/type_graph.cpp
   src/validation.cpp
 )

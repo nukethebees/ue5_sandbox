@@ -1,401 +1,42 @@
 #pragma once
-#include <codegen/schema.h>
-#include <codegen/schema/declaration_schema.h>
+
 #include <codegen/schema/enum_schema.h>
 #include <codegen/schema/fixed_point_schema.h>
+#include <codegen/schema/integer_scalar_schema.h>
 #include <codegen/schema/integer_varint_schema.h>
 #include <codegen/schema/linear_quantized_schema.h>
 #include <codegen/schema/manifest.h>
 #include <codegen/schema/mini_float_schema.h>
-#include <codegen/schema/module_schema.h>
 #include <codegen/schema/optional_presence_bit_schema.h>
 #include <codegen/schema/optional_sentinel_schema.h>
 #include <codegen/schema/packed_value_schema.h>
 #include <codegen/schema/record_schema.h>
-#include <codegen/schema/registered_type_schema.h>
 #include <codegen/schema/soa_schema.h>
 #include <codegen/schema/tagged_union_schema.h>
 #include <codegen/schema/union_schema.h>
-#include <codegen/source_loader.h>
-#include <codegen/source_position_types.h>
+#include <lispb/schema/declaration_id.h>
+#include <lispb/schema/declaration_info.h>
+#include <lispb/schema/schema_edit_command.h>
+#include <lispb/schema/schema_edit_error.h>
+#include <lispb/schema/schema_source_file.h>
+#include <lispb/schema/schema_source_update.h>
+#include <lispb/schema/source_range.h>
 #include <lispb/schema/type_graph.h>
+#include <lispb/schema/type_identity.h>
 
-#include <compare>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <filesystem>
+#include <functional>
 #include <map>
 #include <optional>
 #include <span>
 #include <string>
-#include <utility>
-#include <variant>
+#include <string_view>
 #include <vector>
 
 namespace lispb::schema {
-
-struct DeclarationId {
-    inline static constexpr std::uint64_t invalid_value{0};
-
-    std::uint64_t value{invalid_value};
-
-    [[nodiscard]] auto valid() const -> bool { return value != invalid_value; }
-    auto operator<=>(DeclarationId const&) const = default;
-};
-
-struct SourceRange {
-    codegen::SourceFileIndex source_file_index{};
-    codegen::SourceOffset begin_offset{};
-    codegen::SourceOffset end_offset{};
-    codegen::LineNum line{1};
-    codegen::ColumnNum column{1};
-
-    auto operator==(SourceRange const&) const -> bool = default;
-};
-
-enum class SchemaSourceKind { module, type_registry };
-
-struct SchemaSourceFile {
-    std::filesystem::path path;
-    std::string text;
-    SchemaSourceKind kind{SchemaSourceKind::module};
-    std::vector<codegen::RegistryInclude> includes;
-};
-
-struct DeclarationInfo {
-    DeclarationId id;
-    TypeIdentity identity;
-    std::size_t module_index{};
-    std::size_t declaration_index{};
-    std::optional<SourceRange> source;
-};
-
-struct SetEnumeratorDisplayName {
-    DeclarationId enum_declaration;
-    std::string enumerator_name;
-    std::optional<std::string> display_name;
-};
-
-struct SetEnumeratorName {
-    DeclarationId enum_declaration;
-    std::string current_name;
-    std::string new_name;
-};
-
-struct CreateModule {
-    std::size_t source_file_index{};
-    codegen::ModuleSchema schema;
-};
-
-struct DeleteModule {
-    std::size_t module_index{};
-};
-
-struct RestoreModule {
-    std::size_t module_index{};
-    codegen::ModuleSchema schema;
-    std::optional<SourceRange> source;
-    std::optional<std::size_t> pending_source_file_index;
-    std::vector<DeclarationInfo> declarations;
-};
-
-struct MoveDeclaration {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    std::optional<std::size_t> insertion_index;
-    bool restore_source_ownership{};
-};
-
-struct CreateDeclaration {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    codegen::DeclarationSchema schema;
-    std::optional<std::size_t> insertion_index;
-};
-
-struct ReplaceDeclaration {
-    DeclarationId declaration;
-    codegen::DeclarationSchema schema;
-};
-
-struct DeleteDeclaration {
-    DeclarationId declaration;
-};
-
-struct CreateEnum {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    codegen::EnumSchema schema;
-    std::optional<std::size_t> insertion_index;
-};
-
-struct ReplaceEnum {
-    DeclarationId declaration;
-    codegen::EnumSchema schema;
-};
-
-struct DeleteEnum {
-    DeclarationId declaration;
-};
-
-struct CreatePackedValue {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    codegen::PackedValueSchema schema;
-    std::optional<std::size_t> insertion_index;
-};
-
-struct ReplacePackedValue {
-    DeclarationId declaration;
-    codegen::PackedValueSchema schema;
-};
-
-struct DeletePackedValue {
-    DeclarationId declaration;
-};
-
-struct CreateIntegerScalar {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    codegen::IntegerScalarSchema schema;
-    std::optional<std::size_t> insertion_index;
-};
-
-struct ReplaceIntegerScalar {
-    DeclarationId declaration;
-    codegen::IntegerScalarSchema schema;
-};
-
-struct RenameDeclaration {
-    DeclarationId declaration;
-    std::string new_name;
-};
-
-struct DeleteIntegerScalar {
-    DeclarationId declaration;
-};
-
-struct CreateLinearQuantized {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    codegen::LinearQuantizedSchema schema;
-    std::optional<std::size_t> insertion_index;
-};
-
-struct ReplaceLinearQuantized {
-    DeclarationId declaration;
-    codegen::LinearQuantizedSchema schema;
-};
-
-struct DeleteLinearQuantized {
-    DeclarationId declaration;
-};
-
-struct CreateIntegerVarint {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    codegen::IntegerVarintSchema schema;
-    std::optional<std::size_t> insertion_index;
-};
-
-struct ReplaceIntegerVarint {
-    DeclarationId declaration;
-    codegen::IntegerVarintSchema schema;
-};
-
-struct DeleteIntegerVarint {
-    DeclarationId declaration;
-};
-
-struct CreateFixedPoint {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    codegen::FixedPointSchema schema;
-    std::optional<std::size_t> insertion_index;
-};
-
-struct ReplaceFixedPoint {
-    DeclarationId declaration;
-    codegen::FixedPointSchema schema;
-};
-
-struct DeleteFixedPoint {
-    DeclarationId declaration;
-};
-
-struct CreateOptionalSentinel {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    codegen::OptionalSentinelSchema schema;
-    std::optional<std::size_t> insertion_index;
-};
-
-struct ReplaceOptionalSentinel {
-    DeclarationId declaration;
-    codegen::OptionalSentinelSchema schema;
-};
-
-struct DeleteOptionalSentinel {
-    DeclarationId declaration;
-};
-
-struct CreateOptionalPresenceBit {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    codegen::OptionalPresenceBitSchema schema;
-    std::optional<std::size_t> insertion_index;
-};
-
-struct ReplaceOptionalPresenceBit {
-    DeclarationId declaration;
-    codegen::OptionalPresenceBitSchema schema;
-};
-
-struct DeleteOptionalPresenceBit {
-    DeclarationId declaration;
-};
-
-struct CreateMiniFloat {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    codegen::MiniFloatSchema schema;
-    std::optional<std::size_t> insertion_index;
-};
-
-struct ReplaceMiniFloat {
-    DeclarationId declaration;
-    codegen::MiniFloatSchema schema;
-};
-
-struct DeleteMiniFloat {
-    DeclarationId declaration;
-};
-
-struct CreateRecord {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    codegen::RecordSchema schema;
-    std::optional<std::size_t> insertion_index;
-};
-
-struct ReplaceRecord {
-    DeclarationId declaration;
-    codegen::RecordSchema schema;
-};
-
-struct DeleteRecord {
-    DeclarationId declaration;
-};
-
-struct CreateUnion {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    codegen::UnionSchema schema;
-    std::optional<std::size_t> insertion_index;
-};
-
-struct ReplaceUnion {
-    DeclarationId declaration;
-    codegen::UnionSchema schema;
-};
-
-struct DeleteUnion {
-    DeclarationId declaration;
-};
-
-struct CreateTaggedUnion {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    codegen::TaggedUnionSchema schema;
-    std::optional<std::size_t> insertion_index;
-};
-
-struct ReplaceTaggedUnion {
-    DeclarationId declaration;
-    codegen::TaggedUnionSchema schema;
-};
-
-struct DeleteTaggedUnion {
-    DeclarationId declaration;
-};
-
-struct CreateSoa {
-    DeclarationId declaration;
-    std::size_t module_index{};
-    codegen::SoaSchema schema;
-    std::optional<std::size_t> insertion_index;
-};
-
-struct ReplaceSoa {
-    DeclarationId declaration;
-    codegen::SoaSchema schema;
-};
-
-struct DeleteSoa {
-    DeclarationId declaration;
-};
-
-using SchemaEditCommand = std::variant<SetEnumeratorDisplayName,
-                                       SetEnumeratorName,
-                                       CreateModule,
-                                       DeleteModule,
-                                       RestoreModule,
-                                       MoveDeclaration,
-                                       CreateDeclaration,
-                                       ReplaceDeclaration,
-                                       DeleteDeclaration,
-                                       CreateEnum,
-                                       ReplaceEnum,
-                                       DeleteEnum,
-                                       CreatePackedValue,
-                                       ReplacePackedValue,
-                                       DeletePackedValue,
-                                       CreateIntegerScalar,
-                                       ReplaceIntegerScalar,
-                                       RenameDeclaration,
-                                       DeleteIntegerScalar,
-                                       CreateLinearQuantized,
-                                       ReplaceLinearQuantized,
-                                       DeleteLinearQuantized,
-                                       CreateIntegerVarint,
-                                       ReplaceIntegerVarint,
-                                       DeleteIntegerVarint,
-                                       CreateFixedPoint,
-                                       ReplaceFixedPoint,
-                                       DeleteFixedPoint,
-                                       CreateOptionalSentinel,
-                                       ReplaceOptionalSentinel,
-                                       DeleteOptionalSentinel,
-                                       CreateOptionalPresenceBit,
-                                       ReplaceOptionalPresenceBit,
-                                       DeleteOptionalPresenceBit,
-                                       CreateMiniFloat,
-                                       ReplaceMiniFloat,
-                                       DeleteMiniFloat,
-                                       CreateRecord,
-                                       ReplaceRecord,
-                                       DeleteRecord,
-                                       CreateUnion,
-                                       ReplaceUnion,
-                                       DeleteUnion,
-                                       CreateTaggedUnion,
-                                       ReplaceTaggedUnion,
-                                       DeleteTaggedUnion,
-                                       CreateSoa,
-                                       ReplaceSoa,
-                                       DeleteSoa>;
-
-struct SchemaEditError {
-    std::string message;
-};
-
-struct SchemaSourceUpdate {
-    std::filesystem::path path;
-    std::string original;
-    std::string updated;
-};
-
 class EditableSchemaDocument {
   public:
     static auto from_manifest(codegen::Manifest manifest) -> EditableSchemaDocument;

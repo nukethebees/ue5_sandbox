@@ -1,43 +1,17 @@
 #pragma once
 
+#include <codegen/schema/enum_schema.h>
+#include <lispb/schema/enum_code.h>
+#include <lispb/schema/enum_domain_input.h>
+#include <lispb/schema/enum_domain_issue.h>
+#include <lispb/schema/enum_domain_value.h>
+
 #include <cstdint>
 #include <optional>
 #include <span>
-#include <string>
 #include <vector>
 
-namespace codegen {
-struct EnumSchema;
-}
-
 namespace lispb::schema {
-
-struct EnumCode {
-    bool negative{};
-    std::uint64_t magnitude{};
-
-    auto operator==(EnumCode const&) const -> bool = default;
-};
-
-struct EnumDomainInput {
-    std::string name;
-    std::optional<std::string> explicit_value;
-    bool reserved{};
-};
-
-enum class EnumDomainIssueSeverity { warning, error };
-
-struct EnumDomainIssue {
-    EnumDomainIssueSeverity severity{EnumDomainIssueSeverity::warning};
-    std::string message;
-};
-
-struct EnumDomainValue {
-    std::string name;
-    bool reserved{};
-    std::optional<EnumCode> code;
-};
-
 struct EnumDomain {
     std::uint64_t live_value_count{};
     std::uint64_t reserved_value_count{};
@@ -50,17 +24,8 @@ struct EnumDomain {
     std::vector<EnumDomainIssue> issues;
 };
 
-struct EnumStorageRequirement {
-    bool signedness{};
-    std::uint32_t bit_width{};
-};
-
 auto analyze_enum_domain(std::span<EnumDomainInput const> values,
                          std::optional<bool> signedness = std::nullopt) -> EnumDomain;
 auto analyze_enum_domain(codegen::EnumSchema const& schema) -> EnumDomain;
-auto derive_enum_storage_requirement(EnumDomain const& domain,
-                                     std::optional<std::uint32_t> declared_bit_width)
-    -> std::optional<EnumStorageRequirement>;
-auto format_enum_code(EnumCode value) -> std::string;
 
 } // namespace lispb::schema

@@ -3,6 +3,7 @@
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/planner_type.hpp>
 
+#include <codegen/schema.h>
 #include <codegen/schema/physical_type_use.h>
 
 #include <algorithm>

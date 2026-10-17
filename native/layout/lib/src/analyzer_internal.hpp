@@ -1,9 +1,9 @@
 #pragma once
-
 #include <ioj/layout/analyzer.hpp>
 #include <ioj/layout/physical_facts.hpp>
 
 #include <codegen/schema.h>
+#include <lispb/schema/enum_storage_requirement.h>
 
 #include <algorithm>
 #include <cmath>
