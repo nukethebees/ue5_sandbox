@@ -5,13 +5,12 @@
 #include <cassert>
 
 namespace ioj::sim {
-OverlapHandler::OverlapHandler(CombatEvents& events, OverlapResponseConfig const& config) noexcept
-    : events_{events}
-    , damage_per_overlap_detection_{config.damage_per_overlap_detection} {
+OverlapHandler::OverlapHandler(OverlapResponseConfig const& config) noexcept
+    : damage_per_overlap_detection_{config.damage_per_overlap_detection} {
     assert(damage_per_overlap_detection_ > 0);
 }
 
-void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps) {
+void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps, CombatEvents& events) {
     overlaps.entity_entity_overlaps.validate();
     overlaps.entity_static_overlaps.validate();
 
@@ -34,7 +33,7 @@ void OverlapHandler::handle(collision::DetectedOverlapsView const overlaps) {
     }
 
     if (!damage_events_.is_empty()) {
-        events_.queue_damage(damage_events_);
+        events.queue_damage(damage_events_);
     }
 }
 

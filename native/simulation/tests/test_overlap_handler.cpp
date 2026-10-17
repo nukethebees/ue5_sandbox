@@ -37,8 +37,9 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
         columns.static_geometry_indices()[index] = 7;
     }
 
-    OverlapHandler handler{owners.combat_events, {.damage_per_overlap_detection = 37}};
-    handler.handle({entity_overlaps.get_const_view(), static_overlaps.get_const_view()});
+    OverlapHandler handler{{.damage_per_overlap_detection = 37}};
+    handler.handle({entity_overlaps.get_const_view(), static_overlaps.get_const_view()},
+                   owners.combat_events);
 
     auto const damage{owners.combat_events.all_events().get_const_view()};
     EXPECT_EQ(damage.num(), 5) << "Every supported overlap endpoint queues damage";
@@ -99,8 +100,8 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
     alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
     ml::FrameMemoryResource memory{backing};
     ml::FrameScratchScope scope{memory};
-    OverlapHandler handler{owners.combat_events, {}};
-    handler.handle({first_pairs.get_const_view(), {}});
+    OverlapHandler handler{{}};
+    handler.handle({first_pairs.get_const_view(), {}}, owners.combat_events);
     owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
 
     auto const first_damage{owners.combat_events.all_events().get_const_view()};
@@ -121,7 +122,7 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
         columns.first_entities()[index] = fighter;
         columns.second_entities()[index] = doomed;
     }
-    handler.handle({retired_pair.get_const_view(), {}});
+    handler.handle({retired_pair.get_const_view(), {}}, owners.combat_events);
     owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
     auto const second_damage{owners.combat_events.all_events().get_const_view()};
     EXPECT_EQ(second_damage.num(), 1) << "Retired endpoint is skipped independently";
@@ -132,7 +133,7 @@ TEST(OverlapHandler, FiltersUnsupportedRecipientsAndDefersRetirementChecksToDama
     auto const fighter_data{owners.fighters.get_const_view()};
     owners.health_table.get_view<EntityType::Fighter>(fighter_data.num()).set_health(0, 0);
     owners.publish();
-    handler.handle({retired_pair.get_const_view(), {}});
+    handler.handle({retired_pair.get_const_view(), {}}, owners.combat_events);
     owners.combat_events.prepare(owners.entity_tables.lookups, &memory);
     EXPECT_EQ(owners.combat_events.all_events().num(), 0);
 }

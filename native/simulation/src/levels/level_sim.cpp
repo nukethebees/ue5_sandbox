@@ -80,7 +80,7 @@ LevelSim::LevelSim(LevelSimInitData data)
     , frame_memory_{std::span<std::byte>{frame_memory_block_.data(),
                                          frame_memory_block_.size_bytes()}}
     , query_manager_{entity_tables_, &game_memory_->memory_resource()}
-    , overlap_handler_{combat_events_, data.overlap_response}
+    , overlap_handler_{data.overlap_response}
     , lasers_simulation_{clock_, combat_events_, query_manager_}
     , lasers_phase_{lasers_simulation_}
     , fighters_simulation_{clock_,
@@ -451,7 +451,7 @@ void LevelSim::advance(time_type const dt) {
                     // Detection creates a new scratch-backed result for this tick.
                     // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                     query_manager_.detect_overlaps(overlap_candidates_, &frame_memory_)};
-                overlap_handler_.handle(overlaps);
+                overlap_handler_.handle(overlaps, combat_events_);
             }
         }
 

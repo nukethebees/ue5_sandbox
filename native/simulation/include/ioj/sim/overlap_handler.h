@@ -11,13 +11,12 @@ namespace ioj::sim {
 class CombatEvents;
 
 struct OverlapHandler {
-    OverlapHandler(CombatEvents& events, OverlapResponseConfig const& config) noexcept;
+    explicit OverlapHandler(OverlapResponseConfig const& config) noexcept;
 
-    void handle(collision::DetectedOverlapsView overlaps);
+    void handle(collision::DetectedOverlapsView overlaps, CombatEvents& events);
   private:
     void append_damage(EntityUniqueId id);
 
-    CombatEvents& events_;
     Health damage_per_overlap_detection_{};
     DirectDamageEvents damage_events_;
 };
