@@ -1356,6 +1356,8 @@ TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
 (module states
   :header "States.h"
   (enum State std::uint8_t
+    :native-api true
+    :helpers (to-string traits)
     :bit-width 3
     :signed false
     (value Idle :value "0")
@@ -1366,6 +1368,15 @@ TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
     auto const& schema{schema_at<EnumSchema>(manifest, 0)};
     EXPECT_EQ(schema.bit_width, 3);
     EXPECT_EQ(schema.signedness, false);
+    EXPECT_EQ(schema.helpers, (std::vector{NativeEnumHelper::to_string, NativeEnumHelper::traits}));
+    for (auto const options : {":native-api true :helpers (unknown)",
+                               ":native-api true :helpers traits",
+                               ":helpers (traits)"}) {
+        files.write_root(
+            std::string{"(module states :header \"States.h\" (enum State std::uint8_t "} + options +
+            " (value Idle :value \"0\")))");
+        EXPECT_THROW(files.load(), ManifestError);
+    }
 }
 
 TEST(SourceLoader, ReadsEnumWithoutCppBackingType) {

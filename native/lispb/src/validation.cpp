@@ -509,6 +509,16 @@ void validate_enum(EnumSchema const& schema,
                                         "' Unreal projection must be reflected"};
         }
     }
+    if (!schema.native_api && !schema.helpers.empty()) {
+        throw std::invalid_argument{"Enum '" + schema.name + "' helpers require native-api"};
+    }
+    std::set<NativeEnumHelper> helpers;
+    for (auto const helper : schema.helpers) {
+        if (native_enum_helper_name(helper).empty() || !helpers.insert(helper).second) {
+            throw std::invalid_argument{"Enum '" + schema.name +
+                                        "' has an invalid or duplicate helper"};
+        }
+    }
     if (schema.native_api && schema.reflection != EnumReflection::none) {
         throw std::invalid_argument{"Native enum '" + schema.name +
                                     "' cannot use Unreal reflection"};
@@ -527,6 +537,8 @@ void validate_enum(EnumSchema const& schema,
     std::vector<std::string> value_names;
     std::vector<std::string> serialized_names;
     auto const has_serialized_conversion{
+        helpers.contains(NativeEnumHelper::to_serialized_string) ||
+        helpers.contains(NativeEnumHelper::try_parse_serialized) ||
         std::find(schema.conversions.begin(),
                   schema.conversions.end(),
                   EnumConversion::lex_to_serialized_string) != schema.conversions.end() ||

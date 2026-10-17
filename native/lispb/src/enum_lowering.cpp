@@ -301,30 +301,33 @@ auto native_enum_declaration(EnumSchema const& schema, TypeRegistry const& types
 
     auto const snake_name{snake_case_type_name(schema.name)};
 
-    output << "[[nodiscard]] constexpr auto to_string(" << schema.name
-           << " const value) noexcept -> std::string_view {\n";
-    output << "    switch (value) {\n";
-    for (auto const& value : schema.values) {
-        output << "        case " << schema.name << "::" << value.name << ": {\n";
-        output << "            return " << native_string_literal(value.name) << ";\n";
-        output << "        }\n";
+    if (std::ranges::contains(schema.helpers, NativeEnumHelper::to_string)) {
+        output << "[[nodiscard]] constexpr auto to_string(" << schema.name
+               << " const value) noexcept -> std::string_view {\n";
+        output << "    switch (value) {\n";
+        for (auto const& value : schema.values) {
+            output << "        case " << schema.name << "::" << value.name << ": {\n";
+            output << "            return " << native_string_literal(value.name) << ";\n";
+            output << "        }\n";
+        }
+        output << "    }\n\n";
+        output << "    return " << native_string_literal("<invalid " + schema.name + ">") << ";\n";
+        output << "}\n\n";
     }
-    output << "    }\n\n";
-    output << "    return " << native_string_literal("<invalid " + schema.name + ">") << ";\n";
-    output << "}\n\n";
 
-    output << "[[nodiscard]] constexpr auto try_parse_" << snake_name
-           << "(std::string_view const value) noexcept -> std::optional<" << schema.name << "> {\n";
-    for (auto const& value : schema.values) {
-        output << "    if (value == " << native_string_literal(value.name) << ") {\n";
-        output << "        return " << schema.name << "::" << value.name << ";\n";
-        output << "    }\n";
+    if (std::ranges::contains(schema.helpers, NativeEnumHelper::try_parse)) {
+        output << "[[nodiscard]] constexpr auto try_parse_" << snake_name
+               << "(std::string_view const value) noexcept -> std::optional<" << schema.name
+               << "> {\n";
+        for (auto const& value : schema.values) {
+            output << "    if (value == " << native_string_literal(value.name) << ") {\n";
+            output << "        return " << schema.name << "::" << value.name << ";\n";
+            output << "    }\n";
+        }
+        output << "\n    return std::nullopt;\n}\n";
     }
-    output << "\n    return std::nullopt;\n}\n";
 
-    auto const has_display{std::ranges::any_of(
-        schema.values, [](auto const& value) { return value.display_name.has_value(); })};
-    if (has_display) {
+    if (std::ranges::contains(schema.helpers, NativeEnumHelper::to_display_string)) {
         output << "\n[[nodiscard]] constexpr auto to_display_string(" << schema.name
                << " const value) noexcept -> std::string_view {\n";
         output << "    switch (value) {\n";
@@ -339,10 +342,7 @@ auto native_enum_declaration(EnumSchema const& schema, TypeRegistry const& types
                << ";\n}\n";
     }
 
-    auto const values{enum_values(schema)};
-    auto const has_serialized{std::ranges::all_of(
-        values, [](auto const* value) { return value->serialized_name.has_value(); })};
-    if (has_serialized) {
+    if (std::ranges::contains(schema.helpers, NativeEnumHelper::to_serialized_string)) {
         output << "\n[[nodiscard]] constexpr auto to_serialized_string(" << schema.name
                << " const value) noexcept -> std::string_view {\n";
         output << "    switch (value) {\n";
@@ -361,6 +361,8 @@ auto native_enum_declaration(EnumSchema const& schema, TypeRegistry const& types
         output << "        }\n";
         output << "    }\n\n";
         output << "}\n\n";
+    }
+    if (std::ranges::contains(schema.helpers, NativeEnumHelper::try_parse_serialized)) {
         output << "[[nodiscard]] inline auto try_parse_serialized_" << snake_name
                << "(std::string_view const value) -> std::optional<" << schema.name << "> {\n";
         output << "    static std::unordered_map<std::string_view, " << schema.name
@@ -381,18 +383,21 @@ auto native_enum_traits(ModuleSettings const& settings, EnumSchema const& schema
     auto const qualified{native_enum_name(settings, schema)};
     auto const values{enum_values(schema)};
     std::ostringstream output;
-    output << "template <>\nstruct EnumTraits<" << qualified << "> {\n";
-    output << "    inline static constexpr std::array values{";
-    for (auto const* value : values) {
-        output << qualified << "::" << value->name << ", ";
+    if (std::ranges::contains(schema.helpers, NativeEnumHelper::traits)) {
+        output << "template <>\nstruct EnumTraits<" << qualified << "> {\n";
+        output << "    inline static constexpr std::array values{";
+        for (auto const* value : values) {
+            output << qualified << "::" << value->name << ", ";
+        }
+        output << "};\n";
+        output << "    inline static constexpr std::array names{";
+        for (auto const* value : values) {
+            output << "std::string_view{" << native_string_literal(value->name) << "}, ";
+        }
+        output << "};\n";
+        output << "};\n";
     }
-    output << "};\n";
-    output << "    inline static constexpr std::array names{";
-    for (auto const* value : values) {
-        output << "std::string_view{" << native_string_literal(value->name) << "}, ";
-    }
-    output << "};\n";
-    output << "};\n";
+
     if (schema.enum_array) {
         output << "\n" << enum_count_specialization(qualified, values.size());
     }
@@ -510,21 +515,34 @@ auto lower_enum(EnumSchema const& schema,
     emission.source_dependencies = false;
     if (schema.native_api) {
         NodeListBuilder prefix;
-        prefix.add(Include{"array", true}, 2)
-            .add(Include{"cstdint", true}, 2)
-            .add(Include{"cstddef", true}, 2)
-            .add(Include{"optional", true}, 2)
-            .add(Include{"string_view", true}, 2)
-            .add(Include{"ioj/enum_traits.h", false}, 2);
-        if (std::ranges::any_of(schema.values, [](auto const& value) {
-                return value.serialized_name.has_value();
-            })) {
+        auto const has = [&](NativeEnumHelper const helper) {
+            return std::ranges::contains(schema.helpers, helper);
+        };
+        prefix.add(Include{"cstdint", true}, 2);
+        if (!schema.helpers.empty()) {
+            prefix.add(Include{"string_view", true}, 2);
+        }
+        if (has(NativeEnumHelper::traits)) {
+            prefix.add(Include{"array", true}, 2);
+        }
+        if (has(NativeEnumHelper::traits) || schema.enum_array) {
+            prefix.add(Include{"ioj/enum_traits.h", false}, 2);
+        }
+        if (schema.enum_array) {
+            prefix.add(Include{"cstddef", true}, 2);
+        }
+        if (has(NativeEnumHelper::try_parse) || has(NativeEnumHelper::try_parse_serialized)) {
+            prefix.add(Include{"optional", true}, 2);
+        }
+        if (has(NativeEnumHelper::try_parse_serialized)) {
             prefix.add(Include{"unordered_map", true}, 2)
                 .add(Include{"ioj/enum_lookup.h", false}, 2);
         }
         emission.header_prefix = prefix.build();
         emission.header = {raw(native_enum_declaration(schema, types))};
-        emission.header_global = {Namespace{"ml", {raw(native_enum_traits(settings, schema))}}};
+        if (has(NativeEnumHelper::traits) || schema.enum_array) {
+            emission.header_global = {Namespace{"ml", {raw(native_enum_traits(settings, schema))}}};
+        }
         if (schema.unreal_projection.has_value()) {
             auto const& projection{*schema.unreal_projection};
             auto const generated_header{projection.header.stem().string() + ".generated.h"};

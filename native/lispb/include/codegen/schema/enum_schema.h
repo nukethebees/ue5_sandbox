@@ -4,6 +4,7 @@
 #include <codegen/schema/enum_reflection.h>
 #include <codegen/schema/enum_unreal_projection.h>
 #include <codegen/schema/enumerator_schema.h>
+#include <codegen/schema/native_enum_helper.h>
 #include <codegen/schema/type_ref.h>
 
 #include <cstdint>
@@ -26,6 +27,7 @@ struct EnumSchema {
     std::optional<bool> signedness;
     bool enum_array{false};
     bool native_api{false};
+    std::vector<NativeEnumHelper> helpers;
 };
 
 } // namespace codegen

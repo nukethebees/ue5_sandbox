@@ -726,6 +726,9 @@ TEST(EditableSchemaDocument, PreservesEnumGenerationPolicyPropertiesDuringEdits)
     replacement.enum_array = false;
     replacement.export_specifier.reset();
     replacement.native_api = true;
+    std::vector const expected_helpers{codegen::NativeEnumHelper::to_string,
+                                       codegen::NativeEnumHelper::traits};
+    replacement.helpers = expected_helpers;
     applied = native_document.apply(
         ReplaceEnum{.declaration = native_enumeration, .schema = std::move(replacement)});
     ASSERT_TRUE(applied.has_value()) << applied.error().message;
@@ -751,6 +754,7 @@ TEST(EditableSchemaDocument, PreservesEnumGenerationPolicyPropertiesDuringEdits)
     EXPECT_FALSE(schema->enum_array);
     EXPECT_FALSE(schema->export_specifier.has_value());
     EXPECT_TRUE(schema->native_api);
+    EXPECT_EQ(schema->helpers, expected_helpers);
 
     auto invalid{*schema};
     invalid.export_specifier = "INVALID_API";
@@ -763,6 +767,7 @@ TEST(EditableSchemaDocument, PreservesEnumGenerationPolicyPropertiesDuringEdits)
     EXPECT_EQ(reloaded.revision(), revision_before);
     EXPECT_FALSE(reloaded.dirty());
     EXPECT_TRUE(reloaded.enum_schema(reloaded_enumeration)->native_api);
+    EXPECT_EQ(reloaded.enum_schema(reloaded_enumeration)->helpers, expected_helpers);
     EXPECT_FALSE(reloaded.enum_schema(reloaded_enumeration)->export_specifier.has_value());
 }
 

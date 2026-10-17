@@ -163,6 +163,14 @@ auto render_enum(codegen::EnumSchema const& schema) -> std::string {
     if (schema.native_api) {
         output << "\n    :native-api true";
     }
+    if (!schema.helpers.empty()) {
+        output << "\n    :helpers (";
+        for (std::size_t index{}; index < schema.helpers.size(); ++index) {
+            output << (index == 0 ? "" : " ")
+                   << codegen::native_enum_helper_name(schema.helpers[index]);
+        }
+        output << ')';
+    }
     for (auto const& value : schema.values) {
         output << "\n    " << render_enum_value(value);
     }
@@ -621,6 +629,10 @@ auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
             {.begin = *name_end, .end = *name_end, .text = " " + schema.underlying_type->name});
     }
 
+    std::vector<std::string> helper_names;
+    for (auto const helper : schema.helpers) {
+        helper_names.emplace_back(codegen::native_enum_helper_name(helper));
+    }
     std::vector<std::string> conversion_names;
     conversion_names.reserve(schema.conversions.size());
     for (auto const conversion : schema.conversions) {
@@ -647,6 +659,14 @@ auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
     auto const positional_count{source_has_underlying ? 2U : 1U};
     if (!patch_source_properties(
             form, positional_count, enum_properties, "    ", original, replacements) ||
+        !patch_source_atom_list_property(form,
+                                         positional_count,
+                                         "helpers",
+                                         helper_names,
+                                         "    ",
+                                         "      ",
+                                         original,
+                                         replacements) ||
         !patch_source_atom_list_property(form,
                                          positional_count,
                                          "conversions",

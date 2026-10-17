@@ -876,6 +876,20 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
 }
 
 TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
+    for (auto const& helpers : {std::vector{NativeEnumHelper::traits, NativeEnumHelper::traits},
+                                std::vector{static_cast<NativeEnumHelper>(999)},
+                                std::vector{NativeEnumHelper::to_serialized_string},
+                                std::vector{NativeEnumHelper::try_parse_serialized}}) {
+        auto invalid{valid_native_enum_module()};
+        auto& schema{std::get<EnumSchema>(invalid.declarations.front())};
+        schema.helpers = helpers;
+        schema.values.front().serialized_name.reset();
+        EXPECT_THROW(lower_modules(manifest_with(std::move(invalid))), std::invalid_argument);
+    }
+    auto unreal{valid_enum_module()};
+    std::get<EnumSchema>(unreal.declarations.front()).helpers = {NativeEnumHelper::traits};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(unreal))), std::invalid_argument);
+
     auto module{valid_native_enum_module()};
     module.declarations.push_back(
         std::get<codegen::EnumSchema>(valid_enum_module().declarations.front()));

@@ -18,7 +18,25 @@ their scalar properties. Integer definitions can also supply domains for packed 
 quantization, varints, and optionals. Size and alignment come from the selected ABI profile.
 The project's [common scalars](../../lispb/schema/common_scalars.lispb) provide standard examples.
 
-Use `:enum-array true` on native or Unreal enums to generate `ml::enum_count<Enum>()` for
+Native enums emit only the helpers selected with `:helpers`:
+
+```lisp
+(enum State std::uint8_t
+  :native-api true
+  :helpers (to-string traits)
+  (value Idle :value "0")
+  (value Active :value "1"))
+```
+
+Available helpers are `to-string`, `try-parse`, `to-display-string`, `to-serialized-string`,
+`try-parse-serialized`, and `traits` (`ml::EnumTraits<Enum>::values` and `names`). Omit the list
+or use `:helpers ()` for a bare enum. Each helper is independent; display formatting falls back
+to the enumerator name. Serialized helpers require `:serialized-name` on every non-count value.
+Unknown or duplicate helpers are errors. Existing native schemas must explicitly select the
+helpers they need; `:native-api true` no longer selects them automatically. Unreal enums use
+the existing `:conversions` list instead.
+
+Use `:enum-array true` independently on native or Unreal enums to generate `ml::enum_count<Enum>()` for
 `ml::EnumArray<Enum, T>` and `ml::FixedEnumArray<Enum>`. LispB requires known codes in declaration
 order from zero through count minus one; gaps, aliases, negative codes, hidden values, and count
 sentinels are rejected. Explicit numeric initializers are allowed. Other enums can remain sparse

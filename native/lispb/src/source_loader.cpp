@@ -507,6 +507,24 @@ auto parse_enum_conversion(Form const& form) -> EnumConversion {
     return found->second;
 }
 
+auto parse_native_enum_helper(Form const& form) -> NativeEnumHelper {
+    auto const value{text(form, "native enum helper")};
+    constexpr std::array helpers{
+        NativeEnumHelper::to_string,
+        NativeEnumHelper::try_parse,
+        NativeEnumHelper::to_display_string,
+        NativeEnumHelper::to_serialized_string,
+        NativeEnumHelper::try_parse_serialized,
+        NativeEnumHelper::traits,
+    };
+    for (auto const helper : helpers) {
+        if (native_enum_helper_name(helper) == value) {
+            return helper;
+        }
+    }
+    fail(form.token.span, "unknown native enum helper '" + value + "'");
+}
+
 auto parse_enum_unreal_projection(Form const& form) -> EnumUnrealProjection {
     Fields const fields{form, "unreal-projection", 1};
     fields.validate(
@@ -721,6 +739,7 @@ auto parse_enum(Form const& form) -> EnumSchema {
                      "conversions",
                      "export-specifier",
                      "native-api",
+                     "helpers",
                      "bit-width",
                      "signed"},
                     {"value", "unreal-projection"});
@@ -743,6 +762,18 @@ auto parse_enum(Form const& form) -> EnumSchema {
                 fail(declaration->token.span, "enum may define only one Unreal projection");
             }
             unreal_projection = parse_enum_unreal_projection(*declaration);
+        }
+    }
+    std::vector<NativeEnumHelper> helpers;
+    if (auto const* list{fields.optional("helpers")}) {
+        if (!list->is_list()) {
+            fail(list->token.span, "helpers must be a list");
+        }
+        if (!boolean_or(fields, "native-api")) {
+            fail(list->token.span, "helpers requires :native-api true");
+        }
+        for (auto const& child : list->children) {
+            helpers.push_back(parse_native_enum_helper(child));
         }
     }
     std::vector<EnumConversion> conversions;
@@ -780,6 +811,7 @@ auto parse_enum(Form const& form) -> EnumSchema {
         .signedness = optional_boolean(fields, "signed"),
         .enum_array = boolean_or(fields, "enum-array"),
         .native_api = boolean_or(fields, "native-api"),
+        .helpers = std::move(helpers),
     };
 }
 

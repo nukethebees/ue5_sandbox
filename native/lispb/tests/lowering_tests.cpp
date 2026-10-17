@@ -114,6 +114,12 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
                                             .display_name = "Active",
                                             .serialized_name = "active"}},
                 .native_api = true,
+                .helpers = {NativeEnumHelper::to_string,
+                            NativeEnumHelper::try_parse,
+                            NativeEnumHelper::to_display_string,
+                            NativeEnumHelper::to_serialized_string,
+                            NativeEnumHelper::try_parse_serialized,
+                            NativeEnumHelper::traits},
             }}}},
     }))};
 
@@ -124,6 +130,41 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
     EXPECT_NE(header.find("try_parse_serialized_native_state"), std::string::npos);
     EXPECT_NE(header.find("EnumTraits<::fixture::NativeState>"), std::string::npos);
     EXPECT_EQ(header.find("CoreMinimal.h"), std::string::npos);
+
+    std::vector<std::pair<NativeEnumHelper, std::string>> const selections{
+        {NativeEnumHelper::to_string, "auto to_string("},
+        {NativeEnumHelper::try_parse, "auto try_parse_state("},
+        {NativeEnumHelper::to_display_string, "auto to_display_string("},
+        {NativeEnumHelper::to_serialized_string, "auto to_serialized_string("},
+        {NativeEnumHelper::try_parse_serialized, "auto try_parse_serialized_state("},
+        {NativeEnumHelper::traits, "struct EnumTraits<"},
+    };
+    for (auto const& [helper, spelling] : selections) {
+        auto const selected{
+            render_modules(
+                lower_modules(Manifest{
+                    .schema_version = manifest_schema_version,
+                    .modules = {NormalModuleSchema{
+                        .settings = {.name = "selected", .header = "Selected.h"},
+                        .declarations = {EnumSchema{
+                            .name = "State",
+                            .values =
+                                {{.name = "Idle", .initializer = "0", .serialized_name = "idle"}},
+                            .enum_array = true,
+                            .native_api = true,
+                            .helpers = {helper},
+                        }}}},
+                }))
+                .front()
+                .content};
+        for (auto const& [candidate, candidate_spelling] : selections) {
+            EXPECT_EQ(selected.find(candidate_spelling) != std::string::npos, candidate == helper)
+                << spelling << ": " << candidate_spelling;
+        }
+        EXPECT_NE(selected.find("enum_count<"), std::string::npos);
+        EXPECT_EQ(selected.find("<unordered_map>") != std::string::npos,
+                  helper == NativeEnumHelper::try_parse_serialized);
+    }
 }
 
 TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
@@ -147,6 +188,11 @@ TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
     ASSERT_EQ(files.size(), 1);
     auto const& header{files.front().content};
     EXPECT_NE(header.find("enum class SignedState : std::int16_t"), std::string::npos);
+    EXPECT_EQ(header.find("to_string("), std::string::npos);
+    EXPECT_EQ(header.find("try_parse_"), std::string::npos);
+    EXPECT_EQ(header.find("EnumTraits<"), std::string::npos);
+    EXPECT_EQ(header.find("<optional>"), std::string::npos);
+    EXPECT_EQ(header.find("<string_view>"), std::string::npos);
     EXPECT_NE(header.find("#include <cstdint>"), std::string::npos);
 }
 
@@ -274,6 +320,7 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
                     },
                 .enum_array = true,
                 .native_api = true,
+                .helpers = {NativeEnumHelper::traits},
             }}}},
     }))};
 
