@@ -544,9 +544,11 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                 }
                 return join(groups, "\n\n");
             } else if constexpr (std::is_same_v<T, ForwardDeclaration>) {
-                return context.apply_indent(value.kind + " " + value.name + ";");
+                return context.apply_indent(std::string{record_keyword(value.kind)} + " " +
+                                            value.name + ";");
             } else if constexpr (std::is_same_v<T, FriendDeclaration>) {
-                return context.apply_indent("friend " + value.kind + " " + value.name + ";");
+                return context.apply_indent("friend " + std::string{record_keyword(value.kind)} +
+                                            " " + value.name + ";");
             } else if constexpr (std::is_same_v<T, UsingDeclaration>) {
                 return context.apply_indent("using " + value.name + " = " + value.type.spelling +
                                             ";");

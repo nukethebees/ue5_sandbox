@@ -22,27 +22,27 @@ template <typename>
 inline constexpr bool unlowered_declaration_schema{false};
 
 auto forward_declaration_kind(lispb::schema::TypeNode const& node)
-    -> std::optional<std::string_view> {
+    -> std::optional<RecordKind> {
     using namespace lispb::schema;
     if (node.identity.origin != TypeOrigin::declaration) {
         return std::nullopt;
     }
     return std::visit(
-        [](auto const& definition) -> std::optional<std::string_view> {
+        [](auto const& definition) -> std::optional<RecordKind> {
             using T = std::decay_t<decltype(definition)>;
             if constexpr (std::is_same_v<T, UnionType>) {
-                return "union";
+                return RecordKind::union_;
             } else if constexpr (std::is_same_v<T, FacadeType>) {
-                return "class";
+                return RecordKind::class_;
             } else if constexpr (std::is_same_v<T, SoaType>) {
                 return definition.layout_only ? std::nullopt
-                                              : std::optional<std::string_view>{"struct"};
+                                              : std::optional<RecordKind>{RecordKind::struct_};
             } else if constexpr (std::is_same_v<T, RecordType> ||
                                  std::is_same_v<T, TaggedUnionType> ||
                                  std::is_same_v<T, PackedType> ||
                                  std::is_same_v<T, StaticTableType> ||
                                  std::is_same_v<T, HomogeneousStorageType>) {
-                return "struct";
+                return RecordKind::struct_;
             } else {
                 return std::nullopt;
             }
@@ -105,7 +105,7 @@ auto generated_forward_declarations(NormalModuleSchema const& module,
         auto const& namespace_name{node.identity.namespace_name};
         ForwardDeclaration declaration{
             node.cpp_spelling.substr(namespace_name.empty() ? 0 : namespace_name.size() + 2),
-            std::string{*forward_declaration_kind(node)}};
+            *forward_declaration_kind(node)};
         if (node.identity.module_name == module.settings.name) {
             declarations.add(std::move(declaration));
         } else if (namespace_name.empty()) {

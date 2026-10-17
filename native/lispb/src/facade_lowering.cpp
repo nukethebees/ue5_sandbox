@@ -77,7 +77,10 @@ auto lower_facade_impl(FacadeSchema const& facade, TypeRegistry const& types)
         add_method(facade.method_access, method);
     }
     for (auto const& friend_name : facade.friends) {
-        private_nodes.add(FriendDeclaration{friend_name, facade.friend_kind}, 1);
+        private_nodes.add(FriendDeclaration{friend_name,
+                                            facade.friend_kind == "class" ? RecordKind::class_
+                                                                          : RecordKind::struct_},
+                          1);
     }
     private_nodes.add(
         facade.reference_target

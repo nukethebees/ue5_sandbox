@@ -1,12 +1,14 @@
 #pragma once
 
+#include <codegen/ast/record_kind.h>
+
 #include <string>
 
 namespace codegen {
 
 struct FriendDeclaration {
     std::string name;
-    std::string kind{"class"};
+    RecordKind kind{RecordKind::class_};
 };
 
 } // namespace codegen

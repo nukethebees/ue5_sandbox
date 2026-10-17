@@ -49,7 +49,8 @@ TEST(Ast, NodeListBuilderComposesSectionsAndSpacing) {
 
 TEST(Ast, RendersFriendDeclarations) {
     EXPECT_EQ(render(Node{FriendDeclaration{"FOwner"}}), "friend class FOwner;");
-    EXPECT_EQ(render(Node{FriendDeclaration{"FValue", "struct"}}), "friend struct FValue;");
+    EXPECT_EQ(render(Node{FriendDeclaration{"FValue", RecordKind::struct_}}),
+              "friend struct FValue;");
 }
 
 TEST(Ast, RendersComments) {
@@ -533,7 +534,7 @@ TEST(Ast, RendersForwardUsingAndFilePolicyNodes) {
         .path = "Example.cpp",
         .nodes =
             {
-                ForwardDeclaration{"FValue", "struct"},
+                ForwardDeclaration{"FValue", RecordKind::struct_},
                 lines(1),
                 UsingDeclaration{"Value", CppType{"FValue"}},
             },
