@@ -162,6 +162,9 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
                 << spelling << ": " << candidate_spelling;
         }
         EXPECT_NE(selected.find("enum_count<"), std::string::npos);
+        EXPECT_EQ(selected.find("std::array names"), std::string::npos);
+        EXPECT_EQ(selected.find("<string_view>") != std::string::npos,
+                  helper != NativeEnumHelper::traits);
         EXPECT_EQ(selected.find("<unordered_map>") != std::string::npos,
                   helper == NativeEnumHelper::try_parse_serialized);
     }
@@ -317,8 +320,9 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
                         .header_include = "Project/NativeState.h",
                         .conversion_header = "Project/NativeStateConversion.h",
                         .native_header_include = "fixture/NativeEnum.h",
+                        .enum_array = true,
                     },
-                .enum_array = true,
+                .enum_array = false,
                 .native_api = true,
                 .helpers = {NativeEnumHelper::traits},
             }}}},
@@ -328,6 +332,8 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
     auto const& native_header{files[0].content};
     auto const& projection_header{files[1].content};
     auto const& conversion_header{files[2].content};
+    EXPECT_EQ(native_header.find("enum_count<"), std::string::npos);
+    EXPECT_NE(projection_header.find("enum_count<::ENativeState>"), std::string::npos);
     EXPECT_NE(native_header.find("enum class NativeState : std::uint8_t"), std::string::npos);
     auto const traits_start{native_header.find("struct EnumTraits<::fixture::NativeState>")};
     ASSERT_NE(traits_start, std::string::npos);

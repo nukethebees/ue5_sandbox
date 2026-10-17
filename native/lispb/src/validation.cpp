@@ -600,7 +600,8 @@ void validate_enum(EnumSchema const& schema,
                                         "' count must follow at least one value"};
         }
     }
-    if (schema.enum_array) {
+    if (schema.enum_array ||
+        (schema.unreal_projection.has_value() && schema.unreal_projection->enum_array)) {
         if (schema.count.has_value()) {
             throw std::invalid_argument{
                 "Enum-array enum '" + schema.name +

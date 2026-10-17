@@ -121,6 +121,9 @@ auto render_enum_unreal_projection(codegen::EnumUnrealProjection const& projecti
            << quote(projection.header_include) << "\n      :conversion-header "
            << quote(projection.conversion_header.string()) << "\n      :native-header-include "
            << quote(projection.native_header_include);
+    if (projection.enum_array) {
+        output << "\n      :enum-array true";
+    }
     if (projection.reflection != codegen::EnumReflection::uenum) {
         output << "\n      :reflection " << codegen::enum_reflection_name(projection.reflection);
     }
@@ -570,7 +573,9 @@ auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
                 source_projection->children[1], projection.name, original, replacements)) {
             return std::nullopt;
         }
-        auto const projection_properties{std::array<SourceProperty, 5>{
+        auto const projection_properties{std::array<SourceProperty, 6>{
+            std::pair{"enum-array",
+                      projection.enum_array ? std::optional<std::string>{"true"} : std::nullopt},
             std::pair{"header", std::optional{quote(projection.header.string())}},
             std::pair{"header-include", std::optional{quote(projection.header_include)}},
             std::pair{"conversion-header",

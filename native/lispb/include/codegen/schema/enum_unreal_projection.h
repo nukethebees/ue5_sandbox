@@ -14,6 +14,7 @@ struct EnumUnrealProjection {
     std::filesystem::path conversion_header;
     std::string native_header_include;
     EnumReflection reflection{EnumReflection::uenum};
+    bool enum_array{false};
 };
 
 } // namespace codegen

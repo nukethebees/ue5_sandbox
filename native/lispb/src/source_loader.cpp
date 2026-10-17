@@ -527,8 +527,12 @@ auto parse_native_enum_helper(Form const& form) -> NativeEnumHelper {
 
 auto parse_enum_unreal_projection(Form const& form) -> EnumUnrealProjection {
     Fields const fields{form, "unreal-projection", 1};
-    fields.validate(
-        {"header", "header-include", "conversion-header", "native-header-include", "reflection"});
+    fields.validate({"header",
+                     "header-include",
+                     "conversion-header",
+                     "native-header-include",
+                     "reflection",
+                     "enum-array"});
 
     auto reflection{EnumReflection::uenum};
     if (auto const* value{fields.optional("reflection")}) {
@@ -545,6 +549,7 @@ auto parse_enum_unreal_projection(Form const& form) -> EnumUnrealProjection {
         .native_header_include =
             text(fields.required("native-header-include"), "native enum header include"),
         .reflection = reflection,
+        .enum_array = boolean_or(fields, "enum-array"),
     };
 }
 

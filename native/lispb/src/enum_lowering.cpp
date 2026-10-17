@@ -390,11 +390,6 @@ auto native_enum_traits(ModuleSettings const& settings, EnumSchema const& schema
             output << qualified << "::" << value->name << ", ";
         }
         output << "};\n";
-        output << "    inline static constexpr std::array names{";
-        for (auto const* value : values) {
-            output << "std::string_view{" << native_string_literal(value->name) << "}, ";
-        }
-        output << "};\n";
         output << "};\n";
     }
 
@@ -461,7 +456,7 @@ auto unreal_projection_header(EnumSchema const& schema,
         output << ",\n";
     }
     output << "};";
-    if (schema.enum_array) {
+    if (projection.enum_array) {
         output << "\n\nnamespace ml {\n"
                << enum_count_specialization("::" + projection.name, schema.values.size())
                << "} // namespace ml\n";
@@ -519,7 +514,9 @@ auto lower_enum(EnumSchema const& schema,
             return std::ranges::contains(schema.helpers, helper);
         };
         prefix.add(Include{"cstdint", true}, 2);
-        if (!schema.helpers.empty()) {
+        if (std::ranges::any_of(schema.helpers, [](auto const helper) {
+                return helper != NativeEnumHelper::traits;
+            })) {
             prefix.add(Include{"string_view", true}, 2);
         }
         if (has(NativeEnumHelper::traits)) {
@@ -551,11 +548,14 @@ auto lower_enum(EnumSchema const& schema,
                 .header =
                     CppFile{.path = projection.header,
                             .nodes = {Include{"CoreMinimal.h", false},
-                                      Include{"ioj/enum_traits.h", false},
                                       Include{generated_header, false},
                                       raw(unreal_projection_header(schema, projection, types))},
                             .clang_format_off = true},
             });
+            if (projection.enum_array) {
+                auto& nodes{emission.additional_modules.back().header->nodes};
+                nodes.insert(nodes.begin() + 1, Include{"ioj/enum_traits.h", false});
+            }
             emission.additional_modules.push_back(Module{
                 .name = settings.name + "_" + projection.name + "_conversion",
                 .header =

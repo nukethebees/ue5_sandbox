@@ -798,6 +798,7 @@ TEST(EditableSchemaDocument, PreservesEnumUnrealProjectionDuringEdits) {
     replacement.unreal_projection->name = "EProjectedNativeMode";
     replacement.unreal_projection->header_include = "Public/ProjectedNativeMode.h";
     replacement.unreal_projection->reflection = codegen::EnumReflection::uenum;
+    replacement.unreal_projection->enum_array = true;
     auto applied{
         document.apply(ReplaceEnum{.declaration = enumeration, .schema = std::move(replacement)})};
     ASSERT_TRUE(applied.has_value()) << applied.error().message;

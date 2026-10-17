@@ -29,7 +29,7 @@ Native enums emit only the helpers selected with `:helpers`:
 ```
 
 Available helpers are `to-string`, `try-parse`, `to-display-string`, `to-serialized-string`,
-`try-parse-serialized`, and `traits` (`ml::EnumTraits<Enum>::values` and `names`). Omit the list
+`try-parse-serialized`, and `traits` (`ml::EnumTraits<Enum>::values`). Omit the list
 or use `:helpers ()` for a bare enum. Each helper is independent; display formatting falls back
 to the enumerator name. Serialized helpers require `:serialized-name` on every non-count value.
 Unknown or duplicate helpers are errors. Existing native schemas must explicitly select the
@@ -40,7 +40,8 @@ Use `:enum-array true` independently on native or Unreal enums to generate `ml::
 `ml::EnumArray<Enum, T>` and `ml::FixedEnumArray<Enum>`. LispB requires known codes in declaration
 order from zero through count minus one; gaps, aliases, negative codes, hidden values, and count
 sentinels are rejected. Explicit numeric initializers are allowed. Other enums can remain sparse
-and do not expose the array count API.
+and do not expose the array count API. Unreal projections select their count helper separately
+with `:enum-array true` inside `unreal-projection`; it is not inherited from the native enum.
 
 See [Semantic type graph](SEMANTIC_TYPE_GRAPH.md) for the shared resolved model consumed by code
 generation and layout tooling. See [ARCHITECTURE.md](ARCHITECTURE.md) for the shared generation
