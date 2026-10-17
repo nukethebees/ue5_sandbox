@@ -15,7 +15,7 @@ class SPACEGAMEPRESENTATION_API UShipThrusterEnergyWidget : public UUserWidget {
     GENERATED_BODY()
 
     void set_energy(float energy);
-    void apply_hud_style(ml::ioj::FGameHudStyle const& style);
+    void apply_hud_style(ioj::FGameHudStyle const& style);
   protected:
     UPROPERTY(meta = (BindWidget))
     UProgressBar* energy_bar{nullptr};

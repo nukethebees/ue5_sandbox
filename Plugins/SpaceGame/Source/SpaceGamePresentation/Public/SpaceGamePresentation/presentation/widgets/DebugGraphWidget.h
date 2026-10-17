@@ -8,7 +8,7 @@
 #include "DebugGraphWidget.generated.h"
 
 class SGraphPlot;
-namespace ml::ioj {
+namespace ioj {
 struct FGameHudStyle;
 }
 
@@ -17,7 +17,7 @@ class SPACEGAMEPRESENTATION_API UDebugGraphWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     void set_samples(TConstArrayView<FVector2d> in_samples, int32 oldest_index);
-    void apply_hud_style(ml::ioj::FGameHudStyle const& style);
+    void apply_hud_style(ioj::FGameHudStyle const& style);
   protected:
     TSharedRef<SWidget> RebuildWidget() override;
     void ReleaseSlateResources(bool release_children) override;

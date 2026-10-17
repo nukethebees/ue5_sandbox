@@ -6,7 +6,7 @@
 
 #include "SpaceGameUiTheme.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 UCLASS(BlueprintType)
 class SPACEGAMEPRESENTATION_API USpaceGameUiTheme : public UDataAsset {
     GENERATED_BODY()

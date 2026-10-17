@@ -13,7 +13,7 @@
 class UTextBlock;
 class SWidget;
 
-namespace ml::ioj {
+namespace ioj {
 class USpaceGameUiTheme;
 
 struct SPACEGAMEPRESENTATION_API FGameHudStyle {

@@ -10,7 +10,7 @@
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/Text/STextBlock.h>
 
-namespace ml::ioj {
+namespace ioj {
 namespace telemetry_dashboard_view {
 auto text(FGameUiStyle const& style, FText value, EGameTextStyle const type = EGameTextStyle::Body)
     -> TSharedRef<SWidget> {
@@ -416,4 +416,4 @@ auto STelemetryDashboardView::handle_section(ETelemetryDashboardSection const se
     }
     return FReply::Handled();
 }
-} // namespace ml::ioj
+} // namespace ioj

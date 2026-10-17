@@ -4,7 +4,7 @@
 
 #include "MenuActivatableWidget.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 UCLASS(Abstract)
 class SPACEGAME_API UMenuActivatableWidget : public UCommonActivatableWidget {
     GENERATED_BODY()

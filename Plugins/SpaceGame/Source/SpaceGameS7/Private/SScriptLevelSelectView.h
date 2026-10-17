@@ -8,7 +8,7 @@
 class SEditableText;
 class SCheckBox;
 
-namespace ml::ioj {
+namespace ioj {
 class SGameButton;
 }
 namespace SlateGenerated::ml::s7 {
@@ -16,7 +16,7 @@ struct SScriptLevelSelectViewBuilder;
 }
 
 namespace ml::s7 {
-using ::ioj::levels::authoring::ELevelCatalogCategory;
+using ioj::levels::authoring::ELevelCatalogCategory;
 
 DECLARE_DELEGATE_OneParam(FOnLevelRowSelected, int32);
 DECLARE_DELEGATE_OneParam(FOnLevelCategorySelected, ELevelCatalogCategory);
@@ -29,7 +29,7 @@ class SScriptLevelSelectView final : public SCompoundWidget {
   public:
     SLATE_BEGIN_ARGS(SScriptLevelSelectView)
         : _Style(nullptr) {}
-    SLATE_ARGUMENT(ml::ioj::FGameUiStyle const*, Style)
+    SLATE_ARGUMENT(ioj::FGameUiStyle const*, Style)
     SLATE_EVENT(FOnLevelRowSelected, OnLevelSelected)
     SLATE_EVENT(FOnLevelCategorySelected, OnCategorySelected)
     SLATE_EVENT(FOnBattleSpeedChanged, OnBattleSpeedChanged)
@@ -68,7 +68,7 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     void focus_active_category();
     void focus_level(int32 button_index);
 
-    ml::ioj::FGameUiStyle const* style_{};
+    ioj::FGameUiStyle const* style_{};
     FOnLevelRowSelected on_level_selected_{};
     FOnLevelCategorySelected on_category_selected_{};
     FOnBattleSpeedChanged on_battle_speed_changed_{};
@@ -89,11 +89,11 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     TSharedPtr<STextBlock> battle_speed_error_{};
     TSharedPtr<SEditableText> battle_duration_input_{};
     TSharedPtr<STextBlock> battle_duration_error_{};
-    TSharedPtr<ml::ioj::SGameButton> launch_button_{};
-    TSharedPtr<ml::ioj::SGameButton> mission_category_button_{};
-    TSharedPtr<ml::ioj::SGameButton> battle_viewer_category_button_{};
-    TSharedPtr<ml::ioj::SGameButton> benchmark_category_button_{};
-    TArray<TSharedPtr<ml::ioj::SGameButton>> level_buttons_{};
+    TSharedPtr<ioj::SGameButton> launch_button_{};
+    TSharedPtr<ioj::SGameButton> mission_category_button_{};
+    TSharedPtr<ioj::SGameButton> battle_viewer_category_button_{};
+    TSharedPtr<ioj::SGameButton> benchmark_category_button_{};
+    TArray<TSharedPtr<ioj::SGameButton>> level_buttons_{};
     ELevelCatalogCategory category_{ELevelCatalogCategory::Mission};
     int32 selected_button_index_{INDEX_NONE};
     bool selected_level_can_launch_{};

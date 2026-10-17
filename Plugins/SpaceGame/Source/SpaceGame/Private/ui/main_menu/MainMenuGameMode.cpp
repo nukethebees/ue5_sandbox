@@ -8,7 +8,7 @@
 #include <Engine/GameInstance.h>
 #include <UObject/ConstructorHelpers.h>
 
-namespace ml::ioj {
+namespace ioj {
 AMainMenuGameMode::AMainMenuGameMode() {
     static ConstructorHelpers::FClassFinder<ASpaceGamePlayerController> controller_class{
         TEXT("/SpaceGame/Players/BP_SpaceGamePlayerController")};

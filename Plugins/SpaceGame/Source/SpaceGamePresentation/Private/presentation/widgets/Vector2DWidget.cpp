@@ -20,7 +20,7 @@ void UVector2DWidget::update(FVector2D const value) {
     update_widgets();
 }
 
-void UVector2DWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
+void UVector2DWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
     hud_style_ = style;
     update_widgets();
 }
@@ -130,10 +130,10 @@ void UVector2DWidget::update_widgets() {
         background_widget->SetBrush(style.control_background);
         cursor_widget->SetBrushColor(style.energy);
         if (name_text) {
-            ml::ioj::apply_text_style(*name_text, style.caption_text);
+            ioj::apply_text_style(*name_text, style.caption_text);
         }
         if (value_text) {
-            ml::ioj::apply_text_style(*value_text, style.secondary_text);
+            ioj::apply_text_style(*value_text, style.secondary_text);
         }
     }
     if (name_text) {

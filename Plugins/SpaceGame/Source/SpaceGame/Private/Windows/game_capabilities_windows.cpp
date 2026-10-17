@@ -12,7 +12,7 @@
 #include "Windows/HideWindowsPlatformTypes.h"
 // clang-format on
 
-namespace ml::ioj::detail {
+namespace ioj::detail {
 auto query_windows_platform_capabilities() -> FWindowsGameCapabilities {
     FWindowsGameCapabilities capabilities;
 

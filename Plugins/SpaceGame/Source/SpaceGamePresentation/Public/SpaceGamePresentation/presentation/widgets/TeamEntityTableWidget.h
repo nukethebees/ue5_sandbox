@@ -18,10 +18,10 @@ UCLASS()
 class SPACEGAMEPRESENTATION_API UTeamEntityTableWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void set_entity_counts(::ioj::sim::telemetry::EntityCounts const& new_counts);
+    void set_entity_counts(ioj::sim::telemetry::EntityCounts const& new_counts);
     void set_team_kill_matrix(ml::ship_hud::FTeamKillMatrix const& new_matrix);
     void set_team_colours(UTestTeamVisualData::FColourArray const& new_colours);
-    void apply_hud_style(ml::ioj::FGameHudStyle const& style);
+    void apply_hud_style(ioj::FGameHudStyle const& style);
     void set_font_size(int32 new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
     void set_show_team_totals(bool show_totals);
@@ -48,7 +48,7 @@ class SPACEGAMEPRESENTATION_API UTeamEntityTableWidget : public UUserWidget {
     void rebuild_table();
     void set_text_style(UTextBlock& text, ETextJustify::Type alignment) const;
 
-    ::ioj::sim::telemetry::EntityCounts values{};
+    ioj::sim::telemetry::EntityCounts values{};
     UTestTeamVisualData::FColourArray team_colours{};
-    TOptional<ml::ioj::FGameHudStyle> hud_style_{};
+    TOptional<ioj::FGameHudStyle> hud_style_{};
 };

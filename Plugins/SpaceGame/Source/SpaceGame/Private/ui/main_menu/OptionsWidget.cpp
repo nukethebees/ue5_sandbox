@@ -9,7 +9,7 @@
 #include <Engine/GameInstance.h>
 #include <Widgets/Text/STextBlock.h>
 
-namespace ml::ioj {
+namespace ioj {
 
 UOptionsWidget::UOptionsWidget(FObjectInitializer const& object_initializer)
     : Super(object_initializer) {
@@ -278,4 +278,4 @@ void UOptionsWidget::cancel_leave() {
     modal_state_changed.Broadcast(false);
 }
 
-} // namespace ml::ioj
+} // namespace ioj

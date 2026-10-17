@@ -15,7 +15,7 @@
 #include <Kismet/KismetSystemLibrary.h>
 #include <Widgets/SNullWidget.h>
 
-namespace ml::ioj {
+namespace ioj {
 UMainMenuWidget::UMainMenuWidget() {
     SetIsFocusable(true);
 }
@@ -179,8 +179,8 @@ void UMainMenuWidget::create_content_widgets() {
     auto* const world{GetWorld()};
     if (!IsValid(save_game_viewer_)) {
         save_game_viewer_ =
-            IsValid(owning_player) ? CreateWidget<USaveGameViewerWidget>(
-                                         owning_player, USaveGameViewerWidget::StaticClass())
+            IsValid(owning_player)   ? CreateWidget<USaveGameViewerWidget>(
+                                           owning_player, USaveGameViewerWidget::StaticClass())
             : IsValid(game_instance) ? CreateWidget<USaveGameViewerWidget>(
                                            game_instance, USaveGameViewerWidget::StaticClass())
             : IsValid(world)
@@ -206,8 +206,8 @@ void UMainMenuWidget::create_content_widgets() {
     }
     if (!IsValid(debug_settings_widget_)) {
         debug_settings_widget_ =
-            IsValid(owning_player) ? CreateWidget<UDebugSettingsWidget>(
-                                         owning_player, UDebugSettingsWidget::StaticClass())
+            IsValid(owning_player)   ? CreateWidget<UDebugSettingsWidget>(
+                                           owning_player, UDebugSettingsWidget::StaticClass())
             : IsValid(game_instance) ? CreateWidget<UDebugSettingsWidget>(
                                            game_instance, UDebugSettingsWidget::StaticClass())
             : IsValid(world)
@@ -220,25 +220,25 @@ void UMainMenuWidget::create_content_widgets() {
     }
     if (!IsValid(telemetry_dashboard_)) {
         telemetry_dashboard_ =
-            IsValid(owning_player) ? CreateWidget<UTelemetryDashboardWidget>(
-                                         owning_player, UTelemetryDashboardWidget::StaticClass())
+            IsValid(owning_player)   ? CreateWidget<UTelemetryDashboardWidget>(
+                                           owning_player, UTelemetryDashboardWidget::StaticClass())
             : IsValid(game_instance) ? CreateWidget<UTelemetryDashboardWidget>(
                                            game_instance, UTelemetryDashboardWidget::StaticClass())
-            : IsValid(world) ? CreateWidget<UTelemetryDashboardWidget>(
-                                   world, UTelemetryDashboardWidget::StaticClass())
-                             : nullptr;
+            : IsValid(world)         ? CreateWidget<UTelemetryDashboardWidget>(
+                                           world, UTelemetryDashboardWidget::StaticClass())
+                                     : nullptr;
     }
     if (!IsValid(level_select_widget_) && level_select_class_) {
         level_select_widget_ =
             IsValid(owning_player)   ? CreateWidget<ULevelSelectWidget>(owning_player,
-                                                                      level_select_class_,
-                                                                      TEXT("level_select_page"))
+                                                                        level_select_class_,
+                                                                        TEXT("level_select_page"))
             : IsValid(game_instance) ? CreateWidget<ULevelSelectWidget>(game_instance,
                                                                         level_select_class_,
                                                                         TEXT("level_select_page"))
             : IsValid(world)         ? CreateWidget<ULevelSelectWidget>(
-                                   world, level_select_class_, TEXT("level_select_page"))
-                             : nullptr;
+                                           world, level_select_class_, TEXT("level_select_page"))
+                                     : nullptr;
         if (IsValid(level_select_widget_)) {
             level_select_widget_->prepare_for_open(preferred_level_id_);
         }
@@ -324,4 +324,4 @@ void UMainMenuWidget::handle_profile_debug_settings_changed() {
         level_select_widget_->refresh();
     }
 }
-} // namespace ml::ioj
+} // namespace ioj

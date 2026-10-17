@@ -14,7 +14,7 @@
 #include <Widgets/SOverlay.h>
 #include <Widgets/Text/STextBlock.h>
 
-namespace ml::ioj {
+namespace ioj {
 namespace {
 auto action_button(TSharedPtr<SGameButton>& button,
                    FGameUiStyle const& style,
@@ -595,4 +595,4 @@ void SSaveGameViewerView::update_details() {
                                              FText::GetEmpty()));
     activate_button_->SetEnabled(state_.can_activate);
 }
-} // namespace ml::ioj
+} // namespace ioj

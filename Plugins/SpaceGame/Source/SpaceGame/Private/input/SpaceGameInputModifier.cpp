@@ -7,7 +7,7 @@
 #include "EnhancedPlayerInput.h"
 #include "GameFramework/PlayerController.h"
 
-namespace ml::ioj {
+namespace ioj {
 namespace input_constants {
 inline constexpr float virtual_stick_units_per_mouse_count{1.0f / 400.0f};
 }
@@ -143,4 +143,4 @@ auto USpaceGameInputModifier::ModifyRaw_Implementation(
     return current_value;
 }
 
-} // namespace ml::ioj
+} // namespace ioj

@@ -4,7 +4,7 @@
 #include <HAL/PlatformMisc.h>
 #include <Misc/Paths.h>
 
-namespace ml::ioj::boom_audio_library {
+namespace ioj::boom_audio_library {
 inline constexpr TCHAR root_environment_variable[]{TEXT("BEE_AUDIO_ROOT")};
 
 inline constexpr TCHAR sci_fi_designed_directory[]{TEXT("sci-fi_ds_2220mb")};
@@ -20,11 +20,11 @@ inline constexpr TCHAR const* pack_directories[]{
 };
 }
 
-auto ml::ioj::get_configured_boom_audio_root() -> FString {
+auto ioj::get_configured_boom_audio_root() -> FString {
     return FPlatformMisc::GetEnvironmentVariable(boom_audio_library::root_environment_variable);
 }
 
-auto ml::ioj::resolve_boom_audio_library(FStringView const configured_root)
+auto ioj::resolve_boom_audio_library(FStringView const configured_root)
     -> FExternalAudioLibraryResolution {
     FExternalAudioLibraryResolution resolution;
     if (configured_root.IsEmpty()) {

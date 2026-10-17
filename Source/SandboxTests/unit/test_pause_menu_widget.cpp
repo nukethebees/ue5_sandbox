@@ -30,13 +30,13 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
             return;
         }
 
-        auto const widget_class{ui_data->get_widget_class<ml::ioj::UPauseMenuWidget>()};
+        auto const widget_class{ui_data->get_widget_class<ioj::UPauseMenuWidget>()};
         if (!TestRunner->TestTrue(TEXT("Pause menu class is configured"),
                                   static_cast<bool>(widget_class))) {
             return;
         }
 
-        auto* const widget{CreateWidget<ml::ioj::UPauseMenuWidget>(
+        auto* const widget{CreateWidget<ioj::UPauseMenuWidget>(
             world_result.value(), widget_class, TEXT("pause_menu_test"))};
         if (!TestRunner->TestTrue(TEXT("Pause menu is created"), IsValid(widget))) {
             return;
@@ -48,7 +48,7 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
             return;
         }
 
-        ml::ioj::FPauseMenuData data;
+        ioj::FPauseMenuData data;
         auto& snapshot{data.telemetry};
         snapshot.elapsed_seconds = 3723.0;
         snapshot.tick_period = 0.5;
@@ -63,12 +63,12 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         snapshot.cumulative_kill_count_data.add(0, 0);
         snapshot.cumulative_kill_count_data.add(4, 6);
         data.alive_per_team_and_type[std::to_underlying(ETestTeam::Red)]
-                                    [std::to_underlying(::ioj::sim::EntityType::Fighter)] = 12;
-        data.top_killers.add(::ioj::sim::EntityUniqueId(7, ::ioj::sim::EntityType::CapitalShip),
-                             ::ioj::sim::EntityType::CapitalShip,
+                                    [std::to_underlying(ioj::sim::EntityType::Fighter)] = 12;
+        data.top_killers.add(ioj::sim::EntityUniqueId(7, ioj::sim::EntityType::CapitalShip),
+                             ioj::sim::EntityType::CapitalShip,
                              ETestTeam::Blue,
                              5);
-        data.team_kill_matrix.set(ETestTeam::Green, ::ioj::sim::EntityType::Turret, 3);
+        data.team_kill_matrix.set(ETestTeam::Green, ioj::sim::EntityType::Turret, 3);
         widget->prepare_for_open(*pause_action, MoveTemp(data));
 
         FCommonInputBase::GetInputSettings()->LoadData();
@@ -77,23 +77,23 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         widget->ActivateWidget();
 
         auto* const resume_button{
-            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("resume_button")))};
+            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("resume_button")))};
         auto* const overview_button{
-            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("overview_button")))};
+            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("overview_button")))};
         auto* const forces_button{
-            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("forces_button")))};
+            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("forces_button")))};
         auto* const combat_button{
-            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("combat_button")))};
+            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("combat_button")))};
         auto* const telemetry_button{
-            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("telemetry_button")))};
+            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("telemetry_button")))};
         auto* const audio_button{
-            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("audio_button")))};
+            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("audio_button")))};
         auto* const controls_button{
-            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("controls_button")))};
-        auto* const return_button{Cast<ml::ioj::UMenuButtonWidget>(
+            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("controls_button")))};
+        auto* const return_button{Cast<ioj::UMenuButtonWidget>(
             widget->GetWidgetFromName(TEXT("return_to_level_select_button")))};
         auto* const quit_button{
-            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("quit_button")))};
+            Cast<ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("quit_button")))};
         auto* const page_heading{Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("page_heading")))};
         auto* const page_switcher{
             Cast<UWidgetSwitcher>(widget->GetWidgetFromName(TEXT("page_switcher")))};
@@ -144,7 +144,7 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         }
 
         TestRunner->TestTrue(TEXT("Overview is active initially"),
-                             widget->get_active_tab() == ml::ioj::EPauseMenuTab::Overview);
+                             widget->get_active_tab() == ioj::EPauseMenuTab::Overview);
         TestRunner->TestTrue(TEXT("Resume is the deterministic initial focus target"),
                              widget->GetDesiredFocusTarget() == resume_button);
         TestRunner->TestEqual(TEXT("Overview heading is displayed"),
@@ -167,7 +167,7 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
 
         forces_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Forces button activates Forces"),
-                             widget->get_active_tab() == ml::ioj::EPauseMenuTab::Forces);
+                             widget->get_active_tab() == ioj::EPauseMenuTab::Forces);
         TestRunner->TestEqual(TEXT("Forces heading is displayed"),
                               page_heading->GetText().ToString(),
                               TEXT("Forces"));
@@ -182,7 +182,7 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
 
         combat_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Combat button activates Combat"),
-                             widget->get_active_tab() == ml::ioj::EPauseMenuTab::Combat);
+                             widget->get_active_tab() == ioj::EPauseMenuTab::Combat);
         auto* const top_kills{
             Cast<UTextBlock>(top_killers_table->GetWidgetFromName(TEXT("kills_0")))};
         auto* const turret_kills{
@@ -200,10 +200,10 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
 
         telemetry_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Telemetry button activates Telemetry"),
-                             widget->get_active_tab() == ml::ioj::EPauseMenuTab::Telemetry);
+                             widget->get_active_tab() == ioj::EPauseMenuTab::Telemetry);
         TestRunner->TestEqual(TEXT("Telemetry page is displayed"),
                               page_switcher->GetActiveWidgetIndex(),
-                              static_cast<int32>(ml::ioj::EPauseMenuTab::Telemetry));
+                              static_cast<int32>(ioj::EPauseMenuTab::Telemetry));
         TestRunner->TestEqual(TEXT("Fired laser count is displayed"),
                               lasers_fired_value->GetText().ToString(),
                               TEXT("120"));
@@ -239,7 +239,7 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
                              telemetry_button->GetSelected() && !overview_button->GetSelected());
 
         auto const check_elapsed_time{[&](double const seconds, TCHAR const* const expected) {
-            ml::ioj::FPauseMenuData time_data;
+            ioj::FPauseMenuData time_data;
             time_data.telemetry.elapsed_seconds = seconds;
             widget->prepare_for_open(*pause_action, MoveTemp(time_data));
             TestRunner->TestEqual(TEXT("Elapsed-time boundary is formatted correctly"),
@@ -256,17 +256,17 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
 
         audio_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Audio button activates Options"),
-                             widget->get_active_tab() == ml::ioj::EPauseMenuTab::Options);
+                             widget->get_active_tab() == ioj::EPauseMenuTab::Options);
         TestRunner->TestTrue(TEXT("Audio opens the shared options widget on its Audio tab"),
-                             options_widget->get_active_tab() == ml::ioj::EOptionsTab::Audio);
+                             options_widget->get_active_tab() == ioj::EOptionsTab::Audio);
         controls_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Controls uses the shared options page"),
-                             widget->get_active_tab() == ml::ioj::EPauseMenuTab::Options);
+                             widget->get_active_tab() == ioj::EPauseMenuTab::Options);
         TestRunner->TestTrue(TEXT("Controls selects the Controls options tab"),
-                             options_widget->get_active_tab() == ml::ioj::EOptionsTab::Controls);
+                             options_widget->get_active_tab() == ioj::EOptionsTab::Controls);
         overview_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Overview button returns to Overview"),
-                             widget->get_active_tab() == ml::ioj::EPauseMenuTab::Overview);
+                             widget->get_active_tab() == ioj::EPauseMenuTab::Overview);
 
         resume_button->OnClicked().Broadcast();
         TestRunner->TestFalse(TEXT("Resume deactivates the pause menu"), widget->IsActivated());

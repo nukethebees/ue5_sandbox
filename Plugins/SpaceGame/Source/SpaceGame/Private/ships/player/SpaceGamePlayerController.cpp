@@ -149,7 +149,7 @@ void ASpaceGamePlayerController::BeginPlay() {
 
     initialise_input_user_settings();
     if (auto* const game_instance{GetGameInstance()}; IsValid(game_instance)) {
-        if (auto* const settings{game_instance->GetSubsystem<ml::ioj::UGameSettingsSubsystem>()};
+        if (auto* const settings{game_instance->GetSubsystem<ioj::UGameSettingsSubsystem>()};
             IsValid(settings)) {
             settings->flight_model_config_changed.AddUObject(
                 this, &ThisClass::apply_player_ship_flight_model_config);
@@ -228,7 +228,7 @@ void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
     hud_.shutdown_benchmark(*this);
     modal_ui_.shutdown(*this);
     if (auto* const game_instance{GetGameInstance()}; IsValid(game_instance)) {
-        if (auto* const settings{game_instance->GetSubsystem<ml::ioj::UGameSettingsSubsystem>()};
+        if (auto* const settings{game_instance->GetSubsystem<ioj::UGameSettingsSubsystem>()};
             IsValid(settings)) {
             settings->flight_model_config_changed.RemoveAll(this);
         }
@@ -260,7 +260,7 @@ void ASpaceGamePlayerController::attach_ship(Pawn& ship) {
     modal_ui_.on_ship_changed(true);
 
     auto* const game_instance{GetGameInstance()};
-    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>()
+    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<ioj::UGameSubsystem>()
                                             : nullptr};
     if (IsValid(game)) {
         game->start_player_ship_ambience();
@@ -280,20 +280,20 @@ void ASpaceGamePlayerController::apply_player_ship_flight_model_config() {
 void ASpaceGamePlayerController::apply_player_ship_flight_model_config(Pawn& ship) const {
     auto* const game_instance{GetGameInstance()};
     auto* const settings{IsValid(game_instance)
-                             ? game_instance->GetSubsystem<ml::ioj::UGameSettingsSubsystem>()
+                             ? game_instance->GetSubsystem<ioj::UGameSettingsSubsystem>()
                              : nullptr};
     if (!IsValid(settings)) {
         return;
     }
 
     auto const& loadout{settings->flight_model_loadout()};
-    using ::ioj::sim::player::FlightModelSlot;
+    using ioj::sim::player::FlightModelSlot;
     for (auto const slot : {FlightModelSlot::Up,
                             FlightModelSlot::Right,
                             FlightModelSlot::Down,
                             FlightModelSlot::Left}) {
         if (!ship.set_flight_model_slot_profile(
-                slot, ::ioj::sim::player::flight_model_profile(loadout, slot))) {
+                slot, ioj::sim::player::flight_model_profile(loadout, slot))) {
             UE_LOG(LogSandboxController, Error, TEXT("Could not apply saved flight model slot"));
         }
     }
@@ -304,9 +304,9 @@ void ASpaceGamePlayerController::on_player_ship_flight_model_selected() {
         return;
     }
     if (auto* const orchestrator{orchestrator_.Get()}; IsValid(orchestrator)) {
-        auto const scope{ml::ioj::flight_control_scope(ship->get_active_flight_model_slot())};
+        auto const scope{ioj::flight_control_scope(ship->get_active_flight_model_slot())};
         orchestrator->get_hud_manager().set_selected_mapping_context(
-            FString{ml::ioj::canonical_ship_control_context(scope).asset_name});
+            FString{ioj::canonical_ship_control_context(scope).asset_name});
     }
 }
 void ASpaceGamePlayerController::activate_ship_control() {
@@ -331,7 +331,7 @@ void ASpaceGamePlayerController::OnUnPossess() {
 }
 void ASpaceGamePlayerController::detach_ship() {
     auto* const game_instance{GetGameInstance()};
-    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>()
+    auto* const game{IsValid(game_instance) ? game_instance->GetSubsystem<ioj::UGameSubsystem>()
                                             : nullptr};
     if (IsValid(game)) {
         game->stop_player_ship_ambience();
@@ -457,8 +457,8 @@ void ASpaceGamePlayerController::initialise_input_user_settings() {
     if (registered_input_settings_.Get() == settings) {
         return;
     }
-    for (auto const& definition : ml::ioj::canonical_ship_control_contexts()) {
-        auto* const mapping{ml::ioj::load_ship_control_context(definition.scope)};
+    for (auto const& definition : ioj::canonical_ship_control_contexts()) {
+        auto* const mapping{ioj::load_ship_control_context(definition.scope)};
         if (!IsValid(mapping)) {
             UE_LOG(LogSandboxController,
                    Error,
@@ -470,7 +470,7 @@ void ASpaceGamePlayerController::initialise_input_user_settings() {
             settings->RegisterInputMappingContext(mapping);
         }
     }
-    if (auto* const ship_settings{Cast<ml::ioj::USpaceGameInputUserSettings>(settings)}) {
+    if (auto* const ship_settings{Cast<ioj::USpaceGameInputUserSettings>(settings)}) {
         ship_settings->finalize_canonical_registration();
     } else {
         UE_LOG(LogSandboxController,
@@ -581,7 +581,7 @@ void ASpaceGamePlayerController::toggle_pause_game() {
     }
 
     switch (orchestrator->get_state()) {
-        case ::ioj::sim::OrchestratorState::Running: {
+        case ioj::sim::OrchestratorState::Running: {
             if (return_to_level_select_pending_ || (modal_ui_.is_completion_active())) {
                 return;
             }
@@ -594,8 +594,8 @@ void ASpaceGamePlayerController::toggle_pause_game() {
             }
             break;
         }
-        case ::ioj::sim::OrchestratorState::Uninitialised:
-        case ::ioj::sim::OrchestratorState::Paused: {
+        case ioj::sim::OrchestratorState::Uninitialised:
+        case ioj::sim::OrchestratorState::Paused: {
             if (modal_ui_.is_pause_active()) {
                 modal_ui_.deactivate_pause();
             } else if (!modal_ui_.has_completion()) {
@@ -603,7 +603,7 @@ void ASpaceGamePlayerController::toggle_pause_game() {
             }
             break;
         }
-        case ::ioj::sim::OrchestratorState::Stopped: {
+        case ioj::sim::OrchestratorState::Stopped: {
             UE_LOG(LogSandboxController,
                    Error,
                    TEXT("ASpaceGamePlayerController::toggle_pause_game: Orchestrator is stopped."));
@@ -614,7 +614,7 @@ void ASpaceGamePlayerController::toggle_pause_game() {
 void ASpaceGamePlayerController::show_initial_pause_menu() {
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(orchestrator) || !orchestrator->was_launched_paused() ||
-        orchestrator->get_state() != ::ioj::sim::OrchestratorState::Paused || !is_gameplay_mode() ||
+        orchestrator->get_state() != ioj::sim::OrchestratorState::Paused || !is_gameplay_mode() ||
         get_active_control_context() == EPlayerControlContext::Benchmark ||
         return_to_level_select_pending_ || modal_ui_.has_modal()) {
         return;
@@ -638,8 +638,8 @@ void ASpaceGamePlayerController::show_initial_pause_menu() {
 auto ASpaceGamePlayerController::open_pause_menu() -> bool {
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(orchestrator) ||
-        orchestrator->get_state() != ::ioj::sim::OrchestratorState::Paused ||
-        !modal_ui_.has_root() || !IsValid(global_input.toggle_menu) || !IsValid(ui_data) ||
+        orchestrator->get_state() != ioj::sim::OrchestratorState::Paused || !modal_ui_.has_root() ||
+        !IsValid(global_input.toggle_menu) || !IsValid(ui_data) ||
         !IsValid(ui_data->team_visual_data)) {
         UE_LOG(LogSandboxController,
                Error,
@@ -653,7 +653,7 @@ auto ASpaceGamePlayerController::open_pause_menu() -> bool {
     auto const& entity_counts{hud_manager.get_entity_count_data()};
     auto const& kill_data{hud_manager.get_kill_data()};
 
-    ml::ioj::FPauseMenuData pause_data;
+    ioj::FPauseMenuData pause_data;
     pause_data.telemetry = orchestrator->get_level_telemetry_manager().make_snapshot();
     pause_data.alive_per_team_and_type = entity_counts.alive_per_team_and_type;
     pause_data.top_killers = kill_data.top_killers;
@@ -664,7 +664,7 @@ auto ASpaceGamePlayerController::open_pause_menu() -> bool {
 auto ASpaceGamePlayerController::suspend_gameplay_for_modal() -> bool {
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(orchestrator) ||
-        orchestrator->get_state() != ::ioj::sim::OrchestratorState::Running) {
+        orchestrator->get_state() != ioj::sim::OrchestratorState::Running) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::suspend_gameplay_for_modal: Gameplay is not "
@@ -693,7 +693,7 @@ void ASpaceGamePlayerController::resume_game() {
                TEXT("ASpaceGamePlayerController::resume_game: Orchestrator is invalid."));
         return;
     }
-    if (orchestrator->get_state() == ::ioj::sim::OrchestratorState::Stopped) {
+    if (orchestrator->get_state() == ioj::sim::OrchestratorState::Stopped) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::resume_game: Orchestrator is stopped."));
@@ -714,13 +714,13 @@ void ASpaceGamePlayerController::resume_game() {
     }
 
     switch (orchestrator->get_state()) {
-        case ::ioj::sim::OrchestratorState::Uninitialised:
-        case ::ioj::sim::OrchestratorState::Paused: {
+        case ioj::sim::OrchestratorState::Uninitialised:
+        case ioj::sim::OrchestratorState::Paused: {
             orchestrator->start_simulation();
             break;
         }
-        case ::ioj::sim::OrchestratorState::Running:
-        case ::ioj::sim::OrchestratorState::Stopped: {
+        case ioj::sim::OrchestratorState::Running:
+        case ioj::sim::OrchestratorState::Stopped: {
             break;
         }
     }
@@ -771,7 +771,7 @@ void ASpaceGamePlayerController::return_to_level_select() {
     }
 
     auto* const game_instance{GetGameInstance()};
-    auto* const subsystem{ml::ioj::UGameSubsystem::get(game_instance)};
+    auto* const subsystem{ioj::UGameSubsystem::get(game_instance)};
     auto* const orchestrator{orchestrator_.Get()};
     if (!IsValid(subsystem) || !IsValid(orchestrator)) {
         UE_LOG(LogSandboxController,

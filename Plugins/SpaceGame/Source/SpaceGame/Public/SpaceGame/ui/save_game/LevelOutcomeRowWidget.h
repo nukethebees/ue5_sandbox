@@ -7,7 +7,7 @@
 class UButton;
 class UTextBlock;
 
-namespace ml::ioj {
+namespace ioj {
 struct FLevelOutcomeSummary;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FLevelOutcomeRowSelected, FString const&);

@@ -28,12 +28,12 @@ auto FPlayerModalUi::initialise_root(ASpaceGamePlayerController& owner,
         return false;
     }
 
-    auto const root_class{ui_data->get_widget_class<ml::ioj::UGameUiRootLayout>()};
+    auto const root_class{ui_data->get_widget_class<ioj::UGameUiRootLayout>()};
     if (!root_class) {
         return false;
     }
     auto* const root{
-        CreateWidget<ml::ioj::UGameUiRootLayout>(&owner, root_class, TEXT("game_ui_root"))};
+        CreateWidget<ioj::UGameUiRootLayout>(&owner, root_class, TEXT("game_ui_root"))};
     if (!IsValid(root) || !root->initialise(*ui_data)) {
         UE_LOG(LogSandboxController,
                Error,
@@ -69,16 +69,16 @@ auto FPlayerModalUi::show_main_menu(ASpaceGamePlayerController& owner) -> bool {
         return false;
     }
     auto* const game_instance{owner.GetGameInstance()};
-    auto* const subsystem{ml::ioj::UGameSubsystem::get(game_instance)};
+    auto* const subsystem{ioj::UGameSubsystem::get(game_instance)};
     auto level_select_request{IsValid(subsystem) ? subsystem->take_level_select_request()
-                                                 : TOptional<ml::ioj::FLevelSelectRequest>{}};
+                                                 : TOptional<ioj::FLevelSelectRequest>{}};
     auto const show_level_select{IsValid(subsystem) && (level_select_request.IsSet() ||
                                                         subsystem->has_level_launch_error())};
     auto const preferred_level_id{
         level_select_request.IsSet() ? level_select_request->preferred_level_id : NAME_None};
     auto const show_telemetry{level_select_request.IsSet() &&
                               level_select_request->destination ==
-                                  ml::ioj::EMainMenuDestination::Telemetry};
+                                  ioj::EMainMenuDestination::Telemetry};
     auto const telemetry_run_id{
         level_select_request.IsSet() ? level_select_request->selected_telemetry_run_id : FString{}};
     auto const telemetry_error{level_select_request.IsSet() ? level_select_request->telemetry_error
@@ -109,7 +109,7 @@ void FPlayerModalUi::apply_main_menu_input_mode(ASpaceGamePlayerController& owne
 /* **************************************** */
 auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner,
                                 UInputAction& action,
-                                ml::ioj::FPauseMenuData data) -> bool {
+                                ioj::FPauseMenuData data) -> bool {
     if (!has_root()) {
         UE_LOG(LogSandboxController, Error, TEXT("FPlayerModalUi: UI root is invalid."));
         return false;
@@ -131,7 +131,7 @@ auto FPlayerModalUi::show_pause(ASpaceGamePlayerController& owner,
 }
 auto FPlayerModalUi::show_completion(ASpaceGamePlayerController& owner,
                                      FTestMissionCompletion const& completion,
-                                     ::ioj::sim::LevelTelemetrySnapshot snapshot) -> bool {
+                                     ioj::sim::LevelTelemetrySnapshot snapshot) -> bool {
     if (!has_root()) {
         UE_LOG(LogSandboxController, Error, TEXT("FPlayerModalUi: UI root is invalid."));
         return false;

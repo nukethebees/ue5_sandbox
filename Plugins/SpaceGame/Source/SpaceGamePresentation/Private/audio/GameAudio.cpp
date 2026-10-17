@@ -9,7 +9,7 @@
 #include <Sound/SoundWave.h>
 #include <UObject/UObjectGlobals.h>
 
-namespace ml::ioj::game_audio {
+namespace ioj::game_audio {
 inline constexpr TCHAR menu_ambience_object_path[]{
     TEXT("/SpaceGame/Audio/Generated/A_MenuAmbience_ComputerRoomLow02."
          "A_MenuAmbience_ComputerRoomLow02")};
@@ -21,7 +21,7 @@ inline constexpr TCHAR player_ship_ambience_object_path[]{
 inline constexpr float menu_button_playback_seconds{0.5f};
 }
 
-namespace ml::ioj {
+namespace ioj {
 FGameAudioFacade::FGameAudioFacade(FGameAudio& audio)
     : audio_{&audio} {}
 

@@ -4,7 +4,7 @@
 
 #include "MainMenuGameMode.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 UCLASS()
 class SPACEGAME_API AMainMenuGameMode : public AGameModeBase {
     GENERATED_BODY()

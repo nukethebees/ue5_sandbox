@@ -12,7 +12,7 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
 {
     TEST_METHOD(TracksPendingAppliedAndDefaultsByCategory)
     {
-        ml::ioj::FGameSettingsState applied;
+        ioj::FGameSettingsState applied;
         applied.vsync = false;
         applied.master_volume = 0.25f;
         applied.bees = 2;
@@ -23,72 +23,70 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
         defaults.bees = 0;
         defaults.mouse_turn_sensitivity = 1.f;
 
-        ml::ioj::FGameSettingsEditState state;
+        ioj::FGameSettingsEditState state;
         state.begin(applied, defaults);
         TestRunner->TestFalse(TEXT("A new edit session is clean"), state.is_dirty());
         TestRunner->TestFalse(TEXT("Non-default video values can be reset"),
-                              state.is_at_defaults(ml::ioj::EGameSettingCategory::Video));
+                              state.is_at_defaults(ioj::EGameSettingCategory::Video));
 
-        state.set_setting(ml::ioj::EGameSetting::MasterVolume, ml::ioj::FGameSettingValue{0.5f});
+        state.set_setting(ioj::EGameSetting::MasterVolume, ioj::FGameSettingValue{0.5f});
         TestRunner->TestTrue(TEXT("Editing a value makes its category dirty"),
-                             state.is_dirty(ml::ioj::EGameSettingCategory::Audio));
+                             state.is_dirty(ioj::EGameSettingCategory::Audio));
         TestRunner->TestFalse(TEXT("Editing audio does not dirty video"),
-                              state.is_dirty(ml::ioj::EGameSettingCategory::Video));
+                              state.is_dirty(ioj::EGameSettingCategory::Video));
 
-        state.reset_category(ml::ioj::EGameSettingCategory::Video);
+        state.reset_category(ioj::EGameSettingCategory::Video);
         TestRunner->TestTrue(TEXT("Reset changes only the requested category"),
                              state.pending().vsync &&
                                  FMath::IsNearlyEqual(state.pending().master_volume, 0.5f));
         TestRunner->TestTrue(TEXT("Resetting to a different default creates a dirty value"),
-                             state.is_dirty(ml::ioj::EGameSettingCategory::Video));
+                             state.is_dirty(ioj::EGameSettingCategory::Video));
         TestRunner->TestTrue(TEXT("The reset category now matches defaults"),
-                             state.is_at_defaults(ml::ioj::EGameSettingCategory::Video));
+                             state.is_at_defaults(ioj::EGameSettingCategory::Video));
 
         state.commit_all();
         TestRunner->TestFalse(TEXT("Committing pending values clears dirty state"),
                               state.is_dirty());
 
-        state.set_setting(ml::ioj::EGameSetting::Bees, ml::ioj::FGameSettingValue{4});
+        state.set_setting(ioj::EGameSetting::Bees, ioj::FGameSettingValue{4});
         state.cancel();
         TestRunner->TestEqual(TEXT("Cancel restores the applied value"), state.pending().bees, 2);
 
-        state.set_setting(ml::ioj::EGameSetting::MouseTurnSensitivity,
-                          ml::ioj::FGameSettingValue{0.5f});
+        state.set_setting(ioj::EGameSetting::MouseTurnSensitivity, ioj::FGameSettingValue{0.5f});
         TestRunner->TestTrue(TEXT("Input response is tracked as a Controls setting"),
-                             state.is_dirty(ml::ioj::EGameSettingCategory::Controls));
-        state.reset_category(ml::ioj::EGameSettingCategory::Controls);
+                             state.is_dirty(ioj::EGameSettingCategory::Controls));
+        state.reset_category(ioj::EGameSettingCategory::Controls);
         TestRunner->TestTrue(TEXT("Reset restores default input response"),
                              FMath::IsNearlyEqual(state.pending().mouse_turn_sensitivity, 1.f));
     }
 
     TEST_METHOD(AvailabilityUsesPendingState)
     {
-        ml::ioj::FGameSettingsBackend backend;
-        ml::ioj::FGameSettingsState state;
-        state.aa_method = ml::ioj::EGameAntiAliasingMethod::Off;
+        ioj::FGameSettingsBackend backend;
+        ioj::FGameSettingsState state;
+        state.aa_method = ioj::EGameAntiAliasingMethod::Off;
         TestRunner->TestFalse(
             TEXT("AA quality is disabled while anti-aliasing is off"),
-            backend.is_available(ml::ioj::EGameSettingAvailabilityProvider::AAQuality, state));
+            backend.is_available(ioj::EGameSettingAvailabilityProvider::AAQuality, state));
 
-        state.aa_method = ml::ioj::EGameAntiAliasingMethod::TAA;
+        state.aa_method = ioj::EGameAntiAliasingMethod::TAA;
         TestRunner->TestTrue(
             TEXT("AA quality is enabled from the pending anti-aliasing method"),
-            backend.is_available(ml::ioj::EGameSettingAvailabilityProvider::AAQuality, state));
+            backend.is_available(ioj::EGameSettingAvailabilityProvider::AAQuality, state));
     }
 
     TEST_METHOD(DisplayRevertKeepsAlreadyAppliedControls)
     {
-        ml::ioj::FGameSettingsState initial{};
+        ioj::FGameSettingsState initial{};
         initial.resolution = FIntPoint{1920, 1080};
         initial.mouse_turn_sensitivity = 1.f;
 
-        ml::ioj::FGameSettingsEditState state;
+        ioj::FGameSettingsEditState state;
         state.begin(initial, initial);
-        state.set_setting(ml::ioj::EGameSetting::Resolution,
-                          ml::ioj::FGameSettingValue{FIntPoint{1280, 720}});
-        state.set_setting(ml::ioj::EGameSetting::MouseTurnSensitivity,
-                          ml::ioj::FGameSettingValue{1.5f});
-        state.commit_setting(ml::ioj::EGameSetting::MouseTurnSensitivity);
+        state.set_setting(ioj::EGameSetting::Resolution,
+                          ioj::FGameSettingValue{FIntPoint{1280, 720}});
+        state.set_setting(ioj::EGameSetting::MouseTurnSensitivity, ioj::FGameSettingValue{1.5f});
+        state.commit_setting(ioj::EGameSetting::MouseTurnSensitivity);
         state.cancel();
 
         TestRunner->TestTrue(TEXT("Reverting display restores its previous resolution"),
@@ -101,20 +99,20 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
 
     TEST_METHOD(AxisInversionUsesControlsTransaction)
     {
-        using ml::ioj::EGameSetting;
-        using ml::ioj::FGameSettingValue;
+        using ioj::EGameSetting;
+        using ioj::FGameSettingValue;
         for (auto const setting : {EGameSetting::InvertMousePitch,
                                    EGameSetting::InvertMouseYaw,
                                    EGameSetting::InvertGamepadPitch,
                                    EGameSetting::InvertGamepadYaw,
                                    EGameSetting::InvertGamepadRoll}) {
-            ml::ioj::FGameSettingsState initial{};
-            ml::ioj::FGameSettingsEditState state;
+            ioj::FGameSettingsState initial{};
+            ioj::FGameSettingsEditState state;
             state.begin(initial, initial);
             state.set_setting(setting, FGameSettingValue{true});
             TestRunner->TestTrue(TEXT("Inversion previews as a controls edit"),
                                  state.value(setting) == FGameSettingValue{true} &&
-                                     state.is_dirty(ml::ioj::EGameSettingCategory::Controls));
+                                     state.is_dirty(ioj::EGameSettingCategory::Controls));
             state.cancel();
             TestRunner->TestTrue(TEXT("Cancel restores inversion"),
                                  state.value(setting) == FGameSettingValue{false});
@@ -123,7 +121,7 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
             TestRunner->TestTrue(TEXT("Apply commits inversion"),
                                  state.value(setting) == FGameSettingValue{true} &&
                                      !state.is_dirty());
-            state.reset_category(ml::ioj::EGameSettingCategory::Controls);
+            state.reset_category(ioj::EGameSettingCategory::Controls);
             TestRunner->TestTrue(TEXT("Reset previews default inversion"),
                                  state.value(setting) == FGameSettingValue{false});
             state.commit_all();
@@ -135,82 +133,80 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
 
     TEST_METHOD(GraphicsPresetUpdatesOnlyItsQualityGroups)
     {
-        ml::ioj::FGameSettingsState applied;
+        ioj::FGameSettingsState applied;
         applied.resolution_scale = 73.0f;
         applied.bloom = false;
         applied.motion_blur = true;
 
-        ml::ioj::FGameSettingsEditState state;
+        ioj::FGameSettingsEditState state;
         state.begin(applied, applied);
-        state.set_setting(ml::ioj::EGameSetting::OverallQuality,
-                          ml::ioj::FGameSettingValue{ml::ioj::EGameGraphicsPreset::High});
+        state.set_setting(ioj::EGameSetting::OverallQuality,
+                          ioj::FGameSettingValue{ioj::EGameGraphicsPreset::High});
 
         auto const& preset{state.pending()};
         TestRunner->TestTrue(TEXT("The selected preset is reported"),
-                             preset.overall_quality == ml::ioj::EGameGraphicsPreset::High);
-        TestRunner->TestTrue(
-            TEXT("The preset updates every player-facing scalability group"),
-            preset.view_distance_quality == ml::ioj::EGameQualityLevel::High &&
-                preset.aa_quality == ml::ioj::EGameQualityLevel::High &&
-                preset.shadow_quality == ml::ioj::EGameQualityLevel::High &&
-                preset.global_illumination_quality == ml::ioj::EGameQualityLevel::High &&
-                preset.reflections_quality == ml::ioj::EGameQualityLevel::High &&
-                preset.post_processing_quality == ml::ioj::EGameQualityLevel::High &&
-                preset.texture_quality == ml::ioj::EGameQualityLevel::High &&
-                preset.effects_quality == ml::ioj::EGameQualityLevel::High &&
-                preset.shading_quality == ml::ioj::EGameQualityLevel::High);
+                             preset.overall_quality == ioj::EGameGraphicsPreset::High);
+        TestRunner->TestTrue(TEXT("The preset updates every player-facing scalability group"),
+                             preset.view_distance_quality == ioj::EGameQualityLevel::High &&
+                                 preset.aa_quality == ioj::EGameQualityLevel::High &&
+                                 preset.shadow_quality == ioj::EGameQualityLevel::High &&
+                                 preset.global_illumination_quality ==
+                                     ioj::EGameQualityLevel::High &&
+                                 preset.reflections_quality == ioj::EGameQualityLevel::High &&
+                                 preset.post_processing_quality == ioj::EGameQualityLevel::High &&
+                                 preset.texture_quality == ioj::EGameQualityLevel::High &&
+                                 preset.effects_quality == ioj::EGameQualityLevel::High &&
+                                 preset.shading_quality == ioj::EGameQualityLevel::High);
         TestRunner->TestTrue(TEXT("Independent graphics controls are unchanged"),
                              FMath::IsNearlyEqual(preset.resolution_scale, 73.0f) &&
                                  !preset.bloom && preset.motion_blur);
 
-        state.set_setting(ml::ioj::EGameSetting::ShadowQuality,
-                          ml::ioj::FGameSettingValue{ml::ioj::EGameQualityLevel::Medium});
+        state.set_setting(ioj::EGameSetting::ShadowQuality,
+                          ioj::FGameSettingValue{ioj::EGameQualityLevel::Medium});
         TestRunner->TestTrue(TEXT("Changing one quality group produces a custom preset"),
-                             state.pending().overall_quality ==
-                                 ml::ioj::EGameGraphicsPreset::Custom);
+                             state.pending().overall_quality == ioj::EGameGraphicsPreset::Custom);
 
-        state.set_setting(ml::ioj::EGameSetting::OverallQuality,
-                          ml::ioj::FGameSettingValue{ml::ioj::EGameGraphicsPreset::Custom});
+        state.set_setting(ioj::EGameSetting::OverallQuality,
+                          ioj::FGameSettingValue{ioj::EGameGraphicsPreset::Custom});
         TestRunner->TestTrue(TEXT("Selecting Custom preserves the individual quality values"),
-                             state.pending().shadow_quality == ml::ioj::EGameQualityLevel::Medium);
+                             state.pending().shadow_quality == ioj::EGameQualityLevel::Medium);
     }
 
     TEST_METHOD(ControlSettingsDeclareDeviceOwnership)
     {
-        auto const device_for = [](ml::ioj::EGameSetting const setting) {
-            return ml::ioj::game_setting_descriptor(setting).device;
+        auto const device_for = [](ioj::EGameSetting const setting) {
+            return ioj::game_setting_descriptor(setting).device;
         };
         TestRunner->TestTrue(TEXT("Mouse sensitivity belongs to keyboard and mouse"),
-                             device_for(ml::ioj::EGameSetting::MouseTurnSensitivity) ==
-                                 ml::ioj::EGameSettingDevice::KeyboardMouse);
+                             device_for(ioj::EGameSetting::MouseTurnSensitivity) ==
+                                 ioj::EGameSettingDevice::KeyboardMouse);
         TestRunner->TestTrue(TEXT("Mouse inversion belongs to keyboard and mouse"),
-                             device_for(ml::ioj::EGameSetting::InvertMousePitch) ==
-                                     ml::ioj::EGameSettingDevice::KeyboardMouse &&
-                                 device_for(ml::ioj::EGameSetting::InvertMouseYaw) ==
-                                     ml::ioj::EGameSettingDevice::KeyboardMouse);
+                             device_for(ioj::EGameSetting::InvertMousePitch) ==
+                                     ioj::EGameSettingDevice::KeyboardMouse &&
+                                 device_for(ioj::EGameSetting::InvertMouseYaw) ==
+                                     ioj::EGameSettingDevice::KeyboardMouse);
         TestRunner->TestTrue(TEXT("Controller sensitivity belongs to controller"),
-                             device_for(ml::ioj::EGameSetting::GamepadTurnSensitivity) ==
-                                 ml::ioj::EGameSettingDevice::Controller);
+                             device_for(ioj::EGameSetting::GamepadTurnSensitivity) ==
+                                 ioj::EGameSettingDevice::Controller);
         TestRunner->TestTrue(TEXT("Controller dead zones belong to controller"),
-                             device_for(ml::ioj::EGameSetting::GamepadTurnDeadZone) ==
-                                     ml::ioj::EGameSettingDevice::Controller &&
-                                 device_for(ml::ioj::EGameSetting::GamepadMoveDeadZone) ==
-                                     ml::ioj::EGameSettingDevice::Controller);
-        TestRunner->TestTrue(
-            TEXT("Controller inversion belongs to controller"),
-            device_for(ml::ioj::EGameSetting::InvertGamepadPitch) ==
-                    ml::ioj::EGameSettingDevice::Controller &&
-                device_for(ml::ioj::EGameSetting::InvertGamepadYaw) ==
-                    ml::ioj::EGameSettingDevice::Controller &&
-                device_for(ml::ioj::EGameSetting::InvertGamepadRoll) ==
-                    ml::ioj::EGameSettingDevice::Controller &&
-                device_for(ml::ioj::EGameSetting::InvertGamepadVerticalTranslation) ==
-                    ml::ioj::EGameSettingDevice::Controller);
+                             device_for(ioj::EGameSetting::GamepadTurnDeadZone) ==
+                                     ioj::EGameSettingDevice::Controller &&
+                                 device_for(ioj::EGameSetting::GamepadMoveDeadZone) ==
+                                     ioj::EGameSettingDevice::Controller);
+        TestRunner->TestTrue(TEXT("Controller inversion belongs to controller"),
+                             device_for(ioj::EGameSetting::InvertGamepadPitch) ==
+                                     ioj::EGameSettingDevice::Controller &&
+                                 device_for(ioj::EGameSetting::InvertGamepadYaw) ==
+                                     ioj::EGameSettingDevice::Controller &&
+                                 device_for(ioj::EGameSetting::InvertGamepadRoll) ==
+                                     ioj::EGameSettingDevice::Controller &&
+                                 device_for(ioj::EGameSetting::InvertGamepadVerticalTranslation) ==
+                                     ioj::EGameSettingDevice::Controller);
     }
 
     TEST_METHOD(ControlBindingPresentationIdentityIsStable)
     {
-        ml::ioj::FControlBindingAddress first{
+        ioj::FControlBindingAddress first{
             .profile_id = TEXT("Profile.One"),
             .mapping_name = TEXT("Fire"),
             .hardware_device_id = TEXT("KeyboardMouse"),
@@ -222,11 +218,11 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
         alternate.slot = EPlayerMappableKeySlot::Second;
 
         auto const first_identity{
-            ml::ioj::control_binding_identity(first, EHardwareDevicePrimaryType::KeyboardAndMouse)};
-        auto const second_identity{ml::ioj::control_binding_identity(
-            second, EHardwareDevicePrimaryType::KeyboardAndMouse)};
-        auto const alternate_identity{ml::ioj::control_binding_identity(
-            alternate, EHardwareDevicePrimaryType::KeyboardAndMouse)};
+            ioj::control_binding_identity(first, EHardwareDevicePrimaryType::KeyboardAndMouse)};
+        auto const second_identity{
+            ioj::control_binding_identity(second, EHardwareDevicePrimaryType::KeyboardAndMouse)};
+        auto const alternate_identity{
+            ioj::control_binding_identity(alternate, EHardwareDevicePrimaryType::KeyboardAndMouse)};
         TestRunner->TestTrue(TEXT("Binding focus survives profile address replacement"),
                              first_identity == second_identity);
         TestRunner->TestFalse(TEXT("Multiple binding slots remain distinct"),
@@ -235,30 +231,30 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
 
     TEST_METHOD(ControlBindingDeviceFilteringAndResetScopeAreExplicit)
     {
-        ml::ioj::FControlBindingView keyboard_binding{
+        ioj::FControlBindingView keyboard_binding{
             .device_type = EHardwareDevicePrimaryType::KeyboardAndMouse,
         };
-        ml::ioj::FControlBindingView controller_binding{
+        ioj::FControlBindingView controller_binding{
             .device_type = EHardwareDevicePrimaryType::Gamepad,
         };
         TestRunner->TestTrue(TEXT("Keyboard binding passes keyboard filtering"),
-                             ml::ioj::control_binding_matches_device(
+                             ioj::control_binding_matches_device(
                                  keyboard_binding, EHardwareDevicePrimaryType::KeyboardAndMouse));
         TestRunner->TestFalse(
             TEXT("Controller binding does not pass keyboard filtering"),
-            ml::ioj::control_binding_matches_device(controller_binding,
-                                                    EHardwareDevicePrimaryType::KeyboardAndMouse));
+            ioj::control_binding_matches_device(controller_binding,
+                                                EHardwareDevicePrimaryType::KeyboardAndMouse));
         TestRunner->TestTrue(TEXT("Unspecified filtering includes both devices"),
-                             ml::ioj::control_binding_matches_device(
+                             ioj::control_binding_matches_device(
                                  keyboard_binding, EHardwareDevicePrimaryType::Unspecified) &&
-                                 ml::ioj::control_binding_matches_device(
+                                 ioj::control_binding_matches_device(
                                      controller_binding, EHardwareDevicePrimaryType::Unspecified));
     }
 
     TEST_METHOD(FlightModelSlotsPersistIndependently)
     {
-        auto* const user_settings{NewObject<ml::ioj::USpaceGameUserSettings>()};
-        auto loadout{::ioj::sim::player::make_default_flight_model_loadout()};
+        auto* const user_settings{NewObject<ioj::USpaceGameUserSettings>()};
+        auto loadout{ioj::sim::player::make_default_flight_model_loadout()};
         loadout.right.config.translation.forward.passive_drag = 321.f;
         loadout.right.customized = true;
         user_settings->set_flight_model_loadout(loadout);
@@ -269,22 +265,21 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
                              restored.up == loadout.up && restored.down == loadout.down &&
                                  restored.left == loadout.left);
         TestRunner->TestTrue(TEXT("Saved configuration does not change the active slot"),
-                             restored.initial_slot == ::ioj::sim::player::FlightModelSlot::Up);
+                             restored.initial_slot == ioj::sim::player::FlightModelSlot::Up);
     }
 
     TEST_METHOD(FlightModelCodecRejectsCorruptData)
     {
-        auto profile{::ioj::sim::player::make_flight_model_profile(
-            ::ioj::sim::player::FlightModelPreset::Gunship)};
+        auto profile{ioj::sim::player::make_flight_model_profile(
+            ioj::sim::player::FlightModelPreset::Gunship)};
         auto const original{profile};
-        TestRunner->TestFalse(
-            TEXT("Invalid data is rejected"),
-            ml::ioj::flight_model_settings_codec::decode(TEXT("broken"), profile));
+        TestRunner->TestFalse(TEXT("Invalid data is rejected"),
+                              ioj::flight_model_settings_codec::decode(TEXT("broken"), profile));
         TestRunner->TestTrue(TEXT("Invalid data does not alter the profile"), profile == original);
-        auto const encoded{ml::ioj::flight_model_settings_codec::encode(profile)};
+        auto const encoded{ioj::flight_model_settings_codec::encode(profile)};
         profile.config.translation.up.passive_drag = 123.f;
         TestRunner->TestTrue(TEXT("Versioned profile decodes"),
-                             ml::ioj::flight_model_settings_codec::decode(encoded, profile));
+                             ioj::flight_model_settings_codec::decode(encoded, profile));
         TestRunner->TestTrue(TEXT("Decoded profile matches original"), profile == original);
     }
 };

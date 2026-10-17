@@ -12,7 +12,7 @@
 
 #include <utility>
 
-namespace ml::ioj {
+namespace ioj {
 struct FStaticCollisionSourcesSchema;
 
 struct FStaticCollisionSourcesView;
@@ -134,4 +134,4 @@ struct SPACEGAME_API FStaticCollisionSources {
     TArray<TWeakObjectPtr<UPrimitiveComponent>> components;
     TArray<ECollisionEnabled::Type> original_collision_modes;
 };
-} // namespace ml::ioj
+} // namespace ioj

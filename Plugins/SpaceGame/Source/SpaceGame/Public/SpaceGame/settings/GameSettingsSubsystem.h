@@ -13,7 +13,7 @@
 
 class ULocalPlayer;
 
-namespace ml::ioj {
+namespace ioj {
 
 class USpaceGameInputUserSettings;
 
@@ -56,10 +56,10 @@ class SPACEGAME_API UGameSettingsSubsystem final
     auto is_dirty(EGameSettingCategory category) const -> bool;
     auto is_at_defaults(EGameSettingCategory category) const -> bool;
     auto flight_model_profile(EShipControlScope scope) const
-        -> ::ioj::sim::player::FlightModelProfile const&;
-    auto flight_model_loadout() const -> ::ioj::sim::player::FlightModelLoadout const&;
+        -> ioj::sim::player::FlightModelProfile const&;
+    auto flight_model_loadout() const -> ioj::sim::player::FlightModelLoadout const&;
     auto set_flight_model_profile(EShipControlScope scope,
-                                  ::ioj::sim::player::FlightModelProfile profile) -> bool;
+                                  ioj::sim::player::FlightModelProfile profile) -> bool;
     auto is_awaiting_display_confirmation() const -> bool;
     auto display_confirmation_seconds_remaining() const -> int32;
 
@@ -120,8 +120,8 @@ class SPACEGAME_API UGameSettingsSubsystem final
     FGameSettingsBackend backend_;
     TWeakObjectPtr<ULocalPlayer> editing_local_player_{};
     FGameSettingsEditState edit_state_{};
-    ::ioj::sim::player::FlightModelLoadout flight_model_loadout_{};
-    ::ioj::sim::player::FlightModelLoadout applied_flight_model_loadout_{};
+    ioj::sim::player::FlightModelLoadout flight_model_loadout_{};
+    ioj::sim::player::FlightModelLoadout applied_flight_model_loadout_{};
     TArray<FControlBindingView> applied_control_bindings_{};
     double display_confirmation_deadline_{};
     FTSTicker::FDelegateHandle display_confirmation_ticker_;
@@ -129,4 +129,4 @@ class SPACEGAME_API UGameSettingsSubsystem final
     bool awaiting_display_confirmation_{};
 };
 
-} // namespace ml::ioj
+} // namespace ioj

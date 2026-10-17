@@ -27,7 +27,7 @@ void UDebugGraphWidget::set_samples(TConstArrayView<FVector2d> const in_samples,
     update_slate_series();
 }
 
-void UDebugGraphWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
+void UDebugGraphWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
     graph_style_ = style.graph;
     series_colour_ = style.graph_series;
     if (graph_widget_.IsValid()) {

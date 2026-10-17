@@ -6,9 +6,9 @@
 #include <type_traits>
 
 namespace ml {
-using Vector2f = ::ioj::Vector<float, 2>;
-using Vector3f = ::ioj::Vector<float, 3>;
-using Quaternion4f = ::ioj::Quaternion<float>;
+using Vector2f = ioj::Vector<float, 2>;
+using Vector3f = ioj::Vector<float, 3>;
+using Quaternion4f = ioj::Quaternion<float>;
 
 static_assert(sizeof(Vector3f) == sizeof(float) * 3);
 static_assert(alignof(Vector3f) == alignof(float));

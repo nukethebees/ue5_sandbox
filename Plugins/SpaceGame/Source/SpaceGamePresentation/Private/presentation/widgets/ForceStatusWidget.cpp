@@ -14,21 +14,21 @@ FVector2f const default_bar_size{18.0f, 104.0f};
 constexpr float default_bar_spacing{4.0f};
 
 struct FForceCategory {
-    ::ioj::sim::EntityType type;
+    ioj::sim::EntityType type;
     FText label;
 };
 
 auto force_categories() -> TConstArrayView<FForceCategory> {
     static FForceCategory const categories[]{
-        {::ioj::sim::EntityType::Fighter, INVTEXT("F")},
-        {::ioj::sim::EntityType::CapitalShip, INVTEXT("CS")},
-        {::ioj::sim::EntityType::Turret, INVTEXT("T")},
+        {ioj::sim::EntityType::Fighter, INVTEXT("F")},
+        {ioj::sim::EntityType::CapitalShip, INVTEXT("CS")},
+        {ioj::sim::EntityType::Turret, INVTEXT("T")},
     };
     return categories;
 }
 }
 
-void UForceStatusWidget::set_entity_counts(::ioj::sim::telemetry::EntityCounts const& counts) {
+void UForceStatusWidget::set_entity_counts(ioj::sim::telemetry::EntityCounts const& counts) {
     entity_counts_ = counts;
     refresh_content();
 }
@@ -38,7 +38,7 @@ void UForceStatusWidget::set_team_colours(UTestTeamVisualData::FColourArray cons
     refresh_content();
 }
 
-void UForceStatusWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
+void UForceStatusWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
     hud_style_ = style;
     refresh_content();
 }
@@ -111,7 +111,7 @@ auto UForceStatusWidget::build_content() const -> TSharedRef<SWidget> {
     }
 
     auto content{StaticCastSharedRef<SWidget>(bars)};
-    return hud_style_ ? ml::ioj::make_hud_panel(hud_style_.GetValue(), MoveTemp(content)) : content;
+    return hud_style_ ? ioj::make_hud_panel(hud_style_.GetValue(), MoveTemp(content)) : content;
 }
 
 void UForceStatusWidget::refresh_content() {

@@ -2,7 +2,7 @@
   :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/StaticCollisionSources.h"
   :source "Plugins/SpaceGame/Source/SpaceGame/Private/simulation/StaticCollisionSources.cpp"
   :header-include "SpaceGame/simulation/StaticCollisionSources.h"
-  :namespace ml::ioj
+  :namespace ioj
   :include-order ("SpaceGame/" "SandboxCore/")
   (struct FStaticCollisionSources
     :operations (reset)

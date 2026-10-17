@@ -10,7 +10,7 @@
 
 struct FScoreRecord;
 
-namespace ml::ioj {
+namespace ioj {
 enum class ELevelProgressState : uint8 {
     NotAttempted,
     Attempted,
@@ -42,14 +42,14 @@ class SPACEGAME_API USpaceSaveSubsystem : public UGameInstanceSubsystem {
     [[nodiscard]] auto get_profiles() const -> TConstArrayView<FSaveProfileMetadata>;
     [[nodiscard]] auto get_active_profile_id() const -> FString const&;
     [[nodiscard]] auto get_level_progress(ml::FLevelId level_id) const
-        -> ml::ioj::FLevelProgressSummary;
+        -> ioj::FLevelProgressSummary;
     [[nodiscard]] auto is_level_completed(ml::FLevelId level_id) const -> bool;
     [[nodiscard]] auto has_active_profile() const -> bool;
     [[nodiscard]] auto unlock_all_missions() const -> bool;
     [[nodiscard]] auto start_levels_paused() const -> bool;
     bool load_profile_records(FString const& profile_id, TArray<FScoreRecord>& records) const;
 
-    auto create_profile(FString display_name) -> ml::ioj::FCreateSaveProfileResponse;
+    auto create_profile(FString display_name) -> ioj::FCreateSaveProfileResponse;
     bool activate_profile(FString const& profile_id);
     bool reset_test_profile();
     bool set_unlock_all_missions(bool enabled);
@@ -64,9 +64,9 @@ class SPACEGAME_API USpaceSaveSubsystem : public UGameInstanceSubsystem {
     static auto profile_results_slot_name(FString const& profile_id) -> FString;
     static auto legacy_slot_name() -> FString;
 
-    auto make_storage() -> ml::ioj::FSaveProfileStorage;
-    static auto make_slot_storage() -> ml::ioj::FSaveProfileStorage;
+    auto make_storage() -> ioj::FSaveProfileStorage;
+    static auto make_slot_storage() -> ioj::FSaveProfileStorage;
     static void migrate_legacy_records(int32 save_version, TArray<FScoreRecord>& records);
 
-    ml::ioj::FSaveProfileManager profile_manager_{};
+    ioj::FSaveProfileManager profile_manager_{};
 };

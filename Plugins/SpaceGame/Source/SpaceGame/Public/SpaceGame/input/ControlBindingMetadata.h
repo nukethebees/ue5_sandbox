@@ -5,7 +5,7 @@
 
 #include "ControlBindingMetadata.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 
 UENUM()
 enum class EShipControlScope : uint8 {
@@ -39,4 +39,4 @@ class SPACEGAME_API UControlBindingMetadata final : public UObject {
 
 SPACEGAME_API auto control_binding_group_label(EControlBindingGroup group) -> FText;
 
-} // namespace ml::ioj
+} // namespace ioj

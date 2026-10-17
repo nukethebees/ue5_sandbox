@@ -26,7 +26,7 @@ void UShipHealthWidget::set_health(FShipHealth health) {
     health_text->update(health.health, health.max_health);
 }
 
-void UShipHealthWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
+void UShipHealthWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
     hud_style_ = style;
     if (health_bar) {
         health_bar->SetWidgetStyle(style.health_bar);

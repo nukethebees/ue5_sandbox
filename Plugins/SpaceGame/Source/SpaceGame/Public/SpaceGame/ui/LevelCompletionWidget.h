@@ -10,7 +10,7 @@
 
 class UNativeWidgetHost;
 
-namespace ml::ioj {
+namespace ioj {
 class SLevelCompletionView;
 class UGameSubsystem;
 
@@ -25,7 +25,7 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     void prepare_for_open(FString level_display_name,
                           ETestMissionState state,
                           ETestMissionFailReason fail_reason,
-                          ::ioj::sim::LevelTelemetrySnapshot snapshot,
+                          ioj::sim::LevelTelemetrySnapshot snapshot,
                           TOptional<float> par_time_seconds = NullOpt,
                           bool new_best_time = false);
     void request_return_to_mission_control();
@@ -34,7 +34,7 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     [[nodiscard]] auto get_level_display_name() const -> FString const& {
         return level_display_name_;
     }
-    [[nodiscard]] auto get_stats_snapshot() const -> ::ioj::sim::LevelTelemetrySnapshot const& {
+    [[nodiscard]] auto get_stats_snapshot() const -> ioj::sim::LevelTelemetrySnapshot const& {
         return stats_snapshot_;
     }
     [[nodiscard]] auto get_par_time_seconds() const -> TOptional<float> const& {
@@ -59,7 +59,7 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     FString level_display_name_{};
     ETestMissionState mission_state_{ETestMissionState::Succeeded};
     ETestMissionFailReason mission_fail_reason_{ETestMissionFailReason::None};
-    ::ioj::sim::LevelTelemetrySnapshot stats_snapshot_{};
+    ioj::sim::LevelTelemetrySnapshot stats_snapshot_{};
     TOptional<float> par_time_seconds_{};
     TSharedPtr<SLevelCompletionView> view_{};
     FGameUiStyle fallback_style_{};

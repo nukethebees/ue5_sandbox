@@ -14,7 +14,7 @@ namespace ioj::sim {
 class GameMemory;
 }
 
-namespace ml::ioj {
+namespace ioj {
 class USpaceGameUiTheme;
 
 struct SPACEGAME_API FCpuSimdCapabilities {
@@ -105,7 +105,7 @@ struct SPACEGAME_API FLevelLaunchOptions {
 };
 
 struct SPACEGAME_API FPendingLevelDefinition {
-    FLevelDefinition definition{};
+    ml::FLevelDefinition definition{};
     FString source_path{};
     FString source_sha256{};
     FLevelLaunchOptions options{};
@@ -134,7 +134,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     virtual void Deinitialize() override;
 
     static auto get(UGameInstance const* game_instance) -> UGameSubsystem*;
-    auto get_game_memory() noexcept -> ::ioj::sim::GameMemory&;
+    auto get_game_memory() noexcept -> ioj::sim::GameMemory&;
     auto get_platform_capabilities() const -> FGameCapabilities const&;
     auto get_save_game_browser() -> FSaveGameBrowser&;
     auto get_audio() -> FGameAudioFacade;
@@ -152,7 +152,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     /* **************************************** */
     // Level launch and navigation
     /* **************************************** */
-    void set_pending_level(FLevelDefinition definition,
+    void set_pending_level(ml::FLevelDefinition definition,
                            FString source_path,
                            FString source_sha256,
                            FLevelLaunchOptions options = {});
@@ -177,7 +177,7 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     /* **************************************** */
     FGameAudio audio_;
     FGameCapabilities platform_capabilities_;
-    TUniquePtr<::ioj::sim::GameMemory> game_memory_{};
+    TUniquePtr<ioj::sim::GameMemory> game_memory_{};
     FSaveGameBrowser save_game_browser_;
     TOptional<FPendingLevelDefinition> pending_level_{NullOpt};
     TOptional<FLevelSelectRequest> level_select_request_{NullOpt};

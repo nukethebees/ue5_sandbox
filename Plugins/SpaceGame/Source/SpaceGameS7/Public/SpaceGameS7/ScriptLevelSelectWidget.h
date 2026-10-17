@@ -6,7 +6,7 @@
 
 #include "ScriptLevelSelectWidget.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 enum class ELevelLaunchMode : uint8;
 struct FLevelLaunchOptions;
 struct FLevelProgressSummary;
@@ -14,9 +14,9 @@ class UGameSubsystem;
 }
 
 namespace ml::s7 {
-using ::ioj::levels::authoring::ELevelCatalogCategory;
-using ::ioj::levels::authoring::FCampaignScriptEntry;
-using ::ioj::levels::authoring::FLevelScriptEntry;
+using ioj::levels::authoring::ELevelCatalogCategory;
+using ioj::levels::authoring::FCampaignScriptEntry;
+using ioj::levels::authoring::FLevelScriptEntry;
 
 class SScriptLevelSelectView;
 
@@ -26,10 +26,9 @@ enum class ELevelCompletionIndicatorState : uint8 {
     ParAchieved,
 };
 
-SPACEGAMES7_API auto
-    level_completion_indicator_state(ml::ioj::FLevelProgressSummary const& progress,
-                                     TOptional<float> par_time_seconds)
-        -> ELevelCompletionIndicatorState;
+SPACEGAMES7_API auto level_completion_indicator_state(ioj::FLevelProgressSummary const& progress,
+                                                      TOptional<float> par_time_seconds)
+    -> ELevelCompletionIndicatorState;
 
 struct FLevelSelectViewRow {
     FText text{};
@@ -53,7 +52,7 @@ struct FLevelSelectViewState {
 };
 
 UCLASS()
-class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWidget {
+class SPACEGAMES7_API UScriptLevelSelectWidget : public ioj::ULevelSelectWidget {
     GENERATED_BODY()
   public:
     UScriptLevelSelectWidget();
@@ -78,7 +77,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
   private:
-    void launch_selected_level(ml::ioj::FLevelLaunchOptions options);
+    void launch_selected_level(ioj::FLevelLaunchOptions options);
     void refresh_levels();
     void rebuild_catalog(FName focus_level_id);
     void select_category(ELevelCatalogCategory category);
@@ -105,9 +104,9 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     FString catalog_error_{};
     FLevelSelectViewState view_state_{};
     TSharedPtr<SScriptLevelSelectView> view_{};
-    ml::ioj::FGameUiStyle fallback_style_{};
+    ioj::FGameUiStyle fallback_style_{};
     UPROPERTY(Transient)
-    ml::ioj::UGameSubsystem* game_{nullptr};
+    ioj::UGameSubsystem* game_{nullptr};
     int32 selected_entry_index_{INDEX_NONE};
     FName selected_level_id_{NAME_None};
     ELevelCatalogCategory active_category_{ELevelCatalogCategory::Mission};

@@ -4,7 +4,7 @@
 
 class USpaceSaveSubsystem;
 
-namespace ml::ioj::detail {
+namespace ioj::detail {
 auto discover_existing_save_profiles(USpaceSaveSubsystem const& save_subsystem)
     -> TArray<FSaveProfileSummary>;
 auto load_existing_save_profile(USpaceSaveSubsystem const& save_subsystem,

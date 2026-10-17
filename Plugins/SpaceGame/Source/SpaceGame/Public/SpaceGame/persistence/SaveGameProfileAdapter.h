@@ -6,7 +6,7 @@
 
 struct FScoreRecord;
 
-namespace ml::ioj::save_profile {
+namespace ioj::save_profile {
 SPACEGAME_API auto make_summary(FString profile_id,
                                 FString display_name,
                                 TConstArrayView<FScoreRecord> records) -> FSaveProfileSummary;

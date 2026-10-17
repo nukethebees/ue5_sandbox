@@ -18,7 +18,7 @@ class SPACEGAMEPRESENTATION_API UShipHealthWidget : public UUserWidget {
     GENERATED_BODY()
 
     void set_health(FShipHealth health);
-    void apply_hud_style(ml::ioj::FGameHudStyle const& style);
+    void apply_hud_style(ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32;
   protected:
@@ -28,5 +28,5 @@ class SPACEGAMEPRESENTATION_API UShipHealthWidget : public UUserWidget {
     UPROPERTY(meta = (BindWidget))
     UValueWidget* health_text{nullptr};
 
-    TOptional<ml::ioj::FGameHudStyle> hud_style_{};
+    TOptional<ioj::FGameHudStyle> hud_style_{};
 };

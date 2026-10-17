@@ -5,10 +5,10 @@
 
 #include <utility>
 
-namespace SlateGenerated::ml::ioj {
+namespace SlateGenerated::ioj {
 
 struct SGameOptionsViewBuilder {
-    using ThisClass = ::ml::ioj::SGameOptionsView;
+    using ThisClass = ::ioj::SGameOptionsView;
 
     explicit SGameOptionsViewBuilder(ThisClass& self)
         : self_{self} {}
@@ -28,7 +28,7 @@ struct SGameOptionsViewBuilder {
                 .Padding(page_margin)
                 .HAlign(HAlign_Center)
                 .VAlign(VAlign_Center)
-                    [SNew(::ml::ioj::SHiveFrame)
+                    [SNew(ioj::SHiveFrame)
                          .Style(chrome_style)
                          .WidthOverride(window_width)
                          .HeightOverride(window_height)

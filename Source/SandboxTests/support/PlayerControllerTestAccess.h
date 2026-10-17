@@ -7,8 +7,7 @@
 
 struct FPlayerControllerTestAccess {
     static void prepare_completion(ASpaceGamePlayerController& controller) {
-        controller.modal_ui_.completion_menu_ =
-            NewObject<ml::ioj::ULevelCompletionWidget>(&controller);
+        controller.modal_ui_.completion_menu_ = NewObject<ioj::ULevelCompletionWidget>(&controller);
         controller.modal_ui_.begin_suspend(EPlayerControlContext::Player);
     }
 

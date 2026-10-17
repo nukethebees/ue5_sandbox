@@ -5,7 +5,7 @@
 
 #include <Widgets/SCompoundWidget.h>
 
-namespace ml::ioj {
+namespace ioj {
 class SGameButton;
 
 class SPACEGAME_API SHiveFrame final : public SCompoundWidget {

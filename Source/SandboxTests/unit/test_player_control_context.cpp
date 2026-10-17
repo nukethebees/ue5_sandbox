@@ -78,8 +78,8 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
 
     TEST_METHOD(GeneratedContextsAndActions)
     {
-        for (auto const& definition : ml::ioj::canonical_ship_control_contexts()) {
-            auto* const context{ml::ioj::load_ship_control_context(definition.scope)};
+        for (auto const& definition : ioj::canonical_ship_control_contexts()) {
+            auto* const context{ioj::load_ship_control_context(definition.scope)};
             if (!TestRunner->TestNotNull(definition.asset_name, context)) {
                 continue;
             }
@@ -103,7 +103,7 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
                 auto const* const key_settings{mapping.GetPlayerMappableKeySettings()};
                 auto const* const metadata{
                     IsValid(key_settings)
-                        ? Cast<ml::ioj::UControlBindingMetadata>(key_settings->Metadata)
+                        ? Cast<ioj::UControlBindingMetadata>(key_settings->Metadata)
                         : nullptr};
                 TestRunner->TestTrue(TEXT("Mapping metadata has owning scope"),
                                      IsValid(metadata) && metadata->scope == definition.scope);
@@ -140,11 +140,11 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
 
     TEST_METHOD(ExactPhysicalBindings)
     {
-        using ml::ioj::EShipControlScope;
+        using ioj::EShipControlScope;
         using Binding = std::pair<FKey, TCHAR const*>;
         auto check_scope = [this](EShipControlScope const scope,
                                   std::initializer_list<Binding> const expected) {
-            auto const* const context{ml::ioj::load_ship_control_context(scope)};
+            auto const* const context{ioj::load_ship_control_context(scope)};
             if (!TestRunner->TestNotNull(TEXT("Canonical context loads"), context)) {
                 return;
             }
@@ -246,12 +246,12 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
 
     TEST_METHOD(DirectionalBindingsPreserveSign)
     {
-        using ml::ioj::EShipControlScope;
+        using ioj::EShipControlScope;
         auto check_sign = [this](EShipControlScope const scope,
                                  FKey const key,
                                  TCHAR const* const action,
                                  bool const negative) {
-            auto const* const context{ml::ioj::load_ship_control_context(scope)};
+            auto const* const context{ioj::load_ship_control_context(scope)};
             if (!TestRunner->TestNotNull(TEXT("Directional context loads"), context)) {
                 return;
             }
@@ -274,7 +274,7 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
                         ++negate_count;
                         negate_index = index;
                     }
-                    if (modifier->IsA<ml::ioj::USpaceGameInputModifier>()) {
+                    if (modifier->IsA<ioj::USpaceGameInputModifier>()) {
                         ++response_count;
                         response_index = index;
                     }
@@ -313,13 +313,13 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
 
     TEST_METHOD(ControllerAxesCarrySemanticIdentity)
     {
-        using ml::ioj::EShipControlScope;
-        using ml::ioj::ESpaceGameInputAxis;
+        using ioj::EShipControlScope;
+        using ioj::ESpaceGameInputAxis;
         for (auto const scope : {EShipControlScope::Starfox,
                                  EShipControlScope::Fighter,
                                  EShipControlScope::Skater,
                                  EShipControlScope::Gunship}) {
-            auto const* const context{ml::ioj::load_ship_control_context(scope)};
+            auto const* const context{ioj::load_ship_control_context(scope)};
             if (!TestRunner->TestNotNull(TEXT("Flight context loads"), context)) {
                 continue;
             }
@@ -343,13 +343,13 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
                 }
                 auto const* const response{mapping.Modifiers.FindByPredicate(
                     [](TObjectPtr<UInputModifier> const& modifier) {
-                        return modifier.Get()->IsA<ml::ioj::USpaceGameInputModifier>();
+                        return modifier.Get()->IsA<ioj::USpaceGameInputModifier>();
                     })};
                 TestRunner->TestTrue(TEXT("Semantic axis response exists"), response != nullptr);
                 if (response != nullptr) {
                     TestRunner->TestTrue(
                         TEXT("Semantic axis matches action"),
-                        CastChecked<ml::ioj::USpaceGameInputModifier>(response->Get())->axis ==
+                        CastChecked<ioj::USpaceGameInputModifier>(response->Get())->axis ==
                             expected);
                 }
             }
@@ -377,16 +377,16 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
         }
         auto const& input{*property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(defaults)};
         TestRunner->TestTrue(TEXT("Starfox asset"),
-                             input.starfox == ml::ioj::load_ship_control_context(
-                                                  ml::ioj::EShipControlScope::Starfox));
+                             input.starfox ==
+                                 ioj::load_ship_control_context(ioj::EShipControlScope::Starfox));
         TestRunner->TestTrue(TEXT("Fighter asset"),
-                             input.fighter == ml::ioj::load_ship_control_context(
-                                                  ml::ioj::EShipControlScope::Fighter));
-        TestRunner->TestTrue(
-            TEXT("Skater asset"),
-            input.skater == ml::ioj::load_ship_control_context(ml::ioj::EShipControlScope::Skater));
+                             input.fighter ==
+                                 ioj::load_ship_control_context(ioj::EShipControlScope::Fighter));
+        TestRunner->TestTrue(TEXT("Skater asset"),
+                             input.skater ==
+                                 ioj::load_ship_control_context(ioj::EShipControlScope::Skater));
         TestRunner->TestTrue(TEXT("Gunship asset"),
-                             input.gunship == ml::ioj::load_ship_control_context(
-                                                  ml::ioj::EShipControlScope::Gunship));
+                             input.gunship ==
+                                 ioj::load_ship_control_context(ioj::EShipControlScope::Gunship));
     }
 };

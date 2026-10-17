@@ -8,7 +8,7 @@
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/Text/STextBlock.h>
 
-namespace ml::ioj {
+namespace ioj {
 void SHiveFrame::Construct(FArguments const& args) {
     check(args._Style != nullptr);
     auto const& style{*args._Style};

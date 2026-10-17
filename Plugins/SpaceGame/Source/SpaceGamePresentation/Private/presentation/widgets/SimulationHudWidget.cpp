@@ -82,7 +82,7 @@ void USimulationHudWidget::set_entity_overlay_style(FEntityOverlayStyle const& s
     }
 }
 
-void USimulationHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
+void USimulationHudWidget::apply_ui_style(ioj::FGameUiStyle const& style) {
     auto const& hud_style{style.hud()};
     auto const& palette{style.palette()};
     has_ui_style_ = true;
@@ -102,7 +102,7 @@ void USimulationHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
     apply_entity_overlay_colours();
 }
 
-void USimulationHudWidget::set_entity_counts(::ioj::sim::telemetry::EntityCounts const& counts) {
+void USimulationHudWidget::set_entity_counts(ioj::sim::telemetry::EntityCounts const& counts) {
     if (force_status_widget) {
         force_status_widget->set_entity_counts(counts);
     }

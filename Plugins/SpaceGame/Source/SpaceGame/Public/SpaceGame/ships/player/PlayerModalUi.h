@@ -11,7 +11,7 @@ class ASpaceGamePlayerController;
 class UTestBatchGameUiData;
 class UInputAction;
 struct FTestMissionCompletion;
-namespace ml::ioj {
+namespace ioj {
 class UGameUiRootLayout;
 class UPauseMenuWidget;
 class ULevelCompletionWidget;
@@ -37,10 +37,10 @@ struct SPACEGAME_API FPlayerModalUi {
     /* **************************************** */
     auto show_pause(ASpaceGamePlayerController& owner,
                     UInputAction& action,
-                    ml::ioj::FPauseMenuData data) -> bool;
+                    ioj::FPauseMenuData data) -> bool;
     auto show_completion(ASpaceGamePlayerController& owner,
                          FTestMissionCompletion const& completion,
-                         ::ioj::sim::LevelTelemetrySnapshot snapshot) -> bool;
+                         ioj::sim::LevelTelemetrySnapshot snapshot) -> bool;
     void detach_callbacks(ASpaceGamePlayerController& owner);
     void clear_modals(ASpaceGamePlayerController& owner);
     void clear_menus(ASpaceGamePlayerController& owner);
@@ -64,11 +64,11 @@ struct SPACEGAME_API FPlayerModalUi {
   private:
     friend struct FPlayerControllerTestAccess;
     UPROPERTY(Transient)
-    TObjectPtr<ml::ioj::UGameUiRootLayout> root_{nullptr};
+    TObjectPtr<ioj::UGameUiRootLayout> root_{nullptr};
     UPROPERTY(Transient)
-    TObjectPtr<ml::ioj::UPauseMenuWidget> pause_menu_{nullptr};
+    TObjectPtr<ioj::UPauseMenuWidget> pause_menu_{nullptr};
     UPROPERTY(Transient)
-    TObjectPtr<ml::ioj::ULevelCompletionWidget> completion_menu_{nullptr};
+    TObjectPtr<ioj::ULevelCompletionWidget> completion_menu_{nullptr};
     EPlayerControlContext restore_context_{EPlayerControlContext::None};
     bool resume_pending_{false};
 };

@@ -7,7 +7,7 @@
 
 class UValueWidget;
 struct FTextBlockStyle;
-namespace ml::ioj {
+namespace ioj {
 struct FGameHudStyle;
 }
 
@@ -17,7 +17,7 @@ class SPACEGAMEPRESENTATION_API UShipSpeedWidget : public UUserWidget {
     GENERATED_BODY()
 
     void set_speed(float speed);
-    void apply_hud_style(ml::ioj::FGameHudStyle const& style);
+    void apply_hud_style(ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
     void set_text_style(FTextBlockStyle const& style);
     auto get_font_size() const noexcept -> int32;

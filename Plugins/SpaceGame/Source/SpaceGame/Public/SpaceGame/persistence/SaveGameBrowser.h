@@ -6,7 +6,7 @@
 #include <Misc/Optional.h>
 #include <Templates/Function.h>
 
-namespace ml::ioj {
+namespace ioj {
 struct SPACEGAME_API FLevelOutcomeStatistic {
     FString label{};
     FString value{};

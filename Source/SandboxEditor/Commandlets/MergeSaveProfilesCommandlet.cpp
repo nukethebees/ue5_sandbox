@@ -149,10 +149,8 @@ int32 UMergeSaveProfilesCommandlet::Main(FString const& parameters) {
 
     auto const staging_root{destination_root + TEXT(".importing.") +
                             FGuid::NewGuid().ToString(EGuidFormats::Digits)};
-    auto no_legacy = [](TArray<FScoreRecord>&) {
-        return ml::ioj::ESaveProfileLoadResult::not_found;
-    };
-    auto storage{ml::ioj::make_file_profile_storage(staging_root, no_legacy)};
+    auto no_legacy = [](TArray<FScoreRecord>&) { return ioj::ESaveProfileLoadResult::not_found; };
+    auto storage{ioj::make_file_profile_storage(staging_root, no_legacy)};
     FSaveProfileIndexData merged_index{};
     TArray<FString> profile_ids{};
     merged_profiles.GetKeys(profile_ids);
@@ -178,7 +176,7 @@ int32 UMergeSaveProfilesCommandlet::Main(FString const& parameters) {
         return 1;
     }
 
-    ml::ioj::FSaveProfileManager validator{storage};
+    ioj::FSaveProfileManager validator{storage};
     if (!validator.initialise()) {
         UE_LOG(LogTemp, Error, TEXT("The staged save set failed validation."));
         IFileManager::Get().DeleteDirectory(*staging_root, false, true);

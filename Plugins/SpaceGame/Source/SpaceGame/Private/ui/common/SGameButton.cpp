@@ -9,7 +9,7 @@
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/Text/STextBlock.h>
 
-namespace ml::ioj {
+namespace ioj {
 namespace {
 auto fallback_button_style() -> FGameButtonPresentationStyle const& {
     static FGameButtonPresentationStyle const style{[] {
@@ -111,4 +111,4 @@ void SGameButton::play_pressed_audio() {
     audio_.play_button_pressed();
 }
 
-} // namespace ml::ioj
+} // namespace ioj

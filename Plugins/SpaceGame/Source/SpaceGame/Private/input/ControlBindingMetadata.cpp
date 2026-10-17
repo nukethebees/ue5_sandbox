@@ -1,6 +1,6 @@
 #include "SpaceGame/input/ControlBindingMetadata.h"
 
-namespace ml::ioj {
+namespace ioj {
 
 auto control_binding_group_label(EControlBindingGroup const group) -> FText {
     switch (group) {
@@ -14,4 +14,4 @@ auto control_binding_group_label(EControlBindingGroup const group) -> FText {
     return FText::GetEmpty();
 }
 
-} // namespace ml::ioj
+} // namespace ioj

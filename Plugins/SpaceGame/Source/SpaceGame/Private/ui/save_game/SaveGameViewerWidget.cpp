@@ -11,7 +11,7 @@
 
 #include <Engine/GameInstance.h>
 
-namespace ml::ioj {
+namespace ioj {
 namespace save_game_viewer_widget {
 auto format_duration(float const duration_seconds) -> FText {
     auto const total_seconds{FMath::Max(0, FMath::RoundToInt(duration_seconds))};
@@ -465,4 +465,4 @@ void USaveGameViewerWidget::publish_outcome() {
         view_->update_outcome(view_state_);
     }
 }
-} // namespace ml::ioj
+} // namespace ioj

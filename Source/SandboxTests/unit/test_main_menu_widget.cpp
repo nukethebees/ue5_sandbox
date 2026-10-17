@@ -103,7 +103,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
 {
     TEST_METHOD(Navigation)
     {
-        auto const* const theme{GetDefault<ml::ioj::USpaceGameUiTheme>()};
+        auto const* const theme{GetDefault<ioj::USpaceGameUiTheme>()};
         auto const ui_style{theme->compile()};
         auto const& text_style{ui_style.text(EGameTextStyle::Body)};
         TestRunner->TestTrue(TEXT("Common menu text style has a renderable font"),
@@ -132,7 +132,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
                 IFileManager::Get().FileExists(*resource_path));
         }
 
-        auto const* const ui_settings{GetDefault<ml::ioj::USpaceGameUiSettings>()};
+        auto const* const ui_settings{GetDefault<ioj::USpaceGameUiSettings>()};
         auto* const configured_theme{ui_settings->default_theme.LoadSynchronous()};
         if (!TestRunner->TestTrue(TEXT("Configured UI theme loads"), IsValid(configured_theme))) {
             return;
@@ -154,13 +154,13 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             return;
         }
 
-        auto const widget_class{LoadClass<ml::ioj::UMainMenuWidget>(
+        auto const widget_class{LoadClass<ioj::UMainMenuWidget>(
             nullptr, TEXT("/SpaceGame/UI/MainMenu/WBP_MainMenu.WBP_MainMenu_C"))};
         if (!TestRunner->TestTrue(TEXT("Main menu class loads"), IsValid(widget_class))) {
             return;
         }
 
-        auto* const widget{CreateWidget<ml::ioj::UMainMenuWidget>(
+        auto* const widget{CreateWidget<ioj::UMainMenuWidget>(
             world_result.value(), widget_class, TEXT("main_menu_test"))};
         if (!TestRunner->TestTrue(TEXT("Main menu is created"), IsValid(widget))) {
             return;
@@ -190,10 +190,10 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         }
 
         TestRunner->TestTrue(TEXT("Select Mission is active initially"),
-                             widget->get_active_page() == ml::ioj::EMainMenuPage::SelectMission);
+                             widget->get_active_page() == ioj::EMainMenuPage::SelectMission);
         TestRunner->TestTrue(TEXT("Mission browser defaults to Missions"),
                              level_select_widget->get_active_category() ==
-                                 ::ioj::levels::authoring::ELevelCatalogCategory::Mission);
+                                 ioj::levels::authoring::ELevelCatalogCategory::Mission);
         TestRunner->TestTrue(TEXT("The command deck is the CommonUI focus bridge"),
                              widget->GetDesiredFocusTarget() == widget);
         TestRunner->TestEqual(TEXT("Preferred stable level id restores selection"),
@@ -202,12 +202,12 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Preferred valid level can be launched immediately"),
                              level_select_widget->can_launch_selected_level());
 
-        ml::ioj::FLevelProgressSummary progress;
+        ioj::FLevelProgressSummary progress;
         TestRunner->TestTrue(
             TEXT("An uncompleted level uses the incomplete indicator"),
             ml::s7::level_completion_indicator_state(progress, TOptional<float>{75.0f}) ==
                 ml::s7::ELevelCompletionIndicatorState::Incomplete);
-        progress.state = ml::ioj::ELevelProgressState::Completed;
+        progress.state = ioj::ELevelProgressState::Completed;
         progress.best_completion_time_seconds = 80.0f;
         TestRunner->TestTrue(
             TEXT("A completed level above par uses the completed indicator"),
@@ -234,45 +234,44 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
                              shell_size.IsSet() &&
                                  shell_size.GetValue().Equals(FVector2f{available_size}));
 
-        widget->select_page(ml::ioj::EMainMenuPage::DataArchive);
+        widget->select_page(ioj::EMainMenuPage::DataArchive);
         TestRunner->TestTrue(TEXT("Data Archive is selectable"),
-                             widget->get_active_page() == ml::ioj::EMainMenuPage::DataArchive);
+                             widget->get_active_page() == ioj::EMainMenuPage::DataArchive);
 
-        widget->select_page(ml::ioj::EMainMenuPage::Telemetry);
+        widget->select_page(ioj::EMainMenuPage::Telemetry);
         TestRunner->TestTrue(TEXT("Telemetry is selectable"),
-                             widget->get_active_page() == ml::ioj::EMainMenuPage::Telemetry);
+                             widget->get_active_page() == ioj::EMainMenuPage::Telemetry);
 
-        widget->select_page(ml::ioj::EMainMenuPage::Video);
+        widget->select_page(ioj::EMainMenuPage::Video);
         TestRunner->TestTrue(TEXT("Video configuration is selectable"),
-                             widget->get_active_page() == ml::ioj::EMainMenuPage::Video);
+                             widget->get_active_page() == ioj::EMainMenuPage::Video);
         TestRunner->TestTrue(TEXT("Video is the initial options tab"),
-                             options_widget->get_active_tab() == ml::ioj::EOptionsTab::Video);
-        widget->select_page(ml::ioj::EMainMenuPage::Gameplay);
+                             options_widget->get_active_tab() == ioj::EOptionsTab::Video);
+        widget->select_page(ioj::EMainMenuPage::Gameplay);
         TestRunner->TestTrue(TEXT("Gameplay tab is selectable"),
-                             options_widget->get_active_tab() == ml::ioj::EOptionsTab::Gameplay);
-        widget->select_page(ml::ioj::EMainMenuPage::Audio);
+                             options_widget->get_active_tab() == ioj::EOptionsTab::Gameplay);
+        widget->select_page(ioj::EMainMenuPage::Audio);
         TestRunner->TestTrue(TEXT("Audio tab is selectable"),
-                             options_widget->get_active_tab() == ml::ioj::EOptionsTab::Audio);
-        widget->select_page(ml::ioj::EMainMenuPage::Controls);
+                             options_widget->get_active_tab() == ioj::EOptionsTab::Audio);
+        widget->select_page(ioj::EMainMenuPage::Controls);
         TestRunner->TestTrue(TEXT("Controls tab is selectable"),
-                             options_widget->get_active_tab() == ml::ioj::EOptionsTab::Controls);
-        widget->select_page(ml::ioj::EMainMenuPage::Accessibility);
+                             options_widget->get_active_tab() == ioj::EOptionsTab::Controls);
+        widget->select_page(ioj::EMainMenuPage::Accessibility);
         TestRunner->TestTrue(TEXT("Accessibility tab is selectable"),
-                             options_widget->get_active_tab() ==
-                                 ml::ioj::EOptionsTab::Accessibility);
-        widget->select_page(ml::ioj::EMainMenuPage::System);
+                             options_widget->get_active_tab() == ioj::EOptionsTab::Accessibility);
+        widget->select_page(ioj::EMainMenuPage::System);
         TestRunner->TestTrue(TEXT("System tab is selectable"),
-                             options_widget->get_active_tab() == ml::ioj::EOptionsTab::System);
+                             options_widget->get_active_tab() == ioj::EOptionsTab::System);
 
-        widget->select_page(ml::ioj::EMainMenuPage::Debug);
+        widget->select_page(ioj::EMainMenuPage::Debug);
         TestRunner->TestTrue(TEXT("Debug page is selectable"),
-                             widget->get_active_page() == ml::ioj::EMainMenuPage::Debug);
+                             widget->get_active_page() == ioj::EMainMenuPage::Debug);
         TestRunner->TestTrue(TEXT("Debug remains outside the Options tab model"),
-                             options_widget->get_active_tab() == ml::ioj::EOptionsTab::System);
+                             options_widget->get_active_tab() == ioj::EOptionsTab::System);
 
-        widget->select_page(ml::ioj::EMainMenuPage::SelectMission);
+        widget->select_page(ioj::EMainMenuPage::SelectMission);
         TestRunner->TestTrue(TEXT("Operations remain reachable after configuration"),
-                             widget->get_active_page() == ml::ioj::EMainMenuPage::SelectMission);
+                             widget->get_active_page() == ioj::EMainMenuPage::SelectMission);
 
         auto const switcher_widget{
             find_slate_descendant(slate_widget, FName{TEXT("SWidgetSwitcher")})};
@@ -283,7 +282,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         auto const switcher{StaticCastSharedPtr<SWidgetSwitcher>(switcher_widget)};
         widget->prepare_for_open(level_select_class, false, NAME_None, true);
         TestRunner->TestTrue(TEXT("A post-construction telemetry request updates the active page"),
-                             widget->get_active_page() == ml::ioj::EMainMenuPage::Telemetry);
+                             widget->get_active_page() == ioj::EMainMenuPage::Telemetry);
         TestRunner->TestEqual(
             TEXT("A post-construction telemetry request updates the visible page"),
             switcher->GetActiveWidgetIndex(),

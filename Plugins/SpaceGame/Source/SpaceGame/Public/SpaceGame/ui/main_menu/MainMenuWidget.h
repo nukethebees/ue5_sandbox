@@ -5,7 +5,7 @@
 
 #include "MainMenuWidget.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 enum class EOptionsTab : uint8;
 class SMainMenuView;
 class UDebugSettingsWidget;
@@ -100,4 +100,4 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     bool page_modal_visible_{};
     FString initial_telemetry_run_id_{};
 };
-} // namespace ml::ioj
+} // namespace ioj

@@ -12,7 +12,7 @@
 #include <InputAction.h>
 #include <Widgets/CommonActivatableWidgetContainer.h>
 
-namespace ml::ioj {
+namespace ioj {
 auto UGameUiRootLayout::initialise(UTestBatchGameUiData& ui_data) -> bool {
     if (!IsValid(screen_stack) || !IsValid(modal_stack)) {
         UE_LOG(LogSandboxUI,
@@ -102,7 +102,7 @@ auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action, FPauseMenuD
 auto UGameUiRootLayout::show_level_completion(FString level_display_name,
                                               ETestMissionState const state,
                                               ETestMissionFailReason const fail_reason,
-                                              ::ioj::sim::LevelTelemetrySnapshot snapshot,
+                                              ioj::sim::LevelTelemetrySnapshot snapshot,
                                               TOptional<float> const par_time_seconds,
                                               bool const new_best_time) -> ULevelCompletionWidget* {
     auto* const ui_data{ui_data_.Get()};

@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "UserSettings/EnhancedInputUserSettings.h"
 
-namespace ml::ioj {
+namespace ioj {
 
 inline auto can_hold_chord_key(FKey const key) -> bool {
     return key.IsValid() && !key.IsAxis1D() && !key.IsAxis2D() && !key.IsAxis3D() &&
@@ -67,4 +67,4 @@ inline auto control_binding_matches_device(FControlBindingView const& binding,
            binding.device_type == device_type;
 }
 
-} // namespace ml::ioj
+} // namespace ioj

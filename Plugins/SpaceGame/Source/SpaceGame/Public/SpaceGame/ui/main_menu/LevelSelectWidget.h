@@ -4,7 +4,7 @@
 
 #include "LevelSelectWidget.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 UCLASS()
 class SPACEGAME_API ULevelSelectWidget : public UUserWidget {
     GENERATED_BODY()

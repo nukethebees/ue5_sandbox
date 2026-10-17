@@ -31,9 +31,9 @@ TEST_CLASS(LevelProgress, "Sandbox.UnitTests")
              .time_seconds = 1.0f},
         };
 
-        auto const summary{ml::ioj::summarize_level_progress(level_id, records)};
+        auto const summary{ioj::summarize_level_progress(level_id, records)};
         TestRunner->TestTrue(TEXT("Completed level is reported"),
-                             summary.state == ml::ioj::ELevelProgressState::Completed);
+                             summary.state == ioj::ELevelProgressState::Completed);
         TestRunner->TestEqual(TEXT("Every matching attempt is counted"), summary.attempt_count, 3);
         TestRunner->TestEqual(TEXT("Successful attempts are counted"), summary.completion_count, 2);
         TestRunner->TestEqual(TEXT("Best kill count is retained"), summary.best_kills, 12);
@@ -51,9 +51,9 @@ TEST_CLASS(LevelProgress, "Sandbox.UnitTests")
                                             .kills = 3}};
 
         auto const attempted{
-            ml::ioj::summarize_level_progress(ml::FLevelId{FName{TEXT("failed-level")}}, records)};
+            ioj::summarize_level_progress(ml::FLevelId{FName{TEXT("failed-level")}}, records)};
         TestRunner->TestTrue(TEXT("Failed level is attempted"),
-                             attempted.state == ml::ioj::ELevelProgressState::Attempted);
+                             attempted.state == ioj::ELevelProgressState::Attempted);
         TestRunner->TestEqual(
             TEXT("Failed level has no completions"), attempted.completion_count, 0);
         TestRunner->TestEqual(TEXT("Failed level has no completion time"),
@@ -61,9 +61,9 @@ TEST_CLASS(LevelProgress, "Sandbox.UnitTests")
                               -1.0f);
 
         auto const unknown{
-            ml::ioj::summarize_level_progress(ml::FLevelId{FName{TEXT("unknown-level")}}, records)};
+            ioj::summarize_level_progress(ml::FLevelId{FName{TEXT("unknown-level")}}, records)};
         TestRunner->TestTrue(TEXT("Unknown level is not attempted"),
-                             unknown.state == ml::ioj::ELevelProgressState::NotAttempted);
+                             unknown.state == ioj::ELevelProgressState::NotAttempted);
         TestRunner->TestEqual(TEXT("Unknown level has no attempts"), unknown.attempt_count, 0);
     }
 };

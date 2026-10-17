@@ -16,7 +16,7 @@ class SPACEGAMEPRESENTATION_API UVector2DWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     void update(FVector2D const value);
-    void apply_hud_style(ml::ioj::FGameHudStyle const& style);
+    void apply_hud_style(ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
     void set_label(FText new_label);
     auto get_font_size() const noexcept -> int32 { return font_size; }
@@ -47,5 +47,5 @@ class SPACEGAMEPRESENTATION_API UVector2DWidget : public UUserWidget {
     void update_widgets();
 
     FVector2D value_{};
-    TOptional<ml::ioj::FGameHudStyle> hud_style_{};
+    TOptional<ioj::FGameHudStyle> hud_style_{};
 };

@@ -2,7 +2,7 @@
 
 #include "SpaceGame/settings/ControlSettingsTypes.h"
 
-namespace ml::ioj {
+namespace ioj {
 
 class FControlChordCapture {
   public:
@@ -48,4 +48,4 @@ class FControlChordCapture {
     FKey action_key_{};
 };
 
-} // namespace ml::ioj
+} // namespace ioj

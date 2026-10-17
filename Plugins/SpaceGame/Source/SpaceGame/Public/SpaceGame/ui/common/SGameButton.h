@@ -7,7 +7,7 @@
 
 class SButton;
 
-namespace ml::ioj {
+namespace ioj {
 
 class SPACEGAME_API SGameButton final : public SCompoundWidget {
   public:
@@ -52,4 +52,4 @@ class SPACEGAME_API SGameButton final : public SCompoundWidget {
     bool selected_{};
 };
 
-} // namespace ml::ioj
+} // namespace ioj

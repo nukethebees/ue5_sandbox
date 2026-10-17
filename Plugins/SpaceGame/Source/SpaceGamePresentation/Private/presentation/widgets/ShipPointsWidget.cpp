@@ -9,7 +9,7 @@ void UShipPointsWidget::set_points(int32 points) {
     widget->update(points);
 }
 
-void UShipPointsWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
+void UShipPointsWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
     RETURN_IF_NULLPTR(widget);
     widget->set_format_spec(TEXT("SCORE // {0}"));
     widget->set_text_style(style.accent_text);

@@ -51,13 +51,13 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         config.omitted_collision_actor_classes.Add(
             ASandboxTestOmittedCollisionActor::StaticClass());
 
-        ::ioj::sim::collision::CollisionUniformGrid grid;
+        ioj::sim::collision::CollisionUniformGrid grid;
         auto const configured_dims{config.calculate_grid_dimensions()};
-        auto const grid_geometry{::ioj::sim::collision::GridGeometry{
+        auto const grid_geometry{ioj::sim::collision::GridGeometry{
             {configured_dims.X, configured_dims.Y, configured_dims.Z},
             ml::to_native(config.cell_size)}};
         grid.set_geometry(grid_geometry);
-        ml::ioj::FLevelCollisionHost collision_host;
+        ioj::FLevelCollisionHost collision_host;
         grid.set_static_aabbs(
             collision_host.initialise_static_geometry(*world, config, grid_geometry));
 

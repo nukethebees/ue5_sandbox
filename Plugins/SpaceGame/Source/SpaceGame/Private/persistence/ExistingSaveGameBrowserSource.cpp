@@ -4,7 +4,7 @@
 #include "SpaceGame/persistence/SpaceSaveGame.h"
 #include "SpaceGame/persistence/SpaceSaveSubsystem.h"
 
-namespace ml::ioj::detail {
+namespace ioj::detail {
 auto discover_existing_save_profiles(USpaceSaveSubsystem const& save_subsystem)
     -> TArray<FSaveProfileSummary> {
     auto const profiles{save_subsystem.get_profiles()};

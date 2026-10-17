@@ -55,12 +55,12 @@ auto UTestBatchGameUiData::get_native_widget_classes() -> TConstArrayView<UClass
         UBenchmarkHudWidget::StaticClass(),
         UBattleViewerHudWidget::StaticClass(),
         UValueWidget::StaticClass(),
-        ml::ioj::UGameUiRootLayout::StaticClass(),
-        ml::ioj::UMenuButtonWidget::StaticClass(),
-        ml::ioj::UMainMenuWidget::StaticClass(),
-        ml::ioj::ULevelSelectWidget::StaticClass(),
-        ml::ioj::UPauseMenuWidget::StaticClass(),
-        ml::ioj::ULevelCompletionWidget::StaticClass(),
+        ioj::UGameUiRootLayout::StaticClass(),
+        ioj::UMenuButtonWidget::StaticClass(),
+        ioj::UMainMenuWidget::StaticClass(),
+        ioj::ULevelSelectWidget::StaticClass(),
+        ioj::UPauseMenuWidget::StaticClass(),
+        ioj::ULevelCompletionWidget::StaticClass(),
     };
     return classes;
 }

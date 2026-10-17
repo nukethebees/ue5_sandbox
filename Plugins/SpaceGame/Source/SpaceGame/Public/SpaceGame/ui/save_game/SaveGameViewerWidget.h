@@ -8,7 +8,7 @@
 
 class USpaceSaveSubsystem;
 
-namespace ml::ioj {
+namespace ioj {
 struct FLevelOutcomeSummary;
 struct FSaveGameBrowser;
 struct FSaveProfileReport;
@@ -154,4 +154,4 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     UGameSubsystem* game_{nullptr};
     bool create_profile_open_{};
 };
-} // namespace ml::ioj
+} // namespace ioj

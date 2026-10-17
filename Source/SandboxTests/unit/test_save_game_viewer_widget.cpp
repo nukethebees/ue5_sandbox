@@ -5,7 +5,7 @@
 #include <CQTest.h>
 
 namespace save_game_viewer_widget_test {
-auto make_outcome(FString id, FString name) -> ml::ioj::FLevelOutcomeSummary {
+auto make_outcome(FString id, FString name) -> ioj::FLevelOutcomeSummary {
     return {.outcome_id = MoveTemp(id),
             .display_name = MoveTemp(name),
             .completed_at = FDateTime{2026, 8, 27},
@@ -25,21 +25,21 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
             return;
         }
 
-        auto const widget_class{LoadClass<ml::ioj::USaveGameViewerWidget>(
+        auto const widget_class{LoadClass<ioj::USaveGameViewerWidget>(
             nullptr, TEXT("/SpaceGame/UI/SaveGame/WBP_SaveGameViewer.WBP_SaveGameViewer_C"))};
         if (!TestRunner->TestTrue(TEXT("Save game viewer class loads"), IsValid(widget_class))) {
             return;
         }
 
-        auto* const widget{CreateWidget<ml::ioj::USaveGameViewerWidget>(
+        auto* const widget{CreateWidget<ioj::USaveGameViewerWidget>(
             world_result.value(), widget_class, TEXT("save_game_viewer_test"))};
         if (!TestRunner->TestTrue(TEXT("Save game viewer is created"), IsValid(widget))) {
             return;
         }
 
-        ml::ioj::FSaveGameBrowser browser{
+        ioj::FSaveGameBrowser browser{
             [] {
-                return TArray<ml::ioj::FSaveProfileSummary>{
+                return TArray<ioj::FSaveProfileSummary>{
                     {.profile_id = TEXT("battle_at_vega"),
                      .display_name = TEXT("Battle at Vega"),
                      .created_at = FDateTime{2026, 8, 20},
@@ -60,9 +60,9 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
                      .last_played_at = FDateTime{2026, 8, 25}},
                 };
             },
-            [](FString const& profile_id) -> TOptional<ml::ioj::FSaveProfileReport> {
+            [](FString const& profile_id) -> TOptional<ioj::FSaveProfileReport> {
                 if (profile_id == TEXT("battle_at_vega")) {
-                    return ml::ioj::FSaveProfileReport{
+                    return ioj::FSaveProfileReport{
                         .profile_id = profile_id,
                         .outcomes = {save_game_viewer_widget_test::make_outcome(
                                          TEXT("patrol"), TEXT("Vega Patrol")),
@@ -70,13 +70,13 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
                                          TEXT("defence"), TEXT("Vega Defence"))}};
                 }
                 if (profile_id == TEXT("test_run_12")) {
-                    return ml::ioj::FSaveProfileReport{
+                    return ioj::FSaveProfileReport{
                         .profile_id = profile_id,
                         .outcomes = {save_game_viewer_widget_test::make_outcome(
                             TEXT("interception"), TEXT("Fleet Interception"))}};
                 }
                 if (profile_id == TEXT("empty_profile")) {
-                    return ml::ioj::FSaveProfileReport{.profile_id = profile_id};
+                    return ioj::FSaveProfileReport{.profile_id = profile_id};
                 }
                 return {};
             }};

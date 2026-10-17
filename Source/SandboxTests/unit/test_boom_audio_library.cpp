@@ -29,7 +29,7 @@ TEST_CLASS(BoomAudioLibrary, "Sandbox.UnitTests")
 {
     TEST_METHOD(ReportsUnsetAndMissingRootsWithoutPackChecks)
     {
-        auto const unset{ml::ioj::resolve_boom_audio_library(FStringView{})};
+        auto const unset{ioj::resolve_boom_audio_library(FStringView{})};
         TestRunner->TestTrue(TEXT("An unset root has an empty path"), unset.root.path.IsEmpty());
         TestRunner->TestFalse(TEXT("An unset root is invalid"), unset.root.valid);
         TestRunner->TestTrue(TEXT("An unset root has no directories"), unset.directories.IsEmpty());
@@ -40,7 +40,7 @@ TEST_CLASS(BoomAudioLibrary, "Sandbox.UnitTests")
 
         FTemporaryBoomAudioDirectory directory;
         auto const missing_path{FPaths::Combine(directory.path, TEXT("missing"))};
-        auto const missing{ml::ioj::resolve_boom_audio_library(missing_path)};
+        auto const missing{ioj::resolve_boom_audio_library(missing_path)};
         TestRunner->TestFalse(TEXT("A nonexistent root is invalid"), missing.root.valid);
         TestRunner->TestEqual(TEXT("The missing root is normalized"),
                               missing.root.path,
@@ -78,7 +78,7 @@ TEST_CLASS(BoomAudioLibrary, "Sandbox.UnitTests")
             TEXT("The menu button fixture is written"),
             FFileHelper::SaveStringToFile(TEXT("wave fixture"), *expected_button_path));
 
-        auto const resolution{ml::ioj::resolve_boom_audio_library(directory.path)};
+        auto const resolution{ioj::resolve_boom_audio_library(directory.path)};
         TestRunner->TestTrue(TEXT("The root is valid"), resolution.root.valid);
         TestRunner->TestEqual(TEXT("Every expected pack is resolved"),
                               resolution.directories.Num(),
@@ -124,7 +124,7 @@ TEST_CLASS(BoomAudioLibrary, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("The non-directory fixture is written"),
                              FFileHelper::SaveStringToFile(TEXT("not a directory"), *pack_path));
 
-        auto const resolution{ml::ioj::resolve_boom_audio_library(directory.path)};
+        auto const resolution{ioj::resolve_boom_audio_library(directory.path)};
         TestRunner->TestEqual(
             TEXT("The expected pack is reported"), resolution.directories.Num(), 1);
         if (resolution.directories.Num() != 1) {
@@ -139,7 +139,7 @@ TEST_CLASS(BoomAudioLibrary, "Sandbox.UnitTests")
     {
         FTemporaryBoomAudioDirectory directory;
 
-        auto const resolution{ml::ioj::resolve_boom_audio_library(directory.path)};
+        auto const resolution{ioj::resolve_boom_audio_library(directory.path)};
         TestRunner->TestEqual(
             TEXT("The expected pack is reported"), resolution.directories.Num(), 1);
         if (resolution.directories.Num() != 1) {
@@ -160,7 +160,7 @@ TEST_CLASS(BoomAudioLibrary, "Sandbox.UnitTests")
         IFileManager::Get().MakeDirectory(
             *FPaths::Combine(directory.path, TEXT("sci-fi_ds_2220mb")), true);
 
-        auto const resolution{ml::ioj::resolve_boom_audio_library(directory.path)};
+        auto const resolution{ioj::resolve_boom_audio_library(directory.path)};
         TestRunner->TestFalse(TEXT("A missing menu ambience source is unavailable"),
                               resolution.menu_ambience_source.valid);
         TestRunner->TestTrue(TEXT("The missing menu ambience source has a resolved path"),
@@ -173,7 +173,7 @@ TEST_CLASS(BoomAudioLibrary, "Sandbox.UnitTests")
         IFileManager::Get().MakeDirectory(
             *FPaths::Combine(directory.path, TEXT("sci-fi_ds_2220mb")), true);
 
-        auto const resolution{ml::ioj::resolve_boom_audio_library(directory.path)};
+        auto const resolution{ioj::resolve_boom_audio_library(directory.path)};
         TestRunner->TestFalse(TEXT("A missing menu button source is unavailable"),
                               resolution.menu_button_pressed_source.valid);
         TestRunner->TestTrue(TEXT("The missing menu button source has a resolved path"),

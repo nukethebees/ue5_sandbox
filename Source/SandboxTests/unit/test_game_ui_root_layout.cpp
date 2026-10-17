@@ -23,10 +23,10 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
         }
 
         auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
-        auto const root_class{
-            IsValid(ui_data) ? ui_data->get_widget_class<ml::ioj::UGameUiRootLayout>() : nullptr};
+        auto const root_class{IsValid(ui_data) ? ui_data->get_widget_class<ioj::UGameUiRootLayout>()
+                                               : nullptr};
         auto* const root{
-            root_class ? CreateWidget<ml::ioj::UGameUiRootLayout>(world_result.value(), root_class)
+            root_class ? CreateWidget<ioj::UGameUiRootLayout>(world_result.value(), root_class)
                        : nullptr};
         if (!TestRunner->TestTrue(TEXT("Configured root layout is created"), IsValid(root)) ||
             !TestRunner->TestTrue(TEXT("Root layout initialises"), root->initialise(*ui_data))) {
@@ -48,12 +48,12 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
                                  root_input_config->GetInputMode() == ECommonInputMode::Game);
 
         TestRunner->TestTrue(TEXT("Main menu is pushed"), root->show_main_menu(false));
-        auto* const main_menu{Cast<ml::ioj::UMainMenuWidget>(root->get_active_screen())};
+        auto* const main_menu{Cast<ioj::UMainMenuWidget>(root->get_active_screen())};
         if (!TestRunner->TestTrue(TEXT("Command-deck main menu is active"), IsValid(main_menu))) {
             return;
         }
         TestRunner->TestTrue(TEXT("Select Mission is the initial command-deck page"),
-                             main_menu->get_active_page() == ml::ioj::EMainMenuPage::SelectMission);
+                             main_menu->get_active_page() == ioj::EMainMenuPage::SelectMission);
         auto const menu_input_config{main_menu->GetDesiredInputConfig()};
         TestRunner->TestTrue(
             TEXT("Active menus own menu input without mouse capture"),
@@ -81,8 +81,8 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
             transitioned_input_config.IsSet() &&
                 transitioned_input_config->GetInputMode() == ECommonInputMode::Menu &&
                 transitioned_input_config->GetMouseCaptureMode() == EMouseCaptureMode::NoCapture);
-        main_menu->select_page(ml::ioj::EMainMenuPage::DataArchive);
-        main_menu->select_page(ml::ioj::EMainMenuPage::SelectMission);
+        main_menu->select_page(ioj::EMainMenuPage::DataArchive);
+        main_menu->select_page(ioj::EMainMenuPage::SelectMission);
         TestRunner->TestTrue(TEXT("Page navigation retains the existing command deck"),
                              root->get_active_screen() == main_menu &&
                                  main_menu->get_level_select_widget() == level_select);
@@ -99,7 +99,7 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
             return;
         }
         auto* const resume_button{
-            Cast<ml::ioj::UMenuButtonWidget>(pause_menu->GetWidgetFromName(TEXT("resume_button")))};
+            Cast<ioj::UMenuButtonWidget>(pause_menu->GetWidgetFromName(TEXT("resume_button")))};
         TestRunner->TestTrue(TEXT("Resume is the pause focus target"),
                              IsValid(resume_button) &&
                                  pause_menu->GetDesiredFocusTarget() == resume_button);
@@ -115,7 +115,7 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
             TEXT("Reopening pause does not accumulate widgets"), root->get_modal_count(), 1);
         pause_menu->DeactivateWidget();
 
-        ::ioj::sim::LevelTelemetrySnapshot completion_snapshot;
+        ioj::sim::LevelTelemetrySnapshot completion_snapshot;
         completion_snapshot.kills = 6;
         auto* const completion{root->show_level_completion(TEXT("Border Skirmish"),
                                                            ETestMissionState::Succeeded,

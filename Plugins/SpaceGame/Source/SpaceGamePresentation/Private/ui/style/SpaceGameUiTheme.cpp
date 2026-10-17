@@ -5,7 +5,7 @@
 #include <Misc/Paths.h>
 #include <Styling/CoreStyle.h>
 
-namespace ml::ioj {
+namespace ioj {
 namespace {
 auto srgb(TCHAR const* const value) -> FLinearColor {
     return FLinearColor::FromSRGBColor(FColor::FromHex(value));

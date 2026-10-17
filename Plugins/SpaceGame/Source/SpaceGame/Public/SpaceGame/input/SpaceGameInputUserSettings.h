@@ -4,7 +4,7 @@
 
 #include "SpaceGameInputUserSettings.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 
 class UControlBindingMetadata;
 
@@ -90,4 +90,4 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
     bool invert_gamepad_vertical_translation_{};
 };
 
-} // namespace ml::ioj
+} // namespace ioj

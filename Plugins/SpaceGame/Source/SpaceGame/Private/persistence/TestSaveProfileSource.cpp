@@ -2,7 +2,7 @@
 
 #include "SpaceGame/persistence/SpaceSaveGame.h"
 
-namespace ml::ioj::detail {
+namespace ioj::detail {
 auto make_test_profile_records() -> TArray<FScoreRecord> {
     return {
         {.date = FDateTime{2026, 8, 20, 19, 5},

@@ -8,7 +8,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "Kismet/KismetSystemLibrary.h"
 
-namespace ml::ioj {
+namespace ioj {
 namespace {
 
 auto to_game_window_mode(EWindowMode::Type const value) -> EGameWindowMode {
@@ -491,4 +491,4 @@ void FGameSettingsBackend::write_non_display(USpaceGameUserSettings& settings,
     settings.set_bees(state.bees);
 }
 
-} // namespace ml::ioj
+} // namespace ioj

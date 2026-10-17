@@ -4,7 +4,7 @@
 #include <SpaceGamePresentation/ui/style/SpaceGameUiSettings.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
-namespace ml::ioj {
+namespace ioj {
 void UGameUiStyleSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
     auto* theme{GetDefault<USpaceGameUiSettings>()->default_theme.LoadSynchronous()};

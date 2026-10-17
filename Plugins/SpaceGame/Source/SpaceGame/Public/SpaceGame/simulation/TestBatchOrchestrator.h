@@ -42,7 +42,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     GENERATED_BODY()
     friend struct FTestBatchOrchestratorTestAccess;
   public:
-    using tick_type = ::ioj::sim::SimTick;
+    using tick_type = ioj::sim::SimTick;
     using time_type = double;
 
     /* **************************************** */
@@ -89,9 +89,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto frequency_to_tick_period(time_type const frequency) const noexcept -> tick_type;
     auto duration_to_tick_period(time_type const duration) const noexcept -> tick_type;
 
-    auto get_state() const noexcept -> ::ioj::sim::OrchestratorState {
+    auto get_state() const noexcept -> ioj::sim::OrchestratorState {
         return level_simulation_.IsSet() ? level_simulation_->get_state()
-                                         : ::ioj::sim::OrchestratorState::Uninitialised;
+                                         : ioj::sim::OrchestratorState::Uninitialised;
     }
     auto get_completed_ticks() const noexcept -> tick_type {
         return level_simulation_.IsSet() ? level_simulation_->get_clock().get_completed_ticks() : 0;
@@ -120,35 +120,35 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     // Player and combat simulations
     /* **************************************** */
     auto get_player_ship() const -> ATestSpaceShip const*;
-    auto get_player_ship_simulation() const noexcept -> ::ioj::sim::player::Sim const*;
+    auto get_player_ship_simulation() const noexcept -> ioj::sim::player::Sim const*;
     void set_player_ship(ATestSpaceShip& new_player_ship);
     void clear_player_ship();
-    auto get_lasers() const noexcept -> ::ioj::sim::lasers::Sim const* {
+    auto get_lasers() const noexcept -> ioj::sim::lasers::Sim const* {
         return level_simulation_.IsSet() ? &level_simulation_->get_lasers() : nullptr;
     }
-    auto get_capital_ships() const noexcept -> ::ioj::sim::capital_ships::Sim const* {
+    auto get_capital_ships() const noexcept -> ioj::sim::capital_ships::Sim const* {
         return level_simulation_.IsSet() ? &level_simulation_->get_capital_ships() : nullptr;
     }
-    auto get_fighters() const noexcept -> ::ioj::sim::fighters::Sim const* {
+    auto get_fighters() const noexcept -> ioj::sim::fighters::Sim const* {
         return level_simulation_.IsSet() ? &level_simulation_->get_fighters() : nullptr;
     }
 
     /* **************************************** */
     // Simulation services
     /* **************************************** */
-    auto get_entity_ledger() const noexcept -> ::ioj::sim::EntityLedger const& {
+    auto get_entity_ledger() const noexcept -> ioj::sim::EntityLedger const& {
         check(level_simulation_.IsSet());
         return level_simulation_->get_entity_ledger();
     }
-    auto get_level_telemetry_manager() const noexcept -> ::ioj::sim::LevelTelemetryManager const& {
+    auto get_level_telemetry_manager() const noexcept -> ioj::sim::LevelTelemetryManager const& {
         check(level_simulation_.IsSet());
         return level_simulation_->get_level_telemetry_manager();
     }
-    auto get_spatial_query_manager() const noexcept -> ::ioj::sim::SpatialQueryManager const& {
+    auto get_spatial_query_manager() const noexcept -> ioj::sim::SpatialQueryManager const& {
         check(level_simulation_.IsSet());
         return level_simulation_->get_spatial_query_manager();
     }
-    auto get_mission_manager() const noexcept -> ::ioj::sim::MissionManager const& {
+    auto get_mission_manager() const noexcept -> ioj::sim::MissionManager const& {
         check(level_simulation_.IsSet());
         return level_simulation_->get_mission_manager();
     }
@@ -173,7 +173,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FOnOrchestratorReset on_reset;
     FOnTestMissionCompleted on_mission_completed;
     auto get_mission_definition() -> FLevelMissionDefinition& { return mission_definition; }
-    auto get_level_simulation() const -> ::ioj::sim::LevelSim const* {
+    auto get_level_simulation() const -> ioj::sim::LevelSim const* {
         return level_simulation_.IsSet() ? &level_simulation_.GetValue() : nullptr;
     }
     auto get_level_presentation() const -> FLevelPresentation const* {
@@ -207,7 +207,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto initialise_simulation(USpaceGameLevelConfig const& effective_config,
                                ml::FLevelStartErrors& errors,
                                TOptional<ml::FProxyLevelSimBuild>& proxy_build,
-                               ::ioj::sim::collision::GridGeometry& grid_geometry) -> bool;
+                               ioj::sim::collision::GridGeometry& grid_geometry) -> bool;
     void handle_level_start_failure(FString message);
 
     /* **************************************** */
@@ -259,15 +259,15 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     TObjectPtr<UCollisionGridVisualizationComponent> collision_grid_visualization{nullptr};
 
     FHUDManager hud_manager;
-    TOptional<::ioj::sim::LevelSim> level_simulation_;
+    TOptional<ioj::sim::LevelSim> level_simulation_;
     TOptional<FLevelPresentation> level_presentation_;
     TArray<FTransform> initial_turret_transforms_;
     FLevelTelemetryEnvironment telemetry_environment_;
     TOptional<ml::FLevelDefinition> level_definition_;
     bool launched_paused_{};
-    ml::ioj::FLevelLaunchOptions launch_options_{};
+    ioj::FLevelLaunchOptions launch_options_{};
     FString level_source_sha256_{};
-    ml::ioj::FLevelCollisionHost world_collision_;
+    ioj::FLevelCollisionHost world_collision_;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI", meta = (ShowOnlyInnerProperties))
     FTestBatchGameUiUpdateFrequencies hud_update_frequencies{};

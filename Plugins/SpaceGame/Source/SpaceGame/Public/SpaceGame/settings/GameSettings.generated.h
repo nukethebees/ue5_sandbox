@@ -10,7 +10,7 @@
 
 #include <variant>
 
-namespace ml::ioj {
+namespace ioj {
 
 enum class EGameSetting : uint8 {
     Resolution,
@@ -411,4 +411,4 @@ class TGameSettingsAccess {
     auto derived() const -> Derived const& { return static_cast<Derived const&>(*this); }
 };
 
-} // namespace ml::ioj
+} // namespace ioj

@@ -2,7 +2,7 @@
 
 #include <Input/CommonAnalogCursor.h>
 
-namespace ml::ioj {
+namespace ioj {
 class FGameAnalogCursor final : public FCommonAnalogCursor {
   public:
     explicit FGameAnalogCursor(UCommonUIActionRouterBase const& router)

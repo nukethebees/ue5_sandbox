@@ -20,7 +20,7 @@
 #include <Windows/WindowsHWrapper.h>
 #endif
 
-namespace ml::ioj {
+namespace ioj {
 namespace save_profile_file_storage {
 inline constexpr uint32 envelope_magic{0x534A4F49};
 inline constexpr uint32 envelope_version{1};

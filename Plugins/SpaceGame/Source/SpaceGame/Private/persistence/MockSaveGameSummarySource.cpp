@@ -2,7 +2,7 @@
 
 #include <Containers/Map.h>
 
-namespace ml::ioj::detail {
+namespace ioj::detail {
 auto make_mock_save_game_browser() -> FSaveGameBrowser {
 #if UE_BUILD_SHIPPING
     return {};

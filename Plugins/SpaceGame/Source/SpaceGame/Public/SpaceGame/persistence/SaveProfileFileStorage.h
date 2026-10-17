@@ -2,7 +2,7 @@
 
 #include "SpaceGame/persistence/SaveProfileManager.h"
 
-namespace ml::ioj {
+namespace ioj {
 enum class ESaveProfileStorageMode : uint8 {
     platform,
     shared,

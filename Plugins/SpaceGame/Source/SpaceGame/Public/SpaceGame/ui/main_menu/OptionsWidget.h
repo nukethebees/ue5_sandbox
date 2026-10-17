@@ -4,7 +4,7 @@
 
 #include "OptionsWidget.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 enum class EGameSettingCategory : uint8;
 class SGameOptionsView;
 class UGameSettingsSubsystem;
@@ -70,4 +70,4 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     EOptionsTab active_tab_{EOptionsTab::Video};
     bool exit_after_confirmation_{};
 };
-} // namespace ml::ioj
+} // namespace ioj

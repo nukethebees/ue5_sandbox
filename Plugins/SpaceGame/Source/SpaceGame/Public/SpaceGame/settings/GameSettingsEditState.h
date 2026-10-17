@@ -2,7 +2,7 @@
 
 #include "SpaceGame/settings/GameSettings.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 
 class SPACEGAME_API FGameSettingsEditState {
   public:
@@ -26,4 +26,4 @@ class SPACEGAME_API FGameSettingsEditState {
     FGameSettingsState defaults_{};
 };
 
-} // namespace ml::ioj
+} // namespace ioj

@@ -3,7 +3,7 @@
 
 #include "SpaceGame/settings/GameSettings.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 
 namespace {
 
@@ -915,4 +915,4 @@ auto set_game_setting_value(FGameSettingsState& state,
     return false;
 }
 
-} // namespace ml::ioj
+} // namespace ioj

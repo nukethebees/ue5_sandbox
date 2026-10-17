@@ -7,7 +7,7 @@
 class SButton;
 class SScrollBox;
 
-namespace ml::ioj {
+namespace ioj {
 DECLARE_DELEGATE_OneParam(FOnTelemetryRunSelected, FString);
 DECLARE_DELEGATE_OneParam(FOnTelemetryLevelFilterSelected, FString);
 DECLARE_DELEGATE_OneParam(FOnTelemetryBaselineSelected, FString);
@@ -67,4 +67,4 @@ class STelemetryDashboardView final : public SCompoundWidget {
     TSharedPtr<SWidget> workload_section_{};
     TSharedPtr<SWidget> activity_section_{};
 };
-} // namespace ml::ioj
+} // namespace ioj

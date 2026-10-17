@@ -16,7 +16,7 @@ class SPACEGAMEPRESENTATION_API UFlightVectorDebugWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     void update(ml::ship_hud::FFlightVectorDebugData const& data);
-    void apply_hud_style(ml::ioj::FGameHudStyle const& style);
+    void apply_hud_style(ioj::FGameHudStyle const& style);
     void set_font_size(int32 new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
   protected:
@@ -44,5 +44,5 @@ class SPACEGAMEPRESENTATION_API UFlightVectorDebugWidget : public UUserWidget {
     int32 font_size{24};
 
     ml::ship_hud::FFlightVectorDebugData data_{};
-    TOptional<ml::ioj::FGameHudStyle> hud_style_{};
+    TOptional<ioj::FGameHudStyle> hud_style_{};
 };

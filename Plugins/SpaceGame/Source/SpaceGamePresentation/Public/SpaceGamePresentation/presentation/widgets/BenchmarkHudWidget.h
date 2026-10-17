@@ -10,7 +10,7 @@ class UOverlay;
 class UTextBlock;
 class UValueWidget;
 
-namespace ml::ioj {
+namespace ioj {
 class FGameUiStyle;
 class UMenuButtonWidget;
 }
@@ -19,7 +19,7 @@ UCLASS()
 class SPACEGAMEPRESENTATION_API UBenchmarkHudWidget : public UCommonActivatableWidget {
     GENERATED_BODY()
   public:
-    void apply_ui_style(ml::ioj::FGameUiStyle const& style);
+    void apply_ui_style(ioj::FGameUiStyle const& style);
     void set_tick_source(TFunction<TOptional<uint64>()> source);
 
     TOptional<FUIInputConfig> GetDesiredInputConfig() const override;
@@ -42,7 +42,7 @@ class SPACEGAMEPRESENTATION_API UBenchmarkHudWidget : public UCommonActivatableW
     UValueWidget* ticks_remaining_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    ml::ioj::UMenuButtonWidget* end_benchmark_button{nullptr};
+    ioj::UMenuButtonWidget* end_benchmark_button{nullptr};
   private:
     void update_ticks_remaining();
     void handle_end_requested();

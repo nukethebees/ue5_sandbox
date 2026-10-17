@@ -15,9 +15,8 @@ TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
         }
 
         auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
-        auto const widget_class{IsValid(ui_data)
-                                    ? ui_data->get_widget_class<ml::ioj::ULevelCompletionWidget>()
-                                    : nullptr};
+        auto const widget_class{
+            IsValid(ui_data) ? ui_data->get_widget_class<ioj::ULevelCompletionWidget>() : nullptr};
         if (!TestRunner->TestTrue(TEXT("Completion widget class is configured"),
                                   static_cast<bool>(widget_class))) {
             return;
@@ -25,11 +24,11 @@ TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
 
         auto const make_widget{[&] {
             auto* const widget{
-                CreateWidget<ml::ioj::ULevelCompletionWidget>(world_result.value(), widget_class)};
+                CreateWidget<ioj::ULevelCompletionWidget>(world_result.value(), widget_class)};
             if (IsValid(widget)) {
                 auto const slate_widget{widget->TakeWidget()};
                 (void)slate_widget;
-                ::ioj::sim::LevelTelemetrySnapshot snapshot;
+                ioj::sim::LevelTelemetrySnapshot snapshot;
                 snapshot.elapsed_seconds = 3723.0;
                 snapshot.tick_period = 0.5;
                 snapshot.spawned_entities = 25;

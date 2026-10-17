@@ -38,8 +38,8 @@ auto UMissionEntityHealthRowWidget::check_widget_bindings() const -> bool {
     return true;
 }
 
-void UMissionEntityHealthRowWidget::set_entity(::ioj::sim::EntityUniqueId const unique_id,
-                                               ::ioj::sim::EntityType const entity_type) {
+void UMissionEntityHealthRowWidget::set_entity(ioj::sim::EntityUniqueId const unique_id,
+                                               ioj::sim::EntityType const entity_type) {
     entity_name->SetText(FText::Format(INVTEXT("{0} {1}"),
                                        FText::FromString(ml::get_entity_class_name(entity_type)),
                                        unique_id.index()));
@@ -49,8 +49,8 @@ void UMissionEntityHealthRowWidget::set_health(FShipHealth const health) {
     health_widget->set_health(health);
 }
 
-void UMissionEntityHealthRowWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
-    ml::ioj::apply_text_style(*entity_name, style.caption_text);
+void UMissionEntityHealthRowWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
+    ioj::apply_text_style(*entity_name, style.caption_text);
     health_widget->apply_hud_style(style);
 
     auto* const entity_slot{Cast<UHorizontalBoxSlot>(entity_name->Slot)};

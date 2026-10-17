@@ -12,7 +12,7 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
 {
     TEST_METHOD(DefaultsAndConfigRoundTripPreserveRenderingEffects)
     {
-        auto* const source{NewObject<ml::ioj::USpaceGameUserSettings>()};
+        auto* const source{NewObject<ioj::USpaceGameUserSettings>()};
         source->SetToDefaults();
         TestRunner->TestTrue(TEXT("Bloom defaults to enabled"), source->bloom_enabled());
         TestRunner->TestFalse(TEXT("Motion blur defaults to disabled"),
@@ -20,7 +20,7 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
         source->set_bloom_enabled(false);
         source->set_motion_blur_enabled(true);
         source->set_master_volume(0.35f);
-        auto loadout{::ioj::sim::player::make_default_flight_model_loadout()};
+        auto loadout{ioj::sim::player::make_default_flight_model_loadout()};
         loadout.left.config.translation.up.normal.positive_target_speed = 1234.f;
         source->set_flight_model_loadout(loadout);
 
@@ -34,8 +34,8 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
         source->SaveConfig(CPF_Config, *config_path);
         GConfig->UnloadFile(config_path);
 
-        auto* const loaded{NewObject<ml::ioj::USpaceGameUserSettings>()};
-        loaded->LoadConfig(ml::ioj::USpaceGameUserSettings::StaticClass(), *config_path);
+        auto* const loaded{NewObject<ioj::USpaceGameUserSettings>()};
+        loaded->LoadConfig(ioj::USpaceGameUserSettings::StaticClass(), *config_path);
 
         TestRunner->TestFalse(TEXT("Bloom survives a config round trip"), loaded->bloom_enabled());
         TestRunner->TestTrue(TEXT("Motion blur survives a config round trip"),
@@ -48,9 +48,9 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
 
     TEST_METHOD(RenderingEffectOverridesTakePrecedenceOverScalability)
     {
-        auto* const live_settings{GEngine != nullptr ? Cast<ml::ioj::USpaceGameUserSettings>(
-                                                           GEngine->GetGameUserSettings())
-                                                     : nullptr};
+        auto* const live_settings{
+            GEngine != nullptr ? Cast<ioj::USpaceGameUserSettings>(GEngine->GetGameUserSettings())
+                               : nullptr};
         if (!TestRunner->TestNotNull(TEXT("SpaceGame user settings are configured"),
                                      live_settings)) {
             return;
@@ -69,7 +69,7 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
             return;
         }
 
-        auto* const settings{NewObject<ml::ioj::USpaceGameUserSettings>()};
+        auto* const settings{NewObject<ioj::USpaceGameUserSettings>()};
         settings->SetToDefaults();
         settings->SetPostProcessingQuality(3);
         settings->set_bloom_enabled(false);
@@ -98,13 +98,13 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
 
     TEST_METHOD(SavedFlightTopologyCannotOverrideAuthoredMode)
     {
-        auto* const settings{NewObject<ml::ioj::USpaceGameUserSettings>()};
-        auto loadout{::ioj::sim::player::make_default_flight_model_loadout()};
+        auto* const settings{NewObject<ioj::USpaceGameUserSettings>()};
+        auto loadout{ioj::sim::player::make_default_flight_model_loadout()};
         loadout.left.config.translation.up.manual.semantic =
-            ::ioj::sim::player::TranslationSemantic::Disabled;
+            ioj::sim::player::TranslationSemantic::Disabled;
         settings->set_flight_model_loadout(loadout);
         TestRunner->TestTrue(TEXT("A saved topology mutation is discarded"),
                              settings->flight_model_loadout() ==
-                                 ::ioj::sim::player::make_default_flight_model_loadout());
+                                 ioj::sim::player::make_default_flight_model_loadout());
     }
 };

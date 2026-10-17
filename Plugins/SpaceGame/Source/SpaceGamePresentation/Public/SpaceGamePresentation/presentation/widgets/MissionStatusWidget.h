@@ -20,11 +20,11 @@ class SPACEGAMEPRESENTATION_API UMissionStatusWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     void set_mission_data(ml::hud_manager::FMissionDataCache const& data);
-    void set_mission_state(::ioj::sim::MissionState const new_state);
+    void set_mission_state(ioj::sim::MissionState const new_state);
     void set_mission_time(float const mission_time);
     void set_enemies_remaining(int32 const enemies_remaining);
     void set_time_remaining(float const time_remaining);
-    void apply_hud_style(ml::ioj::FGameHudStyle const& style);
+    void apply_hud_style(ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
   protected:
@@ -59,15 +59,15 @@ class SPACEGAMEPRESENTATION_API UMissionStatusWidget : public UUserWidget {
     UPROPERTY(EditAnywhere, Category = "UI")
     int32 font_size{24};
   private:
-    void set_mission_mode(::ioj::sim::MissionMode const new_mode,
-                          ::ioj::sim::MissionState const initial_state);
-    void set_mission_values(::ioj::sim::MissionMode const mission_mode,
-                            ::ioj::sim::MissionState const mission_state,
+    void set_mission_mode(ioj::sim::MissionMode const new_mode,
+                          ioj::sim::MissionState const initial_state);
+    void set_mission_values(ioj::sim::MissionMode const mission_mode,
+                            ioj::sim::MissionState const mission_state,
                             float const mission_time,
                             float const time_remaining,
                             int32 const enemies_remaining);
     auto check_widget_bindings() const -> bool;
-    void apply_mission_state_style(::ioj::sim::MissionState state);
-    ::ioj::sim::MissionMode current_mission_mode{::ioj::sim::MissionMode::None};
-    TOptional<ml::ioj::FGameHudStyle> hud_style_{};
+    void apply_mission_state_style(ioj::sim::MissionState state);
+    ioj::sim::MissionMode current_mission_mode{ioj::sim::MissionMode::None};
+    TOptional<ioj::FGameHudStyle> hud_style_{};
 };

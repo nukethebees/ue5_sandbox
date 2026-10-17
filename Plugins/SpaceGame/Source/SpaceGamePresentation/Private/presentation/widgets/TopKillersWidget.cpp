@@ -27,16 +27,16 @@ void UTopKillersWidget::NativePreConstruct() {
         team_colours[ETestTeam::Yellow] = FLinearColor::Yellow;
 
         top_killers.reset();
-        top_killers.add(::ioj::sim::EntityUniqueId(14, ::ioj::sim::EntityType::Fighter),
-                        ::ioj::sim::EntityType::Fighter,
+        top_killers.add(ioj::sim::EntityUniqueId(14, ioj::sim::EntityType::Fighter),
+                        ioj::sim::EntityType::Fighter,
                         ETestTeam::Green,
                         18);
-        top_killers.add(::ioj::sim::EntityUniqueId(7, ::ioj::sim::EntityType::Turret),
-                        ::ioj::sim::EntityType::Turret,
+        top_killers.add(ioj::sim::EntityUniqueId(7, ioj::sim::EntityType::Turret),
+                        ioj::sim::EntityType::Turret,
                         ETestTeam::Red,
                         13);
-        top_killers.add(::ioj::sim::EntityUniqueId(2, ::ioj::sim::EntityType::CapitalShip),
-                        ::ioj::sim::EntityType::CapitalShip,
+        top_killers.add(ioj::sim::EntityUniqueId(2, ioj::sim::EntityType::CapitalShip),
+                        ioj::sim::EntityType::CapitalShip,
                         ETestTeam::Blue,
                         9);
     }
@@ -46,7 +46,7 @@ void UTopKillersWidget::NativePreConstruct() {
 
 auto UTopKillersWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const content{Super::RebuildWidget()};
-    return hud_style_ ? ml::ioj::make_hud_panel(hud_style_.GetValue(), content) : content;
+    return hud_style_ ? ioj::make_hud_panel(hud_style_.GetValue(), content) : content;
 }
 
 void UTopKillersWidget::set_top_killers(ml::ship_hud::FTopKillerEntries const& new_entries) {
@@ -60,7 +60,7 @@ void UTopKillersWidget::set_team_colours(UTestTeamVisualData::FColourArray const
     rebuild_table();
 }
 
-void UTopKillersWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
+void UTopKillersWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
     hud_style_ = style;
     rebuild_table();
 }
@@ -72,7 +72,7 @@ void UTopKillersWidget::set_font_size(int32 const new_font_size) {
 
 void UTopKillersWidget::set_text_style(UTextBlock& text, ETextJustify::Type const alignment) const {
     if (hud_style_) {
-        ml::ioj::apply_text_style(text, hud_style_->secondary_text);
+        ioj::apply_text_style(text, hud_style_->secondary_text);
     } else {
         auto font{text.GetFont()};
         font.Size = font_size;
@@ -136,7 +136,7 @@ void UTopKillersWidget::rebuild_table() {
         auto* const heading{add_text(name, row_heading, column, 1, alignment)};
         heading->SetText(MoveTemp(text));
         if (hud_style_) {
-            ml::ioj::apply_text_style(*heading, hud_style_->caption_text);
+            ioj::apply_text_style(*heading, hud_style_->caption_text);
         }
     }};
     add_heading(TEXT("rank_heading"), column_rank, data_alignment, INVTEXT("Rank"));
@@ -167,7 +167,7 @@ void UTopKillersWidget::rebuild_table() {
             auto* const value{add_text(name, row, column, 1, alignment)};
             value->SetText(MoveTemp(text));
             if (hud_style_) {
-                ml::ioj::apply_text_style(*value, hud_style_->data_text);
+                ioj::apply_text_style(*value, hud_style_->data_text);
             }
             return value;
         }};
@@ -190,7 +190,7 @@ void UTopKillersWidget::rebuild_table() {
         auto* const team_text{add_value(FString::Printf(TEXT("team_%d"), entry_index),
                                         column_team,
                                         data_alignment,
-                                        FText::FromString(ml::to_fstring(::ioj::to_string(
+                                        FText::FromString(ml::to_fstring(ioj::to_string(
                                             ml::to_native(top_killers.teams[entry_index])))))};
         add_value(FString::Printf(TEXT("kills_%d"), entry_index),
                   column_kills,
@@ -211,7 +211,7 @@ void UTopKillersWidget::rebuild_table() {
                 hud_style_->data_text.ColorAndOpacity.GetSpecifiedColor(),
                 team_colour,
                 hud_style_->team_text_blend));
-            ml::ioj::apply_text_style(*team_text, team_text_style);
+            ioj::apply_text_style(*team_text, team_text_style);
         }
     }
 }

@@ -37,7 +37,7 @@ struct FMissionDataCache;
 namespace ml::ship_hud {
 struct FFlightVectorDebugData;
 }
-namespace ml::ioj {
+namespace ioj {
 class FGameUiStyle;
 }
 
@@ -47,7 +47,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     GENERATED_BODY()
 
     void set_speed(float value);
-    void apply_ui_style(ml::ioj::FGameUiStyle const& style) override;
+    void apply_ui_style(ioj::FGameUiStyle const& style) override;
     void set_speed_widget_visibility(ESlateVisibility const new_visibility);
 
     void set_health(FShipHealth value);
@@ -85,7 +85,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     void set_flight_action(float throttle, FStringView action);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
-    void set_mission_state(::ioj::sim::MissionState const new_state);
+    void set_mission_state(ioj::sim::MissionState const new_state);
     void set_mission_time(float const mission_time);
     void set_mission_time_remaining(float const time_remaining);
     void set_mission_enemies_remaining(int32 const enemies_remaining);

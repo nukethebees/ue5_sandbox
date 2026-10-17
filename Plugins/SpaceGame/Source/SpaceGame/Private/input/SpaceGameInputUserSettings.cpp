@@ -7,7 +7,7 @@
 #include "InputMappingContext.h"
 #include "PlayerMappableKeySettings.h"
 
-namespace ml::ioj {
+namespace ioj {
 
 void USpaceGameInputUserSettings::finalize_canonical_registration() {
     auto* const profile{GetDefaultKeyProfile()};
@@ -108,4 +108,4 @@ auto USpaceGameInputUserSettings::DetermineHardwareDeviceForActionMapping(
                                              : FHardwareDeviceIdentifier::DefaultKeyboardAndMouse;
 }
 
-} // namespace ml::ioj
+} // namespace ioj

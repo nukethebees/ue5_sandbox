@@ -13,7 +13,7 @@ TEST_CLASS(SaveGameProfileAdapter, "Sandbox.UnitTests")
         };
 
         auto const summary{
-            ml::ioj::save_profile::make_summary(TEXT("profile"), TEXT("Pilot"), records)};
+            ioj::save_profile::make_summary(TEXT("profile"), TEXT("Pilot"), records)};
 
         TestRunner->TestEqual(
             TEXT("Profile ID remains intact"), summary.profile_id, FString{TEXT("profile")});
@@ -41,7 +41,7 @@ TEST_CLASS(SaveGameProfileAdapter, "Sandbox.UnitTests")
                                             .target_kills = 10,
                                             .target_completion_time = 90.f}};
 
-        auto const report{ml::ioj::save_profile::make_report(TEXT("profile"), records)};
+        auto const report{ioj::save_profile::make_report(TEXT("profile"), records)};
 
         TestRunner->TestEqual(TEXT("Report has one outcome"), report.outcomes.Num(), 1);
         auto const& outcome{report.outcomes[0]};

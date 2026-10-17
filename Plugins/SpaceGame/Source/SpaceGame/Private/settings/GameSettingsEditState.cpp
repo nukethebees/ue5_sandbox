@@ -1,6 +1,6 @@
 #include "SpaceGame/settings/GameSettingsEditState.h"
 
-namespace ml::ioj {
+namespace ioj {
 namespace {
 auto setting_values_equal(FGameSettingValue const& left, FGameSettingValue const& right) -> bool {
     if (auto const* const left_float{std::get_if<float>(&left)}) {
@@ -159,4 +159,4 @@ auto FGameSettingsEditState::is_at_defaults(EGameSettingCategory const category)
     return true;
 }
 
-} // namespace ml::ioj
+} // namespace ioj

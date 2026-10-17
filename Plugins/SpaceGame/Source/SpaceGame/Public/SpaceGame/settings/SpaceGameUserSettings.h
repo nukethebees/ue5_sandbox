@@ -7,7 +7,7 @@
 
 #include "SpaceGameUserSettings.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 
 UCLASS(Config = GameUserSettings)
 class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
@@ -37,8 +37,8 @@ class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
     auto bees() const -> int32;
     void set_bees(int32 value);
 
-    auto flight_model_loadout() const -> ::ioj::sim::player::FlightModelLoadout;
-    void set_flight_model_loadout(::ioj::sim::player::FlightModelLoadout const& loadout);
+    auto flight_model_loadout() const -> ioj::sim::player::FlightModelLoadout;
+    void set_flight_model_loadout(ioj::sim::player::FlightModelLoadout const& loadout);
   private:
     UPROPERTY(Config)
     int32 anti_aliasing_method_{};
@@ -77,4 +77,4 @@ class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
     FString gunship_flight_model_{};
 };
 
-} // namespace ml::ioj
+} // namespace ioj

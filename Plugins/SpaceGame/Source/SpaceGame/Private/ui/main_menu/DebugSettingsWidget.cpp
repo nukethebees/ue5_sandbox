@@ -14,7 +14,7 @@
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/Text/STextBlock.h>
 
-namespace ml::ioj {
+namespace ioj {
 class SDebugSettingsView final : public SCompoundWidget {
   public:
     SLATE_BEGIN_ARGS(SDebugSettingsView)
@@ -239,4 +239,4 @@ void UDebugSettingsWidget::handle_start_levels_paused_changed(ECheckBoxState con
         view_->refresh();
     }
 }
-} // namespace ml::ioj
+} // namespace ioj

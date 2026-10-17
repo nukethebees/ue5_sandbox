@@ -10,7 +10,7 @@
 
 #include <Engine/GameInstance.h>
 
-namespace ml::ioj {
+namespace ioj {
 UTelemetryDashboardWidget::UTelemetryDashboardWidget(FObjectInitializer const& object_initializer)
     : Super(object_initializer) {
     SetIsFocusable(true);
@@ -138,7 +138,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
         .level_display_name = UTF8_TO_TCHAR(record->metadata.level_display_name.c_str())}
                          .level_label()};
     auto const completion_reason{
-        ml::to_fstring(::ioj::sim::to_serialized_string(record->completion.reason))};
+        ml::to_fstring(ioj::sim::to_serialized_string(record->completion.reason))};
     state_.header = FText::FromString(FString::Printf(
         TEXT("%s\nLAUNCHED // %s    END // %s\nREQUESTED // "
              "%.3gx    MODE // %s    DURATION // %s\nBUILD // %s    "
@@ -181,7 +181,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
                                                              FString::Join(warnings, TEXT(", ")));
         }
     }
-    auto last_int = [](::ioj::sim::LevelTelemetryTickSeries::Int32Data const& series) {
+    auto last_int = [](ioj::sim::LevelTelemetryTickSeries::Int32Data const& series) {
         return series.is_empty() ? 0 : series.last_value();
     };
     auto summary{FString::Printf(
@@ -211,10 +211,10 @@ void UTelemetryDashboardWidget::rebuild_state() {
         };
         auto const& combat{record->battle_samples.Last().combat};
         auto const winner{
-            record->completion.reason == ::ioj::sim::LevelTelemetryRunEndReason::BattleResolved
+            record->completion.reason == ioj::sim::LevelTelemetryRunEndReason::BattleResolved
                 ? (record->completion.winning_team.has_value()
                        ? ml::to_fstring(
-                             ::ioj::to_serialized_string(record->completion.winning_team.value()))
+                             ioj::to_serialized_string(record->completion.winning_team.value()))
                        : FString{TEXT("draw")})
                 : FString{TEXT("—")}};
         summary += FString::Printf(
@@ -236,4 +236,4 @@ void UTelemetryDashboardWidget::publish() {
         view_->replace_state(state_);
     }
 }
-} // namespace ml::ioj
+} // namespace ioj

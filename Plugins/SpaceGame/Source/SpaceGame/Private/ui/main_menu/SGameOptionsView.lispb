@@ -1,4 +1,4 @@
-(widget-class ml::ioj::SGameOptionsView
+(widget-class ioj::SGameOptionsView
   (function BuildPanel
     (params
       (value background)
@@ -14,7 +14,7 @@
       :Padding page_margin
       :HAlign HAlign_Center
       :VAlign VAlign_Center
-      (::ml::ioj::SHiveFrame
+      (ioj::SHiveFrame
         :Style chrome_style
         :WidthOverride window_width
         :HeightOverride window_height

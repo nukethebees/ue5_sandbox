@@ -17,7 +17,7 @@ void UMissionStatusWidget::NativeConstruct() {
 
 auto UMissionStatusWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const content{Super::RebuildWidget()};
-    return hud_style_ ? ml::ioj::make_hud_panel(hud_style_.GetValue(), content) : content;
+    return hud_style_ ? ioj::make_hud_panel(hud_style_.GetValue(), content) : content;
 }
 
 auto UMissionStatusWidget::check_widget_bindings() const -> bool {
@@ -52,8 +52,8 @@ void UMissionStatusWidget::NativePreConstruct() {
     time_remaining_widget->set_format_spec(time_remaining_format);
 
     if (IsDesignTime()) {
-        set_mission_values(::ioj::sim::MissionMode::KillEnemiesWithinTime,
-                           ::ioj::sim::MissionState::Running,
+        set_mission_values(ioj::sim::MissionMode::KillEnemiesWithinTime,
+                           ioj::sim::MissionState::Running,
                            37.5f,
                            82.5f,
                            12);
@@ -68,23 +68,23 @@ void UMissionStatusWidget::set_mission_data(ml::hud_manager::FMissionDataCache c
                        data.status_data.enemies_remaining);
 }
 
-void UMissionStatusWidget::set_mission_mode(::ioj::sim::MissionMode const new_mode,
-                                            ::ioj::sim::MissionState const initial_state) {
+void UMissionStatusWidget::set_mission_mode(ioj::sim::MissionMode const new_mode,
+                                            ioj::sim::MissionState const initial_state) {
     current_mission_mode = new_mode;
-    auto const mode_name{ml::to_fstring(::ioj::sim::to_display_string(new_mode))};
-    auto const state_name{ml::to_fstring(::ioj::sim::to_string(initial_state))};
+    auto const mode_name{ml::to_fstring(ioj::sim::to_display_string(new_mode))};
+    auto const state_name{ml::to_fstring(ioj::sim::to_string(initial_state))};
     mission_mode_widget->update(mode_name, FStringView{state_name});
     apply_mission_state_style(initial_state);
 }
 
-void UMissionStatusWidget::set_mission_state(::ioj::sim::MissionState const new_state) {
-    auto const mode_name{ml::to_fstring(::ioj::sim::to_display_string(current_mission_mode))};
-    auto const state_name{ml::to_fstring(::ioj::sim::to_string(new_state))};
+void UMissionStatusWidget::set_mission_state(ioj::sim::MissionState const new_state) {
+    auto const mode_name{ml::to_fstring(ioj::sim::to_display_string(current_mission_mode))};
+    auto const state_name{ml::to_fstring(ioj::sim::to_string(new_state))};
     mission_mode_widget->update(mode_name, FStringView{state_name});
     apply_mission_state_style(new_state);
 }
 
-void UMissionStatusWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
+void UMissionStatusWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
     hud_style_ = style;
     mission_mode_widget->set_format_spec(TEXT("{0} // {1}"));
     mission_time_widget->set_format_spec(TEXT("MISSION TIME // {0}"));
@@ -96,18 +96,18 @@ void UMissionStatusWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) 
     time_remaining_widget->set_text_style(style.warning_text);
 }
 
-void UMissionStatusWidget::apply_mission_state_style(::ioj::sim::MissionState const state) {
+void UMissionStatusWidget::apply_mission_state_style(ioj::sim::MissionState const state) {
     if (!hud_style_ || !mission_mode_widget) {
         return;
     }
 
     auto const& style{hud_style_.GetValue()};
     auto const* text_style{&style.primary_text};
-    if (state == ::ioj::sim::MissionState::Succeeded) {
+    if (state == ioj::sim::MissionState::Succeeded) {
         text_style = &style.success_text;
-    } else if (state == ::ioj::sim::MissionState::Failed) {
+    } else if (state == ioj::sim::MissionState::Failed) {
         text_style = &style.danger_text;
-    } else if (state == ::ioj::sim::MissionState::Running) {
+    } else if (state == ioj::sim::MissionState::Running) {
         text_style = &style.accent_text;
     }
     mission_mode_widget->set_text_style(*text_style);
@@ -118,8 +118,8 @@ void UMissionStatusWidget::set_mission_time(float const mission_time) {
 }
 
 void UMissionStatusWidget::set_enemies_remaining(int32 const enemies_remaining) {
-    auto const show_enemies{current_mission_mode == ::ioj::sim::MissionMode::KillEnemies ||
-                            current_mission_mode == ::ioj::sim::MissionMode::KillEnemiesWithinTime};
+    auto const show_enemies{current_mission_mode == ioj::sim::MissionMode::KillEnemies ||
+                            current_mission_mode == ioj::sim::MissionMode::KillEnemiesWithinTime};
     enemies_remaining_widget->SetVisibility(show_enemies ? ESlateVisibility::Visible
                                                          : ESlateVisibility::Collapsed);
     if (show_enemies) {
@@ -128,8 +128,8 @@ void UMissionStatusWidget::set_enemies_remaining(int32 const enemies_remaining) 
 }
 
 void UMissionStatusWidget::set_time_remaining(float const time_remaining) {
-    auto const show_time{current_mission_mode == ::ioj::sim::MissionMode::SurviveTime ||
-                         current_mission_mode == ::ioj::sim::MissionMode::KillEnemiesWithinTime};
+    auto const show_time{current_mission_mode == ioj::sim::MissionMode::SurviveTime ||
+                         current_mission_mode == ioj::sim::MissionMode::KillEnemiesWithinTime};
     time_remaining_widget->SetVisibility(show_time ? ESlateVisibility::Visible
                                                    : ESlateVisibility::Collapsed);
     if (show_time) {
@@ -145,8 +145,8 @@ void UMissionStatusWidget::set_font_size(int32 const new_font_size) {
     time_remaining_widget->set_font_size(font_size);
 }
 
-void UMissionStatusWidget::set_mission_values(::ioj::sim::MissionMode const mission_mode,
-                                              ::ioj::sim::MissionState const mission_state,
+void UMissionStatusWidget::set_mission_values(ioj::sim::MissionMode const mission_mode,
+                                              ioj::sim::MissionState const mission_state,
                                               float const mission_time,
                                               float const time_remaining,
                                               int32 const enemies_remaining) {

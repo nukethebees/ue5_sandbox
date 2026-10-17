@@ -8,7 +8,7 @@
 
 class USpaceSaveSubsystem;
 
-namespace ml::ioj {
+namespace ioj {
 class SDebugSettingsView;
 class UGameSubsystem;
 
@@ -47,4 +47,4 @@ class SPACEGAME_API UDebugSettingsWidget : public UUserWidget {
     FGameUiStyle fallback_style_{};
     bool save_failed_{};
 };
-} // namespace ml::ioj
+} // namespace ioj

@@ -4,7 +4,7 @@
 #include <InputMappingContext.h>
 #include <UObject/ConstructorHelpers.h>
 
-namespace ml::ioj {
+namespace ioj {
 UMenuActivatableWidget::UMenuActivatableWidget() {
     bIsBackHandler = true;
     bAutoRestoreFocus = true;

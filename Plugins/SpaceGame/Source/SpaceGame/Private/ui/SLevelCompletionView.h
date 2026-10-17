@@ -11,7 +11,7 @@
 class SGraphPlot;
 class STextBlock;
 
-namespace ml::ioj {
+namespace ioj {
 class SGameButton;
 
 enum class ELevelCompletionAction : uint8 {
@@ -34,7 +34,7 @@ class SLevelCompletionView final : public SCompoundWidget {
     void update_report(FString const& level_display_name,
                        ETestMissionState state,
                        ETestMissionFailReason fail_reason,
-                       ::ioj::sim::LevelTelemetrySnapshot const& snapshot,
+                       ioj::sim::LevelTelemetrySnapshot const& snapshot,
                        TOptional<float> par_time_seconds,
                        bool new_best_time);
     void focus_primary_action();
@@ -74,4 +74,4 @@ class SLevelCompletionView final : public SCompoundWidget {
     TSharedPtr<SGraphPlot> activity_graph_{};
     TArray<TSharedPtr<SGameButton>> action_buttons_{};
 };
-} // namespace ml::ioj
+} // namespace ioj

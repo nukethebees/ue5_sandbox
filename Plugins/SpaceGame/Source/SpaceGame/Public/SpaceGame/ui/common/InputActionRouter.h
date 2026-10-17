@@ -4,7 +4,7 @@
 
 #include "InputActionRouter.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 UCLASS()
 class SPACEGAME_API UInputActionRouter : public UCommonUIActionRouterBase {
     GENERATED_BODY()

@@ -10,7 +10,7 @@ class SBox;
 class STextBlock;
 class SVerticalBox;
 
-namespace ml::ioj {
+namespace ioj {
 class SGameButton;
 
 DECLARE_DELEGATE_OneParam(FOnSaveProfileSelected, FString const&);
@@ -110,4 +110,4 @@ class SSaveGameViewerView final : public SCompoundWidget {
     TArray<TSharedPtr<SGameButton>> profile_buttons_{};
     TArray<TSharedPtr<SGameButton>> outcome_buttons_{};
 };
-} // namespace ml::ioj
+} // namespace ioj

@@ -11,7 +11,7 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
     TEST_METHOD(IsTransferredToTheRuntimeExactlyOnce)
     {
         auto* const game_instance{NewObject<UGameInstance>()};
-        auto* const subsystem{NewObject<ml::ioj::UGameSubsystem>(game_instance)};
+        auto* const subsystem{NewObject<ioj::UGameSubsystem>(game_instance)};
         if (!TestRunner->TestTrue(TEXT("Game subsystem is created"), IsValid(subsystem))) {
             return;
         }
@@ -20,7 +20,7 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
         subsystem->set_pending_level(ml::example_levels::make_native_example(),
                                      TEXT("LevelScripts/Example.scm"),
                                      TEXT("0123456789abcdef"),
-                                     {.launch_mode = ml::ioj::ELevelLaunchMode::Paused,
+                                     {.launch_mode = ioj::ELevelLaunchMode::Paused,
                                       .requested_time_scale = 4.0,
                                       .control_context = EPlayerControlContext::Benchmark});
 
@@ -38,7 +38,7 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
                               pending->definition.metadata.title,
                               FString{TEXT("Native Example")});
         TestRunner->TestTrue(TEXT("Launch mode is retained"),
-                             pending->options.launch_mode == ml::ioj::ELevelLaunchMode::Paused);
+                             pending->options.launch_mode == ioj::ELevelLaunchMode::Paused);
         TestRunner->TestEqual(
             TEXT("Requested time scale is retained"), pending->options.requested_time_scale, 4.0);
         TestRunner->TestTrue(TEXT("Control context is retained"),
@@ -48,7 +48,7 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
 
         for (auto const value : {0.25, 1.0, 100.0}) {
             TestRunner->TestTrue(TEXT("Supported time scale is accepted"),
-                                 ml::ioj::level_launch::is_valid_time_scale(value));
+                                 ioj::level_launch::is_valid_time_scale(value));
         }
         for (auto const value : {0.0,
                                  -1.0,
@@ -56,7 +56,7 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
                                  std::numeric_limits<double>::infinity(),
                                  std::numeric_limits<double>::quiet_NaN()}) {
             TestRunner->TestFalse(TEXT("Unsupported time scale is rejected"),
-                                  ml::ioj::level_launch::is_valid_time_scale(value));
+                                  ioj::level_launch::is_valid_time_scale(value));
         }
     }
 };

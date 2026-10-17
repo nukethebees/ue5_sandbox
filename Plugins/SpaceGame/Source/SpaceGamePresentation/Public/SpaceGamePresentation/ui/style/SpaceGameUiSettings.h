@@ -4,7 +4,7 @@
 
 #include "SpaceGameUiSettings.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 class USpaceGameUiTheme;
 
 UCLASS(Config = Game, DefaultConfig, meta = (DisplayName = "Space Game UI"))

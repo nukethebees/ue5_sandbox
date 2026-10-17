@@ -5,7 +5,7 @@
 #include "HAL/IConsoleManager.h"
 #include "SceneUtils.h"
 
-namespace ml::ioj {
+namespace ioj {
 namespace {
 
 auto console_variable(TCHAR const* name) -> IConsoleVariable* {
@@ -177,35 +177,34 @@ void USpaceGameUserSettings::set_bees(int32 const value) {
     bees_ = FMath::Clamp(value, 0, 5);
 }
 
-auto USpaceGameUserSettings::flight_model_loadout() const
-    -> ::ioj::sim::player::FlightModelLoadout {
-    auto loadout{::ioj::sim::player::make_default_flight_model_loadout()};
+auto USpaceGameUserSettings::flight_model_loadout() const -> ioj::sim::player::FlightModelLoadout {
+    auto loadout{ioj::sim::player::make_default_flight_model_loadout()};
     auto restore = [](FString const& data,
-                      ::ioj::sim::player::FlightModelPreset const preset,
-                      ::ioj::sim::player::FlightModelProfile& target) {
+                      ioj::sim::player::FlightModelPreset const preset,
+                      ioj::sim::player::FlightModelProfile& target) {
         auto candidate{target};
-        if (!data.IsEmpty() && (!flight_model_settings_codec::decode(data, candidate) ||
-                                candidate.base_preset != preset ||
-                                !::ioj::sim::player::matches_authored_flight_model_topology(
-                                    candidate.config, preset))) {
+        if (!data.IsEmpty() &&
+            (!flight_model_settings_codec::decode(data, candidate) ||
+             candidate.base_preset != preset ||
+             !ioj::sim::player::matches_authored_flight_model_topology(candidate.config, preset))) {
             UE_LOG(LogTemp, Warning, TEXT("Ignoring invalid saved flight model slot"));
             return;
         }
         target = candidate;
     };
-    restore(starfox_flight_model_, ::ioj::sim::player::FlightModelPreset::Starfox, loadout.up);
-    restore(fighter_flight_model_, ::ioj::sim::player::FlightModelPreset::Fighter, loadout.right);
-    restore(skater_flight_model_, ::ioj::sim::player::FlightModelPreset::Skater, loadout.down);
-    restore(gunship_flight_model_, ::ioj::sim::player::FlightModelPreset::Gunship, loadout.left);
+    restore(starfox_flight_model_, ioj::sim::player::FlightModelPreset::Starfox, loadout.up);
+    restore(fighter_flight_model_, ioj::sim::player::FlightModelPreset::Fighter, loadout.right);
+    restore(skater_flight_model_, ioj::sim::player::FlightModelPreset::Skater, loadout.down);
+    restore(gunship_flight_model_, ioj::sim::player::FlightModelPreset::Gunship, loadout.left);
     return loadout;
 }
 
 void USpaceGameUserSettings::set_flight_model_loadout(
-    ::ioj::sim::player::FlightModelLoadout const& loadout) {
+    ioj::sim::player::FlightModelLoadout const& loadout) {
     starfox_flight_model_ = flight_model_settings_codec::encode(loadout.up);
     fighter_flight_model_ = flight_model_settings_codec::encode(loadout.right);
     skater_flight_model_ = flight_model_settings_codec::encode(loadout.down);
     gunship_flight_model_ = flight_model_settings_codec::encode(loadout.left);
 }
 
-} // namespace ml::ioj
+} // namespace ioj

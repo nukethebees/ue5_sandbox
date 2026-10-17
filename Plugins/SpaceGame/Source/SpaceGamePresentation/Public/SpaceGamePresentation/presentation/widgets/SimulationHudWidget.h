@@ -18,7 +18,7 @@ class SEntityOverlayWidget;
 namespace ml::hud_manager {
 struct FMissionDataCache;
 }
-namespace ml::ioj {
+namespace ioj {
 class FGameUiStyle;
 }
 
@@ -26,8 +26,8 @@ UCLASS(Abstract)
 class SPACEGAMEPRESENTATION_API USimulationHudWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    virtual void apply_ui_style(ml::ioj::FGameUiStyle const& style);
-    void set_entity_counts(::ioj::sim::telemetry::EntityCounts const& counts);
+    virtual void apply_ui_style(ioj::FGameUiStyle const& style);
+    void set_entity_counts(ioj::sim::telemetry::EntityCounts const& counts);
     void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
     void set_mission_data(ml::hud_manager::FMissionDataCache const& data);
 

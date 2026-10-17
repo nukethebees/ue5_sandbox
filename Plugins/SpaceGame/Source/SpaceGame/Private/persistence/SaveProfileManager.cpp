@@ -4,7 +4,7 @@
 
 #include <Misc/Guid.h>
 
-namespace ml::ioj {
+namespace ioj {
 namespace save_profile_manager {
 FString const default_profile_id{TEXT("default_profile")};
 FString const default_profile_name{TEXT("Default Profile")};

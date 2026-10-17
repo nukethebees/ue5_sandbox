@@ -7,7 +7,7 @@
 #include <Components/Button.h>
 #include <Components/TextBlock.h>
 
-namespace ml::ioj {
+namespace ioj {
 namespace save_game_row_widget {
 FLinearColor const selected_colour{0.16f, 0.38f, 0.55f, 1.f};
 FLinearColor const inactive_colour{0.12f, 0.14f, 0.16f, 1.f};

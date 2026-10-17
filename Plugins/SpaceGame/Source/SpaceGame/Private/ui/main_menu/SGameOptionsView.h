@@ -13,11 +13,11 @@ class SWidgetSwitcher;
 class SVerticalBox;
 class SScrollBox;
 
-namespace SlateGenerated::ml::ioj {
+namespace SlateGenerated::ioj {
 struct SGameOptionsViewBuilder;
 }
 
-namespace ml::ioj {
+namespace ioj {
 class SGameButton;
 class UGameSettingsSubsystem;
 struct FGameCapabilities;
@@ -46,7 +46,7 @@ DECLARE_DELEGATE_OneParam(FOnOptionsTabChanged, EOptionsTab);
 DECLARE_DELEGATE_OneParam(FOnOptionsInteractionModalChanged, bool);
 
 class SGameOptionsView final : public SCompoundWidget {
-    friend struct ::SlateGenerated::ml::ioj::SGameOptionsViewBuilder;
+    friend struct ::SlateGenerated::ioj::SGameOptionsViewBuilder;
   public:
     SLATE_BEGIN_ARGS(SGameOptionsView)
         : _Settings(nullptr)
@@ -228,4 +228,4 @@ class SGameOptionsView final : public SCompoundWidget {
     EShipControlScope controls_scope_{EShipControlScope::General};
 };
 
-} // namespace ml::ioj
+} // namespace ioj

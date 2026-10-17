@@ -176,7 +176,7 @@ void UShipHudWidget::set_common_widget_properties() {
                              mission_status_panel);
 }
 
-void UShipHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
+void UShipHudWidget::apply_ui_style(ioj::FGameUiStyle const& style) {
     Super::apply_ui_style(style);
     auto const& hud_style{style.hud()};
     reticle_normal_colour_ = hud_style.reticle_normal;
@@ -236,7 +236,7 @@ void UShipHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
     if (WidgetTree) {
         WidgetTree->ForEachWidget([&hud_style](UWidget* const widget) {
             if (auto* const heading{Cast<UTextBlock>(widget)}) {
-                ml::ioj::apply_text_style(*heading, hud_style.heading_text);
+                ioj::apply_text_style(*heading, hud_style.heading_text);
             }
         });
     }
@@ -351,7 +351,7 @@ void UShipHudWidget::set_flight_action(float const throttle, FStringView const a
     flight_mode_widget->update(throttle, action);
 }
 
-void UShipHudWidget::set_mission_state(::ioj::sim::MissionState const new_state) {
+void UShipHudWidget::set_mission_state(ioj::sim::MissionState const new_state) {
     if (mission_status_panel) {
         mission_status_panel->set_mission_state(new_state);
     }

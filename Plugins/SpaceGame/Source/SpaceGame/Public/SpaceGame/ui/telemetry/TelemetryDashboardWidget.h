@@ -7,7 +7,7 @@
 
 #include "TelemetryDashboardWidget.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 class STelemetryDashboardView;
 class UGameSubsystem;
 
@@ -78,4 +78,4 @@ class SPACEGAME_API UTelemetryDashboardWidget : public UUserWidget {
     UGameSubsystem* game_{nullptr};
     FString external_error_{};
 };
-} // namespace ml::ioj
+} // namespace ioj

@@ -7,7 +7,7 @@
 class UButton;
 class UTextBlock;
 
-namespace ml::ioj {
+namespace ioj {
 struct FSaveProfileSummary;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FSaveGameRowSelected, FString const&);

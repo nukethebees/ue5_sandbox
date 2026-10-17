@@ -10,7 +10,7 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
-namespace ml::ioj {
+namespace ioj {
 void SMainMenuView::Construct(FArguments const& args) {
     style_ = args._Style;
     audio_ = args._Audio;
@@ -318,4 +318,4 @@ auto SMainMenuView::navigation_has_focus() const -> bool {
     }
     return quit_button_.IsValid() && quit_button_->has_focus();
 }
-} // namespace ml::ioj
+} // namespace ioj

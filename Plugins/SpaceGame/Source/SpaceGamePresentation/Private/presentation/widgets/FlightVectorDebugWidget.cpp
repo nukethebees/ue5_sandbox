@@ -28,7 +28,7 @@ void UFlightVectorDebugWidget::update(ml::ship_hud::FFlightVectorDebugData const
     update_widgets();
 }
 
-void UFlightVectorDebugWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
+void UFlightVectorDebugWidget::apply_hud_style(ioj::FGameHudStyle const& style) {
     hud_style_ = style;
     update_widgets();
 }

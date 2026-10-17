@@ -4,7 +4,7 @@
 
 class ULocalPlayer;
 
-namespace ml::ioj {
+namespace ioj {
 
 class USpaceGameUserSettings;
 class USpaceGameInputUserSettings;
@@ -38,4 +38,4 @@ class SPACEGAME_API FGameSettingsBackend {
     ULocalPlayer* local_player_{};
 };
 
-} // namespace ml::ioj
+} // namespace ioj

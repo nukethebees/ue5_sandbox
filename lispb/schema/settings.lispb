@@ -2,7 +2,7 @@
   :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/settings/GameSettings.generated.h"
   :source "Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp"
   :header-include "SpaceGame/settings/GameSettings.generated.h"
-  :namespace ml::ioj
+  :namespace ioj
   :api-name TGameSettingsAccess
   :state-name FGameSettingsState
   :export-specifier SPACEGAME_API

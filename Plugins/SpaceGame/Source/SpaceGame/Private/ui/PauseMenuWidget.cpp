@@ -22,7 +22,7 @@
 #include <InputAction.h>
 #include <Widgets/DeclarativeSyntaxSupport.h>
 
-namespace ml::ioj {
+namespace ioj {
 /* **************************************** */
 // Widget lifecycle
 /* **************************************** */

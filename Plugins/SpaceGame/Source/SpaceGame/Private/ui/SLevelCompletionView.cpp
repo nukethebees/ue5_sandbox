@@ -13,7 +13,7 @@
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/Text/STextBlock.h>
 
-namespace ml::ioj {
+namespace ioj {
 namespace level_completion_detail {
 auto failure_reason_text(ETestMissionFailReason const fail_reason) -> FText {
     switch (fail_reason) {
@@ -61,7 +61,7 @@ void SLevelCompletionView::Construct(FArguments const& args) {
 void SLevelCompletionView::update_report(FString const& level_display_name,
                                          ETestMissionState const state,
                                          ETestMissionFailReason const fail_reason,
-                                         ::ioj::sim::LevelTelemetrySnapshot const& snapshot,
+                                         ioj::sim::LevelTelemetrySnapshot const& snapshot,
                                          TOptional<float> const par_time_seconds,
                                          bool const new_best_time) {
     check(state == ETestMissionState::Succeeded || state == ETestMissionState::Failed);
@@ -341,4 +341,4 @@ void SLevelCompletionView::focus_action(ELevelCompletionAction const action) {
         action_buttons_[index]->focus();
     }
 }
-} // namespace ml::ioj
+} // namespace ioj

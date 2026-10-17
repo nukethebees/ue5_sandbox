@@ -51,7 +51,7 @@ auto make_level_telemetry_environment(UWorld const& world) -> FLevelTelemetryEnv
     }
 
     auto const* const game_instance{world.GetGameInstance()};
-    auto const* const subsystem{ml::ioj::UGameSubsystem::get(game_instance)};
+    auto const* const subsystem{ioj::UGameSubsystem::get(game_instance)};
     if (IsValid(subsystem)) {
         auto const& capabilities{subsystem->get_platform_capabilities()};
         environment.platform = capabilities.platform_name;
@@ -75,7 +75,7 @@ auto make_level_telemetry_environment(UWorld const& world) -> FLevelTelemetryEnv
 
 auto make_level_telemetry_run_metadata(UWorld const& world,
                                        FLevelMissionDefinition const& mission_definition)
-    -> ::ioj::sim::LevelTelemetryRunMetadata {
+    -> ioj::sim::LevelTelemetryRunMetadata {
     return {
         .run_id = TCHAR_TO_UTF8(*FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphensLower)),
         .map_name = TCHAR_TO_UTF8(*UGameplayStatics::GetCurrentLevelName(&world)),

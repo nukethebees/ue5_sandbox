@@ -3,7 +3,7 @@
 #include <Components/TextBlock.h>
 #include <Widgets/Layout/SBorder.h>
 
-namespace ml::ioj {
+namespace ioj {
 auto FGameUiStyle::text(EGameTextStyle const role) const -> FTextBlockStyle const& {
     return text_styles_[role];
 }

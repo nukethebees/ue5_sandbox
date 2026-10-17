@@ -25,7 +25,7 @@
 #include "Windows/game_capabilities_windows.h"
 #endif
 
-namespace ml::ioj {
+namespace ioj {
 namespace level_launch {
 auto is_valid_time_scale(double const value) noexcept -> bool {
     return FMath::IsFinite(value) && value > 0.0 && value <= maximum_time_scale;
@@ -139,7 +139,7 @@ void UGameSubsystem::Deinitialize() {
     Super::Deinitialize();
 }
 
-auto UGameSubsystem::get_game_memory() noexcept -> ::ioj::sim::GameMemory& {
+auto UGameSubsystem::get_game_memory() noexcept -> ioj::sim::GameMemory& {
     check(game_memory_.IsValid());
     return *game_memory_;
 }
@@ -199,7 +199,7 @@ auto UGameSubsystem::set_ui_theme(USpaceGameUiTheme* const theme) -> bool {
 /* **************************************** */
 // Level launch and navigation
 /* **************************************** */
-void UGameSubsystem::set_pending_level(FLevelDefinition definition,
+void UGameSubsystem::set_pending_level(ml::FLevelDefinition definition,
                                        FString source_path,
                                        FString source_sha256,
                                        FLevelLaunchOptions options) {

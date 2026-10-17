@@ -4,7 +4,7 @@
 
 #include "SpaceGameInputModifier.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 
 UENUM()
 enum class ESpaceGameInputResponse : uint8 {
@@ -37,4 +37,4 @@ class SPACEGAME_API USpaceGameInputModifier final : public UInputModifier {
                                   float delta_time) -> FInputActionValue override;
 };
 
-} // namespace ml::ioj
+} // namespace ioj

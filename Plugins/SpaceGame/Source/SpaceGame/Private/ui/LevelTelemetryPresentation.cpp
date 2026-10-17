@@ -26,7 +26,7 @@ auto make_graph_series(FText name,
 }
 }
 
-namespace ml::ioj::level_telemetry_presentation {
+namespace ioj::level_telemetry_presentation {
 auto format_elapsed_time(double const elapsed_seconds) -> FText {
     auto const total_seconds{FMath::Max(FMath::FloorToInt64(elapsed_seconds), int64{0})};
     auto const seconds{total_seconds % 60};
@@ -60,7 +60,7 @@ void apply_activity_graph_style(SGraphPlot& graph,
 }
 
 void update_activity_graph(SGraphPlot& graph,
-                           ::ioj::sim::LevelTelemetrySnapshot const& snapshot,
+                           ioj::sim::LevelTelemetrySnapshot const& snapshot,
                            FLinearColor const active_entity_color,
                            FLinearColor const kills_color) {
     auto const tick_period{snapshot.tick_period};

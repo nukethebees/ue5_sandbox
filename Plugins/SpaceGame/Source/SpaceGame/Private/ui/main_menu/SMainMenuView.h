@@ -9,7 +9,7 @@
 class SBox;
 class SWidgetSwitcher;
 
-namespace ml::ioj {
+namespace ioj {
 class SHiveNavigationButton;
 
 DECLARE_DELEGATE_OneParam(FOnMainMenuPageSelected, EMainMenuPage);
@@ -71,4 +71,4 @@ class SMainMenuView final : public SCompoundWidget {
     bool navigation_enabled_{true};
     bool focus_content_next_{};
 };
-} // namespace ml::ioj
+} // namespace ioj

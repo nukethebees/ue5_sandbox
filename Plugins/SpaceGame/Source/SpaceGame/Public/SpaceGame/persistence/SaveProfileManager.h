@@ -6,7 +6,7 @@
 #include <Misc/Optional.h>
 #include <Templates/Function.h>
 
-namespace ml::ioj {
+namespace ioj {
 enum class ESaveProfileLoadResult : uint8 {
     succeeded,
     not_found,

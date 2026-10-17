@@ -2,7 +2,7 @@
 
 #include <Templates/UnrealTemplate.h>
 
-namespace ml::ioj {
+namespace ioj {
 FSaveGameBrowser::FSaveGameBrowser(FSummarySource summary_source, FReportSource report_source)
     : summary_source_{MoveTemp(summary_source)}
     , report_source_{MoveTemp(report_source)} {}

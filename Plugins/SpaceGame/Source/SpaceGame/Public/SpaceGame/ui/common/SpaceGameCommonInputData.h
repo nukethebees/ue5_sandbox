@@ -4,7 +4,7 @@
 
 #include "SpaceGameCommonInputData.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 UCLASS()
 class SPACEGAME_API USpaceGameCommonInputData : public UCommonUIInputData {
     GENERATED_BODY()

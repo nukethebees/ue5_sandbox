@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 
-namespace ml::ioj {
+namespace ioj {
 
 enum class EGameWindowMode : uint8 {
     Windowed,
@@ -33,4 +33,4 @@ enum class EGameGraphicsPreset : uint8 {
     Epic,
 };
 
-} // namespace ml::ioj
+} // namespace ioj

@@ -5,7 +5,7 @@
 
 #include "GameUiStyleSubsystem.generated.h"
 
-namespace ml::ioj {
+namespace ioj {
 UCLASS()
 class SPACEGAMEPRESENTATION_API UGameUiStyleSubsystem : public UGameInstanceSubsystem {
     GENERATED_BODY()

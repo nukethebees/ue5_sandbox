@@ -10,7 +10,7 @@
   :header "Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h"
   :source "Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes.cpp"
   :header-include "SpaceGamePresentation/ui/style/GameUiStyleTypes.h"
-  :helper-namespace ml::ioj
+  :helper-namespace ioj
   (enum EGameTextStyle uint8
     :reflection uenum
     :enum-array true

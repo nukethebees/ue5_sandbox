@@ -62,7 +62,7 @@ auto configure_and_save(USoundWave& sound_wave, bool const looping, float const 
     return UPackage::SavePackage(package, &sound_wave, *package_path, save_arguments);
 }
 
-auto import_optional_sound(ml::ioj::FAudioSourceFile const& source,
+auto import_optional_sound(ioj::FAudioSourceFile const& source,
                            TCHAR const* const description,
                            TCHAR const* const asset_name,
                            bool const looping,
@@ -118,8 +118,7 @@ UImportGameAudioCommandlet::UImportGameAudioCommandlet() {
 }
 
 int32 UImportGameAudioCommandlet::Main(FString const&) {
-    auto const resolution{
-        ml::ioj::resolve_boom_audio_library(ml::ioj::get_configured_boom_audio_root())};
+    auto const resolution{ioj::resolve_boom_audio_library(ioj::get_configured_boom_audio_root())};
 
     auto const ambience_imported{
         import_game_audio::import_optional_sound(resolution.menu_ambience_source,

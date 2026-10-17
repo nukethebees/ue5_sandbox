@@ -218,8 +218,8 @@ auto make_menu_button(UWidgetTree& tree,
                       UVerticalBox& parent,
                       UClass& button_class,
                       FName const name,
-                      TCHAR const* const label) -> ml::ioj::UMenuButtonWidget* {
-    auto* const button{tree.ConstructWidget<ml::ioj::UMenuButtonWidget>(&button_class, name)};
+                      TCHAR const* const label) -> ioj::UMenuButtonWidget* {
+    auto* const button{tree.ConstructWidget<ioj::UMenuButtonWidget>(&button_class, name)};
     button->bIsVariable = true;
     button->set_text(FText::FromString(label));
     auto* const slot{parent.AddChildToVerticalBox(button)};
@@ -251,11 +251,10 @@ auto add_pause_stat_row(UWidgetTree& tree,
 }
 
 auto generate_menu_button_widget() -> UClass* {
-    auto* const blueprint{
-        load_or_create_widget_blueprint(menu_button_object_path,
-                                        menu_button_package_name,
-                                        TEXT("WBP_MenuButton"),
-                                        *ml::ioj::UMenuButtonWidget::StaticClass())};
+    auto* const blueprint{load_or_create_widget_blueprint(menu_button_object_path,
+                                                          menu_button_package_name,
+                                                          TEXT("WBP_MenuButton"),
+                                                          *ioj::UMenuButtonWidget::StaticClass())};
     if (!IsValid(blueprint)) {
         return nullptr;
     }
@@ -270,11 +269,10 @@ auto generate_menu_button_widget() -> UClass* {
 }
 
 auto generate_root_layout_widget() -> UClass* {
-    auto* const blueprint{
-        load_or_create_widget_blueprint(root_layout_object_path,
-                                        root_layout_package_name,
-                                        TEXT("WBP_GameUiRoot"),
-                                        *ml::ioj::UGameUiRootLayout::StaticClass())};
+    auto* const blueprint{load_or_create_widget_blueprint(root_layout_object_path,
+                                                          root_layout_package_name,
+                                                          TEXT("WBP_GameUiRoot"),
+                                                          *ioj::UGameUiRootLayout::StaticClass())};
     if (!IsValid(blueprint)) {
         return nullptr;
     }
@@ -303,11 +301,10 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
         return nullptr;
     }
 
-    auto* const blueprint{
-        load_or_create_widget_blueprint(pause_menu_widget_object_path,
-                                        pause_menu_widget_package_name,
-                                        TEXT("WBP_PauseMenu"),
-                                        *ml::ioj::UPauseMenuWidget::StaticClass())};
+    auto* const blueprint{load_or_create_widget_blueprint(pause_menu_widget_object_path,
+                                                          pause_menu_widget_package_name,
+                                                          TEXT("WBP_PauseMenu"),
+                                                          *ioj::UPauseMenuWidget::StaticClass())};
     if (!IsValid(blueprint)) {
         return nullptr;
     }
@@ -475,7 +472,7 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     graph_size->SetContent(graph_host);
     telemetry_contents->AddChildToVerticalBox(graph_size)->SetHorizontalAlignment(HAlign_Fill);
 
-    auto* const options{make_widget<ml::ioj::UOptionsWidget>(tree, TEXT("options_widget"))};
+    auto* const options{make_widget<ioj::UOptionsWidget>(tree, TEXT("options_widget"))};
     switcher->AddChild(options);
 
     tree.RootWidget = root;
@@ -487,7 +484,7 @@ auto generate_level_completion_widget() -> UClass* {
         load_or_create_widget_blueprint(completion_widget_object_path,
                                         completion_widget_package_name,
                                         TEXT("WBP_LevelCompletion"),
-                                        *ml::ioj::ULevelCompletionWidget::StaticClass())};
+                                        *ioj::ULevelCompletionWidget::StaticClass())};
     if (!IsValid(blueprint)) {
         return nullptr;
     }
@@ -498,11 +495,10 @@ auto generate_level_completion_widget() -> UClass* {
 }
 
 auto generate_main_menu_widget() -> UClass* {
-    auto* const blueprint{
-        load_or_create_widget_blueprint(main_menu_widget_object_path,
-                                        main_menu_widget_package_name,
-                                        TEXT("WBP_MainMenu"),
-                                        *ml::ioj::UMainMenuWidget::StaticClass())};
+    auto* const blueprint{load_or_create_widget_blueprint(main_menu_widget_object_path,
+                                                          main_menu_widget_package_name,
+                                                          TEXT("WBP_MainMenu"),
+                                                          *ioj::UMainMenuWidget::StaticClass())};
     if (!IsValid(blueprint)) {
         return nullptr;
     }
@@ -773,24 +769,24 @@ struct FGeneratedShipInputActions {
     }
 };
 
-auto scope_name(ml::ioj::EShipControlScope const scope) -> TCHAR const* {
+auto scope_name(ioj::EShipControlScope const scope) -> TCHAR const* {
     switch (scope) {
-        case ml::ioj::EShipControlScope::General:
+        case ioj::EShipControlScope::General:
             return TEXT("General");
-        case ml::ioj::EShipControlScope::Starfox:
+        case ioj::EShipControlScope::Starfox:
             return TEXT("Starfox");
-        case ml::ioj::EShipControlScope::Fighter:
+        case ioj::EShipControlScope::Fighter:
             return TEXT("Fighter");
-        case ml::ioj::EShipControlScope::Skater:
+        case ioj::EShipControlScope::Skater:
             return TEXT("Skater");
-        case ml::ioj::EShipControlScope::Gunship:
+        case ioj::EShipControlScope::Gunship:
             return TEXT("Gunship");
     }
     return TEXT("Unknown");
 }
 
-auto create_ship_mapping_context(ml::ioj::EShipControlScope const scope) -> UInputMappingContext* {
-    auto const& definition{ml::ioj::canonical_ship_control_context(scope)};
+auto create_ship_mapping_context(ioj::EShipControlScope const scope) -> UInputMappingContext* {
+    auto const& definition{ioj::canonical_ship_control_context(scope)};
     auto const package_name{
         FString::Printf(TEXT("%s%s"), definition.package_path, definition.asset_name)};
     auto const object_path{FString::Printf(TEXT("%s.%s"), *package_name, definition.asset_name)};
@@ -818,7 +814,7 @@ auto mapping_subobject(UObject& outer, FString const& name) -> TObject* {
 }
 
 void add_ship_mapping(UInputMappingContext& context,
-                      ml::ioj::EShipControlScope const scope,
+                      ioj::EShipControlScope const scope,
                       UInputAction& action,
                       FKey const key,
                       TCHAR const* const semantic,
@@ -840,24 +836,24 @@ void add_ship_mapping(UInputMappingContext& context,
     if (action.ValueType == EInputActionValueType::Axis1D &&
         (key == EKeys::MouseX || key == EKeys::MouseY ||
          (key.IsGamepadKey() && key != EKeys::Gamepad_LeftTriggerAxis))) {
-        auto* response{mapping_subobject<ml::ioj::USpaceGameInputModifier>(
+        auto* response{mapping_subobject<ioj::USpaceGameInputModifier>(
             context, FString::Printf(TEXT("Response_%s"), *object_suffix))};
         if (key == EKeys::MouseX || key == EKeys::MouseY) {
-            response->response = ml::ioj::ESpaceGameInputResponse::TurnPointerDelta;
+            response->response = ioj::ESpaceGameInputResponse::TurnPointerDelta;
         } else {
             response->response = FCString::Strcmp(semantic, TEXT("Pitch")) == 0 ||
                                          FCString::Strcmp(semantic, TEXT("Yaw")) == 0 ||
                                          FCString::Strcmp(semantic, TEXT("Roll")) == 0
-                                   ? ml::ioj::ESpaceGameInputResponse::GamepadTurn
-                                   : ml::ioj::ESpaceGameInputResponse::GamepadMove;
+                                   ? ioj::ESpaceGameInputResponse::GamepadTurn
+                                   : ioj::ESpaceGameInputResponse::GamepadMove;
         }
         response->axis =
-            FCString::Strcmp(semantic, TEXT("Pitch")) == 0  ? ml::ioj::ESpaceGameInputAxis::Pitch
-            : FCString::Strcmp(semantic, TEXT("Yaw")) == 0  ? ml::ioj::ESpaceGameInputAxis::Yaw
-            : FCString::Strcmp(semantic, TEXT("Roll")) == 0 ? ml::ioj::ESpaceGameInputAxis::Roll
+            FCString::Strcmp(semantic, TEXT("Pitch")) == 0  ? ioj::ESpaceGameInputAxis::Pitch
+            : FCString::Strcmp(semantic, TEXT("Yaw")) == 0  ? ioj::ESpaceGameInputAxis::Yaw
+            : FCString::Strcmp(semantic, TEXT("Roll")) == 0 ? ioj::ESpaceGameInputAxis::Roll
             : FCString::Strcmp(semantic, TEXT("TranslateUp")) == 0
-                ? ml::ioj::ESpaceGameInputAxis::VerticalTranslation
-                : ml::ioj::ESpaceGameInputAxis::None;
+                ? ioj::ESpaceGameInputAxis::VerticalTranslation
+                : ioj::ESpaceGameInputAxis::None;
         mapping.Modifiers.Add(response);
     }
 
@@ -879,11 +875,11 @@ void add_ship_mapping(UInputMappingContext& context,
     settings->DisplayName = FText::ChangeKey(
         FTextKey{TEXT("ShipControls")}, FTextKey{mapping_name}, FText::FromString(display_name));
     auto const group{
-        FCString::Strcmp(semantic, TEXT("FirePrimary")) == 0 ? ml::ioj::EControlBindingGroup::Combat
-        : scope == ml::ioj::EShipControlScope::General ? ml::ioj::EControlBindingGroup::Utility
-                                                       : ml::ioj::EControlBindingGroup::Flight};
-    settings->DisplayCategory = ml::ioj::control_binding_group_label(group);
-    auto* const metadata{mapping_subobject<ml::ioj::UControlBindingMetadata>(
+        FCString::Strcmp(semantic, TEXT("FirePrimary")) == 0 ? ioj::EControlBindingGroup::Combat
+        : scope == ioj::EShipControlScope::General           ? ioj::EControlBindingGroup::Utility
+                                                             : ioj::EControlBindingGroup::Flight};
+    settings->DisplayCategory = ioj::control_binding_group_label(group);
+    auto* const metadata{mapping_subobject<ioj::UControlBindingMetadata>(
         *settings, FString::Printf(TEXT("Metadata_%s"), *object_suffix))};
     metadata->scope = scope;
     metadata->group = group;
@@ -917,17 +913,17 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
     ship.select_skater = make_button(TEXT("IA_Ship_SelectSkater"));
     ship.select_gunship = make_button(TEXT("IA_Ship_SelectGunship"));
     result.pause = make_button(TEXT("IA_pause"));
-    result.general = create_ship_mapping_context(ml::ioj::EShipControlScope::General);
-    ship.starfox = create_ship_mapping_context(ml::ioj::EShipControlScope::Starfox);
-    ship.fighter = create_ship_mapping_context(ml::ioj::EShipControlScope::Fighter);
-    ship.skater = create_ship_mapping_context(ml::ioj::EShipControlScope::Skater);
-    ship.gunship = create_ship_mapping_context(ml::ioj::EShipControlScope::Gunship);
+    result.general = create_ship_mapping_context(ioj::EShipControlScope::General);
+    ship.starfox = create_ship_mapping_context(ioj::EShipControlScope::Starfox);
+    ship.fighter = create_ship_mapping_context(ioj::EShipControlScope::Fighter);
+    ship.skater = create_ship_mapping_context(ioj::EShipControlScope::Skater);
+    ship.gunship = create_ship_mapping_context(ioj::EShipControlScope::Gunship);
     if (!result.is_valid()) {
         UE_LOG(LogTemp, Error, TEXT("Could not create canonical ship input assets"));
         return {};
     }
 
-    using Scope = ml::ioj::EShipControlScope;
+    using Scope = ioj::EShipControlScope;
     auto add = [](UInputMappingContext& context,
                   Scope const scope,
                   UInputAction* const action,
@@ -1313,12 +1309,12 @@ auto configure_ui_data(UClass& root_class,
         return false;
     }
     ui_data->Modify();
-    ui_data->widget_classes.classes.Add(ml::ioj::UGameUiRootLayout::StaticClass(), &root_class);
-    ui_data->widget_classes.classes.Add(ml::ioj::UMenuButtonWidget::StaticClass(), &button_class);
-    ui_data->widget_classes.classes.Add(ml::ioj::UMainMenuWidget::StaticClass(), &main_class);
-    ui_data->widget_classes.classes.Add(ml::ioj::ULevelSelectWidget::StaticClass(), &level_class);
-    ui_data->widget_classes.classes.Add(ml::ioj::UPauseMenuWidget::StaticClass(), &pause_class);
-    ui_data->widget_classes.classes.Add(ml::ioj::ULevelCompletionWidget::StaticClass(),
+    ui_data->widget_classes.classes.Add(ioj::UGameUiRootLayout::StaticClass(), &root_class);
+    ui_data->widget_classes.classes.Add(ioj::UMenuButtonWidget::StaticClass(), &button_class);
+    ui_data->widget_classes.classes.Add(ioj::UMainMenuWidget::StaticClass(), &main_class);
+    ui_data->widget_classes.classes.Add(ioj::ULevelSelectWidget::StaticClass(), &level_class);
+    ui_data->widget_classes.classes.Add(ioj::UPauseMenuWidget::StaticClass(), &pause_class);
+    ui_data->widget_classes.classes.Add(ioj::ULevelCompletionWidget::StaticClass(),
                                         &completion_class);
     ui_data->widget_classes.classes.Add(UBattleViewerHudWidget::StaticClass(),
                                         &battle_viewer_class);
@@ -1345,7 +1341,7 @@ auto generate_save_game_viewer_widget() -> UClass* {
         load_or_create_widget_blueprint(save_game_viewer_object_path,
                                         save_game_viewer_package_name,
                                         TEXT("WBP_SaveGameViewer"),
-                                        *ml::ioj::USaveGameViewerWidget::StaticClass())};
+                                        *ioj::USaveGameViewerWidget::StaticClass())};
     if (!IsValid(blueprint)) {
         return nullptr;
     }
@@ -1647,7 +1643,7 @@ auto generate_main_menu_map() -> bool {
         UE_LOG(LogTemp, Error, TEXT("Could not configure the main-menu game mode"));
         return false;
     }
-    world_settings->DefaultGameMode = ml::ioj::AMainMenuGameMode::StaticClass();
+    world_settings->DefaultGameMode = ioj::AMainMenuGameMode::StaticClass();
 
     auto const filename{FPackageName::LongPackageNameToFilename(
         main_menu_map_package_name, FPackageName::GetMapPackageExtension())};

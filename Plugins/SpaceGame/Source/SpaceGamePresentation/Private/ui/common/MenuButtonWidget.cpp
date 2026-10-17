@@ -9,7 +9,7 @@
 #include <Engine/GameInstance.h>
 #include <Styling/CoreStyle.h>
 
-namespace ml::ioj {
+namespace ioj {
 namespace {
 auto make_no_draw_brush() -> FSlateBrush {
     FSlateBrush brush;

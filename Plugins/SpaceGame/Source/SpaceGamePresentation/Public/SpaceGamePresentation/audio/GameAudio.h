@@ -9,7 +9,7 @@
 class UObject;
 class UGameInstance;
 
-namespace ml::ioj {
+namespace ioj {
 struct SPACEGAMEPRESENTATION_API FAudioSourceRoot {
     FString path;
     bool valid{};

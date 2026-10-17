@@ -52,8 +52,8 @@ auto USpaceSaveSubsystem::get(UGameInstance const* const game_instance) -> USpac
     return IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr;
 }
 
-auto ml::ioj::summarize_level_progress(ml::FLevelId const level_id,
-                                       TConstArrayView<FScoreRecord> const records)
+auto ioj::summarize_level_progress(ml::FLevelId const level_id,
+                                   TConstArrayView<FScoreRecord> const records)
     -> FLevelProgressSummary {
     FLevelProgressSummary summary;
     for (auto const& record : records) {
@@ -85,7 +85,7 @@ void USpaceSaveSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
     UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::Initialize."));
 
-    profile_manager_ = ml::ioj::FSaveProfileManager{make_storage()};
+    profile_manager_ = ioj::FSaveProfileManager{make_storage()};
     if (!profile_manager_.initialise()) {
         UE_LOG(LogSandboxSubsystem,
                Error,
@@ -111,12 +111,12 @@ auto USpaceSaveSubsystem::get_active_profile_id() const -> FString const& {
 }
 
 auto USpaceSaveSubsystem::get_level_progress(ml::FLevelId const level_id) const
-    -> ml::ioj::FLevelProgressSummary {
-    return ml::ioj::summarize_level_progress(level_id, profile_manager_.get_active_records());
+    -> ioj::FLevelProgressSummary {
+    return ioj::summarize_level_progress(level_id, profile_manager_.get_active_records());
 }
 
 auto USpaceSaveSubsystem::is_level_completed(ml::FLevelId const level_id) const -> bool {
-    return get_level_progress(level_id).state == ml::ioj::ELevelProgressState::Completed;
+    return get_level_progress(level_id).state == ioj::ELevelProgressState::Completed;
 }
 
 auto USpaceSaveSubsystem::has_active_profile() const -> bool {
@@ -136,8 +136,7 @@ bool USpaceSaveSubsystem::load_profile_records(FString const& profile_id,
     return profile_manager_.load_profile_records(profile_id, records);
 }
 
-auto USpaceSaveSubsystem::create_profile(FString display_name)
-    -> ml::ioj::FCreateSaveProfileResponse {
+auto USpaceSaveSubsystem::create_profile(FString display_name) -> ioj::FCreateSaveProfileResponse {
     return profile_manager_.create_profile(MoveTemp(display_name));
 }
 
@@ -149,7 +148,7 @@ bool USpaceSaveSubsystem::reset_test_profile() {
 #if UE_BUILD_SHIPPING
     return false;
 #else
-    return profile_manager_.reset_test_profile(ml::ioj::detail::make_test_profile_records());
+    return profile_manager_.reset_test_profile(ioj::detail::make_test_profile_records());
 #endif
 }
 
@@ -221,42 +220,42 @@ auto USpaceSaveSubsystem::legacy_slot_name() -> FString {
     return TEXT("SandboxSave");
 }
 
-auto USpaceSaveSubsystem::make_storage() -> ml::ioj::FSaveProfileStorage {
-    ml::ioj::FSaveProfileStorageSelection selection{};
+auto USpaceSaveSubsystem::make_storage() -> ioj::FSaveProfileStorage {
+    ioj::FSaveProfileStorageSelection selection{};
     FString error{};
-    if (!ml::ioj::resolve_save_profile_storage(FCommandLine::Get(),
+    if (!ioj::resolve_save_profile_storage(FCommandLine::Get(),
 #if WITH_EDITOR
-                                               true,
+                                           true,
 #else
-                                               false,
+                                           false,
 #endif
-                                               FApp::IsUnattended(),
-                                               GIsAutomationTesting,
-                                               selection,
-                                               error)) {
+                                           FApp::IsUnattended(),
+                                           GIsAutomationTesting,
+                                           selection,
+                                           error)) {
         UE_LOG(LogSandboxSubsystem, Error, TEXT("Invalid save storage selection: %s"), *error);
         return {};
     }
 
-    if (selection.mode == ml::ioj::ESaveProfileStorageMode::platform ||
-        selection.mode == ml::ioj::ESaveProfileStorageMode::local) {
+    if (selection.mode == ioj::ESaveProfileStorageMode::platform ||
+        selection.mode == ioj::ESaveProfileStorageMode::local) {
         UE_LOG(LogSandboxSubsystem,
                Display,
                TEXT("Save storage mode: %s (%s)"),
-               selection.mode == ml::ioj::ESaveProfileStorageMode::platform ? TEXT("Platform")
-                                                                            : TEXT("Local"),
+               selection.mode == ioj::ESaveProfileStorageMode::platform ? TEXT("Platform")
+                                                                        : TEXT("Local"),
                *selection.root);
         return make_slot_storage();
     }
 
-    auto const shared_root{FPaths::Combine(ml::ioj::development_save_base_root(), TEXT("Shared"))};
+    auto const shared_root{FPaths::Combine(ioj::development_save_base_root(), TEXT("Shared"))};
     if (selection.clone_shared &&
-        !ml::ioj::clone_save_profile_files(shared_root, selection.root, error)) {
+        !ioj::clone_save_profile_files(shared_root, selection.root, error)) {
         UE_LOG(LogSandboxSubsystem, Error, TEXT("Failed to clone Shared saves: %s"), *error);
         return {};
     }
 
-    if (selection.mode == ml::ioj::ESaveProfileStorageMode::shared) {
+    if (selection.mode == ioj::ESaveProfileStorageMode::shared) {
         auto const local_saves_exist{
             UGameplayStatics::DoesSaveGameExist(profile_index_slot_name(), user_index) ||
             UGameplayStatics::DoesSaveGameExist(legacy_slot_name(), user_index)};
@@ -283,14 +282,13 @@ auto USpaceSaveSubsystem::make_storage() -> ml::ioj::FSaveProfileStorage {
                 auto* const save{Cast<USpaceSaveGame>(
                     UGameplayStatics::LoadGameFromSlot(legacy_slot_name(), user_index))};
                 if (!IsValid(save)) {
-                    return ml::ioj::ESaveProfileLoadResult::failed;
+                    return ioj::ESaveProfileLoadResult::failed;
                 }
                 records = save->score_records;
                 migrate_legacy_records(save->save_version, records);
-                return ml::ioj::ESaveProfileLoadResult::succeeded;
+                return ioj::ESaveProfileLoadResult::succeeded;
             };
-            if (!ml::ioj::import_local_save_profiles(
-                    selection.root, MoveTemp(legacy_loader), error)) {
+            if (!ioj::import_local_save_profiles(selection.root, MoveTemp(legacy_loader), error)) {
                 UE_LOG(
                     LogSandboxSubsystem, Error, TEXT("Failed to import local saves: %s"), *error);
                 return {};
@@ -298,7 +296,7 @@ auto USpaceSaveSubsystem::make_storage() -> ml::ioj::FSaveProfileStorage {
         }
     }
 
-    if (selection.mode == ml::ioj::ESaveProfileStorageMode::experimental) {
+    if (selection.mode == ioj::ESaveProfileStorageMode::experimental) {
         UE_LOG(LogSandboxSubsystem,
                Warning,
                TEXT("Save storage mode: Experimental (%s)"),
@@ -309,27 +307,27 @@ auto USpaceSaveSubsystem::make_storage() -> ml::ioj::FSaveProfileStorage {
     }
 
     auto legacy_loader = [](TArray<FScoreRecord>&) {
-        return ml::ioj::ESaveProfileLoadResult::not_found;
+        return ioj::ESaveProfileLoadResult::not_found;
     };
-    return ml::ioj::make_file_profile_storage(selection.root, MoveTemp(legacy_loader));
+    return ioj::make_file_profile_storage(selection.root, MoveTemp(legacy_loader));
 }
 
-auto USpaceSaveSubsystem::make_slot_storage() -> ml::ioj::FSaveProfileStorage {
+auto USpaceSaveSubsystem::make_slot_storage() -> ioj::FSaveProfileStorage {
     return {
         .with_exclusive_access = [](TFunctionRef<bool()> operation) { return operation(); },
         .load_index =
             [](FSaveProfileIndexData& data) {
                 auto const slot{profile_index_slot_name()};
                 if (!UGameplayStatics::DoesSaveGameExist(slot, user_index)) {
-                    return ml::ioj::ESaveProfileLoadResult::not_found;
+                    return ioj::ESaveProfileLoadResult::not_found;
                 }
                 auto* const save{Cast<USpaceSaveProfileIndexSaveGame>(
                     UGameplayStatics::LoadGameFromSlot(slot, user_index))};
                 if (!IsValid(save)) {
-                    return ml::ioj::ESaveProfileLoadResult::failed;
+                    return ioj::ESaveProfileLoadResult::failed;
                 }
                 data = save->data;
-                return ml::ioj::ESaveProfileLoadResult::succeeded;
+                return ioj::ESaveProfileLoadResult::succeeded;
             },
         .save_index =
             [](FSaveProfileIndexData const& data) {
@@ -347,15 +345,15 @@ auto USpaceSaveSubsystem::make_slot_storage() -> ml::ioj::FSaveProfileStorage {
             [](FString const& profile_id, FSaveProfileResultsData& data) {
                 auto const slot{profile_results_slot_name(profile_id)};
                 if (!UGameplayStatics::DoesSaveGameExist(slot, user_index)) {
-                    return ml::ioj::ESaveProfileLoadResult::not_found;
+                    return ioj::ESaveProfileLoadResult::not_found;
                 }
                 auto* const save{Cast<USpaceSaveProfileResultsSaveGame>(
                     UGameplayStatics::LoadGameFromSlot(slot, user_index))};
                 if (!IsValid(save)) {
-                    return ml::ioj::ESaveProfileLoadResult::failed;
+                    return ioj::ESaveProfileLoadResult::failed;
                 }
                 data = save->data;
-                return ml::ioj::ESaveProfileLoadResult::succeeded;
+                return ioj::ESaveProfileLoadResult::succeeded;
             },
         .save_results =
             [](FString const& profile_id, FSaveProfileResultsData const& data) {
@@ -373,16 +371,16 @@ auto USpaceSaveSubsystem::make_slot_storage() -> ml::ioj::FSaveProfileStorage {
             [](TArray<FScoreRecord>& records) {
                 auto const slot{legacy_slot_name()};
                 if (!UGameplayStatics::DoesSaveGameExist(slot, user_index)) {
-                    return ml::ioj::ESaveProfileLoadResult::not_found;
+                    return ioj::ESaveProfileLoadResult::not_found;
                 }
                 auto* const save{
                     Cast<USpaceSaveGame>(UGameplayStatics::LoadGameFromSlot(slot, user_index))};
                 if (!IsValid(save)) {
-                    return ml::ioj::ESaveProfileLoadResult::failed;
+                    return ioj::ESaveProfileLoadResult::failed;
                 }
                 records = save->score_records;
                 migrate_legacy_records(save->save_version, records);
-                return ml::ioj::ESaveProfileLoadResult::succeeded;
+                return ioj::ESaveProfileLoadResult::succeeded;
             },
     };
 }

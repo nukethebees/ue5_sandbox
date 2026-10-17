@@ -10,7 +10,7 @@
 
 class UBorder;
 
-namespace ml::ioj {
+namespace ioj {
 UCLASS()
 class SPACEGAMEPRESENTATION_API UMenuTextStyle : public UCommonTextStyle {
     GENERATED_BODY()

@@ -10,7 +10,7 @@
 #include "Containers/ArrayView.h"
 #include "Engine/EngineTypes.h"
 
-namespace ml::ioj {
+namespace ioj {
 auto FStaticCollisionSources::add(UPrimitiveComponent* component,
                                   ECollisionEnabled::Type const original_collision_mode) -> void {
     components.Add(component);
@@ -214,4 +214,4 @@ auto FStaticCollisionSources::left(int32 const count) const -> ConstView {
 auto FStaticCollisionSources::right(int32 const count) const -> ConstView {
     return slice(num() - count, count);
 }
-} // namespace ml::ioj
+} // namespace ioj
