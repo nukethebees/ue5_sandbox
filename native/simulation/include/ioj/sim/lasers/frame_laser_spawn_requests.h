@@ -1,8 +1,5 @@
 #pragma once
 
-#include "ioj/frame_array.h"
-#include "ioj/frame_rotators3f.h"
-#include "ioj/frame_vectors3f.h"
 #include "ioj/sim/entities/entity_unique_id.h"
 #include "ioj/sim/lasers/laser_source.h"
 #include <ioj/sim/lasers/laser_entities.h>
@@ -39,45 +36,34 @@ struct FrameSpawnRequests {
     void set_max_distances(float value);
     [[nodiscard]] auto num() const noexcept -> std::uint32_t;
 
-    auto view_locations() -> FrameVectors3f& { return locations_; }
-    auto view_locations() const -> FrameVectors3f const& { return locations_; }
-    auto view_rotations() -> FrameRotators3f& { return rotations_; }
-    auto view_rotations() const -> FrameRotators3f const& { return rotations_; }
-    auto view_base_velocities() -> FrameVectors3f& { return base_velocities_; }
-    auto view_base_velocities() const -> FrameVectors3f const& { return base_velocities_; }
-    auto damages() -> std::span<std::int32_t> { return damages_.view(); }
-    auto damages() const -> std::span<std::int32_t const> { return damages_.view(); }
-    auto speeds() -> std::span<float> { return speeds_.view(); }
-    auto speeds() const -> std::span<float const> { return speeds_.view(); }
-    auto max_distances() -> std::span<float> { return max_distances_.view(); }
-    auto max_distances() const -> std::span<float const> { return max_distances_.view(); }
-    auto instigator_ids() -> std::span<EntityUniqueId> { return instigator_ids_.view(); }
+    auto view_locations() { return storage_.get_view().view_locations(); }
+    auto view_locations() const { return storage_.get_const_view().view_locations(); }
+    auto view_rotations() { return storage_.get_view().view_rotations(); }
+    auto view_rotations() const { return storage_.get_const_view().view_rotations(); }
+    auto view_base_velocities() { return storage_.get_view().view_base_velocities(); }
+    auto view_base_velocities() const { return storage_.get_const_view().view_base_velocities(); }
+    auto damages() -> std::span<std::int32_t> { return storage_.get_view().damages(); }
+    auto damages() const -> std::span<std::int32_t const> {
+        return storage_.get_const_view().damages();
+    }
+    auto speeds() -> std::span<float> { return storage_.get_view().speeds(); }
+    auto speeds() const -> std::span<float const> { return storage_.get_const_view().speeds(); }
+    auto max_distances() -> std::span<float> { return storage_.get_view().max_distances(); }
+    auto max_distances() const -> std::span<float const> {
+        return storage_.get_const_view().max_distances();
+    }
+    auto instigator_ids() -> std::span<EntityUniqueId> {
+        return storage_.get_view().instigator_ids();
+    }
     auto instigator_ids() const -> std::span<EntityUniqueId const> {
-        return instigator_ids_.view();
+        return storage_.get_const_view().instigator_ids();
     }
-    auto sources() -> std::span<LaserSource> { return sources_.view(); }
-    auto sources() const -> std::span<LaserSource const> { return sources_.view(); }
-    void validate() const {
-        locations_.validate();
-        rotations_.validate();
-        base_velocities_.validate();
-        assert(locations_.num() == num());
-        assert(rotations_.num() == num());
-        assert(base_velocities_.num() == num());
-        assert(damages_.num() == num());
-        assert(speeds_.num() == num());
-        assert(max_distances_.num() == num());
-        assert(instigator_ids_.num() == num());
-        assert(sources_.num() == num());
+    auto sources() -> std::span<LaserSource> { return storage_.get_view().sources(); }
+    auto sources() const -> std::span<LaserSource const> {
+        return storage_.get_const_view().sources();
     }
+    void validate() const { storage_.get_const_view().validate(); }
   private:
-    FrameVectors3f locations_;
-    FrameRotators3f rotations_;
-    FrameVectors3f base_velocities_;
-    ml::FrameArray<std::int32_t> damages_;
-    ml::FrameArray<float> speeds_;
-    ml::FrameArray<float> max_distances_;
-    ml::FrameArray<EntityUniqueId> instigator_ids_;
-    ml::FrameArray<LaserSource> sources_;
+    LaserSpawnRequests storage_;
 };
 } // namespace ioj::sim::lasers

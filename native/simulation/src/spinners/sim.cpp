@@ -164,9 +164,9 @@ void Sim::materialize_fire_commands(ml::FrameMemoryResource* const scratch_resou
     auto const yaws{entity_columns.yaws()};
     auto const entity_ids{entity_columns.entity_ids()};
 
-    auto const laser_locations{new_lasers.view_locations().get_view()};
-    auto const laser_rotations{new_lasers.view_rotations().get_view()};
-    auto const laser_base_velocities{new_lasers.view_base_velocities().get_view()};
+    auto const laser_locations{new_lasers.view_locations()};
+    auto const laser_rotations{new_lasers.view_rotations()};
+    auto const laser_base_velocities{new_lasers.view_base_velocities()};
     auto const laser_damages{new_lasers.damages()};
     auto const laser_speeds{new_lasers.speeds()};
     auto const laser_max_distances{new_lasers.max_distances()};
@@ -183,10 +183,11 @@ void Sim::materialize_fire_commands(ml::FrameMemoryResource* const scratch_resou
             config.fire_point_offsets[static_cast<std::size_t>(next_fire_point)]};
         set_vector(
             laser_locations, request_index, vector_at(locations, index) + fire_point.location);
-        laser_rotations.set(request_index,
-                            {fire_point.rotation.pitch,
-                             fire_point.rotation.yaw + yaws[element],
-                             fire_point.rotation.roll});
+        set_rotation(laser_rotations,
+                     request_index,
+                     {fire_point.rotation.pitch,
+                      fire_point.rotation.yaw + yaws[element],
+                      fire_point.rotation.roll});
         set_vector(laser_base_velocities, request_index, HMM_V3(0.f, 0.f, 0.f));
         laser_damages[request_index] = config.laser.damage;
         laser_speeds[request_index] = config.laser.projectile_speed;
