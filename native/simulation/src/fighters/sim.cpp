@@ -526,13 +526,13 @@ void Sim::resolve_damage_events(ml::FrameMemoryResource* const scratch_resource)
     auto const healths{entity_tables_.health.get_view<EntityType::Fighter>(data.num())};
     auto const damage_events{combat_events_.events_for(EntityType::Fighter)};
     auto const previous_death_count{entity_death_info.num()};
-    batch::resolve_damage_events(damage_events,
-                                 entity_tables_.lookups.for_type(EntityType::Fighter),
-                                 data.entity_ids(),
-                                 healths,
-                                 local_indices_to_remove,
-                                 entity_death_info,
-                                 ledger_);
+    ioj::sim::resolve_damage_events(damage_events,
+                                    entity_tables_.lookups.for_type(EntityType::Fighter),
+                                    data.entity_ids(),
+                                    healths,
+                                    local_indices_to_remove,
+                                    entity_death_info,
+                                    ledger_);
 
     if (entity_death_info.num() != previous_death_count) {
         ++membership_revision_;
@@ -601,7 +601,7 @@ void Sim::remove_components() {
     entity_tables_.lookups.assert_removal_allowed();
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_components");
 
-    batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    sort_and_deduplicate_removal_indices(local_indices_to_remove);
     if (local_indices_to_remove.empty()) {
         return;
     }

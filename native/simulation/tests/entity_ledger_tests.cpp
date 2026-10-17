@@ -111,13 +111,13 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     health_table.initialise_rows<EntityType::Fighter>(0, initial_healths);
     std::vector<std::uint32_t> removals;
     EntityDeathInfo deaths;
-    batch::resolve_damage_events(events.events_for(EntityType::Fighter),
-                                 indexes.for_type(EntityType::Fighter),
-                                 ids,
-                                 health_table.get_view<EntityType::Fighter>(ids.size()),
-                                 removals,
-                                 deaths,
-                                 ledger);
+    resolve_damage_events(events.events_for(EntityType::Fighter),
+                          indexes.for_type(EntityType::Fighter),
+                          ids,
+                          health_table.get_view<EntityType::Fighter>(ids.size()),
+                          removals,
+                          deaths,
+                          ledger);
 
     EXPECT_EQ(health_table.get_const_view<EntityType::Fighter>(ids.size()).health(0), -6);
     EXPECT_EQ(removals, std::vector<std::uint32_t>{0});

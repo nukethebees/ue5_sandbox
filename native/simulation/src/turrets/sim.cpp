@@ -218,13 +218,13 @@ void Sim::resolve_damage_events() {
 
     auto const entities{this->entities.get_view()};
     auto const healths{entity_tables_.health.get_view<EntityType::Turret>(entities.num())};
-    batch::resolve_damage_events(combat_events_.events_for(EntityType::Turret),
-                                 entity_tables_.lookups.for_type(EntityType::Turret),
-                                 entities.entity_ids(),
-                                 healths,
-                                 local_indices_to_remove,
-                                 entity_death_info,
-                                 ledger_);
+    ioj::sim::resolve_damage_events(combat_events_.events_for(EntityType::Turret),
+                                    entity_tables_.lookups.for_type(EntityType::Turret),
+                                    entities.entity_ids(),
+                                    healths,
+                                    local_indices_to_remove,
+                                    entity_death_info,
+                                    ledger_);
     auto const locations{entities.view_locations()};
 
     for (auto const index : local_indices_to_remove) {
@@ -245,7 +245,7 @@ void Sim::remove_components() {
     entity_tables_.lookups.assert_removal_allowed();
     SANDBOX_PROFILE_SCOPE("turrets::Sim::remove_components");
 
-    batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    sort_and_deduplicate_removal_indices(local_indices_to_remove);
     if (local_indices_to_remove.empty()) {
         return;
     }

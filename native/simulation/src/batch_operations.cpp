@@ -10,7 +10,7 @@
 #include <cassert>
 #include <functional>
 
-namespace ioj::sim::batch {
+namespace ioj::sim {
 void sort_and_deduplicate_removal_indices(std::vector<std::uint32_t>& local_indices_to_remove) {
     std::ranges::sort(local_indices_to_remove, std::greater{});
     auto const unique_end{std::ranges::unique(local_indices_to_remove).begin()};
@@ -24,7 +24,7 @@ void resolve_damage_events(DirectDamageEvents::ConstView damage_events,
                            std::vector<std::uint32_t>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info,
                            EntityLedger& ledger) {
-    SANDBOX_PROFILE_SCOPE("batch::resolve_damage_events");
+    SANDBOX_PROFILE_SCOPE("resolve_damage_events");
 
     auto const n_direct_events{damage_events.num()};
     auto const removal_count{local_indices_to_remove.size()};

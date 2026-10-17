@@ -99,20 +99,20 @@ void Sim::think(float const, ml::FrameMemoryResource* const scratch_resource) {
     queue_fighter_orders(scratch_resource);
 }
 void Sim::resolve_fighters_of_dying_capitals() {
-    batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    sort_and_deduplicate_removal_indices(local_indices_to_remove);
     reassign_fighters_of_dying_capital();
 }
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::resolve_damage_events");
     auto const entities{this->entities.get_view()};
     auto const healths{entity_tables_.health.get_view<EntityType::CapitalShip>(entities.num())};
-    batch::resolve_damage_events(combat_events_.events_for(EntityType::CapitalShip),
-                                 entity_tables_.lookups.for_type(EntityType::CapitalShip),
-                                 entities.entity_ids(),
-                                 healths,
-                                 local_indices_to_remove,
-                                 entity_death_info,
-                                 ledger_);
+    ioj::sim::resolve_damage_events(combat_events_.events_for(EntityType::CapitalShip),
+                                    entity_tables_.lookups.for_type(EntityType::CapitalShip),
+                                    entities.entity_ids(),
+                                    healths,
+                                    local_indices_to_remove,
+                                    entity_death_info,
+                                    ledger_);
     auto const batch_index{static_cast<std::uint32_t>(deaths_.size())};
     auto const locations{entities.view_locations()};
 
@@ -134,7 +134,7 @@ void Sim::remove_components() {
     entity_tables_.lookups.assert_removal_allowed();
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::remove_components");
 
-    batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    sort_and_deduplicate_removal_indices(local_indices_to_remove);
     if (local_indices_to_remove.empty()) {
         return;
     }
