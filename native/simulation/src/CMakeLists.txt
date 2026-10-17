@@ -43,8 +43,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/collision/frame_collision_scratch.h
   ../include/ioj/sim/collision/frame_hit_details.h
   ../include/ioj/sim/lasers/frame_laser_spawn_requests.h
-  ../include/ioj/sim/frame_rotators3f.h
-  ../include/ioj/sim/frame_vectors3f.h
   ../include/ioj/sim/collision/frame_range_query_results.h
   ../include/ioj/sim/entities/entity_tables.h
   ../include/ioj/sim/entities/health_table.h
@@ -106,8 +104,6 @@ target_sources(native-simulation PRIVATE
   collision/frame_collision_scratch.cpp
   collision/frame_hit_details.cpp
   lasers/frame_laser_spawn_requests.cpp
-  frame_rotators3f.cpp
-  frame_vectors3f.cpp
   lasers/laser_frame_output.cpp
   levels/level_event_types.cpp
   levels/level_read_access.cpp

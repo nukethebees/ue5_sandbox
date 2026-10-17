@@ -1,6 +1,6 @@
-#include "ioj/sim/frame_rotators3f.h"
+#include "ioj/frame_rotators3f.h"
 
-namespace ioj::sim {
+namespace ioj {
 FrameRotators3f::FrameRotators3f(std::pmr::memory_resource* const scratch_resource)
     : pitches_{scratch_resource}
     , yaws_{scratch_resource}
@@ -40,4 +40,4 @@ auto FrameRotators3f::get_const_view() const noexcept -> Rotators3fConstView {
 auto FrameRotators3f::num() const noexcept -> std::uint32_t {
     return pitches_.num();
 }
-} // namespace ioj::sim
+} // namespace ioj

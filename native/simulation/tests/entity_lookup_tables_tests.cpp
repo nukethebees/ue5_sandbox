@@ -1,8 +1,8 @@
 #include "support/collision_agent_storage.h"
 #include <ioj/column_math.h>
+#include <ioj/frame_vectors3f.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/entities/entity_tables.h>
-#include <ioj/sim/frame_vectors3f.h>
 
 #include <gtest/gtest.h>
 

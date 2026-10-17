@@ -4,6 +4,7 @@
 #include <ioj/countdown.h>
 #include <ioj/diagnostics.h>
 #include <ioj/frame_array.h>
+#include <ioj/frame_vectors3f.h>
 #include <ioj/generated/array_math_kernels.h>
 #include <ioj/periodic_tick_countdown.h>
 #include <ioj/projectile_intercept.h>
@@ -18,7 +19,6 @@
 #include <ioj/sim/entities/entity_unique_id_checks.h>
 #include <ioj/sim/fighters/fighter_diagnostics.h>
 #include <ioj/sim/fighters/fighter_frame_spawn_queue.h>
-#include <ioj/sim/frame_vectors3f.h>
 #include <ioj/sim/lasers/frame_laser_spawn_requests.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/profiling.h>

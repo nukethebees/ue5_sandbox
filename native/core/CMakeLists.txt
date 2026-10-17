@@ -12,6 +12,10 @@ target_include_directories(native-core-headers
 )
 target_sources(native-core
   PRIVATE
+    include/ioj/frame_vectors3f.h
+    src/frame_vectors3f.cpp
+    include/ioj/frame_rotators3f.h
+    src/frame_rotators3f.cpp
     include/ioj/vectors3f.h
     include/ioj/vector_operations.h
     include/ioj/column_math.h

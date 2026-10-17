@@ -1,6 +1,6 @@
-#include "ioj/sim/frame_vectors3f.h"
+#include "ioj/frame_vectors3f.h"
 
-namespace ioj::sim {
+namespace ioj {
 FrameVectors3f::FrameVectors3f(std::pmr::memory_resource* const scratch_resource)
     : xs_{scratch_resource}
     , ys_{scratch_resource}
@@ -53,4 +53,4 @@ auto FrameVectors3f::num() const noexcept -> size_type {
 auto FrameVectors3f::is_empty() const noexcept -> bool {
     return xs_.is_empty();
 }
-} // namespace ioj::sim
+} // namespace ioj

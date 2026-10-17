@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <memory_resource>
 
-namespace ioj::sim {
+namespace ioj {
 struct FrameRotators3f {
     explicit FrameRotators3f(std::pmr::memory_resource* const scratch_resource);
 
@@ -44,4 +44,4 @@ struct FrameRotators3f {
     ml::FrameArray<float> yaws_;
     ml::FrameArray<float> rolls_;
 };
-} // namespace ioj::sim
+} // namespace ioj

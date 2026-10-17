@@ -1,11 +1,11 @@
 #include "support/simulation_test_support.h"
 #include <ioj/column_math.h>
+#include <ioj/frame_vectors3f.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
-#include <ioj/sim/frame_vectors3f.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/sim_clock.h>

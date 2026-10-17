@@ -7,7 +7,7 @@
 #include <cassert>
 #include <memory_resource>
 
-namespace ioj::sim {
+namespace ioj {
 struct FrameVectors3f {
     using size_type = std::uint32_t;
 
@@ -49,4 +49,4 @@ struct FrameVectors3f {
     ml::FrameArray<float> ys_;
     ml::FrameArray<float> zs_;
 };
-} // namespace ioj::sim
+} // namespace ioj

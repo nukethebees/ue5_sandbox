@@ -1,6 +1,7 @@
 #pragma once
 #include <ioj/column_math.h>
 #include <ioj/frame_memory_resource.h>
+#include <ioj/frame_vectors3f.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/capital_ships/phase_interface.h>
 #include <ioj/sim/capital_ships/sim.h>
@@ -11,7 +12,6 @@
 #include <ioj/sim/entities/team_list.h>
 #include <ioj/sim/fighters/phase_interface.h>
 #include <ioj/sim/fighters/sim.h>
-#include <ioj/sim/frame_vectors3f.h>
 #include <ioj/sim/lasers/phase_interface.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/levels/level_event_manager.h>

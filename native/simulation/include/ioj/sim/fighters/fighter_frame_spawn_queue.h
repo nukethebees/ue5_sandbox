@@ -1,9 +1,9 @@
 #pragma once
 
 #include "ioj/frame_array.h"
+#include "ioj/frame_rotators3f.h"
+#include "ioj/frame_vectors3f.h"
 #include "ioj/sim/fighters/fighter_spawn_queue.h"
-#include "ioj/sim/frame_rotators3f.h"
-#include "ioj/sim/frame_vectors3f.h"
 
 #include <cassert>
 #include <memory_resource>

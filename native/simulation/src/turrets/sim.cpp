@@ -5,6 +5,7 @@
 #include <ioj/fixed_array.h>
 #include <ioj/frame_array.h>
 #include <ioj/frame_memory_resource.h>
+#include <ioj/frame_vectors3f.h>
 #include <ioj/loop_bounds.h>
 #include <ioj/parallel_for.h>
 #include <ioj/periodic_tick_countdown.h>
@@ -14,7 +15,6 @@
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/deterministic_bias.h>
 #include <ioj/sim/entities/entity_ledger.h>
-#include <ioj/sim/frame_vectors3f.h>
 #include <ioj/sim/lasers/frame_laser_spawn_requests.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_config.h>
