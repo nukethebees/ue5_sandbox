@@ -4,7 +4,7 @@
 #include <ioj/frame_array.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_ledger.h>
-#include <ioj/sim/lasers/frame_scratch.h>
+#include <ioj/sim/frame_laser_spawn_requests.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_config.h>
 #include <ioj/tick_countdown.h>

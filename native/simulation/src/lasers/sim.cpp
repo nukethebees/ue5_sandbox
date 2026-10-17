@@ -6,6 +6,8 @@
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/direct_damage_events.h>
+#include <ioj/sim/frame_collision_scratch.h>
+#include <ioj/sim/frame_hit_details.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spatial_query_manager.h>
 

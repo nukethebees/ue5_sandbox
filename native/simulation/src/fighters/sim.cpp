@@ -18,7 +18,6 @@
 #include <ioj/sim/frame_range_query_results.h>
 #include <ioj/sim/frame_vectors3f.h>
 #include <ioj/sim/laser_source.h>
-#include <ioj/sim/lasers/frame_scratch.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/rotator_math.h>
 #include <ioj/sim/spatial_query_manager.h>

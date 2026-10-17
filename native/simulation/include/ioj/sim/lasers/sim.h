@@ -2,7 +2,6 @@
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/laser_frame_output.h>
 #include <ioj/sim/laser_soa.h>
-#include <ioj/sim/lasers/frame_scratch.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/sim_config.h>
 #include <ioj/single_allocation/concepts.h>

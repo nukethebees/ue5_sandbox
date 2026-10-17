@@ -13,8 +13,8 @@
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/deterministic_bias.h>
 #include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/frame_laser_spawn_requests.h>
 #include <ioj/sim/frame_vectors3f.h>
-#include <ioj/sim/lasers/frame_scratch.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/sim_config.h>
 #include <ioj/sim/spatial_query_manager.h>
