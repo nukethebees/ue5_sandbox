@@ -2,6 +2,7 @@
 
 #include <ioj/sim/collision/collision_system.h>
 #include <ioj/sim/direct_damage_events.h>
+#include <ioj/sim/health_type.h>
 #include <ioj/sim/sim_config.h>
 
 #include <cstdint>
@@ -17,7 +18,7 @@ struct OverlapHandler {
     void append_damage(EntityUniqueId id);
 
     CombatEvents& events_;
-    std::int32_t damage_per_overlap_detection_{};
+    Health damage_per_overlap_detection_{};
     DirectDamageEvents damage_events_;
 };
 }
