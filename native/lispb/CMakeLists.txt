@@ -98,7 +98,7 @@ ioj_enable_warnings(codegen-lib CODEGEN)
 
 add_library(lispb-target-compiler
   src/target_compiler.cpp
-  material/compiler.cpp
+  src/material_compiler.cpp
 )
 target_include_directories(lispb-target-compiler PUBLIC include)
 target_link_libraries(lispb-target-compiler
