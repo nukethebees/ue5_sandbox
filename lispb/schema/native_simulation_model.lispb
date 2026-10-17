@@ -344,21 +344,33 @@
     (member left ioj::sim::player::FlightModelProfile :initializer "")
     (member initial_slot ioj::sim::player::FlightModelSlot :initializer "FlightModelSlot::Up")))
 
-(module native_player_flight_model_runtime
-  :header "native/simulation/include/ioj/sim/player/flight_model_runtime.h"
-  :header-include "ioj/sim/player/flight_model_runtime.h"
+(module native_player_flight_model_runtime_physical_movement_state
+  :header "native/simulation/include/ioj/sim/player/physical_movement_state.h"
+  :header-include "ioj/sim/player/physical_movement_state.h"
   :backend standard-library
   :namespace ioj::sim::player
   (record PhysicalMovementState
     (member transform @native_transform3d :initializer "")
-    (member velocity @native_vector3d :initializer ""))
+    (member velocity @native_vector3d :initializer "")))
+
+(module native_player_flight_model_runtime_player_flight_intent
+  :header "native/simulation/include/ioj/sim/player/player_flight_intent.h"
+  :header-include "ioj/sim/player/player_flight_intent.h"
+  :backend standard-library
+  :namespace ioj::sim::player
   (record PlayerFlightIntent
     (member translation @native_vector3d :initializer "")
     (member rotation @native_vector3d :initializer "")
     (member accelerator float :initializer "")
     (member boost_held bool :initializer "")
     (member brake_held bool :initializer "")
-    (member emergency_brake_held bool :initializer ""))
+    (member emergency_brake_held bool :initializer "")))
+
+(module native_player_flight_model_runtime_flight_model_controller_state
+  :header "native/simulation/include/ioj/sim/player/flight_model_controller_state.h"
+  :header-include "ioj/sim/player/flight_model_controller_state.h"
+  :backend standard-library
+  :namespace ioj::sim::player
   (record FlightModelControllerState
     (member forward_manual_response @native_scalar_response :initializer "")
     (member forward_automatic_response @native_scalar_response :initializer "")
@@ -379,13 +391,31 @@
     (member persistent_right_target_speed float :initializer "")
     (member persistent_up_target_speed float :initializer "")
     (member time_since_rotation_input @native_vector3d :initializer "100.0, 100.0, 100.0")
-    (member effective_action ioj::sim::player::BoostBrakeState :initializer ""))
+    (member effective_action ioj::sim::player::BoostBrakeState :initializer "")))
+
+(module native_player_flight_model_runtime_player_resource_state
+  :header "native/simulation/include/ioj/sim/player/player_resource_state.h"
+  :header-include "ioj/sim/player/player_resource_state.h"
+  :backend standard-library
+  :namespace ioj::sim::player
   (record PlayerResourceState
     (member thrust_energy float :initializer "1.f")
-    (member thrust_change_rate float :initializer ""))
+    (member thrust_change_rate float :initializer "")))
+
+(module native_player_flight_model_runtime_player_presentation_state
+  :header "native/simulation/include/ioj/sim/player/player_presentation_state.h"
+  :header-include "ioj/sim/player/player_presentation_state.h"
+  :backend standard-library
+  :namespace ioj::sim::player
   (record PlayerPresentationState
     (member body_transform @native_transform3d :initializer "")
-    (member boost_start_sequence std::uint64_t :initializer ""))
+    (member boost_start_sequence std::uint64_t :initializer "")))
+
+(module native_player_flight_model_runtime_player_simulation_state
+  :header "native/simulation/include/ioj/sim/player/player_simulation_state.h"
+  :header-include "ioj/sim/player/player_simulation_state.h"
+  :backend standard-library
+  :namespace ioj::sim::player
   (record PlayerSimulationState
     (member physical ioj::sim::player::PhysicalMovementState :initializer "")
     (member controller ioj::sim::player::FlightModelControllerState :initializer "")

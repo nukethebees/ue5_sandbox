@@ -1,7 +1,12 @@
 #pragma once
 
 #include <ioj/sim/player/flight_model_config.h>
-#include <ioj/sim/player/flight_model_runtime.h>
+#include <ioj/sim/player/flight_model_controller_state.h>
+#include <ioj/sim/player/physical_movement_state.h>
+#include <ioj/sim/player/player_flight_intent.h>
+#include <ioj/sim/player/player_presentation_state.h>
+#include <ioj/sim/player/player_resource_state.h>
+#include <ioj/sim/player/player_simulation_state.h>
 
 namespace ioj::sim::player {
 void seed_flight_model_responses(PlayerSimulationState& state,

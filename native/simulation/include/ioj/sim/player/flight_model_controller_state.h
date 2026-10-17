@@ -5,32 +5,9 @@
 
 #include "ioj/sim/player/scalar_response.h"
 #include "ioj/sim/player/space_ship_common.h"
-#include "ioj/transform3d.h"
 #include "ioj/vector3d.h"
 
-#include <cstdint>
-
 namespace ioj::sim::player {
-struct PhysicalMovementState {
-    ioj::Transform3d transform{};
-
-    ml::Vector3d velocity{};
-};
-
-struct PlayerFlightIntent {
-    ml::Vector3d translation{};
-
-    ml::Vector3d rotation{};
-
-    float accelerator{};
-
-    bool boost_held{};
-
-    bool brake_held{};
-
-    bool emergency_brake_held{};
-};
-
 struct FlightModelControllerState {
     ioj::sim::player::ScalarResponse forward_manual_response{};
 
@@ -71,27 +48,5 @@ struct FlightModelControllerState {
     ml::Vector3d time_since_rotation_input{100.0, 100.0, 100.0};
 
     ioj::sim::player::BoostBrakeState effective_action{};
-};
-
-struct PlayerResourceState {
-    float thrust_energy{1.f};
-
-    float thrust_change_rate{};
-};
-
-struct PlayerPresentationState {
-    ioj::Transform3d body_transform{};
-
-    std::uint64_t boost_start_sequence{};
-};
-
-struct PlayerSimulationState {
-    ioj::sim::player::PhysicalMovementState physical{};
-
-    ioj::sim::player::FlightModelControllerState controller{};
-
-    ioj::sim::player::PlayerResourceState resources{};
-
-    ioj::sim::player::PlayerPresentationState presentation{};
 };
 } // namespace ioj::sim::player

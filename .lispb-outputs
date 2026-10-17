@@ -80,7 +80,12 @@ native/simulation/include/ioj/sim/player/command_interface.h
 native/simulation/include/ioj/sim/player/fire_rate.h
 native/simulation/include/ioj/sim/player/flight_model_data.h
 native/simulation/include/ioj/sim/player/flight_model_enums.h
-native/simulation/include/ioj/sim/player/flight_model_runtime.h
+native/simulation/include/ioj/sim/player/physical_movement_state.h
+native/simulation/include/ioj/sim/player/player_flight_intent.h
+native/simulation/include/ioj/sim/player/flight_model_controller_state.h
+native/simulation/include/ioj/sim/player/player_resource_state.h
+native/simulation/include/ioj/sim/player/player_presentation_state.h
+native/simulation/include/ioj/sim/player/player_simulation_state.h
 native/simulation/include/ioj/sim/player/laser_firing_state.h
 native/simulation/include/ioj/sim/player/phase_interface.h
 native/simulation/include/ioj/sim/player/ship_laser_mode.h
