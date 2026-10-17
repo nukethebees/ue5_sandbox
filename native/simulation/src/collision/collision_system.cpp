@@ -61,8 +61,7 @@ auto CollisionSystem::detect_overlaps(std::span<EntityUniqueId const> const over
     overlap_event_storage_.append_batch(entity_entity_overlaps, entity_static_overlaps);
 
     auto const events{overlap_event_storage_.get_view()};
-    return events.get_batch(static_cast<AABBOverlapEventBatchIndex>(events.batches.size() - 1))
-        .overlaps;
+    return events.get_batch(static_cast<AABBOverlapEventBatchIndex>(events.batches.size() - 1));
 }
 void CollisionSystem::collect_overlaps_for_candidates(
     std::span<EntityUniqueId const> const overlap_candidates,

@@ -23,17 +23,12 @@ struct AABBOverlapEventBatch {
     IndexSpan entity_static_overlaps;
 };
 
-struct AABBOverlapEventBatchView {
-    DetectedOverlapsView overlaps;
-};
-
 struct AABBOverlapEventsView {
     EntityEntityOverlaps::ConstView entity_entity_overlaps;
     EntityStaticOverlaps::ConstView entity_static_overlaps;
     std::span<AABBOverlapEventBatch const> batches;
 
-    [[nodiscard]] auto get_batch(AABBOverlapEventBatchIndex index) const
-        -> AABBOverlapEventBatchView;
+    [[nodiscard]] auto get_batch(AABBOverlapEventBatchIndex index) const -> DetectedOverlapsView;
 };
 
 /* **************************************** */

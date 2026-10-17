@@ -647,8 +647,8 @@ TEST(EntityAABBOverlaps, EventsMirrorAuthoritativeResults) {
         << "The collision pass records one event batch";
     if (events.batches.size() == 1) {
         auto const batch{events.get_batch(0)};
-        check_single_pair(batch.overlaps.entity_entity_overlaps, moved, stationary);
-        check_single_static_overlap(batch.overlaps.entity_static_overlaps, moved, static_index);
+        check_single_pair(batch.entity_entity_overlaps, moved, stationary);
+        check_single_static_overlap(batch.entity_static_overlaps, moved, static_index);
     }
 }
 

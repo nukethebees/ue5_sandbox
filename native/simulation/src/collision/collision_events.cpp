@@ -7,16 +7,13 @@ namespace ioj::sim::collision {
 // Event views
 /* **************************************** */
 auto AABBOverlapEventsView::get_batch(AABBOverlapEventBatchIndex const index) const
-    -> AABBOverlapEventBatchView {
+    -> DetectedOverlapsView {
     auto const batch{batches[static_cast<std::size_t>(index)]};
     return {
-        .overlaps =
-            {
-                .entity_entity_overlaps = entity_entity_overlaps.slice(
-                    batch.entity_entity_overlaps.offset, batch.entity_entity_overlaps.count),
-                .entity_static_overlaps = entity_static_overlaps.slice(
-                    batch.entity_static_overlaps.offset, batch.entity_static_overlaps.count),
-            },
+        .entity_entity_overlaps = entity_entity_overlaps.slice(batch.entity_entity_overlaps.offset,
+                                                               batch.entity_entity_overlaps.count),
+        .entity_static_overlaps = entity_static_overlaps.slice(batch.entity_static_overlaps.offset,
+                                                               batch.entity_static_overlaps.count),
     };
 }
 

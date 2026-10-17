@@ -153,7 +153,7 @@ TEST(QueryScratch, PublishedOverlapBatchesSurviveScratchEpochs) {
         auto const events{manager.get_aabb_overlap_events()};
         ASSERT_EQ(events.batches.size(), static_cast<std::size_t>(epoch + 1));
         for (int batch{}; batch <= epoch; ++batch) {
-            auto const overlaps{events.get_batch(batch).overlaps.entity_entity_overlaps};
+            auto const overlaps{events.get_batch(batch).entity_entity_overlaps};
             ASSERT_EQ(overlaps.num(), 1u);
             EXPECT_EQ(overlaps.first_entities()[0], std::min(ids[0], ids[1]));
             EXPECT_EQ(overlaps.second_entities()[0], std::max(ids[0], ids[1]));
