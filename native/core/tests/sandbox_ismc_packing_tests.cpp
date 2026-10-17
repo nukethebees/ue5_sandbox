@@ -21,9 +21,9 @@ struct Inputs {
         for (std::size_t index{}; index < count; ++index) {
             positions[index] = {
                 262144 + offsets(random), -262144 + offsets(random), 1000000 + offsets(random)};
-            auto const q{
-                HMM_NormQ(HMM_Q(normal(random), normal(random), normal(random), normal(random)))};
-            rotations[index] = {q.X, q.Y, q.Z, q.W};
+            auto const q{ioj::normalized(ml::make_quaternion4f(
+                normal(random), normal(random), normal(random), normal(random)))};
+            rotations[index] = {q.x(), q.y(), q.z(), q.w()};
             if (index % 11 == 0) {
                 for (auto& component : rotations[index]) {
                     component *= index % 2 == 0 ? 1.00002f : 0.99998f;
@@ -55,8 +55,8 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void 
     EXPECT_EQ(scalar_bounds.valid, count != 0);
     EXPECT_EQ(simd_bounds.valid, scalar_bounds.valid);
     for (auto axis{0U}; axis < 3; ++axis) {
-        EXPECT_EQ(scalar_bounds.minimum.Elements[axis], simd_bounds.minimum.Elements[axis]);
-        EXPECT_EQ(scalar_bounds.maximum.Elements[axis], simd_bounds.maximum.Elements[axis]);
+        EXPECT_EQ(scalar_bounds.minimum[axis], simd_bounds.minimum[axis]);
+        EXPECT_EQ(scalar_bounds.maximum[axis], simd_bounds.maximum[axis]);
     }
     pack_positions(inputs.view().positions, parameters.position_root, separate_output);
     pack_rotations(inputs.view().rotations, separate_output);
@@ -79,7 +79,7 @@ auto compare(Inputs const& inputs, PackingParameters const& parameters) -> void 
         for (auto axis{0U}; axis < 3; ++axis) {
             EXPECT_EQ(scalar_output[index].position[axis],
                       quantize_position_unchecked(inputs.positions[index][axis],
-                                                  parameters.position_root.Elements[axis]));
+                                                  parameters.position_root[axis]));
         }
     }
 
@@ -177,9 +177,8 @@ TEST(SandboxISMCBatchPacking, DirectBasisMatchesIndependentlyRotatedCorners) {
                     std::array<double, 3> v{};
                     std::array<double, 3> t{};
                     for (auto axis{0U}; axis < 3; ++axis) {
-                        v[axis] =
-                            static_cast<double>(origin.Elements[axis]) +
-                            ((corner & (1U << axis)) != 0 ? 1.0 : -1.0) * extent.Elements[axis];
+                        v[axis] = static_cast<double>(origin[axis]) +
+                                  ((corner & (1U << axis)) != 0 ? 1.0 : -1.0) * extent[axis];
                     }
                     for (auto axis{0U}; axis < 3; ++axis) {
                         auto const j{(axis + 1) % 3};
@@ -199,8 +198,8 @@ TEST(SandboxISMCBatchPacking, DirectBasisMatchesIndependentlyRotatedCorners) {
                     // Four sequential float additions at world-coordinate magnitude.
                     auto const tolerance{4.0 * std::numeric_limits<float>::epsilon() *
                                          (std::abs(static_cast<double>(position[axis])) + 1000.0)};
-                    EXPECT_NEAR(bounds.minimum.Elements[axis], low[axis], tolerance);
-                    EXPECT_NEAR(bounds.maximum.Elements[axis], high[axis], tolerance);
+                    EXPECT_NEAR(bounds.minimum[axis], low[axis], tolerance);
+                    EXPECT_NEAR(bounds.maximum[axis], high[axis], tolerance);
                 }
             }
         }

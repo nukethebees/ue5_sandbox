@@ -224,7 +224,7 @@ template <std::floating_point T, std::size_t N>
 template <std::floating_point T, std::size_t N>
 [[nodiscard]] auto move_towards(Vector<T, N> const current,
                                 Vector<T, N> const target,
-                                T const max_delta) noexcept -> Vector<T, N> {
+                                std::type_identity_t<T> const max_delta) noexcept -> Vector<T, N> {
     auto const delta{target - current};
     auto const distance{size(delta)};
     if (distance <= max_delta) {

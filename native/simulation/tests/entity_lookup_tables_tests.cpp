@@ -160,17 +160,17 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
     EXPECT_TRUE(handles[2].is_valid());
     EXPECT_TRUE(handles[3].is_valid());
     EXPECT_FALSE(handles[4].is_valid());
-    EXPECT_FLOAT_EQ(locations[0].X, 10.f);
-    EXPECT_FLOAT_EQ(locations[2].X, 40.f);
-    EXPECT_FLOAT_EQ(locations[3].X, 10.f);
-    EXPECT_FLOAT_EQ(locations[4].X, 0.f);
-    EXPECT_FLOAT_EQ(velocities[2].X, 0.f);
-    EXPECT_FLOAT_EQ(velocities[0].X, 1.f);
-    EXPECT_FLOAT_EQ(locations[5].X, 70.f);
-    EXPECT_FLOAT_EQ(velocities[5].X, 4.f);
+    EXPECT_FLOAT_EQ(locations[0].x(), 10.f);
+    EXPECT_FLOAT_EQ(locations[2].x(), 40.f);
+    EXPECT_FLOAT_EQ(locations[3].x(), 10.f);
+    EXPECT_FLOAT_EQ(locations[4].x(), 0.f);
+    EXPECT_FLOAT_EQ(velocities[2].x(), 0.f);
+    EXPECT_FLOAT_EQ(velocities[0].x(), 1.f);
+    EXPECT_FLOAT_EQ(locations[5].x(), 70.f);
+    EXPECT_FLOAT_EQ(velocities[5].x(), 4.f);
     EXPECT_FALSE(handles[6].is_valid());
-    EXPECT_FLOAT_EQ(locations[6].X, 0.f);
-    EXPECT_FLOAT_EQ(velocities[6].X, 0.f);
+    EXPECT_FLOAT_EQ(locations[6].x(), 0.f);
+    EXPECT_FLOAT_EQ(velocities[6].x(), 0.f);
 
     owners.remove(fighter);
     owners.publish();
@@ -179,8 +179,8 @@ TEST(EntityMotion, CopiesMixedTypesAndReportsMissingEntitiesWithoutChangingIds) 
     EXPECT_EQ(ids, original);
     EXPECT_FALSE(handles[0].is_valid());
     EXPECT_FALSE(handles[3].is_valid());
-    EXPECT_FLOAT_EQ(locations[0].X, 0.f);
-    EXPECT_FLOAT_EQ(velocities[0].X, 0.f);
+    EXPECT_FLOAT_EQ(locations[0].x(), 0.f);
+    EXPECT_FLOAT_EQ(velocities[0].x(), 0.f);
 }
 
 TEST(EntityLookupTables, ResolutionHealthChangesBeforeHandlesRetire) {

@@ -188,15 +188,15 @@ auto pack(TransformInput input,
     auto const limit{hn::Set(df, std::numeric_limits<float>::max())};
     auto const negative_limit{hn::Set(df, -std::numeric_limits<float>::max())};
     BatchBounds batch{{limit, limit, limit}, {negative_limit, negative_limit, negative_limit}};
-    Vec3Batch const origin{hn::Set(df, params.mesh_origin.X),
-                           hn::Set(df, params.mesh_origin.Y),
-                           hn::Set(df, params.mesh_origin.Z)};
-    Vec3Batch const extent{hn::Set(df, params.mesh_extent.X),
-                           hn::Set(df, params.mesh_extent.Y),
-                           hn::Set(df, params.mesh_extent.Z)};
-    Vec3Batch const root{hn::Set(df, params.position_root.X),
-                         hn::Set(df, params.position_root.Y),
-                         hn::Set(df, params.position_root.Z)};
+    Vec3Batch const origin{hn::Set(df, params.mesh_origin.x()),
+                           hn::Set(df, params.mesh_origin.y()),
+                           hn::Set(df, params.mesh_origin.z())};
+    Vec3Batch const extent{hn::Set(df, params.mesh_extent.x()),
+                           hn::Set(df, params.mesh_extent.y()),
+                           hn::Set(df, params.mesh_extent.z())};
+    Vec3Batch const root{hn::Set(df, params.position_root.x()),
+                         hn::Set(df, params.position_root.y()),
+                         hn::Set(df, params.position_root.z())};
 
     auto* const dst{output.data()};
     auto const simd_end{output.size() / lanes * lanes};
@@ -269,9 +269,9 @@ auto pack(TransformInput input,
 
     if constexpr (bounds_mode == BoundsMode::Calculate) {
         // Merge vector extrema into the scalar tail bounds.
-        reduce_axis(batch.min.x, batch.max.x, bounds->minimum.X, bounds->maximum.X);
-        reduce_axis(batch.min.y, batch.max.y, bounds->minimum.Y, bounds->maximum.Y);
-        reduce_axis(batch.min.z, batch.max.z, bounds->minimum.Z, bounds->maximum.Z);
+        reduce_axis(batch.min.x, batch.max.x, bounds->minimum.x(), bounds->maximum.x());
+        reduce_axis(batch.min.y, batch.max.y, bounds->minimum.y(), bounds->maximum.y());
+        reduce_axis(batch.min.z, batch.max.z, bounds->minimum.z(), bounds->maximum.z());
 
         bounds->valid = !output.empty();
     }

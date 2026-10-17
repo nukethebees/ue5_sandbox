@@ -122,7 +122,7 @@ void run_worldless_turret_search_requires_line_of_sight(tests::SimulationFixture
     }
     EXPECT_TRUE(targets[0].is_valid()) << "Blue turret selects a visible target";
     if (targets[0].is_valid()) {
-        EXPECT_LE(HMM_LenV3(Vector3f{{1000.f, 1000.f, 0.f}} -
+        EXPECT_LE(ioj::size(Vector3f{{1000.f, 1000.f, 0.f}} -
                             observe_live_entity(harness.get_simulation(), targets[0])->location),
                   1.f)
             << "Blue turret skips the blocked enemy";

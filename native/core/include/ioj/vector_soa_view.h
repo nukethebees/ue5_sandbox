@@ -51,7 +51,7 @@ struct Vector3SoAView {
     void set(size_type const index, equivalent_type const value) const noexcept
         requires (!std::is_const_v<T>)
     {
-        set(index, value.X, value.Y, value.Z);
+        set(index, value.x(), value.y(), value.z());
     }
     void set(size_type const index, float const x, float const y, float const z) const noexcept
         requires (!std::is_const_v<T>)

@@ -41,8 +41,8 @@ TEST(Heatmap2D, BuildsBottomUpVisibleCellGeometry) {
         grid, {0.0f, 4.0f}, build_color_lut(grayscale_stops(), 5), {100.0f, 80.0f})};
     ASSERT_EQ(cells.size(), 4);
     EXPECT_EQ(cells[0].size, (ioj::ui::Vector2f{50.0f, 40.0f}));
-    EXPECT_FLOAT_EQ(cells[0].position.y, 40.0f);
-    EXPECT_FLOAT_EQ(cells[2].position.y, 0.0f);
+    EXPECT_FLOAT_EQ(cells[0].position.y(), 40.0f);
+    EXPECT_FLOAT_EQ(cells[2].position.y(), 0.0f);
     EXPECT_EQ(cells[2].cell_index, 2);
     EXPECT_EQ(cells[3].color, (ioj::ui::Color4f{1.0f, 1.0f, 1.0f, 1.0f}));
 
@@ -64,7 +64,7 @@ TEST(Heatmap2D, UsesTheFullUint16IndexRangeInOneMaximumSizeBatch) {
     ASSERT_EQ(batches.size(), 1);
     EXPECT_EQ(batches[0].vertices.size(), 128 * 128 * 4);
     EXPECT_EQ(batches[0].indices.size(), 128 * 128 * 6);
-    EXPECT_FLOAT_EQ(batches[0].vertices[0].position.x, 10.0f);
+    EXPECT_FLOAT_EQ(batches[0].vertices[0].position.x(), 10.0f);
     EXPECT_EQ(batches[0].indices.back(), std::numeric_limits<std::uint16_t>::max());
 }
 

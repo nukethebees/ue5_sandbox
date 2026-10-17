@@ -15,9 +15,9 @@ auto sample_spherical_shell_point(Point3d const centre,
     auto const distance{std::sqrt(minimum_squared + (maximum_squared - minimum_squared) * alpha)};
 
     return {
-        centre.x + unit_direction.x * distance,
-        centre.y + unit_direction.y * distance,
-        centre.z + unit_direction.z * distance,
+        centre.x() + unit_direction.x() * distance,
+        centre.y() + unit_direction.y() * distance,
+        centre.z() + unit_direction.z() * distance,
     };
 }
 }

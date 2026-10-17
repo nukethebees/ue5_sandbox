@@ -16,27 +16,27 @@ TEST(Spatial, SamplesSphericalShellSquaredDistanceUniformly) {
         sample_spherical_shell_point({1.0, 2.0, 3.0}, {1.0, 0.0, 0.0}, 10.0f, 20.0f, 1.0f)};
     auto const midpoint{sample_spherical_shell_point({}, {1.0, 0.0, 0.0}, 10.0f, 20.0f, 0.5f)};
 
-    EXPECT_DOUBLE_EQ(minimum.x, 11.0);
-    EXPECT_DOUBLE_EQ(maximum.x, 21.0);
-    EXPECT_DOUBLE_EQ(minimum.y, 2.0);
-    EXPECT_NEAR(midpoint.x, std::sqrt(250.0), 1e-6);
+    EXPECT_DOUBLE_EQ(minimum.x(), 11.0);
+    EXPECT_DOUBLE_EQ(maximum.x(), 21.0);
+    EXPECT_DOUBLE_EQ(minimum.y(), 2.0);
+    EXPECT_NEAR(midpoint.x(), std::sqrt(250.0), 1e-6);
 }
 
 TEST(Spatial, ClampsUnitSample) {
     auto const below{sample_spherical_shell_point({}, {0.0, 1.0, 0.0}, 2.0f, 4.0f, -1.0f)};
     auto const above{sample_spherical_shell_point({}, {0.0, 1.0, 0.0}, 2.0f, 4.0f, 2.0f)};
 
-    EXPECT_DOUBLE_EQ(below.y, 2.0);
-    EXPECT_DOUBLE_EQ(above.y, 4.0);
+    EXPECT_DOUBLE_EQ(below.y(), 2.0);
+    EXPECT_DOUBLE_EQ(above.y(), 4.0);
 }
 
 TEST(Spatial, AppliesCentreAndDirection) {
     auto const point{
         sample_spherical_shell_point({1.0, 2.0, 3.0}, {0.0, 0.6, 0.8}, 3.0f, 5.0f, 1.0f)};
 
-    EXPECT_DOUBLE_EQ(point.x, 1.0);
-    EXPECT_DOUBLE_EQ(point.y, 5.0);
-    EXPECT_DOUBLE_EQ(point.z, 7.0);
+    EXPECT_DOUBLE_EQ(point.x(), 1.0);
+    EXPECT_DOUBLE_EQ(point.y(), 5.0);
+    EXPECT_DOUBLE_EQ(point.z(), 7.0);
 }
 
 TEST(CollisionGrid, ValidatesDimensionsCellSizeAndCellCount) {

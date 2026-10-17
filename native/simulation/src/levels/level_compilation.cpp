@@ -196,9 +196,9 @@ auto compile_level(LevelDefinition const& definition,
             capital_events.target_entity_indices()[row] = sim::invalid_level_entity_index;
             ioj::set_vector(capital_events.view_locations(),
                             row,
-                            ml::make_vector3f(static_cast<float>(entity.position.x),
-                                              static_cast<float>(entity.position.y),
-                                              static_cast<float>(entity.position.z)));
+                            ml::make_vector3f(static_cast<float>(entity.position.x()),
+                                              static_cast<float>(entity.position.y()),
+                                              static_cast<float>(entity.position.z())));
             ioj::set_rotation(capital_events.view_rotations(),
                               row,
                               ioj::Rotator3f{static_cast<float>(entity.rotation.pitch),
@@ -215,9 +215,9 @@ auto compile_level(LevelDefinition const& definition,
             turret_events.entity_indices()[row] = entity_index_value;
             ioj::set_vector(turret_events.view_locations(),
                             row,
-                            ml::make_vector3f(static_cast<float>(entity.position.x),
-                                              static_cast<float>(entity.position.y),
-                                              static_cast<float>(entity.position.z)));
+                            ml::make_vector3f(static_cast<float>(entity.position.x()),
+                                              static_cast<float>(entity.position.y()),
+                                              static_cast<float>(entity.position.z())));
             ioj::set_rotation(turret_events.view_rotations(),
                               row,
                               ioj::Rotator3f{static_cast<float>(entity.rotation.pitch),

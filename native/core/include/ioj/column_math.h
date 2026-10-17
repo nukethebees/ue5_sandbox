@@ -17,7 +17,7 @@ concept VectorColumns = requires(View const& view) {
 
 template <VectorColumns View>
 auto vector_at(View const& view, std::uint32_t const index) -> Vector3f {
-    return HMM_V3(view.xs()[index], view.ys()[index], view.zs()[index]);
+    return ml::make_vector3f(view.xs()[index], view.ys()[index], view.zs()[index]);
 }
 
 template <VectorColumns View>
@@ -30,7 +30,7 @@ void set_vector(
 
 template <VectorColumns View>
 void set_vector(View&& view, std::uint32_t const index, Vector3f const value) {
-    set_vector(view, index, value.X, value.Y, value.Z);
+    set_vector(view, index, value.x(), value.y(), value.z());
 }
 
 template <typename View>

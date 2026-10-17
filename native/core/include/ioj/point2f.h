@@ -1,10 +1,5 @@
 #pragma once
-
+#include <ioj/vector_value_math.h>
 namespace ioj {
-struct Point2f {
-    float x{};
-    float y{};
-
-    auto operator==(Point2f const&) const -> bool = default;
-};
+using Point2f = ioj::Vector<float, 2>;
 }

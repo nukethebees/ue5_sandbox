@@ -114,68 +114,14 @@
     (member id @native_unique_id)
     (member location @native_vector_3f)))
 
-(module native_collision_grid_geometry_cell_coord
-  :header "native/simulation/include/ioj/sim/collision/cell_coord.h"
-  :header-include "ioj/sim/collision/cell_coord.h"
-  :backend standard-library
-  :namespace ioj::sim::collision
-  (record CellCoord
-    :comparison equality
-    :comparison-noexcept true
-    (member x int :initializer "")
-    (member y int :initializer "")
-    (member z int :initializer "")
-    (function operator+ CellCoord :const true :noexcept true :constexpr true :nodiscard true
-      :body ("return {x + other.x, y + other.y, z + other.z};")
-      (parameter other CellCoord))
-    (function operator- CellCoord :const true :noexcept true :constexpr true :nodiscard true
-      :body ("return {x - other.x, y - other.y, z - other.z};")
-      (parameter other CellCoord))
-    (function operator+= (type-ref CellCoord :suffix "&") :noexcept true :constexpr true
-      :body ("x += other.x;" "y += other.y;" "z += other.z;" "return *this;")
-      (parameter other CellCoord))
-    (function operator-= (type-ref CellCoord :suffix "&") :noexcept true :constexpr true
-      :body ("x -= other.x;" "y -= other.y;" "z -= other.z;" "return *this;")
-      (parameter other CellCoord))
-    (function operator+ CellCoord :const true :noexcept true :constexpr true :nodiscard true
-      :body ("return {x + offset, y + offset, z + offset};")
-      (parameter offset int))
-    (function operator- CellCoord :const true :noexcept true :constexpr true :nodiscard true
-      :body ("return {x - offset, y - offset, z - offset};")
-      (parameter offset int))
-    (function operator+= (type-ref CellCoord :suffix "&") :noexcept true :constexpr true
-      :body ("x += offset;" "y += offset;" "z += offset;" "return *this;")
-      (parameter offset int))
-    (function operator-= (type-ref CellCoord :suffix "&") :noexcept true :constexpr true
-      :body ("x -= offset;" "y -= offset;" "z -= offset;" "return *this;")
-      (parameter offset int))
-    (function component_min CellCoord :const true :noexcept true :constexpr true :nodiscard true
-      :body ("return {x < other.x ? x : other.x,"
-             "        y < other.y ? y : other.y,"
-             "        z < other.z ? z : other.z};")
-      (parameter other CellCoord))
-    (function component_max CellCoord :const true :noexcept true :constexpr true :nodiscard true
-      :body ("return {x > other.x ? x : other.x,"
-             "        y > other.y ? y : other.y,"
-             "        z > other.z ? z : other.z};")
-      (parameter other CellCoord))
-    (function clamped CellCoord :const true :noexcept true :constexpr true :nodiscard true
-      :body ("return component_max(minimum).component_min(maximum);")
-      (parameter minimum CellCoord)
-      (parameter maximum CellCoord))
-    (function operator[] (type-ref int :suffix "&") :noexcept true
-      (parameter index std::size_t))
-    (function operator[] int :const true :noexcept true
-      (parameter index std::size_t))))
-
 (module native_collision_grid_geometry_cell_coord_bounds
   :header "native/simulation/include/ioj/sim/collision/cell_coord_bounds.h"
   :header-include "ioj/sim/collision/cell_coord_bounds.h"
   :backend standard-library
   :namespace ioj::sim::collision
   (record CellCoordBounds
-    (member min ioj::sim::collision::CellCoord)
-    (member max ioj::sim::collision::CellCoord)))
+    (member min @native_cell_coord)
+    (member max @native_cell_coord)))
 
 (module native_collision_grid_geometry_grid_geometry
   :header "native/simulation/include/ioj/sim/collision/grid_geometry.h"
@@ -183,7 +129,7 @@
   :backend standard-library
   :namespace ioj::sim::collision
   (record GridGeometry
-    (member dimensions ioj::sim::collision::CellCoord)
+    (member dimensions @native_cell_coord)
     (member cell_dimensions @native_vector_3f)))
 
 (module native_collision_world_aabb

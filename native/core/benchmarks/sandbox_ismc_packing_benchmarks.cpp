@@ -31,9 +31,9 @@ struct Buffers {
         for (std::size_t index{}; index < count; ++index) {
             positions[index] = {
                 262144 + offset(random), -262144 + offset(random), 1000000 + offset(random)};
-            auto const q{
-                HMM_NormQ(HMM_Q(normal(random), normal(random), normal(random), normal(random)))};
-            rotations[index] = {q.X, q.Y, q.Z, q.W};
+            auto const q{ioj::normalized(ml::make_quaternion4f(
+                normal(random), normal(random), normal(random), normal(random)))};
+            rotations[index] = {q.x(), q.y(), q.z(), q.w()};
         }
     }
     std::vector<std::array<float, 3>> positions;

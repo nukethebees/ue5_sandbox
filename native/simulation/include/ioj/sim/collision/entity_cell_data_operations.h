@@ -14,18 +14,18 @@ inline void add(EntityCellData& data,
     auto const index{data.num()};
     data.add_uninitialised(1);
     auto const view{data.get_view()};
-    view.min_point_xs()[index] = min_point.X;
-    view.min_point_ys()[index] = min_point.Y;
-    view.min_point_zs()[index] = min_point.Z;
-    view.max_point_xs()[index] = max_point.X;
-    view.max_point_ys()[index] = max_point.Y;
-    view.max_point_zs()[index] = max_point.Z;
-    view.min_cell_xs()[index] = min_cell.x;
-    view.min_cell_ys()[index] = min_cell.y;
-    view.min_cell_zs()[index] = min_cell.z;
-    view.max_cell_xs()[index] = max_cell.x;
-    view.max_cell_ys()[index] = max_cell.y;
-    view.max_cell_zs()[index] = max_cell.z;
+    view.min_point_xs()[index] = min_point.x();
+    view.min_point_ys()[index] = min_point.y();
+    view.min_point_zs()[index] = min_point.z();
+    view.max_point_xs()[index] = max_point.x();
+    view.max_point_ys()[index] = max_point.y();
+    view.max_point_zs()[index] = max_point.z();
+    view.min_cell_xs()[index] = min_cell.x();
+    view.min_cell_ys()[index] = min_cell.y();
+    view.min_cell_zs()[index] = min_cell.z();
+    view.max_cell_xs()[index] = max_cell.x();
+    view.max_cell_ys()[index] = max_cell.y();
+    view.max_cell_zs()[index] = max_cell.z();
     view.entity_ids()[index] = id;
 }
 

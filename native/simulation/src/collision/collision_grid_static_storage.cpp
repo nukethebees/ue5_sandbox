@@ -37,8 +37,8 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     aabb_indices_.clear();
 
     auto const cell_count{num_cells(geometry)};
-    auto const row_stride{geometry.dimensions.x};
-    auto const plane_stride{row_stride * geometry.dimensions.y};
+    auto const row_stride{geometry.dimensions.x()};
+    auto const plane_stride{row_stride * geometry.dimensions.y()};
     cell_range_indices_.assign(static_cast<std::size_t>(cell_count), invalid_cell_range_index);
     std::vector<CellMembershipCount> cell_counts(static_cast<std::size_t>(cell_count));
 
@@ -58,12 +58,12 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
             }};
         }
 
-        auto plane_index{min_cell.x + min_cell.y * row_stride + min_cell.z * plane_stride};
-        for (auto z{min_cell.z}; z <= max_cell.z; ++z) {
+        auto plane_index{min_cell.x() + min_cell.y() * row_stride + min_cell.z() * plane_stride};
+        for (auto z{min_cell.z()}; z <= max_cell.z(); ++z) {
             auto row_index{plane_index};
-            for (auto y{min_cell.y}; y <= max_cell.y; ++y) {
+            for (auto y{min_cell.y()}; y <= max_cell.y(); ++y) {
                 auto cell_index{row_index};
-                for (auto x{min_cell.x}; x <= max_cell.x; ++x, ++cell_index) {
+                for (auto x{min_cell.x()}; x <= max_cell.x(); ++x, ++cell_index) {
                     ++cell_counts[static_cast<std::size_t>(cell_index)];
                 }
                 row_index += row_stride;
@@ -106,13 +106,13 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     for (StaticGeometryIndex aabb_index{}; aabb_index < aabb_count; ++aabb_index) {
         auto const [min_cell, max_cell]{
             to_cell_coord_bounds(geometry, min_at(aabbs, aabb_index), max_at(aabbs, aabb_index))};
-        auto plane_index{min_cell.x + min_cell.y * row_stride + min_cell.z * plane_stride};
+        auto plane_index{min_cell.x() + min_cell.y() * row_stride + min_cell.z() * plane_stride};
 
-        for (auto z{min_cell.z}; z <= max_cell.z; ++z) {
+        for (auto z{min_cell.z()}; z <= max_cell.z(); ++z) {
             auto row_index{plane_index};
-            for (auto y{min_cell.y}; y <= max_cell.y; ++y) {
+            for (auto y{min_cell.y()}; y <= max_cell.y(); ++y) {
                 auto cell_index{row_index};
-                for (auto x{min_cell.x}; x <= max_cell.x; ++x, ++cell_index) {
+                for (auto x{min_cell.x()}; x <= max_cell.x(); ++x, ++cell_index) {
                     auto const range_index{
                         cell_range_indices_[static_cast<std::size_t>(cell_index)]};
                     auto& write_index{write_indices[static_cast<std::size_t>(range_index)]};

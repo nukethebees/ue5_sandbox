@@ -205,7 +205,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     data.clock_settings.tick_rate = simulation_tick_rate_hz;
     data.clock_settings.time_scale = static_cast<double>(options.game_speed);
     data.clock_settings.accumulator = 0.0;
-    data.grid_geometry.dimensions.z = std::max(data.grid_geometry.dimensions.z, 25);
+    data.grid_geometry.dimensions.z() = std::max(data.grid_geometry.dimensions.z(), 25);
     if (options.fighter_stress_cap.has_value()) {
         data.fighters.max_live_fighters = *options.fighter_stress_cap;
         data.fighters.laser.damage = 0;
@@ -231,9 +231,9 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
             level.entities, level.player_entity_id, &ioj::levels::EntitySpawnDefinition::id)};
         auto player{reference.player};
         player.team = player_definition->team;
-        player.transform.location = {player_definition->position.x,
-                                     player_definition->position.y,
-                                     player_definition->position.z};
+        player.transform.location = {player_definition->position.x(),
+                                     player_definition->position.y(),
+                                     player_definition->position.z()};
         player.transform.rotation =
             ioj::to_quaternion(ioj::Rotator3d{player_definition->rotation.pitch,
                                               player_definition->rotation.yaw,

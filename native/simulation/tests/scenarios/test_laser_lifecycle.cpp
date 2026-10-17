@@ -78,7 +78,7 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
         auto const shooter_radius{
             harness.get_simulation().get_spatial_query_manager().get_entity_type_radius(
                 shooter.entity_type())};
-        auto const target_direction{HMM_NormV3(target_location - shooter_location)};
+        auto const target_direction{ioj::normalized(target_location - shooter_location)};
         auto start{shooter_location + target_direction * (shooter_radius + 100.f)};
         auto fire_direction{target_direction};
         if (scenario == LaserLifecycleScenario::Miss) {

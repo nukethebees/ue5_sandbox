@@ -97,8 +97,8 @@ auto is_valid_layout(LayoutSettings const settings) noexcept -> bool {
 
 auto make_plot_layout(Point2f const extent, LayoutSettings const settings) noexcept -> PlotLayout {
     return {.origin = {settings.left_margin, settings.top_margin},
-            .size = {std::max(0.0f, extent.x - settings.left_margin - settings.right_margin),
-                     std::max(0.0f, extent.y - settings.top_margin - settings.bottom_margin)}};
+            .size = {std::max(0.0f, extent.x() - settings.left_margin - settings.right_margin),
+                     std::max(0.0f, extent.y() - settings.top_margin - settings.bottom_margin)}};
 }
 
 auto nearest_sample_index(SeriesView const series, double const x) noexcept
@@ -344,8 +344,8 @@ auto transform_points(std::span<Point2d const> const points,
     auto const x_span{x_range.max - x_range.min};
     auto const y_span{y_range.max - y_range.min};
     auto const transform{[&](Point2d const point) {
-        auto const x_alpha{(point.x - x_range.min) / x_span};
-        auto const y_alpha{(point.y - y_range.min) / y_span};
+        auto const x_alpha{(point.x() - x_range.min) / x_span};
+        auto const y_alpha{(point.y() - y_range.min) / y_span};
         return Point2f{static_cast<float>(x_alpha * plot_width),
                        static_cast<float>((1.0 - y_alpha) * plot_height)};
     }};
@@ -353,7 +353,7 @@ auto transform_points(std::span<Point2d const> const points,
     if (interpolation == Interpolation::StepAfter && point_count > 1) {
         result.push_back(transform(points[0]));
         for (std::size_t i{1}; i < point_count; ++i) {
-            result.push_back(transform({points[i].x, points[i - 1].y}));
+            result.push_back(transform({points[i].x(), points[i - 1].y()}));
             result.push_back(transform(points[i]));
         }
         return result;

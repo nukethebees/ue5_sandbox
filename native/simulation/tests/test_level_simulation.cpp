@@ -339,8 +339,8 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
 
     data.capital_ships.fighter_spawn_slots = 2;
     data.capital_ships.fighter_spawn_slots_relative_transforms.resize(2);
-    data.capital_ships.fighter_spawn_slots_relative_transforms[0].location.y = -100.0;
-    data.capital_ships.fighter_spawn_slots_relative_transforms[1].location.y = 100.0;
+    data.capital_ships.fighter_spawn_slots_relative_transforms[0].location.y() = -100.0;
+    data.capital_ships.fighter_spawn_slots_relative_transforms[1].location.y() = 100.0;
     data.fighters.health = 100;
     data.fighters.speed = 0.f;
     auto const capital_events{data.level_events.initial_spawns.capital_spawns.get_view()};
@@ -460,29 +460,29 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
 
     simulation.get_player_ship_commands()->set_right_input(1.f);
     simulation.advance(dt);
-    EXPECT_TRUE((std::abs(local_velocity().y - 3000.0) <= 0.1))
+    EXPECT_TRUE((std::abs(local_velocity().y() - 3000.0) <= 0.1))
         << "Held lateral input adds the configured local offset";
     auto const initial_target_scale{player->get_sampled_target_speed_scale()};
-    EXPECT_TRUE(
-        (std::abs(initial_target_scale.x) <= 1.e-4 && std::abs(initial_target_scale.y) <= 1.e-4))
+    EXPECT_TRUE((std::abs(initial_target_scale.x()) <= 1.e-4 &&
+                 std::abs(initial_target_scale.y()) <= 1.e-4))
         << "Lateral input does not change desired planar velocity";
 
     simulation.get_player_ship_commands()->set_right_input(0.f);
     simulation.get_player_ship_commands()->set_up_input(1.f);
     simulation.advance(dt);
-    EXPECT_TRUE((std::abs(local_velocity().z - 3000.0) <= 0.1))
+    EXPECT_TRUE((std::abs(local_velocity().z() - 3000.0) <= 0.1))
         << "Held vertical input adds the configured local offset";
-    EXPECT_TRUE((std::abs(local_velocity().y) <= 0.1))
+    EXPECT_TRUE((std::abs(local_velocity().y()) <= 0.1))
         << "Released lateral input removes its local offset";
 
     simulation.get_player_ship_commands()->set_up_input(0.f);
     simulation.advance(dt);
     auto const released_velocity{local_velocity()};
-    EXPECT_TRUE((std::abs(released_velocity.z) <= 0.1))
+    EXPECT_TRUE((std::abs(released_velocity.z()) <= 0.1))
         << "Released vertical input removes its local offset";
     auto const final_target_scale{player->get_sampled_target_speed_scale()};
     EXPECT_TRUE(
-        (std::abs(final_target_scale.x) <= 1.e-4 && std::abs(final_target_scale.y) <= 1.e-4))
+        (std::abs(final_target_scale.x()) <= 1.e-4 && std::abs(final_target_scale.y()) <= 1.e-4))
         << "Movement offsets remain temporary";
 }
 

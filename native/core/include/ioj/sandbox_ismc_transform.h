@@ -21,7 +21,7 @@ inline constexpr float quaternion_component_limit{0.7071067811865475244f};
 inline constexpr float rotation_error_chord{0.006f};
 
 [[nodiscard]] inline auto is_normalized_quaternion(Quaternion4f quaternion) noexcept -> bool {
-    auto const squared{HMM_DotQ(quaternion, quaternion)};
+    auto const squared{ioj::dot(quaternion, quaternion)};
     return std::abs(squared - 1.0f) <= 1.0e-4f;
 }
 
@@ -53,20 +53,20 @@ inline constexpr float rotation_error_chord{0.006f};
 }
 
 [[nodiscard]] inline auto pack_normalized_quat32(Quaternion4f quaternion) noexcept -> Quat32 {
-    return pack_normalized_quat32(quaternion.X, quaternion.Y, quaternion.Z, quaternion.W);
+    return pack_normalized_quat32(quaternion.x(), quaternion.y(), quaternion.z(), quaternion.w());
 }
 
 // Reference/debug entry point for arbitrary nonzero quaternions, not the render hot path.
 [[nodiscard]] inline auto pack_quat32(Quaternion4f quaternion) noexcept -> std::optional<Quat32> {
-    auto const squared{HMM_DotQ(quaternion, quaternion)};
+    auto const squared{ioj::dot(quaternion, quaternion)};
     if (!std::isfinite(squared) || squared < 1.0e-12f) {
         return std::nullopt;
     }
-    return pack_normalized_quat32(HMM_MulQF(quaternion, 1.0f / std::sqrt(squared)));
+    return pack_normalized_quat32(quaternion * (1.0f / std::sqrt(squared)));
 }
 
 [[nodiscard]] inline auto unpack_quat32(Quat32 packed) noexcept -> Quaternion4f {
-    auto quaternion{HMM_Q(0.0f, 0.0f, 0.0f, 0.0f)};
+    auto quaternion{ml::make_quaternion4f(0.0f, 0.0f, 0.0f, 0.0f)};
     auto const largest{packed.bits & 3U};
     auto shift{2U};
     auto squared{0.0f};
@@ -77,11 +77,11 @@ inline constexpr float rotation_error_chord{0.006f};
         auto const code{(packed.bits >> shift) & 1023U};
         auto const value{static_cast<float>(code) * (2.0f * quaternion_component_limit / 1023.0f) -
                          quaternion_component_limit};
-        quaternion.Elements[index] = value;
+        quaternion[index] = value;
         squared += value * value;
         shift += 10;
     }
-    quaternion.Elements[largest] = std::sqrt(std::max(0.0f, 1.0f - squared));
+    quaternion[largest] = std::sqrt(std::max(0.0f, 1.0f - squared));
     return quaternion;
 }
 
@@ -119,16 +119,15 @@ inline constexpr float rotation_error_chord{0.006f};
     -> std::optional<Vector3f> {
     Vector3f root{};
     for (auto axis{0U}; axis < 3; ++axis) {
-        if (!std::isfinite(minimum.Elements[axis]) || !std::isfinite(maximum.Elements[axis]) ||
-            minimum.Elements[axis] > maximum.Elements[axis]) {
+        if (!std::isfinite(minimum[axis]) || !std::isfinite(maximum[axis]) ||
+            minimum[axis] > maximum[axis]) {
             return std::nullopt;
         }
-        auto const center{(static_cast<double>(minimum.Elements[axis]) + maximum.Elements[axis]) *
-                          0.5};
-        root.Elements[axis] =
+        auto const center{(static_cast<double>(minimum[axis]) + maximum[axis]) * 0.5};
+        root[axis] =
             static_cast<float>(std::floor(center / position_quantum + 0.5) * position_quantum);
-        if (!quantize_position(minimum.Elements[axis], root.Elements[axis]) ||
-            !quantize_position(maximum.Elements[axis], root.Elements[axis])) {
+        if (!quantize_position(minimum[axis], root[axis]) ||
+            !quantize_position(maximum[axis], root[axis])) {
             return std::nullopt;
         }
     }

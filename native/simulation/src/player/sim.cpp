@@ -114,9 +114,9 @@ void Sim::prepare_tick(float const dt) {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::prepare_tick");
 
     laser_shot_cooldown -= dt;
-    state_.controller.time_since_rotation_input.x += dt;
-    state_.controller.time_since_rotation_input.y += dt;
-    state_.controller.time_since_rotation_input.z += dt;
+    state_.controller.time_since_rotation_input.x() += dt;
+    state_.controller.time_since_rotation_input.y() += dt;
+    state_.controller.time_since_rotation_input.z() += dt;
 
     if (speed_sampling_enabled) {
         --speed_sample_ticks_remaining;
@@ -206,16 +206,16 @@ void Sim::set_team(Team const new_team) noexcept {
 void Sim::update_body_orientation(float const dt, PlayerSimulationState& state) {
     auto& presentation{state.presentation};
     auto const current_rotation{presentation.body_transform.rotator()};
-    auto const target_pitch{flight_intent_.rotation.x * config.pitch_angle_max};
+    auto const target_pitch{flight_intent_.rotation.x() * config.pitch_angle_max};
     auto const new_pitch{player_movement::interpolate_to(
         current_rotation.pitch, target_pitch, dt, config.pitch_speed)};
 
-    auto const target_yaw{flight_intent_.rotation.y * config.yaw_angle_max};
+    auto const target_yaw{flight_intent_.rotation.y() * config.yaw_angle_max};
     auto const new_yaw{
         player_movement::interpolate_to(current_rotation.yaw, target_yaw, dt, config.yaw_speed)};
 
-    auto const turn_target{flight_intent_.rotation.y * config.turn_bank_angle_max};
-    auto const turn_speed{flight_intent_.rotation.y * config.turn_bank_speed};
+    auto const turn_target{flight_intent_.rotation.y() * config.turn_bank_angle_max};
+    auto const turn_speed{flight_intent_.rotation.y() * config.turn_bank_speed};
     auto const roll_speed{
         std::max(static_cast<double>(config.turn_bank_speed), std::abs(turn_speed))};
     auto const new_roll{
@@ -284,15 +284,15 @@ void Sim::refresh_effective_action(PlayerSimulationState& state) noexcept {
 // Flight controls
 /* **************************************** */
 void Sim::set_forward_input(float const input) noexcept {
-    flight_intent_.translation.x = std::clamp(input, -1.f, 1.f);
+    flight_intent_.translation.x() = std::clamp(input, -1.f, 1.f);
 }
 
 void Sim::set_right_input(float const input) noexcept {
-    flight_intent_.translation.y = std::clamp(input, -1.f, 1.f);
+    flight_intent_.translation.y() = std::clamp(input, -1.f, 1.f);
 }
 
 void Sim::set_up_input(float const input) noexcept {
-    flight_intent_.translation.z = std::clamp(input, -1.f, 1.f);
+    flight_intent_.translation.z() = std::clamp(input, -1.f, 1.f);
 }
 
 void Sim::set_ship_2d_control(ml::Vector2d const input) {
@@ -300,8 +300,8 @@ void Sim::set_ship_2d_control(ml::Vector2d const input) {
         return;
     }
     sampled_target_speed_scale_ = {
-        std::clamp(input.x, -1.0, 1.0),
-        std::clamp(input.y, -1.0, 1.0),
+        std::clamp(input.x(), -1.0, 1.0),
+        std::clamp(input.y(), -1.0, 1.0),
     };
 }
 
@@ -329,9 +329,9 @@ void Sim::stop_sampling() {
     auto const& right{boosting ? config.translation.right.boosted
                                : config.translation.right.normal};
     state_.controller.persistent_forward_target_speed = player_movement::target_speed_from_input(
-        forward, static_cast<float>(sampled_target_speed_scale_.y));
+        forward, static_cast<float>(sampled_target_speed_scale_.y()));
     state_.controller.persistent_right_target_speed = player_movement::target_speed_from_input(
-        right, static_cast<float>(sampled_target_speed_scale_.x));
+        right, static_cast<float>(sampled_target_speed_scale_.x()));
     planned_state_ = state_;
 }
 
@@ -352,15 +352,15 @@ void Sim::adjust_desired_forward_velocity(float const direction) {
 }
 
 void Sim::set_pitch_input(float const input) noexcept {
-    flight_intent_.rotation.x = std::clamp(input, -1.f, 1.f);
+    flight_intent_.rotation.x() = std::clamp(input, -1.f, 1.f);
 }
 
 void Sim::set_yaw_input(float const input) noexcept {
-    flight_intent_.rotation.y = std::clamp(input, -1.f, 1.f);
+    flight_intent_.rotation.y() = std::clamp(input, -1.f, 1.f);
 }
 
 void Sim::set_roll_input(float const input) noexcept {
-    flight_intent_.rotation.z = std::clamp(input, -1.f, 1.f);
+    flight_intent_.rotation.z() = std::clamp(input, -1.f, 1.f);
 }
 
 void Sim::start_boost() {
@@ -605,7 +605,7 @@ auto Sim::get_kills() const -> std::int32_t {
 }
 
 auto Sim::get_speed() const noexcept -> float {
-    return static_cast<float>(state_.physical.velocity.size());
+    return static_cast<float>(ioj::size(state_.physical.velocity));
 }
 
 auto Sim::energy_is_full() const -> bool {
@@ -631,7 +631,7 @@ auto Sim::get_laser_effective_range() const noexcept -> float {
 void Sim::sample_speed() {
     speed_samples[speed_sample_index] = {
         std::clamp(simulation_clock.get_simulation_time(), 0.0, 1e9),
-        std::clamp(state_.physical.velocity.size(), 0.0, 100e3)};
+        std::clamp(ioj::size(state_.physical.velocity), 0.0, 100e3)};
     ++speed_sample_index;
     if (speed_sample_index >= speed_sample_max) {
         speed_sample_index = 0;

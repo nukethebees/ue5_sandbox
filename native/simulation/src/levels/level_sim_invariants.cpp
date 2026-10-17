@@ -39,7 +39,7 @@ auto LevelSim::capture_thinking_phase_state() const -> std::vector<ThinkingEntit
                              row,
                              healths.health(row),
                              teams[row],
-                             {location.X, location.Y, location.Z},
+                             {location.x(), location.y(), location.z()},
                              orientation_at(row)});
         }
     }};
@@ -54,7 +54,7 @@ auto LevelSim::capture_thinking_phase_state() const -> std::vector<ThinkingEntit
     append_ships.operator()<EntityType::Fighter>(
         fighters, [fighter_directions](std::uint32_t const row) {
             auto const direction{fighter_directions[row]};
-            return std::array<double, 4>{direction.X, direction.Y, direction.Z, 0.0};
+            return std::array<double, 4>{direction.x(), direction.y(), direction.z(), 0.0};
         });
     auto const turret_rotations{turrets.view_rotations()};
     append_ships.operator()<EntityType::Turret>(
@@ -75,7 +75,7 @@ auto LevelSim::capture_thinking_phase_state() const -> std::vector<ThinkingEntit
                          row,
                          1,
                          Team::White,
-                         {location.X, location.Y, location.Z},
+                         {location.x(), location.y(), location.z()},
                          {0.0, spinner_yaws[row], 0.0, 0.0}});
     }
 
@@ -90,8 +90,8 @@ auto LevelSim::capture_thinking_phase_state() const -> std::vector<ThinkingEntit
                          0,
                          player.get_health().health,
                          player.team,
-                         {location.x, location.y, location.z},
-                         {rotation.x, rotation.y, rotation.z, rotation.w}});
+                         {location.x(), location.y(), location.z()},
+                         {rotation.x(), rotation.y(), rotation.z(), rotation.w()}});
     }
 
     return state;

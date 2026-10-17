@@ -502,7 +502,7 @@ TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
     auto const& local{std::get<SoaType>(graph.type(*local_vectors).definition)};
     EXPECT_EQ(local.source_kind, SoaSourceKind::structure);
     EXPECT_EQ(local.vector_components, vector_type.vector_components);
-    EXPECT_EQ(vector_type.equivalent_constructor, "HMM_V3");
+    EXPECT_EQ(vector_type.equivalent_constructor, "ml::make_vector3f");
     EXPECT_EQ(local.equivalent_constructor, vector_type.equivalent_constructor);
 }
 

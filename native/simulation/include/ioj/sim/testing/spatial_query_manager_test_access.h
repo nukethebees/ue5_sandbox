@@ -19,8 +19,8 @@ struct SpatialQueryManagerTestAccess {
             auto const& velocity{manager.player_spatial_.velocity};
             set_motion(manager,
                        EntityType::PlayerShip,
-                       {{&location.X, 1}, {&location.Y, 1}, {&location.Z, 1}},
-                       {{&velocity.X, 1}, {&velocity.Y, 1}, {&velocity.Z, 1}});
+                       {{&location.x(), 1}, {&location.y(), 1}, {&location.z(), 1}},
+                       {{&velocity.x(), 1}, {&velocity.y(), 1}, {&velocity.z(), 1}});
         }
     }
     static auto uniform_grid(SpatialQueryManager& manager) noexcept

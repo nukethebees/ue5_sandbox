@@ -231,7 +231,7 @@ TEST(NativeLevelAuthoringReader, GeneratesLevelLocalIdsAndDefaultsRotations) {
             auto const found{
                 std::ranges::find(round_trip->entities, original.id, &EntitySpawnDefinition::id)};
             ASSERT_NE(found, round_trip->entities.end());
-            EXPECT_DOUBLE_EQ(found->position.x, original.position.x);
+            EXPECT_DOUBLE_EQ(found->position.x(), original.position.x());
             EXPECT_DOUBLE_EQ(found->spawn_time_seconds, original.spawn_time_seconds);
         }
     }
@@ -290,11 +290,11 @@ TEST(NativeLevelAuthoringReader, MapsPositionsAndConstructsExplicitIdsInScheme) 
     ASSERT_EQ(result->entities.size(), 4u);
     EXPECT_EQ(result->entities[0].id, EntityId{"flagship-0"});
     EXPECT_EQ(result->entities[1].id, EntityId{"flagship-1"});
-    EXPECT_DOUBLE_EQ(result->entities[1].position.x, 100.0);
+    EXPECT_DOUBLE_EQ(result->entities[1].position.x(), 100.0);
     EXPECT_EQ(result->entities[2].id, EntityId{"red-static-turret-0"});
     EXPECT_EQ(result->entities[3].id, EntityId{"red-static-turret-1"});
-    EXPECT_DOUBLE_EQ(result->entities[3].position.y, 10.0);
-    EXPECT_DOUBLE_EQ(result->entities[3].position.z, 20.0);
+    EXPECT_DOUBLE_EQ(result->entities[3].position.y(), 10.0);
+    EXPECT_DOUBLE_EQ(result->entities[3].position.z(), 20.0);
 }
 TEST(NativeLevelAuthoringReader, DerivesDistinctTeamsIncludingScheduledSpawns) {
     auto definition{make_level("teams")};
@@ -405,7 +405,7 @@ TEST(NativeLevelAuthoringWriter, HandlesEmptyCollectionsEscapesAndNumericBoundar
     auto parsed{DefinitionReader{}.read_level_source(*source)};
     ASSERT_TRUE(parsed) << format_diagnostics(parsed.error());
     EXPECT_EQ(parsed->metadata.description, definition.metadata.description);
-    EXPECT_DOUBLE_EQ(parsed->entities[0].position.x, 0.0);
+    EXPECT_DOUBLE_EQ(parsed->entities[0].position.x(), 0.0);
 }
 TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourceRoundTrip) {
     for (int mask{}; mask < 4; ++mask) {

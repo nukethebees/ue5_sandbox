@@ -43,7 +43,7 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
                       .accessor_location = [&] {
                           auto const location{
                               observe_entity(harness.get_simulation(), player_id)->location};
-                          return ml::Vector3d{location.X, location.Y, location.Z};
+                          return ml::Vector3d{location.x(), location.y(), location.z()};
                       }()};
         sample.fighter_target_locations = tests::copy_vectors(fighters.get_target_locations());
         sample.fighter_locations = tests::copy_vectors(fighters.get_locations());
@@ -61,11 +61,11 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
     auto const& tracked{samples.nearest_value(0.6)};
     auto const& before_end{samples.nearest_value(5.1)};
     auto const& end{samples.nearest_value(5.6)};
-    EXPECT_LE(((settled.player_location - settled.accessor_location).size()), 1.0)
+    EXPECT_LE((ioj::size(settled.player_location - settled.accessor_location)), 1.0)
         << "Accessor and player locations match initially";
-    EXPECT_LE(((tracked.player_location - tracked.accessor_location).size()), 1.0)
+    EXPECT_LE((ioj::size(tracked.player_location - tracked.accessor_location)), 1.0)
         << "Accessor and player locations match after movement";
-    EXPECT_GT(((settled.player_location - tracked.player_location).size()), 1.0)
+    EXPECT_GT((ioj::size(settled.player_location - tracked.player_location)), 1.0)
         << "Player ship moves";
     EXPECT_GT(static_cast<std::int32_t>(tracked.fighter_target_locations.size()), std::int32_t{0})
         << "Fighters have target locations";
@@ -81,13 +81,13 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
     auto const count{static_cast<std::int32_t>(end.fighter_locations.size())};
     for (std::int32_t i{}; i < count; ++i) {
         SCOPED_TRACE(::testing::Message() << "index " << i);
-        EXPECT_GT(HMM_LenV3(tracked.fighter_target_locations[i] - end.fighter_target_locations[i]),
+        EXPECT_GT(ioj::size(tracked.fighter_target_locations[i] - end.fighter_target_locations[i]),
                   1.f)
             << "Fighter target follows player";
-        EXPECT_GT(HMM_LenV3(before_end.fighter_locations[i] - end.fighter_locations[i]), 500.f)
+        EXPECT_GT(ioj::size(before_end.fighter_locations[i] - end.fighter_locations[i]), 500.f)
             << "Fighter moves late in simulation";
         EXPECT_GT(
-            HMM_LenV3(before_end.fighter_target_locations[i] - end.fighter_target_locations[i]),
+            ioj::size(before_end.fighter_target_locations[i] - end.fighter_target_locations[i]),
             500.f)
             << "Fighter target updates late in simulation";
     }

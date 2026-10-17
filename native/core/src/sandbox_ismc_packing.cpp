@@ -38,14 +38,14 @@ auto accumulate_bounds(std::array<float, 3> const& position,
                                                     {xz - wy, yz + wx, 1.0f - (xx + yy)}}};
     for (auto axis{0U}; axis < 3; ++axis) {
         auto const& row{rows[axis]};
-        auto const center{((position[axis] + row[0] * parameters.mesh_origin.X) +
-                           row[1] * parameters.mesh_origin.Y) +
-                          row[2] * parameters.mesh_origin.Z};
-        auto const extent{(std::abs(row[0]) * parameters.mesh_extent.X +
-                           std::abs(row[1]) * parameters.mesh_extent.Y) +
-                          std::abs(row[2]) * parameters.mesh_extent.Z};
-        bounds.minimum.Elements[axis] = std::min(bounds.minimum.Elements[axis], center - extent);
-        bounds.maximum.Elements[axis] = std::max(bounds.maximum.Elements[axis], center + extent);
+        auto const center{((position[axis] + row[0] * parameters.mesh_origin.x()) +
+                           row[1] * parameters.mesh_origin.y()) +
+                          row[2] * parameters.mesh_origin.z()};
+        auto const extent{(std::abs(row[0]) * parameters.mesh_extent.x() +
+                           std::abs(row[1]) * parameters.mesh_extent.y()) +
+                          std::abs(row[2]) * parameters.mesh_extent.z()};
+        bounds.minimum[axis] = std::min(bounds.minimum[axis], center - extent);
+        bounds.maximum[axis] = std::max(bounds.maximum[axis], center + extent);
     }
 }
 
@@ -74,8 +74,8 @@ auto pack(TransformInput input,
         if constexpr (fields != PackingFields::Rotations) {
             position = load<3>(input.positions, index);
             for (auto axis{0U}; axis < 3; ++axis) {
-                packed.position[axis] = quantize_position_unchecked(
-                    position[axis], parameters.position_root.Elements[axis]);
+                packed.position[axis] =
+                    quantize_position_unchecked(position[axis], parameters.position_root[axis]);
             }
         }
         if constexpr (fields != PackingFields::Positions) {

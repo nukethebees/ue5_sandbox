@@ -10,12 +10,12 @@ auto intersects(sim::collision::WorldAABB const& first,
                 sim::collision::WorldAABB const& second,
                 float const first_clearance,
                 float const second_clearance) noexcept -> bool {
-    return first.min.X - first_clearance <= second.max.X + second_clearance &&
-           first.max.X + first_clearance >= second.min.X - second_clearance &&
-           first.min.Y - first_clearance <= second.max.Y + second_clearance &&
-           first.max.Y + first_clearance >= second.min.Y - second_clearance &&
-           first.min.Z - first_clearance <= second.max.Z + second_clearance &&
-           first.max.Z + first_clearance >= second.min.Z - second_clearance;
+    return first.min.x() - first_clearance <= second.max.x() + second_clearance &&
+           first.max.x() + first_clearance >= second.min.x() - second_clearance &&
+           first.min.y() - first_clearance <= second.max.y() + second_clearance &&
+           first.max.y() + first_clearance >= second.min.y() - second_clearance &&
+           first.min.z() - first_clearance <= second.max.z() + second_clearance &&
+           first.max.z() + first_clearance >= second.min.z() - second_clearance;
 }
 
 }

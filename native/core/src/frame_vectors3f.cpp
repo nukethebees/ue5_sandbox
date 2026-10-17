@@ -22,9 +22,9 @@ void FrameVectors3f::clear() noexcept {
     zs_.clear();
 }
 void FrameVectors3f::add(Vector3f const value) {
-    xs_.add(value.X);
-    ys_.add(value.Y);
-    zs_.add(value.Z);
+    xs_.add(value.x());
+    ys_.add(value.y());
+    zs_.add(value.z());
 }
 void FrameVectors3f::add(Vectors3fConstView const source,
                          std::span<size_type const> const indices) {
@@ -33,9 +33,9 @@ void FrameVectors3f::add(Vectors3fConstView const source,
     zs_.add(source.zs(), indices);
 }
 void FrameVectors3f::set(size_type const index, Vector3f const value) {
-    xs_[index] = value.X;
-    ys_[index] = value.Y;
-    zs_[index] = value.Z;
+    xs_[index] = value.x();
+    ys_[index] = value.y();
+    zs_[index] = value.z();
 }
 
 auto FrameVectors3f::get_view() noexcept -> Vectors3fView {

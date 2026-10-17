@@ -409,7 +409,7 @@ void Sim::fire_at_enemies(ml::FrameMemoryResource* const scratch_resource) {
         if (!cooldowns.is_ready(element)) {
             continue;
         }
-        if (HMM_LenSqrV3(vector_at(locations, index) - vector_at(target_locations, index)) >=
+        if (ioj::size_squared(vector_at(locations, index) - vector_at(target_locations, index)) >=
             disengage_radius_squared) {
             target = {};
             continue;
@@ -458,13 +458,13 @@ void Sim::fire_at_enemies(ml::FrameMemoryResource* const scratch_resource) {
         ml::native_math::to_rotations(&rotation.pitch,
                                       &rotation.yaw,
                                       &rotation.roll,
-                                      &direction.X,
-                                      &direction.Y,
-                                      &direction.Z,
+                                      &direction.x(),
+                                      &direction.y(),
+                                      &direction.z(),
                                       1);
         new_lasers.add(location,
                        rotation,
-                       HMM_V3(0.f, 0.f, 0.f),
+                       ml::make_vector3f(0.f, 0.f, 0.f),
                        laser_damages[element],
                        config.laser.projectile_speed,
                        config.laser.max_distance,

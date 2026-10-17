@@ -86,7 +86,7 @@ struct CollisionAgentStorage {
             case EntityType::PlayerShip:
                 assert(player_ids.empty());
                 player_ids.push_back(id);
-                player_transform.location = {location.X, location.Y, location.Z};
+                player_transform.location = {location.x(), location.y(), location.z()};
                 player_transform.rotation =
                     to_quaternion(Rotator3d{rotation.pitch, rotation.yaw, rotation.roll});
                 health_table.initialise_rows<EntityType::PlayerShip>(0, 1, health);
@@ -131,7 +131,7 @@ struct CollisionAgentStorage {
                 break;
             }
             case EntityType::PlayerShip:
-                player_transform.location = {location.X, location.Y, location.Z};
+                player_transform.location = {location.x(), location.y(), location.z()};
                 player_transform.rotation =
                     to_quaternion(Rotator3d{rotation.pitch, rotation.yaw, rotation.roll});
                 health_table.get_view<EntityType::PlayerShip>(player_ids.size())

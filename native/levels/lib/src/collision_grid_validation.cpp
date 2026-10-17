@@ -19,12 +19,12 @@ void validate_collision_grid(LevelCollisionGridDefinition const& grid, Diagnosti
                             "Collision-grid cell size must be finite and greater than zero");
     }
     if (grid.level_size && grid.cell_size && valid_level_size && valid_cell_size) {
-        auto const x{ioj::levels::grid_axis_count(static_cast<float>(grid.level_size->x),
-                                                  static_cast<float>(grid.cell_size->x))};
-        auto const y{ioj::levels::grid_axis_count(static_cast<float>(grid.level_size->y),
-                                                  static_cast<float>(grid.cell_size->y))};
-        auto const z{ioj::levels::grid_axis_count(static_cast<float>(grid.level_size->z),
-                                                  static_cast<float>(grid.cell_size->z))};
+        auto const x{ioj::levels::grid_axis_count(static_cast<float>(grid.level_size->x()),
+                                                  static_cast<float>(grid.cell_size->x()))};
+        auto const y{ioj::levels::grid_axis_count(static_cast<float>(grid.level_size->y()),
+                                                  static_cast<float>(grid.cell_size->y()))};
+        auto const z{ioj::levels::grid_axis_count(static_cast<float>(grid.level_size->z()),
+                                                  static_cast<float>(grid.cell_size->z()))};
         if (!ioj::levels::grid_cell_count_fits(x, y, z)) {
             result.emplace_back(
                 DiagnosticCode::InvalidGridDimensions,

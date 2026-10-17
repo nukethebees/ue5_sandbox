@@ -69,11 +69,11 @@ class BulkRangeQueries : public ::testing::Test {
                 auto const state{observe_entity(owners, id)};
                 ASSERT_TRUE(state);
                 auto const delta{state->location - locations[index]};
-                EXPECT_FLOAT_EQ(output.distances[match], HMM_LenV3(delta));
+                EXPECT_FLOAT_EQ(output.distances[match], ioj::size(delta));
                 auto const direction{ml::native_math::safe_normal(delta, 1.e-8f)};
-                EXPECT_FLOAT_EQ(directions[match].X, direction.X);
-                EXPECT_FLOAT_EQ(directions[match].Y, direction.Y);
-                EXPECT_FLOAT_EQ(directions[match].Z, direction.Z);
+                EXPECT_FLOAT_EQ(directions[match].x(), direction.x());
+                EXPECT_FLOAT_EQ(directions[match].y(), direction.y());
+                EXPECT_FLOAT_EQ(directions[match].z(), direction.z());
             }
             std::ranges::sort(actual);
             std::ranges::sort(expected);

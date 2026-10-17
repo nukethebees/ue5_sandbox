@@ -56,12 +56,13 @@ void run_worldless_fighter_obstacle_avoidance(tests::SimulationFixture const& co
         fighter_spawned = true;
         auto const location{vector_at(locations, 0)};
         maximum_lateral_distance =
-            std::max(maximum_lateral_distance, std::hypot(location.Y, location.Z));
-        maximum_x = std::max(maximum_x, location.X);
-        entered_expanded_obstacle = entered_expanded_obstacle ||
-                                    (location.X >= expanded_min.X && location.X <= expanded_max.X &&
-                                     location.Y >= expanded_min.Y && location.Y <= expanded_max.Y &&
-                                     location.Z >= expanded_min.Z && location.Z <= expanded_max.Z);
+            std::max(maximum_lateral_distance, std::hypot(location.y(), location.z()));
+        maximum_x = std::max(maximum_x, location.x());
+        entered_expanded_obstacle =
+            entered_expanded_obstacle ||
+            (location.x() >= expanded_min.x() && location.x() <= expanded_max.x() &&
+             location.y() >= expanded_min.y() && location.y() <= expanded_max.y() &&
+             location.z() >= expanded_min.z() && location.z() <= expanded_max.z());
     };
     harness.timeline.finish_at(14.0);
     EXPECT_TRUE(harness.run_until_timeline_finished(15.0))
@@ -69,9 +70,9 @@ void run_worldless_fighter_obstacle_avoidance(tests::SimulationFixture const& co
 
     EXPECT_TRUE(fighter_spawned) << "Avoidance fighter spawned";
     EXPECT_TRUE(!entered_expanded_obstacle) << "Fighter remains outside obstacle clearance bounds";
-    EXPECT_TRUE(maximum_lateral_distance > expanded_max.Y)
+    EXPECT_TRUE(maximum_lateral_distance > expanded_max.y())
         << "Fighter steers visibly around the obstacle";
-    EXPECT_TRUE(maximum_x > expanded_max.X) << "Fighter progresses past the obstacle";
+    EXPECT_TRUE(maximum_x > expanded_max.x()) << "Fighter progresses past the obstacle";
 }
 
 auto make_fighter_navigation_test_data(tests::SimulationFixture const& config,
@@ -148,13 +149,13 @@ void run_worldless_fighter_capital_obstruction(tests::SimulationFixture const& c
             return;
         }
         auto const location{vector_at(locations, 0)};
-        entered_obstacle =
-            entered_obstacle || (location.X >= expanded_min.X && location.X <= expanded_max.X &&
-                                 location.Y >= expanded_min.Y && location.Y <= expanded_max.Y &&
-                                 location.Z >= expanded_min.Z && location.Z <= expanded_max.Z);
+        entered_obstacle = entered_obstacle ||
+                           (location.x() >= expanded_min.x() && location.x() <= expanded_max.x() &&
+                            location.y() >= expanded_min.y() && location.y() <= expanded_max.y() &&
+                            location.z() >= expanded_min.z() && location.z() <= expanded_max.z());
         maximum_lateral_distance =
-            std::max(maximum_lateral_distance, std::hypot(location.Y, location.Z));
-        maximum_x = std::max(maximum_x, location.X);
+            std::max(maximum_lateral_distance, std::hypot(location.y(), location.z()));
+        maximum_x = std::max(maximum_x, location.x());
         saw_avoidance =
             saw_avoidance || fighters.get_navigation_telemetry().avoiding_fighter_count > 0;
     };
@@ -163,9 +164,9 @@ void run_worldless_fighter_capital_obstruction(tests::SimulationFixture const& c
         << "Capital-obstruction timeline completes";
     EXPECT_TRUE(!entered_obstacle) << "Fighter remains outside capital clearance bounds";
     EXPECT_TRUE(saw_avoidance) << "Fighter selects hard avoidance around the capital";
-    EXPECT_TRUE(maximum_lateral_distance > capital_half_extent.Y)
+    EXPECT_TRUE(maximum_lateral_distance > capital_half_extent.y())
         << "Fighter travels laterally around the capital";
-    EXPECT_TRUE(maximum_x > expanded_max.X) << "Fighter progresses beyond the capital";
+    EXPECT_TRUE(maximum_x > expanded_max.x()) << "Fighter progresses beyond the capital";
 }
 
 void run_worldless_fighter_clear_navigation(tests::SimulationFixture const& config) {
@@ -198,9 +199,10 @@ void run_worldless_fighter_clear_navigation(tests::SimulationFixture const& conf
                 fighters.get_navigation_telemetry().hard_trace_count > 0;
         }
         auto const& telemetry{fighters.get_navigation_telemetry()};
-        if (!recorded_first_movement && !(std::abs(last_location.X - first_location.X) <= 1.e-4f &&
-                                          std::abs(last_location.Y - first_location.Y) <= 1.e-4f &&
-                                          std::abs(last_location.Z - first_location.Z) <= 1.e-4f)) {
+        if (!recorded_first_movement &&
+            !(std::abs(last_location.x() - first_location.x()) <= 1.e-4f &&
+              std::abs(last_location.y() - first_location.y()) <= 1.e-4f &&
+              std::abs(last_location.z() - first_location.z()) <= 1.e-4f)) {
             recorded_first_movement = true;
             scanned_before_first_movement = telemetry.hard_trace_count > 0;
         }
@@ -212,10 +214,10 @@ void run_worldless_fighter_clear_navigation(tests::SimulationFixture const& conf
     EXPECT_TRUE(recorded_first) << "Clear-path fighter spawned";
     EXPECT_TRUE(scanned_before_first_movement)
         << "New fighter scans obstacles before its first movement";
-    EXPECT_TRUE(last_location.X > first_location.X + 1000.f)
+    EXPECT_TRUE(last_location.x() > first_location.x() + 1000.f)
         << "Clear-path fighter advances directly";
-    EXPECT_TRUE(std::abs(last_location.Y - first_location.Y) < 1.f &&
-                std::abs(last_location.Z - first_location.Z) < 1.f)
+    EXPECT_TRUE(std::abs(last_location.y() - first_location.y()) < 1.f &&
+                std::abs(last_location.z() - first_location.z()) < 1.f)
         << "Clear path has no lateral steering";
     EXPECT_TRUE(!saw_separation) << "Clear path never applies separation";
     EXPECT_TRUE(!saw_avoidance) << "Clear path never applies hard avoidance";
@@ -239,7 +241,7 @@ void run_worldless_fighter_separation(tests::SimulationFixture const& config) {
         if (locations.num() != 2) {
             return;
         }
-        final_distance = HMM_LenV3(vector_at(locations, 0) - vector_at(locations, 1));
+        final_distance = ioj::size(vector_at(locations, 0) - vector_at(locations, 1));
         if (initial_distance == 0.f) {
             initial_distance = final_distance;
         }
@@ -272,8 +274,8 @@ auto measure_fighter_cluster(std::span<Vector3f const> const locations,
     Vector3f centroid{Vector3f{}};
     for (auto const location : locations) {
         result.finite =
-            result.finite && !(!std::isfinite(location.X) || !std::isfinite(location.Y) ||
-                               !std::isfinite(location.Z));
+            result.finite && !(!std::isfinite(location.x()) || !std::isfinite(location.y()) ||
+                               !std::isfinite(location.z()));
         centroid += location;
     }
     centroid /= static_cast<float>(static_cast<std::int32_t>(locations.size()));
@@ -285,12 +287,12 @@ auto measure_fighter_cluster(std::span<Vector3f const> const locations,
     auto const location_count{static_cast<std::int32_t>(locations.size())};
     for (std::int32_t i{}; i < location_count; ++i) {
         auto nearest_distance{std::numeric_limits<float>::max()};
-        centroid_distances.push_back(HMM_LenV3(locations[i] - centroid));
+        centroid_distances.push_back(ioj::size(locations[i] - centroid));
         for (std::int32_t j{}; j < location_count; ++j) {
             if (i == j) {
                 continue;
             }
-            auto const distance{HMM_LenV3(locations[i] - locations[j])};
+            auto const distance{ioj::size(locations[i] - locations[j])};
             nearest_distance = std::min(nearest_distance, distance);
             if (j > i && distance < collision_distance) {
                 ++result.overlapping_pair_count;
@@ -357,9 +359,9 @@ void run_worldless_fighter_dense_determinism(tests::SimulationFixture const& con
     auto const second_id{EntityUniqueId(100, EntityType::Fighter)};
     auto const forward{fighters::make_coincident_separation_direction(first_id, second_id)};
     auto const reverse{fighters::make_coincident_separation_direction(second_id, first_id)};
-    EXPECT_TRUE(HMM_LenSqrV3(forward + reverse) < 1.e-8f)
+    EXPECT_TRUE(ioj::size_squared(forward + reverse) < 1.e-8f)
         << "Coincident entities receive opposite ID-based separation directions";
-    EXPECT_TRUE(std::abs(HMM_LenSqrV3(forward) - 1.f) < 1.e-5f)
+    EXPECT_TRUE(std::abs(ioj::size_squared(forward) - 1.f) < 1.e-5f)
         << "ID-based coincident separation is a unit direction";
     auto const first_result{run_dense_navigation_fixture(config, 8)};
     auto const second_result{run_dense_navigation_fixture(config, 8)};
@@ -375,13 +377,13 @@ void run_worldless_fighter_dense_determinism(tests::SimulationFixture const& con
 
     auto const location_count{static_cast<std::int32_t>(first.size())};
     for (std::int32_t i{}; i < location_count; ++i) {
-        EXPECT_TRUE(!(!std::isfinite(first[i].X) || !std::isfinite(first[i].Y) ||
-                      !std::isfinite(first[i].Z)))
+        EXPECT_TRUE(!(!std::isfinite(first[i].x()) || !std::isfinite(first[i].y()) ||
+                      !std::isfinite(first[i].z())))
             << "Dense fighter location is finite";
         if ((i >= 0 && static_cast<std::size_t>(i) < second.size())) {
-            EXPECT_TRUE((std::abs(first[i].X - second[i].X) <= 0.f &&
-                         std::abs(first[i].Y - second[i].Y) <= 0.f &&
-                         std::abs(first[i].Z - second[i].Z) <= 0.f))
+            EXPECT_TRUE((std::abs(first[i].x() - second[i].x()) <= 0.f &&
+                         std::abs(first[i].y() - second[i].y()) <= 0.f &&
+                         std::abs(first[i].z() - second[i].z()) <= 0.f))
                 << "Identical fixtures produce identical fighter positions";
         }
     }
@@ -455,10 +457,11 @@ void run_worldless_fighter_hard_avoidance_authority(tests::SimulationFixture con
         for (std::uint32_t i{}; i < location_count; ++i) {
             auto const location{vector_at(locations, i)};
             entered_obstacle =
-                entered_obstacle || (location.X >= expanded_min.X && location.X <= expanded_max.X &&
-                                     location.Y >= expanded_min.Y && location.Y <= expanded_max.Y &&
-                                     location.Z >= expanded_min.Z && location.Z <= expanded_max.Z);
-            maximum_x = std::max(maximum_x, location.X);
+                entered_obstacle ||
+                (location.x() >= expanded_min.x() && location.x() <= expanded_max.x() &&
+                 location.y() >= expanded_min.y() && location.y() <= expanded_max.y() &&
+                 location.z() >= expanded_min.z() && location.z() <= expanded_max.z());
+            maximum_x = std::max(maximum_x, location.x());
         }
         auto const& telemetry{fighters.get_navigation_telemetry()};
         saw_separation = saw_separation || telemetry.separating_fighter_count > 0;
@@ -474,7 +477,7 @@ void run_worldless_fighter_hard_avoidance_authority(tests::SimulationFixture con
     EXPECT_TRUE(saw_separation) << "Obstacle fixture applies soft separation";
     EXPECT_TRUE(saw_avoidance) << "Hard avoidance overrides unsafe soft steering";
     EXPECT_TRUE(!entered_obstacle) << "Soft steering never enters obstacle clearance";
-    EXPECT_TRUE(maximum_x > expanded_max.X) << "Fighters progress beyond the obstacle";
+    EXPECT_TRUE(maximum_x > expanded_max.x()) << "Fighters progress beyond the obstacle";
     EXPECT_LE(avoidance_transitions, 6) << "Held hard steering does not flap pathologically";
 }
 

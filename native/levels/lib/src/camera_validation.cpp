@@ -36,8 +36,8 @@ void validate_camera(LevelCameraDefinition const& camera,
     }
     auto const& direction{camera.offset_direction};
     auto const finite{ml::is_finite(direction)};
-    auto const nearly_zero{std::abs(direction.x) <= 1.0e-4 && std::abs(direction.y) <= 1.0e-4 &&
-                           std::abs(direction.z) <= 1.0e-4};
+    auto const nearly_zero{std::abs(direction.x()) <= 1.0e-4 && std::abs(direction.y()) <= 1.0e-4 &&
+                           std::abs(direction.z()) <= 1.0e-4};
     if (!finite || nearly_zero) {
         result.emplace_back(DiagnosticCode::InvalidCameraOffsetDirection,
                             "level.camera.offset-direction",

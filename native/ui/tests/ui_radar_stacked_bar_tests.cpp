@@ -82,13 +82,13 @@ TEST(StackedBarChart, BuildsBottomUpOrderedGeometry) {
     EXPECT_FLOAT_EQ(geometry.slot_width, 50.0f);
     EXPECT_FLOAT_EQ(geometry.bar_width, 40.0f);
     EXPECT_EQ(geometry.segments[0].segment_index, 0);
-    EXPECT_FLOAT_EQ(geometry.segments[0].size.y, 40.0f);
-    EXPECT_FLOAT_EQ(geometry.segments[0].position.y, 80.0f);
+    EXPECT_FLOAT_EQ(geometry.segments[0].size.y(), 40.0f);
+    EXPECT_FLOAT_EQ(geometry.segments[0].position.y(), 80.0f);
     EXPECT_EQ(geometry.segments[1].segment_index, 1);
-    EXPECT_FLOAT_EQ(geometry.segments[1].size.y, 80.0f);
-    EXPECT_FLOAT_EQ(geometry.segments[1].position.y, 0.0f);
-    EXPECT_FLOAT_EQ(geometry.segments[2].size.y, 60.0f);
-    EXPECT_FLOAT_EQ(geometry.segments[2].position.y, 60.0f);
+    EXPECT_FLOAT_EQ(geometry.segments[1].size.y(), 80.0f);
+    EXPECT_FLOAT_EQ(geometry.segments[1].position.y(), 0.0f);
+    EXPECT_FLOAT_EQ(geometry.segments[2].size.y(), 60.0f);
+    EXPECT_FLOAT_EQ(geometry.segments[2].position.y(), 60.0f);
 }
 
 TEST(StackedBarChart, SkipsInvalidSegmentsAndHandlesZeroData) {
@@ -98,8 +98,8 @@ TEST(StackedBarChart, SkipsInvalidSegmentsAndHandlesZeroData) {
     ASSERT_EQ(geometry.segments.size(), 2);
     EXPECT_EQ(geometry.segments[0].segment_index, 1);
     EXPECT_EQ(geometry.segments[1].segment_index, 3);
-    EXPECT_FLOAT_EQ(geometry.segments[0].position.y, 50.0f);
-    EXPECT_FLOAT_EQ(geometry.segments[1].position.y, 0.0f);
+    EXPECT_FLOAT_EQ(geometry.segments[0].position.y(), 50.0f);
+    EXPECT_FLOAT_EQ(geometry.segments[1].position.y(), 0.0f);
 
     std::vector<Bar> const zero{{0.0f, -2.0f}};
     auto const empty_geometry{build_geometry(zero, {100.0f, 100.0f}, 8.0f)};

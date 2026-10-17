@@ -169,7 +169,7 @@ auto entity(AstParser& parser, s7::NodeIndex const node, std::string const& node
                 break;
             case Property::Rotation: {
                 auto const components{vector(parser, field.value, field.node_path)};
-                result.rotation = {components.x, components.y, components.z};
+                result.rotation = {components.x(), components.y(), components.z()};
                 break;
             }
             case Property::SpawnAt:

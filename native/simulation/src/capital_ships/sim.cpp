@@ -329,7 +329,7 @@ void Sim::queue_fighter_spawns(ml::FrameMemoryResource* const scratch_resource) 
         auto const base_rotation{rotation_at(rotations, capital_index)};
         Transform3d const base_transform{
             to_quaternion(Rotator3d{base_rotation.pitch, base_rotation.yaw, base_rotation.roll}),
-            {base_location.X, base_location.Y, base_location.Z},
+            {base_location.x(), base_location.y(), base_location.z()},
             {1.0, 1.0, 1.0}};
 
         for (auto const& relative_transform : relative_transforms) {

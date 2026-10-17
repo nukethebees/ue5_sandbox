@@ -267,7 +267,14 @@ TEST(SchemaLoader, AnalyzesComposedFlightModelAndCollisionRecords) {
              .alignment_bytes = 4,
              .integer_signed = std::nullopt,
              .unsigned_value_bits = std::nullopt,
-             .provenance = "HandmadeMath HMM_Vec3 contract",
+             .provenance = "Core Vector<float, 3> contract",
+             .origin = FactOrigin::manual_assumption});
+    abi.set("ioj::sim::collision::CellCoord",
+            {.size_bytes = sizeof(int) * 3,
+             .alignment_bytes = alignof(int),
+             .integer_signed = std::nullopt,
+             .unsigned_value_bits = std::nullopt,
+             .provenance = "Core Vector<int, 3> contract",
              .origin = FactOrigin::manual_assumption});
     for (auto const& [module, name] :
          {std::pair{"native_player_flight_model_data", "FlightModelLoadout"},

@@ -414,9 +414,9 @@ void LevelSim::advance(time_type const dt) {
                 auto const after_location{to_float(after.location)};
                 auto const before_rotation{to_float(before.rotator())};
                 auto const after_rotation{to_float(after.rotator())};
-                if (before_location.X != after_location.X ||
-                    before_location.Y != after_location.Y ||
-                    before_location.Z != after_location.Z ||
+                if (before_location.x() != after_location.x() ||
+                    before_location.y() != after_location.y() ||
+                    before_location.z() != after_location.z() ||
                     before_rotation.pitch != after_rotation.pitch ||
                     before_rotation.yaw != after_rotation.yaw ||
                     before_rotation.roll != after_rotation.roll) {

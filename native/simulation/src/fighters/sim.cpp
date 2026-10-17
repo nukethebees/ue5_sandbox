@@ -98,7 +98,7 @@ auto make_fire_point_candidate(Vector3f const target_location,
 }
 namespace diagnostic_detail {
 auto vector_string(Vector3f const value) -> std::string {
-    return std::format("({}, {}, {})", value.X, value.Y, value.Z);
+    return std::format("({}, {}, {})", value.x(), value.y(), value.z());
 }
 }
 
@@ -318,7 +318,7 @@ void Sim::think(float const dt, ml::FrameMemoryResource* const scratch_resource)
                 auto const range{nearby.ranges[scan_index]};
                 auto const end{range.end()};
                 for (auto match{range.offset}; match < end; ++match) {
-                    if (HMM_DotV3(aim_direction, directions[match]) > dot_threshold) {
+                    if (ioj::dot(aim_direction, directions[match]) > dot_threshold) {
                         auto const selected_target{nearby.entities[match]};
                         if (selected_target != target_ids[index]) {
                             target_ids[index] = selected_target;
@@ -388,7 +388,7 @@ void Sim::plan_movement(float const dt, ml::FrameMemoryResource* const scratch_r
                 continue;
             }
             auto const target_to_move_distance{
-                HMM_LenV3(target_location - vector_at(desired_move_locations, index))};
+                ioj::size(target_location - vector_at(desired_move_locations, index))};
             if (target_to_move_distance >= inner_attack_distance &&
                 target_to_move_distance <= outer_attack_distance) {
                 continue;
@@ -461,7 +461,7 @@ void Sim::plan_movement(float const dt, ml::FrameMemoryResource* const scratch_r
         auto const next_location{vector_at(attack_locations, index) +
                                  vector_at(attack_directions, index) *
                                      attack_move_distances[index]};
-        auto const distance_sq{HMM_LenSqrV3(next_location - vector_at(attack_targets, index))};
+        auto const distance_sq{ioj::size_squared(next_location - vector_at(attack_targets, index))};
         attack_target_distance_sq[index] = distance_sq;
         attack_target_distances[index] = std::sqrt(distance_sq);
     }
@@ -478,8 +478,8 @@ void Sim::apply_movement(ml::FrameMemoryResource* const scratch_resource) {
     for (std::uint32_t index{}; index < count; ++index) {
         auto const direction{vector_at(aim_directions, index)};
         auto const planned_direction{vector_at(planned_directions, index)};
-        if (direction.X == planned_direction.X && direction.Y == planned_direction.Y &&
-            direction.Z == planned_direction.Z) {
+        if (direction.x() == planned_direction.x() && direction.y() == planned_direction.y() &&
+            direction.z() == planned_direction.z()) {
             continue;
         }
         auto const before{direction_to_rotation(direction)};
@@ -666,7 +666,7 @@ void Sim::move(float const dt, TaskView fighters, ml::FrameMemoryResource* const
     for (std::uint32_t index{}; index < count; ++index) {
         auto const before{before_locations[index]};
         auto const after{vector_at(locations, index)};
-        if (before.X != after.X || before.Y != after.Y || before.Z != after.Z) {
+        if (before.x() != after.x() || before.y() != after.y() || before.z() != after.z()) {
             overlap_candidates_.push_back(entity_ids[index]);
         }
     }
@@ -757,7 +757,7 @@ void Sim::update_separation_observations(NavigationScratch& scratch,
         auto const goal_direction{vector_at(movement_directions, fighter_index)};
         auto const move_distance{move_distances[fighter_index]};
         if (ml::native_math::is_nearly_zero(
-                goal_direction.X, goal_direction.Y, goal_direction.Z, 1.e-4f) ||
+                goal_direction.x(), goal_direction.y(), goal_direction.z(), 1.e-4f) ||
             move_distance <= 0.f) {
             set_vector(separation_steering, fighter_index, Vector3f{});
             choices[fighter_index] = direct_movement_choice;
@@ -866,7 +866,7 @@ void Sim::scan_preferred_navigation(NavigationScratch& scratch,
         auto const element{static_cast<std::size_t>(index)};
         auto const direction{vector_at(movement_directions, index)};
         auto const move_distance{move_distances[element]};
-        if (ml::native_math::is_nearly_zero(direction.X, direction.Y, direction.Z, 1.e-4f) ||
+        if (ml::native_math::is_nearly_zero(direction.x(), direction.y(), direction.z(), 1.e-4f) ||
             move_distance <= 0.f) {
             continue;
         }
@@ -1055,7 +1055,7 @@ void Sim::select_navigation_alternatives(NavigationScratch& scratch,
                     hits[trace_index],
                     hit_entities[trace_index].raw_value(),
                     hit_static_indices[trace_index],
-                    hits[trace_index] ? HMM_LenV3(fighter_location - hit_locations[trace_index])
+                    hits[trace_index] ? ioj::size(fighter_location - hit_locations[trace_index])
                                       : -1.f));
             }
         }
@@ -1100,7 +1100,8 @@ void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
         for (auto index{span.offset}; index < end; ++index) {
             auto const element{static_cast<std::size_t>(index)};
             auto const steering{vector_at(separation_steering, index)};
-            if (!ml::native_math::is_nearly_zero(steering.X, steering.Y, steering.Z, 1.e-4f)) {
+            if (!ml::native_math::is_nearly_zero(
+                    steering.x(), steering.y(), steering.z(), 1.e-4f)) {
                 ++navigation_telemetry.separating_fighter_count;
                 ++navigation_telemetry.steering_memory_fighter_count;
             }
@@ -1111,7 +1112,7 @@ void Sim::apply_navigation_choices(NavigationScratch const& scratch) {
                 set_vector(movement_directions, index, make_avoidance_direction(frame, choice));
                 ++navigation_telemetry.avoiding_fighter_count;
             } else if (choice == stop_movement_choice) {
-                set_vector(movement_directions, index, HMM_V3(0.f, 0.f, 0.f));
+                set_vector(movement_directions, index, ml::make_vector3f(0.f, 0.f, 0.f));
                 ++navigation_telemetry.avoiding_fighter_count;
             }
 
@@ -1606,7 +1607,7 @@ void Sim::handle_firing(TaskView data, ml::FrameMemoryResource* const scratch_re
         cooldowns.restart_counter(static_cast<std::size_t>(fighter_index));
         auto const offset{predicted_location(fighter_index) -
                           vector_at(desired_move_locations, fighter_index)};
-        if (HMM_LenSqrV3(offset) <= attack_position_arrival_distance_sq) {
+        if (ioj::size_squared(offset) <= attack_position_arrival_distance_sq) {
             firing_position_fighter_indices.add(fighter_index);
         }
     }

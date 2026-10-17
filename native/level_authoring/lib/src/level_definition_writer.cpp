@@ -140,12 +140,12 @@ auto emit_editor_level_source(LevelDefinition const& definition)
         if (definition.collision_grid->level_size) {
             auto const size{*definition.collision_grid->level_size};
             property(out, Property::LevelSize);
-            vector(out, size.x, size.y, size.z);
+            vector(out, size.x(), size.y(), size.z());
         }
         if (definition.collision_grid->cell_size) {
             auto const size{*definition.collision_grid->cell_size};
             property(out, Property::CellSize);
-            vector(out, size.x, size.y, size.z);
+            vector(out, size.x(), size.y(), size.z());
         }
         out.end_list();
     }
@@ -160,8 +160,10 @@ auto emit_editor_level_source(LevelDefinition const& definition)
         property(out, Property::Distance);
         out.token(editor_number(camera.distance));
         property(out, Property::OffsetDirection);
-        vector(
-            out, camera.offset_direction.x, camera.offset_direction.y, camera.offset_direction.z);
+        vector(out,
+               camera.offset_direction.x(),
+               camera.offset_direction.y(),
+               camera.offset_direction.z());
         out.end_list();
     }
     if (definition.mission) {
@@ -232,7 +234,7 @@ auto emit_editor_level_source(LevelDefinition const& definition)
         property(out, Property::Team);
         symbol(out, to_serialized_string(entity.team));
         property(out, Property::Position);
-        vector(out, entity.position.x, entity.position.y, entity.position.z);
+        vector(out, entity.position.x(), entity.position.y(), entity.position.z());
         if (entity.rotation.pitch != 0.0 || entity.rotation.yaw != 0.0 ||
             entity.rotation.roll != 0.0) {
             property(out, Property::Rotation);

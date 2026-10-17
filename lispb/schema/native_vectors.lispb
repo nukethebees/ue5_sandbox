@@ -5,6 +5,7 @@
   (vector-soa Vectors3f
     :value-type float
     :components (xs ys zs)
-    :equivalent-members (X Y Z)
-    :equivalent-constructor "HMM_V3"
+    :equivalent-members (x y z)
+    :equivalent-accessors true
+    :equivalent-constructor "ml::make_vector3f"
     :equivalent-type @native_vector_3f))

@@ -31,9 +31,9 @@ auto to_closed_max_cell(float const value,
 }
 auto grid_half_size(GridGeometry const geometry) noexcept -> Vector3f {
     return ml::make_vector3f(
-        static_cast<float>(geometry.dimensions.x) * geometry.cell_dimensions.X * 0.5f,
-        static_cast<float>(geometry.dimensions.y) * geometry.cell_dimensions.Y * 0.5f,
-        static_cast<float>(geometry.dimensions.z) * geometry.cell_dimensions.Z * 0.5f);
+        static_cast<float>(geometry.dimensions.x()) * geometry.cell_dimensions.x() * 0.5f,
+        static_cast<float>(geometry.dimensions.y()) * geometry.cell_dimensions.y() * 0.5f,
+        static_cast<float>(geometry.dimensions.z()) * geometry.cell_dimensions.z() * 0.5f);
 }
 
 }
@@ -42,28 +42,29 @@ auto grid_half_size(GridGeometry const geometry) noexcept -> Vector3f {
 // Grid geometry
 /* **************************************** */
 auto is_configured(GridGeometry const geometry) noexcept -> bool {
-    if (geometry.dimensions.x <= 0 || geometry.dimensions.y <= 0 || geometry.dimensions.z <= 0 ||
-        !std::isfinite(geometry.cell_dimensions.X) || !std::isfinite(geometry.cell_dimensions.Y) ||
-        !std::isfinite(geometry.cell_dimensions.Z) || geometry.cell_dimensions.X <= 0.0f ||
-        geometry.cell_dimensions.Y <= 0.0f || geometry.cell_dimensions.Z <= 0.0f) {
+    if (geometry.dimensions.x() <= 0 || geometry.dimensions.y() <= 0 ||
+        geometry.dimensions.z() <= 0 || !std::isfinite(geometry.cell_dimensions.x()) ||
+        !std::isfinite(geometry.cell_dimensions.y()) ||
+        !std::isfinite(geometry.cell_dimensions.z()) || geometry.cell_dimensions.x() <= 0.0f ||
+        geometry.cell_dimensions.y() <= 0.0f || geometry.cell_dimensions.z() <= 0.0f) {
         return false;
     }
 
     return ioj::levels::grid_cell_count_fits(
-        geometry.dimensions.x, geometry.dimensions.y, geometry.dimensions.z);
+        geometry.dimensions.x(), geometry.dimensions.y(), geometry.dimensions.z());
 }
 auto calculate_grid_dimensions(Vector3f const grid_size, Vector3f const cell_size) noexcept
     -> CellCoord {
-    return {ioj::levels::grid_axis_count(grid_size.X, cell_size.X),
-            ioj::levels::grid_axis_count(grid_size.Y, cell_size.Y),
-            ioj::levels::grid_axis_count(grid_size.Z, cell_size.Z)};
+    return {ioj::levels::grid_axis_count(grid_size.x(), cell_size.x()),
+            ioj::levels::grid_axis_count(grid_size.y(), cell_size.y()),
+            ioj::levels::grid_axis_count(grid_size.z(), cell_size.z())};
 }
 auto num_cells(GridGeometry const geometry) noexcept -> GridCellCount {
-    return geometry.dimensions.x * geometry.dimensions.y * geometry.dimensions.z;
+    return geometry.dimensions.x() * geometry.dimensions.y() * geometry.dimensions.z();
 }
 auto to_index(GridGeometry const geometry, CellCoord const coordinate) noexcept -> CellIndex {
-    return coordinate.x + coordinate.y * geometry.dimensions.x +
-           coordinate.z * geometry.dimensions.x * geometry.dimensions.y;
+    return coordinate.x() + coordinate.y() * geometry.dimensions.x() +
+           coordinate.z() * geometry.dimensions.x() * geometry.dimensions.y();
 }
 auto to_cell_coord(float const value, float const cell_dimension, int const grid_dimension) noexcept
     -> int {
@@ -73,20 +74,20 @@ auto to_cell_coord(float const value, float const cell_dimension, int const grid
 auto to_cell_coord(GridGeometry const geometry, Vector3f const position) noexcept -> CellCoord {
     auto const half_size{grid_half_size(geometry)};
     return {
-        to_cell(position.X, geometry.cell_dimensions.X, half_size.X),
-        to_cell(position.Y, geometry.cell_dimensions.Y, half_size.Y),
-        to_cell(position.Z, geometry.cell_dimensions.Z, half_size.Z),
+        to_cell(position.x(), geometry.cell_dimensions.x(), half_size.x()),
+        to_cell(position.y(), geometry.cell_dimensions.y(), half_size.y()),
+        to_cell(position.z(), geometry.cell_dimensions.z(), half_size.z()),
     };
 }
 auto to_max_cell_coord(GridGeometry const geometry, Vector3f const position) noexcept -> CellCoord {
     auto const half_size{grid_half_size(geometry)};
     return {
         to_closed_max_cell(
-            position.X, geometry.cell_dimensions.X, geometry.dimensions.x, half_size.X),
+            position.x(), geometry.cell_dimensions.x(), geometry.dimensions.x(), half_size.x()),
         to_closed_max_cell(
-            position.Y, geometry.cell_dimensions.Y, geometry.dimensions.y, half_size.Y),
+            position.y(), geometry.cell_dimensions.y(), geometry.dimensions.y(), half_size.y()),
         to_closed_max_cell(
-            position.Z, geometry.cell_dimensions.Z, geometry.dimensions.z, half_size.Z),
+            position.z(), geometry.cell_dimensions.z(), geometry.dimensions.z(), half_size.z()),
     };
 }
 auto to_cell_coord_bounds(GridGeometry const geometry,
@@ -103,15 +104,15 @@ auto to_cell_min(int const coordinate,
 auto to_cell_min(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vector3f {
     auto const half_size{grid_half_size(geometry)};
     return ml::make_vector3f(
-        static_cast<float>(coordinate.x) * geometry.cell_dimensions.X - half_size.X,
-        static_cast<float>(coordinate.y) * geometry.cell_dimensions.Y - half_size.Y,
-        static_cast<float>(coordinate.z) * geometry.cell_dimensions.Z - half_size.Z);
+        static_cast<float>(coordinate.x()) * geometry.cell_dimensions.x() - half_size.x(),
+        static_cast<float>(coordinate.y()) * geometry.cell_dimensions.y() - half_size.y(),
+        static_cast<float>(coordinate.z()) * geometry.cell_dimensions.z() - half_size.z());
 }
 auto to_cell_centre(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vector3f {
     auto result{to_cell_min(geometry, coordinate)};
-    result.X += geometry.cell_dimensions.X * 0.5f;
-    result.Y += geometry.cell_dimensions.Y * 0.5f;
-    result.Z += geometry.cell_dimensions.Z * 0.5f;
+    result.x() += geometry.cell_dimensions.x() * 0.5f;
+    result.y() += geometry.cell_dimensions.y() * 0.5f;
+    result.z() += geometry.cell_dimensions.z() * 0.5f;
     return result;
 }
 
@@ -120,9 +121,9 @@ auto to_cell_centre(GridGeometry const geometry, CellCoord const coordinate) noe
 /* **************************************** */
 auto is_cell_coord_in_bounds(GridGeometry const geometry, CellCoord const coordinate) noexcept
     -> bool {
-    return coordinate.x >= 0 && coordinate.x < geometry.dimensions.x && coordinate.y >= 0 &&
-           coordinate.y < geometry.dimensions.y && coordinate.z >= 0 &&
-           coordinate.z < geometry.dimensions.z;
+    return coordinate.x() >= 0 && coordinate.x() < geometry.dimensions.x() && coordinate.y() >= 0 &&
+           coordinate.y() < geometry.dimensions.y() && coordinate.z() >= 0 &&
+           coordinate.z() < geometry.dimensions.z();
 }
 void are_spheres_in_bounds(GridGeometry const geometry,
                            Vectors3fConstView const centres,
@@ -133,12 +134,12 @@ void are_spheres_in_bounds(GridGeometry const geometry,
     assert(radius >= 0.0f);
 
     auto const half_size{grid_half_size(geometry)};
-    auto const min_x{-half_size.X + radius};
-    auto const min_y{-half_size.Y + radius};
-    auto const min_z{-half_size.Z + radius};
-    auto const max_x{half_size.X - radius};
-    auto const max_y{half_size.Y - radius};
-    auto const max_z{half_size.Z - radius};
+    auto const min_x{-half_size.x() + radius};
+    auto const min_y{-half_size.y() + radius};
+    auto const min_z{-half_size.z() + radius};
+    auto const max_x{half_size.x() - radius};
+    auto const max_y{half_size.y() - radius};
+    auto const max_z{half_size.z() - radius};
 
     auto const count{static_cast<std::size_t>(centres.num())};
     auto const xs{centres.xs()};
@@ -163,10 +164,10 @@ auto trace_aabb(Vector3f const trace_start,
     float maximum_t{1.0f};
 
     for (std::size_t axis{}; axis < axis_count; ++axis) {
-        auto const slab_min{aabb_min.Elements[axis]};
-        auto const slab_max{aabb_max.Elements[axis]};
-        auto const start{trace_start.Elements[axis]};
-        auto const axis_delta{trace_delta.Elements[axis]};
+        auto const slab_min{aabb_min[axis]};
+        auto const slab_max{aabb_max[axis]};
+        auto const start{trace_start[axis]};
+        auto const axis_delta{trace_delta[axis]};
         if (axis_delta == 0.0f) {
             if (start < slab_min || start > slab_max) {
                 return no_trace_hit;
@@ -174,8 +175,8 @@ auto trace_aabb(Vector3f const trace_start,
             continue;
         }
 
-        auto first_t{(slab_min - start) * inverse_trace_delta.Elements[axis]};
-        auto second_t{(slab_max - start) * inverse_trace_delta.Elements[axis]};
+        auto first_t{(slab_min - start) * inverse_trace_delta[axis]};
+        auto second_t{(slab_max - start) * inverse_trace_delta[axis]};
         if (first_t > second_t) {
             std::swap(first_t, second_t);
         }

@@ -28,9 +28,9 @@ auto make_world() -> LevelSimInitData {
 }
 
 void expect_vector(Vector3f const actual, Vector3f const expected) {
-    EXPECT_FLOAT_EQ(actual.X, expected.X);
-    EXPECT_FLOAT_EQ(actual.Y, expected.Y);
-    EXPECT_FLOAT_EQ(actual.Z, expected.Z);
+    EXPECT_FLOAT_EQ(actual.x(), expected.x());
+    EXPECT_FLOAT_EQ(actual.y(), expected.y());
+    EXPECT_FLOAT_EQ(actual.z(), expected.z());
 }
 
 class FighterTargetRefresh : public ::testing::Test {
@@ -87,9 +87,9 @@ class FighterTargetRefresh : public ::testing::Test {
                                  vector_at(entities.view_movement_directions(), index) *
                                      entities.move_distances()[index]};
         EXPECT_FLOAT_EQ(entities.target_distances()[index],
-                        HMM_LenV3(state->location - next_location));
+                        ioj::size(state->location - next_location));
         EXPECT_FLOAT_EQ(entities.target_distance_sq()[index],
-                        HMM_LenSqrV3(state->location - next_location));
+                        ioj::size_squared(state->location - next_location));
         auto const intercept{state->location + state->velocity * entities.intercept_times()[index]};
         expect_vector(vector_at(entities.view_desired_aiming_directions(), index),
                       ml::native_math::safe_normal(
@@ -118,8 +118,8 @@ class FighterTargetRefresh : public ::testing::Test {
         auto const next_location{vector_at(entities.view_locations(), index) +
                                  vector_at(entities.view_movement_directions(), index) *
                                      entities.move_distances()[index]};
-        EXPECT_FLOAT_EQ(entities.target_distances()[index], HMM_LenV3(next_location));
-        EXPECT_FLOAT_EQ(entities.target_distance_sq()[index], HMM_LenSqrV3(next_location));
+        EXPECT_FLOAT_EQ(entities.target_distances()[index], ioj::size(next_location));
+        EXPECT_FLOAT_EQ(entities.target_distance_sq()[index], ioj::size_squared(next_location));
         expect_vector(
             vector_at(entities.view_desired_aiming_directions(), index),
             ml::native_math::safe_normal(-vector_at(entities.view_locations(), index), 1.e-8f));

@@ -129,9 +129,9 @@ void validate_grid_for_range_query(ioj::sim::collision::CollisionUniformGrid con
     if (!grid.is_configured()) {
         ml::fatal_error(std::format(
             "Cannot query unconfigured grid: origin=({}, {}, {}), radius={}, dimensions={}",
-            origin.X,
-            origin.Y,
-            origin.Z,
+            origin.x(),
+            origin.y(),
+            origin.z(),
             radius,
             ioj::sim::collision::CollisionUniformGrid::to_string(grid.get_grid_dims())));
     }
@@ -158,13 +158,14 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
     auto [min_coord,
           max_coord]{grid.to_cell_coord_bounds(origin - radius_extent, origin + radius_extent)};
     auto const max_grid_coord{grid.get_max_grid_coord()};
-    if (max_coord.x < 0 || max_coord.y < 0 || max_coord.z < 0 || min_coord.x > max_grid_coord.x ||
-        min_coord.y > max_grid_coord.y || min_coord.z > max_grid_coord.z) {
+    if (max_coord.x() < 0 || max_coord.y() < 0 || max_coord.z() < 0 ||
+        min_coord.x() > max_grid_coord.x() || min_coord.y() > max_grid_coord.y() ||
+        min_coord.z() > max_grid_coord.z()) {
         return 0;
     }
 
-    min_coord = min_coord.component_max({});
-    max_coord = max_coord.component_min(max_grid_coord);
+    min_coord = component_max(min_coord, collision::CellCoord{});
+    max_coord = component_min(max_coord, max_grid_coord);
 
     ml::FrameArray<std::uint8_t> visited{scratch_resource};
     EntityTypeSizes offsets;
@@ -185,9 +186,9 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
     }
     std::uint32_t count{};
 
-    for (auto x{min_coord.x}; x <= max_coord.x; ++x) {
-        for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
-            for (auto z{min_coord.z}; z <= max_coord.z; ++z) {
+    for (auto x{min_coord.x()}; x <= max_coord.x(); ++x) {
+        for (auto y{min_coord.y()}; y <= max_coord.y(); ++y) {
+            for (auto z{min_coord.z()}; z <= max_coord.z(); ++z) {
                 // Each grid coordinate selects a different cell.
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 for (auto const id : grid.get_cell_entities({x, y, z})) {
@@ -207,7 +208,7 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
 
                     // Select the candidate type's already-bound location view.
                     // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
-                    if (HMM_LenSqrV3(locations[id.entity_type()][local_index] - origin) <=
+                    if (ioj::size_squared(locations[id.entity_type()][local_index] - origin) <=
                         radius_squared) {
                         out_entities[count++] = id;
                         if (count == out_entities.size()) {
@@ -522,9 +523,10 @@ void SpatialQueryManager::refresh_spatial_index(LevelReadAccess const& level) {
         player_spatial_.velocity = to_float(physical.velocity);
         auto const& location{player_spatial_.location};
         auto const& velocity{player_spatial_.velocity};
-        locations_[EntityType::PlayerShip] = {{&location.X, 1}, {&location.Y, 1}, {&location.Z, 1}};
+        locations_[EntityType::PlayerShip] = {
+            {&location.x(), 1}, {&location.y(), 1}, {&location.z(), 1}};
         velocities_[EntityType::PlayerShip] = {
-            {&velocity.X, 1}, {&velocity.Y, 1}, {&velocity.Z, 1}};
+            {&velocity.x(), 1}, {&velocity.y(), 1}, {&velocity.z(), 1}};
     }
     collision_system_.refresh_spatial_index(level);
 }

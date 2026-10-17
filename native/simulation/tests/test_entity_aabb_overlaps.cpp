@@ -342,7 +342,7 @@ TEST(EntityAABBOverlaps, RotatedConservativeWorldBoundsUseExistingBoundsRules) {
     auto const rotation{Rotator3f{0.f, 90.f, 0.f}};
     auto const expected_bounds{collision::make_entity_world_bounds(
         fixture.entity_bounds, EntityType::CapitalShip, Vector3f{}, to_quaternion(rotation))};
-    EXPECT_TRUE(expected_bounds.min.Y <= 55.f && expected_bounds.max.Y >= 65.f)
+    EXPECT_TRUE(expected_bounds.min.y() <= 55.f && expected_bounds.max.y() >= 65.f)
         << "Rotated conservative bounds reach the stationary entity";
 
     std::array const handles{rotated};

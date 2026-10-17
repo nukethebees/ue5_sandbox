@@ -16,8 +16,8 @@ auto angular_error(Quaternion4f original, Quaternion4f decoded) -> double {
     double first_length{};
     double second_length{};
     for (auto index{0U}; index < 4; ++index) {
-        auto const a{static_cast<double>(original.Elements[index])};
-        auto const b{static_cast<double>(decoded.Elements[index])};
+        auto const a{static_cast<double>(original[index])};
+        auto const b{static_cast<double>(decoded[index])};
         dot += a * b;
         first_length += a * a;
         second_length += b * b;
@@ -30,35 +30,38 @@ auto angular_error(Quaternion4f original, Quaternion4f decoded) -> double {
 
 TEST(SandboxISMCPacking, GoldenQuaternionsAndSignEquivalence) {
     for (auto index{0U}; index < 4; ++index) {
-        auto quaternion{HMM_Q(0, 0, 0, 0)};
-        quaternion.Elements[index] = 1.0f;
+        auto quaternion{ml::make_quaternion4f(0, 0, 0, 0)};
+        quaternion[index] = 1.0f;
         auto const packed{pack_quat32(quaternion)};
         ASSERT_TRUE(packed.has_value());
         EXPECT_EQ(packed->bits, 0x80200800U | index);
-        EXPECT_EQ(pack_quat32(HMM_MulQF(quaternion, -1.0f))->bits, packed->bits);
+        EXPECT_EQ(pack_quat32((quaternion * -1.0f))->bits, packed->bits);
         EXPECT_LT(angular_error(quaternion, unpack_quat32(*packed)), 0.15);
     }
-    auto const boundary{
-        pack_quat32(HMM_Q(quaternion_component_limit, -quaternion_component_limit, 0, 0))};
+    auto const boundary{pack_quat32(
+        ml::make_quaternion4f(quaternion_component_limit, -quaternion_component_limit, 0, 0))};
     ASSERT_TRUE(boundary.has_value());
     EXPECT_EQ(boundary->bits, 0x80200000U);
-    EXPECT_EQ(pack_quat32(HMM_Q(0.5f, 0.5f, 0.5f, 0.5f))->bits, 0xda769da4U);
+    EXPECT_EQ(pack_quat32(ml::make_quaternion4f(0.5f, 0.5f, 0.5f, 0.5f))->bits, 0xda769da4U);
 }
 
 TEST(SandboxISMCPacking, AxesNearHalfTurnsAndArbitraryRotations) {
     for (auto axis{0U}; axis < 3; ++axis) {
         for (auto const angle : {0.0f, 0.001f, 1.0f, 1.5707963f, 3.14158f, 3.1415927f, 3.14160f}) {
-            auto quaternion{HMM_Q(0, 0, 0, std::cos(angle * 0.5f))};
-            quaternion.Elements[axis] = std::sin(angle * 0.5f);
+            auto quaternion{ml::make_quaternion4f(0, 0, 0, std::cos(angle * 0.5f))};
+            quaternion[axis] = std::sin(angle * 0.5f);
             auto const packed{pack_quat32(quaternion)};
             ASSERT_TRUE(packed.has_value());
             EXPECT_LT(angular_error(quaternion, unpack_quat32(*packed)), 0.3);
         }
     }
-    EXPECT_FALSE(pack_quat32(HMM_Q(0, 0, 0, 0)).has_value());
-    EXPECT_FALSE(pack_quat32(HMM_Q(std::numeric_limits<float>::infinity(), 0, 0, 1)).has_value());
-    EXPECT_FALSE(pack_quat32(HMM_Q(0, 0, 0, std::numeric_limits<float>::quiet_NaN())).has_value());
-    auto const nonunit{HMM_Q(1, -2, 3, -4)};
+    EXPECT_FALSE(pack_quat32(ml::make_quaternion4f(0, 0, 0, 0)).has_value());
+    EXPECT_FALSE(pack_quat32(ml::make_quaternion4f(std::numeric_limits<float>::infinity(), 0, 0, 1))
+                     .has_value());
+    EXPECT_FALSE(
+        pack_quat32(ml::make_quaternion4f(0, 0, 0, std::numeric_limits<float>::quiet_NaN()))
+            .has_value());
+    auto const nonunit{ml::make_quaternion4f(1, -2, 3, -4)};
     EXPECT_LT(angular_error(nonunit, unpack_quat32(*pack_quat32(nonunit))), 0.3);
 }
 
@@ -69,10 +72,10 @@ TEST(SandboxISMCPacking, RandomQuaternionRoundTrips) {
     double squared_error{};
     constexpr auto count{100000};
     for (auto index{0}; index < count; ++index) {
-        auto const quaternion{
-            HMM_NormQ(HMM_Q(normal(random), normal(random), normal(random), normal(random)))};
+        auto const quaternion{ioj::normalized(
+            ml::make_quaternion4f(normal(random), normal(random), normal(random), normal(random)))};
         auto const packed{pack_normalized_quat32(quaternion)};
-        EXPECT_EQ(pack_normalized_quat32(HMM_MulQF(quaternion, -1.0f)).bits, packed.bits);
+        EXPECT_EQ(pack_normalized_quat32((quaternion * -1.0f)).bits, packed.bits);
         auto const error{angular_error(quaternion, unpack_quat32(packed))};
         maximum = std::max(maximum, error);
         squared_error += error * error;
@@ -144,12 +147,12 @@ TEST(SandboxISMCPacking, ScalarBatchPreservesPaddingAndBoundsUseSourceGeometry) 
         output,
         &bounds);
     EXPECT_TRUE(bounds.valid);
-    EXPECT_EQ(bounds.minimum.X, -4);
-    EXPECT_EQ(bounds.minimum.Y, -34);
-    EXPECT_EQ(bounds.minimum.Z, 6);
-    EXPECT_EQ(bounds.maximum.X, 24);
-    EXPECT_EQ(bounds.maximum.Y, 8);
-    EXPECT_EQ(bounds.maximum.Z, 42);
+    EXPECT_EQ(bounds.minimum.x(), -4);
+    EXPECT_EQ(bounds.minimum.y(), -34);
+    EXPECT_EQ(bounds.minimum.z(), 6);
+    EXPECT_EQ(bounds.maximum.x(), 24);
+    EXPECT_EQ(bounds.maximum.y(), 8);
+    EXPECT_EQ(bounds.maximum.z(), 42);
     for (auto const& packed : output) {
         EXPECT_EQ(packed.reserved, 0xbeef);
         EXPECT_EQ(packed.rotation.bits, 0x80200803U);
@@ -160,11 +163,13 @@ TEST(SandboxISMCPacking, ScalarBatchPreservesPaddingAndBoundsUseSourceGeometry) 
 }
 
 TEST(SandboxISMCPacking, NormalizedEncoderContractAndComponentEdges) {
-    EXPECT_TRUE(is_normalized_quaternion(HMM_Q(0, 0, 0, 1)));
-    EXPECT_FALSE(is_normalized_quaternion(HMM_Q(0, 0, 0, 0)));
-    EXPECT_FALSE(is_normalized_quaternion(HMM_Q(0, 0, 0, 1.001f)));
-    EXPECT_FALSE(is_normalized_quaternion(HMM_Q(0, 0, 0, std::numeric_limits<float>::quiet_NaN())));
-    EXPECT_FALSE(is_normalized_quaternion(HMM_Q(0, 0, 0, std::numeric_limits<float>::infinity())));
+    EXPECT_TRUE(is_normalized_quaternion(ml::make_quaternion4f(0, 0, 0, 1)));
+    EXPECT_FALSE(is_normalized_quaternion(ml::make_quaternion4f(0, 0, 0, 0)));
+    EXPECT_FALSE(is_normalized_quaternion(ml::make_quaternion4f(0, 0, 0, 1.001f)));
+    EXPECT_FALSE(is_normalized_quaternion(
+        ml::make_quaternion4f(0, 0, 0, std::numeric_limits<float>::quiet_NaN())));
+    EXPECT_FALSE(is_normalized_quaternion(
+        ml::make_quaternion4f(0, 0, 0, std::numeric_limits<float>::infinity())));
     for (auto const direction : {-1.0f, 0.0f, 1.0f}) {
         EXPECT_EQ(
             quantize_quaternion_component(std::nextafter(-quaternion_component_limit, direction)),
@@ -173,17 +178,18 @@ TEST(SandboxISMCPacking, NormalizedEncoderContractAndComponentEdges) {
             quantize_quaternion_component(std::nextafter(quaternion_component_limit, direction)),
             1023U);
     }
-    EXPECT_EQ(pack_normalized_quat32(HMM_Q(0, 0, 0, 1)).bits, 0x80200803U);
-    EXPECT_EQ(pack_normalized_quat32(HMM_Q(0.5f, 0.5f, 0.5f, 0.5f)).bits, 0xda769da4U);
+    EXPECT_EQ(pack_normalized_quat32(ml::make_quaternion4f(0, 0, 0, 1)).bits, 0x80200803U);
+    EXPECT_EQ(pack_normalized_quat32(ml::make_quaternion4f(0.5f, 0.5f, 0.5f, 0.5f)).bits,
+              0xda769da4U);
 }
 
 TEST(SandboxISMCPacking, PositionDomainChoosesAnAlignedCentreAndRejectsExcessRange) {
     auto const root{position_root(make_vector3f(-480000, -1608, 1600000),
                                   make_vector3f(480000, 1624, 1600320))};
     ASSERT_TRUE(root.has_value());
-    EXPECT_EQ(root->X, 0);
-    EXPECT_EQ(root->Y, 16);
-    EXPECT_EQ(root->Z, 1600160);
+    EXPECT_EQ(root->x(), 0);
+    EXPECT_EQ(root->y(), 16);
+    EXPECT_EQ(root->z(), 1600160);
     EXPECT_FALSE(
         position_root(make_vector3f(-524288, 0, 0), make_vector3f(524288, 0, 0)).has_value());
     EXPECT_FALSE(position_root(make_vector3f(1, 0, 0), make_vector3f(0, 0, 0)).has_value());

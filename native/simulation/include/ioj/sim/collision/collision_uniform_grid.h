@@ -74,13 +74,14 @@ struct CollisionUniformGrid {
 #endif
     auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityUniqueId const> {
         auto const dimensions{geometry_.dimensions};
-        assert(cell_coord.x >= 0 && cell_coord.x < dimensions.x && cell_coord.y >= 0 &&
-               cell_coord.y < dimensions.y && cell_coord.z >= 0 && cell_coord.z < dimensions.z);
+        assert(cell_coord.x() >= 0 && cell_coord.x() < dimensions.x() && cell_coord.y() >= 0 &&
+               cell_coord.y() < dimensions.y() && cell_coord.z() >= 0 &&
+               cell_coord.z() < dimensions.z());
 
-        auto const row_stride{dimensions.x};
-        auto const plane_stride{row_stride * dimensions.y};
-        auto const cell_index{cell_coord.x + cell_coord.y * row_stride +
-                              cell_coord.z * plane_stride};
+        auto const row_stride{dimensions.x()};
+        auto const plane_stride{row_stride * dimensions.y()};
+        auto const cell_index{cell_coord.x() + cell_coord.y() * row_stride +
+                              cell_coord.z() * plane_stride};
         auto const element{static_cast<std::size_t>(cell_index)};
         auto const count{entity_storage_.cell_counts[element]};
         if (count == 0) {

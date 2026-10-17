@@ -68,18 +68,19 @@ void collect_request_matches(collision::CollisionUniformGrid const& grid,
                              WorkerScratch& worker) {
     SANDBOX_PROFILE_SCOPE("range_query::collect_request_matches");
 
-    assert(std::isfinite(origin.X) && std::isfinite(origin.Y) && std::isfinite(origin.Z));
+    assert(std::isfinite(origin.x()) && std::isfinite(origin.y()) && std::isfinite(origin.z()));
 
     // Restrict the scan's bounding box to the grid.
     auto [min_coord,
           max_coord]{grid.to_cell_coord_bounds(origin - radius_extent, origin + radius_extent)};
-    if (max_coord.x < 0 || max_coord.y < 0 || max_coord.z < 0 || min_coord.x > max_grid_coord.x ||
-        min_coord.y > max_grid_coord.y || min_coord.z > max_grid_coord.z) {
+    if (max_coord.x() < 0 || max_coord.y() < 0 || max_coord.z() < 0 ||
+        min_coord.x() > max_grid_coord.x() || min_coord.y() > max_grid_coord.y() ||
+        min_coord.z() > max_grid_coord.z()) {
         return;
     }
 
-    min_coord = min_coord.component_max({});
-    max_coord = max_coord.component_min(max_grid_coord);
+    min_coord = component_max(min_coord, collision::CellCoord{});
+    max_coord = component_min(max_coord, max_grid_coord);
 
     // Start a fresh deduplication pass without clearing the stamp buffer.
     auto& stamps{worker.entity_stamps};
@@ -90,9 +91,9 @@ void collect_request_matches(collision::CollisionUniformGrid const& grid,
     auto const stamp{worker.query_stamp};
 
     // Rely on the Thinking phase invariants for live membership and valid entity indices.
-    for (auto x{min_coord.x}; x <= max_coord.x; ++x) {
-        for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
-            for (auto z{min_coord.z}; z <= max_coord.z; ++z) {
+    for (auto x{min_coord.x()}; x <= max_coord.x(); ++x) {
+        for (auto y{min_coord.y()}; y <= max_coord.y(); ++y) {
+            for (auto z{min_coord.z()}; z <= max_coord.z(); ++z) {
                 // Select the members for this cell.
                 // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                 for (auto const id : grid.get_cell_entities({x, y, z})) {
@@ -117,7 +118,7 @@ void collect_request_matches(collision::CollisionUniformGrid const& grid,
                     // Select the candidate type's already-bound location view.
                     // NOLINTNEXTLINE(ioj-loop-view-accessor-call)
                     auto const delta{sources.locations[id.entity_type()][local_index] - origin};
-                    auto const distance_squared{HMM_LenSqrV3(delta)};
+                    auto const distance_squared{ioj::size_squared(delta)};
                     if (distance_squared > radius_squared) {
                         continue;
                     }

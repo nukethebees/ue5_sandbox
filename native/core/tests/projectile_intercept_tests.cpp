@@ -20,12 +20,15 @@ constexpr auto v3(float const x, float const y, float const z) noexcept -> ml::V
 }
 
 void expect_intercept_geometry(InterceptCase const& test_case, float const intercept_time) {
-    auto const target_x{test_case.target_position.X + test_case.target_velocity.X * intercept_time};
-    auto const target_y{test_case.target_position.Y + test_case.target_velocity.Y * intercept_time};
-    auto const target_z{test_case.target_position.Z + test_case.target_velocity.Z * intercept_time};
-    auto const dx{target_x - test_case.shooter_position.X};
-    auto const dy{target_y - test_case.shooter_position.Y};
-    auto const dz{target_z - test_case.shooter_position.Z};
+    auto const target_x{test_case.target_position.x() +
+                        test_case.target_velocity.x() * intercept_time};
+    auto const target_y{test_case.target_position.y() +
+                        test_case.target_velocity.y() * intercept_time};
+    auto const target_z{test_case.target_position.z() +
+                        test_case.target_velocity.z() * intercept_time};
+    auto const dx{target_x - test_case.shooter_position.x()};
+    auto const dy{target_y - test_case.shooter_position.y()};
+    auto const dz{target_z - test_case.shooter_position.z()};
     auto const target_distance{std::sqrt(dx * dx + dy * dy + dz * dz)};
     EXPECT_NEAR(test_case.projectile_speed * intercept_time, target_distance, 1e-4f);
 }

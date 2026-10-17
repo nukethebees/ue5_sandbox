@@ -73,10 +73,10 @@ TEST(Histogram, BuildsProportionalBarsAndStableEmptyGeometry) {
     EXPECT_FLOAT_EQ(geometry.bar_width, 36.0f);
     EXPECT_EQ(geometry.bars[0].bin_index, 0);
     EXPECT_EQ(geometry.bars[0].count, 2);
-    EXPECT_FLOAT_EQ(geometry.bars[0].size.y, 50.0f);
-    EXPECT_FLOAT_EQ(geometry.bars[0].position.y, 50.0f);
-    EXPECT_FLOAT_EQ(geometry.bars[1].size.y, 100.0f);
-    EXPECT_FLOAT_EQ(geometry.bars[1].position.y, 0.0f);
+    EXPECT_FLOAT_EQ(geometry.bars[0].size.y(), 50.0f);
+    EXPECT_FLOAT_EQ(geometry.bars[0].position.y(), 50.0f);
+    EXPECT_FLOAT_EQ(geometry.bars[1].size.y(), 100.0f);
+    EXPECT_FLOAT_EQ(geometry.bars[1].position.y(), 0.0f);
 
     std::array const zero_bins{0, 0};
     auto const zero{build_geometry(zero_bins, {100.0f, 100.0f}, 2.0f)};

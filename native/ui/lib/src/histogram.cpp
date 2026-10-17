@@ -53,8 +53,8 @@ auto build_geometry(std::span<std::int32_t const> const bins,
     geometry.maximum_count = maximum_bin_count(bins);
 
     auto const bin_count{bins.size()};
-    auto const width{std::max(plot_size.x, 0.0f)};
-    auto const height{std::max(plot_size.y, 0.0f)};
+    auto const width{std::max(plot_size.x(), 0.0f)};
+    auto const height{std::max(plot_size.y(), 0.0f)};
     if (bin_count == 0 || width <= 0.0f || height <= 0.0f) {
         return geometry;
     }
@@ -88,15 +88,17 @@ auto hit_test_bin(Vector2f const point,
                   Vector2f const plot_origin,
                   Vector2f const plot_size,
                   std::int32_t const bin_count) noexcept -> std::optional<std::int32_t> {
-    if (bin_count <= 0 || plot_size.x <= 0.0f || plot_size.y <= 0.0f || point.x < plot_origin.x ||
-        point.y < plot_origin.y || point.x >= plot_origin.x + plot_size.x ||
-        point.y >= plot_origin.y + plot_size.y) {
+    if (bin_count <= 0 || plot_size.x() <= 0.0f || plot_size.y() <= 0.0f ||
+        point.x() < plot_origin.x() || point.y() < plot_origin.y() ||
+        point.x() >= plot_origin.x() + plot_size.x() ||
+        point.y() >= plot_origin.y() + plot_size.y()) {
         return std::nullopt;
     }
-    return std::clamp(static_cast<std::int32_t>(std::floor((point.x - plot_origin.x) / plot_size.x *
-                                                           static_cast<float>(bin_count))),
-                      std::int32_t{},
-                      bin_count - 1);
+    return std::clamp(
+        static_cast<std::int32_t>(std::floor((point.x() - plot_origin.x()) / plot_size.x() *
+                                             static_cast<float>(bin_count))),
+        std::int32_t{},
+        bin_count - 1);
 }
 
 auto bin_range(float const domain_minimum,

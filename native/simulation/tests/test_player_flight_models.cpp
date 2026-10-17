@@ -64,8 +64,8 @@ auto mutable_player_sim(LevelSim& simulation) -> player::Sim& {
 }
 
 void set_test_turn(player::CommandInterface* const commands, ml::Vector2d const direction) {
-    commands->set_yaw_input(static_cast<float>(direction.x));
-    commands->set_pitch_input(static_cast<float>(direction.y));
+    commands->set_yaw_input(static_cast<float>(direction.x()));
+    commands->set_pitch_input(static_cast<float>(direction.y()));
 }
 
 auto velocity(LevelSim& simulation) -> ml::Vector3d {
@@ -75,9 +75,9 @@ auto velocity(LevelSim& simulation) -> ml::Vector3d {
 void expect_velocity_near(ml::Vector3d const& actual,
                           ml::Vector3d const& expected,
                           double const tolerance) {
-    EXPECT_NEAR(actual.x, expected.x, tolerance);
-    EXPECT_NEAR(actual.y, expected.y, tolerance);
-    EXPECT_NEAR(actual.z, expected.z, tolerance);
+    EXPECT_NEAR(actual.x(), expected.x(), tolerance);
+    EXPECT_NEAR(actual.y(), expected.y(), tolerance);
+    EXPECT_NEAR(actual.z(), expected.z(), tolerance);
 }
 
 auto brake_speed_after_tick(player::ResponseConfig const& response, float const deceleration)
@@ -92,7 +92,7 @@ auto brake_speed_after_tick(player::ResponseConfig const& response, float const 
     player::seed_flight_model_responses(state, config);
     state.controller.effective_action = player::BoostBrakeState::Brake;
     player::integrate_flight_model(0.25f, config, {}, state);
-    return state.physical.velocity.size();
+    return ioj::size(state.physical.velocity);
 }
 }
 
@@ -105,10 +105,10 @@ TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBr
     simulation.get_player_ship_commands()->set_forward_input(-1.f);
     simulation.get_player_ship_commands()->set_up_input(1.f);
     advance_ticks(simulation, 600);
-    auto const cruise_speed{velocity(simulation).size()};
+    auto const cruise_speed{ioj::size(velocity(simulation))};
     EXPECT_NEAR(cruise_speed, 12000.0, 2.0);
-    EXPECT_NEAR(velocity(simulation).y, 0.0, 1.e-6);
-    EXPECT_NEAR(velocity(simulation).z, 0.0, 1.e-6);
+    EXPECT_NEAR(velocity(simulation).y(), 0.0, 1.e-6);
+    EXPECT_NEAR(velocity(simulation).z(), 0.0, 1.e-6);
 
     simulation.get_player_ship_commands()->set_accelerator(1.f);
     EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
@@ -116,7 +116,7 @@ TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBr
     advance_ticks(simulation, 180);
     EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
               player::BoostBrakeState::Boost);
-    EXPECT_GT(velocity(simulation).size(), cruise_speed);
+    EXPECT_GT(ioj::size(velocity(simulation)), cruise_speed);
     EXPECT_LT(player_sim(simulation).get_energy(), 1.f);
 
     simulation.get_player_ship_commands()->set_accelerator(0.f);
@@ -124,7 +124,7 @@ TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBr
     auto const energy_before_brake{player_sim(simulation).get_energy()};
     simulation.get_player_ship_commands()->start_brake();
     advance_ticks(simulation, 180);
-    EXPECT_LT(velocity(simulation).size(), cruise_speed);
+    EXPECT_LT(ioj::size(velocity(simulation)), cruise_speed);
     EXPECT_LT(player_sim(simulation).get_energy(), energy_before_brake);
 }
 
@@ -141,23 +141,23 @@ TEST(NativeSimulationFlightModels, StarfoxEmergencyBrakeIsStrongerThanNormalBrak
     advance_ticks(normal, 30);
     advance_ticks(emergency, 30);
 
-    EXPECT_LT(velocity(emergency).size(), velocity(normal).size());
+    EXPECT_LT(ioj::size(velocity(emergency)), ioj::size(velocity(normal)));
 }
 
 TEST(NativeSimulationFlightModels, FighterAcceleratesOnlyWithInputAndThenDrags) {
     LevelSim simulation{make_data(player::FlightModelPreset::Fighter)};
     start(simulation);
     advance_ticks(simulation, 60);
-    EXPECT_NEAR(velocity(simulation).size(), 0.0, 1.e-6);
+    EXPECT_NEAR(ioj::size(velocity(simulation)), 0.0, 1.e-6);
 
     simulation.get_player_ship_commands()->set_accelerator(1.f);
     advance_ticks(simulation, 30);
-    auto const accelerated{velocity(simulation).size()};
+    auto const accelerated{ioj::size(velocity(simulation))};
     EXPECT_GT(accelerated, 0.0);
 
     simulation.get_player_ship_commands()->set_accelerator(0.f);
     advance_ticks(simulation, 30);
-    EXPECT_LT(velocity(simulation).size(), accelerated);
+    EXPECT_LT(ioj::size(velocity(simulation)), accelerated);
 }
 
 TEST(NativeSimulationFlightModels, FighterBoostAndBrakeRemainOrthogonal) {
@@ -170,12 +170,12 @@ TEST(NativeSimulationFlightModels, FighterBoostAndBrakeRemainOrthogonal) {
     boosted.get_player_ship_commands()->start_boost();
     advance_ticks(normal, 30);
     advance_ticks(boosted, 30);
-    EXPECT_GT(velocity(boosted).size(), velocity(normal).size());
+    EXPECT_GT(ioj::size(velocity(boosted)), ioj::size(velocity(normal)));
 
-    auto const before_brake{velocity(boosted).size()};
+    auto const before_brake{ioj::size(velocity(boosted))};
     boosted.get_player_ship_commands()->start_brake();
     advance_ticks(boosted, 10);
-    EXPECT_LT(velocity(boosted).size(), before_brake);
+    EXPECT_LT(ioj::size(velocity(boosted)), before_brake);
     EXPECT_EQ(player_sim(boosted).get_controller_state().effective_action,
               player::BoostBrakeState::Brake);
 }
@@ -193,7 +193,7 @@ TEST(NativeSimulationFlightModels, SkaterCoastsAndRotationDoesNotRotateVelocity)
     set_test_turn(simulation.get_player_ship_commands(), {});
 
     expect_velocity_near(velocity(simulation), before, 1.e-5);
-    EXPECT_GT(player_sim(simulation).get_physical_state().transform.forward().y, 0.8);
+    EXPECT_GT(player_sim(simulation).get_physical_state().transform.forward().y(), 0.8);
 }
 
 TEST(NativeSimulationFlightModels, SkaterAddsThrustAlongCurrentFacing) {
@@ -211,8 +211,8 @@ TEST(NativeSimulationFlightModels, SkaterAddsThrustAlongCurrentFacing) {
     advance_ticks(simulation, 30);
 
     auto const after{velocity(simulation)};
-    EXPECT_NEAR(after.x, original.x, 1.e-3);
-    EXPECT_GT(after.y, 0.0);
+    EXPECT_NEAR(after.x(), original.x(), 1.e-3);
+    EXPECT_GT(after.y(), 0.0);
 }
 
 TEST(NativeSimulationFlightModels, SkaterTurningUnderThrustProgressivelyBendsTrajectory) {
@@ -227,9 +227,9 @@ TEST(NativeSimulationFlightModels, SkaterTurningUnderThrustProgressivelyBendsTra
     advance_ticks(simulation, 30);
 
     auto const after_turn{velocity(simulation)};
-    EXPECT_GT(after_turn.x, before_turn.x);
-    EXPECT_GT(after_turn.y, 0.0);
-    EXPECT_LT(after_turn.y, after_turn.x);
+    EXPECT_GT(after_turn.x(), before_turn.x());
+    EXPECT_GT(after_turn.y(), 0.0);
+    EXPECT_LT(after_turn.y(), after_turn.x());
 }
 
 TEST(NativeSimulationFlightModels, SkaterCanFaceBackwardWhilePreservingForwardTravel) {
@@ -261,15 +261,15 @@ TEST(NativeSimulationFlightModels, SkaterBrakeAndEmergencyBrakeReduceWithoutReve
         simulation->get_player_ship_commands()->set_accelerator(0.f);
     }
 
-    auto const before{velocity(brake).size()};
+    auto const before{ioj::size(velocity(brake))};
     brake.get_player_ship_commands()->start_brake();
     emergency.get_player_ship_commands()->start_emergency_brake();
     advance_ticks(brake, 10);
     advance_ticks(emergency, 10);
-    EXPECT_LT(velocity(brake).size(), before);
-    EXPECT_GE(velocity(brake).x, 0.0);
-    EXPECT_LT(velocity(emergency).size(), velocity(brake).size());
-    EXPECT_GE(velocity(emergency).x, 0.0);
+    EXPECT_LT(ioj::size(velocity(brake)), before);
+    EXPECT_GE(velocity(brake).x(), 0.0);
+    EXPECT_LT(ioj::size(velocity(emergency)), ioj::size(velocity(brake)));
+    EXPECT_GE(velocity(emergency).x(), 0.0);
 }
 
 TEST(NativeSimulationFlightModels, GunshipControlsThreeAxesAndStabilizesNeutralInput) {
@@ -281,15 +281,15 @@ TEST(NativeSimulationFlightModels, GunshipControlsThreeAxesAndStabilizesNeutralI
     commands->set_up_input(-1.f);
     advance_ticks(simulation, 30);
     auto const driven{velocity(simulation)};
-    EXPECT_GT(driven.x, 0.0);
-    EXPECT_GT(driven.y, 0.0);
-    EXPECT_LT(driven.z, 0.0);
+    EXPECT_GT(driven.x(), 0.0);
+    EXPECT_GT(driven.y(), 0.0);
+    EXPECT_LT(driven.z(), 0.0);
 
     commands->set_forward_input(0.f);
     commands->set_right_input(0.f);
     commands->set_up_input(0.f);
     advance_ticks(simulation, 120);
-    EXPECT_NEAR(velocity(simulation).size(), 0.0, 1.e-4);
+    EXPECT_NEAR(ioj::size(velocity(simulation)), 0.0, 1.e-4);
 }
 
 TEST(NativeSimulationFlightModels, GunshipRotationRemainsIndependentOfTranslationControl) {
@@ -300,10 +300,10 @@ TEST(NativeSimulationFlightModels, GunshipRotationRemainsIndependentOfTranslatio
     set_test_turn(commands, {1.0, 0.5});
     advance_ticks(simulation, 30);
 
-    EXPECT_GT(velocity(simulation).y, 0.0);
+    EXPECT_GT(velocity(simulation).y(), 0.0);
     auto const facing{player_sim(simulation).get_physical_state().transform.forward()};
-    EXPECT_GT(facing.y, 0.0);
-    EXPECT_GT(std::abs(facing.z), 0.0);
+    EXPECT_GT(facing.y(), 0.0);
+    EXPECT_GT(std::abs(facing.z()), 0.0);
 }
 
 TEST(NativeSimulationFlightModels, DirectSlotSelectionPreservesPhysicalStateAtBoundary) {
@@ -327,19 +327,23 @@ TEST(NativeSimulationFlightModels, DirectSlotSelectionPreservesPhysicalStateAtBo
 
     EXPECT_EQ(sim_player.get_active_flight_model_slot(), player::FlightModelSlot::Up);
     EXPECT_EQ(sim_player.get_physical_state().transform.location, transform.location);
-    EXPECT_DOUBLE_EQ(sim_player.get_physical_state().transform.rotation.x, transform.rotation.x);
-    EXPECT_DOUBLE_EQ(sim_player.get_physical_state().transform.rotation.y, transform.rotation.y);
-    EXPECT_DOUBLE_EQ(sim_player.get_physical_state().transform.rotation.z, transform.rotation.z);
-    EXPECT_DOUBLE_EQ(sim_player.get_physical_state().transform.rotation.w, transform.rotation.w);
+    EXPECT_DOUBLE_EQ(sim_player.get_physical_state().transform.rotation.x(),
+                     transform.rotation.x());
+    EXPECT_DOUBLE_EQ(sim_player.get_physical_state().transform.rotation.y(),
+                     transform.rotation.y());
+    EXPECT_DOUBLE_EQ(sim_player.get_physical_state().transform.rotation.z(),
+                     transform.rotation.z());
+    EXPECT_DOUBLE_EQ(sim_player.get_physical_state().transform.rotation.w(),
+                     transform.rotation.w());
     expect_velocity_near(sim_player.get_physical_state().velocity, before, 1.e-8);
     EXPECT_FLOAT_EQ(sim_player.get_energy(), energy);
     EXPECT_EQ(sim_player.get_health(), health);
     EXPECT_EQ(sim_player.laser_firing_mode, firing_mode);
     EXPECT_EQ(sim_player.laser_fire_rate, fire_rate);
-    EXPECT_DOUBLE_EQ(sim_player.get_flight_intent().translation.x, -0.25);
+    EXPECT_DOUBLE_EQ(sim_player.get_flight_intent().translation.x(), -0.25);
     EXPECT_FLOAT_EQ(sim_player.get_flight_intent().accelerator, 1.f);
-    EXPECT_DOUBLE_EQ(sim_player.get_flight_intent().rotation.x, -0.5);
-    EXPECT_DOUBLE_EQ(sim_player.get_flight_intent().rotation.y, 0.25);
+    EXPECT_DOUBLE_EQ(sim_player.get_flight_intent().rotation.x(), -0.5);
+    EXPECT_DOUBLE_EQ(sim_player.get_flight_intent().rotation.y(), 0.25);
     EXPECT_EQ(sim_player.get_controller_state().effective_action, player::BoostBrakeState::Boost);
 }
 
@@ -423,7 +427,7 @@ TEST(NativeSimulationFlightModels, SlotReplacementAppliesRuntimeConfigWithoutRec
 
     simulation.get_player_ship_commands()->set_accelerator(1.f);
     advance_ticks(simulation, 60);
-    EXPECT_NEAR(velocity(simulation).x, 1234.0, 0.1);
+    EXPECT_NEAR(velocity(simulation).x(), 1234.0, 0.1);
 }
 
 TEST(NativeSimulationFlightModels, ResponseSeedingUsesTheNewChannelsReferenceFrame) {
@@ -436,9 +440,9 @@ TEST(NativeSimulationFlightModels, ResponseSeedingUsesTheNewChannelsReferenceFra
     set_test_turn(commands, {1.0, 0.0});
     advance_ticks(simulation, 90);
     set_test_turn(commands, {});
-    auto const world_forward_speed{static_cast<float>(velocity(simulation).x)};
+    auto const world_forward_speed{static_cast<float>(velocity(simulation).x())};
     ASSERT_GT(world_forward_speed, 0.f);
-    ASSERT_NEAR(player_sim(simulation).get_physical_state().transform.forward().x, 0.0, 1.e-3);
+    ASSERT_NEAR(player_sim(simulation).get_physical_state().transform.forward().x(), 0.0, 1.e-3);
 
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
     profile.config.translation.forward.manual.semantic =
@@ -472,11 +476,11 @@ TEST(NativeSimulationFlightModels, PassiveDragAndNeutralStabilizationRemainDisti
     advance_ticks(passive, 30);
     advance_ticks(stabilized, 30);
 
-    EXPECT_LT(velocity(passive).x, velocity(stabilized).x);
-    auto const stabilized_driven_speed{velocity(stabilized).x};
+    EXPECT_LT(velocity(passive).x(), velocity(stabilized).x());
+    auto const stabilized_driven_speed{velocity(stabilized).x()};
     stabilized.get_player_ship_commands()->set_accelerator(0.f);
     advance_ticks(stabilized, 30);
-    EXPECT_LT(velocity(stabilized).x, stabilized_driven_speed);
+    EXPECT_LT(velocity(stabilized).x(), stabilized_driven_speed);
 }
 
 TEST(NativeSimulationFlightModels, PassiveDragUsesItsExplicitReferenceFrame) {
@@ -577,11 +581,11 @@ TEST(NativeSimulationFlightModels, BoostResponseChangesWithoutDiscardingAccelera
     ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
     commands->set_accelerator(1.f);
     advance_ticks(simulation, 1);
-    auto const before_boost{velocity(simulation).x};
+    auto const before_boost{velocity(simulation).x()};
 
     commands->start_boost();
     advance_ticks(simulation, 1);
-    auto const boost_velocity_change{velocity(simulation).x - before_boost};
+    auto const boost_velocity_change{velocity(simulation).x() - before_boost};
 
     EXPECT_GT(boost_velocity_change, 100.0);
     EXPECT_LT(boost_velocity_change, 250.0);
@@ -597,7 +601,7 @@ TEST(NativeSimulationFlightModels, PartialFacingCouplingBendsVelocityWithoutLock
     set_test_turn(commands, {1.0, 0.0});
     advance_ticks(simulation, 90);
     set_test_turn(commands, {});
-    ASSERT_GT(velocity(simulation).x, 0.0);
+    ASSERT_GT(velocity(simulation).x(), 0.0);
 
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
     profile.config.facing_velocity.mode = player::FacingVelocityCoupling::AlignToFacing;
@@ -606,9 +610,9 @@ TEST(NativeSimulationFlightModels, PartialFacingCouplingBendsVelocityWithoutLock
     advance_ticks(simulation, 30);
 
     auto const bent{velocity(simulation)};
-    EXPECT_GT(bent.x, 0.0);
-    EXPECT_GT(bent.y, 0.0);
-    EXPECT_GT(std::abs(bent.x), std::abs(bent.y));
+    EXPECT_GT(bent.x(), 0.0);
+    EXPECT_GT(bent.y(), 0.0);
+    EXPECT_GT(std::abs(bent.x()), std::abs(bent.y()));
 }
 
 TEST(NativeSimulationFlightModels, ActionPriorityAndEnergyFallbackAreExplicit) {
@@ -642,9 +646,9 @@ TEST(NativeSimulationFlightModels, EffectivelyUnlimitedLimitRemainsFinite) {
     simulation.get_player_ship_commands()->set_accelerator(1.f);
     advance_ticks(simulation, 600);
     auto const current{velocity(simulation)};
-    EXPECT_TRUE(std::isfinite(current.x));
-    EXPECT_TRUE(std::isfinite(current.y));
-    EXPECT_TRUE(std::isfinite(current.z));
+    EXPECT_TRUE(std::isfinite(current.x()));
+    EXPECT_TRUE(std::isfinite(current.y()));
+    EXPECT_TRUE(std::isfinite(current.z()));
 }
 
 TEST(NativeSimulationFlightModels, DirectBrakeStrengthUsesConfiguredDeceleration) {
@@ -749,9 +753,9 @@ TEST(NativeSimulationFlightModels, AcceleratorCanDriveEveryTranslationAxis) {
     commands->set_accelerator(1.f);
     advance_ticks(simulation, 60);
 
-    EXPECT_NEAR(velocity(simulation).x, 0.0, 1.e-6);
-    EXPECT_NEAR(velocity(simulation).y, 120.0, 1.e-3);
-    EXPECT_NEAR(velocity(simulation).z, 120.0, 1.e-3);
+    EXPECT_NEAR(velocity(simulation).x(), 0.0, 1.e-6);
+    EXPECT_NEAR(velocity(simulation).y(), 120.0, 1.e-3);
+    EXPECT_NEAR(velocity(simulation).z(), 120.0, 1.e-3);
 }
 
 TEST(NativeSimulationFlightModels, TargetVelocityUsesInputScaleNotUnlimitedCap) {
@@ -771,8 +775,8 @@ TEST(NativeSimulationFlightModels, TargetVelocityUsesInputScaleNotUnlimitedCap) 
     commands->set_forward_input(0.5f);
     advance_ticks(simulation, 1);
 
-    EXPECT_NEAR(velocity(simulation).x, 1000.0, 1.e-5);
-    EXPECT_TRUE(std::isfinite(velocity(simulation).x));
+    EXPECT_NEAR(velocity(simulation).x(), 1000.0, 1.e-5);
+    EXPECT_TRUE(std::isfinite(velocity(simulation).x()));
 }
 
 TEST(NativeSimulationFlightModels, TargetSpeedUsesAsymmetricScalesAndTrimBounds) {
@@ -795,7 +799,7 @@ TEST(NativeSimulationFlightModels, TargetSpeedUsesAsymmetricScalesAndTrimBounds)
     EXPECT_FLOAT_EQ(player_sim(simulation).get_controller_state().persistent_forward_target_speed,
                     -200.f);
     advance_ticks(simulation, 1);
-    EXPECT_NEAR(velocity(simulation).x, -200.0, 1.e-5);
+    EXPECT_NEAR(velocity(simulation).x(), -200.0, 1.e-5);
 
     for (std::int32_t index{}; index < 100; ++index) {
         mutable_player_sim(simulation).adjust_desired_forward_velocity(-1.f);
@@ -823,7 +827,7 @@ TEST(NativeSimulationFlightModels, ProfileReplacementClampsTargetsAndReseedsResp
     mutable_player_sim(simulation).set_ship_2d_control({0.0, 0.8});
     mutable_player_sim(simulation).stop_sampling();
     advance_ticks(simulation, 1);
-    ASSERT_NEAR(velocity(simulation).x, 800.0, 1.e-5);
+    ASSERT_NEAR(velocity(simulation).x(), 800.0, 1.e-5);
 
     profile.config.translation.forward.normal.positive_target_speed = 300.f;
     profile.config.translation.forward.normal.positive_speed_limit = 250.f;
@@ -834,7 +838,7 @@ TEST(NativeSimulationFlightModels, ProfileReplacementClampsTargetsAndReseedsResp
     EXPECT_NEAR(player_sim(simulation).get_controller_state().forward_manual_response.value(),
                 800.f,
                 1.e-5f);
-    EXPECT_NEAR(velocity(simulation).x, 800.0, 1.e-5);
+    EXPECT_NEAR(velocity(simulation).x(), 800.0, 1.e-5);
 }
 
 TEST(NativeSimulationFlightModels, LeavingBoostImmediatelyClampsPersistentTarget) {
@@ -895,10 +899,10 @@ TEST(NativeSimulationFlightModels, ValidTargetAndAccelerationChannelsComposeAddi
     player::PlayerSimulationState state;
     player::seed_flight_model_responses(state, config);
     player::PlayerFlightIntent intent;
-    intent.translation.x = 0.5;
+    intent.translation.x() = 0.5;
     player::integrate_flight_model(1.f, config, intent, state);
 
-    EXPECT_NEAR(state.physical.velocity.x, 560.0, 1.e-5);
+    EXPECT_NEAR(state.physical.velocity.x(), 560.0, 1.e-5);
 }
 
 TEST(NativeSimulationFlightModels, ActiveStabilizationDoesNotFightAutomaticIntent) {
@@ -913,7 +917,7 @@ TEST(NativeSimulationFlightModels, ActiveStabilizationDoesNotFightAutomaticInten
     player::seed_flight_model_responses(state, config);
     player::integrate_flight_model(1.f, config, {}, state);
 
-    EXPECT_NEAR(state.physical.velocity.x, 60.0, 1.e-5);
+    EXPECT_NEAR(state.physical.velocity.x(), 60.0, 1.e-5);
 }
 
 TEST(NativeSimulationFlightModels, SkaterUnlimitedResultantCapPreservesExistingComponents) {
@@ -927,9 +931,9 @@ TEST(NativeSimulationFlightModels, SkaterUnlimitedResultantCapPreservesExistingC
 
     player::integrate_flight_model(1.f, profile.config, intent, state);
 
-    EXPECT_NEAR(state.physical.velocity.x, 8000.0, 1.e-5);
-    EXPECT_GT(state.physical.velocity.y, 0.0);
-    EXPECT_GT(state.physical.velocity.size(), 8000.0);
+    EXPECT_NEAR(state.physical.velocity.x(), 8000.0, 1.e-5);
+    EXPECT_GT(state.physical.velocity.y(), 0.0);
+    EXPECT_GT(ioj::size(state.physical.velocity), 8000.0);
 }
 
 TEST(NativeSimulationFlightModels, RotationStabilizationDelayIsIndependentPerAxis) {
@@ -945,12 +949,12 @@ TEST(NativeSimulationFlightModels, RotationStabilizationDelayIsIndependentPerAxi
     state.controller.time_since_rotation_input = {1.0, 1.0, 1.0};
     player::seed_flight_model_responses(state, config);
     player::PlayerFlightIntent intent;
-    intent.rotation.y = 1.0;
+    intent.rotation.y() = 1.0;
 
     player::integrate_flight_model(0.1f, config, intent, state);
 
-    EXPECT_DOUBLE_EQ(state.controller.time_since_rotation_input.y, 0.0);
-    EXPECT_DOUBLE_EQ(state.controller.time_since_rotation_input.z, 1.0);
+    EXPECT_DOUBLE_EQ(state.controller.time_since_rotation_input.y(), 0.0);
+    EXPECT_DOUBLE_EQ(state.controller.time_since_rotation_input.z(), 1.0);
     EXPECT_NEAR(state.physical.transform.rotator().roll, 0.0, 1.e-5);
 }
 

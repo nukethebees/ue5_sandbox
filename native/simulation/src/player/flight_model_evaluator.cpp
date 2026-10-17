@@ -240,7 +240,7 @@ void integrate_axis(float const dt,
 
 void apply_brake(float const dt, BrakeConfig const& brake, PlayerSimulationState& state) noexcept {
     auto& velocity{state.physical.velocity};
-    auto const speed{static_cast<float>(velocity.size())};
+    auto const speed{static_cast<float>(ioj::size(velocity))};
     if (speed <= brake.target_speed || speed <= 1.e-8f) {
         return;
     }
@@ -256,7 +256,7 @@ void apply_facing_coupling(float const dt,
                            FacingVelocityConfig const& config,
                            ScalarResponse& response,
                            PhysicalMovementState& physical) noexcept {
-    auto const speed{physical.velocity.size()};
+    auto const speed{ioj::size(physical.velocity)};
     if (speed <= 1.e-8 || config.mode == FacingVelocityCoupling::Independent) {
         return;
     }
@@ -272,7 +272,7 @@ void apply_facing_coupling(float const dt,
 }
 
 void apply_resultant_limit(float const limit, ml::Vector3d& velocity) noexcept {
-    auto const speed{velocity.size()};
+    auto const speed{ioj::size(velocity)};
     if (!std::isfinite(limit) || speed <= limit || speed <= 1.e-8) {
         return;
     }
@@ -381,52 +381,52 @@ void integrate_flight_model(float const dt,
     auto& physical{state.physical};
     auto& controller{state.controller};
     auto const pitch{integrate_rotation_axis(dt,
-                                             static_cast<float>(intent.rotation.x),
+                                             static_cast<float>(intent.rotation.x()),
                                              config.rotation.pitch,
                                              controller.pitch_response,
-                                             controller.angular_velocity.x)};
+                                             controller.angular_velocity.x())};
     auto const yaw{integrate_rotation_axis(dt,
-                                           static_cast<float>(intent.rotation.y),
+                                           static_cast<float>(intent.rotation.y()),
                                            config.rotation.yaw,
                                            controller.yaw_response,
-                                           controller.angular_velocity.y)};
+                                           controller.angular_velocity.y())};
     auto const roll{integrate_rotation_axis(dt,
-                                            static_cast<float>(intent.rotation.z),
+                                            static_cast<float>(intent.rotation.z()),
                                             config.rotation.roll,
                                             controller.roll_response,
-                                            controller.angular_velocity.z)};
+                                            controller.angular_velocity.z())};
     physical.transform.rotation =
         physical.transform.rotation * to_quaternion(Rotator3d{pitch, yaw, roll});
-    physical.transform.rotation.normalize();
+    ioj::normalize(physical.transform.rotation);
 
-    if (std::abs(intent.rotation.x) > 1.e-8) {
-        controller.time_since_rotation_input.x = 0.0;
+    if (std::abs(intent.rotation.x()) > 1.e-8) {
+        controller.time_since_rotation_input.x() = 0.0;
     }
-    if (std::abs(intent.rotation.y) > 1.e-8) {
-        controller.time_since_rotation_input.y = 0.0;
+    if (std::abs(intent.rotation.y()) > 1.e-8) {
+        controller.time_since_rotation_input.y() = 0.0;
     }
-    if (std::abs(intent.rotation.z) > 1.e-8) {
-        controller.time_since_rotation_input.z = 0.0;
+    if (std::abs(intent.rotation.z()) > 1.e-8) {
+        controller.time_since_rotation_input.z() = 0.0;
     }
     auto const current_rotation{physical.transform.rotator()};
     auto const stabilized_pitch{
         stabilized_angle(dt,
-                         static_cast<float>(intent.rotation.x),
-                         static_cast<float>(controller.time_since_rotation_input.x),
+                         static_cast<float>(intent.rotation.x()),
+                         static_cast<float>(controller.time_since_rotation_input.x()),
                          current_rotation.pitch,
                          config.rotation.pitch,
                          controller.pitch_stabilization_response)};
     auto const stabilized_yaw{
         stabilized_angle(dt,
-                         static_cast<float>(intent.rotation.y),
-                         static_cast<float>(controller.time_since_rotation_input.y),
+                         static_cast<float>(intent.rotation.y()),
+                         static_cast<float>(controller.time_since_rotation_input.y()),
                          current_rotation.yaw,
                          config.rotation.yaw,
                          controller.yaw_stabilization_response)};
     auto const stabilized_roll{
         stabilized_angle(dt,
-                         static_cast<float>(intent.rotation.z),
-                         static_cast<float>(controller.time_since_rotation_input.z),
+                         static_cast<float>(intent.rotation.z()),
+                         static_cast<float>(controller.time_since_rotation_input.z()),
                          current_rotation.roll,
                          config.rotation.roll,
                          controller.roll_stabilization_response)};
@@ -439,7 +439,7 @@ void integrate_flight_model(float const dt,
                     controller.forward_manual_response,
                     controller.forward_automatic_response,
                     controller.persistent_forward_target_speed,
-                    static_cast<float>(intent.translation.x),
+                    static_cast<float>(intent.translation.x()),
                     intent.accelerator,
                     physical.transform.forward(),
                     ml::Vector3d{1.0, 0.0, 0.0}},
@@ -447,7 +447,7 @@ void integrate_flight_model(float const dt,
                     controller.right_manual_response,
                     controller.right_automatic_response,
                     controller.persistent_right_target_speed,
-                    static_cast<float>(intent.translation.y),
+                    static_cast<float>(intent.translation.y()),
                     intent.accelerator,
                     physical.transform.right(),
                     ml::Vector3d{0.0, 1.0, 0.0}},
@@ -455,7 +455,7 @@ void integrate_flight_model(float const dt,
                     controller.up_manual_response,
                     controller.up_automatic_response,
                     controller.persistent_up_target_speed,
-                    static_cast<float>(intent.translation.z),
+                    static_cast<float>(intent.translation.z()),
                     intent.accelerator,
                     physical.transform.transform_vector_no_scale({0.0, 0.0, 1.0}),
                     ml::Vector3d{0.0, 0.0, 1.0}},

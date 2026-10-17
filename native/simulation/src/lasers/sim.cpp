@@ -16,6 +16,7 @@
 #include <cmath>
 #include <cstdint>
 #include <functional>
+#include <numbers>
 #include <span>
 #include <vector>
 
@@ -126,11 +127,11 @@ void Sim::process_pending_spawns() {
         auto const speed{requests_speeds[spawn_index]};
         auto const lifetime{requests_max_distances[spawn_index] / speed};
         auto const rotation{rotation_at(requests_rotations, spawn_index)};
-        auto const pitch{HMM_AngleDeg(rotation.pitch)};
-        auto const yaw{HMM_AngleDeg(rotation.yaw)};
-        auto const cos_pitch{HMM_CosF(pitch)};
-        auto const direction{
-            HMM_V3(cos_pitch * HMM_CosF(yaw), cos_pitch * HMM_SinF(yaw), HMM_SinF(pitch))};
+        auto const pitch{rotation.pitch * (std::numbers::pi_v<float> / 180.f)};
+        auto const yaw{rotation.yaw * (std::numbers::pi_v<float> / 180.f)};
+        auto const cos_pitch{std::cos(pitch)};
+        auto const direction{ml::make_vector3f(
+            cos_pitch * std::cos(yaw), cos_pitch * std::sin(yaw), std::sin(pitch))};
         auto const forward_velocity{direction * speed};
 
         set_vector(output_locations,
@@ -270,9 +271,9 @@ void Sim::handle_collisions(float const dt, ml::FrameMemoryResource* const scrat
         }
 
         auto const velocity{vector_at(velocities, entity_index)};
-        auto const length_squared{HMM_LenSqrV3(velocity)};
+        auto const length_squared{ioj::size_squared(velocity)};
         auto const emission_direction{length_squared < safe_normal_tolerance
-                                          ? HMM_V3(0.f, 0.f, -1.f)
+                                          ? ml::make_vector3f(0.f, 0.f, -1.f)
                                           : velocity * (-1.f / std::sqrt(length_squared))};
         hit_details.add(hit_locations[entity_index], emission_direction, sources[element]);
     }

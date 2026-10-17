@@ -8,7 +8,7 @@
 namespace ioj::ui::heatmap_2d {
 namespace {
 auto is_finite(Vector2f const value) noexcept -> bool {
-    return std::isfinite(value.x) && std::isfinite(value.y);
+    return std::isfinite(value.x()) && std::isfinite(value.y());
 }
 
 auto is_finite(Color4f const color) noexcept -> bool {
@@ -67,9 +67,9 @@ auto is_valid_color_stops(std::span<ColorStop const> const stops) noexcept -> bo
 auto make_plot_layout(Vector2f const widget_size, LayoutSettings const settings) noexcept
     -> PlotLayout {
     auto const available_width{
-        std::max(widget_size.x - settings.padding.left - settings.padding.right, 0.0f)};
+        std::max(widget_size.x() - settings.padding.left - settings.padding.right, 0.0f)};
     auto const available_height{
-        std::max(widget_size.y - settings.padding.top - settings.padding.bottom, 0.0f)};
+        std::max(widget_size.y() - settings.padding.top - settings.padding.bottom, 0.0f)};
 
     PlotLayout result;
     if (!settings.show_axes) {
@@ -114,13 +114,14 @@ auto build_cell_geometry(Grid const& grid,
                          std::span<Color4f const> const color_lut,
                          Vector2f const plot_size) -> std::vector<CellGeometry> {
     if (!is_valid_grid(grid) || grid.values.empty() || !is_valid_value_range(range) ||
-        color_lut.empty() || !is_finite(plot_size) || plot_size.x <= 0.0f || plot_size.y <= 0.0f) {
+        color_lut.empty() || !is_finite(plot_size) || plot_size.x() <= 0.0f ||
+        plot_size.y() <= 0.0f) {
         return {};
     }
     std::vector<CellGeometry> result;
     result.reserve(grid.values.size());
-    auto const cell_size{Vector2f{plot_size.x / static_cast<float>(grid.columns),
-                                  plot_size.y / static_cast<float>(grid.rows)}};
+    auto const cell_size{Vector2f{plot_size.x() / static_cast<float>(grid.columns),
+                                  plot_size.y() / static_cast<float>(grid.rows)}};
     auto const range_size{range.maximum - range.minimum};
     auto const lut_max{static_cast<std::int32_t>(color_lut.size() - 1)};
     for (std::size_t i{}; i < grid.values.size(); ++i) {
@@ -139,8 +140,8 @@ auto build_cell_geometry(Grid const& grid,
         result.push_back({.cell_index = index,
                           .column = column,
                           .row = row,
-                          .position = {static_cast<float>(column) * cell_size.x,
-                                       plot_size.y - static_cast<float>(row + 1) * cell_size.y},
+                          .position = {static_cast<float>(column) * cell_size.x(),
+                                       plot_size.y() - static_cast<float>(row + 1) * cell_size.y()},
                           .size = cell_size,
                           .color = color_lut[static_cast<std::size_t>(lut_index)]});
     }
@@ -164,13 +165,14 @@ auto build_mesh_batches(std::span<CellGeometry const> const cells, Vector2f cons
         for (std::size_t local{}; local < count; ++local) {
             auto const& cell{cells[first + local]};
             auto const top_left{
-                Vector2f{plot_origin.x + cell.position.x, plot_origin.y + cell.position.y}};
-            auto const bottom_right{Vector2f{top_left.x + cell.size.x, top_left.y + cell.size.y}};
+                Vector2f{plot_origin.x() + cell.position.x(), plot_origin.y() + cell.position.y()}};
+            auto const bottom_right{
+                Vector2f{top_left.x() + cell.size.x(), top_left.y() + cell.size.y()}};
             auto const base{static_cast<std::uint16_t>(batch.vertices.size())};
             batch.vertices.push_back({top_left, {0.0f, 0.0f}, cell.color});
-            batch.vertices.push_back({{bottom_right.x, top_left.y}, {1.0f, 0.0f}, cell.color});
+            batch.vertices.push_back({{bottom_right.x(), top_left.y()}, {1.0f, 0.0f}, cell.color});
             batch.vertices.push_back({bottom_right, {1.0f, 1.0f}, cell.color});
-            batch.vertices.push_back({{top_left.x, bottom_right.y}, {0.0f, 1.0f}, cell.color});
+            batch.vertices.push_back({{top_left.x(), bottom_right.y()}, {0.0f, 1.0f}, cell.color});
             batch.indices.insert(batch.indices.end(),
                                  {base,
                                   static_cast<std::uint16_t>(base + 1),

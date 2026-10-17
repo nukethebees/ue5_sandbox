@@ -67,8 +67,8 @@ void run_worldless_fighters_standby_transition(tests::SimulationFixture const& c
     EXPECT_GT(static_cast<std::int32_t>(before.velocities.size()), std::int32_t{0})
         << "Fighters spawned before kill";
     EXPECT_TRUE(std::ranges::any_of(before.velocities, [](Vector3f const velocity) {
-        return (std::abs(velocity.X) > 1.e-4f || std::abs(velocity.Y) > 1.e-4f ||
-                std::abs(velocity.Z) > 1.e-4f);
+        return (std::abs(velocity.x()) > 1.e-4f || std::abs(velocity.y()) > 1.e-4f ||
+                std::abs(velocity.z()) > 1.e-4f);
     })) << "At least one fighter moves before standby";
     EXPECT_EQ(1, after.capital_count) << "One capital remains after kill";
     EXPECT_EQ(static_cast<std::int32_t>(after.tasks.size()),
@@ -81,7 +81,7 @@ void run_worldless_fighters_standby_transition(tests::SimulationFixture const& c
         if (after.parents[i].is_valid()) {
             EXPECT_EQ(fighters::Sim::Task::Standby, after.tasks[i])
                 << "Owned fighter transitioned to standby";
-            EXPECT_LE(HMM_LenV3(after.velocities[i] - Vector3f{}), 0.f)
+            EXPECT_LE(ioj::size(after.velocities[i] - Vector3f{}), 0.f)
                 << "Standby fighter velocity is zero";
             ++standby_fighters;
         } else {

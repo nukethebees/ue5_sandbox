@@ -94,7 +94,7 @@ void CollisionUniformGrid::are_spheres_in_bounds(
         {out_results.data(), static_cast<std::size_t>(out_results.size())});
 }
 auto CollisionUniformGrid::to_string(collision::CellCoord const value) -> std::string {
-    return std::format("({}, {}, {})", value.x, value.y, value.z);
+    return std::format("({}, {}, {})", value.x(), value.y(), value.z());
 }
 
 /* **************************************** */
@@ -118,8 +118,10 @@ auto CollisionUniformGrid::add_static_aabb(Vector3f const min_point, Vector3f co
     assert(is_configured());
     [[maybe_unused]] auto const [min_coord, max_coord]{to_cell_coord_bounds(min_point, max_point)};
     assert(is_cell_coord_in_bounds(min_coord, max_coord));
-    assert(std::isfinite(min_point.X) && std::isfinite(min_point.Y) && std::isfinite(min_point.Z));
-    assert(std::isfinite(max_point.X) && std::isfinite(max_point.Y) && std::isfinite(max_point.Z));
+    assert(std::isfinite(min_point.x()) && std::isfinite(min_point.y()) &&
+           std::isfinite(min_point.z()));
+    assert(std::isfinite(max_point.x()) && std::isfinite(max_point.y()) &&
+           std::isfinite(max_point.z()));
 
     auto const static_index{static_storage_.add_aabb(min_point, max_point)};
     rebuild_static_grid();
@@ -234,7 +236,7 @@ void CollisionUniformGrid::begin_entity_grid() {
     auto const& geometry{geometry_};
     auto& storage{entity_storage_};
     auto const dimensions{geometry.dimensions};
-    assert(dimensions.x > 0 && dimensions.y > 0 && dimensions.z > 0);
+    assert(dimensions.x() > 0 && dimensions.y() > 0 && dimensions.z() > 0);
 
     {
         SANDBOX_PROFILE_SCOPE("prepare entity grid");
@@ -244,9 +246,9 @@ void CollisionUniformGrid::begin_entity_grid() {
         }
         storage.non_empty_cell_indices.clear();
 
-        auto const cell_count{static_cast<std::size_t>(dimensions.x) *
-                              static_cast<std::size_t>(dimensions.y) *
-                              static_cast<std::size_t>(dimensions.z)};
+        auto const cell_count{static_cast<std::size_t>(dimensions.x()) *
+                              static_cast<std::size_t>(dimensions.y()) *
+                              static_cast<std::size_t>(dimensions.z())};
         if (storage.cell_counts.size() != cell_count) {
             storage.cell_counts.assign(cell_count, CollisionGridEntityStorage::CellEntryCount{});
         }
@@ -258,8 +260,8 @@ void CollisionUniformGrid::begin_entity_grid() {
 void CollisionUniformGrid::append_entity_bounds(EntityUniqueId const id, WorldAABB const bounds) {
     auto const& geometry{geometry_};
     auto& storage{entity_storage_};
-    auto const row_stride{geometry.dimensions.x};
-    auto const plane_stride{row_stride * geometry.dimensions.y};
+    auto const row_stride{geometry.dimensions.x()};
+    auto const plane_stride{row_stride * geometry.dimensions.y()};
     auto const entity_type{id.entity_type()};
     auto const [min_coord,
                 max_coord]{collision::to_cell_coord_bounds(geometry, bounds.min, bounds.max)};
@@ -269,12 +271,12 @@ void CollisionUniformGrid::append_entity_bounds(EntityUniqueId const id, WorldAA
                         "({}, {}, {}), cell AABB {} through {}, outside grid dimensions {}",
                         id.raw_value(),
                         std::to_underlying(entity_type),
-                        bounds.min.X,
-                        bounds.min.Y,
-                        bounds.min.Z,
-                        bounds.max.X,
-                        bounds.max.Y,
-                        bounds.max.Z,
+                        bounds.min.x(),
+                        bounds.min.y(),
+                        bounds.min.z(),
+                        bounds.max.x(),
+                        bounds.max.y(),
+                        bounds.max.z(),
                         to_string(min_coord),
                         to_string(max_coord),
                         to_string(geometry.dimensions)));
@@ -282,12 +284,12 @@ void CollisionUniformGrid::append_entity_bounds(EntityUniqueId const id, WorldAA
 
     collision::add(storage.rebuild_entity_data, bounds.min, bounds.max, min_coord, max_coord, id);
 
-    auto plane_index{min_coord.x + min_coord.y * row_stride + min_coord.z * plane_stride};
-    for (auto z{min_coord.z}; z <= max_coord.z; ++z) {
+    auto plane_index{min_coord.x() + min_coord.y() * row_stride + min_coord.z() * plane_stride};
+    for (auto z{min_coord.z()}; z <= max_coord.z(); ++z) {
         auto row_index{plane_index};
-        for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
+        for (auto y{min_coord.y()}; y <= max_coord.y(); ++y) {
             auto cell_index{row_index};
-            for (auto x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
+            for (auto x{min_coord.x()}; x <= max_coord.x(); ++x, ++cell_index) {
                 auto& count{storage.cell_counts[static_cast<std::size_t>(cell_index)]};
                 if (count == 0) {
                     storage.non_empty_cell_indices.push_back(cell_index);
@@ -302,8 +304,8 @@ void CollisionUniformGrid::append_entity_bounds(EntityUniqueId const id, WorldAA
 void CollisionUniformGrid::finish_entity_grid() {
     auto const& geometry{geometry_};
     auto& storage{entity_storage_};
-    auto const row_stride{geometry.dimensions.x};
-    auto const plane_stride{row_stride * geometry.dimensions.y};
+    auto const row_stride{geometry.dimensions.x()};
+    auto const plane_stride{row_stride * geometry.dimensions.y()};
     {
         SANDBOX_PROFILE_SCOPE("calculate entity cell offsets");
 
@@ -359,23 +361,24 @@ void CollisionUniformGrid::finish_entity_grid() {
                                                    max_point_ys[entity_index],
                                                    max_point_zs[entity_index])};
 
-            auto plane_index{min_cell.x + min_cell.y * row_stride + min_cell.z * plane_stride};
-            for (auto z{min_cell.z}; z <= max_cell.z; ++z) {
+            auto plane_index{min_cell.x() + min_cell.y() * row_stride +
+                             min_cell.z() * plane_stride};
+            for (auto z{min_cell.z()}; z <= max_cell.z(); ++z) {
                 auto row_index{plane_index};
-                for (auto y{min_cell.y}; y <= max_cell.y; ++y) {
+                for (auto y{min_cell.y()}; y <= max_cell.y(); ++y) {
                     auto cell_index{row_index};
-                    for (auto x{min_cell.x}; x <= max_cell.x; ++x, ++cell_index) {
+                    for (auto x{min_cell.x()}; x <= max_cell.x(); ++x, ++cell_index) {
                         auto& write_index{
                             storage.cell_write_indices[static_cast<std::size_t>(cell_index)]};
                         auto const destination{write_index++};
                         storage.entities[static_cast<std::size_t>(destination)] =
                             entity_ids[entity_index];
-                        output_min_xs[destination] = min_point.X;
-                        output_min_ys[destination] = min_point.Y;
-                        output_min_zs[destination] = min_point.Z;
-                        output_max_xs[destination] = max_point.X;
-                        output_max_ys[destination] = max_point.Y;
-                        output_max_zs[destination] = max_point.Z;
+                        output_min_xs[destination] = min_point.x();
+                        output_min_ys[destination] = min_point.y();
+                        output_min_zs[destination] = min_point.z();
+                        output_max_xs[destination] = max_point.x();
+                        output_max_ys[destination] = max_point.y();
+                        output_max_zs[destination] = max_point.z();
                     }
                     row_index += row_stride;
                 }
@@ -496,9 +499,12 @@ auto CollisionUniformGrid::overlaps_impl(
 
     auto const overlaps_query{
         [&query_bounds](Vector3f const candidate_min, Vector3f const candidate_max) {
-            return query_bounds.min.X <= candidate_max.X && query_bounds.max.X >= candidate_min.X &&
-                   query_bounds.min.Y <= candidate_max.Y && query_bounds.max.Y >= candidate_min.Y &&
-                   query_bounds.min.Z <= candidate_max.Z && query_bounds.max.Z >= candidate_min.Z;
+            return query_bounds.min.x() <= candidate_max.x() &&
+                   query_bounds.max.x() >= candidate_min.x() &&
+                   query_bounds.min.y() <= candidate_max.y() &&
+                   query_bounds.max.y() >= candidate_min.y() &&
+                   query_bounds.min.z() <= candidate_max.z() &&
+                   query_bounds.max.z() >= candidate_min.z();
         }};
     auto const static_aabbs{static_storage_.aabbs().get_const_view()};
     auto const entity_aabbs{entity_storage_.aabbs.get_const_view()};
@@ -515,16 +521,16 @@ auto CollisionUniformGrid::overlaps_impl(
     auto const entity_max_ys{entity_aabbs.max_ys()};
     auto const entity_max_zs{entity_aabbs.max_zs()};
 
-    auto const row_stride{geometry_.dimensions.x};
-    auto const plane_stride{row_stride * geometry_.dimensions.y};
+    auto const row_stride{geometry_.dimensions.x()};
+    auto const plane_stride{row_stride * geometry_.dimensions.y()};
 
     auto const entity_storage_view{std::span{entity_storage_.entities}};
-    auto plane_index{min_coord.x + min_coord.y * row_stride + min_coord.z * plane_stride};
-    for (auto z{min_coord.z}; z <= max_coord.z; ++z) {
+    auto plane_index{min_coord.x() + min_coord.y() * row_stride + min_coord.z() * plane_stride};
+    for (auto z{min_coord.z()}; z <= max_coord.z(); ++z) {
         auto row_index{plane_index};
-        for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
+        for (auto y{min_coord.y()}; y <= max_coord.y(); ++y) {
             auto cell_index{row_index};
-            for (auto x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
+            for (auto x{min_coord.x()}; x <= max_coord.x(); ++x, ++cell_index) {
                 auto const element{static_cast<std::size_t>(cell_index)};
                 auto const count{entity_storage_.cell_counts[element]};
                 auto const entity_count{static_cast<std::uint32_t>(count)};
@@ -602,11 +608,11 @@ void CollisionUniformGrid::sweep_aabbs(LineTraceBatch const& centre_paths,
                                        TraceEntityFilter const entity_filter) const {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::sweep_aabbs");
 
-    assert(std::isfinite(moving_half_extent.X) && std::isfinite(moving_half_extent.Y) &&
-           std::isfinite(moving_half_extent.Z));
-    assert(moving_half_extent.X >= 0.f);
-    assert(moving_half_extent.Y >= 0.f);
-    assert(moving_half_extent.Z >= 0.f);
+    assert(std::isfinite(moving_half_extent.x()) && std::isfinite(moving_half_extent.y()) &&
+           std::isfinite(moving_half_extent.z()));
+    assert(moving_half_extent.x() >= 0.f);
+    assert(moving_half_extent.y() >= 0.f);
+    assert(moving_half_extent.z() >= 0.f);
 
     auto const dispatch_filter{[&]<IgnoredEntityMode IgnoredMode>() {
         switch (entity_filter) {
@@ -671,9 +677,9 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
     CellCoord cell_padding{};
     if constexpr (Kind == TraceKind::Sweep) {
         cell_padding = {
-            static_cast<int>(std::ceil(moving_half_extent.X / geometry.cell_dimensions.X)),
-            static_cast<int>(std::ceil(moving_half_extent.Y / geometry.cell_dimensions.Y)),
-            static_cast<int>(std::ceil(moving_half_extent.Z / geometry.cell_dimensions.Z)),
+            static_cast<int>(std::ceil(moving_half_extent.x() / geometry.cell_dimensions.x())),
+            static_cast<int>(std::ceil(moving_half_extent.y() / geometry.cell_dimensions.y())),
+            static_cast<int>(std::ceil(moving_half_extent.z() / geometry.cell_dimensions.z())),
         };
     }
 
@@ -699,8 +705,8 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
         auto current_cell{traversal.current_cell()};
         Vector3f inverse_delta{};
         for (std::int32_t axis{}; axis < 3; ++axis) {
-            if (delta.Elements[axis] != 0.0f) {
-                inverse_delta.Elements[axis] = 1.0f / delta.Elements[axis];
+            if (delta[axis] != 0.0f) {
+                inverse_delta[axis] = 1.0f / delta[axis];
             }
         }
 
@@ -790,7 +796,7 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
                                          std::int32_t const min_z,
                                          std::int32_t const max_z) {
                 auto cell_index{to_index(geometry, {x, y, min_z})};
-                auto const plane_stride{geometry.dimensions.x * geometry.dimensions.y};
+                auto const plane_stride{geometry.dimensions.x() * geometry.dimensions.y()};
                 for (auto z{min_z}; z <= max_z; ++z) {
                     trace_cell(cell_index);
                     cell_index += plane_stride;
@@ -798,8 +804,8 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
             }};
             auto const trace_yz_plane{
                 [&](std::int32_t const x, CellCoord const min_cell, CellCoord const max_cell) {
-                    for (auto y{min_cell.y}; y <= max_cell.y; ++y) {
-                        trace_z_range(x, y, min_cell.z, max_cell.z);
+                    for (auto y{min_cell.y()}; y <= max_cell.y(); ++y) {
+                        trace_z_range(x, y, min_cell.z(), max_cell.z());
                     }
                 }};
             auto const trace_x_range{[&](std::int32_t const min_x,
@@ -820,46 +826,50 @@ void CollisionUniformGrid::trace_aabbs_impl(LineTraceBatch const traces,
                 }
             }};
             auto const get_padded_cell_range{[&](CellCoord const centre_cell) {
-                return CellCoordBounds{(centre_cell - cell_padding).component_max({}),
-                                       (centre_cell + cell_padding).component_min(max_cell_coord)};
+                return CellCoordBounds{component_max(centre_cell - cell_padding, CellCoord{}),
+                                       component_min(centre_cell + cell_padding, max_cell_coord)};
             }};
 
             auto [previous_min_cell, previous_max_cell]{get_padded_cell_range(current_cell)};
             trace_x_range(
-                previous_min_cell.x, previous_max_cell.x, previous_min_cell, previous_max_cell);
+                previous_min_cell.x(), previous_max_cell.x(), previous_min_cell, previous_max_cell);
 
             while (try_advance_traversal()) {
                 auto const [min_cell, max_cell]{get_padded_cell_range(current_cell)};
-                trace_x_range(
-                    min_cell.x, std::min(max_cell.x, previous_min_cell.x - 1), min_cell, max_cell);
+                trace_x_range(min_cell.x(),
+                              std::min(max_cell.x(), previous_min_cell.x() - 1),
+                              min_cell,
+                              max_cell);
 
-                auto const overlap_min_x{std::max(min_cell.x, previous_min_cell.x)};
-                auto const overlap_max_x{std::min(max_cell.x, previous_max_cell.x)};
+                auto const overlap_min_x{std::max(min_cell.x(), previous_min_cell.x())};
+                auto const overlap_max_x{std::min(max_cell.x(), previous_max_cell.x())};
                 for (auto x{overlap_min_x}; x <= overlap_max_x; ++x) {
                     trace_y_range(x,
-                                  min_cell.y,
-                                  std::min(max_cell.y, previous_min_cell.y - 1),
-                                  min_cell.z,
-                                  max_cell.z);
+                                  min_cell.y(),
+                                  std::min(max_cell.y(), previous_min_cell.y() - 1),
+                                  min_cell.z(),
+                                  max_cell.z());
 
-                    auto const overlap_min_y{std::max(min_cell.y, previous_min_cell.y)};
-                    auto const overlap_max_y{std::min(max_cell.y, previous_max_cell.y)};
+                    auto const overlap_min_y{std::max(min_cell.y(), previous_min_cell.y())};
+                    auto const overlap_max_y{std::min(max_cell.y(), previous_max_cell.y())};
                     for (auto y{overlap_min_y}; y <= overlap_max_y; ++y) {
                         trace_z_range(
-                            x, y, min_cell.z, std::min(max_cell.z, previous_min_cell.z - 1));
+                            x, y, min_cell.z(), std::min(max_cell.z(), previous_min_cell.z() - 1));
                         trace_z_range(
-                            x, y, std::max(min_cell.z, previous_max_cell.z + 1), max_cell.z);
+                            x, y, std::max(min_cell.z(), previous_max_cell.z() + 1), max_cell.z());
                     }
 
                     trace_y_range(x,
-                                  std::max(min_cell.y, previous_max_cell.y + 1),
-                                  max_cell.y,
-                                  min_cell.z,
-                                  max_cell.z);
+                                  std::max(min_cell.y(), previous_max_cell.y() + 1),
+                                  max_cell.y(),
+                                  min_cell.z(),
+                                  max_cell.z());
                 }
 
-                trace_x_range(
-                    std::max(min_cell.x, previous_max_cell.x + 1), max_cell.x, min_cell, max_cell);
+                trace_x_range(std::max(min_cell.x(), previous_max_cell.x() + 1),
+                              max_cell.x(),
+                              min_cell,
+                              max_cell);
                 previous_min_cell = min_cell;
                 previous_max_cell = max_cell;
             }

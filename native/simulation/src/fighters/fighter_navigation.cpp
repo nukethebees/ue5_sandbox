@@ -26,13 +26,13 @@ inline constexpr float steering_memory_score_weight{0.25f};
 inline constexpr float no_neighbour_distance_squared{std::numeric_limits<float>::infinity()};
 
 auto is_nearly_zero(Vector3f const vector) noexcept -> bool {
-    return std::abs(vector.X) <= nearly_zero_tolerance &&
-           std::abs(vector.Y) <= nearly_zero_tolerance &&
-           std::abs(vector.Z) <= nearly_zero_tolerance;
+    return std::abs(vector.x()) <= nearly_zero_tolerance &&
+           std::abs(vector.y()) <= nearly_zero_tolerance &&
+           std::abs(vector.z()) <= nearly_zero_tolerance;
 }
 
 auto clamp_to_unit_size(Vector3f const vector) noexcept -> Vector3f {
-    auto const length_squared{HMM_DotV3(vector, vector)};
+    auto const length_squared{ioj::dot(vector, vector)};
     if (length_squared > 1.0f) {
         return vector * (1.0f / std::sqrt(length_squared));
     }
@@ -48,11 +48,11 @@ constexpr auto combine_hashes(std::uint32_t const first, std::uint32_t const sec
 
 auto make_avoidance_frame(Vector3f const preferred_direction, float const float_bias) noexcept
     -> AvoidanceFrame {
-    auto const reference_axis{std::abs(preferred_direction.Z) < 0.9f
+    auto const reference_axis{std::abs(preferred_direction.z()) < 0.9f
                                   ? ml::make_vector3f(0.0f, 0.0f, 1.0f)
                                   : ml::make_vector3f(0.0f, 1.0f, 0.0f)};
-    auto const first_lateral{safe_normal(HMM_Cross(reference_axis, preferred_direction))};
-    auto const second_lateral{safe_normal(HMM_Cross(preferred_direction, first_lateral))};
+    auto const first_lateral{safe_normal(ioj::cross(reference_axis, preferred_direction))};
+    auto const second_lateral{safe_normal(ioj::cross(preferred_direction, first_lateral))};
     auto const roll_angle{float_bias * two_pi};
     float roll_sin;
     float roll_cos;
@@ -223,7 +223,7 @@ auto observe_separation(Vector3f const fighter_location,
         auto const neighbour{neighbours[element]};
         auto const neighbour_location{neighbour.location};
         auto const offset{fighter_location - neighbour_location};
-        auto const distance_squared{HMM_DotV3(offset, offset)};
+        auto const distance_squared{ioj::dot(offset, offset)};
         closest_distance_squared = std::min(closest_distance_squared, distance_squared);
 
         float distance{};
@@ -250,19 +250,19 @@ auto observe_separation(Vector3f const fighter_location,
         std::array<Vector3f, avoidance_direction_count> candidates;
         make_avoidance_directions(frame, candidates);
         auto const memory_direction{safe_normal(retained_memory)};
-        auto const memory_strength{std::sqrt(HMM_DotV3(retained_memory, retained_memory))};
+        auto const memory_strength{std::sqrt(ioj::dot(retained_memory, retained_memory))};
         auto const candidate_score{[&](Vector3f const candidate) {
             float crowd_penalty{};
             for (std::uint32_t neighbour_index{}; neighbour_index < neighbour_count;
                  ++neighbour_index) {
                 auto const element{static_cast<std::size_t>(neighbour_index)};
                 auto const towards_dot{
-                    std::max(0.0f, HMM_DotV3(candidate, directions_to_neighbours[element]))};
+                    std::max(0.0f, ioj::dot(candidate, directions_to_neighbours[element]))};
                 crowd_penalty += neighbour_weights[element] * towards_dot * towards_dot;
             }
-            return HMM_DotV3(candidate, goal_direction) * crowd_goal_score_weight -
+            return ioj::dot(candidate, goal_direction) * crowd_goal_score_weight -
                    crowd_penalty * parameters.separation_strength +
-                   HMM_DotV3(candidate, memory_direction) * memory_strength *
+                   ioj::dot(candidate, memory_direction) * memory_strength *
                        steering_memory_score_weight;
         }};
 
@@ -315,9 +315,9 @@ auto choose_navigation_alternative(Vector3f const fighter_location,
         }
 
         auto const hit_location{hit_locations[index]};
-        auto const dx{fighter_location.X - hit_location.X};
-        auto const dy{fighter_location.Y - hit_location.Y};
-        auto const dz{fighter_location.Z - hit_location.Z};
+        auto const dx{fighter_location.x() - hit_location.x()};
+        auto const dy{fighter_location.y() - hit_location.y()};
+        auto const dz{fighter_location.z() - hit_location.z()};
         auto const distance_squared{dx * dx + dy * dy + dz * dz};
         if (distance_squared > best_distance_squared) {
             best_distance_squared = distance_squared;

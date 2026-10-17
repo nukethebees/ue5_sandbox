@@ -7,11 +7,11 @@ namespace {
 constexpr float no_intercept_candidate_time{std::numeric_limits<float>::infinity()};
 
 auto size_squared(ml::Vector3f const value) noexcept -> float {
-    return HMM_LenSqrV3(value);
+    return ioj::size_squared(value);
 }
 
 auto dot_product(ml::Vector3f const lhs, ml::Vector3f const rhs) noexcept -> float {
-    return HMM_DotV3(lhs, rhs);
+    return ioj::dot(lhs, rhs);
 }
 
 auto at(ml::Vector3fSoAConstView const values, std::uint32_t const index) noexcept -> ml::Vector3f {

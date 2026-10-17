@@ -47,9 +47,9 @@ auto Collector::try_add(Vector3f const position,
                         float world_radius,
                         std::uint32_t const display_data,
                         bool const bypass_range) noexcept -> std::optional<Addition> {
-    auto const dx{position.x - origin_.x};
-    auto const dy{position.y - origin_.y};
-    auto const dz{position.z - origin_.z};
+    auto const dx{position.x() - origin_.x()};
+    auto const dy{position.y() - origin_.y()};
+    auto const dz{position.z() - origin_.z()};
     auto const distance_squared{dx * dx + dy * dy + dz * dz};
     if (!bypass_range && distance_squared > maximum_range_squared_) {
         return std::nullopt;

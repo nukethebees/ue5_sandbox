@@ -27,11 +27,7 @@ struct Tuning {
     float volume_edge_fade_fraction{0.15f};
 };
 
-struct WorldLocation {
-    double x{};
-    double y{};
-    double z{};
-};
+using WorldLocation = ioj::Vector<double, 3>;
 
 struct ParticleVariation {
     float size_scale{};
@@ -40,14 +36,14 @@ struct ParticleVariation {
 
 [[nodiscard]] inline auto normalise_tuning(Tuning tuning) noexcept -> Tuning {
     tuning.particle_count = std::clamp(tuning.particle_count, 0, maximum_particle_count);
-    tuning.volume_dimensions.X = std::max(tuning.volume_dimensions.X, 1.0f);
-    tuning.volume_dimensions.Y = std::max(tuning.volume_dimensions.Y, 1.0f);
-    tuning.volume_dimensions.Z = std::max(tuning.volume_dimensions.Z, 1.0f);
+    tuning.volume_dimensions.x() = std::max(tuning.volume_dimensions.x(), 1.0f);
+    tuning.volume_dimensions.y() = std::max(tuning.volume_dimensions.y(), 1.0f);
+    tuning.volume_dimensions.z() = std::max(tuning.volume_dimensions.z(), 1.0f);
     tuning.particle_size = std::max(tuning.particle_size, 0.0f);
     tuning.brightness = std::max(tuning.brightness, 0.0f);
-    tuning.colour.X = std::max(tuning.colour.X, 0.0f);
-    tuning.colour.Y = std::max(tuning.colour.Y, 0.0f);
-    tuning.colour.Z = std::max(tuning.colour.Z, 0.0f);
+    tuning.colour.x() = std::max(tuning.colour.x(), 0.0f);
+    tuning.colour.y() = std::max(tuning.colour.y(), 0.0f);
+    tuning.colour.z() = std::max(tuning.colour.z(), 0.0f);
     tuning.minimum_visible_speed = std::max(tuning.minimum_visible_speed, 0.0f);
     tuning.full_visible_speed =
         std::max(tuning.full_visible_speed,
@@ -74,9 +70,9 @@ struct ParticleVariation {
 [[nodiscard]] inline auto make_translation_phase(WorldLocation const world_location,
                                                  Vector3f const volume_dimensions) noexcept
     -> Vector3f {
-    return make_vector3f(positive_modulo(world_location.x, volume_dimensions.X),
-                         positive_modulo(world_location.y, volume_dimensions.Y),
-                         positive_modulo(world_location.z, volume_dimensions.Z));
+    return make_vector3f(positive_modulo(world_location.x(), volume_dimensions.x()),
+                         positive_modulo(world_location.y(), volume_dimensions.y()),
+                         positive_modulo(world_location.z(), volume_dimensions.z()));
 }
 
 [[nodiscard]] constexpr auto hash(std::uint32_t value) noexcept -> std::uint32_t {

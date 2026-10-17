@@ -96,7 +96,7 @@ void queue_damage(LevelSim& simulation, EntityUniqueId const target, std::int32_
 }
 
 auto location_changed(Vector3f const before, Vector3f const after) -> bool {
-    return before.X != after.X || before.Y != after.Y || before.Z != after.Z;
+    return before.x() != after.x() || before.y() != after.y() || before.z() != after.z();
 }
 }
 

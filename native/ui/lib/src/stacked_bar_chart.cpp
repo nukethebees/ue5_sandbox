@@ -31,8 +31,8 @@ auto build_geometry(std::span<Bar const> const bars, Vector2f const plot_size, f
     -> Geometry {
     Geometry result;
     result.maximum_total = maximum_total(bars);
-    auto const width{std::max(plot_size.x, 0.0f)};
-    auto const height{std::max(plot_size.y, 0.0f)};
+    auto const width{std::max(plot_size.x(), 0.0f)};
+    auto const height{std::max(plot_size.y(), 0.0f)};
     if (bars.empty() || width <= 0.0f || height <= 0.0f) {
         return result;
     }

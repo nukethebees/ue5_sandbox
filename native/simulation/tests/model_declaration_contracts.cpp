@@ -172,14 +172,14 @@ static_assert(std::is_trivially_copyable_v<CellCoord> ==
 static_assert(std::is_aggregate_v<CellCoord>);
 static_assert(std::is_trivially_default_constructible_v<CellCoord> ==
               std::is_trivially_default_constructible_v<OriginalCellCoord>);
-IOJ_RECORD_MEMBER_CONTRACT(CellCoord, x);
-IOJ_RECORD_MEMBER_CONTRACT(CellCoord, y);
-IOJ_RECORD_MEMBER_CONTRACT(CellCoord, z);
+static_assert(std::is_same_v<decltype(std::declval<CellCoord&>().x()), int&>);
+static_assert(std::is_same_v<decltype(std::declval<CellCoord&>().y()), int&>);
+static_assert(std::is_same_v<decltype(std::declval<CellCoord&>().z()), int&>);
 TEST(SimulationModelDefaults, CellCoord) {
     CellCoord const value{};
-    EXPECT_EQ(value.x, (int{}));
-    EXPECT_EQ(value.y, (int{}));
-    EXPECT_EQ(value.z, (int{}));
+    EXPECT_EQ(value.x(), (int{}));
+    EXPECT_EQ(value.y(), (int{}));
+    EXPECT_EQ(value.z(), (int{}));
 }
 }
 
@@ -1229,17 +1229,17 @@ TEST(SimulationModelDefaults, LevelTelemetryCurrentState) {
 
 namespace ioj::sim::model_contract {
 static_assert(std::is_same_v<std::underlying_type_t<SimulationPhase>, std::uint8_t>);
-static_assert(std::is_same_v<Vector3f, HMM_Vec3>);
-static_assert(std::is_same_v<Quaternion4f, HMM_Quat>);
+static_assert(std::is_same_v<Vector3f, ioj::Vector<float, 3>>);
+static_assert(std::is_same_v<Quaternion4f, ioj::Quaternion<float>>);
 static_assert(!std::is_copy_constructible_v<LineTraces>);
 static_assert(!std::is_copy_constructible_v<TraceHits>);
 static_assert(noexcept(std::declval<LineTraces&>().reset()));
 static_assert(noexcept(std::declval<TraceHits&>().reset()));
 TEST(SimulationModelDefaults, RotationInputDelay) {
     player::FlightModelControllerState const state{};
-    EXPECT_EQ(state.time_since_rotation_input.x, 100.0);
-    EXPECT_EQ(state.time_since_rotation_input.y, 100.0);
-    EXPECT_EQ(state.time_since_rotation_input.z, 100.0);
+    EXPECT_EQ(state.time_since_rotation_input.x(), 100.0);
+    EXPECT_EQ(state.time_since_rotation_input.y(), 100.0);
+    EXPECT_EQ(state.time_since_rotation_input.z(), 100.0);
 }
 }
 #undef IOJ_RECORD_MEMBER_CONTRACT

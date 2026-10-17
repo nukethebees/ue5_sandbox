@@ -22,9 +22,9 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
         auto const team_entity_count{expected_team_counts[team_index]};
         for (std::int32_t i{}; i < team_entity_count; ++i) {
             tests::add_capital_spawn(data,
-                                     HMM_V3(static_cast<float>(actor_index * 5000),
-                                            static_cast<float>(team_index * 5000),
-                                            4360.f),
+                                     ml::make_vector3f(static_cast<float>(actor_index * 5000),
+                                                       static_cast<float>(team_index * 5000),
+                                                       4360.f),
                                      static_cast<Team>(team_index),
                                      invalid_level_entity_index,
                                      5.f,

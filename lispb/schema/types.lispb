@@ -293,3 +293,5 @@
 
 (type native_level_entity_index :spelling "ioj::sim::LevelEntityIndex" :header "ioj/sim/levels/level_entity_index.h" :pass-by value
   (integer :signed false :bit-width 32))
+
+(type native_cell_coord :spelling "ioj::sim::collision::CellCoord" :header "ioj/sim/collision/cell_coord.h")

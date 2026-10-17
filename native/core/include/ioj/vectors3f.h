@@ -75,7 +75,9 @@ struct Vectors3f {
         });
     }
     void set(size_type const index, equivalent_type const value) { get_view().set(index, value); }
-    auto add(equivalent_type const value) -> size_type { return add(value.X, value.Y, value.Z); }
+    auto add(equivalent_type const value) -> size_type {
+        return add(value.x(), value.y(), value.z());
+    }
     void append_from(ConstView source) {
         auto const count{source.num()};
         assert(count <= std::numeric_limits<size_type>::max() - num());

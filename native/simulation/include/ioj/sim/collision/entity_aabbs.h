@@ -9,15 +9,15 @@
 namespace ioj::sim::collision {
 struct EntityAABBs {
     constexpr void set_centre(EntityType const type, Vector3f const centre) noexcept {
-        centre_xs_[type] = centre.X;
-        centre_ys_[type] = centre.Y;
-        centre_zs_[type] = centre.Z;
+        centre_xs_[type] = centre.x();
+        centre_ys_[type] = centre.y();
+        centre_zs_[type] = centre.z();
     }
 
     constexpr void set_half_extents(EntityType const type, Vector3f const half_extents) noexcept {
-        half_extent_xs_[type] = half_extents.X;
-        half_extent_ys_[type] = half_extents.Y;
-        half_extent_zs_[type] = half_extents.Z;
+        half_extent_xs_[type] = half_extents.x();
+        half_extent_ys_[type] = half_extents.y();
+        half_extent_zs_[type] = half_extents.z();
     }
 
     [[nodiscard]] constexpr auto get_centre(EntityType const type) const noexcept -> Vector3f {
