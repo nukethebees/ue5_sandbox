@@ -44,7 +44,7 @@ auto upper_bound_x(SeriesView const series, double const value) noexcept -> std:
 }
 
 auto expanded_auto_range(double const min, double const max) noexcept -> Range {
-    if (!std::isfinite(min) || !std::isfinite(max)) {
+    if (!is_finite(Range{min, max})) {
         return {};
     }
     if (min < max) {
@@ -61,9 +61,7 @@ auto expanded_auto_range(double const min, double const max) noexcept -> Range {
 }
 
 auto is_valid_fixed_range(AxisSettings const axis) noexcept -> bool {
-    return axis.range_mode != RangeMode::Fixed ||
-           (std::isfinite(axis.fixed_range.min) && std::isfinite(axis.fixed_range.max) &&
-            axis.fixed_range.min < axis.fixed_range.max);
+    return axis.range_mode != RangeMode::Fixed || is_positive_finite(axis.fixed_range);
 }
 
 auto is_valid_series(SeriesView const series) noexcept -> bool {
