@@ -1,9 +1,9 @@
 #pragma once
-
 #include <codegen/schema.h>
 #include <codegen/schema/manifest.h>
 #include <codegen/schema/module_schema.h>
 #include <codegen/schema/registered_type_schema.h>
+#include <codegen/source_position_types.h>
 
 #include <filesystem>
 #include <span>
@@ -11,11 +11,11 @@
 namespace codegen {
 
 struct RegistrySourceRange {
-    std::size_t source_file_index{};
-    std::size_t begin_offset{};
-    std::size_t end_offset{};
-    std::size_t line{1};
-    std::size_t column{1};
+    SourceFileIndex source_file_index{};
+    SourceOffset begin_offset{};
+    SourceOffset end_offset{};
+    LineNum line{1};
+    ColumnNum column{1};
 };
 
 struct RegistryInclude {

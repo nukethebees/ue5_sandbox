@@ -1,5 +1,4 @@
 #pragma once
-
 #include <codegen/schema.h>
 #include <codegen/schema/declaration_schema.h>
 #include <codegen/schema/enum_schema.h>
@@ -18,6 +17,7 @@
 #include <codegen/schema/tagged_union_schema.h>
 #include <codegen/schema/union_schema.h>
 #include <codegen/source_loader.h>
+#include <codegen/source_position_types.h>
 #include <lispb/schema/type_graph.h>
 
 #include <compare>
@@ -45,11 +45,11 @@ struct DeclarationId {
 };
 
 struct SourceRange {
-    std::size_t source_file_index{};
-    std::size_t begin_offset{};
-    std::size_t end_offset{};
-    std::size_t line{1};
-    std::size_t column{1};
+    codegen::SourceFileIndex source_file_index{};
+    codegen::SourceOffset begin_offset{};
+    codegen::SourceOffset end_offset{};
+    codegen::LineNum line{1};
+    codegen::ColumnNum column{1};
 
     auto operator==(SourceRange const&) const -> bool = default;
 };
