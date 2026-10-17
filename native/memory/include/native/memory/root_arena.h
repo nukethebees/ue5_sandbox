@@ -1,5 +1,6 @@
 #pragma once
 
+#include "native/memory/allocation_failure.h"
 #include "native/memory/block.h"
 #include "native/memory/statistics.h"
 

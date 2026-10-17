@@ -1,8 +1,10 @@
 add_library(native-memory STATIC)
-target_sources(native-memory PRIVATE
-  src/backing.cpp
-  src/block.cpp
-  src/root_arena.cpp
+target_sources(native-memory
+  PRIVATE
+    src/backing_lease.cpp
+    src/backing.cpp
+    src/block.cpp
+    src/root_arena.cpp
 )
 target_include_directories(native-memory PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(native-memory
