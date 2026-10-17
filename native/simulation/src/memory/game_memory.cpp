@@ -8,7 +8,7 @@
 namespace ioj::sim {
 
 namespace game_memory_detail {
-auto checked_capacity(GameMemoryBacking& backing, GameMemoryConfig const config) -> std::size_t {
+auto checked_capacity(memory::Backing& backing, memory::Config const config) -> std::size_t {
     if (backing.capacity_bytes() < config.root_capacity_bytes) {
         ml::fatal_error(std::format("Game-memory backing has {} bytes; {} bytes requested",
                                     backing.capacity_bytes(),
@@ -18,8 +18,8 @@ auto checked_capacity(GameMemoryBacking& backing, GameMemoryConfig const config)
 }
 }
 
-GameMemory::GameMemory(GameMemoryConfig const config)
-    : local_backing_{GameMemoryBacking::create(config.root_capacity_bytes)}
+GameMemory::GameMemory(memory::Config const config)
+    : local_backing_{memory::Backing::create(config.root_capacity_bytes)}
     , backing_{local_backing_.get()}
     , root_arena_{backing_->data(), game_memory_detail::checked_capacity(*backing_, config)} {
     assert(static_cast<bool>(local_backing_));
@@ -27,7 +27,7 @@ GameMemory::GameMemory(GameMemoryConfig const config)
     assert(backing_ != nullptr);
 }
 
-GameMemory::GameMemory(GameMemoryBackingLease lease, GameMemoryConfig const config)
+GameMemory::GameMemory(memory::BackingLease lease, memory::Config const config)
     : external_lease_{std::move(lease)}
     , backing_{&external_lease_.get()}
     , root_arena_{backing_->data(), game_memory_detail::checked_capacity(*backing_, config)} {
@@ -39,16 +39,16 @@ GameMemory::GameMemory(GameMemoryBackingLease lease, GameMemoryConfig const conf
 GameMemory::~GameMemory() = default;
 
 auto GameMemory::try_acquire_block(std::size_t const size_bytes, std::size_t const alignment)
-    -> std::optional<GameMemoryBlock> {
+    -> std::optional<memory::Block> {
     auto block{root_arena_.try_acquire_block(size_bytes, alignment)};
     if (!block) {
         return std::nullopt;
     }
-    return GameMemoryBlock{std::move(block)};
+    return memory::Block{std::move(block)};
 }
 
 auto GameMemory::acquire_block(std::size_t const size_bytes, std::size_t const alignment)
-    -> GameMemoryBlock {
+    -> memory::Block {
     auto block{try_acquire_block(size_bytes, alignment)};
     if (!block) {
         auto const stats{root_arena_.get_statistics()};
@@ -66,13 +66,13 @@ auto GameMemory::memory_resource() noexcept -> std::pmr::memory_resource& {
     return root_arena_.memory_resource();
 }
 
-auto GameMemory::get_stats() const noexcept -> GameMemoryStats {
+auto GameMemory::get_stats() const noexcept -> memory::Statistics {
     return root_arena_.get_statistics();
 }
 
 auto GameMemory::get_last_allocation_failure() const noexcept
-    -> std::optional<GameMemoryAllocationFailure> {
+    -> std::optional<memory::AllocationFailure> {
     auto const* const failure{root_arena_.get_last_allocation_failure()};
-    return failure != nullptr ? std::optional<GameMemoryAllocationFailure>{*failure} : std::nullopt;
+    return failure != nullptr ? std::optional<memory::AllocationFailure>{*failure} : std::nullopt;
 }
 } // namespace ioj::sim

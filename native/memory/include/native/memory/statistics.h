@@ -3,7 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace ml::memory {
+namespace ioj::memory {
 
 struct Statistics {
     std::size_t total_capacity_bytes{};

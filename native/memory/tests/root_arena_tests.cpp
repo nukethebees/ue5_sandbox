@@ -6,7 +6,7 @@
 #include <string_view>
 #include <utility>
 
-namespace ml::memory::tests {
+namespace ioj::memory::tests {
 auto expect(bool const condition, std::string_view const message) -> bool {
     if (!condition) {
         std::cerr << "FAILED: " << message << '\n';
@@ -101,7 +101,7 @@ auto pmr_deallocation_returns_the_range() -> bool {
 }
 
 auto main() -> int {
-    using namespace ml::memory::tests;
+    using namespace ioj::memory::tests;
     auto const passed{reuses_returned_blocks() && reports_exact_exhaustion_diagnostics() &&
                       moving_a_block_transfers_its_range() && pmr_deallocation_returns_the_range()};
     return passed ? 0 : 1;

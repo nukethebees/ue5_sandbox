@@ -28,7 +28,7 @@ TEST(NativeSimulation, GameMemoryTest) {
     EXPECT_EQ(failure->total_capacity_bytes, std::size_t{512})
         << "Diagnostic records total capacity";
 
-    auto backing{GameMemoryBacking::create(1024)};
+    auto backing{memory::Backing::create(1024)};
     auto first_lease{backing->try_acquire_lease()};
     EXPECT_TRUE(first_lease.has_value()) << "The first backing lease succeeds";
     EXPECT_FALSE(backing->try_acquire_lease().has_value()) << "A simultaneous backing lease fails";

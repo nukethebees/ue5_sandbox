@@ -8,7 +8,7 @@
 #include <sandbox/profiling/memory.h>
 #endif
 
-namespace ml::memory {
+namespace ioj::memory {
 namespace {
 auto allocate_backing(std::size_t const capacity_bytes) -> std::byte* {
     if (capacity_bytes == 0) {
@@ -18,8 +18,8 @@ auto allocate_backing(std::size_t const capacity_bytes) -> std::byte* {
     auto* const allocation{static_cast<std::byte*>(
         ::operator new(capacity_bytes, std::align_val_t{Backing::alignment}))};
 #if defined(IOJ_WITH_TRACY)
-    profiling::record_memory_allocation(
-        profiling::MemoryDomain::PersistentRoot, allocation, capacity_bytes);
+    ml::profiling::record_memory_allocation(
+        ml::profiling::MemoryDomain::PersistentRoot, allocation, capacity_bytes);
 #endif
     return allocation;
 }
@@ -36,7 +36,7 @@ Backing::Backing(std::size_t const capacity_bytes)
 Backing::~Backing() {
     assert(!leased_);
 #if defined(IOJ_WITH_TRACY)
-    profiling::record_memory_free(profiling::MemoryDomain::PersistentRoot, data_);
+    ml::profiling::record_memory_free(ml::profiling::MemoryDomain::PersistentRoot, data_);
 #endif
     ::operator delete(data_, std::align_val_t{alignment});
 }

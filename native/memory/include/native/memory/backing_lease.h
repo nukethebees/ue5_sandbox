@@ -1,6 +1,6 @@
 #pragma once
 
-namespace ml::memory {
+namespace ioj::memory {
 class Backing;
 
 class BackingLease {

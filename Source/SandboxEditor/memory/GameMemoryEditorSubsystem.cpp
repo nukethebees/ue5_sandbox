@@ -8,8 +8,7 @@
 void USandboxEditorGameMemorySubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
 
-    backing_ = ::ioj::sim::GameMemoryBacking::create(
-        ::ioj::sim::GameMemoryConfig::default_root_capacity_bytes);
+    backing_ = ioj::memory::Backing::create(ioj::memory::Config::default_root_capacity_bytes);
     FGameMemoryBootstrap::acquire_backing_delegate().BindUObject(
         this, &USandboxEditorGameMemorySubsystem::acquire_backing);
     FEditorDelegates::OnEditorPreExit.AddUObject(
@@ -46,7 +45,7 @@ void USandboxEditorGameMemorySubsystem::end_active_pie_if_leased() {
 }
 
 auto USandboxEditorGameMemorySubsystem::acquire_backing()
-    -> std::optional<::ioj::sim::GameMemoryBackingLease> {
+    -> std::optional<ioj::memory::BackingLease> {
     return static_cast<bool>(backing_) ? backing_->try_acquire_lease() : std::nullopt;
 }
 

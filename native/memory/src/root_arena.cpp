@@ -9,7 +9,7 @@
 #include <span>
 #include <vector>
 
-namespace ml::memory {
+namespace ioj::memory {
 struct RootArena::Impl {
     struct ReusableRange {
         std::byte* data{};

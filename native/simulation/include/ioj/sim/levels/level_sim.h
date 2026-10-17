@@ -162,7 +162,7 @@ struct LevelSim {
     std::unique_ptr<GameMemory> local_game_memory_{};
     GameMemory* game_memory_{};
 
-    GameMemoryBlock frame_memory_block_;
+    memory::Block frame_memory_block_;
     ml::FrameMemoryResource frame_memory_;
     EntityLedger entity_ledger_;
     CombatEvents combat_events_{entity_ledger_};

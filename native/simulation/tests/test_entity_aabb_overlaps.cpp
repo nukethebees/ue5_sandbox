@@ -115,7 +115,7 @@ struct OverlapFixture {
     CollisionAgentStorage owners;
     // Include raw duplicate overlap pairs as well as sorting scratch in the frame budget.
     GameMemory game_memory{{.root_capacity_bytes = overlap_frame_memory_capacity}};
-    GameMemoryBlock frame_memory_backing{game_memory.acquire_block(
+    memory::Block frame_memory_backing{game_memory.acquire_block(
         overlap_frame_memory_capacity, ml::FrameMemoryResource::backing_alignment)};
     ml::FrameMemoryResource frame_memory{
         std::span<std::byte>{frame_memory_backing.data(), frame_memory_backing.size_bytes()}};

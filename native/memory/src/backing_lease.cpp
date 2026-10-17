@@ -5,7 +5,7 @@
 #include <cassert>
 #include <utility>
 
-namespace ml::memory {
+namespace ioj::memory {
 BackingLease::BackingLease(Backing& backing) noexcept
     : backing_{&backing} {}
 

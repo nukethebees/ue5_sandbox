@@ -5,7 +5,7 @@ auto FGameMemoryBootstrap::acquire_backing_delegate() -> FAcquireGameMemoryBacki
     return delegate;
 }
 
-auto FGameMemoryBootstrap::create_game_memory(::ioj::sim::GameMemoryConfig config)
+auto FGameMemoryBootstrap::create_game_memory(ioj::memory::Config config)
     -> TUniquePtr<::ioj::sim::GameMemory> {
     auto& delegate{acquire_backing_delegate()};
     if (delegate.IsBound()) {

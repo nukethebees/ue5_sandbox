@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-namespace ml::memory {
+namespace ioj::memory {
 struct AllocationFailure {
     std::size_t requested_bytes{};
     std::size_t alignment{};

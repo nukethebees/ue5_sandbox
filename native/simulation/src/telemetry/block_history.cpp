@@ -30,7 +30,7 @@ constexpr auto logical_payload_bytes_per_row() -> std::size_t {
 }
 }
 
-LevelTelemetryBlockHistory::Block::Block(GameMemoryBlock memory_block, std::uint32_t const capacity)
+LevelTelemetryBlockHistory::Block::Block(memory::Block memory_block, std::uint32_t const capacity)
     : memory_block{std::move(memory_block)}
     , storage{} {
     storage = {.data_ = this->memory_block.data(), .num_ = 0, .capacity_ = capacity};

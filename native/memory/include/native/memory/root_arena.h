@@ -8,7 +8,7 @@
 #include <memory>
 #include <memory_resource>
 
-namespace ml::memory {
+namespace ioj::memory {
 class RootArena {
   public:
     RootArena(std::byte* backing, std::size_t capacity_bytes);

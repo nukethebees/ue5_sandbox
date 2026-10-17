@@ -2,7 +2,7 @@
 
 #include <cstddef>
 
-namespace ml::memory {
+namespace ioj::memory {
 struct Config {
     inline static constexpr std::size_t default_root_capacity_bytes{std::size_t{1} << 30};
 

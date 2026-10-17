@@ -6,7 +6,7 @@
 #include <memory>
 #include <optional>
 
-namespace ml::memory {
+namespace ioj::memory {
 
 class Backing {
   public:

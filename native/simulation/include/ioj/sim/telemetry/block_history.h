@@ -44,9 +44,9 @@ class LevelTelemetryBlockHistory {
     auto get_stats() const noexcept -> LevelTelemetryBlockHistoryStats;
   private:
     struct Block {
-        Block(GameMemoryBlock memory_block, std::uint32_t capacity);
+        Block(memory::Block memory_block, std::uint32_t capacity);
 
-        GameMemoryBlock memory_block{};
+        memory::Block memory_block{};
         ml::native_soa::StorageState storage{};
     };
 
