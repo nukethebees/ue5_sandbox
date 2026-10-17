@@ -81,7 +81,7 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/turrets/turret_sim_config.h
   ../include/ioj/sim/spinners/spinner_sim_config.h
   ../include/ioj/sim/capital_ships/capital_ship_sim_config.h
-  ../include/ioj/sim/spinners/fire_point.h
+  ../include/ioj/sim/lasers/fire_point.h
   ../include/ioj/sim/sim_state.h
   ../include/ioj/sim/sim_tick.h
   ../include/ioj/sim/sim_time.h
