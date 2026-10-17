@@ -1378,6 +1378,7 @@ auto parse_vector_soa(Form const& form) -> VectorSoaSchema {
     fields.validate({"value-type",
                      "components",
                      "equivalent-members",
+                     "equivalent-accessors",
                      "equivalent-constructor",
                      "equivalent-type",
                      "export-specifier"},
@@ -1398,6 +1399,7 @@ auto parse_vector_soa(Form const& form) -> VectorSoaSchema {
         .equivalent_type = parse_type_ref(fields.required("equivalent-type")),
         .export_specifier = optional_text(fields, "export-specifier"),
         .fixed = std::move(fixed),
+        .equivalent_accessors = boolean_or(fields, "equivalent-accessors"),
     };
 }
 

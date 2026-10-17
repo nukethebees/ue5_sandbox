@@ -61,6 +61,7 @@ auto lower_native_soa(SoaSchema const& schema,
                       TypeRegistry const& types,
                       bool allow_equivalent_type = false,
                       std::span<std::string const> equivalent_members = {},
-                      std::string_view equivalent_constructor = {}) -> LoweredSoa;
+                      std::string_view equivalent_constructor = {},
+                      bool equivalent_accessors = false) -> LoweredSoa;
 
 } // namespace codegen::detail

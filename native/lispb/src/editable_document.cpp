@@ -2472,6 +2472,9 @@ auto render_vector_soa(codegen::VectorSoaSchema const& schema) -> std::string {
         output << "\n    :equivalent-members ";
         render_quoted_list(output, schema.equivalent_members);
     }
+    if (schema.equivalent_accessors) {
+        output << "\n    :equivalent-accessors true";
+    }
     if (schema.equivalent_constructor.has_value()) {
         output << "\n    :equivalent-constructor " << *schema.equivalent_constructor;
     }

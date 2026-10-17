@@ -27,7 +27,8 @@ auto lower_vector(VectorSoaSchema const& vector,
                                       types,
                                       true,
                                       vector.equivalent_members,
-                                      vector.equivalent_constructor.value_or(""))};
+                                      vector.equivalent_constructor.value_or(""),
+                                      vector.equivalent_accessors)};
         return {.header = std::move(lowered.header), .format_generated = true};
     }
 
@@ -62,7 +63,8 @@ auto lower_vector(VectorSoaSchema const& vector,
     auto const& equivalent_members{vector.equivalent_members.empty() ? axes
                                                                      : vector.equivalent_members};
     for (std::size_t index{0}; index < vector.components.size(); ++index) {
-        equivalent_arguments.push_back("value." + equivalent_members[index]);
+        equivalent_arguments.push_back("value." + equivalent_members[index] +
+                                       (vector.equivalent_accessors ? "()" : ""));
         set_body.push_back(vector.components[index] +
                            "[i] = " + std::string(1, vector.components[index].front()) + ";");
         data_pointers.push_back(vector.components[index] + ".GetData()");

@@ -18,6 +18,7 @@ struct VectorSoaSchema {
     TypeRef equivalent_type;
     std::optional<std::string> export_specifier;
     std::optional<FixedSoaSchema> fixed;
+    bool equivalent_accessors{};
 };
 
 } // namespace codegen

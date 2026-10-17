@@ -85,7 +85,8 @@ auto lower_native_soa(SoaSchema const& schema,
                       TypeRegistry const& types,
                       bool const allow_equivalent_type,
                       std::span<std::string const> const equivalent_members,
-                      std::string_view const equivalent_constructor) -> LoweredSoa {
+                      std::string_view const equivalent_constructor,
+                      bool const equivalent_accessors) -> LoweredSoa {
     if (schema.fixed) {
         throw std::invalid_argument{"Standard-library SoA does not support fixed storage"};
     }
@@ -301,7 +302,8 @@ auto lower_native_soa(SoaSchema const& schema,
                     out << "void set(size_type const index, equivalent_type const value) const { "
                            "set(index";
                     for (std::size_t index{}; index < layout.members.size(); ++index) {
-                        out << ", value." << equivalent_members[index];
+                        out << ", value." << equivalent_members[index]
+                            << (equivalent_accessors ? "()" : "");
                     }
                     out << "); }\n";
                 }
@@ -372,7 +374,7 @@ auto lower_native_soa(SoaSchema const& schema,
                 if (index > 0) {
                     out << ", ";
                 }
-                out << "value." << equivalent_members[index];
+                out << "value." << equivalent_members[index] << (equivalent_accessors ? "()" : "");
             }
             out << "); }\n";
         }

@@ -9527,6 +9527,8 @@ TEST(EditableDocument, VectorDeclarationEditsPreserveModuleSource) {
     auto const& module{std::get<codegen::NormalModuleSchema>(document.manifest().modules.back())};
     auto replacement{std::get<codegen::VectorSoaSchema>(module.declarations.front())};
     replacement.components = {"xs", "zs"};
+    replacement.equivalent_members = {"x", "z"};
+    replacement.equivalent_accessors = true;
 
     auto changed{document.apply(
         ReplaceDeclaration{.declaration = declaration, .schema = std::move(replacement)})};
@@ -9548,6 +9550,8 @@ TEST(EditableDocument, VectorDeclarationEditsPreserveModuleSource) {
         std::get<codegen::NormalModuleSchema>(reloaded.manifest().modules.back())};
     auto const& vector{std::get<codegen::VectorSoaSchema>(reloaded_module.declarations.front())};
     EXPECT_EQ(vector.components, (std::vector<std::string>{"xs", "zs"}));
+    EXPECT_EQ(vector.equivalent_members, (std::vector<std::string>{"x", "z"}));
+    EXPECT_TRUE(vector.equivalent_accessors);
 }
 
 class SaveReplacementFailure {

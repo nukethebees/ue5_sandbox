@@ -1922,6 +1922,10 @@ void validate_vector(VectorSoaSchema const& schema,
             require_identifier(member, "Vector SoA '" + schema.name + "' equivalent member");
         }
     }
+    if (schema.equivalent_accessors && schema.equivalent_members.empty()) {
+        throw std::invalid_argument{
+            "Vector SoA accessor mode requires explicit equivalent members"};
+    }
     if (backend == SoaBackend::standard_library && schema.equivalent_members.empty()) {
         throw std::invalid_argument{"Standard-library vector SoA '" + schema.name +
                                     "' must declare equivalent members"};
