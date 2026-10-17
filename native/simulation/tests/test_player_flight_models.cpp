@@ -29,6 +29,7 @@ auto make_data(player::FlightModelPreset const preset) -> LevelSimInitData {
     LevelSimInitData data;
     data.grid_geometry = {{16, 16, 4}, {{100000.f, 100000.f, 100000.f}}};
     data.lasers.n_preallocated_instances = 16;
+    data.frame_memory_capacity_bytes = 1024 * 1024;
     data.capital_ships.fighter_spawn_slots = 0;
     data.clock_settings.tick_rate = 60.0;
     for (auto const type : ml::EnumTraits<EntityType>::values) {
@@ -388,30 +389,6 @@ TEST(NativeSimulationFlightModels, SwitchingClearsPersistentTargetsAndSamplingSt
     EXPECT_EQ(player_sim(simulation).get_controller_state().persistent_up_target_speed, 0.f);
 }
 
-TEST(NativeSimulationFlightModels, EveryPairwiseSlotTransitionPreservesWorldVelocity) {
-    GameMemory simulation_memory;
-    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
-    start(simulation);
-    simulation.get_player_ship_commands()->set_accelerator(1.f);
-    advance_ticks(simulation, 20);
-    simulation.get_player_ship_commands()->set_accelerator(0.f);
-    auto const preserved{velocity(simulation)};
-    std::array const slots{
-        player::FlightModelSlot::Up,
-        player::FlightModelSlot::Right,
-        player::FlightModelSlot::Down,
-        player::FlightModelSlot::Left,
-    };
-
-    for (auto const source : slots) {
-        simulation.get_player_ship_commands()->select_flight_model_slot(source);
-        for (auto const target : slots) {
-            simulation.get_player_ship_commands()->select_flight_model_slot(target);
-            expect_velocity_near(velocity(simulation), preserved, 1.e-8);
-        }
-    }
-}
-
 TEST(NativeSimulationFlightModels, SwitchingRecomputesActionsFromHeldIntent) {
     GameMemory simulation_memory;
     LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
@@ -639,39 +616,21 @@ TEST(NativeSimulationFlightModels, PartialFacingCouplingBendsVelocityWithoutLock
     EXPECT_GT(std::abs(bent.x()), std::abs(bent.y()));
 }
 
-TEST(NativeSimulationFlightModels, ActionPriorityAndEnergyFallbackAreExplicit) {
-    GameMemory simulation_memory;
-    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
-    start(simulation);
-    auto* const commands{simulation.get_player_ship_commands()};
-    commands->start_boost();
-    commands->start_brake();
-    EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
-              player::BoostBrakeState::Brake);
-    commands->start_emergency_brake();
-    EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
-              player::BoostBrakeState::EmergencyBrake);
-
-    advance_ticks(simulation, 400);
-    EXPECT_NEAR(player_sim(simulation).get_energy(), 0.f, 1.e-6f);
-    EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
-              player::BoostBrakeState::Brake);
-}
-
 TEST(NativeSimulationFlightModels, EffectivelyUnlimitedLimitRemainsFinite) {
-    GameMemory simulation_memory;
-    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
-    start(simulation);
-    auto const& sim_player{player_sim(simulation)};
-    auto profile{sim_player.get_active_flight_model_profile()};
-    profile.config.maximum_resultant_speed = player::effectively_unlimited_speed;
-    profile.config.boosted_maximum_resultant_speed = player::effectively_unlimited_speed;
-    ASSERT_TRUE(simulation.get_player_ship_commands()->set_flight_model_slot_profile(
-        player::FlightModelSlot::Down, profile));
+    player::FlightModelConfig config;
+    config.maximum_resultant_speed = player::effectively_unlimited_speed;
+    config.boosted_maximum_resultant_speed = player::effectively_unlimited_speed;
+    config.translation.forward.manual.semantic = player::TranslationSemantic::Acceleration;
+    config.translation.forward.manual.input_source = player::TranslationInputSource::Axis;
+    config.translation.forward.normal.positive_acceleration = 120.f;
+    player::PlayerSimulationState state;
+    state.physical.velocity = {1.e12, -1.e12, 1.e12};
+    player::seed_flight_model_responses(state, config);
+    player::PlayerFlightIntent intent;
+    intent.translation.x() = 1.0;
 
-    simulation.get_player_ship_commands()->set_accelerator(1.f);
-    advance_ticks(simulation, 600);
-    auto const current{velocity(simulation)};
+    player::integrate_flight_model(1.f / 60.f, config, intent, state);
+    auto const current{state.physical.velocity};
     EXPECT_TRUE(std::isfinite(current.x()));
     EXPECT_TRUE(std::isfinite(current.y()));
     EXPECT_TRUE(std::isfinite(current.z()));

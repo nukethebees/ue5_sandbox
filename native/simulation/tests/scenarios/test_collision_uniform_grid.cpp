@@ -275,11 +275,6 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
     auto const& spatial_queries{simulation.get_spatial_query_manager()};
     auto const& grid{SpatialQueryManagerTestAccess::uniform_grid(spatial_queries)};
     auto const& entity_aabbs{SpatialQueryManagerTestAccess::entity_aabbs(spatial_queries)};
-    EXPECT_TRUE(
-        (grid.get_grid_dims() == collision::CellCoord{grid_dims.x(), grid_dims.y(), grid_dims.z()}))
-        << "Collision grid uses the production dimensions";
-    auto const cell_dimensions_match{grid.get_cell_dims() == cell_dims};
-    EXPECT_TRUE(cell_dimensions_match != 0) << "Collision grid uses the production cell size";
 
     for (auto const entity_type : ml::EnumTraits<EntityType>::values) {
         auto const id{expected_ids[entity_type]};

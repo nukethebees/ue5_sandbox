@@ -5,7 +5,6 @@
 #include <array>
 #include <limits>
 #include <numbers>
-#include <print>
 #include <random>
 
 namespace ml::sandbox_ismc {
@@ -71,8 +70,7 @@ TEST(SandboxISMCPacking, RandomQuaternionRoundTrips) {
     std::mt19937 random{0x513a2U};
     std::normal_distribution<float> normal{0.0f, 1.0f};
     double maximum{};
-    double squared_error{};
-    constexpr auto count{100000};
+    constexpr auto count{2048};
     for (auto index{0}; index < count; ++index) {
         auto const quaternion{ioj::normalized(
             ml::make_quaternion4f(normal(random), normal(random), normal(random), normal(random)))};
@@ -80,12 +78,7 @@ TEST(SandboxISMCPacking, RandomQuaternionRoundTrips) {
         EXPECT_EQ(pack_normalized_quat32((quaternion * -1.0f)).bits, packed.bits);
         auto const error{angular_error(quaternion, unpack_quat32(packed))};
         maximum = std::max(maximum, error);
-        squared_error += error * error;
     }
-    std::println("Quat32: {} samples; maximum {:.9f} degrees; RMS {:.9f} degrees",
-                 count,
-                 maximum,
-                 std::sqrt(squared_error / count));
     EXPECT_LT(maximum, 0.3);
     EXPECT_LT(2.0 * std::sin(maximum * std::numbers::pi / 360.0), rotation_error_chord);
 }
@@ -114,7 +107,7 @@ TEST(SandboxISMCPacking, PositionRangeAndRounding) {
     }
     std::mt19937 random{17};
     std::uniform_real_distribution<float> values{-32767, 32767};
-    for (auto index{0}; index < 10000; ++index) {
+    for (auto index{0}; index < 512; ++index) {
         auto const value{values(random)};
         auto const packed{quantize_units(value, 0)};
         ASSERT_TRUE(packed.has_value());

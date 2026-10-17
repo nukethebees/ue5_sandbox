@@ -4,7 +4,12 @@
 namespace ioj::sim::tests {
 using SimulationFixture = ReferenceLevelSimulationData;
 inline auto make_fixture() -> SimulationFixture {
-    return make_reference_level_simulation_data();
+    auto fixture{make_reference_level_simulation_data()};
+    fixture.data.lasers.n_preallocated_instances = 256;
+    fixture.data.grid_geometry.dimensions = {64, 64, 5};
+    fixture.data.grid_geometry.cell_dimensions = {31250.f, 31250.f, 20000.f};
+    fixture.data.frame_memory_capacity_bytes = 4 * 1024 * 1024;
+    return fixture;
 }
 auto make_simulation_data(SimulationFixture const& fixture) -> LevelSimInitData;
 auto make_player_spawn(SimulationFixture const& fixture, Transform3d transform = {})

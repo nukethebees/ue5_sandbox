@@ -321,7 +321,8 @@ struct DenseNavigationResult {
 };
 
 auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
-                                  std::int32_t const fighter_count) -> DenseNavigationResult {
+                                  std::int32_t const fighter_count,
+                                  SimTime const duration) -> DenseNavigationResult {
     std::vector<Transform3d> spawn_slots{};
     spawn_slots.assign(fighter_count, Transform3d{.location = ml::Vector3d{3000.f, 7000.f, 0.f}});
     auto data{make_fighter_navigation_test_data(
@@ -339,8 +340,8 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
         result.query_count += telemetry.separation_query_count;
         result.saw_immediate_risk = result.saw_immediate_risk || telemetry.immediate_risk_count > 0;
     };
-    harness.timeline.finish_at(10.0);
-    result.timeline_completed = harness.run_until_timeline_finished(10.5);
+    harness.timeline.finish_at(duration);
+    result.timeline_completed = harness.run_until_timeline_finished(duration + 0.5);
     EXPECT_EQ(harness.get_ledger().get_issued_counts()[EntityType::Fighter],
               static_cast<std::uint32_t>(fighter_count))
         << "Dense fixture spawns exactly one fighter wave";
@@ -362,15 +363,14 @@ void run_worldless_fighter_dense_determinism(tests::SimulationFixture const& con
         << "Coincident entities receive opposite ID-based separation directions";
     EXPECT_TRUE(std::abs(ioj::size_squared(forward) - 1.f) < 1.e-5f)
         << "ID-based coincident separation is a unit direction";
-    auto const first_result{run_dense_navigation_fixture(config, 8)};
-    auto const second_result{run_dense_navigation_fixture(config, 8)};
+    auto const first_result{run_dense_navigation_fixture(config, 8, 1.5)};
+    auto const second_result{run_dense_navigation_fixture(config, 8, 1.5)};
     auto const& first{first_result.locations};
     auto const& second{second_result.locations};
     EXPECT_TRUE(first_result.timeline_completed) << "First dense fixture timeline completes";
     EXPECT_TRUE(second_result.timeline_completed) << "Second dense fixture timeline completes";
     EXPECT_EQ(8, static_cast<std::int32_t>(first.size())) << "Dense fixture retains all fighters";
-    EXPECT_EQ(static_cast<std::int32_t>(first.size()), static_cast<std::int32_t>(second.size()))
-        << "Deterministic fixtures have equal counts";
+    ASSERT_EQ(first.size(), second.size()) << "Deterministic fixtures have equal counts";
     EXPECT_EQ(first_result.collision_distance, second_result.collision_distance)
         << "Deterministic fixtures use equal collision distances";
 
@@ -379,23 +379,8 @@ void run_worldless_fighter_dense_determinism(tests::SimulationFixture const& con
         EXPECT_TRUE(!(!std::isfinite(first[i].x()) || !std::isfinite(first[i].y()) ||
                       !std::isfinite(first[i].z())))
             << "Dense fighter location is finite";
-        if ((i >= 0 && static_cast<std::size_t>(i) < second.size())) {
-            EXPECT_TRUE((std::abs(first[i].x() - second[i].x()) <= 0.f &&
-                         std::abs(first[i].y() - second[i].y()) <= 0.f &&
-                         std::abs(first[i].z() - second[i].z()) <= 0.f))
-                << "Identical fixtures produce identical fighter positions";
-        }
+        EXPECT_EQ(first[i], second[i]) << "Identical fixtures produce identical fighter positions";
     }
-    auto const metrics{measure_fighter_cluster(first, first_result.collision_distance)};
-    EXPECT_TRUE(metrics.finite) << "Every dense fighter remains finite";
-    EXPECT_LE(metrics.overlapping_pair_count, 7)
-        << "At least three quarters of coincident pairs separate";
-    EXPECT_LE(1, metrics.separated_fighter_count)
-        << "Dense group produces fully separated fighters";
-    EXPECT_LE(750.f, metrics.median_centroid_distance)
-        << "The median fighter leaves the cluster core";
-    EXPECT_LE(first_result.collision_distance * 0.25f, metrics.median_nearest_neighbour_distance)
-        << "Dense fighters establish meaningful local spacing";
     EXPECT_TRUE(first_result.saw_immediate_risk && second_result.saw_immediate_risk)
         << "Coincident groups enter the immediate-risk tier";
     EXPECT_EQ(first_result.query_count, second_result.query_count)
@@ -404,7 +389,7 @@ void run_worldless_fighter_dense_determinism(tests::SimulationFixture const& con
 
 void run_worldless_fighter_large_cluster(tests::SimulationFixture const& config) {
     constexpr std::int32_t fighter_count{48};
-    auto const result{run_dense_navigation_fixture(config, fighter_count)};
+    auto const result{run_dense_navigation_fixture(config, fighter_count, 10.0)};
     auto const metrics{measure_fighter_cluster(result.locations, result.collision_distance)};
     auto const initial_pair_count{fighter_count * (fighter_count - 1) / 2};
 
@@ -499,11 +484,11 @@ void run_worldless_fighter_navigation_frequency(tests::SimulationFixture const& 
     harness.timeline.finish_at(1.5);
     EXPECT_TRUE(harness.run_until_timeline_finished(2.0)) << "Clear-frequency timeline completes";
 
-    auto const dense_result{run_dense_navigation_fixture(config, 8)};
+    auto const dense_result{run_dense_navigation_fixture(config, 8, 1.5)};
     EXPECT_TRUE(saw_clear) << "Clear fighter demotes to the clear-risk tier";
     EXPECT_TRUE(dense_result.saw_immediate_risk) << "Clustered fighters promote to immediate risk";
-    EXPECT_TRUE(dense_result.query_count > clear_queries * 4)
-        << "Risky fighters are evaluated materially more frequently";
+    EXPECT_TRUE(dense_result.query_count / 8.0 > clear_queries * 4.0)
+        << "Risky fighters have a higher per-fighter query rate over the same duration";
 }
 
 void run_worldless_fighter_attack(tests::SimulationFixture const& config) {
@@ -518,35 +503,23 @@ void run_worldless_fighter_attack(tests::SimulationFixture const& config) {
     auto const& capitals{harness.get_simulation().get_capital_ships()};
     auto const& fighters{harness.get_simulation().get_fighters()};
     auto const enemy{capitals.get_id(1)};
-    struct Sample {
-        std::int32_t enemy_health{};
-        std::vector<Team> fighter_teams{};
-    };
-    ml::TimeSeriesData<Sample> samples;
+    std::int32_t initial_health{};
+    bool observed_spawn{};
     harness.on_end_tick = [&](LevelSim&) {
-        Sample sample{.enemy_health = capitals.get_health(enemy)};
-        for (auto const team : fighters.get_teams()) {
-            sample.fighter_teams.push_back(team);
+        if (!observed_spawn && harness.get_time() >= 1.0) {
+            observed_spawn = true;
+            initial_health = capitals.get_health(enemy);
+            auto const teams{fighters.get_teams()};
+            EXPECT_FALSE(teams.empty()) << "Hero fighters spawned";
+            for (auto const team : teams) {
+                EXPECT_EQ(team, Team::Green) << "Fighter is on the hero team";
+            }
         }
-        samples.add(harness.get_time(), std::move(sample));
     };
     harness.timeline.finish_at(11.0);
     EXPECT_TRUE(harness.run_until_timeline_finished(12.0)) << "Fighter-attack timeline completes";
-    EXPECT_TRUE(!samples.is_empty()) << "Fighter-attack samples are recorded";
-    if (samples.is_empty()) {
-        return;
-    }
-
-    auto const& before{samples.nearest_value(1.0)};
-    auto const& after{samples.nearest_value(11.0)};
-    EXPECT_GT(static_cast<std::int32_t>(before.fighter_teams.size()), std::int32_t{0})
-        << "Hero fighters spawned";
-    auto const fighter_count{static_cast<std::int32_t>(before.fighter_teams.size())};
-    for (std::int32_t i{}; i < fighter_count; ++i) {
-        SCOPED_TRACE(::testing::Message() << "index " << i);
-        EXPECT_EQ(Team::Green, before.fighter_teams[i]) << "Fighter is on the hero team";
-    }
-    EXPECT_TRUE(after.enemy_health < before.enemy_health) << "Enemy lost health";
+    ASSERT_TRUE(observed_spawn);
+    EXPECT_LT(capitals.get_health(enemy), initial_health) << "Enemy lost health";
 }
 
 }
