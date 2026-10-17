@@ -3,16 +3,13 @@
 #include <ioj/frame_memory_resource.h>
 #include <ioj/frame_vectors3f.h>
 #include <ioj/rotator_math.h>
-#include <ioj/sim/capital_ships/phase_interface.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/collision/spatial_query_manager.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entities/entity_ledger.h>
 #include <ioj/sim/entities/entity_tables.h>
 #include <ioj/sim/entities/team_list.h>
-#include <ioj/sim/fighters/phase_interface.h>
 #include <ioj/sim/fighters/sim.h>
-#include <ioj/sim/lasers/phase_interface.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/level_read_access.h>
@@ -24,13 +21,10 @@
 #include <ioj/sim/missions/mission_manager.h>
 #include <ioj/sim/overlap_handler.h>
 #include <ioj/sim/player/command_interface.h>
-#include <ioj/sim/player/phase_interface.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/sim_state.h>
-#include <ioj/sim/spinners/phase_interface.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/telemetry/manager.h>
-#include <ioj/sim/turrets/phase_interface.h>
 #include <ioj/sim/turrets/sim.h>
 
 #include <cstdint>
@@ -170,23 +164,17 @@ struct LevelSim {
     std::vector<EntityUniqueId> overlap_candidates_;
 
     lasers::Sim lasers_simulation_;
-    lasers::PhaseInterface lasers_phase_;
 
     std::optional<player::Sim> player_ship_simulation_;
-    std::optional<player::PhaseInterface> player_ship_phase_;
     std::optional<player::CommandInterface> player_ship_commands_;
 
     fighters::Sim fighters_simulation_;
-    fighters::PhaseInterface fighters_phase_;
 
     capital_ships::Sim capital_ships_simulation_;
-    capital_ships::PhaseInterface capital_ships_phase_;
 
     turrets::Sim turrets_simulation_;
-    turrets::PhaseInterface turrets_phase_;
 
     spinners::Sim spinners_simulation_;
-    spinners::PhaseInterface spinners_phase_;
 
     MissionManager mission_manager_;
     LevelEventManager event_manager_;

@@ -1,7 +1,13 @@
 #include <ioj/sim/levels/level_sim.h>
 
 #include <ioj/diagnostics.h>
+#include <ioj/sim/capital_ships/phase_interface.h>
+#include <ioj/sim/fighters/phase_interface.h>
+#include <ioj/sim/lasers/phase_interface.h>
+#include <ioj/sim/player/phase_interface.h>
 #include <ioj/sim/profiling.h>
+#include <ioj/sim/spinners/phase_interface.h>
+#include <ioj/sim/turrets/phase_interface.h>
 
 #include <algorithm>
 #include <array>
@@ -70,30 +76,25 @@ LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
     , query_manager_{entity_tables_, &game_memory.memory_resource()}
     , overlap_handler_{data.overlap_response}
     , lasers_simulation_{clock_, combat_events_, query_manager_}
-    , lasers_phase_{lasers_simulation_}
     , fighters_simulation_{clock_,
                            entity_ledger_,
                            combat_events_,
                            entity_tables_,
                            query_manager_,
                            lasers_simulation_}
-    , fighters_phase_{fighters_simulation_}
     , capital_ships_simulation_{clock_,
                                 entity_ledger_,
                                 combat_events_,
                                 entity_tables_,
                                 query_manager_,
                                 fighters_simulation_}
-    , capital_ships_phase_{capital_ships_simulation_}
     , turrets_simulation_{clock_,
                           entity_ledger_,
                           combat_events_,
                           entity_tables_,
                           query_manager_,
                           lasers_simulation_}
-    , turrets_phase_{turrets_simulation_}
     , spinners_simulation_{clock_, entity_ledger_, entity_tables_, lasers_simulation_}
-    , spinners_phase_{spinners_simulation_}
     , mission_manager_{clock_, entity_ledger_, entity_tables_}
     , event_manager_{capital_ships_simulation_,
                      turrets_simulation_,
@@ -182,7 +183,6 @@ void LevelSim::configure_player(player::PlayerSpawnData const& spawn) {
                                                  entity_tables_,
                                                  query_manager_,
                                                  lasers_simulation_)};
-    player_ship_phase_.emplace(player);
     player_ship_commands_.emplace(player);
 
     player.configure(spawn);
@@ -197,16 +197,16 @@ void LevelSim::initialise_spatial_queries(LevelSimInitData& data) {
 void LevelSim::begin_subsystems() {
     // Start player subsystem
     if (player_ship_simulation_.has_value()) {
-        player_ship_phase_->begin_play();
+        player::PhaseInterface{*player_ship_simulation_}.begin_play();
     }
 
     // Start world subsystems
-    capital_ships_phase_.begin_play();
-    fighters_phase_.begin_play();
-    turrets_phase_.begin_play();
+    capital_ships::PhaseInterface{capital_ships_simulation_}.begin_play();
+    fighters::PhaseInterface{fighters_simulation_}.begin_play();
+    turrets::PhaseInterface{turrets_simulation_}.begin_play();
 
-    spinners_phase_.begin_play();
-    lasers_phase_.begin_play();
+    spinners::PhaseInterface{spinners_simulation_}.begin_play();
+    lasers::PhaseInterface{lasers_simulation_}.begin_play();
 }
 void LevelSim::initialise_events(CompiledLevelEvents events) {
     auto const player_id{player_ship_simulation_.has_value()
@@ -272,6 +272,16 @@ void LevelSim::advance(time_type const dt) {
         return;
     }
 
+    capital_ships::PhaseInterface capital_ships_phase{capital_ships_simulation_};
+    fighters::PhaseInterface fighters_phase{fighters_simulation_};
+    turrets::PhaseInterface turrets_phase{turrets_simulation_};
+    spinners::PhaseInterface spinners_phase{spinners_simulation_};
+    lasers::PhaseInterface lasers_phase{lasers_simulation_};
+    std::optional<player::PhaseInterface> player_ship_phase;
+    if (player_ship_simulation_) {
+        player_ship_phase.emplace(*player_ship_simulation_);
+    }
+
     ++frame_sequence_;
     entity_ledger_.reset_frame_output();
     capital_ships_simulation_.reset_frame_output();
@@ -282,9 +292,9 @@ void LevelSim::advance(time_type const dt) {
 
     auto publish_entity_deaths{[&] {
         SANDBOX_PROFILE_SCOPE("LevelSim::advance::publish_entity_deaths");
-        capital_ships_phase_.publish_deaths();
-        fighters_phase_.publish_deaths();
-        turrets_phase_.publish_deaths();
+        capital_ships_phase.publish_deaths();
+        fighters_phase.publish_deaths();
+        turrets_phase.publish_deaths();
     }};
 
     while (clock_.tick_loop.try_tick()) {
@@ -300,17 +310,17 @@ void LevelSim::advance(time_type const dt) {
             clock_.transition_to(SimulationPhase::Preparation);
 
             // Commit orders and events
-            fighters_phase_.commit_orders();
+            fighters_phase.commit_orders();
             auto const previous_issued_counts{entity_ledger_.get_issued_counts()};
             event_manager_.execute_tick(clock_.completed_ticks + 1);
 
             // Commit spawns
             auto const previous_fighter_count{fighters_simulation_.get_num_instances()};
-            fighters_phase_.commit_spawns();
+            fighters_phase.commit_spawns();
             capital_ships_simulation_.fighters_spawned +=
                 fighters_simulation_.get_num_instances() - previous_fighter_count;
 
-            lasers_phase_.commit_spawns();
+            lasers_phase.commit_spawns();
 
             // Track new collision entities
             overlap_candidates_.clear();
@@ -331,14 +341,14 @@ void LevelSim::advance(time_type const dt) {
 
             // Prepare phases and indexes
             if (player_active) {
-                player_ship_phase_->prepare_tick(tick_period);
+                player_ship_phase->prepare_tick(tick_period);
             } else if (player_ship_simulation_) {
                 player_ship_simulation_->update_entity_lookup_table();
             }
-            capital_ships_phase_.prepare_tick(tick_period);
-            fighters_phase_.prepare_tick(tick_period);
-            turrets_phase_.prepare_tick(tick_period);
-            spinners_phase_.prepare_tick(tick_period);
+            capital_ships_phase.prepare_tick(tick_period);
+            fighters_phase.prepare_tick(tick_period);
+            turrets_phase.prepare_tick(tick_period);
+            spinners_phase.prepare_tick(tick_period);
 
             refresh_spatial_index();
         }
@@ -363,21 +373,21 @@ void LevelSim::advance(time_type const dt) {
 #endif
 
             // Run decision phases
-            turrets_phase_.think(tick_period, scratch_resource);
-            capital_ships_phase_.think(tick_period, scratch_resource);
-            fighters_phase_.think(tick_period, scratch_resource);
+            turrets_phase.think(tick_period, scratch_resource);
+            capital_ships_phase.think(tick_period, scratch_resource);
+            fighters_phase.think(tick_period, scratch_resource);
             if (player_active) {
-                player_ship_phase_->think(tick_period);
+                player_ship_phase->think(tick_period);
             }
-            spinners_phase_.think(tick_period);
+            spinners_phase.think(tick_period);
 
             // Generate fire commands
             if (player_active) {
-                player_ship_phase_->generate_fire_commands();
+                player_ship_phase->generate_fire_commands();
             }
-            fighters_phase_.generate_fire_commands(scratch_resource);
-            turrets_phase_.generate_fire_commands(scratch_resource);
-            spinners_phase_.generate_fire_commands();
+            fighters_phase.generate_fire_commands(scratch_resource);
+            turrets_phase.generate_fire_commands(scratch_resource);
+            spinners_phase.generate_fire_commands();
 
             assert(check_phase_invariants(thinking_state));
         }
@@ -392,13 +402,13 @@ void LevelSim::advance(time_type const dt) {
             // Simulate projectiles
             {
                 ml::FrameScratchScope scratch_scope{frame_memory_};
-                lasers_phase_.simulate(tick_period, &frame_memory_);
+                lasers_phase.simulate(tick_period, &frame_memory_);
             }
 
             // Track player movement
             if (player_active) {
                 auto const before{player_ship_simulation_->get_physical_state().transform};
-                player_ship_phase_->apply_movement();
+                player_ship_phase->apply_movement();
                 auto const after{player_ship_simulation_->get_physical_state().transform};
                 auto const before_location{to_float(before.location)};
                 auto const after_location{to_float(after.location)};
@@ -418,8 +428,8 @@ void LevelSim::advance(time_type const dt) {
             {
                 ml::FrameScratchScope scratch_scope{frame_memory_};
                 auto* const scratch_resource{&frame_memory_};
-                fighters_phase_.apply_movement(scratch_resource);
-                spinners_phase_.apply_movement(scratch_resource);
+                fighters_phase.apply_movement(scratch_resource);
+                spinners_phase.apply_movement(scratch_resource);
             }
 
             {
@@ -460,12 +470,12 @@ void LevelSim::advance(time_type const dt) {
 
                 // Resolve damage
                 if (player_active) {
-                    player_ship_phase_->resolve_damage_events(&frame_memory_);
+                    player_ship_phase->resolve_damage_events(&frame_memory_);
                 }
-                capital_ships_phase_.resolve_damage_events(&frame_memory_);
-                fighters_phase_.resolve_damage_events(&frame_memory_);
-                turrets_phase_.resolve_damage_events(&frame_memory_);
-                capital_ships_phase_.resolve_fighters_of_dying_capitals();
+                capital_ships_phase.resolve_damage_events(&frame_memory_);
+                fighters_phase.resolve_damage_events(&frame_memory_);
+                turrets_phase.resolve_damage_events(&frame_memory_);
+                capital_ships_phase.resolve_fighters_of_dying_capitals();
 
                 // Publish deaths
                 publish_entity_deaths();
@@ -485,24 +495,24 @@ void LevelSim::advance(time_type const dt) {
                 clock_.transition_to(SimulationPhase::ResolutionCommit);
 
                 // Apply the same removals to fixed health ranges and their owning rows.
-                capital_ships_phase_.remove_components();
-                fighters_phase_.remove_components();
-                turrets_phase_.remove_components();
+                capital_ships_phase.remove_components();
+                fighters_phase.remove_components();
+                turrets_phase.remove_components();
 
                 // Retire dead identities and compact owning storage.
-                capital_ships_phase_.remove_entities();
-                fighters_phase_.remove_entities();
-                turrets_phase_.remove_entities();
-                lasers_phase_.cleanup_entities();
+                capital_ships_phase.remove_entities();
+                fighters_phase.remove_entities();
+                turrets_phase.remove_entities();
+                lasers_phase.cleanup_entities();
                 capital_ships_simulation_.refresh_fighter_ids(&frame_memory_);
             }
 
             // Finish tick and reset frame state
-            capital_ships_phase_.finish_action();
-            fighters_phase_.finish_action();
-            turrets_phase_.finish_action();
-            spinners_phase_.finish_action();
-            lasers_phase_.finish_action();
+            capital_ships_phase.finish_action();
+            fighters_phase.finish_action();
+            turrets_phase.finish_action();
+            spinners_phase.finish_action();
+            lasers_phase.finish_action();
             ++clock_.completed_ticks;
             level_telemetry_manager_.tick();
             combat_events_.reset();
