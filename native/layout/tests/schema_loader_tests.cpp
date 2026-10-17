@@ -271,8 +271,8 @@ TEST(SchemaLoader, AnalyzesComposedFlightModelAndCollisionRecords) {
              .origin = FactOrigin::manual_assumption});
     for (auto const& [module, name] :
          {std::pair{"native_player_flight_model_data", "FlightModelLoadout"},
-          std::pair{"native_collision_grid_geometry", "GridGeometry"},
-          std::pair{"native_collision_grid_geometry", "CellCoordBounds"},
+          std::pair{"native_collision_grid_geometry_grid_geometry", "GridGeometry"},
+          std::pair{"native_collision_grid_geometry_cell_coord_bounds", "CellCoordBounds"},
           std::pair{"native_collision_world_aabb", "WorldAABB"}}) {
         auto const id{graph.find_declared(module, name)};
         ASSERT_TRUE(id.has_value()) << name;

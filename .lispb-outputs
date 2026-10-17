@@ -40,6 +40,8 @@ native/simulation/include/ioj/sim/base_sim_config.h
 native/simulation/include/ioj/sim/capital_ships/capital_death_event.h
 native/simulation/include/ioj/sim/capital_ships/capital_entity_data.h
 native/simulation/include/ioj/sim/capital_ships/phase_interface.h
+native/simulation/include/ioj/sim/collision/cell_coord.h
+native/simulation/include/ioj/sim/collision/cell_coord_bounds.h
 native/simulation/include/ioj/sim/collision/grid_geometry.h
 native/simulation/include/ioj/sim/collision/trace_entity_filter.h
 native/simulation/include/ioj/sim/collision/world_aabb.h

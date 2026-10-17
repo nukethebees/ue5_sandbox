@@ -4,6 +4,8 @@
 #include <ioj/levels/level_mission_mode.h>
 #include <ioj/sim/base_sim_config.h>
 #include <ioj/sim/capital_ships/capital_death_event.h>
+#include <ioj/sim/collision/cell_coord.h>
+#include <ioj/sim/collision/cell_coord_bounds.h>
 #include <ioj/sim/collision/grid_geometry.h>
 #include <ioj/sim/collision/line_trace_result.h>
 #include <ioj/sim/collision/line_traces.h>

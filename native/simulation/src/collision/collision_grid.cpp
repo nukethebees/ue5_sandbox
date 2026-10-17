@@ -41,24 +41,6 @@ auto grid_half_size(GridGeometry const geometry) noexcept -> Vector3f {
 /* **************************************** */
 // Grid geometry
 /* **************************************** */
-auto CellCoord::operator[](std::size_t const index) noexcept -> int& {
-    if (index == 0) {
-        return x;
-    }
-    if (index == 1) {
-        return y;
-    }
-    return z;
-}
-auto CellCoord::operator[](std::size_t const index) const noexcept -> int {
-    if (index == 0) {
-        return x;
-    }
-    if (index == 1) {
-        return y;
-    }
-    return z;
-}
 auto is_configured(GridGeometry const geometry) noexcept -> bool {
     if (geometry.dimensions.x <= 0 || geometry.dimensions.y <= 0 || geometry.dimensions.z <= 0 ||
         !std::isfinite(geometry.cell_dimensions.X) || !std::isfinite(geometry.cell_dimensions.Y) ||

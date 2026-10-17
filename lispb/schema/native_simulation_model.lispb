@@ -114,9 +114,9 @@
     (member id @native_unique_id)
     (member location @native_vector_3f)))
 
-(module native_collision_grid_geometry
-  :header "native/simulation/include/ioj/sim/collision/grid_geometry.h"
-  :header-include "ioj/sim/collision/grid_geometry.h"
+(module native_collision_grid_geometry_cell_coord
+  :header "native/simulation/include/ioj/sim/collision/cell_coord.h"
+  :header-include "ioj/sim/collision/cell_coord.h"
   :backend standard-library
   :namespace ioj::sim::collision
   (record CellCoord
@@ -166,10 +166,22 @@
     (function operator[] (type-ref int :suffix "&") :noexcept true
       (parameter index std::size_t))
     (function operator[] int :const true :noexcept true
-      (parameter index std::size_t)))
+      (parameter index std::size_t))))
+
+(module native_collision_grid_geometry_cell_coord_bounds
+  :header "native/simulation/include/ioj/sim/collision/cell_coord_bounds.h"
+  :header-include "ioj/sim/collision/cell_coord_bounds.h"
+  :backend standard-library
+  :namespace ioj::sim::collision
   (record CellCoordBounds
     (member min ioj::sim::collision::CellCoord)
-    (member max ioj::sim::collision::CellCoord))
+    (member max ioj::sim::collision::CellCoord)))
+
+(module native_collision_grid_geometry_grid_geometry
+  :header "native/simulation/include/ioj/sim/collision/grid_geometry.h"
+  :header-include "ioj/sim/collision/grid_geometry.h"
+  :backend standard-library
+  :namespace ioj::sim::collision
   (record GridGeometry
     (member dimensions ioj::sim::collision::CellCoord)
     (member cell_dimensions @native_vector_3f)))

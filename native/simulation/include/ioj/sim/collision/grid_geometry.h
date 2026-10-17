@@ -3,89 +3,10 @@
 
 #pragma once
 
+#include "ioj/sim/collision/cell_coord.h"
 #include "ioj/vector_types.h"
 
-#include <cstddef>
-
 namespace ioj::sim::collision {
-struct CellCoord;
-
-struct CellCoord {
-    int x{};
-
-    int y{};
-
-    int z{};
-
-    bool operator==(CellCoord const&) const noexcept = default;
-
-    [[nodiscard]] constexpr CellCoord operator+(CellCoord other) const noexcept {
-        return {x + other.x, y + other.y, z + other.z};
-    }
-
-    [[nodiscard]] constexpr CellCoord operator-(CellCoord other) const noexcept {
-        return {x - other.x, y - other.y, z - other.z};
-    }
-
-    constexpr CellCoord& operator+=(CellCoord other) noexcept {
-        x += other.x;
-        y += other.y;
-        z += other.z;
-        return *this;
-    }
-
-    constexpr CellCoord& operator-=(CellCoord other) noexcept {
-        x -= other.x;
-        y -= other.y;
-        z -= other.z;
-        return *this;
-    }
-
-    [[nodiscard]] constexpr CellCoord operator+(int offset) const noexcept {
-        return {x + offset, y + offset, z + offset};
-    }
-
-    [[nodiscard]] constexpr CellCoord operator-(int offset) const noexcept {
-        return {x - offset, y - offset, z - offset};
-    }
-
-    constexpr CellCoord& operator+=(int offset) noexcept {
-        x += offset;
-        y += offset;
-        z += offset;
-        return *this;
-    }
-
-    constexpr CellCoord& operator-=(int offset) noexcept {
-        x -= offset;
-        y -= offset;
-        z -= offset;
-        return *this;
-    }
-
-    [[nodiscard]] constexpr CellCoord component_min(CellCoord other) const noexcept {
-        return {x < other.x ? x : other.x, y < other.y ? y : other.y, z < other.z ? z : other.z};
-    }
-
-    [[nodiscard]] constexpr CellCoord component_max(CellCoord other) const noexcept {
-        return {x > other.x ? x : other.x, y > other.y ? y : other.y, z > other.z ? z : other.z};
-    }
-
-    [[nodiscard]] constexpr CellCoord clamped(CellCoord minimum, CellCoord maximum) const noexcept {
-        return component_max(minimum).component_min(maximum);
-    }
-
-    int& operator[](std::size_t index) noexcept;
-
-    int operator[](std::size_t index) const noexcept;
-};
-
-struct CellCoordBounds {
-    ioj::sim::collision::CellCoord min;
-
-    ioj::sim::collision::CellCoord max;
-};
-
 struct GridGeometry {
     ioj::sim::collision::CellCoord dimensions;
 

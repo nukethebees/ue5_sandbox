@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/sim/collision/cell_coord.h>
+#include <ioj/sim/collision/cell_coord_bounds.h>
 #include <ioj/sim/collision/entity_aabbs.h>
 #include <ioj/sim/collision/grid_geometry.h>
 #include <ioj/sim/collision/world_aabbs.h>
