@@ -1,7 +1,7 @@
 #include "test_level_loader_scenario.h"
 #include <ioj/column_math.h>
+#include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/entities/entity_types.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/missions/mission_fail_reason.h>
 #include <ioj/sim/missions/mission_mode.h>

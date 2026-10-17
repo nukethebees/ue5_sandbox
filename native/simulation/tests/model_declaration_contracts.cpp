@@ -2,6 +2,7 @@
 // Keep these expectations independent of the LispB schema.
 #include <ioj/levels/diagnostic_code.h>
 #include <ioj/levels/level_mission_mode.h>
+#include <ioj/levels/team.h>
 #include <ioj/sim/capital_ships/capital_death_event.h>
 #include <ioj/sim/collision/cell_coord.h>
 #include <ioj/sim/collision/cell_coord_bounds.h>
@@ -12,7 +13,8 @@
 #include <ioj/sim/collision/trace_entity_filter.h>
 #include <ioj/sim/collision/trace_hits.h>
 #include <ioj/sim/collision/world_aabb.h>
-#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/entities/entity_type.h>
+#include <ioj/sim/entities/entity_unique_id.h>
 #include <ioj/sim/fighters/attack_distance_band.h>
 #include <ioj/sim/fighters/fighter_sim_config.h>
 #include <ioj/sim/fighters/navigation_records.h>

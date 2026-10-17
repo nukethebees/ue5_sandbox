@@ -8,7 +8,8 @@
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include <ioj/sim/capital_ships/sim.h>
-#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/entities/entity_type.h>
+#include <ioj/sim/entities/entity_unique_id.h>
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/turrets/sim.h>

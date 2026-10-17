@@ -1,7 +1,7 @@
 #pragma once
 
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/entities/entity_unique_id.h>
 #include <SpaceGamePresentation/entities/ShipHealth.h>
 
 #include <Blueprint/UserWidget.h>

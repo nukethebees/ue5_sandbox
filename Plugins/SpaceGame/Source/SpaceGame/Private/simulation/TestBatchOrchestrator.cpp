@@ -4,8 +4,8 @@
 #include "SpaceGame/system/GameSubsystem.h"
 #include <ioj/column_math.h>
 #include <ioj/invoke.h>
+#include <ioj/levels/team.h>
 #include <ioj/sim/entities/entity_ledger.h>
-#include <ioj/sim/entities/entity_types.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
 #include <ioj/sim/missions/mission_manager.h>
 #include <ioj/sim/sim_time.h>

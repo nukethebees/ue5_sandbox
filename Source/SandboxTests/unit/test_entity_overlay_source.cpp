@@ -4,7 +4,7 @@
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
 #include <ioj/column_math.h>
 #include <ioj/sim/entities/entity_identity_layout.h>
-#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/entities/entity_unique_id.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <SandboxTests/support/DisplayEntityTestData.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>

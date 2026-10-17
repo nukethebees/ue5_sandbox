@@ -1,11 +1,13 @@
 #pragma once
+#include <ioj/levels/team.h>
 #include <ioj/sim/collision/collision_system.h>
 #include <ioj/sim/collision/line_traces.h>
 #include <ioj/sim/collision/query_result_types.h>
 #include <ioj/sim/collision/trace_hits.h>
 #include <ioj/sim/entities/entity_instance_handle.h>
+#include <ioj/sim/entities/entity_type.h>
 #include <ioj/sim/entities/entity_type_radii.h>
-#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/entities/entity_unique_id.h>
 #include <ioj/sim/player/player_spatial_data.h>
 
 #include <cstddef>

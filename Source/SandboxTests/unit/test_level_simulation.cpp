@@ -1,7 +1,7 @@
 #include <ioj/column_math.h>
+#include <ioj/levels/team.h>
 #include <ioj/sim/collision/world_aabb_operations.h>
 #include <ioj/sim/entities/entity_type.h>
-#include <ioj/sim/entities/entity_types.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/levels/level_sim.h>

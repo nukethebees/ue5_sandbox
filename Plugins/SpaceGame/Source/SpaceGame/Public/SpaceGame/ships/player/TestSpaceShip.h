@@ -1,5 +1,5 @@
 #pragma once
-#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/entities/entity_unique_id.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/fire_rate.h>

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "ioj/sim/entities/entity_types.h"
+#include <ioj/levels/team.h>
+#include <ioj/sim/entities/entity_type.h>
 
 #include <array>
 #include <cstddef>

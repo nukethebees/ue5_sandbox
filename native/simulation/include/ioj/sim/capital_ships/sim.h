@@ -1,12 +1,14 @@
 #pragma once
 #include <ioj/frame_memory_resource.h>
+#include <ioj/levels/team.h>
 #include <ioj/sim/capital_ships/capital_death_event.h>
 #include <ioj/sim/capital_ships/capital_entity_data.h>
 #include <ioj/sim/capital_ships/capital_ship_sim_config.h>
 #include <ioj/sim/entities/entity_death_info.h>
 #include <ioj/sim/entities/entity_frame_change.h>
 #include <ioj/sim/entities/entity_tables.h>
-#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/entities/entity_type.h>
+#include <ioj/sim/entities/entity_unique_id.h>
 #include <ioj/sim/fighters/command_interface.h>
 #include <ioj/sim/fighters/fighter_order_queue.h>
 #include <ioj/sim/index_span.h>

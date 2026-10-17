@@ -1,6 +1,7 @@
 #include <ioj/sim/entities/entity_tables.h>
 #pragma once
-#include <ioj/sim/entities/entity_types.h>
+#include <ioj/levels/team.h>
+#include <ioj/sim/entities/entity_unique_id.h>
 #include <ioj/sim/entities/health_table.h>
 #include <ioj/sim/entities/ship_health.h>
 #include <ioj/sim/player/fire_rate.h>

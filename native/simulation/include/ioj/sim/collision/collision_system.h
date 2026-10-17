@@ -4,7 +4,7 @@
 #include <ioj/sim/collision/collision_uniform_grid.h>
 #include <ioj/sim/collision/entity_overlaps.h>
 #include <ioj/sim/collision/line_traces.h>
-#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/entities/entity_unique_id.h>
 
 #include <cstdint>
 #include <span>

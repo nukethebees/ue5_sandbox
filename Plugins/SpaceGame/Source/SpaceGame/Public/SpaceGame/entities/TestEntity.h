@@ -1,6 +1,6 @@
 #pragma once
 
-#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/entities/entity_unique_id.h>
 
 #include <CoreMinimal.h>
 #include <UObject/Interface.h>

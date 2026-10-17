@@ -1,6 +1,6 @@
 #include "SpaceGamePresentation/presentation/widgets/TeamEntityTableWidget.h"
 
-#include <ioj/sim/entities/entity_types.h>
+#include <ioj/sim/entities/entity_type.h>
 #include <SpaceGamePresentation/entities/EntityTypeDisplayNames.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 

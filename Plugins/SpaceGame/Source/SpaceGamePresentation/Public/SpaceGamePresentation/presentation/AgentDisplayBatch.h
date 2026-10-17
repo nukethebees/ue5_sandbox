@@ -1,7 +1,9 @@
 #pragma once
 
 #include <ioj/column_math.h>
-#include <ioj/sim/entities/entity_types.h>
+#include <ioj/levels/team.h>
+#include <ioj/sim/entities/entity_type.h>
+#include <ioj/sim/entities/entity_unique_id.h>
 #include <ioj/sim/entities/health_table.h>
 #include <ioj/vectors3f.h>
 
