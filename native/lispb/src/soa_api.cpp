@@ -10,7 +10,7 @@ namespace codegen::detail {
 auto uses_native_vector_view(SoaSchema const& schema, TypeRegistry const& types) -> bool {
     if (schema.equivalent_type) {
         auto const spelling{resolve_type(*schema.equivalent_type, types).spelling};
-        if (spelling != "Vector3f" && spelling != "HMM_Vec3") {
+        if (spelling != "Vector3f") {
             return false;
         }
     }

@@ -103,8 +103,8 @@ auto FSandboxISMCInstanceChunkWriter::set_transforms(TConstArrayView<FVector3f> 
         ml::sandbox_ismc::TransformBounds bounds{};
         ml::sandbox_ismc::pack_transforms(input, parameters, output, &bounds);
         bounds_ = bounds.valid
-                    ? FBox3f{FVector3f{bounds.minimum.X, bounds.minimum.Y, bounds.minimum.Z},
-                             FVector3f{bounds.maximum.X, bounds.maximum.Y, bounds.maximum.Z}}
+                    ? FBox3f{FVector3f{bounds.minimum.x(), bounds.minimum.y(), bounds.minimum.z()},
+                             FVector3f{bounds.maximum.x(), bounds.maximum.y(), bounds.maximum.z()}}
                     : FBox3f{ForceInit};
     } else {
         ml::sandbox_ismc::pack_transforms(input, parameters, output);

@@ -23,7 +23,7 @@ auto to_native(FLinearColor const color) -> ioj::ui::Color4f {
 }
 
 auto to_unreal(ioj::ui::Vector2f const value) -> FVector2f {
-    return {value.x, value.y};
+    return {value.x(), value.y()};
 }
 
 auto to_native(FHeatmapGrid const& grid) -> ioj::ui::heatmap_2d::Grid {

@@ -11,12 +11,12 @@
 
 namespace ml::presentation {
 using ::ioj::Team;
+using ::ioj::Vector3f;
+using ::ioj::Vectors3fConstView;
 using ::ioj::sim::EntityType;
 using ::ioj::sim::EntityUniqueId;
 using ::ioj::sim::Health;
 using ::ioj::sim::HealthConstView;
-using ::ioj::sim::Vector3f;
-using ::ioj::sim::Vectors3fConstView;
 // Borrowed owner columns, valid only until the next structural mutation.
 // Static/indestructible owners omit columns whose values are constant.
 struct AgentDisplayBatch {

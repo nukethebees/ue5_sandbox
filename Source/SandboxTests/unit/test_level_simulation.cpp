@@ -213,8 +213,8 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
     initial_storage.add_uninitialised(1);
     auto const initial{initial_storage.get_view()};
     initial.entity_indices()[0] = data.level_events.initialisation.entity_count++;
-    ::ioj::sim::set_vector(initial.view_locations(), 0, ml::make_vector3f(-1000.f, 1000.f, 0.f));
-    ::ioj::sim::set_rotation(initial.view_rotations(), 0, {});
+    ::ioj::set_vector(initial.view_locations(), 0, ml::make_vector3f(-1000.f, 1000.f, 0.f));
+    ioj::set_rotation(initial.view_rotations(), 0, {});
     initial.teams()[0] = ::ioj::Team::Blue;
     initial.healths()[0] = 100;
     initial.laser_damages()[0] = 0;
@@ -303,7 +303,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
     FLevelPresentation presentation{resources, visible.get_read_access(), {}};
     struct FEntitySnapshot {
         std::vector<::ioj::sim::Health> healths;
-        std::vector<::ioj::sim::Vector3f> locations;
+        std::vector<::ioj::Vector3f> locations;
         std::vector<::ioj::Team> teams;
         std::vector<::ioj::sim::EntityType> types;
     };
@@ -317,8 +317,7 @@ auto FLevelSimPresentationEquivalenceTest::RunTest(FString const&) -> bool {
             auto const entity_count{entities.num()};
             for (uint32 index{}; index < entity_count; ++index) {
                 snapshot.healths.push_back(view.get_healths().health(index));
-                snapshot.locations.push_back(
-                    ::ioj::sim::vector_at(entities.view_locations(), index));
+                snapshot.locations.push_back(::ioj::vector_at(entities.view_locations(), index));
                 snapshot.teams.push_back(entities.teams()[index]);
                 snapshot.types.push_back(type);
             }
@@ -658,16 +657,16 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
                 static_cast<float>((spawn == 0 ? 0.5 : 2.0 + static_cast<double>(id % 45)) * dt)};
             auto const colour{FLinearColor::White};
 
-            ::ioj::sim::set_vector(
+            ::ioj::set_vector(
                 requests.get_view().view_locations(),
                 spawn,
                 ml::to_native(FVector3f{0.0f, static_cast<float>(id * 10), 100000.0f}));
-            ::ioj::sim::set_rotation(requests.get_view().view_rotations(),
-                                     spawn,
-                                     ml::to_native(FRotator3f::ZeroRotator));
-            ::ioj::sim::set_vector(requests.get_view().view_base_velocities(),
-                                   spawn,
-                                   ml::to_native(FVector3f::ZeroVector));
+            ioj::set_rotation(requests.get_view().view_rotations(),
+                              spawn,
+                              ml::to_native(FRotator3f::ZeroRotator));
+            ::ioj::set_vector(requests.get_view().view_base_velocities(),
+                              spawn,
+                              ml::to_native(FVector3f::ZeroVector));
             requests.get_view().damages()[spawn] = 1;
             requests.get_view().speeds()[spawn] = 1000.0f;
             requests.get_view().max_distances()[spawn] =

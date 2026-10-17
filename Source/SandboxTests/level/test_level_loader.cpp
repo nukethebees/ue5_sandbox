@@ -465,7 +465,7 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
     auto const capitals{level->get_capital_ships().get_entities()};
     auto const capital_count{capitals.num()};
     for (uint32 i{}; i < capital_count; ++i) {
-        auto const position{ml::to_unreal(::ioj::sim::vector_at(capitals.view_locations(), i))};
+        auto const position{ml::to_unreal(::ioj::vector_at(capitals.view_locations(), i))};
         auto const team{ml::to_unreal(capitals.teams()[i])};
         if (team == ETestTeam::Blue) {
             sample.blue_capital_position = position;
@@ -477,7 +477,7 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
     auto const turret_count{turrets.num()};
     for (uint32 i{}; i < turret_count; ++i) {
         if (ml::to_unreal(turrets.teams()[i]) == ETestTeam::Red) {
-            auto const position{ml::to_unreal(::ioj::sim::vector_at(turrets.view_locations(), i))};
+            auto const position{ml::to_unreal(::ioj::vector_at(turrets.view_locations(), i))};
             sample.red_turret_position = position;
         }
     }

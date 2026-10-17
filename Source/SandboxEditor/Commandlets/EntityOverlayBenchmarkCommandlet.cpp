@@ -66,7 +66,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     for (int32 index{0}; index < count; ++index) {
         entities.get_view().entity_ids()[index] = ::ioj::sim::EntityUniqueId(
             static_cast<std::uint32_t>(index), ::ioj::sim::EntityType::Turret);
-        ::ioj::sim::set_vector(
+        ::ioj::set_vector(
             entities.get_view().view_locations(), index, ml::to_native(positions[index]));
         entities.get_view().teams()[index] =
             static_cast<::ioj::Team>(index % ml::enum_count<::ioj::Team>());
@@ -110,7 +110,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         return false;
     }
 
-    ::ioj::sim::set_vector(entities.get_view().view_locations(), count - 1, {100.0f, 50.0f, 50.0f});
+    ::ioj::set_vector(entities.get_view().view_locations(), count - 1, {100.0f, 50.0f, 50.0f});
     auto& moved_frame{frame_store->next()};
     static_cast<void>(collect_entity_overlay_instances(make_view(entities, health_table),
                                                        entity_type_radii,

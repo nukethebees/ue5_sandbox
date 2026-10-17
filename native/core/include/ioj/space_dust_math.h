@@ -27,7 +27,7 @@ struct Tuning {
     float volume_edge_fade_fraction{0.15f};
 };
 
-using WorldLocation = ioj::Vector<double, 3>;
+using WorldLocation = ::ioj::Vector<double, 3>;
 
 struct ParticleVariation {
     float size_scale{};

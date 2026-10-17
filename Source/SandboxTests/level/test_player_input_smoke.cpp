@@ -261,22 +261,22 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         auto const* const orchestrator{level_setup.get_orchestrator()};
         auto const* const sim{IsValid(orchestrator) ? orchestrator->get_player_ship_simulation()
                                                     : nullptr};
-        return sim != nullptr ? sim->get_flight_intent().rotation.x : 0.0f;
+        return sim != nullptr ? sim->get_flight_intent().rotation.x() : 0.0f;
     }
 
     auto native_yaw() const -> float {
         auto const* const sim{level_setup.get_orchestrator()->get_player_ship_simulation()};
-        return sim != nullptr ? sim->get_flight_intent().rotation.y : 0.0f;
+        return sim != nullptr ? sim->get_flight_intent().rotation.y() : 0.0f;
     }
 
     auto native_roll() const -> float {
         auto const* const sim{level_setup.get_orchestrator()->get_player_ship_simulation()};
-        return sim != nullptr ? sim->get_flight_intent().rotation.z : 0.0f;
+        return sim != nullptr ? sim->get_flight_intent().rotation.z() : 0.0f;
     }
 
     auto native_vertical() const -> float {
         auto const* const sim{level_setup.get_orchestrator()->get_player_ship_simulation()};
-        return sim != nullptr ? sim->get_flight_intent().translation.z : 0.0f;
+        return sim != nullptr ? sim->get_flight_intent().translation.z() : 0.0f;
     }
 
     auto native_rotation(ml::ioj::ESpaceGameInputAxis const axis) const -> float {
@@ -472,12 +472,12 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                     auto const* const sim{
                         level_setup.get_orchestrator()->get_player_ship_simulation()};
                     return !checks.all_passed ||
-                           (sim && sim->get_flight_intent().translation.z < -0.5f);
+                           (sim && sim->get_flight_intent().translation.z() < -0.5f);
                 },
                 timeout)
             .Then([this] {
                 auto const* const sim{level_setup.get_orchestrator()->get_player_ship_simulation()};
-                checks.is_true(sim && sim->get_flight_intent().translation.z < -0.5f,
+                checks.is_true(sim && sim->get_flight_intent().translation.z() < -0.5f,
                                TEXT("Gunship gamepad A sends negative vertical intent"));
                 checks.is_true(sim && sim->laser_firing_mode == ::ioj::sim::LaserFiringState::idle,
                                TEXT("Gunship gamepad A does not fire"));
@@ -622,12 +622,12 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                     auto const* const sim{
                         level_setup.get_orchestrator()->get_player_ship_simulation()};
                     return !checks.all_passed ||
-                           (sim != nullptr && sim->get_flight_intent().translation.z < -0.5f);
+                           (sim != nullptr && sim->get_flight_intent().translation.z() < -0.5f);
                 },
                 timeout)
             .Then([this] {
                 auto const* const sim{level_setup.get_orchestrator()->get_player_ship_simulation()};
-                checks.is_true(sim != nullptr && sim->get_flight_intent().translation.z < -0.5f,
+                checks.is_true(sim != nullptr && sim->get_flight_intent().translation.z() < -0.5f,
                                TEXT("Slate and CommonUI route A to descent"));
                 checks.is_true(sim != nullptr &&
                                    sim->laser_firing_mode == ::ioj::sim::LaserFiringState::idle,

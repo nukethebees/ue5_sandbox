@@ -15,17 +15,17 @@ namespace mesh_gen::tests {
 namespace {
 
 [[nodiscard]] auto subtract(Vec3f const left, Vec3f const right) -> Vec3f {
-    return {left.x - right.x, left.y - right.y, left.z - right.z};
+    return {left.x() - right.x(), left.y() - right.y(), left.z() - right.z()};
 }
 
 [[nodiscard]] auto cross(Vec3f const left, Vec3f const right) -> Vec3f {
-    return {left.y * right.z - left.z * right.y,
-            left.z * right.x - left.x * right.z,
-            left.x * right.y - left.y * right.x};
+    return {left.y() * right.z() - left.z() * right.y(),
+            left.z() * right.x() - left.x() * right.z(),
+            left.x() * right.y() - left.y() * right.x()};
 }
 
 [[nodiscard]] auto dot(Vec3f const left, Vec3f const right) -> float {
-    return left.x * right.x + left.y * right.y + left.z * right.z;
+    return left.x() * right.x() + left.y() * right.y() + left.z() * right.z();
 }
 
 [[nodiscard]] auto length_squared(Vec3f const value) -> float {
@@ -39,8 +39,9 @@ namespace {
 
 [[nodiscard]] auto nearly_equal(Vec3f const left, Vec3f const right, float const tolerance = 0.001f)
     -> bool {
-    return nearly_equal(left.x, right.x, tolerance) && nearly_equal(left.y, right.y, tolerance) &&
-           nearly_equal(left.z, right.z, tolerance);
+    return nearly_equal(left.x(), right.x(), tolerance) &&
+           nearly_equal(left.y(), right.y(), tolerance) &&
+           nearly_equal(left.z(), right.z(), tolerance);
 }
 
 struct Bounds {
@@ -55,12 +56,12 @@ struct Bounds {
 [[nodiscard]] auto bounds_of(MeshData const& mesh) -> Bounds {
     Bounds bounds;
     for (auto const position : mesh.positions) {
-        bounds.minimum.x = std::min(bounds.minimum.x, position.x);
-        bounds.minimum.y = std::min(bounds.minimum.y, position.y);
-        bounds.minimum.z = std::min(bounds.minimum.z, position.z);
-        bounds.maximum.x = std::max(bounds.maximum.x, position.x);
-        bounds.maximum.y = std::max(bounds.maximum.y, position.y);
-        bounds.maximum.z = std::max(bounds.maximum.z, position.z);
+        bounds.minimum.x() = std::min(bounds.minimum.x(), position.x());
+        bounds.minimum.y() = std::min(bounds.minimum.y(), position.y());
+        bounds.minimum.z() = std::min(bounds.minimum.z(), position.z());
+        bounds.maximum.x() = std::max(bounds.maximum.x(), position.x());
+        bounds.maximum.y() = std::max(bounds.maximum.y(), position.y());
+        bounds.maximum.z() = std::max(bounds.maximum.z(), position.z());
     }
     return bounds;
 }
@@ -68,18 +69,18 @@ struct Bounds {
 void expect_valid_geometry(MeshData const& mesh) {
     ASSERT_TRUE(is_valid_mesh_data(mesh));
     for (auto const normal : mesh.normals) {
-        EXPECT_TRUE(std::isfinite(normal.x));
-        EXPECT_TRUE(std::isfinite(normal.y));
-        EXPECT_TRUE(std::isfinite(normal.z));
+        EXPECT_TRUE(std::isfinite(normal.x()));
+        EXPECT_TRUE(std::isfinite(normal.y()));
+        EXPECT_TRUE(std::isfinite(normal.z()));
         EXPECT_TRUE(nearly_equal(length_squared(normal), 1.0f));
     }
     for (auto const uv : mesh.uvs) {
-        EXPECT_TRUE(std::isfinite(uv.x));
-        EXPECT_TRUE(std::isfinite(uv.y));
-        EXPECT_GE(uv.x, 0.0f);
-        EXPECT_LE(uv.x, 1.0f);
-        EXPECT_GE(uv.y, 0.0f);
-        EXPECT_LE(uv.y, 1.0f);
+        EXPECT_TRUE(std::isfinite(uv.x()));
+        EXPECT_TRUE(std::isfinite(uv.y()));
+        EXPECT_GE(uv.x(), 0.0f);
+        EXPECT_LE(uv.x(), 1.0f);
+        EXPECT_GE(uv.y(), 0.0f);
+        EXPECT_LE(uv.y(), 1.0f);
     }
 
     auto const triangle_count{mesh.indices.size() / 3};
@@ -179,10 +180,10 @@ TEST(PrimitiveGenerators, HonorRequestedBoundsAndOrientation) {
 
     auto const flat_hex_bounds{bounds_of(generate_hex_frame({40.0f, 6.0f, 12.0f, false}))};
     auto const pointy_hex_bounds{bounds_of(generate_hex_frame({40.0f, 6.0f, 12.0f, true}))};
-    EXPECT_TRUE(nearly_equal(flat_hex_bounds.maximum.x, 40.0f));
-    EXPECT_TRUE(nearly_equal(pointy_hex_bounds.maximum.y, 40.0f));
-    EXPECT_TRUE(nearly_equal(flat_hex_bounds.maximum.x, pointy_hex_bounds.maximum.y));
-    EXPECT_TRUE(nearly_equal(flat_hex_bounds.maximum.y, pointy_hex_bounds.maximum.x));
+    EXPECT_TRUE(nearly_equal(flat_hex_bounds.maximum.x(), 40.0f));
+    EXPECT_TRUE(nearly_equal(pointy_hex_bounds.maximum.y(), 40.0f));
+    EXPECT_TRUE(nearly_equal(flat_hex_bounds.maximum.x(), pointy_hex_bounds.maximum.y()));
+    EXPECT_TRUE(nearly_equal(flat_hex_bounds.maximum.y(), pointy_hex_bounds.maximum.x()));
 }
 
 TEST(HoneycombGenerator, SharesInternalEdgesAndLeavesCentersOpen) {
@@ -190,13 +191,13 @@ TEST(HoneycombGenerator, SharesInternalEdgesAndLeavesCentersOpen) {
     EXPECT_EQ(panel.positions.size(), 19 * 24);
     EXPECT_EQ(panel.indices.size(), 19 * 36);
     auto const panel_bounds{bounds_of(panel)};
-    EXPECT_TRUE(nearly_equal(panel_bounds.minimum.z, -6.0f));
-    EXPECT_TRUE(nearly_equal(panel_bounds.maximum.z, 6.0f));
+    EXPECT_TRUE(nearly_equal(panel_bounds.minimum.z(), -6.0f));
+    EXPECT_TRUE(nearly_equal(panel_bounds.maximum.z(), 6.0f));
 
     auto minimum_radius{std::numeric_limits<float>::max()};
     for (auto const position : generate_honeycomb_panel({1, 1, 40.0f, 6.0f, 12.0f}).positions) {
-        minimum_radius =
-            std::min(minimum_radius, std::sqrt(position.x * position.x + position.y * position.y));
+        minimum_radius = std::min(
+            minimum_radius, std::sqrt(position.x() * position.x() + position.y() * position.y()));
     }
     EXPECT_GT(minimum_radius, 0.0f);
 }
@@ -229,7 +230,7 @@ TEST(AssemblyGeneration, AppendsOffsetsAndTransformsBuffers) {
     EXPECT_EQ(assembly.indices[36], box.indices[0] + 24);
     EXPECT_TRUE(
         nearly_equal(assembly.positions[24],
-                     {box.positions[0].x + 100.0f, box.positions[0].y, box.positions[0].z}));
+                     {box.positions[0].x() + 100.0f, box.positions[0].y(), box.positions[0].z()}));
 
     MeshData source;
     source.positions.push_back({1.0f, 0.0f, 0.0f});
@@ -258,7 +259,7 @@ TEST(AssemblyGeneration, ValidatesVisibilityAndDeterminism) {
 
     parts[1].visible = false;
     EXPECT_EQ(generate_assembly(parts).positions.size(), generate_box().positions.size());
-    parts[0].transform.scale.x = 0.0f;
+    parts[0].transform.scale.x() = 0.0f;
     EXPECT_EQ(validate_assembly(parts), "Part 1: all scale values must be greater than zero.");
 }
 

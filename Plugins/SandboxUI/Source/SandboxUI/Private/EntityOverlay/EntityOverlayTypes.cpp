@@ -56,9 +56,9 @@ auto FEntityOverlayCollector::try_add_impl(FVector3f const position,
         return false;
     }
     auto const& instance{addition->instance};
-    auto const added_index{output_instances_->Add({.world_position = {instance.world_position.x,
-                                                                      instance.world_position.y,
-                                                                      instance.world_position.z},
+    auto const added_index{output_instances_->Add({.world_position = {instance.world_position.x(),
+                                                                      instance.world_position.y(),
+                                                                      instance.world_position.z()},
                                                    .health = instance.health,
                                                    .world_radius = instance.world_radius,
                                                    .display_data = instance.display_data})};

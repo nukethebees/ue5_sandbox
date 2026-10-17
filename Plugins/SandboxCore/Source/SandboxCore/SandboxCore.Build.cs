@@ -36,8 +36,6 @@ public class SandboxCore : ModuleRules
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "simulation", "include"));
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "profiling", "include"));
-        PublicSystemIncludePaths.Add(
-            Path.Combine(repositoryRoot, "native", "third_party", "handmade_math"));
 
         if (!Target.bGenerateProjectFiles)
         {

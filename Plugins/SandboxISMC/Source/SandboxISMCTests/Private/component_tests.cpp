@@ -566,7 +566,7 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                     }
                 });
             auto const q{ml::sandbox_ismc::unpack_quat32(packed.rotation)};
-            FTransform3f const decoded{FQuat4f{q.X, q.Y, q.Z, q.W},
+            FTransform3f const decoded{FQuat4f{q.x(), q.y(), q.z(), q.w()},
                                        FVector3f{packed.position[0] * 16.0f,
                                                  packed.position[1] * 16.0f,
                                                  packed.position[2] * 16.0f}};

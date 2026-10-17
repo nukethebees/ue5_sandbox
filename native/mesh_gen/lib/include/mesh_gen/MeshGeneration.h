@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/vector.h>
+
 #include <cstdint>
 #include <span>
 #include <string>
@@ -7,20 +9,8 @@
 
 namespace mesh_gen {
 
-struct Vec2f {
-    float x{};
-    float y{};
-
-    [[nodiscard]] auto operator==(Vec2f const&) const -> bool = default;
-};
-
-struct Vec3f {
-    float x{};
-    float y{};
-    float z{};
-
-    [[nodiscard]] auto operator==(Vec3f const&) const -> bool = default;
-};
+using Vec2f = ioj::Vector<float, 2>;
+using Vec3f = ioj::Vector<float, 3>;
 
 struct Rotatorf {
     float pitch{};

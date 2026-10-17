@@ -42,9 +42,9 @@ using namespace math;
     auto const result{std::snprintf(buffer,
                                     sizeof(buffer),
                                     "X=%.3f Y=%.3f Z=%.3f",
-                                    static_cast<double>(value.x),
-                                    static_cast<double>(value.y),
-                                    static_cast<double>(value.z))};
+                                    static_cast<double>(value.x()),
+                                    static_cast<double>(value.y()),
+                                    static_cast<double>(value.z()))};
     if (result < 0) {
         return {};
     }
@@ -207,9 +207,9 @@ auto validate_request(GenerationRequest const& request) -> std::string {
                 request.wedge.top_length <= 0.0f) {
                 return "Wedge dimensions and top length must be positive.";
             }
-            if (request.wedge.top_length > request.wedge.dimensions.x ||
+            if (request.wedge.top_length > request.wedge.dimensions.x() ||
                 std::abs(request.wedge.top_offset) + request.wedge.top_length * 0.5f >
-                    request.wedge.dimensions.x * 0.5f) {
+                    request.wedge.dimensions.x() * 0.5f) {
                 return "Wedge top length and offset must keep the top within its base.";
             }
             break;
@@ -350,9 +350,9 @@ void append_transformed_mesh(MeshData& destination,
             transform.translation);
     }
     for (auto const normal : source.normals) {
-        auto const inverse_scaled_normal{Vec3f{normal.x / transform.scale.x,
-                                               normal.y / transform.scale.y,
-                                               normal.z / transform.scale.z}};
+        auto const inverse_scaled_normal{Vec3f{normal.x() / transform.scale.x(),
+                                               normal.y() / transform.scale.y(),
+                                               normal.z() / transform.scale.z()}};
         destination.normals.push_back(normalize(rotate(inverse_scaled_normal, transform.rotation)));
     }
     destination.uvs.insert(destination.uvs.end(), source.uvs.begin(), source.uvs.end());

@@ -41,7 +41,7 @@ foreach(native_simulation_target IN LISTS native_simulation_targets)
   target_link_libraries(${native_simulation_target}
     PUBLIC
       sandbox::native_defaults
-      sandbox::handmade_math
+
       native-memory
       native-core
       native-levels

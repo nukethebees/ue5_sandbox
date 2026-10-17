@@ -26,7 +26,7 @@ add_library(native-soa INTERFACE)
 target_include_directories(native-soa INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include" "${NATIVE_SOA_GENERATED}")
 target_include_directories(native-soa INTERFACE "${PROJECT_SOURCE_DIR}/native/core/include")
 target_sources(native-soa INTERFACE "${NATIVE_SOA_GENERATED}/native_soa_types.h")
-target_link_libraries(native-soa INTERFACE sandbox::handmade_math sandbox::native_defaults)
+target_link_libraries(native-soa INTERFACE sandbox::native_defaults)
 
 add_executable(native-soa-tests tests.cpp "${NATIVE_SOA_GENERATED}/native_soa_types.cpp")
 ioj_enable_warnings(native-soa-tests)
@@ -63,7 +63,7 @@ target_include_directories(native-soa-benchmarks PRIVATE
 target_link_libraries(native-soa-benchmarks
   PRIVATE
     sandbox::native_defaults
-    sandbox::handmade_math
+
     native-levels
     benchmark::benchmark_main
     ioj::arch_avx2

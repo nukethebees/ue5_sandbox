@@ -99,8 +99,8 @@ FVector2D SGraphPlot::ComputeDesiredSize(float) const {
 void SGraphPlot::update_layout(FVector2f const local_size) const {
     auto const layout{ioj::ui::graph::make_plot_layout({local_size.X, local_size.Y},
                                                        native_layout_settings(style_))};
-    plot_origin_ = {layout.origin.x, layout.origin.y};
-    plot_size_ = {layout.size.x, layout.size.y};
+    plot_origin_ = {layout.origin.x(), layout.origin.y()};
+    plot_size_ = {layout.size.x(), layout.size.y()};
 
     auto const cache_rebuilt{cache_.update(plot_size_)};
     if (cache_rebuilt || ticks_dirty_) {

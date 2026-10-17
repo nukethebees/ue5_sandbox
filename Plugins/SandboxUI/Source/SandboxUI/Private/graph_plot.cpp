@@ -199,11 +199,11 @@ void FGraphRenderCache::build_series(int32 const series_index, FVector2f const p
 
     cached.data_points.Reset(static_cast<int32>(data_points.size()));
     for (auto const point : data_points) {
-        cached.data_points.Emplace(point.x, point.y);
+        cached.data_points.Emplace(point.x(), point.y());
     }
     cached.render_points.Reset(static_cast<int32>(render_points.size()));
     for (auto const point : render_points) {
-        cached.render_points.Emplace(point.x, point.y);
+        cached.render_points.Emplace(point.x(), point.y());
     }
     stats_.decimated |= decimated;
 }

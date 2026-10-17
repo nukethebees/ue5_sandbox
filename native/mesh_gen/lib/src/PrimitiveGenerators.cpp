@@ -90,7 +90,7 @@ void add_projected_polygon(MeshData& mesh_data,
         }
     }
 
-    auto const tangent_reference{std::abs(normal.z) < 0.9f ? z_axis : y_axis};
+    auto const tangent_reference{std::abs(normal.z()) < 0.9f ? z_axis : y_axis};
     auto const tangent{normalize(cross(tangent_reference, normal))};
     auto const bitangent{cross(normal, tangent)};
     Vec2f uv_min{std::numeric_limits<float>::max(), std::numeric_limits<float>::max()};
@@ -100,10 +100,10 @@ void add_projected_polygon(MeshData& mesh_data,
     for (auto const position : positions) {
         auto const uv{Vec2f{dot(position, tangent), dot(position, bitangent)}};
         projected_uvs.push_back(uv);
-        uv_min.x = std::min(uv_min.x, uv.x);
-        uv_min.y = std::min(uv_min.y, uv.y);
-        uv_max.x = std::max(uv_max.x, uv.x);
-        uv_max.y = std::max(uv_max.y, uv.y);
+        uv_min.x() = std::min(uv_min.x(), uv.x());
+        uv_min.y() = std::min(uv_min.y(), uv.y());
+        uv_max.x() = std::max(uv_max.x(), uv.x());
+        uv_max.y() = std::max(uv_max.y(), uv.y());
     }
 
     auto const uv_size{uv_max - uv_min};
@@ -113,8 +113,8 @@ void add_projected_polygon(MeshData& mesh_data,
         auto const uv{projected_uvs[vertex_index] - uv_min};
         mesh_data.positions.push_back(positions[vertex_index]);
         mesh_data.normals.push_back(normal);
-        mesh_data.uvs.push_back({uv_size.x > small_number ? uv.x / uv_size.x : 0.0f,
-                                 uv_size.y > small_number ? uv.y / uv_size.y : 0.0f});
+        mesh_data.uvs.push_back({uv_size.x() > small_number ? uv.x() / uv_size.x() : 0.0f,
+                                 uv_size.y() > small_number ? uv.y() / uv_size.y() : 0.0f});
     }
     for (std::size_t vertex_index{1}; vertex_index < vertex_count - 1; ++vertex_index) {
         mesh_data.indices.insert(mesh_data.indices.end(),
@@ -143,7 +143,7 @@ void add_beveled_box_face(MeshData& mesh_data,
     std::vector<Vec3f> positions;
     positions.reserve(outline.size());
     for (auto const point : outline) {
-        positions.push_back(center + horizontal * point.x + vertical * point.y);
+        positions.push_back(center + horizontal * point.x() + vertical * point.y());
     }
     add_projected_polygon(mesh_data, normal, std::move(positions), false);
 }
@@ -205,7 +205,7 @@ void add_cylinder_cap(MeshData& mesh_data,
         auto const next{
             center_index + 1 +
             static_cast<std::uint32_t>((segment_index + 1) % parameters.radial_segments)};
-        if (normal.z > 0.0f) {
+        if (normal.z() > 0.0f) {
             mesh_data.indices.insert(mesh_data.indices.end(), {center_index, next, current});
         } else {
             mesh_data.indices.insert(mesh_data.indices.end(), {center_index, current, next});
@@ -301,8 +301,8 @@ void add_hex_tile_triangle(MeshData& mesh_data,
                            Vec3f const normal,
                            float const uv_radius) {
     auto const make_uv = [uv_radius](Vec3f const position) {
-        return Vec2f{position.x / (2.0f * uv_radius) + 0.5f,
-                     position.y / (2.0f * uv_radius) + 0.5f};
+        return Vec2f{position.x() / (2.0f * uv_radius) + 0.5f,
+                     position.y() / (2.0f * uv_radius) + 0.5f};
     };
     auto const base_index{static_cast<std::uint32_t>(mesh_data.positions.size())};
     mesh_data.positions.insert(mesh_data.positions.end(), {first, second, third});
@@ -336,7 +336,7 @@ void add_wall_segment(MeshData& mesh_data,
                       float const wall_thickness,
                       float const depth) {
     auto const direction{normalize(end - start)};
-    auto const perpendicular{Vec2f{-direction.y, direction.x}};
+    auto const perpendicular{Vec2f{-direction.y(), direction.x()}};
     auto const half_width{wall_thickness * 0.5f};
     auto const half_depth{depth * 0.5f};
     auto const extended_start{start - direction * half_width};
@@ -347,7 +347,7 @@ void add_wall_segment(MeshData& mesh_data,
     auto const end_right{extended_end - perpendicular * half_width};
 
     auto const make_position = [](Vec2f const position, float const z) {
-        return Vec3f{position.x, position.y, z};
+        return Vec3f{position.x(), position.y(), z};
     };
     auto const top_start_left{make_position(start_left, half_depth)};
     auto const top_start_right{make_position(start_right, half_depth)};
@@ -357,8 +357,8 @@ void add_wall_segment(MeshData& mesh_data,
     auto const bottom_start_right{make_position(start_right, -half_depth)};
     auto const bottom_end_left{make_position(end_left, -half_depth)};
     auto const bottom_end_right{make_position(end_right, -half_depth)};
-    auto const direction_3d{Vec3f{direction.x, direction.y, 0.0f}};
-    auto const perpendicular_3d{Vec3f{perpendicular.x, perpendicular.y, 0.0f}};
+    auto const direction_3d{Vec3f{direction.x(), direction.y(), 0.0f}};
+    auto const perpendicular_3d{Vec3f{perpendicular.x(), perpendicular.y(), 0.0f}};
 
     append_quad(mesh_data, top_start_right, top_end_right, top_end_left, top_start_left, z_axis);
     append_quad(mesh_data,
@@ -408,8 +408,8 @@ void add_wall_segment(MeshData& mesh_data,
     -> EdgeKey {
     constexpr double quantization_scale{1000.0};
     auto const midpoint{(start + end) * 0.5f};
-    return {std::llround(static_cast<double>(midpoint.x) * quantization_scale),
-            std::llround(static_cast<double>(midpoint.y) * quantization_scale),
+    return {std::llround(static_cast<double>(midpoint.x()) * quantization_scale),
+            std::llround(static_cast<double>(midpoint.y()) * quantization_scale),
             side_index % 3};
 }
 
@@ -423,9 +423,9 @@ auto generate_box(BoxParameters const& parameters) -> MeshData {
     mesh_data.indices.reserve(36);
 
     auto const half_dimensions{parameters.dimensions * 0.5f};
-    auto const x{half_dimensions.x};
-    auto const y{half_dimensions.y};
-    auto const z{half_dimensions.z};
+    auto const x{half_dimensions.x()};
+    auto const y{half_dimensions.y()};
+    auto const z{half_dimensions.z()};
 
     add_box_face(mesh_data, x_axis, {x, -y, -z}, {x, y, -z}, {x, y, z}, {x, -y, z});
     add_box_face(mesh_data, -x_axis, {-x, y, -z}, {-x, -y, -z}, {-x, -y, z}, {-x, y, z});
@@ -448,9 +448,9 @@ auto generate_beveled_box(BeveledBoxParameters const& parameters) -> MeshData {
     mesh_data.indices.reserve(204);
 
     auto const half_dimensions{parameters.dimensions * 0.5f};
-    auto const x{half_dimensions.x};
-    auto const y{half_dimensions.y};
-    auto const z{half_dimensions.z};
+    auto const x{half_dimensions.x()};
+    auto const y{half_dimensions.y()};
+    auto const z{half_dimensions.z()};
     auto const bevel{parameters.bevel_width};
 
     add_beveled_box_face(mesh_data, {x, 0.0f, 0.0f}, x_axis, y_axis, z_axis, y, z, bevel);
@@ -515,9 +515,9 @@ auto generate_beveled_box(BeveledBoxParameters const& parameters) -> MeshData {
 auto generate_wedge(WedgeParameters const& parameters) -> MeshData {
     assert(minimum_component(parameters.dimensions) > 0.0f);
     assert(parameters.top_length > 0.0f);
-    assert(parameters.top_length <= parameters.dimensions.x);
+    assert(parameters.top_length <= parameters.dimensions.x());
     assert(std::abs(parameters.top_offset) + parameters.top_length * 0.5f <=
-           parameters.dimensions.x * 0.5f);
+           parameters.dimensions.x() * 0.5f);
 
     MeshData mesh_data;
     mesh_data.positions.reserve(24);
@@ -527,14 +527,14 @@ auto generate_wedge(WedgeParameters const& parameters) -> MeshData {
 
     auto const half_dimensions{parameters.dimensions * 0.5f};
     auto const top_half_length{parameters.top_length * 0.5f};
-    auto const bottom_left_x{-half_dimensions.x};
-    auto const bottom_right_x{half_dimensions.x};
+    auto const bottom_left_x{-half_dimensions.x()};
+    auto const bottom_right_x{half_dimensions.x()};
     auto const top_left_x{parameters.top_offset - top_half_length};
     auto const top_right_x{parameters.top_offset + top_half_length};
-    auto const front_y{-half_dimensions.y};
-    auto const back_y{half_dimensions.y};
-    auto const bottom_z{-half_dimensions.z};
-    auto const top_z{half_dimensions.z};
+    auto const front_y{-half_dimensions.y()};
+    auto const back_y{half_dimensions.y()};
+    auto const bottom_z{-half_dimensions.z()};
+    auto const top_z{half_dimensions.z()};
 
     Vec3f const front_bottom_left{bottom_left_x, front_y, bottom_z};
     Vec3f const front_bottom_right{bottom_right_x, front_y, bottom_z};
@@ -760,7 +760,7 @@ auto generate_hex_frame(HexFrameParameters const& parameters) -> MeshData {
         auto const current{static_cast<std::size_t>(side_index)};
         auto const next{static_cast<std::size_t>(next_index)};
         auto face_normal{normalize(outer_front[current] + outer_front[next])};
-        face_normal.z = 0.0f;
+        face_normal.z() = 0.0f;
         face_normal = normalize(face_normal);
         if (parameters.uv_mode == HexFrameUvMode::perimeter) {
             auto const u0{static_cast<float>(side_index) / static_cast<float>(hex_side_count)};
@@ -850,10 +850,10 @@ auto generate_honeycomb_panel(HoneycombPanelParameters const& parameters) -> Mes
             auto const center{
                 make_cell_center(row, column, parameters.cell_radius, parameters.pointy_top)};
             centers.push_back(center);
-            minimum.x = std::min(minimum.x, center.x);
-            minimum.y = std::min(minimum.y, center.y);
-            maximum.x = std::max(maximum.x, center.x);
-            maximum.y = std::max(maximum.y, center.y);
+            minimum.x() = std::min(minimum.x(), center.x());
+            minimum.y() = std::min(minimum.y(), center.y());
+            maximum.x() = std::max(maximum.x(), center.x());
+            maximum.y() = std::max(maximum.y(), center.y());
         }
     }
     auto const panel_center{(minimum + maximum) * 0.5f};

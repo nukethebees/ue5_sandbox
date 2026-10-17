@@ -33,6 +33,7 @@ public class SbxMeshGenLab : ModuleRules
             Target.Configuration.ToString(),
             "sandbox_mesh_gen.lib");
         PublicSystemIncludePaths.Add(Path.Combine(nativeMeshRoot, "lib", "include"));
+        PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "core", "include"));
         if (File.Exists(nativeMeshLibrary))
         {
             PublicAdditionalLibraries.Add(nativeMeshLibrary);

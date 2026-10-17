@@ -29,15 +29,15 @@ namespace SandboxMesh {
 }
 
 [[nodiscard]] inline auto to_unreal(mesh_gen::Vec3f const value) -> FVector {
-    return {value.x, value.y, value.z};
+    return {value.x(), value.y(), value.z()};
 }
 
 [[nodiscard]] inline auto to_unreal_float(mesh_gen::Vec3f const value) -> FVector3f {
-    return {value.x, value.y, value.z};
+    return {value.x(), value.y(), value.z()};
 }
 
 [[nodiscard]] inline auto to_unreal(mesh_gen::Vec2f const value) -> FVector2f {
-    return {value.x, value.y};
+    return {value.x(), value.y()};
 }
 
 [[nodiscard]] inline auto to_unreal(mesh_gen::Rotatorf const value) -> FRotator {

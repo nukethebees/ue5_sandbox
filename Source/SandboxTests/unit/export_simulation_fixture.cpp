@@ -50,49 +50,53 @@ void write_vector3(std::ostream& out,
                    "{{{{{:.9e}f, {:.9e}f, {:.9e}f}}}});\n",
                    function,
                    static_cast<int>(type),
-                   value.X,
-                   value.Y,
-                   value.Z);
+                   value.x(),
+                   value.y(),
+                   value.z());
 }
 
-void transform(std::ostream& out, std::string const& path, ::ioj::sim::Transform3d const& value) {
+void transform(std::ostream& out, std::string const& path, ::ioj::Transform3d const& value) {
     auto output{std::ostreambuf_iterator<char>{out}};
     std::format_to(output,
                    "    {} = {{{{{:.17e}, {:.17e}, {:.17e}, {:.17e}}}, "
                    "{{{:.17e}, {:.17e}, {:.17e}}}, "
                    "{{{:.17e}, {:.17e}, {:.17e}}}}};\n",
                    path,
-                   value.rotation.x,
-                   value.rotation.y,
-                   value.rotation.z,
-                   value.rotation.w,
-                   value.location.x,
-                   value.location.y,
-                   value.location.z,
-                   value.scale.x,
-                   value.scale.y,
-                   value.scale.z);
+                   value.rotation.x(),
+                   value.rotation.y(),
+                   value.rotation.z(),
+                   value.rotation.w(),
+                   value.location.x(),
+                   value.location.y(),
+                   value.location.z(),
+                   value.scale.x(),
+                   value.scale.y(),
+                   value.scale.z());
 }
 
 void transform_components(std::ostream& out,
                           std::string const& path,
-                          ::ioj::sim::Transform3d const& value) {
-    write(out, (path + ".location.x").c_str(), value.location.x);
-    write(out, (path + ".location.y").c_str(), value.location.y);
-    write(out, (path + ".location.z").c_str(), value.location.z);
-    write(out, (path + ".rotation.x").c_str(), value.rotation.x);
-    write(out, (path + ".rotation.y").c_str(), value.rotation.y);
-    write(out, (path + ".rotation.z").c_str(), value.rotation.z);
-    write(out, (path + ".rotation.w").c_str(), value.rotation.w);
-    write(out, (path + ".scale.x").c_str(), value.scale.x);
-    write(out, (path + ".scale.y").c_str(), value.scale.y);
-    write(out, (path + ".scale.z").c_str(), value.scale.z);
+                          ::ioj::Transform3d const& value) {
+    write(out, (path + ".location.x()").c_str(), value.location.x());
+    write(out, (path + ".location.y()").c_str(), value.location.y());
+    write(out, (path + ".location.z()").c_str(), value.location.z());
+    write(out, (path + ".rotation.x()").c_str(), value.rotation.x());
+    write(out, (path + ".rotation.y()").c_str(), value.rotation.y());
+    write(out, (path + ".rotation.z()").c_str(), value.rotation.z());
+    write(out, (path + ".rotation.w()").c_str(), value.rotation.w());
+    write(out, (path + ".scale.x()").c_str(), value.scale.x());
+    write(out, (path + ".scale.y()").c_str(), value.scale.y());
+    write(out, (path + ".scale.z()").c_str(), value.scale.z());
 }
 
-void vector3f(std::ostream& out, char const* path, ::ioj::sim::Vector3f const value) {
+void vector3f(std::ostream& out, char const* path, ::ioj::Vector3f const value) {
     auto output{std::ostreambuf_iterator<char>{out}};
-    std::format_to(
-        output, "    {} = {{{{{:.9e}f, {:.9e}f, {:.9e}f}}}};\n", path, value.X, value.Y, value.Z);
+    std::format_to(output,
+                   "    {} = {{{{{:.9e}f, {:.9e}f, {:.9e}f}}}};\n",
+                   path,
+                   value.x(),
+                   value.y(),
+                   value.z());
 }
 
 }
@@ -253,8 +257,9 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
             out, "data.clock_settings.tick_period", data.clock_settings.get_tick_period());
         ml::fixture_export::write(
             out, "data.clock_settings.accumulator", data.clock_settings.accumulator);
-        out << "    data.grid_geometry.dimensions = {" << data.grid_geometry.dimensions.x << ", "
-            << data.grid_geometry.dimensions.y << ", " << data.grid_geometry.dimensions.z << "};\n";
+        out << "    data.grid_geometry.dimensions = {" << data.grid_geometry.dimensions.x() << ", "
+            << data.grid_geometry.dimensions.y() << ", " << data.grid_geometry.dimensions.z()
+            << "};\n";
         ml::fixture_export::vector3f(
             out, "data.grid_geometry.cell_dimensions", data.grid_geometry.cell_dimensions);
         ml::fixture_export::vector3f(
@@ -285,9 +290,9 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
         for (std::size_t i{}; i < point_count; ++i) {
             auto const& point{data.spinners.fire_point_offsets[i]};
             auto const path{"data.spinners.fire_point_offsets[" + std::to_string(i) + "]"};
-            ml::fixture_export::write(out, (path + ".location.X").c_str(), point.location.X);
-            ml::fixture_export::write(out, (path + ".location.Y").c_str(), point.location.Y);
-            ml::fixture_export::write(out, (path + ".location.Z").c_str(), point.location.Z);
+            ml::fixture_export::write(out, (path + ".location.x()").c_str(), point.location.x());
+            ml::fixture_export::write(out, (path + ".location.y()").c_str(), point.location.y());
+            ml::fixture_export::write(out, (path + ".location.z()").c_str(), point.location.z());
             ml::fixture_export::write(
                 out, (path + ".rotation.pitch").c_str(), point.rotation.pitch);
             ml::fixture_export::write(out, (path + ".rotation.yaw").c_str(), point.rotation.yaw);

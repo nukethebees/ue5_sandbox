@@ -156,8 +156,8 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
                                                         style_.chart_padding.Bottom},
                                             .axis_thickness = style_.axis_thickness,
                                             .label_area_height = style_.label_area_height})};
-    auto const plot_size{FVector2f{native_layout.plot_size.x, native_layout.plot_size.y}};
-    auto const plot_origin{FVector2f{native_layout.plot_origin.x, native_layout.plot_origin.y}};
+    auto const plot_size{FVector2f{native_layout.plot_size.x(), native_layout.plot_size.y()}};
+    auto const plot_origin{FVector2f{native_layout.plot_origin.x(), native_layout.plot_origin.y()}};
     auto const label_height{native_layout.label_area_height};
 
     auto const enabled{ShouldBeEnabled(parent_enabled)};
@@ -188,8 +188,8 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
             draw_histogram_box(out_draw_elements,
                                bar_layer,
                                allotted_geometry,
-                               plot_origin + FVector2f{bar.position.x, bar.position.y},
-                               FVector2f{bar.size.x, bar.size.y},
+                               plot_origin + FVector2f{bar.position.x(), bar.position.y()},
+                               FVector2f{bar.size.x(), bar.size.y()},
                                draw_effect,
                                (bar.bin_index == static_cast<uint32>(hovered_bin_)
                                     ? style_.hovered_bar_color
@@ -287,8 +287,8 @@ auto SHistogram::OnMouseMove(FGeometry const& geometry, FPointerEvent const& eve
                                                         style_.chart_padding.Bottom},
                                             .axis_thickness = style_.axis_thickness,
                                             .label_area_height = style_.label_area_height})};
-    auto const plot_size{FVector2f{native_layout.plot_size.x, native_layout.plot_size.y}};
-    auto const plot_origin{FVector2f{native_layout.plot_origin.x, native_layout.plot_origin.y}};
+    auto const plot_size{FVector2f{native_layout.plot_size.x(), native_layout.plot_size.y()}};
+    auto const plot_origin{FVector2f{native_layout.plot_origin.x(), native_layout.plot_origin.y()}};
     auto const local{FVector2f{geometry.AbsoluteToLocal(event.GetScreenSpacePosition())}};
     auto const native_hovered{ioj::ui::histogram::hit_test_bin({local.X, local.Y},
                                                                {plot_origin.X, plot_origin.Y},

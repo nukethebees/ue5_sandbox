@@ -282,7 +282,7 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
                                                    static_cast<double>(value.position[1]),
                                                    static_cast<double>(value.position[2])} *
                                                ml::sandbox_ismc::position_quantum};
-                    reference->AddInstance(FTransform{FQuat{q.X, q.Y, q.Z, q.W}, location});
+                    reference->AddInstance(FTransform{FQuat{q.x(), q.y(), q.z(), q.w()}, location});
                     for (int32 channel{0}; channel < 3; ++channel) {
                         reference->SetCustomDataValue(
                             index, channel, channel == index ? 1.0f : 0.0f, true);

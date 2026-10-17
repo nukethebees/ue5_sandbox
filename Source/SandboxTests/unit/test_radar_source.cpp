@@ -37,8 +37,7 @@ void add_entity(ml::tests::FDisplayEntityTestData& entities,
                 bool const alive = true) {
     auto const index{entities.num()};
     entities.add_defaulted(1);
-    ::ioj::sim::set_vector(
-        entities.motion.get_view().view_locations(), index, ml::to_native(location));
+    ::ioj::set_vector(entities.motion.get_view().view_locations(), index, ml::to_native(location));
     entities.teams[index] = ml::to_native(team);
     entities.entity_types[index] = type;
     auto const owner{::ioj::sim::EntityUniqueId(static_cast<std::uint32_t>(index),

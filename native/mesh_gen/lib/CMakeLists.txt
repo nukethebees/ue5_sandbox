@@ -12,6 +12,7 @@ target_include_directories(mesh-gen
 )
 target_link_libraries(mesh-gen
   PUBLIC
+    native-core-headers
     sandbox::native_defaults
 )
 ioj_enable_warnings(mesh-gen)
@@ -33,7 +34,8 @@ if(IOJ_WITH_UNREAL)
   ioj_enable_warnings(sandbox-mesh-gen)
   target_link_libraries(sandbox-mesh-gen
     PUBLIC
-      sandbox::native_defaults
+      native-core-headers
+    sandbox::native_defaults
     PRIVATE
       ioj::unreal_avx2
   )

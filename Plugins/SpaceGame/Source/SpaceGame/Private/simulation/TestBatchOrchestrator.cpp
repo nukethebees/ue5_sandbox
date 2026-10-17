@@ -493,8 +493,8 @@ auto ATestBatchOrchestrator::initialise_simulation(
         initial_turret_transforms_.Reserve(turret_count);
         for (int32 i{}; i < turret_count; ++i) {
             initial_turret_transforms_.Emplace(
-                FRotator{ml::to_unreal(::ioj::sim::rotation_at(turrets.view_rotations(), i))},
-                FVector{ml::to_unreal(::ioj::sim::vector_at(turrets.view_locations(), i))});
+                FRotator{ml::to_unreal(::ioj::rotation_at(turrets.view_rotations(), i))},
+                FVector{ml::to_unreal(::ioj::vector_at(turrets.view_locations(), i))});
         }
         result->fighter_diagnostics_enabled =
             ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;

@@ -34,6 +34,9 @@ target_sources(native-core
     include/ioj/packed_value.h
     include/ioj/parallel_for.h
     include/ioj/countdown_timers.h
+    include/ioj/vector.h
+    include/ioj/vector_value_math.h
+    include/ioj/quaternion.h
     include/ioj/math_types.h
     include/ioj/native_soa/storage.h
     include/ioj/native_soa/vector_storage_ops.h
@@ -77,7 +80,7 @@ target_include_directories(native-core-ismc-scalar
 )
 target_link_libraries(native-core-ismc-scalar
   PRIVATE
-    hwy sandbox::native_defaults sandbox::handmade_math ioj::fp_precise
+    hwy sandbox::native_defaults ioj::fp_precise
 )
 ioj_apply_native_abi(native-core-ismc-scalar)
 ioj_enable_warnings(native-core-ismc-scalar)
@@ -93,13 +96,13 @@ target_include_directories(native-core-ismc-highway-avx2
 )
 target_link_libraries(native-core-ismc-highway-avx2
   PRIVATE
-    sandbox::handmade_math
+
 )
 target_link_libraries(native-core
   PUBLIC
     sandbox::native_defaults
     TBB::tbb
-    sandbox::handmade_math
+
   PRIVATE
     native-core-ismc-scalar
     native-core-ismc-highway-avx2

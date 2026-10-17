@@ -140,9 +140,9 @@ void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 c
     auto const yaws{rotations.yaws()};
     auto const rolls{rotations.rolls()};
     for (int32 index{first_index}; index < first_index + n_to_add; ++index) {
-        transforms.Emplace(FRotator{ml::to_unreal(
-                               ::ioj::sim::Rotator3f{pitches[index], yaws[index], rolls[index]})},
-                           FVector{ml::to_unreal(::ioj::sim::vector_at(locations, index))});
+        transforms.Emplace(
+            FRotator{ml::to_unreal(::ioj::Rotator3f{pitches[index], yaws[index], rolls[index]})},
+            FVector{ml::to_unreal(::ioj::vector_at(locations, index))});
     }
     constexpr bool return_indices{false};
     constexpr bool update_navigation{false};

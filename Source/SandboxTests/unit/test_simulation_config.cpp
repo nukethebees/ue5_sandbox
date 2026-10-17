@@ -76,12 +76,12 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
              {FRotator3f::ZeroRotator, FRotator3f{0.f, 90.f, 0.f}, FRotator3f{23.f, 47.f, -16.f}}) {
             FBox3f expected{ForceInit};
             auto const native_centre{bounds.get_centre(type)};
-            FVector3f const centre{native_centre.X, native_centre.Y, native_centre.Z};
+            FVector3f const centre{native_centre.x(), native_centre.y(), native_centre.z()};
             auto const extent{bounds.get_half_extents(type)};
             for (int32 corner{}; corner < 8; ++corner) {
-                FVector3f const offset{(corner & 1) ? extent.X : -extent.X,
-                                       (corner & 2) ? extent.Y : -extent.Y,
-                                       (corner & 4) ? extent.Z : -extent.Z};
+                FVector3f const offset{(corner & 1) ? extent.x() : -extent.x(),
+                                       (corner & 2) ? extent.y() : -extent.y(),
+                                       (corner & 4) ? extent.z() : -extent.z()};
                 expected += position + rotation.RotateVector(centre + offset);
             }
             auto const orientation{rotation.Quaternion()};
@@ -91,8 +91,8 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                 ml::make_vector3f(position.X, position.Y, position.Z),
                 ml::make_quaternion4f(orientation.X, orientation.Y, orientation.Z, orientation.W))};
             FBox3f const actual{
-                FVector3f{native_bounds.min.X, native_bounds.min.Y, native_bounds.min.Z},
-                FVector3f{native_bounds.max.X, native_bounds.max.Y, native_bounds.max.Z}};
+                FVector3f{native_bounds.min.x(), native_bounds.min.y(), native_bounds.min.z()},
+                FVector3f{native_bounds.max.x(), native_bounds.max.y(), native_bounds.max.z()}};
             TestRunner->TestTrue(TEXT("World bounds match independently transformed corners"),
                                  actual.Min.Equals(expected.Min, 0.001f) &&
                                      actual.Max.Equals(expected.Max, 0.001f));

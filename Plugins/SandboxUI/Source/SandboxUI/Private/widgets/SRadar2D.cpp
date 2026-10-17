@@ -209,11 +209,11 @@ int32 SRadar2D::OnPaint(FPaintArgs const&,
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
     auto const layout{
         ioj::ui::radar_2d::make_layout({widget_size.X, widget_size.Y}, data_->native.range())};
-    if (layout.size.x <= 0.0f) {
+    if (layout.size.x() <= 0.0f) {
         return layer_id;
     }
-    auto const layout_origin{FVector2f{layout.origin.x, layout.origin.y}};
-    auto const layout_size{FVector2f{layout.size.x, layout.size.y}};
+    auto const layout_origin{FVector2f{layout.origin.x(), layout.origin.y()}};
+    auto const layout_size{FVector2f{layout.size.x(), layout.size.y()}};
 
     auto const enabled{ShouldBeEnabled(parent_enabled)};
     auto const draw_effect{enabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect};
@@ -247,7 +247,7 @@ int32 SRadar2D::OnPaint(FPaintArgs const&,
         for (int32 contact_index{0}; contact_index < contact_count; ++contact_index) {
             auto const native_centre{
                 ioj::ui::radar_2d::to_local({xs[contact_index], ys[contact_index]}, layout)};
-            auto const local_centre{FVector2f{native_centre.x, native_centre.y}};
+            auto const local_centre{FVector2f{native_centre.x(), native_centre.y()}};
             auto const top_left{local_centre - half_size};
             auto const bottom_right{local_centre + half_size};
             if (bottom_right.X <= layout_origin.X || bottom_right.Y <= layout_origin.Y ||

@@ -120,7 +120,7 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
                         "bounds fitting +/-524272 UU (16 UU quantum) around the rounded centre"),
                     *position_bounds.ToString());
             }
-            root = FVector3f{center->X, center->Y, center->Z};
+            root = FVector3f{center->x(), center->y(), center->z()};
         }
         buffer.position_root_quantum = FVector4f{root, ml::sandbox_ismc::position_quantum};
         auto instances{MakeArrayView(buffer.instances)};

@@ -557,7 +557,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
         registration.soft_target, registration.fading_soft_target, soft_target.id};
     TOptional<FVector> positions[3];
     for (auto const& batch : batches) {
-        auto const locations{::ioj::sim::Vectors3fConstView{
+        auto const locations{::ioj::Vectors3fConstView{
             batch.locations.xs(), batch.locations.ys(), batch.locations.zs()}};
         auto const count{batch.num()};
         for (uint32 row{}; row < count; ++row) {
@@ -1025,13 +1025,13 @@ bool FHUDManager::collect_player_flight_data() {
 
         next_data.has_player_ship = true;
         next_data.flight_vector_debug = {
-            .turn_input = {intent.rotation.y, intent.rotation.x},
-            .move_input = {intent.translation.y, intent.translation.x},
+            .turn_input = {intent.rotation.y(), intent.rotation.x()},
+            .move_input = {intent.translation.y(), intent.translation.x()},
             .target_velocity = ml::to_unreal(player_ship->get_sampled_target_speed_scale()),
             .local_velocity =
                 {
-                    static_cast<float>(local_velocity.y / right_limit),
-                    static_cast<float>(local_velocity.x / forward_limit),
+                    static_cast<float>(local_velocity.y() / right_limit),
+                    static_cast<float>(local_velocity.x() / forward_limit),
                 },
         };
         next_data.ship_velocity = ml::to_unreal(physical_state.velocity);

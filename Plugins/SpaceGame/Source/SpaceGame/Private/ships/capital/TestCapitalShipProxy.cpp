@@ -179,8 +179,9 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
             type,
             ml::make_vector3f(position.X, position.Y, position.Z),
             ml::make_quaternion4f(orientation.X, orientation.Y, orientation.Z, orientation.W))};
-        return FBox3f{FVector3f{native_bounds.min.X, native_bounds.min.Y, native_bounds.min.Z},
-                      FVector3f{native_bounds.max.X, native_bounds.max.Y, native_bounds.max.Z}};
+        return FBox3f{
+            FVector3f{native_bounds.min.x(), native_bounds.min.y(), native_bounds.min.z()},
+            FVector3f{native_bounds.max.x(), native_bounds.max.y(), native_bounds.max.z()}};
     }};
     auto const bounds{make_world_bounds(::ioj::sim::EntityType::CapitalShip,
                                         FVector3f{GetActorLocation()},

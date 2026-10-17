@@ -326,4 +326,8 @@ nested schemas. Registered names, dependency edges and planner identity remain l
 facts for an owner are keyed by its physical spelling, never a deleted vector class name.
 When a logical vector schema has a declared vector equivalent, the resolved model also retains
 that vector declaration's `equivalent_constructor`. Compact row conversion uses it (for example,
-`HMM_V3` for Handmade Math's union representation) instead of assuming aggregate construction.
+`ml::make_vector3f` for core vector values) instead of assuming aggregate construction.
+
+Vector SoA declarations can set `:equivalent-accessors true` with named
+`:equivalent-members` to emit component calls such as `value.x()`. Field access
+remains the default for Unreal equivalents.

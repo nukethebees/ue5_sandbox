@@ -88,7 +88,7 @@ void FFighterPresentation::update_ismc() {
     for (int32 index{}; index < count; ++index) {
         if (::ioj::sim::is_alive(healths.health(index))) {
             visible_indices_.Add(index);
-            position_bounds += ml::to_unreal(::ioj::sim::vector_at(locations, index));
+            position_bounds += ml::to_unreal(::ioj::vector_at(locations, index));
         }
     }
     instances->set_instances(
@@ -108,9 +108,8 @@ void FFighterPresentation::update_ismc() {
             transform_rotations.SetNumUninitialized(chunk.num());
             for (int32 local_index{0}; local_index < chunk_count; ++local_index) {
                 auto const index{visible_indices_[first_index + local_index]};
-                auto const position{ml::to_unreal(::ioj::sim::vector_at(locations, index))};
-                FVector const direction{
-                    ml::to_unreal(::ioj::sim::vector_at(aim_directions, index))};
+                auto const position{ml::to_unreal(::ioj::vector_at(locations, index))};
+                FVector const direction{ml::to_unreal(::ioj::vector_at(aim_directions, index))};
                 auto const rotation{
                     FQuat4f{FQuat::FindBetweenNormals(FVector::ForwardVector, direction)}};
                 transform_positions[local_index] = position;
@@ -137,13 +136,13 @@ void FFighterPresentation::draw_debug_shapes() {
     auto const target_locations{data.view_target_locations()};
 
     for (int32 i{0}; i < n; ++i) {
-        FVector const ship_location{ml::to_unreal(::ioj::sim::vector_at(locations, i))};
+        FVector const ship_location{ml::to_unreal(::ioj::vector_at(locations, i))};
         if (enable_ship_location_debug_drawing) {
             debug_drawer.draw_sphere(ship_location);
         }
         if (enable_target_debug_drawing && targets[i].is_valid()) {
-            debug_drawer.draw_line(
-                ship_location, FVector{ml::to_unreal(::ioj::sim::vector_at(target_locations, i))});
+            debug_drawer.draw_line(ship_location,
+                                   FVector{ml::to_unreal(::ioj::vector_at(target_locations, i))});
         }
     }
 }

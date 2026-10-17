@@ -186,14 +186,14 @@ auto to_unreal(LevelDefinition definition) -> ml::FLevelDefinition {
         auto const& grid{*definition.collision_grid};
         ml::FLevelCollisionGridDefinition unreal_grid;
         if (grid.level_size) {
-            unreal_grid.level_size = FVector3f{static_cast<float>(grid.level_size->x),
-                                               static_cast<float>(grid.level_size->y),
-                                               static_cast<float>(grid.level_size->z)};
+            unreal_grid.level_size = FVector3f{static_cast<float>(grid.level_size->x()),
+                                               static_cast<float>(grid.level_size->y()),
+                                               static_cast<float>(grid.level_size->z())};
         }
         if (grid.cell_size) {
-            unreal_grid.cell_size = FVector3f{static_cast<float>(grid.cell_size->x),
-                                              static_cast<float>(grid.cell_size->y),
-                                              static_cast<float>(grid.cell_size->z)};
+            unreal_grid.cell_size = FVector3f{static_cast<float>(grid.cell_size->x()),
+                                              static_cast<float>(grid.cell_size->y()),
+                                              static_cast<float>(grid.cell_size->z())};
         }
         builder.set_collision_grid(unreal_grid);
     }
@@ -212,9 +212,9 @@ auto to_unreal(LevelDefinition definition) -> ml::FLevelDefinition {
         auto const& camera{*definition.camera};
         builder.set_camera(ml::FLevelCameraDefinition{
             .target_entity_ids = to_unreal_ids<ml::FLevelEntityId>(camera.target_entity_ids),
-            .offset_direction = FVector{camera.offset_direction.x,
-                                        camera.offset_direction.y,
-                                        camera.offset_direction.z},
+            .offset_direction = FVector{camera.offset_direction.x(),
+                                        camera.offset_direction.y(),
+                                        camera.offset_direction.z()},
             .distance = camera.distance,
         });
     }
@@ -252,7 +252,7 @@ auto to_unreal(LevelDefinition definition) -> ml::FLevelDefinition {
             .id = ml::FLevelEntityId{to_fname(source.id.value)},
             .archetype = ml::FEntityArchetypeId{to_fname(to_serialized_string(source.archetype))},
             .team = source.team,
-            .position = FVector{source.position.x, source.position.y, source.position.z},
+            .position = FVector{source.position.x(), source.position.y(), source.position.z()},
             .rotation = FRotator{source.rotation.pitch, source.rotation.yaw, source.rotation.roll},
             .spawn_time_seconds = source.spawn_time_seconds,
         });

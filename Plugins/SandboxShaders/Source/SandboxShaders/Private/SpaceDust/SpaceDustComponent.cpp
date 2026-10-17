@@ -326,13 +326,13 @@ auto apply_native_settings(FSpaceDustSettings settings, ml::space_dust::Tuning c
     settings.enabled = native.enabled;
     settings.particle_count = native.particle_count;
     settings.random_seed = static_cast<int32>(native.random_seed);
-    settings.volume_dimensions =
-        FVector{native.volume_dimensions.X, native.volume_dimensions.Y, native.volume_dimensions.Z};
+    settings.volume_dimensions = FVector{
+        native.volume_dimensions.x(), native.volume_dimensions.y(), native.volume_dimensions.z()};
     settings.particle_size = native.particle_size;
     settings.brightness = native.brightness;
-    settings.colour.R = native.colour.X;
-    settings.colour.G = native.colour.Y;
-    settings.colour.B = native.colour.Z;
+    settings.colour.R = native.colour.x();
+    settings.colour.G = native.colour.y();
+    settings.colour.B = native.colour.z();
     settings.colour.A = 1.0f;
     settings.minimum_visible_speed = native.minimum_visible_speed;
     settings.full_visible_speed = native.full_visible_speed;
@@ -353,11 +353,11 @@ auto normalise_space_dust_settings(FSpaceDustSettings settings) -> FSpaceDustSet
 auto make_space_dust_translation_phase(FVector const world_location,
                                        FVector const volume_dimensions) -> FVector3f {
     auto const phase{ml::space_dust::make_translation_phase(
-        {.x = world_location.X, .y = world_location.Y, .z = world_location.Z},
+        {world_location.X, world_location.Y, world_location.Z},
         ml::make_vector3f(static_cast<float>(volume_dimensions.X),
                           static_cast<float>(volume_dimensions.Y),
                           static_cast<float>(volume_dimensions.Z)))};
-    return FVector3f{phase.X, phase.Y, phase.Z};
+    return FVector3f{phase.x(), phase.y(), phase.z()};
 }
 
 USpaceDustComponent::USpaceDustComponent() {

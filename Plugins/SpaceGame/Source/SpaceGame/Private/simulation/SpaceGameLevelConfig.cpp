@@ -59,7 +59,7 @@ FCollisionGridConfig::FCollisionGridConfig()
 auto FCollisionGridConfig::calculate_grid_dimensions() const noexcept -> FIntVector3 {
     auto const dimensions{::ioj::sim::collision::calculate_grid_dimensions(
         ml::to_native(grid_size), ml::to_native(cell_size))};
-    return {dimensions.x, dimensions.y, dimensions.z};
+    return {dimensions.x(), dimensions.y(), dimensions.z()};
 }
 
 auto FCollisionGridConfig::with_dimension_overrides(TOptional<FVector3f> grid_size_override,

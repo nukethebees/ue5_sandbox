@@ -173,13 +173,13 @@ void FLaserPresentation::queue_hit_sparks() {
     auto const directions{hit_details.view_emission_directions()};
 
     for (int32 index{0}; index < count; ++index) {
-        auto const location{ml::to_unreal(::ioj::sim::vector_at(locations, index))};
+        auto const location{ml::to_unreal(::ioj::vector_at(locations, index))};
         auto const colour{source_colour(sources[index])};
         spark_effects_->queue_burst({
             .emission =
                 {
                     .location = location,
-                    .direction = ml::to_unreal(::ioj::sim::vector_at(directions, index)),
+                    .direction = ml::to_unreal(::ioj::vector_at(directions, index)),
                     .colour = FVector3f{colour.R, colour.G, colour.B},
                     .seed = SpaceGame::LaserPresentation::Private::make_seed(
                         hit_ticks[index], location, hit_ordinals[index]),

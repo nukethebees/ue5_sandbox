@@ -5,11 +5,11 @@
 #include <CoreMinimal.h>
 
 namespace ml {
-inline auto to_native(FRotator3f const value) noexcept -> ::ioj::sim::Rotator3f {
+inline auto to_native(FRotator3f const value) noexcept -> ::ioj::Rotator3f {
     return {.pitch = value.Pitch, .yaw = value.Yaw, .roll = value.Roll};
 }
 
-inline auto to_unreal(::ioj::sim::Rotator3f const value) noexcept -> FRotator3f {
+inline auto to_unreal(::ioj::Rotator3f const value) noexcept -> FRotator3f {
     return {value.pitch, value.yaw, value.roll};
 }
 }

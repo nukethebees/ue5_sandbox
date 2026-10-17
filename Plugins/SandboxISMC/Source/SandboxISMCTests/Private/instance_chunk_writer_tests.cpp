@@ -41,7 +41,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
         for (auto index = 0; index < packed.Num(); ++index) {
             auto const& value{packed[index]};
             auto const decoded{ml::sandbox_ismc::unpack_quat32(value.rotation)};
-            FQuat4f const orientation{decoded.X, decoded.Y, decoded.Z, decoded.W};
+            FQuat4f const orientation{decoded.x(), decoded.y(), decoded.z(), decoded.w()};
             TestRunner->TestTrue(TEXT("Quaternion error stays below 0.3 degrees"),
                                  orientation.AngularDistance(rotations[index]) <
                                      FMath::DegreesToRadians(0.3f));
@@ -123,7 +123,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                                                        static_cast<float>(value.position[1]),
                                                        static_cast<float>(value.position[2])} *
                                              ml::sandbox_ismc::position_quantum};
-            FTransform3f const transform{FQuat4f{q.X, q.Y, q.Z, q.W}, decoded_position};
+            FTransform3f const transform{FQuat4f{q.x(), q.y(), q.z(), q.w()}, decoded_position};
             for (int32 corner{0}; corner < 8; ++corner) {
                 auto const point{origin + FVector3f{(corner & 1) ? extent.X : -extent.X,
                                                     (corner & 2) ? extent.Y : -extent.Y,

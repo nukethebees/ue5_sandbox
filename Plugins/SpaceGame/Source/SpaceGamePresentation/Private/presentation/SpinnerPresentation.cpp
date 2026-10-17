@@ -78,7 +78,7 @@ void FSpinnerPresentation::update_ismc_transforms() {
     for (int32 i{0}; i < n; ++i) {
         ismc_transforms[i] = FTransform{
             FRotator{0.0, static_cast<double>(yaws[i]), 0.0},
-            FVector{ml::to_unreal(::ioj::sim::vector_at(locations, i))},
+            FVector{ml::to_unreal(::ioj::vector_at(locations, i))},
         };
     }
 }

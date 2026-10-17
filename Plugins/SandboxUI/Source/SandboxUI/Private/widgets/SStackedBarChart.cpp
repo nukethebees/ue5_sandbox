@@ -136,8 +136,8 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
                                                         style_.chart_padding.Bottom},
                                             .axis_thickness = style_.axis_thickness,
                                             .label_area_height = style_.label_area_height})};
-    auto const plot_size{FVector2f{native_layout.plot_size.x, native_layout.plot_size.y}};
-    auto const plot_origin{FVector2f{native_layout.plot_origin.x, native_layout.plot_origin.y}};
+    auto const plot_size{FVector2f{native_layout.plot_size.x(), native_layout.plot_size.y()}};
+    auto const plot_origin{FVector2f{native_layout.plot_origin.x(), native_layout.plot_origin.y()}};
     auto const label_height{native_layout.label_area_height};
 
     auto const enabled{ShouldBeEnabled(parent_enabled)};
@@ -151,14 +151,14 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
             allotted_geometry.ToPaintGeometry(plot_size, FSlateLayoutTransform{plot_origin})};
         out_draw_elements.PushClip(FSlateClippingZone{clip_geometry});
         for (auto const& segment : chart_geometry.segments) {
-            draw_stacked_bar_box(out_draw_elements,
-                                 segment_layer,
-                                 allotted_geometry,
-                                 plot_origin + FVector2f{segment.position.x, segment.position.y},
-                                 FVector2f{segment.size.x, segment.size.y},
-                                 draw_effect,
-                                 segment_colors_[segment.bar_index][segment.segment_index] *
-                                     inherited_tint);
+            draw_stacked_bar_box(
+                out_draw_elements,
+                segment_layer,
+                allotted_geometry,
+                plot_origin + FVector2f{segment.position.x(), segment.position.y()},
+                FVector2f{segment.size.x(), segment.size.y()},
+                draw_effect,
+                segment_colors_[segment.bar_index][segment.segment_index] * inherited_tint);
         }
         out_draw_elements.PopClip();
     }

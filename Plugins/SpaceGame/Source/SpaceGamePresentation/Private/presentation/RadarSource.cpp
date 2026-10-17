@@ -195,8 +195,8 @@ auto collect_radar_instances(std::span<::ml::presentation::AgentDisplayBatch con
                     continue;
                 }
 
-                auto const world_delta{
-                    ml::to_unreal(::ioj::sim::vector_at(batch.locations, index)) - player_origin};
+                auto const world_delta{ml::to_unreal(::ioj::vector_at(batch.locations, index)) -
+                                       player_origin};
                 if (world_delta.SizeSquared() >= range_squared) {
                     continue;
                 }

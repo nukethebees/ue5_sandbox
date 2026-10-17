@@ -65,8 +65,8 @@ void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_tra
     auto const rolls{rotations.rolls()};
     for (auto i{ismc_transforms.Num()}; i < count; ++i) {
         ismc_transforms.Emplace(
-            FRotator{ml::to_unreal(::ioj::sim::Rotator3f{pitches[i], yaws[i], rolls[i]})},
-            FVector{ml::to_unreal(::ioj::sim::vector_at(locations, i))});
+            FRotator{ml::to_unreal(::ioj::Rotator3f{pitches[i], yaws[i], rolls[i]})},
+            FVector{ml::to_unreal(::ioj::vector_at(locations, i))});
     }
     add_initial_visual_instances();
     validate_array_sizes();
@@ -203,14 +203,14 @@ void FTurretPresentation::draw_debugging_shapes() const {
     auto const ids{entities.entity_ids()};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const turret_location{FVector{ml::to_unreal(::ioj::sim::vector_at(locations, i))}};
+        auto const turret_location{FVector{ml::to_unreal(::ioj::vector_at(locations, i))}};
 
         if (draw_target_arrows_enabled) {
             auto const target_id{targets[i]};
 
             if (target_id.is_valid()) {
                 auto const target_location{
-                    FVector{ml::to_unreal(::ioj::sim::vector_at(target_locations, i))}};
+                    FVector{ml::to_unreal(::ioj::vector_at(target_locations, i))}};
                 drawer.draw_line(turret_location, target_location);
             }
         }
