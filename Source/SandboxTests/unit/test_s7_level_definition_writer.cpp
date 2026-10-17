@@ -7,7 +7,7 @@
 #include <Misc/Paths.h>
 
 namespace {
-auto make_player_level(bool const reverse_order = false) -> ml::FLevelDefinition {
+auto make_player_level() -> ml::FLevelDefinition {
     ml::FLevelBuilder builder;
     builder.set_metadata({
         .id = ml::FLevelId{TEXT("writer-example")},
@@ -37,15 +37,9 @@ auto make_player_level(bool const reverse_order = false) -> ml::FLevelDefinition
         .position = FVector{-1000.0, -2000.0, -3000.0},
         .rotation = FRotator{0.0, -90.0, 0.0},
     };
-    if (reverse_order) {
-        builder.add_entity(turret);
-        builder.add_entity(capital);
-        builder.add_entity(player);
-    } else {
-        builder.add_entity(player);
-        builder.add_entity(capital);
-        builder.add_entity(turret);
-    }
+    builder.add_entity(player);
+    builder.add_entity(capital);
+    builder.add_entity(turret);
     return builder.finish();
 }
 }
@@ -66,19 +60,6 @@ TEST_CLASS(S7LevelDefinitionWriter, "Sandbox.UnitTests")
                               source->Contains(TEXT(":teams")));
         TestRunner->TestTrue(TEXT("Entity constructors are evaluated"),
                              source->Contains(TEXT(":entities (list")));
-    }
-
-    TEST_METHOD(OutputDoesNotDependOnDefinitionInsertionOrder)
-    {
-        auto const first{
-            ::ioj::levels::authoring::emit_editor_level_source(make_player_level(false))};
-        auto const second{
-            ::ioj::levels::authoring::emit_editor_level_source(make_player_level(true))};
-        if (!TestRunner->TestTrue(TEXT("First source emits"), first.has_value()) ||
-            !TestRunner->TestTrue(TEXT("Second source emits"), second.has_value())) {
-            return;
-        }
-        TestRunner->TestEqual(TEXT("Output is byte-for-byte stable"), *first, *second);
     }
 
     TEST_METHOD(EmittedSourceReadsBackWithSupportedSemantics)

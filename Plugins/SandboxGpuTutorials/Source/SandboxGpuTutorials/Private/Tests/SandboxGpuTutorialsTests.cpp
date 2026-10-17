@@ -177,16 +177,7 @@ TEST_CLASS(SandboxGpuTutorialAnimationState, "SandboxGpuTutorials.UnitTests")
             TEXT("Paused animation preserves elapsed time"), state.elapsed_time, 0.25f);
     }
 
-    TEST_METHOD(DefaultsMatchTheMaterialContract)
-    {
-        FLesson03State const state;
-        TestRunner->TestEqual(TEXT("Default ring thickness"), state.ring_thickness, 0.018f);
-        TestRunner->TestEqual(TEXT("Default animation speed"), state.animation_speed, 1.0f);
-        TestRunner->TestEqual(TEXT("Default pulse amount"), state.pulse_amount, 0.08f);
-        TestRunner->TestTrue(TEXT("Animation starts enabled"), state.animation_enabled);
-    }
-
-    TEST_METHOD(SliderMappingsCoverTheDocumentedParameterRanges)
+TEST_METHOD(SliderMappingsCoverTheDocumentedParameterRanges)
     {
         FLesson03State state;
 

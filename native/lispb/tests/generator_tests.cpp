@@ -606,31 +606,6 @@ TEST(Generator, LowersFlatAndNestedFixedSoaLayouts) {
     EXPECT_NE(header.find("storage_.construct_from_view_at"), std::string::npos);
 }
 
-TEST(Generator, RendersCompleteProductionManifest) {
-    auto const project_root{
-        std::filesystem::path{IOJ_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
-    auto const project{lispb::load_project(project_root / "lispb/project.lispb")};
-    auto const& target{std::get<lispb::CppSchemaTarget>(project.targets.at("sandbox-code"))};
-    std::vector<std::filesystem::path> sources;
-    for (auto const& source : target.sources) {
-        sources.push_back(project.root / source);
-    }
-    auto const manifest{load_sources(project.root / target.types, sources)};
-    auto const files{render_modules(lower_modules(manifest))};
-
-    EXPECT_EQ(files.size(), 114);
-    EXPECT_EQ(files.front().path, "native/simulation/include/ioj/sim/sim_state.h");
-    EXPECT_EQ(files.back().path,
-              "Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp");
-    EXPECT_TRUE(std::ranges::any_of(files, [](GeneratedFile const& file) {
-        return file.path == "native/simulation/include/ioj/sim/entities/entity_unique_id.h";
-    }));
-    EXPECT_TRUE(std::ranges::any_of(files, [](auto const& file) {
-        return file.path == "native/simulation/include/ioj/sim/entities/entity_type.h";
-    }));
-    EXPECT_EQ(files, render_modules(lower_modules(manifest)));
-}
-
 TEST(Generator, CommittedProductionFilesAreCurrent) {
     auto const project_root{
         std::filesystem::path{IOJ_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};

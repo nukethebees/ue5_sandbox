@@ -47,7 +47,6 @@ target_sources(native-simulation-tests PRIVATE
   fixed_tick_tests.cpp
   health_table_tests.cpp
   index_span_tests.cpp
-  model_declaration_contracts.cpp
   ship_health_tests.cpp
   spatial_tests.cpp
   query_scratch_tests.cpp

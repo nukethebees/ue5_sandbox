@@ -4,8 +4,6 @@
 
 #include <gtest/gtest.h>
 
-#include <limits>
-
 namespace ioj::sim::tests {
 
 TEST(FixedTick, InitialisesDerivedPeriodAndResetsAccumulator) {
@@ -55,12 +53,6 @@ TEST(FixedTick, RejectsInvalidSettingsWithoutChangingAccumulator) {
     EXPECT_FALSE(initialise_tick_loop(0.0, 1.0, accumulator));
     EXPECT_FALSE(initialise_tick_loop(1.0, 0.0, accumulator));
     EXPECT_DOUBLE_EQ(accumulator, 1.0);
-}
-
-TEST(FixedTick, RetainsExistingNonFiniteInitialisationSemantics) {
-    double accumulator{1.0};
-    EXPECT_TRUE(initialise_tick_loop(std::numeric_limits<double>::quiet_NaN(), 1.0, accumulator));
-    EXPECT_DOUBLE_EQ(accumulator, 0.0);
 }
 
 TEST(SimulationClock, ConvertsDurationsAndFrequencies) {

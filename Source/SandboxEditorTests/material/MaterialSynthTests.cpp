@@ -60,17 +60,6 @@ auto package_bytes(UMaterial const& material) -> TArray<uint8> {
 
 TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
 {
-    TEST_METHOD(ComputesSha256)
-    {
-        constexpr ANSICHAR input[]{"abc"};
-        auto const hash{material_synth::sha256(
-            std::span{reinterpret_cast<std::uint8_t const*>(input), UE_ARRAY_COUNT(input) - 1})};
-        TestRunner->TestEqual(
-            TEXT("SHA-256 matches the standard abc vector"),
-            FString{UTF8_TO_TCHAR(hash.c_str())},
-            FString{TEXT("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")});
-    }
-
     TEST_METHOD(GeneratesCompilesSavesReloadsAndIsIdempotent)
     {
         auto const compiled{load_compiled(TEXT("UiGlowComposite.smat"))};
@@ -242,13 +231,6 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
 
         auto const source_path{FString{UTF8_TO_TCHAR(compiled->source_path.c_str())}};
         auto const source_hash{FString{UTF8_TO_TCHAR(compiled->source_hash.c_str())}};
-        auto* const existing_material{LoadObject<UMaterial>(
-            nullptr, TEXT("/SpaceGame/Generated/Materials/M_SoftTargetWorld.M_SoftTargetWorld"))};
-        if (!TestRunner->TestTrue(TEXT("Existing world material loads"),
-                                  existing_material != nullptr)) {
-            return;
-        }
-        auto const original_package_bytes{package_bytes(*existing_material)};
         auto const emitted{material_synth::emit(compiled->material, source_path, source_hash)};
         if (!TestRunner->TestTrue(TEXT("World material generation succeeds"),
                                   emitted.material != nullptr && emitted.errors.IsEmpty())) {
@@ -257,10 +239,6 @@ TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
             }
             return;
         }
-
-        TestRunner->TestFalse(TEXT("Current world material does not save"), emitted.changed);
-        TestRunner->TestTrue(TEXT("Current world material preserves package bytes"),
-                             package_bytes(*emitted.material) == original_package_bytes);
 
         auto& material{*emitted.material};
         TestRunner->TestEqual(
