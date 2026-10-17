@@ -66,23 +66,4 @@ template <>
 
 } // namespace ml
 
-SPACEGAMEPRESENTATION_API auto LexToString(EGameTextStyle const value) -> TCHAR const*;
-
-SPACEGAMEPRESENTATION_API auto LexToString(EGameButtonStyle const value) -> TCHAR const*;
-
 SPACEGAMEPRESENTATION_API auto LexToString(EGameUiIcon const value) -> TCHAR const*;
-
-namespace ml::ioj {
-SPACEGAMEPRESENTATION_API auto to_string_view(EGameTextStyle const value) -> FStringView;
-
-SPACEGAMEPRESENTATION_API auto to_display_string_view(EGameTextStyle const value) -> FStringView;
-
-SPACEGAMEPRESENTATION_API auto to_string_view(EGameButtonStyle const value) -> FStringView;
-
-SPACEGAMEPRESENTATION_API auto to_display_string_view(EGameButtonStyle const value) -> FStringView;
-
-SPACEGAMEPRESENTATION_API auto to_string_view(EGameUiIcon const value) -> FStringView;
-
-SPACEGAMEPRESENTATION_API auto to_display_string_view(EGameUiIcon const value) -> FStringView;
-
-} // namespace ml::ioj

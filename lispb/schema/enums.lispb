@@ -14,8 +14,6 @@
   (enum EGameTextStyle uint8
     :reflection uenum
     :enum-array true
-    :conversions (lex-to-string string-view display-string-view)
-    :export-specifier SPACEGAMEPRESENTATION_API
     (value Body)
     (value BodySecondary
       :display-name "Body Secondary")
@@ -35,14 +33,12 @@
   (enum EGameButtonStyle uint8
     :reflection uenum
     :enum-array true
-    :conversions (lex-to-string string-view display-string-view)
-    :export-specifier SPACEGAMEPRESENTATION_API
     (value Primary)
     (value Secondary))
   (enum EGameUiIcon uint8
     :reflection uenum
     :enum-array true
-    :conversions (lex-to-string string-view display-string-view)
+    :conversions (lex-to-string)
     :export-specifier SPACEGAMEPRESENTATION_API
     (value Hive)
     (value Video)
