@@ -9,6 +9,6 @@ namespace ioj::sim {
 struct LevelInitialisationData {
     std::optional<LevelMissionInitialisationData> mission{};
     std::uint32_t entity_count{};
-    std::uint32_t player_entity_index{invalid_level_entity_index};
+    LevelEntityIndex player_entity_index{invalid_level_entity_index};
 };
 }

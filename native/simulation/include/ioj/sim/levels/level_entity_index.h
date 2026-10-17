@@ -3,6 +3,8 @@
 #include <limits>
 
 namespace ioj::sim {
-inline constexpr std::uint32_t invalid_level_entity_index{
-    std::numeric_limits<std::uint32_t>::max()};
+using LevelEntityIndex = std::uint32_t;
+
+inline constexpr LevelEntityIndex invalid_level_entity_index{
+    std::numeric_limits<LevelEntityIndex>::max()};
 }

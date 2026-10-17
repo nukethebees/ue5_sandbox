@@ -6,6 +6,7 @@
 #include "ioj/levels/team.h"
 #include "ioj/native_soa/storage.h"
 #include "ioj/sim/entities/health.h"
+#include "ioj/sim/levels/level_entity_index.h"
 #include "ioj/vector_soa_view.h"
 
 #include <cassert>
@@ -32,7 +33,7 @@ struct LevelTurretSpawnEventsSingleLayout {
     using ColLayout = ml::native_soa::ColumnLayout<T>;
     static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
-    static constexpr ColLayout<std::uint32_t> EntityIndicesColumn{LayoutStart};
+    static constexpr ColLayout<LevelEntityIndex> EntityIndicesColumn{LayoutStart};
     static constexpr ColLayout<float> LocationsXsColumn{EntityIndicesColumn};
     static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
     static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
@@ -184,7 +185,7 @@ struct LevelTurretSpawnEvents
     struct DataPointers {
         template <typename T>
         using Element = std::conditional_t<std::is_const_v<Byte>, T const, T>;
-        Element<std::uint32_t>* entity_indices{};
+        Element<LevelEntityIndex>* entity_indices{};
         Element<float>* locations_xs{};
         Element<float>* locations_ys{};
         Element<float>* locations_zs{};

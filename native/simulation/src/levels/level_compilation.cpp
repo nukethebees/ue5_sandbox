@@ -25,10 +25,10 @@ struct MissionTickValues {
     std::vector<std::int32_t> kill_target_increases{};
 };
 
-auto entity_index(LevelDefinition const& definition, EntityId const& id) -> std::uint32_t {
+auto entity_index(LevelDefinition const& definition, EntityId const& id) -> sim::LevelEntityIndex {
     auto const found{std::ranges::find(definition.entities, id, &EntitySpawnDefinition::id)};
     assert(found != definition.entities.end());
-    return static_cast<std::uint32_t>(found - definition.entities.begin());
+    return static_cast<sim::LevelEntityIndex>(found - definition.entities.begin());
 }
 
 void append_indices(std::vector<std::int32_t>& output,
@@ -184,7 +184,7 @@ auto compile_level(LevelDefinition const& definition,
     std::int32_t capital_offset{};
     std::int32_t turret_offset{};
     MissionTickValues mission_values;
-    auto const append_entity = [&](std::uint32_t const entity_index_value,
+    auto const append_entity = [&](sim::LevelEntityIndex const entity_index_value,
                                    sim::LevelCapitalSpawnEvents& capital_storage,
                                    sim::LevelTurretSpawnEvents& turret_storage) {
         auto const& entity{definition.entities[static_cast<std::size_t>(entity_index_value)]};

@@ -1,5 +1,6 @@
 #pragma once
 #include <ioj/sim/levels/compiled_level_events.h>
+#include <ioj/sim/levels/level_entity_index.h>
 #include <ioj/sim/levels/level_spawn_manager.h>
 #include <ioj/sim/sim_tick.h>
 
@@ -26,7 +27,7 @@ class LevelEventManager {
     void execute_tick(SimTick tick);
     auto get_spawned_ids() const -> std::span<EntityUniqueId const>;
     void configure_mission();
-    auto get_entity_id(std::uint32_t entity_index) const -> EntityUniqueId;
+    auto get_entity_id(LevelEntityIndex entity_index) const -> EntityUniqueId;
     auto has_future_spawns() const noexcept -> bool;
   private:
     LevelInitialisationData initialisation_{};

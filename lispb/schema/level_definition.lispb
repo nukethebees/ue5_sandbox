@@ -55,8 +55,8 @@
     (member rolls array float))
   (struct LevelCapitalSpawnEvents
     :operations (all)
-    (member entity_indices array uint32)
-    (member target_entity_indices array uint32)
+    (member entity_indices array @native_level_entity_index)
+    (member target_entity_indices array @native_level_entity_index)
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
     (member teams array @native_team)
@@ -83,7 +83,7 @@
     (member rolls array float))
   (struct LevelTurretSpawnEvents
     :operations (all)
-    (member entity_indices array uint32)
+    (member entity_indices array @native_level_entity_index)
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member rotations nested @native_rotators_3f :nested-schema Rotators3f)
     (member teams array @native_team)
@@ -109,7 +109,7 @@
     (member rolls array float))
   (struct LevelSpinnerSpawnEvents
     :operations (all)
-    (member entity_indices array uint32)
+    (member entity_indices array @native_level_entity_index)
     (member locations nested @native_vectors_3f :nested-schema Vectors3f)
     (member yaws array float)
     (member initial_fire_point_indices array int32)

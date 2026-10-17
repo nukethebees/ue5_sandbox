@@ -101,7 +101,7 @@ void LevelEventManager::configure_mission() {
     }
 }
 
-auto LevelEventManager::get_entity_id(std::uint32_t const entity_index) const -> EntityUniqueId {
+auto LevelEventManager::get_entity_id(LevelEntityIndex const entity_index) const -> EntityUniqueId {
     return spawn_manager_.get_id(entity_index);
 }
 

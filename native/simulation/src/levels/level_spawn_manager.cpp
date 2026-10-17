@@ -31,7 +31,8 @@ void LevelSpawnManager::initialise(std::uint32_t const entity_count,
     entity_ids_.resize(static_cast<std::size_t>(entity_count));
 }
 
-void LevelSpawnManager::set_entity_id(std::uint32_t const entity_index, EntityUniqueId const id) {
+void LevelSpawnManager::set_entity_id(LevelEntityIndex const entity_index,
+                                      EntityUniqueId const id) {
     assert(static_cast<std::size_t>(entity_index) < entity_ids_.size());
     assert(id.is_valid());
     entity_ids_[entity_index] = id;
@@ -137,7 +138,7 @@ void LevelSpawnManager::spawn_spinners(LevelSpinnerSpawnEvents::ConstView const 
     }
 }
 
-auto LevelSpawnManager::get_id(std::uint32_t const entity_index) const -> EntityUniqueId {
+auto LevelSpawnManager::get_id(LevelEntityIndex const entity_index) const -> EntityUniqueId {
     assert(static_cast<std::size_t>(entity_index) < entity_ids_.size());
     auto const id{entity_ids_[entity_index]};
     assert(id.is_valid());
