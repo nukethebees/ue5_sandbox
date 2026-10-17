@@ -1,12 +1,11 @@
 #include "ioj/sim/collision/collision_system.h"
 
+#include <ioj/frame_array.h>
+#include <ioj/frame_memory_resource.h>
 #include <ioj/sim/entity_cell_data_operations.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/profiling.h>
-
-#include <sandbox/core/frame_array.h>
-#include <sandbox/core/frame_memory_resource.h>
-#include <sandbox/core/soa_permutation.h>
+#include <ioj/soa_permutation.h>
 
 #include <oneapi/tbb/blocked_range.h>
 #include <oneapi/tbb/parallel_for.h>

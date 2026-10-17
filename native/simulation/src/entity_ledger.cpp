@@ -1,6 +1,6 @@
 #include <ioj/sim/entity_ledger.h>
 
-#include <sandbox/core/diagnostics.h>
+#include <ioj/diagnostics.h>
 
 #include <cassert>
 #include <format>

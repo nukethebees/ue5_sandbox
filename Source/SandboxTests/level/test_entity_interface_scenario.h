@@ -1,8 +1,7 @@
 #pragma once
 
+#include <ioj/time_series_data.h>
 #include <SandboxTests/support/SimulationTestScenario.h>
-
-#include <sandbox/core/time_series_data.h>
 
 namespace ml {
 class FEntityInterfaceScenario final : public FSimulationTestScenario {

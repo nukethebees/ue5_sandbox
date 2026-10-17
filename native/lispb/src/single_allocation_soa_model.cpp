@@ -25,9 +25,7 @@ auto make_dialect(SoaBackend const backend) -> SingleAllocationDialect {
             .span_template = "std::span",
             .column_iteration_function = "each_column",
             .dependencies = {{"assert", "cassert", {}},
-                             {"single_allocation_storage",
-                              "sandbox/core/native_soa/storage.h",
-                              {}}},
+                             {"single_allocation_storage", "ioj/native_soa/storage.h", {}}},
         };
     }
     return {
@@ -41,7 +39,7 @@ auto make_dialect(SoaBackend const backend) -> SingleAllocationDialect {
         .dependencies =
             {{"assert", "cassert", {}},
              {"single_allocation_operations", "SandboxCore/single_allocation/operations.h", {}},
-             {"single_allocation_removal", "sandbox/core/single_allocation/removal.h", {}},
+             {"single_allocation_removal", "ioj/single_allocation/removal.h", {}},
              {"single_allocation_vector_views", "SandboxCore/single_allocation/vector_views.h", {}},
              {"single_allocation_memory_ops", "Templates/MemoryOps.h", {}}},
     };

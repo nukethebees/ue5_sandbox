@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/frame_memory_resource.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/entity_tables.h>
@@ -7,8 +8,6 @@
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/sim_config.h>
 #include <ioj/sim/spinner_entity_data.h>
-
-#include <sandbox/core/frame_memory_resource.h>
 
 #include <cassert>
 #include <cstdint>

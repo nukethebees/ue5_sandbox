@@ -1,7 +1,7 @@
 #pragma once
 
-#include <sandbox/core/enum_traits.h>
-#include <sandbox/core/fixed_array.h>
+#include <ioj/enum_traits.h>
+#include <ioj/fixed_array.h>
 
 namespace ml {
 template <typename Enum>

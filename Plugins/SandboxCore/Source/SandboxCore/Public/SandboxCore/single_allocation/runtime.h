@@ -1,7 +1,7 @@
 #pragma once
 
-#include <sandbox/core/single_allocation/layout.h>
-#include <sandbox/core/single_allocation/view.h>
+#include <ioj/single_allocation/layout.h>
+#include <ioj/single_allocation/view.h>
 
 #include <Containers/ArrayView.h>
 #include <Containers/ContainerAllocationPolicies.h>

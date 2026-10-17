@@ -1,6 +1,6 @@
 #pragma once
 
-#include "sandbox/core/vector_soa_view.h"
+#include "ioj/vector_soa_view.h"
 
 #include <cmath>
 #include <cstdint>

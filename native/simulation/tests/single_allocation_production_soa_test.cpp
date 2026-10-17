@@ -1,4 +1,5 @@
 #include "support/simulation_test_support.h"
+#include <ioj/frame_memory_resource.h>
 #include <ioj/sim/capital_entity_data.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/fighter_entity_data.h>
@@ -11,8 +12,6 @@
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/spinner_entity_data.h>
 #include <ioj/sim/turret_entity_data.h>
-
-#include <sandbox/core/frame_memory_resource.h>
 
 #include <type_traits>
 #include <utility>

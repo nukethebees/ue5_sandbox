@@ -1,7 +1,7 @@
-#include "sandbox/core/countdown.h"
-#include "sandbox/core/countdown_timers.h"
-#include "sandbox/core/periodic_tick_countdown.h"
-#include "sandbox/core/tick_countdown.h"
+#include "ioj/countdown.h"
+#include "ioj/countdown_timers.h"
+#include "ioj/periodic_tick_countdown.h"
+#include "ioj/tick_countdown.h"
 
 #include <gtest/gtest.h>
 

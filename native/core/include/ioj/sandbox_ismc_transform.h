@@ -1,7 +1,7 @@
 #pragma once
 
-#include "sandbox/core/math_types.h"
-#include "sandbox/core/sandbox_ismc_render.h"
+#include "ioj/math_types.h"
+#include "ioj/sandbox_ismc_render.h"
 
 #include <algorithm>
 #include <bit>

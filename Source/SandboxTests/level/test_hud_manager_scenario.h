@@ -1,12 +1,11 @@
 #pragma once
 
 #include <ioj/sim/entity_type.h>
+#include <ioj/time_series_data.h>
 #include <SandboxTests/support/SimulationTestScenario.h>
 #include <SpaceGame/missions/TestMissionState.h>
 #include <SpaceGamePresentation/entities/TestTeam.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
-
-#include <sandbox/core/time_series_data.h>
 
 namespace ml {
 enum class EHUDManagerScenario : uint8 {

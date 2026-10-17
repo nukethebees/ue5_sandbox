@@ -109,13 +109,13 @@ auto lower_native_soa(SoaSchema const& schema,
     auto const const_view{schema.const_view_name.value_or(schema.name + "ConstView")};
     auto const vector3f_schema{uses_native_vector_view(schema, types)};
     std::vector<TypeDependency> dependencies{
-        {"native_storage", "sandbox/core/native_soa/storage.h", {}},
-        {"native_vector_storage_ops", "sandbox/core/native_soa/vector_storage_ops.h", {}},
+        {"native_storage", "ioj/native_soa/storage.h", {}},
+        {"native_vector_storage_ops", "ioj/native_soa/vector_storage_ops.h", {}},
         {"std::forward", "utility", {}},
         {"assert", "cassert", {}},
     };
     if (vector3f_schema) {
-        dependencies.push_back({"vector_soa_view", "sandbox/core/vector_soa_view.h", {}});
+        dependencies.push_back({"vector_soa_view", "ioj/vector_soa_view.h", {}});
     }
     std::vector<RowParameter> row_parameters;
     for (auto const& member : layout.members) {

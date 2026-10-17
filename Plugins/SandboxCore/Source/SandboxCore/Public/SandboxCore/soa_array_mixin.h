@@ -1,6 +1,7 @@
 #pragma once
 
-#include <sandbox/core/soa_concepts.h>
+#include <ioj/soa_concepts.h>
+
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/container_ops.h>
 

@@ -397,7 +397,7 @@ TEST(Lowering, EmitsCountsForEnumArrays) {
                                .enum_array = true,
                            }}})};
 
-    EXPECT_NE(output.header.find("#include \"sandbox/core/enum_traits.h\""), std::string::npos);
+    EXPECT_NE(output.header.find("#include \"ioj/enum_traits.h\""), std::string::npos);
     EXPECT_NE(
         output.header.find(
             "constexpr auto enum_count<::EMode>() noexcept -> std::size_t {\n    return 2;\n}"),
@@ -424,7 +424,7 @@ TEST(Lowering, EmitsCountsForReflectedEnumArrays) {
                                                          .enum_array = true,
                                                      }}})};
 
-    EXPECT_NE(output.header.find("#include \"sandbox/core/enum_traits.h\""), std::string::npos);
+    EXPECT_NE(output.header.find("#include \"ioj/enum_traits.h\""), std::string::npos);
     EXPECT_NE(
         output.header.find("enum_count<::EMode>() noexcept -> std::size_t {\n    return 2;\n}"),
         std::string::npos);

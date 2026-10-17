@@ -3,13 +3,12 @@
 
 #pragma once
 
+#include "ioj/native_soa/storage.h"
 #include "ioj/sim/collision_types.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/query_result_types.h"
+#include "ioj/vector_soa_view.h"
 #include <ioj/sim/line_trace_result.h>
-
-#include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/vector_soa_view.h"
 
 #include <cassert>
 #include <memory_resource>

@@ -1,4 +1,6 @@
 #pragma once
+#include <ioj/frame_memory_resource.h>
+#include <ioj/multi_buffer.h>
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/fighter_entity_data.h>
@@ -13,9 +15,6 @@
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/sim_config.h>
 #include <ioj/sim/trace_hits.h>
-
-#include <sandbox/core/frame_memory_resource.h>
-#include <sandbox/core/multi_buffer.h>
 
 #include <array>
 #include <cassert>

@@ -1,12 +1,11 @@
 #pragma once
 
+#include <ioj/range_fits.h>
 #include <ioj/sim/entity_identity_layout.h>
 #include <ioj/sim/entity_instance_handle.h>
 #include <ioj/sim/entity_type_runs.h>
 #include <ioj/sim/health.h>
 #include <ioj/sim/sim_clock.h>
-
-#include <sandbox/core/range_fits.h>
 
 #include <algorithm>
 #include <cassert>

@@ -4,9 +4,9 @@
 #pragma once
 
 #include "ioj/levels/team.h"
+#include "ioj/soa_concepts.h"
 #include "SpaceGameSimulation/levels/LevelTypes.h"
 
-#include "sandbox/core/soa_concepts.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_storage_ops.h"

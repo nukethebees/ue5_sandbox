@@ -465,7 +465,7 @@ auto compact_view_node(SingleAllocationModel const& model) -> Node {
                                    ">, " + prefix + "View<" + element + ">>"}};
             if (pointer_view && !rotation_view) {
                 view_type = CppType{"ml::Vector3SoAView<Element<float>>",
-                                    {{"vector_soa_view", "sandbox/core/vector_soa_view.h", {}}}};
+                                    {{"vector_soa_view", "ioj/vector_soa_view.h", {}}}};
             }
             std::vector<Expr> arguments{named("state_"), named("offset_"), named("count_")};
             auto const columns{pointer_view ? vector->components.size() : 2};

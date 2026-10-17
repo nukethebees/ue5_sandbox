@@ -12,21 +12,21 @@ target_include_directories(native-core-headers
 )
 target_sources(native-core
   PRIVATE
-    include/sandbox/core/container_ops.h
-    include/sandbox/core/monotonic_clock.h
-    include/sandbox/core/speed_response.h
-    include/sandbox/core/diagnostics.h
-    include/sandbox/core/enum_traits.h
-    include/sandbox/core/packed_value.h
-    include/sandbox/core/parallel_for.h
-    include/sandbox/core/countdown_timers.h
-    include/sandbox/core/math_types.h
-    include/sandbox/core/native_soa/storage.h
-    include/sandbox/core/native_soa/vector_storage_ops.h
-    include/sandbox/core/periodic_tick_countdown.h
-    include/sandbox/core/space_dust_math.h
-    include/sandbox/core/tick_countdown.h
-    include/sandbox/core/vector_normalization.h
+    include/ioj/container_ops.h
+    include/ioj/monotonic_clock.h
+    include/ioj/speed_response.h
+    include/ioj/diagnostics.h
+    include/ioj/enum_traits.h
+    include/ioj/packed_value.h
+    include/ioj/parallel_for.h
+    include/ioj/countdown_timers.h
+    include/ioj/math_types.h
+    include/ioj/native_soa/storage.h
+    include/ioj/native_soa/vector_storage_ops.h
+    include/ioj/periodic_tick_countdown.h
+    include/ioj/space_dust_math.h
+    include/ioj/tick_countdown.h
+    include/ioj/vector_normalization.h
     src/generated/array_math_kernels.cpp
     src/generated/vector_lerp_kernels.cpp
     src/files.cpp

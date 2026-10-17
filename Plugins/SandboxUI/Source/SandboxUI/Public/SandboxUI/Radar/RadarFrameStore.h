@@ -1,6 +1,7 @@
 #pragma once
 
-#include "sandbox/core/multi_buffer.h"
+#include "ioj/multi_buffer.h"
+
 #include "SandboxUI/Radar/RadarTypes.h"
 
 #include "Templates/SharedPointer.h"

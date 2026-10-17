@@ -1,9 +1,8 @@
 #include <ioj/sim/damage_queue.h>
 
+#include <ioj/frame_array.h>
 #include <ioj/sim/profiling.h>
-
-#include <sandbox/core/frame_array.h>
-#include <sandbox/core/soa_permutation.h>
+#include <ioj/soa_permutation.h>
 
 namespace ioj::sim {
 void DamageQueue::prepare(EntityLookupTables const& indexes,

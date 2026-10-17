@@ -1,8 +1,7 @@
 #pragma once
 
+#include <ioj/fixed_array.h>
 #include <ioj/sim/entity_unique_id.h>
-
-#include <sandbox/core/fixed_array.h>
 
 #include <algorithm>
 #include <cassert>

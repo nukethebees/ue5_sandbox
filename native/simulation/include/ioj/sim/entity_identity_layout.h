@@ -1,8 +1,7 @@
 #pragma once
 
+#include <ioj/enum_array.h>
 #include <ioj/sim/entity_unique_id.h>
-
-#include <sandbox/core/enum_array.h>
 
 #include <cstddef>
 #include <cstdint>

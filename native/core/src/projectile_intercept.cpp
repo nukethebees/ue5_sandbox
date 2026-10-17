@@ -1,4 +1,4 @@
-#include <sandbox/core/projectile_intercept.h>
+#include <ioj/projectile_intercept.h>
 
 #include <cmath>
 #include <limits>

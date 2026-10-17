@@ -1,10 +1,9 @@
 #include "support/collision_agent_storage.h"
+#include <ioj/frame_memory_resource.h>
 #include <ioj/sim/frame_range_query_results.h>
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/testing/entity_observations.h>
-
-#include <sandbox/core/frame_memory_resource.h>
-#include <sandbox/core/vector_normalization.h>
+#include <ioj/vector_normalization.h>
 
 #include <gtest/gtest.h>
 

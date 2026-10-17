@@ -1,11 +1,11 @@
 #pragma once
 
-#include <sandbox/core/vector_math.h>
+#include <ioj/vector_math.h>
 
 #include "SandboxCore/array_checks.h"
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/log_categories.h"
-#include "sandbox/core/numeric.h"
+#include "ioj/numeric.h"
 #include "SandboxCore/vector_concepts.h"
 #include "SandboxCore/vector_traits.h"
 

@@ -7,9 +7,9 @@
 #include "Project/Row.h"
 #include "Project/Tracked.h"
 
-#include "sandbox/core/fixed_storage.h"
-#include "sandbox/core/single_allocation/removal.h"
-#include "sandbox/core/soa_concepts.h"
+#include "ioj/fixed_storage.h"
+#include "ioj/single_allocation/removal.h"
+#include "ioj/soa_concepts.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/single_allocation/operations.h"
 #include "SandboxCore/single_allocation/vector_views.h"

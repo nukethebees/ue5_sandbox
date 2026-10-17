@@ -1,6 +1,6 @@
 #include "SandboxISMCInstanceChunkWriter.h"
 
-#include "sandbox/core/sandbox_ismc_packing.h"
+#include "ioj/sandbox_ismc_packing.h"
 
 static_assert(sizeof(FVector3f) == 3 * sizeof(float));
 static_assert(offsetof(FVector3f, X) == 0 && offsetof(FVector3f, Y) == sizeof(float) &&

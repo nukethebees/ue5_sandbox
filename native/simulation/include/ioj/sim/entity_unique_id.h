@@ -3,9 +3,8 @@
 
 #pragma once
 
+#include "ioj/packed_value.h"
 #include "ioj/sim/entity_type.h"
-
-#include "sandbox/core/packed_value.h"
 
 #include <cassert>
 #include <compare>

@@ -1,6 +1,7 @@
 #pragma once
 
-#include <sandbox/core/single_allocation/operations.h>
+#include <ioj/single_allocation/operations.h>
+
 #include <SandboxCore/single_allocation/runtime.h>
 
 namespace ml::soa_storage {

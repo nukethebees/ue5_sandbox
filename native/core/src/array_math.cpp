@@ -1,4 +1,4 @@
-#include <sandbox/core/array_math.h>
+#include <ioj/array_math.h>
 
 namespace ml::kernel {
 template auto

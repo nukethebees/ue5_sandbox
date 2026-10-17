@@ -454,7 +454,7 @@ auto packed_value_text(PackedValueSchema const& source_schema,
     auto const field_layouts{packed_field_layouts(schema, types, packed, type_graph, storage_bits)};
 
     std::vector<TypeDependency> dependencies{
-        TypeDependency{"ml::PackedField", "sandbox/core/packed_value.h", {}},
+        TypeDependency{"ml::PackedField", "ioj/packed_value.h", {}},
         TypeDependency{"assert", "cassert", {}},
         TypeDependency{"std::strong_ordering", "compare", {}},
         TypeDependency{"std::numeric_limits", "limits", {}},
@@ -813,8 +813,7 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         }
 
         if (field.range_helper) {
-            dependencies.push_back(
-                TypeDependency{"ml::range_fits", "sandbox/core/range_fits.h", {}});
+            dependencies.push_back(TypeDependency{"ml::range_fits", "ioj/range_fits.h", {}});
             output += "\n    [[nodiscard]] static constexpr auto " + field.name + "_range_fits(" +
                       field_alias + " const first, " + field_alias +
                       " const count) noexcept -> bool {\n";

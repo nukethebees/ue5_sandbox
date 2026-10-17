@@ -1,11 +1,10 @@
 #pragma once
 
+#include <ioj/range_fits.h>
 #include <ioj/sim/entity_identity_layout.h>
 #include <ioj/sim/entity_instance_handle.h>
 #include <ioj/sim/health.h>
-
-#include <sandbox/core/range_fits.h>
-#include <sandbox/core/soa_permutation.h>
+#include <ioj/soa_permutation.h>
 
 #include <algorithm>
 #include <cassert>

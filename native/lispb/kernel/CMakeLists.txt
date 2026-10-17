@@ -95,7 +95,7 @@ set(KERNEL_CANDIDATE_DOCUMENT "${KERNEL_PRODUCTION_ROOT}/Kernels/candidate_math.
 
 set(KERNEL_STANDARD_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/standard-generated")
 set(KERNEL_STANDARD_FILES
-  "${KERNEL_STANDARD_OUTPUT}/include/sandbox/core/generated/array_math_kernels.h"
+  "${KERNEL_STANDARD_OUTPUT}/include/ioj/generated/array_math_kernels.h"
   "${KERNEL_STANDARD_OUTPUT}/src/generated/array_math_kernels.cpp"
   "${KERNEL_STANDARD_OUTPUT}/tests/generated/array_math_kernels_tests.cpp"
   "${KERNEL_STANDARD_OUTPUT}/standard/candidate_math_kernels.h"

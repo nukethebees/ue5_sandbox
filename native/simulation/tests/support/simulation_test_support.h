@@ -5,8 +5,7 @@
 #include <ioj/sim/entity_world_bounds.h>
 #include <ioj/sim/line_traces.h>
 #include <ioj/sim/rotator_math.h>
-
-#include <sandbox/core/time_series_data.h>
+#include <ioj/time_series_data.h>
 
 #include <gtest/gtest.h>
 

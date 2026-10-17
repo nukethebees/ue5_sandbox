@@ -1,5 +1,6 @@
 #include "test_player_ship_death_scenario.h"
 #include <ioj/sim/testing/entity_observations.h>
+#include <ioj/time_series_data.h>
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
@@ -9,8 +10,6 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-
-#include <sandbox/core/time_series_data.h>
 
 #include <Engine/GameInstance.h>
 #include <Engine/LocalPlayer.h>

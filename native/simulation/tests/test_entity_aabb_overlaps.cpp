@@ -1,12 +1,11 @@
 #include "support/collision_agent_storage.h"
 #include "support/simulation_test_support.h"
+#include <ioj/frame_memory_resource.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/testing/entity_observations.h>
 #include <ioj/sim/testing/spatial_query_manager_test_access.h>
-
-#include <sandbox/core/frame_memory_resource.h>
 
 #include <array>
 #include <cstddef>

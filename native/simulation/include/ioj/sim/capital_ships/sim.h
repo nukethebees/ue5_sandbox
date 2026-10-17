@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/frame_memory_resource.h>
 #include <ioj/sim/capital_death_event.h>
 #include <ioj/sim/capital_entity_data.h>
 #include <ioj/sim/entity_death_info.h>
@@ -10,8 +11,6 @@
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/levels/level_runtime_events.h>
 #include <ioj/sim/sim_config.h>
-
-#include <sandbox/core/frame_memory_resource.h>
 
 #include <cstdint>
 #include <optional>

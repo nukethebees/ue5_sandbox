@@ -4,6 +4,7 @@
 #include <ioj/sim/missions/mission_fail_reason.h>
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>
+#include <ioj/time_series_data.h>
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
@@ -21,7 +22,6 @@
 #include <SpaceGamePresentation/presentation/HUDManager.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
 
-#include <sandbox/core/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/enums.h>
 

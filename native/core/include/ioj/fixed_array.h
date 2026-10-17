@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/core/fixed_storage.h>
+#include <ioj/fixed_storage.h>
 
 #include <cassert>
 #include <cstdint>

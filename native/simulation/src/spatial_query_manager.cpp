@@ -1,13 +1,12 @@
 #include "ioj/sim/spatial_query_manager.h"
 
+#include <ioj/diagnostics.h>
+#include <ioj/frame_memory_resource.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/level_read_access.h>
 #include <ioj/sim/line_trace_batch.h>
 #include <ioj/sim/profiling.h>
-
-#include <sandbox/core/diagnostics.h>
-#include <sandbox/core/frame_memory_resource.h>
 
 #include <algorithm>
 #include <array>

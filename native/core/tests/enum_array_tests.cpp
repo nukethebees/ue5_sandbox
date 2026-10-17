@@ -1,4 +1,4 @@
-#include "sandbox/core/enum_array.h"
+#include "ioj/enum_array.h"
 
 #include <gtest/gtest.h>
 

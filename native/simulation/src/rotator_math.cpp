@@ -1,7 +1,7 @@
 #include "ioj/sim/rotator_math.h"
 
-#include "sandbox/core/trigonometry.h"
-#include "sandbox/core/vector_math.h"
+#include "ioj/trigonometry.h"
+#include "ioj/vector_math.h"
 
 #include <cmath>
 #include <numbers>

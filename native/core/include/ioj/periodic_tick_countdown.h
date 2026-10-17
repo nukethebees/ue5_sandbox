@@ -1,8 +1,8 @@
 #pragma once
 
-#include "sandbox/core/container_ops.h"
-#include "sandbox/core/countdown.h"
-#include "sandbox/core/soa_permutation.h"
+#include "ioj/container_ops.h"
+#include "ioj/countdown.h"
+#include "ioj/soa_permutation.h"
 
 #include <algorithm>
 #include <cassert>

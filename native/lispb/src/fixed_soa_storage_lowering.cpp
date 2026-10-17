@@ -8,8 +8,7 @@ namespace {
 
 TypeDependency const std_forward{"std::forward", "utility", {}};
 TypeDependency const tarray_view{"TArrayView", "Containers/ArrayView.h", {}};
-TypeDependency const fixed_storage_dependency{
-    "ml::TFixedStorage", "sandbox/core/fixed_storage.h", {}};
+TypeDependency const fixed_storage_dependency{"ml::TFixedStorage", "ioj/fixed_storage.h", {}};
 TypeDependency const move_temp{"MoveTemp", "Templates/UnrealTemplate.h", {}};
 
 auto fixed_storage_type(FixedMemberLayout const& member) -> std::string {

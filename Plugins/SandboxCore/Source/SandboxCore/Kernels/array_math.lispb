@@ -1,9 +1,9 @@
 (kernel-module array_math
   (emit standard
-    (header "include/sandbox/core/generated/array_math_kernels.h")
+    (header "include/ioj/generated/array_math_kernels.h")
     (source "src/generated/array_math_kernels.cpp")
     (tests "tests/generated/array_math_kernels_tests.cpp")
-    (header-include "sandbox/core/generated/array_math_kernels.h")
+    (header-include "ioj/generated/array_math_kernels.h")
     (namespace ml))
 
   (type-set numeric int32 float double)

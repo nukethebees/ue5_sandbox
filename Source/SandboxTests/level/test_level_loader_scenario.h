@@ -1,10 +1,9 @@
 #pragma once
 
+#include <ioj/time_series_data.h>
 #include <SandboxTests/support/SimulationTestScenario.h>
 #include <SpaceGame/missions/TestMissionMode.h>
 #include <SpaceGame/missions/TestMissionState.h>
-
-#include <sandbox/core/time_series_data.h>
 
 #include <UObject/StrongObjectPtr.h>
 

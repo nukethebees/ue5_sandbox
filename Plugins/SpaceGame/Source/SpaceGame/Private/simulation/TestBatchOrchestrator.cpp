@@ -2,6 +2,7 @@
 
 #include "SpaceGame/levels/LevelLoader.h"
 #include "SpaceGame/system/GameSubsystem.h"
+#include <ioj/invoke.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/entity_types.h>
@@ -32,7 +33,6 @@
 #include <SpaceGameRendering/SparkRendererComponent.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
-#include <sandbox/core/invoke.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/uobject_utils.h>

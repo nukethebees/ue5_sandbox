@@ -4,12 +4,11 @@
 #pragma once
 
 #include "ioj/levels/team.h"
+#include "ioj/native_soa/storage.h"
 #include "ioj/sim/entity_type.h"
 #include "ioj/sim/health.h"
 #include "ioj/sim/level_event_types.h"
-
-#include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/vector_soa_view.h"
+#include "ioj/vector_soa_view.h"
 
 #include <cassert>
 #include <memory_resource>

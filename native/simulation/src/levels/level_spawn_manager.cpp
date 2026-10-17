@@ -1,11 +1,10 @@
 #include "ioj/sim/levels/level_spawn_manager.h"
 
+#include <ioj/diagnostics.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/levels/level_entity_index.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/turrets/sim.h>
-
-#include <sandbox/core/diagnostics.h>
 
 #include <algorithm>
 #include <cassert>

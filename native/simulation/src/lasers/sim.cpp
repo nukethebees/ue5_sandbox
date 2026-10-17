@@ -1,14 +1,13 @@
 #include "ioj/sim/lasers/sim.h"
 
+#include <ioj/frame_array.h>
+#include <ioj/generated/array_math_kernels.h>
+#include <ioj/parallel_for.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spatial_query_manager.h>
-
-#include <sandbox/core/frame_array.h>
-#include <sandbox/core/generated/array_math_kernels.h>
-#include <sandbox/core/parallel_for.h>
 
 #include <algorithm>
 #include <cassert>

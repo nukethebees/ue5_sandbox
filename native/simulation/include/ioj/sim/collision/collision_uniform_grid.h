@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/frame_array.h>
 #include <ioj/sim/collision/trace_entity_filter.h>
 #include <ioj/sim/collision_grid.h>
 #include <ioj/sim/collision_grid_entity_storage.h>
@@ -8,8 +9,6 @@
 #include <ioj/sim/entity_world_bounds.h>
 #include <ioj/sim/line_trace_batch.h>
 #include <ioj/sim/trace_hits.h>
-
-#include <sandbox/core/frame_array.h>
 
 #include <cassert>
 #include <cstddef>

@@ -1,4 +1,4 @@
-#include <sandbox/core/quantized_decimal.h>
+#include <ioj/quantized_decimal.h>
 
 #include <gtest/gtest.h>
 

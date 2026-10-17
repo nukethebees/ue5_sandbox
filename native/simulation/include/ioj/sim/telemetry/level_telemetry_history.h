@@ -3,10 +3,9 @@
 
 #pragma once
 
+#include "ioj/native_soa/storage.h"
 #include "ioj/sim/entity_telemetry.h"
 #include "ioj/sim/sim_tick.h"
-
-#include "sandbox/core/native_soa/storage.h"
 
 #include <cassert>
 #include <cstdint>

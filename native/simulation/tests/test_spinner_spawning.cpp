@@ -10,8 +10,7 @@
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/spinners/sim.h>
-
-#include <sandbox/core/tick_countdown.h>
+#include <ioj/tick_countdown.h>
 
 namespace ioj::sim::spinners {
 struct SpinnerSpawnTestAccess {

@@ -1,7 +1,7 @@
 #include <ioj/sim/level_sim.h>
 
 #ifndef NDEBUG
-#include <sandbox/core/diagnostics.h>
+#include <ioj/diagnostics.h>
 
 #include <algorithm>
 #include <cassert>

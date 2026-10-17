@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/core/generated/array_math_kernels.h>
+#include <ioj/generated/array_math_kernels.h>
 
 #include <cstdint>
 #include <type_traits>

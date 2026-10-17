@@ -1,6 +1,6 @@
-#include "sandbox/core/frame_memory_resource.h"
+#include "ioj/frame_memory_resource.h"
 
-#include "sandbox/core/diagnostics.h"
+#include "ioj/diagnostics.h"
 
 #include <algorithm>
 #include <bit>

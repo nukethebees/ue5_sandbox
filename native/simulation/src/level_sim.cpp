@@ -1,8 +1,7 @@
 #include <ioj/sim/level_sim.h>
 
+#include <ioj/diagnostics.h>
 #include <ioj/sim/profiling.h>
-
-#include <sandbox/core/diagnostics.h>
 
 #include <algorithm>
 #include <array>

@@ -1,6 +1,6 @@
 #include "ioj/sim/telemetry/level_telemetry_block_history.h"
 
-#include <sandbox/core/diagnostics.h>
+#include <ioj/diagnostics.h>
 
 #include <algorithm>
 #include <cassert>

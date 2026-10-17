@@ -11,8 +11,8 @@
     (member rotations array @quat_4f)))
 
 (module sandbox_ismc_render
-  :header "native/core/include/sandbox/core/sandbox_ismc_render.h"
-  :header-include "sandbox/core/sandbox_ismc_render.h"
+  :header "native/core/include/ioj/sandbox_ismc_render.h"
+  :header-include "ioj/sandbox_ismc_render.h"
   :backend standard-library
   :namespace ml::sandbox_ismc
   (record Quat32

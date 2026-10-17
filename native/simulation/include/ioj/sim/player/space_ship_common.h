@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "sandbox/core/enum_traits.h"
+#include "ioj/enum_traits.h"
 
 #include <array>
 #include <cstddef>

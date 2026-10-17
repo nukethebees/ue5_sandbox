@@ -293,4 +293,4 @@
   (integer :signed false :bit-width 8 :minimum 0 :maximum 254
     (code Null :value 255 :sentinel true)))
 (type native_transform3d :spelling "ioj::sim::Transform3d" :header "ioj/sim/transform3d.h")
-(type native_vector3d :spelling "ml::Vector3d" :header "sandbox/core/vector3d.h")
+(type native_vector3d :spelling "ml::Vector3d" :header "ioj/vector3d.h")

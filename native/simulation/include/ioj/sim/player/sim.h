@@ -11,8 +11,7 @@
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/sim_config.h>
 #include <ioj/sim/transform3d.h>
-
-#include <sandbox/core/vector2d.h>
+#include <ioj/vector2d.h>
 
 #include <cstdint>
 #include <span>

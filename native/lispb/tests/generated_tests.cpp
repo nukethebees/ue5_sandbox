@@ -2,8 +2,7 @@
 #include "pmr_owner_tests.h"
 #include "ScalarValues.h"
 #include "SignatureDefinitions.h"
-
-#include <sandbox/core/enum_array.h>
+#include <ioj/enum_array.h>
 
 #include <gtest/gtest.h>
 

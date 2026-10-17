@@ -1,4 +1,4 @@
-#include <sandbox/core/vector3d.h>
+#include <ioj/vector3d.h>
 
 #include <gtest/gtest.h>
 

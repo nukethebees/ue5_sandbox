@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/core/lock_free_mpsc_queue_enums.h>
+#include <ioj/lock_free_mpsc_queue_enums.h>
 
 #include <algorithm>
 #include <array>
@@ -97,7 +97,7 @@ class LockFreeMPSCQueueSoA {
 
     template <typename... Args>
         requires (sizeof...(Args) == sizeof...(Ts)) &&
-                 (std::is_nothrow_constructible_v<Ts, Args &&> && ...)
+                 (std::is_nothrow_constructible_v<Ts, Args&&> && ...)
     [[nodiscard]] auto enqueue(Args&&... args) noexcept -> ELockFreeMPSCQueueEnqueueResult {
         auto const address_result{get_next_write_index()};
         if (!address_result) {

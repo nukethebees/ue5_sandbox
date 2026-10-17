@@ -1,12 +1,12 @@
 #pragma once
 
-#include <sandbox/core/address_cast.h>
-#include <sandbox/core/compact_vector_view.h>
-#include <sandbox/core/rotator_soa_view.h>
-#include <sandbox/core/single_allocation/layout.h>
-#include <sandbox/core/single_allocation/operations.h>
-#include <sandbox/core/single_allocation/removal.h>
-#include <sandbox/core/single_allocation/view.h>
+#include <ioj/address_cast.h>
+#include <ioj/compact_vector_view.h>
+#include <ioj/rotator_soa_view.h>
+#include <ioj/single_allocation/layout.h>
+#include <ioj/single_allocation/operations.h>
+#include <ioj/single_allocation/removal.h>
+#include <ioj/single_allocation/view.h>
 
 #include <algorithm>
 #include <cassert>

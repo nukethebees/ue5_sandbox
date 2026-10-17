@@ -5,7 +5,7 @@
 
 #include "Project/Scalar1f.h"
 
-#include "sandbox/core/soa_concepts.h"
+#include "ioj/soa_concepts.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_storage_ops.h"
 

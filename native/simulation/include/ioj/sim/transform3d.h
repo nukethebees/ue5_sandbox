@@ -1,9 +1,8 @@
 #pragma once
 
+#include <ioj/math_types.h>
 #include <ioj/rotator3d.h>
 #include <ioj/sim/vector_types.h>
-
-#include <sandbox/core/math_types.h>
 
 namespace ioj::sim {
 struct Transform3d {

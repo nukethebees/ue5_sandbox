@@ -1,5 +1,6 @@
 #include "ioj/sim/player/sim.h"
 
+#include <ioj/diagnostics.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/direct_damage_events.h>
@@ -12,10 +13,8 @@
 #include <ioj/sim/ship_health.h>
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/transform3d.h>
-
-#include <sandbox/core/diagnostics.h>
-#include <sandbox/core/vector2d.h>
-#include <sandbox/core/vector3d.h>
+#include <ioj/vector2d.h>
+#include <ioj/vector3d.h>
 
 #include <algorithm>
 #include <array>

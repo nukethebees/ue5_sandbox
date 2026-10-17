@@ -1,9 +1,9 @@
 #pragma once
 
-#include <sandbox/core/array_math.h>
+#include <ioj/array_math.h>
 
 #include "SandboxCore/array_checks.h"
-#include <sandbox/core/numeric.h>
+#include <ioj/numeric.h>
 
 #include "CoreMinimal.h"
 

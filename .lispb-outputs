@@ -29,7 +29,7 @@ Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/enti
 Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h
 Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.cpp
 Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/LevelDefinitionSoA.h
-native/core/include/sandbox/core/sandbox_ismc_render.h
+native/core/include/ioj/sandbox_ismc_render.h
 native/level_authoring/lib/include/ioj/levels/authoring/grammar.h
 native/levels/lib/include/ioj/levels/diagnostic_code.h
 native/levels/lib/include/ioj/levels/entity_archetype.h

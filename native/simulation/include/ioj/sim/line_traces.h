@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/vector_soa_view.h"
+#include "ioj/native_soa/storage.h"
+#include "ioj/vector_soa_view.h"
 
 #include <cassert>
 #include <memory_resource>

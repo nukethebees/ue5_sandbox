@@ -514,7 +514,7 @@ auto lower_enum(EnumSchema const& schema,
             .add(Include{"cstddef", true}, 2)
             .add(Include{"optional", true}, 2)
             .add(Include{"string_view", true}, 2)
-            .add(Include{"sandbox/core/enum_traits.h", false}, 2);
+            .add(Include{"ioj/enum_traits.h", false}, 2);
         if (std::ranges::any_of(schema.values, [](auto const& value) {
                 return value.serialized_name.has_value();
             })) {
@@ -532,7 +532,7 @@ auto lower_enum(EnumSchema const& schema,
                 .header =
                     CppFile{.path = projection.header,
                             .nodes = {Include{"CoreMinimal.h", false},
-                                      Include{"sandbox/core/enum_traits.h", false},
+                                      Include{"ioj/enum_traits.h", false},
                                       Include{generated_header, false},
                                       raw(unreal_projection_header(schema, projection, types))},
                             .clang_format_off = true},
@@ -571,7 +571,7 @@ auto lower_enum(EnumSchema const& schema,
                           .values = std::move(values)},
                      2);
     if (schema.enum_array) {
-        emission.header_prefix.push_back(Include{"sandbox/core/enum_traits.h", false});
+        emission.header_prefix.push_back(Include{"ioj/enum_traits.h", false});
         emission.header_global.push_back(
             Namespace{"ml",
                       {raw(enum_count_specialization("::" + qualified_enum_name(settings, schema),

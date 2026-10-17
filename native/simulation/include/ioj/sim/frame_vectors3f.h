@@ -1,9 +1,8 @@
 #pragma once
 
+#include "ioj/frame_array.h"
 #include "ioj/sim/vector_types.h"
 #include "ioj/sim/vectors3f.h"
-
-#include "sandbox/core/frame_array.h"
 
 #include <cassert>
 #include <memory_resource>

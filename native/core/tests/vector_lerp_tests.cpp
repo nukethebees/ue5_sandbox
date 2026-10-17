@@ -1,4 +1,4 @@
-#include <sandbox/core/generated/vector_lerp_kernels.h>
+#include <ioj/generated/vector_lerp_kernels.h>
 
 #include <gtest/gtest.h>
 

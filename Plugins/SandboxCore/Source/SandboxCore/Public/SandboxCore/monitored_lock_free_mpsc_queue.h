@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/core/monitored_lock_free_mpsc_queue.h>
+#include <ioj/monitored_lock_free_mpsc_queue.h>
 
 #include "CoreMinimal.h"
 

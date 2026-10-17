@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/core/generated/array_math_kernels.h>
+#include <ioj/generated/array_math_kernels.h>
 
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"

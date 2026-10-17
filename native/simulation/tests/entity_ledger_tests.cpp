@@ -1,11 +1,10 @@
+#include <ioj/frame_memory_resource.h>
 #include <ioj/sim/batch_operations.h>
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/damage_queue.h>
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/entity_lookup_table.h>
-
-#include <sandbox/core/frame_memory_resource.h>
 
 #include <gtest/gtest.h>
 

@@ -1,8 +1,7 @@
 #pragma once
 
+#include <ioj/diagnostics.h>
 #include <ioj/sim/entity_identity_layout.h>
-
-#include <sandbox/core/diagnostics.h>
 
 #include <format>
 #include <limits>

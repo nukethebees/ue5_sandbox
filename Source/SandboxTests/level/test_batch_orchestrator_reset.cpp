@@ -4,6 +4,7 @@
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/turrets/sim.h>
+#include <ioj/time_series_data.h>
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
@@ -13,7 +14,6 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
-#include <sandbox/core/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
 #include <Engine/LevelScriptActor.h>

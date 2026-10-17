@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "sandbox/core/enum_traits.h"
-#include "sandbox/core/packed_value.h"
+#include "ioj/enum_traits.h"
+#include "ioj/packed_value.h"
 
 #include <array>
 #include <cassert>

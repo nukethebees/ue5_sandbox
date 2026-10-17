@@ -1,8 +1,7 @@
 #include "ioj/sim/levels/level_event_manager.h"
 
+#include <ioj/diagnostics.h>
 #include <ioj/sim/mission_manager.h>
-
-#include <sandbox/core/diagnostics.h>
 
 #include <cassert>
 #include <cstdint>

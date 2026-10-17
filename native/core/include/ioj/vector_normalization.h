@@ -1,7 +1,7 @@
 #pragma once
 
-#include "sandbox/core/math_types.h"
-#include "sandbox/core/vector_math.h"
+#include "ioj/math_types.h"
+#include "ioj/vector_math.h"
 
 #include <cmath>
 

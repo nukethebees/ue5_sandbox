@@ -1,4 +1,4 @@
-#include <sandbox/core/vector_math.h>
+#include <ioj/vector_math.h>
 
 #include <gtest/gtest.h>
 

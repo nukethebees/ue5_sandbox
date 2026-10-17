@@ -1,4 +1,4 @@
-#include <sandbox/core/native_soa/vector_storage_ops.h>
+#include <ioj/native_soa/vector_storage_ops.h>
 
 #include <gtest/gtest.h>
 

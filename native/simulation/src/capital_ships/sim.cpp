@@ -1,5 +1,8 @@
 #include "ioj/sim/capital_ships/sim.h"
 
+#include <ioj/array_math.h>
+#include <ioj/countdown.h>
+#include <ioj/frame_array.h>
 #include <ioj/sim/batch_operations.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
@@ -12,10 +15,6 @@
 #include <ioj/sim/rotator_math.h>
 #include <ioj/sim/sim_config.h>
 #include <ioj/sim/spatial_query_manager.h>
-
-#include <sandbox/core/array_math.h>
-#include <sandbox/core/countdown.h>
-#include <sandbox/core/frame_array.h>
 
 #include <algorithm>
 #include <cassert>

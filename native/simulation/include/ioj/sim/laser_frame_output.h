@@ -2,8 +2,7 @@
 
 #include "ioj/sim/laser_hit_details.h"
 #include "ioj/sim/sim_tick.h"
-
-#include <sandbox/core/single_allocation/concepts.h>
+#include <ioj/single_allocation/concepts.h>
 
 #include <cstdint>
 #include <vector>

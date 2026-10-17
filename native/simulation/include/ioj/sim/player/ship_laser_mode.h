@@ -4,8 +4,7 @@
 #pragma once
 
 #include "ioj/enum_lookup.h"
-
-#include "sandbox/core/enum_traits.h"
+#include "ioj/enum_traits.h"
 
 #include <array>
 #include <cstddef>

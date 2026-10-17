@@ -102,7 +102,7 @@ their original ranges, including comments and unrelated text.
 
 Packed values store one unsigned fixed-width integer. The schema defines offsets, widths, and
 bit order; C++ lowering uses explicit masks and shifts through `ml::PackedField` and the
-`packed_extract`, `packed_pack`, and `packed_insert` helpers in `sandbox/core/packed_value.h`.
+`packed_extract`, `packed_pack`, and `packed_insert` helpers in `ioj/packed_value.h`.
 Each field exposes `<name>_field::{offset,bits,value_mask,mask}` instead of four separate
 `<name>_offset`, `<name>_bits`, `<name>_value_mask`, and `<name>_mask` constants.
 Storage checks share `valid_packed_storage`. `PackedField` also requires a value representation
@@ -219,7 +219,7 @@ Each compact owner holds one non-owning `std::pmr::memory_resource*`, defaulting
 bytes and alignment. Move construction adopts the resource; move assignment retains the
 destination resource and copies columns when resources compare unequal. Copying stays deleted.
 Lifetime, allocation, growth, borrowing, and container operations share one `StorageOperations`
-friend in `sandbox/core/single_allocation/operations.h`. Backend aliases supply size types
+friend in `ioj/single_allocation/operations.h`. Backend aliases supply size types
 and growth policies; column operations remain generated explicitly. Runtime preconditions use
 standard assertions, which disappear when `NDEBUG` is defined; helpers take no validation callback.
 The resource must outlive the storage. Resource choice is a construction argument, not a

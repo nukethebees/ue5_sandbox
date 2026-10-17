@@ -1,8 +1,8 @@
 (kernel-module vector_lerp
   (emit standard
-    (header "include/sandbox/core/generated/vector_lerp_kernels.h")
+    (header "include/ioj/generated/vector_lerp_kernels.h")
     (source "src/generated/vector_lerp_kernels.cpp")
-    (header-include "sandbox/core/generated/vector_lerp_kernels.h")
+    (header-include "ioj/generated/vector_lerp_kernels.h")
     (namespace ml))
 
   (type-set floating float double)

@@ -1,7 +1,6 @@
 #include "ioj/sim/fighters/sim.h"
 #include "support/simulation_test_support.h"
-
-#include <sandbox/core/multi_buffer.h>
+#include <ioj/multi_buffer.h>
 
 namespace ioj::sim::tests {
 

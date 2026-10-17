@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/frame_memory_resource.h>
 #include <ioj/sim/capital_ships/phase_interface.h>
 #include <ioj/sim/capital_ships/sim.h>
 #include <ioj/sim/column_math.h>
@@ -27,8 +28,6 @@
 #include <ioj/sim/spinners/sim.h>
 #include <ioj/sim/turrets/phase_interface.h>
 #include <ioj/sim/turrets/sim.h>
-
-#include <sandbox/core/frame_memory_resource.h>
 
 #include <array>
 #include <cstdint>

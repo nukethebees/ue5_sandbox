@@ -6,8 +6,7 @@
 #include <ioj/sim/sim_tick.h>
 #include <ioj/sim/telemetry/level_telemetry_block_history.h>
 #include <ioj/sim/telemetry/level_telemetry_run_record.h>
-
-#include <sandbox/core/time_series_data.h>
+#include <ioj/time_series_data.h>
 
 #include <array>
 #include <cstdint>

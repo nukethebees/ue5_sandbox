@@ -4,9 +4,9 @@
 #include "SandboxGameShared/utilities/vision_maths.h"
 #include "SGLegacy/learning/TestTurretsConfig.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
+#include <ioj/invoke.h>
+#include <ioj/rotation.h>
 
-#include <sandbox/core/invoke.h>
-#include <sandbox/core/rotation.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/interpolation.h>
 #include <SandboxCoreEngine/actor_components.h>

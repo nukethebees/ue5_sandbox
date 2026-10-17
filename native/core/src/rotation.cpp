@@ -1,4 +1,4 @@
-#include <sandbox/core/rotation.h>
+#include <ioj/rotation.h>
 
 namespace ml::kernel {
 template void rotate_towards_1d_degrees<float>(

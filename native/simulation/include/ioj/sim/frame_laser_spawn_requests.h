@@ -1,12 +1,11 @@
 #pragma once
 
+#include "ioj/frame_array.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/frame_rotators3f.h"
 #include "ioj/sim/frame_vectors3f.h"
 #include "ioj/sim/laser_soa.h"
 #include "ioj/sim/laser_source.h"
-
-#include "sandbox/core/frame_array.h"
 
 #include <cassert>
 #include <cstdint>

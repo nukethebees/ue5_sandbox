@@ -1,9 +1,9 @@
-#include <sandbox/core/container_ops.h>
-#include <sandbox/core/fixed_array.h>
-#include <sandbox/core/frame_array.h>
-#include <sandbox/core/frame_memory_resource.h>
-#include <sandbox/core/multi_buffer.h>
-#include <sandbox/core/soa_permutation.h>
+#include <ioj/container_ops.h>
+#include <ioj/fixed_array.h>
+#include <ioj/frame_array.h>
+#include <ioj/frame_memory_resource.h>
+#include <ioj/multi_buffer.h>
+#include <ioj/soa_permutation.h>
 
 #include <gtest/gtest.h>
 

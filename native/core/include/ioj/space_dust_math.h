@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/core/math_types.h>
+#include <ioj/math_types.h>
 
 #include <algorithm>
 #include <cmath>

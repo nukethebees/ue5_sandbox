@@ -1,6 +1,6 @@
 #include "ioj/sim/memory/game_memory.h"
 
-#include <sandbox/core/diagnostics.h>
+#include <ioj/diagnostics.h>
 
 #include <cassert>
 #include <format>

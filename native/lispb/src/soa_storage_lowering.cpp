@@ -12,8 +12,7 @@ namespace {
 TypeDependency const tarray_view{"TArrayView", "Containers/ArrayView.h", {}};
 TypeDependency const allow_shrinking{"EAllowShrinking", "Containers/AllowShrinking.h", {}};
 TypeDependency const soa_storage_ops{"ml::soa_ops", "SandboxCore/soa_storage_ops.h", {}};
-TypeDependency const soa_concepts{
-    "ml::SupportsApplyArrayPairsWith", "sandbox/core/soa_concepts.h", {}};
+TypeDependency const soa_concepts{"ml::SupportsApplyArrayPairsWith", "ioj/soa_concepts.h", {}};
 TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
 
 auto container_function(std::string spelling) -> Expr {

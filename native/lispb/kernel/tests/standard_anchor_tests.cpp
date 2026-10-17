@@ -1,6 +1,5 @@
 #include "standard/candidate_math_kernels.h"
-
-#include <sandbox/core/generated/array_math_kernels.h>
+#include <ioj/generated/array_math_kernels.h>
 
 #include <gtest/gtest.h>
 

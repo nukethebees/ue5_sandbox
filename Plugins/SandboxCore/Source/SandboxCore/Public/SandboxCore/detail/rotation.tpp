@@ -3,7 +3,7 @@
 #include "SandboxCore/array_checks.h"
 #include "SandboxCore/log_categories.h"
 
-#include <sandbox/core/rotation.h>
+#include <ioj/rotation.h>
 
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"

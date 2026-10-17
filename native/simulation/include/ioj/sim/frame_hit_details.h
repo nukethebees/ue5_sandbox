@@ -1,11 +1,10 @@
 #pragma once
 
+#include "ioj/frame_array.h"
 #include "ioj/sim/frame_vectors3f.h"
 #include "ioj/sim/laser_hit_details.h"
 #include "ioj/sim/laser_source.h"
 #include "ioj/sim/vector_types.h"
-
-#include "sandbox/core/frame_array.h"
 
 #include <cassert>
 #include <cstdint>

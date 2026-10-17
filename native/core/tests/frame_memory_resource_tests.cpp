@@ -1,5 +1,5 @@
-#include <sandbox/core/frame_array.h>
-#include <sandbox/core/frame_memory_resource.h>
+#include <ioj/frame_array.h>
+#include <ioj/frame_memory_resource.h>
 
 #include <gtest/gtest.h>
 

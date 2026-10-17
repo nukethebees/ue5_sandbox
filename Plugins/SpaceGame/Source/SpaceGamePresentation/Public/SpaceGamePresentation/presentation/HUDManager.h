@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ioj/multi_buffer.h>
+#include <ioj/periodic_tick_countdown.h>
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/entity_type.h>
 #include <ioj/sim/fixed_tick_loop.h>
@@ -17,8 +19,6 @@
 #include <SpaceGamePresentation/presentation/widgets/ShipHudKillData.h>
 #include <SpaceGamePresentation/presentation/WorldSoftTargetMaterialData.h>
 
-#include <sandbox/core/multi_buffer.h>
-#include <sandbox/core/periodic_tick_countdown.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayFrameStore.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayTypes.h>
 #include <SandboxUI/Radar/RadarFrameStore.h>

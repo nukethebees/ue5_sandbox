@@ -1,6 +1,5 @@
+#include <ioj/range_fits.h>
 #include <ioj/sim/entity_types.h>
-
-#include <sandbox/core/range_fits.h>
 
 #include <gtest/gtest.h>
 

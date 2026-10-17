@@ -1,3 +1,5 @@
+#include <ioj/frame_memory_resource.h>
+#include <ioj/parallel_for.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/entity_tables.h>
 #include <ioj/sim/frame_range_query_results.h>
@@ -5,9 +7,6 @@
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/team_checks.h>
 #include <ioj/sim/vector_operations.h>
-
-#include <sandbox/core/frame_memory_resource.h>
-#include <sandbox/core/parallel_for.h>
 
 #include <oneapi/tbb/blocked_range.h>
 #include <oneapi/tbb/parallel_for.h>

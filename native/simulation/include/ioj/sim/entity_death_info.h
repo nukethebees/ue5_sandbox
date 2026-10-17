@@ -3,10 +3,9 @@
 
 #pragma once
 
+#include "ioj/native_soa/storage.h"
 #include "ioj/sim/entity_life_state.h"
 #include "ioj/sim/entity_unique_id.h"
-
-#include "sandbox/core/native_soa/storage.h"
 
 #include <cassert>
 #include <memory_resource>

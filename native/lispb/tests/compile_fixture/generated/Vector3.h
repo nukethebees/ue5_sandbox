@@ -5,8 +5,8 @@
 
 #include "Project/Vector3f.h"
 
-#include "sandbox/core/fixed_storage.h"
-#include "sandbox/core/soa_concepts.h"
+#include "ioj/fixed_storage.h"
+#include "ioj/soa_concepts.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_storage_ops.h"
 

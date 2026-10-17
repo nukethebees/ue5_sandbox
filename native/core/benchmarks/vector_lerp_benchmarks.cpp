@@ -1,5 +1,5 @@
-#include <sandbox/core/generated/array_math_kernels.h>
-#include <sandbox/core/generated/vector_lerp_kernels.h>
+#include <ioj/generated/array_math_kernels.h>
+#include <ioj/generated/vector_lerp_kernels.h>
 
 #include <benchmark/benchmark.h>
 

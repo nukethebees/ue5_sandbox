@@ -1,4 +1,4 @@
-#include <sandbox/core/array_utils.h>
+#include <ioj/array_utils.h>
 
 namespace ml::kernel {
 auto is_sorted_desc(std::int32_t const* const values, std::uint32_t const count) noexcept -> bool {

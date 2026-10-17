@@ -1,5 +1,11 @@
 #include "ioj/sim/fighters/sim.h"
 
+#include <ioj/countdown.h>
+#include <ioj/diagnostics.h>
+#include <ioj/frame_array.h>
+#include <ioj/generated/array_math_kernels.h>
+#include <ioj/periodic_tick_countdown.h>
+#include <ioj/projectile_intercept.h>
 #include <ioj/sim/batch_operations.h>
 #include <ioj/sim/column_math.h>
 #include <ioj/sim/combat_events.h>
@@ -18,17 +24,10 @@
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/trace_hits.h>
 #include <ioj/sim/vector_operations.h>
-
-#include <sandbox/core/countdown.h>
-#include <sandbox/core/diagnostics.h>
-#include <sandbox/core/frame_array.h>
-#include <sandbox/core/generated/array_math_kernels.h>
-#include <sandbox/core/periodic_tick_countdown.h>
-#include <sandbox/core/projectile_intercept.h>
-#include <sandbox/core/tick_countdown.h>
-#include <sandbox/core/vector_math.h>
-#include <sandbox/core/vector_normalization.h>
-#include <sandbox/core/vector_soa_view.h>
+#include <ioj/tick_countdown.h>
+#include <ioj/vector_math.h>
+#include <ioj/vector_normalization.h>
+#include <ioj/vector_soa_view.h>
 
 #include <algorithm>
 #include <array>

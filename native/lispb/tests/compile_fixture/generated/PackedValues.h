@@ -5,8 +5,8 @@
 
 #include "PackedEnums.h"
 
-#include "sandbox/core/packed_value.h"
-#include "sandbox/core/range_fits.h"
+#include "ioj/packed_value.h"
+#include "ioj/range_fits.h"
 
 #include <cassert>
 #include <cmath>

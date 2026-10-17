@@ -3,12 +3,11 @@
 
 #pragma once
 
+#include "ioj/native_soa/storage.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/laser_source.h"
 #include "ioj/sim/rotator_types.h"
-
-#include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/vector_soa_view.h"
+#include "ioj/vector_soa_view.h"
 
 #include <cassert>
 #include <memory_resource>

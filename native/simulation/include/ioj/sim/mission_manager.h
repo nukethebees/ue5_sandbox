@@ -1,4 +1,5 @@
 #pragma once
+#include <ioj/frame_memory_resource.h>
 #include <ioj/sim/entity_unique_id.h>
 #include <ioj/sim/levels/level_mission_initialisation_data.h>
 #include <ioj/sim/levels/level_runtime_events.h>
@@ -7,8 +8,6 @@
 #include <ioj/sim/missions/mission_state.h>
 #include <ioj/sim/ship_health.h>
 #include <ioj/sim/sim_clock.h>
-
-#include <sandbox/core/frame_memory_resource.h>
 
 #include <algorithm>
 #include <cstdint>

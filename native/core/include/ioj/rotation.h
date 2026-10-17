@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/core/angle_traits.h>
+#include <ioj/angle_traits.h>
 
 #include <algorithm>
 #include <cmath>

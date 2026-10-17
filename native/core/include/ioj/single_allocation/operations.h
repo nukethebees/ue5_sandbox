@@ -1,7 +1,7 @@
 #pragma once
 
-#include <sandbox/core/single_allocation/concepts.h>
-#include <sandbox/core/single_allocation/view.h>
+#include <ioj/single_allocation/concepts.h>
+#include <ioj/single_allocation/view.h>
 
 #include <algorithm>
 #include <cassert>

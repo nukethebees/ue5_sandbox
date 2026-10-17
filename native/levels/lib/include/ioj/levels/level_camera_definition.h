@@ -1,8 +1,7 @@
 #pragma once
 
 #include <ioj/levels/identifiers.h>
-
-#include <sandbox/core/vector3d.h>
+#include <ioj/vector3d.h>
 
 #include <vector>
 

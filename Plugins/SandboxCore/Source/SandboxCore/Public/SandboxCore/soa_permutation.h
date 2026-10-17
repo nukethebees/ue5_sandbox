@@ -1,6 +1,6 @@
 #pragma once
 
-#include <sandbox/core/soa_permutation.h>
+#include <ioj/soa_permutation.h>
 
 #include <Containers/Array.h>
 #include <Containers/ArrayView.h>

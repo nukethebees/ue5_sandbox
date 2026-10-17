@@ -1,8 +1,7 @@
 #pragma once
 
 #include <ioj/sim/transform3d.h>
-
-#include <sandbox/core/vector2d.h>
+#include <ioj/vector2d.h>
 
 #include <CoreMinimal.h>
 

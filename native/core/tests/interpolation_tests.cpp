@@ -1,4 +1,4 @@
-#include <sandbox/core/interpolation.h>
+#include <ioj/interpolation.h>
 
 #include <gtest/gtest.h>
 
