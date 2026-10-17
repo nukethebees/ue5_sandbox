@@ -15,7 +15,6 @@
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/deterministic_bias.h>
 #include <ioj/sim/entities/entity_ledger.h>
-#include <ioj/sim/lasers/frame_laser_spawn_requests.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/turrets/turret_sim_config.h>
 #include <ioj/tick_countdown.h>
@@ -433,19 +432,32 @@ void Sim::fire_at_enemies(ml::FrameMemoryResource* const scratch_resource) {
         {hit_ids.data(), static_cast<std::size_t>(candidate_count)},
         scratch_resource);
 
-    lasers::FrameSpawnRequests new_lasers{scratch_resource};
-    new_lasers.reserve(candidate_count);
+    std::uint32_t accepted_count{};
+    for (std::uint32_t candidate{}; candidate < candidate_count; ++candidate) {
+        auto const index{candidate_indices[candidate]};
+        if (hit_ids[candidate] == target_ids[index]) {
+            candidate_indices[accepted_count++] = index;
+        }
+    }
+
+    auto const new_lasers{laser_simulation.append_spawn_requests(accepted_count)};
+    auto const laser_locations{new_lasers.view_locations()};
+    auto const laser_rotations{new_lasers.view_rotations()};
+    auto const laser_velocities{new_lasers.view_base_velocities()};
+    auto const damages{new_lasers.damages()};
+    auto const laser_ids{new_lasers.instigator_ids()};
+    auto const laser_sources{new_lasers.sources()};
+    std::ranges::fill(new_lasers.speeds(), config.laser.projectile_speed);
+    std::ranges::fill(new_lasers.max_distances(), config.laser.max_distance);
+
     auto const target_velocities{entities.view_target_velocities()};
     auto const laser_damages{entities.laser_damages()};
     auto const entity_ids{entities.entity_ids()};
     auto const teams{entities.teams()};
 
-    for (std::uint32_t candidate{}; candidate < candidate_count; ++candidate) {
+    for (std::uint32_t candidate{}; candidate < accepted_count; ++candidate) {
         auto const index{candidate_indices[candidate]};
         auto const element{static_cast<std::size_t>(index)};
-        if (hit_ids[candidate] != target_ids[element]) {
-            continue;
-        }
 
         auto const location{vector_at(fire_point_locations, index)};
         auto const target_location{vector_at(target_locations, index)};
@@ -462,16 +474,13 @@ void Sim::fire_at_enemies(ml::FrameMemoryResource* const scratch_resource) {
                                       &direction.y(),
                                       &direction.z(),
                                       1);
-        new_lasers.add(location,
-                       rotation,
-                       ml::make_vector3f(0.f, 0.f, 0.f),
-                       laser_damages[element],
-                       config.laser.projectile_speed,
-                       config.laser.max_distance,
-                       entity_ids[element],
-                       {teams[element], EntityType::Turret});
+        set_vector(laser_locations, candidate, location);
+        set_rotation(laser_rotations, candidate, rotation);
+        set_vector(laser_velocities, candidate, ml::make_vector3f(0.f, 0.f, 0.f));
+        damages[candidate] = laser_damages[element];
+        laser_ids[candidate] = entity_ids[element];
+        laser_sources[candidate] = {teams[element], EntityType::Turret};
     }
-    laser_simulation.queue_laser_spawns(new_lasers);
 }
 auto Sim::get_disengage_radius() const -> float {
     return config.detection_radius * 1.2f;

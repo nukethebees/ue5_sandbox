@@ -5,7 +5,6 @@
 #include <ioj/sim/lasers/laser_sim_config.h>
 #include <ioj/sim/lasers/laser_spawn_requests.h>
 #include <ioj/sim/sim_clock.h>
-#include <ioj/single_allocation/concepts.h>
 
 #include <cstdint>
 #include <span>
@@ -55,11 +54,9 @@ struct Sim {
     // Spawning and configuration
     /* **************************************** */
     void set_config(LaserSimConfig const& new_config) noexcept;
-    template <typename Source>
-        requires ml::soa_storage_detail::AppendableTo<Source, LaserSpawnRequests>
-    void queue_laser_spawns(Source const& spawn_data) {
-        pending_spawns.append_from(spawn_data);
-    }
+    // Fill every appended column before another append or commit. Serialize appends and
+    // discard the returned view and its spans before either operation can invalidate them.
+    auto append_spawn_requests(std::uint32_t count) -> LaserSpawnRequests::View;
   private:
     /* **************************************** */
     // Tick phases

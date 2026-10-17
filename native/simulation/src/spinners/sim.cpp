@@ -5,7 +5,6 @@
 #include <ioj/frame_array.h>
 #include <ioj/rotator_math.h>
 #include <ioj/sim/entities/entity_ledger.h>
-#include <ioj/sim/lasers/frame_laser_spawn_requests.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/tick_countdown.h>
@@ -62,12 +61,12 @@ void Sim::think(float const dt) {
 
     planned_yaw_delta_ = dt * config.yaw_rotation_speed_degrees;
 }
-void Sim::apply_movement(ml::FrameMemoryResource* const scratch_resource) {
+void Sim::apply_movement(ml::FrameMemoryResource*) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::apply_movement");
     for (auto& yaw : entities.get_view().yaws()) {
         yaw += planned_yaw_delta_;
     }
-    materialize_fire_commands(scratch_resource);
+    materialize_fire_commands();
 }
 void Sim::generate_fire_commands() {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::generate_fire_commands");
@@ -154,12 +153,11 @@ void Sim::fire_lasers() {
         }
     }
 }
-void Sim::materialize_fire_commands(ml::FrameMemoryResource* const scratch_resource) {
+void Sim::materialize_fire_commands() {
     auto const entity_columns{entities.get_view()};
-    lasers::FrameSpawnRequests new_lasers{scratch_resource};
     auto const ready_count{static_cast<std::uint32_t>(pending_fire_indices_.size())};
     auto const fire_point_count{static_cast<std::uint32_t>(config.fire_point_offsets.size())};
-    new_lasers.set_num(ready_count);
+    auto const new_lasers{laser_simulation.append_spawn_requests(ready_count)};
     auto const next_fire_points{entity_columns.next_fire_point_indices()};
     auto const locations{entity_columns.view_locations()};
     auto const yaws{entity_columns.yaws()};
@@ -203,7 +201,6 @@ void Sim::materialize_fire_commands(ml::FrameMemoryResource* const scratch_resou
         next_fire_point = (next_fire_point + 1) % fire_point_count;
     }
 
-    laser_simulation.queue_laser_spawns(new_lasers);
     pending_fire_indices_.clear();
 }
 

@@ -36,6 +36,10 @@ Sim::Sim(SimClock const& clock,
 void Sim::set_config(LaserSimConfig const& new_config) noexcept {
     config = new_config;
 }
+auto Sim::append_spawn_requests(std::uint32_t const count) -> LaserSpawnRequests::View {
+    pending_spawns.add_uninitialised(count);
+    return pending_spawns.right(count);
+}
 
 void Sim::begin_play() {
     SANDBOX_PROFILE_SCOPE("lasers::Sim::begin_play");

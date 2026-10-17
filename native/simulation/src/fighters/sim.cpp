@@ -19,7 +19,6 @@
 #include <ioj/sim/entities/entity_unique_id_checks.h>
 #include <ioj/sim/fighters/fighter_diagnostics.h>
 #include <ioj/sim/fighters/fighter_frame_spawn_queue.h>
-#include <ioj/sim/lasers/frame_laser_spawn_requests.h>
 #include <ioj/sim/lasers/laser_source.h>
 #include <ioj/sim/profiling.h>
 #include <ioj/tick_countdown.h>
@@ -496,23 +495,31 @@ void Sim::apply_movement(ml::FrameMemoryResource* const scratch_resource) {
     auto const duplicates{std::ranges::unique(overlap_candidates_)};
     overlap_candidates_.erase(duplicates.begin(), duplicates.end());
 
-    lasers::FrameSpawnRequests requests{scratch_resource};
+    auto const fire_count{static_cast<std::uint32_t>(pending_fire_indices_.size())};
+    auto const requests{laser_simulation.append_spawn_requests(fire_count)};
+    auto const laser_locations{requests.view_locations()};
+    auto const laser_rotations{requests.view_rotations()};
+    auto const laser_velocities{requests.view_base_velocities()};
+    auto const laser_ids{requests.instigator_ids()};
+    auto const laser_sources{requests.sources()};
+    std::ranges::fill(requests.damages(), config.laser.damage);
+    std::ranges::fill(requests.speeds(), config.laser.projectile_speed);
+    std::ranges::fill(requests.max_distances(), config.laser.max_distance);
+
     auto const locations{data.view_locations()};
     auto const velocities{data.view_velocities()};
     auto const teams{data.teams()};
 
-    for (auto const index : pending_fire_indices_) {
+    for (std::uint32_t row{}; row < fire_count; ++row) {
+        auto const index{pending_fire_indices_[row]};
         auto const direction{vector_at(aim_directions, index)};
-        requests.add(vector_at(locations, index) + direction * fire_point_distance_,
-                     direction_to_rotation(direction),
-                     vector_at(velocities, index),
-                     config.laser.damage,
-                     config.laser.projectile_speed,
-                     config.laser.max_distance,
-                     entity_ids[index],
-                     {teams[index], EntityType::Fighter});
+        set_vector(
+            laser_locations, row, vector_at(locations, index) + direction * fire_point_distance_);
+        set_rotation(laser_rotations, row, direction_to_rotation(direction));
+        set_vector(laser_velocities, row, vector_at(velocities, index));
+        laser_ids[row] = entity_ids[index];
+        laser_sources[row] = {teams[index], EntityType::Fighter};
     }
-    laser_simulation.queue_laser_spawns(requests);
     pending_fire_indices_.clear();
 }
 void Sim::generate_fire_commands(ml::FrameMemoryResource* const scratch_resource) {

@@ -60,7 +60,7 @@ struct Sim {
     void think(float dt);
     void apply_movement(ml::FrameMemoryResource* const scratch_resource);
     void generate_fire_commands();
-    void materialize_fire_commands(ml::FrameMemoryResource* const scratch_resource);
+    void materialize_fire_commands();
     std::vector<std::uint32_t> pending_fire_indices_;
     void finish_action();
 

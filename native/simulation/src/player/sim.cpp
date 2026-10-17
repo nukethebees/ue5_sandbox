@@ -494,10 +494,8 @@ void Sim::materialize_fire_command() {
 }
 
 void Sim::fire_lasers_from(std::span<Transform3d const> const fire_points) {
-    lasers::LaserSpawnRequests new_lasers;
     auto const laser_count{static_cast<std::uint32_t>(fire_points.size())};
-    new_lasers.add_uninitialised(laser_count);
-    auto const laser_columns{new_lasers.get_view()};
+    auto const laser_columns{lasers.append_spawn_requests(laser_count)};
     auto const locations{laser_columns.view_locations()};
     auto const rotations{laser_columns.view_rotations()};
     auto const base_velocities{laser_columns.view_base_velocities()};
@@ -513,7 +511,6 @@ void Sim::fire_lasers_from(std::span<Transform3d const> const fire_points) {
     std::ranges::fill(laser_columns.max_distances(), config.laser.max_distance);
     std::ranges::fill(laser_columns.sources(), LaserSource{team, EntityType::PlayerShip});
     std::ranges::fill(laser_columns.instigator_ids(), unique_entity_id);
-    lasers.queue_laser_spawns(new_lasers.get_const_view());
 }
 
 void Sim::upgrade_laser() noexcept {

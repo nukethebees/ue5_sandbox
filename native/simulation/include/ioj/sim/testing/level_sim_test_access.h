@@ -4,7 +4,9 @@
 #include <ioj/column_math.h>
 #include <ioj/frame_memory_resource.h>
 #include <ioj/sim/levels/level_sim.h>
+#include <ioj/vector_operations.h>
 
+#include <algorithm>
 #include <utility>
 
 namespace ioj::sim {
@@ -157,7 +159,19 @@ struct LevelSimTestAccess {
     }
     static void queue_laser_spawns(LevelSim& simulation,
                                    lasers::LaserSpawnRequests::ConstView requests) {
-        simulation.lasers_simulation_.queue_laser_spawns(requests);
+        auto const destination{simulation.lasers_simulation_.append_spawn_requests(requests.num())};
+        copy_vectors(destination.view_locations(), requests.view_locations());
+        auto const rotations{destination.view_rotations()};
+        auto const source_rotations{requests.view_rotations()};
+        std::ranges::copy(source_rotations.pitches(), rotations.pitches().begin());
+        std::ranges::copy(source_rotations.yaws(), rotations.yaws().begin());
+        std::ranges::copy(source_rotations.rolls(), rotations.rolls().begin());
+        copy_vectors(destination.view_base_velocities(), requests.view_base_velocities());
+        std::ranges::copy(requests.damages(), destination.damages().begin());
+        std::ranges::copy(requests.speeds(), destination.speeds().begin());
+        std::ranges::copy(requests.max_distances(), destination.max_distances().begin());
+        std::ranges::copy(requests.instigator_ids(), destination.instigator_ids().begin());
+        std::ranges::copy(requests.sources(), destination.sources().begin());
     }
     static void begin_telemetry_run(LevelSim& simulation, LevelTelemetryRunMetadata metadata) {
         simulation.level_telemetry_manager_.begin_run(std::move(metadata));
