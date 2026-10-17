@@ -17,6 +17,5 @@ class ScalarResponse {
     float value_{};
     float target_{};
     ResponseMode mode_{ResponseMode::Direct};
-    bool initialized_{};
 };
 }

@@ -7,16 +7,15 @@ namespace ioj::sim::player {
 void ScalarResponse::reset(float const value) noexcept {
     value_ = value;
     target_ = value;
-    initialized_ = false;
+    mode_ = ResponseMode::Direct;
 }
 
 auto ScalarResponse::update(float const dt,
                             float const target,
                             ResponseConfig const& config) noexcept -> float {
-    if (!initialized_ || mode_ != config.mode) {
+    if (mode_ != config.mode) {
         target_ = target;
         mode_ = config.mode;
-        initialized_ = true;
         if (mode_ == ResponseMode::SecondOrder) {
             begin_second_order_impulse(target, config.second_order);
         }
