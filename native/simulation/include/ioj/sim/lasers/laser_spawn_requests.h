@@ -163,6 +163,21 @@ struct SpawnRequestsSingleView : SpawnRequestsSingleViewImpl<false> {
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<SpawnRequestsSingleView>());
+// Columns:
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// rotations_pitches: float
+// rotations_yaws: float
+// rotations_rolls: float
+// base_velocities_xs: float
+// base_velocities_ys: float
+// base_velocities_zs: float
+// damages: std::int32_t
+// speeds: float
+// max_distances: float
+// instigator_ids: EntityUniqueId
+// sources: ioj::sim::LaserSource
 struct LaserSpawnRequests
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {

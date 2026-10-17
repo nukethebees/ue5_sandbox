@@ -101,6 +101,11 @@ struct FighterOrderQueueSingleView : FighterOrderQueueSingleViewImpl<false> {
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<FighterOrderQueueSingleView>());
+// Columns:
+// entity_ids: EntityUniqueId
+// orders: FighterOrder
+// tasks: FighterTask
+// targets: EntityUniqueId
 struct FighterOrderQueue
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {

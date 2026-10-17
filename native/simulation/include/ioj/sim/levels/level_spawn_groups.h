@@ -102,6 +102,10 @@ struct LevelSpawnGroupsSingleView : LevelSpawnGroupsSingleViewImpl<false> {
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<LevelSpawnGroupsSingleView>());
+// Columns:
+// types: EntityType
+// offsets: std::int32_t
+// counts: LevelEventCount
 struct LevelSpawnGroups
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {

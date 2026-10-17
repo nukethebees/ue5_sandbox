@@ -156,6 +156,19 @@ struct LevelCapitalSpawnEventsSingleView : LevelCapitalSpawnEventsSingleViewImpl
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<LevelCapitalSpawnEventsSingleView>());
+// Columns:
+// entity_indices: LevelEntityIndex
+// target_entity_indices: LevelEntityIndex
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// rotations_pitches: float
+// rotations_yaws: float
+// rotations_rolls: float
+// teams: ::ioj::Team
+// healths: Health
+// initial_fighter_spawn_delays: float
+// fighter_spawn_cooldowns: float
 struct LevelCapitalSpawnEvents
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {

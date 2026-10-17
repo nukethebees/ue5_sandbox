@@ -195,6 +195,17 @@ struct HistoryRowsSingleView : HistoryRowsSingleViewImpl<false> {
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<HistoryRowsSingleView>());
+// Columns:
+// completed_ticks: SimTick
+// validity_masks: HistoryFieldMask
+// active_entities: std::int32_t
+// active_entities_by_type: EntityTypeCounts
+// active_entities_by_team_and_type: EntityCounts
+// spawned_entities: std::int32_t
+// destroyed_entities: std::int32_t
+// kills: std::int32_t
+// active_lasers: std::int32_t
+// lasers_fired: std::int32_t
 struct HistoryRows
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {

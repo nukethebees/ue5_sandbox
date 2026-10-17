@@ -124,6 +124,14 @@ struct SpinnerEntityDataSingleView : SpinnerEntityDataSingleViewImpl<false> {
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<SpinnerEntityDataSingleView>());
+// Columns:
+// entity_ids: EntityUniqueId
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// yaws: float
+// laser_cooldowns: std::int16_t
+// next_fire_point_indices: std::int32_t
 struct SpinnerEntityData
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {

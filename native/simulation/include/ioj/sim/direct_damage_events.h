@@ -98,6 +98,10 @@ struct DirectDamageEventsSingleView : DirectDamageEventsSingleViewImpl<false> {
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<DirectDamageEventsSingleView>());
+// Columns:
+// damaged_entities: EntityUniqueId
+// damage_amounts: std::int32_t
+// instigators: EntityUniqueId
 struct DirectDamageEvents
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {

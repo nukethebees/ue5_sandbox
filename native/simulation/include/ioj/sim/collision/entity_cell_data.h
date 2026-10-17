@@ -128,6 +128,20 @@ struct EntityCellDataColumnsSingleView : EntityCellDataColumnsSingleViewImpl<fal
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<EntityCellDataColumnsSingleView>());
+// Columns:
+// min_point_xs: float
+// min_point_ys: float
+// min_point_zs: float
+// max_point_xs: float
+// max_point_ys: float
+// max_point_zs: float
+// min_cell_xs: std::int32_t
+// min_cell_ys: std::int32_t
+// min_cell_zs: std::int32_t
+// max_cell_xs: std::int32_t
+// max_cell_ys: std::int32_t
+// max_cell_zs: std::int32_t
+// entity_ids: EntityUniqueId
 struct EntityCellData
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {

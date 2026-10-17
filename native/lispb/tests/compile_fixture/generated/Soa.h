@@ -257,6 +257,11 @@ struct COMPILE_FIXTURE_API ApiView : ApiViewImpl<false> {
     void assign_first(float value) { this->values()[0] = value; }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<ApiView>());
+// Columns:
+// values: float
+// masks: ApiMask
+// positions_xs: float
+// positions_ys: float
 struct COMPILE_FIXTURE_API ApiOwner
     : protected ml::soa_storage::StorageState
     , ml::soa_storage::StorageOperations {
@@ -524,6 +529,9 @@ struct EquivalentRowsSingleView : EquivalentRowsSingleViewImpl<false> {
     }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<EquivalentRowsSingleView>());
+// Columns:
+// xs: float
+// ys: float
 struct EquivalentOwner
     : protected ml::soa_storage::StorageState
     , ml::soa_storage::StorageOperations {
@@ -1320,6 +1328,9 @@ struct FParentsSingleView : FParentsSingleViewImpl<false> {
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<FParentsSingleView>());
+// Columns:
+// keys: int32
+// children_values: int32
 struct SingleParents
     : protected ml::soa_storage::StorageState
     , ml::soa_storage::StorageOperations {
@@ -2555,6 +2566,8 @@ struct RestrictionRowsSingleView : RestrictionRowsSingleViewImpl<false> {
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<RestrictionRowsSingleView>());
+// Columns:
+// restricted: RestrictedLeaf
 struct SingleRestrictionRows
     : protected ml::soa_storage::StorageState
     , ml::soa_storage::StorageOperations {

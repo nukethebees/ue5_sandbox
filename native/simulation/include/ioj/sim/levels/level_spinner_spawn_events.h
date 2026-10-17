@@ -122,6 +122,13 @@ struct LevelSpinnerSpawnEventsSingleView : LevelSpinnerSpawnEventsSingleViewImpl
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<LevelSpinnerSpawnEventsSingleView>());
+// Columns:
+// entity_indices: LevelEntityIndex
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// yaws: float
+// initial_fire_point_indices: std::int32_t
 struct LevelSpinnerSpawnEvents
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {

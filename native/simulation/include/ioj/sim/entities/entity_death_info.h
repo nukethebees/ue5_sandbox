@@ -98,6 +98,10 @@ struct EntityDeathInfoSingleView : EntityDeathInfoSingleViewImpl<false> {
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<EntityDeathInfoSingleView>());
+// Columns:
+// reasons: DeathReason
+// victims: EntityUniqueId
+// killers: EntityUniqueId
 struct EntityDeathInfo
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {

@@ -15,6 +15,11 @@ auto lower_single_allocation(SoaSchema const& schema,
 
     result.append(emit_single_allocation_layout(model)).new_lines(2);
     result.append(emit_single_allocation_views(model, source)).new_lines(1);
+    result.add(LineComment{"Columns:"}).new_lines(1);
+    for (auto const& column : model.columns) {
+        result.add(LineComment{column.flattened_identifier + ": " + column.type.spelling})
+            .new_lines(1);
+    }
     result.add(emit_single_allocation_container(model, source));
 
     return {result.build(), source.build()};

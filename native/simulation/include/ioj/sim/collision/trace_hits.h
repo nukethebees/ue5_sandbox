@@ -122,6 +122,13 @@ struct TraceHitsSingleView : TraceHitsSingleViewImpl<false> {
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<TraceHitsSingleView>());
+// Columns:
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// entities: EntityUniqueId
+// static_geometry_indices: collision::StaticGeometryIndex
+// hits: TraceHit
 struct TraceHits
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {

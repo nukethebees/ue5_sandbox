@@ -122,6 +122,13 @@ struct LineTracesSingleView : LineTracesSingleViewImpl<false> {
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<LineTracesSingleView>());
+// Columns:
+// starts_xs: float
+// starts_ys: float
+// starts_zs: float
+// ends_xs: float
+// ends_ys: float
+// ends_zs: float
 struct LineTraces
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {

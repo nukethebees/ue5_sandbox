@@ -294,6 +294,11 @@ struct RowsSingleView : RowsSingleViewImpl<false> {
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<RowsSingleView>());
+// Columns:
+// bytes: uint8
+// nested_xs: float
+// nested_ys: float
+// nested_zs: float
 struct SingleRows
     : protected ml::soa_storage::StorageState
     , ml::soa_storage::StorageOperations {
@@ -681,6 +686,11 @@ struct SANDBOXCOREENGINETESTS_API ApiView : ApiViewImpl<false> {
     void assign_first(float value) { this->values()[0] = value; }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<ApiView>());
+// Columns:
+// values: float
+// masks: ApiMask
+// positions_xs: float
+// positions_ys: float
 struct SANDBOXCOREENGINETESTS_API ApiOwner
     : protected ml::soa_storage::StorageState
     , ml::soa_storage::StorageOperations {
@@ -941,6 +951,9 @@ struct EquivalentRowsSingleView : EquivalentRowsSingleViewImpl<false> {
     }
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<EquivalentRowsSingleView>());
+// Columns:
+// xs: float
+// ys: float
 struct EquivalentOwner
     : protected ml::soa_storage::StorageState
     , ml::soa_storage::StorageOperations {

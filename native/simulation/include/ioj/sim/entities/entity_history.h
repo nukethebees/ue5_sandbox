@@ -109,6 +109,13 @@ struct EntityHistoryColumnsSingleView : EntityHistoryColumnsSingleViewImpl<false
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<EntityHistoryColumnsSingleView>());
+// Columns:
+// entity_ids: EntityUniqueId
+// entity_types: EntityType
+// teams: ::ioj::Team
+// kills: std::uint32_t
+// killed_by: EntityUniqueId
+// life_state: LifeState
 struct EntityHistory
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {

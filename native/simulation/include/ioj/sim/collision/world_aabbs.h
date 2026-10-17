@@ -105,6 +105,13 @@ struct WorldAABBsColumnsSingleView : WorldAABBsColumnsSingleViewImpl<false> {
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<WorldAABBsColumnsSingleView>());
+// Columns:
+// min_xs: float
+// min_ys: float
+// min_zs: float
+// max_xs: float
+// max_ys: float
+// max_zs: float
 struct WorldAABBs
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {

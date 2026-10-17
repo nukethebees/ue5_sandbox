@@ -150,6 +150,19 @@ struct CapitalEntityDataSingleView : CapitalEntityDataSingleViewImpl<false> {
     using Base::Base;
 };
 static_assert(ml::soa_storage_detail::validate_compact_view<CapitalEntityDataSingleView>());
+// Columns:
+// entity_ids: EntityUniqueId
+// locations_xs: float
+// locations_ys: float
+// locations_zs: float
+// rotations_pitches: float
+// rotations_yaws: float
+// rotations_rolls: float
+// fighter_spawn_timers: float
+// fighter_spawn_cooldowns: float
+// teams: ::ioj::Team
+// fighter_id_spans: IndexSpan
+// target_ids: EntityUniqueId
 struct CapitalEntityData
     : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
