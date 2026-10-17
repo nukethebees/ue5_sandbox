@@ -99,7 +99,8 @@ auto brake_speed_after_tick(player::ResponseConfig const& response, float const 
 using namespace player_flight_model_tests;
 
 TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBrake) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Starfox)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Starfox)};
     start(simulation);
     simulation.get_player_ship_commands()->set_right_input(1.f);
     simulation.get_player_ship_commands()->set_forward_input(-1.f);
@@ -129,8 +130,10 @@ TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBr
 }
 
 TEST(NativeSimulationFlightModels, StarfoxEmergencyBrakeIsStrongerThanNormalBrake) {
-    LevelSim normal{make_data(player::FlightModelPreset::Starfox)};
-    LevelSim emergency{make_data(player::FlightModelPreset::Starfox)};
+    GameMemory normal_memory;
+    LevelSim normal{normal_memory, make_data(player::FlightModelPreset::Starfox)};
+    GameMemory emergency_memory;
+    LevelSim emergency{emergency_memory, make_data(player::FlightModelPreset::Starfox)};
     start(normal);
     start(emergency);
     advance_ticks(normal, 600);
@@ -145,7 +148,8 @@ TEST(NativeSimulationFlightModels, StarfoxEmergencyBrakeIsStrongerThanNormalBrak
 }
 
 TEST(NativeSimulationFlightModels, FighterAcceleratesOnlyWithInputAndThenDrags) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Fighter)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Fighter)};
     start(simulation);
     advance_ticks(simulation, 60);
     EXPECT_NEAR(ioj::size(velocity(simulation)), 0.0, 1.e-6);
@@ -161,8 +165,10 @@ TEST(NativeSimulationFlightModels, FighterAcceleratesOnlyWithInputAndThenDrags) 
 }
 
 TEST(NativeSimulationFlightModels, FighterBoostAndBrakeRemainOrthogonal) {
-    LevelSim normal{make_data(player::FlightModelPreset::Fighter)};
-    LevelSim boosted{make_data(player::FlightModelPreset::Fighter)};
+    GameMemory normal_memory;
+    LevelSim normal{normal_memory, make_data(player::FlightModelPreset::Fighter)};
+    GameMemory boosted_memory;
+    LevelSim boosted{boosted_memory, make_data(player::FlightModelPreset::Fighter)};
     start(normal);
     start(boosted);
     normal.get_player_ship_commands()->set_accelerator(1.f);
@@ -181,7 +187,8 @@ TEST(NativeSimulationFlightModels, FighterBoostAndBrakeRemainOrthogonal) {
 }
 
 TEST(NativeSimulationFlightModels, SkaterCoastsAndRotationDoesNotRotateVelocity) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     simulation.get_player_ship_commands()->set_accelerator(1.f);
     advance_ticks(simulation, 30);
@@ -197,7 +204,8 @@ TEST(NativeSimulationFlightModels, SkaterCoastsAndRotationDoesNotRotateVelocity)
 }
 
 TEST(NativeSimulationFlightModels, SkaterAddsThrustAlongCurrentFacing) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     simulation.get_player_ship_commands()->set_accelerator(1.f);
     advance_ticks(simulation, 30);
@@ -216,7 +224,8 @@ TEST(NativeSimulationFlightModels, SkaterAddsThrustAlongCurrentFacing) {
 }
 
 TEST(NativeSimulationFlightModels, SkaterTurningUnderThrustProgressivelyBendsTrajectory) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     commands->set_accelerator(1.f);
@@ -233,7 +242,8 @@ TEST(NativeSimulationFlightModels, SkaterTurningUnderThrustProgressivelyBendsTra
 }
 
 TEST(NativeSimulationFlightModels, SkaterCanFaceBackwardWhilePreservingForwardTravel) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     commands->set_accelerator(1.f);
@@ -251,8 +261,10 @@ TEST(NativeSimulationFlightModels, SkaterCanFaceBackwardWhilePreservingForwardTr
 }
 
 TEST(NativeSimulationFlightModels, SkaterBrakeAndEmergencyBrakeReduceWithoutReversing) {
-    LevelSim brake{make_data(player::FlightModelPreset::Skater)};
-    LevelSim emergency{make_data(player::FlightModelPreset::Skater)};
+    GameMemory brake_memory;
+    LevelSim brake{brake_memory, make_data(player::FlightModelPreset::Skater)};
+    GameMemory emergency_memory;
+    LevelSim emergency{emergency_memory, make_data(player::FlightModelPreset::Skater)};
     start(brake);
     start(emergency);
     for (auto* simulation : {&brake, &emergency}) {
@@ -273,7 +285,8 @@ TEST(NativeSimulationFlightModels, SkaterBrakeAndEmergencyBrakeReduceWithoutReve
 }
 
 TEST(NativeSimulationFlightModels, GunshipControlsThreeAxesAndStabilizesNeutralInput) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Gunship)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Gunship)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     commands->set_forward_input(1.f);
@@ -293,7 +306,8 @@ TEST(NativeSimulationFlightModels, GunshipControlsThreeAxesAndStabilizesNeutralI
 }
 
 TEST(NativeSimulationFlightModels, GunshipRotationRemainsIndependentOfTranslationControl) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Gunship)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Gunship)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     commands->set_right_input(1.f);
@@ -307,7 +321,8 @@ TEST(NativeSimulationFlightModels, GunshipRotationRemainsIndependentOfTranslatio
 }
 
 TEST(NativeSimulationFlightModels, DirectSlotSelectionPreservesPhysicalStateAtBoundary) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     simulation.get_player_ship_commands()->set_accelerator(1.f);
     simulation.get_player_ship_commands()->set_forward_input(-0.25f);
@@ -348,7 +363,8 @@ TEST(NativeSimulationFlightModels, DirectSlotSelectionPreservesPhysicalStateAtBo
 }
 
 TEST(NativeSimulationFlightModels, SwitchingClearsPersistentTargetsAndSamplingState) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
@@ -373,7 +389,8 @@ TEST(NativeSimulationFlightModels, SwitchingClearsPersistentTargetsAndSamplingSt
 }
 
 TEST(NativeSimulationFlightModels, EveryPairwiseSlotTransitionPreservesWorldVelocity) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     simulation.get_player_ship_commands()->set_accelerator(1.f);
     advance_ticks(simulation, 20);
@@ -396,7 +413,8 @@ TEST(NativeSimulationFlightModels, EveryPairwiseSlotTransitionPreservesWorldVelo
 }
 
 TEST(NativeSimulationFlightModels, SwitchingRecomputesActionsFromHeldIntent) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     commands->start_boost();
@@ -414,7 +432,8 @@ TEST(NativeSimulationFlightModels, SwitchingRecomputesActionsFromHeldIntent) {
 }
 
 TEST(NativeSimulationFlightModels, SlotReplacementAppliesRuntimeConfigWithoutReconstruction) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto const& sim_player{player_sim(simulation)};
     auto profile{sim_player.get_active_flight_model_profile()};
@@ -431,7 +450,8 @@ TEST(NativeSimulationFlightModels, SlotReplacementAppliesRuntimeConfigWithoutRec
 }
 
 TEST(NativeSimulationFlightModels, ResponseSeedingUsesTheNewChannelsReferenceFrame) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     commands->set_accelerator(1.f);
@@ -456,8 +476,10 @@ TEST(NativeSimulationFlightModels, ResponseSeedingUsesTheNewChannelsReferenceFra
 }
 
 TEST(NativeSimulationFlightModels, PassiveDragAndNeutralStabilizationRemainDistinct) {
-    LevelSim passive{make_data(player::FlightModelPreset::Skater)};
-    LevelSim stabilized{make_data(player::FlightModelPreset::Skater)};
+    GameMemory passive_memory;
+    LevelSim passive{passive_memory, make_data(player::FlightModelPreset::Skater)};
+    GameMemory stabilized_memory;
+    LevelSim stabilized{stabilized_memory, make_data(player::FlightModelPreset::Skater)};
     start(passive);
     start(stabilized);
 
@@ -572,7 +594,8 @@ TEST(NativeSimulationFlightModels, AutomaticAccelerationAndPassiveDragKeepIndepe
 }
 
 TEST(NativeSimulationFlightModels, BoostResponseChangesWithoutDiscardingAccelerationState) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
@@ -592,7 +615,8 @@ TEST(NativeSimulationFlightModels, BoostResponseChangesWithoutDiscardingAccelera
 }
 
 TEST(NativeSimulationFlightModels, PartialFacingCouplingBendsVelocityWithoutLockingIt) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     commands->set_accelerator(1.f);
@@ -616,7 +640,8 @@ TEST(NativeSimulationFlightModels, PartialFacingCouplingBendsVelocityWithoutLock
 }
 
 TEST(NativeSimulationFlightModels, ActionPriorityAndEnergyFallbackAreExplicit) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     commands->start_boost();
@@ -634,7 +659,8 @@ TEST(NativeSimulationFlightModels, ActionPriorityAndEnergyFallbackAreExplicit) {
 }
 
 TEST(NativeSimulationFlightModels, EffectivelyUnlimitedLimitRemainsFinite) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto const& sim_player{player_sim(simulation)};
     auto profile{sim_player.get_active_flight_model_profile()};
@@ -680,7 +706,8 @@ TEST(NativeSimulationFlightModels, SecondOrderBrakeStrengthUsesConfiguredDeceler
 }
 
 TEST(NativeSimulationFlightModels, EnergyFallbackRespectsHeldIntentAndAvailability) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
@@ -698,7 +725,8 @@ TEST(NativeSimulationFlightModels, EnergyFallbackRespectsHeldIntentAndAvailabili
 }
 
 TEST(NativeSimulationFlightModels, EnergyFallbackUsesOnlyAvailableIndependentlyHeldActions) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
@@ -723,7 +751,8 @@ TEST(NativeSimulationFlightModels, EnergyFallbackUsesOnlyAvailableIndependentlyH
 }
 
 TEST(NativeSimulationFlightModels, UnavailableBoostNeverBecomesEffective) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
@@ -737,7 +766,8 @@ TEST(NativeSimulationFlightModels, UnavailableBoostNeverBecomesEffective) {
 }
 
 TEST(NativeSimulationFlightModels, AcceleratorCanDriveEveryTranslationAxis) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
@@ -759,7 +789,8 @@ TEST(NativeSimulationFlightModels, AcceleratorCanDriveEveryTranslationAxis) {
 }
 
 TEST(NativeSimulationFlightModels, TargetVelocityUsesInputScaleNotUnlimitedCap) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
@@ -780,7 +811,8 @@ TEST(NativeSimulationFlightModels, TargetVelocityUsesInputScaleNotUnlimitedCap) 
 }
 
 TEST(NativeSimulationFlightModels, TargetSpeedUsesAsymmetricScalesAndTrimBounds) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
@@ -814,7 +846,8 @@ TEST(NativeSimulationFlightModels, TargetSpeedUsesAsymmetricScalesAndTrimBounds)
 }
 
 TEST(NativeSimulationFlightModels, ProfileReplacementClampsTargetsAndReseedsResponses) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
@@ -842,7 +875,8 @@ TEST(NativeSimulationFlightModels, ProfileReplacementClampsTargetsAndReseedsResp
 }
 
 TEST(NativeSimulationFlightModels, LeavingBoostImmediatelyClampsPersistentTarget) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     auto profile{player_sim(simulation).get_active_flight_model_profile()};
@@ -867,7 +901,8 @@ TEST(NativeSimulationFlightModels, LeavingBoostImmediatelyClampsPersistentTarget
 }
 
 TEST(NativeSimulationFlightModels, BrakeResponseStateDoesNotSurviveActionTransition) {
-    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
     auto profile{player_sim(simulation).get_active_flight_model_profile()};

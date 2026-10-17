@@ -157,7 +157,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
 auto FLevelSimScheduledEventsTest::RunTest(FString const&) -> bool {
-    ::ioj::sim::LevelSim simulation{make_scheduled_battle()};
+    ::ioj::sim::GameMemory simulation_memory;
+    ::ioj::sim::LevelSim simulation{simulation_memory, make_scheduled_battle()};
     TestEqual(TEXT("Tick-zero entities are available before finishing initialization"),
               simulation.get_capital_ships().get_num_instances(),
               1);
@@ -220,7 +221,8 @@ auto FLevelSimSpawnQueriesTest::RunTest(FString const&) -> bool {
     initial.teams()[0] = ::ioj::Team::Blue;
     initial.healths()[0] = 100;
     initial.laser_damages()[0] = 0;
-    ::ioj::sim::LevelSim simulation{MoveTemp(data)};
+    ::ioj::sim::GameMemory simulation_memory;
+    ::ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(data)};
     simulation.finish_initialisation();
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
@@ -424,7 +426,8 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
     scheduled_spawns.healths()[0] = 100;
     scheduled_battle.level_events.schedule.capital_spawns.get_view().healths()[0] = 10000;
     scheduled_battle.overlap_response.damage_per_overlap_detection = 100;
-    ::ioj::sim::LevelSim simulation{MoveTemp(scheduled_battle)};
+    ::ioj::sim::GameMemory simulation_memory;
+    ::ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(scheduled_battle)};
     simulation.finish_initialisation();
     FLevelPresentation presentation{resources, simulation.get_read_access(), {}};
     simulation.start();
@@ -491,7 +494,8 @@ auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
 
     auto death_data{make_battle()};
     death_data.clock_settings.tick_rate = 10.0;
-    ::ioj::sim::LevelSim deaths{MoveTemp(death_data)};
+    ::ioj::sim::GameMemory deaths_memory;
+    ::ioj::sim::LevelSim deaths{deaths_memory, MoveTemp(death_data)};
     deaths.finish_initialisation();
     resources.config.capital_ships.n_small_explosions = 3;
     resources.config.capital_ships.small_death_explosion = NewObject<UNiagaraSystem>(owner);
@@ -576,7 +580,8 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
         data.player->flight_models, data.player->flight_models.initial_slot)};
     active_profile.config.boost.energy_drain_per_second = 20.f;
     active_profile.config.energy_recharge_per_second = 0.f;
-    ::ioj::sim::LevelSim simulation{MoveTemp(data)};
+    ::ioj::sim::GameMemory simulation_memory;
+    ::ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(data)};
     simulation.finish_initialisation();
     simulation.start();
     auto* player{simulation.get_player_ship_simulation()};
@@ -637,7 +642,8 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
 
     auto data{make_battle()};
     add_mission(data);
-    ::ioj::sim::LevelSim simulation{MoveTemp(data)};
+    ::ioj::sim::GameMemory simulation_memory;
+    ::ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(data)};
     simulation.finish_initialisation();
     auto const& lasers{simulation.get_lasers()};
     FLaserPresentation presentation{*component};
@@ -758,7 +764,8 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
         .level_display_name = "Telemetry Test",
         .launched_utc = "2026-09-06T12:00:00Z",
     };
-    ::ioj::sim::LevelSim simulation{MoveTemp(data)};
+    ::ioj::sim::GameMemory simulation_memory;
+    ::ioj::sim::LevelSim simulation{simulation_memory, MoveTemp(data)};
     simulation.finish_initialisation();
     simulation.start();
     simulation.advance(1.0);

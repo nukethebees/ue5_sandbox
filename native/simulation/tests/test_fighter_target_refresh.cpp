@@ -125,7 +125,8 @@ class FighterTargetRefresh : public ::testing::Test {
             ml::native_math::safe_normal(-vector_at(entities.view_locations(), index), 1.e-8f));
     }
 
-    LevelSim simulation{make_world()};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_world()};
     EntityUniqueId fighter;
     EntityUniqueId target;
     alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 256 * 1024> backing{};

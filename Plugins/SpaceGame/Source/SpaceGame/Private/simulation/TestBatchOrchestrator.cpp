@@ -482,9 +482,10 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
         }
         result->telemetry_metadata->stop_when_battle_resolved =
             launch_options_.stop_when_battle_resolved;
-        if (auto* const game_subsystem{ioj::UGameSubsystem::get(GetGameInstance())};
-            IsValid(game_subsystem)) {
-            result->game_memory = &game_subsystem->get_game_memory();
+        auto* const game_subsystem{ioj::UGameSubsystem::get(GetGameInstance())};
+        if (!IsValid(game_subsystem)) {
+            errors.add(TEXT("Cannot create level simulation without game memory"));
+            return false;
         }
 
         initial_turret_transforms_.Reset();
@@ -508,7 +509,7 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
         result->fighter_diagnostics_enabled =
             ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
         grid_geometry = result->grid_geometry;
-        level_simulation_.Emplace(MoveTemp(result.value()));
+        level_simulation_.Emplace(game_subsystem->get_game_memory(), MoveTemp(result.value()));
         return true;
     }
 
@@ -535,13 +536,14 @@ auto ATestBatchOrchestrator::initialise_simulation(USpaceGameLevelConfig const& 
     }
 
     data.telemetry_metadata = make_level_telemetry_run_metadata(world, mission_definition);
-    if (auto* const game_subsystem{ioj::UGameSubsystem::get(GetGameInstance())};
-        IsValid(game_subsystem)) {
-        data.game_memory = &game_subsystem->get_game_memory();
+    auto* const game_subsystem{ioj::UGameSubsystem::get(GetGameInstance())};
+    if (!IsValid(game_subsystem)) {
+        errors.add(TEXT("Cannot create level simulation without game memory"));
+        return false;
     }
     data.fighter_diagnostics_enabled = ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
     grid_geometry = data.grid_geometry;
-    level_simulation_.Emplace(MoveTemp(data));
+    level_simulation_.Emplace(game_subsystem->get_game_memory(), MoveTemp(data));
     return true;
 }
 auto ATestBatchOrchestrator::begin_play() -> bool {

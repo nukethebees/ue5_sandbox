@@ -52,7 +52,8 @@ struct LevelSim {
     /* **************************************** */
     // Construction and lifecycle
     /* **************************************** */
-    explicit LevelSim(LevelSimInitData data);
+    // Keep game_memory alive until after the simulation is destroyed.
+    LevelSim(GameMemory& game_memory, LevelSimInitData data);
     LevelSim(LevelSim const&) = delete;
     LevelSim(LevelSim&&) = delete;
     auto operator=(LevelSim const&) -> LevelSim& = delete;
@@ -158,9 +159,6 @@ struct LevelSim {
 
     SimClock clock_;
     OrchestratorState state_{OrchestratorState::Uninitialised};
-
-    std::unique_ptr<GameMemory> local_game_memory_{};
-    GameMemory* game_memory_{};
 
     memory::Block frame_memory_block_;
     ml::FrameMemoryResource frame_memory_;

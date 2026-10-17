@@ -111,7 +111,8 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
         auto const participants{team_view.first(team_count)};
         auto const remainder{team_count > 1 ? team_count - 1 : 0};
         auto data{make_cap_battle(participants, participants, team_count * 3 + remainder, 4)};
-        LevelSim simulation{std::move(data)};
+        GameMemory simulation_memory;
+        LevelSim simulation{simulation_memory, std::move(data)};
         start_and_tick(simulation);
         EXPECT_EQ(simulation.get_fighters().get_num_instances(), team_count * 3)
             << "Floor partition leaves the global remainder unused";
@@ -124,19 +125,23 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
     std::vector<Team> const one_capital{Team::White};
     std::vector<Team> const two_participants{Team::White, Team::Red};
     auto data{make_cap_battle(one_capital, two_participants, 7, 8)};
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     start_and_tick(simulation);
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 3)
         << "A team cannot borrow another participant's unused allocation";
 
     std::vector<Team> const repeated_capital_teams{Team::White, Team::White, Team::Red};
     auto inferred_data{make_cap_battle(repeated_capital_teams, std::span<Team const>{}, 14, 8)};
-    LevelSim inferred_simulation{std::move(inferred_data)};
+    GameMemory inferred_simulation_memory;
+    LevelSim inferred_simulation{inferred_simulation_memory, std::move(inferred_data)};
     start_and_tick(inferred_simulation);
     EXPECT_EQ(inferred_simulation.get_fighters().get_num_instances(), 14)
         << "Compiled team inference deduplicates team sources";
 
+    GameMemory empty_simulation_memory;
     LevelSim empty_simulation{
+        empty_simulation_memory,
         make_cap_battle(std::span<Team const>{}, std::span<Team const>{}, 10, 0)};
     empty_simulation.finish_initialisation();
     empty_simulation.start();
@@ -148,7 +153,8 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
 TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
     std::vector<Team> const capitals{Team::White};
     auto initial_only{make_cap_battle(capitals, {}, 7, 8)};
-    LevelSim initial_simulation{std::move(initial_only)};
+    GameMemory initial_simulation_memory;
+    LevelSim initial_simulation{initial_simulation_memory, std::move(initial_only)};
     start_and_tick(initial_simulation);
     EXPECT_EQ(count_team(initial_simulation, Team::White), 7);
 
@@ -165,7 +171,8 @@ TEST(FighterLiveCap, DerivedParticipantsIncludeFutureSpawns) {
     set_vector(turret.view_locations(), 0, {{0.f, 6000.f, 0.f}});
     ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, payload_offset, 1));
 
-    LevelSim scheduled_simulation{std::move(with_reinforcements)};
+    GameMemory scheduled_simulation_memory;
+    LevelSim scheduled_simulation{scheduled_simulation_memory, std::move(with_reinforcements)};
     start_and_tick(scheduled_simulation);
     EXPECT_EQ(count_team(scheduled_simulation, Team::White), 3)
         << "Reserve the future team's share before its first entity spawns";
@@ -177,7 +184,8 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
     std::vector<Team> const capitals{Team::White, Team::White};
     std::vector<Team> const participants{Team::White};
     auto data{make_cap_battle(capitals, participants, 6, 4)};
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     start_and_tick(simulation);
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 6)
         << "Full and partial waves stop at the team cap";
@@ -190,7 +198,8 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
         << "Second capital owns only its accepted prefix";
 
     auto parent_death_data{make_cap_battle(capitals, participants, 2, 1)};
-    LevelSim parent_death_simulation{std::move(parent_death_data)};
+    GameMemory parent_death_simulation_memory;
+    LevelSim parent_death_simulation{parent_death_simulation_memory, std::move(parent_death_data)};
     parent_death_simulation.finish_initialisation();
     parent_death_simulation.start();
     DirectDamageEvents capital_damage;
@@ -222,7 +231,8 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
     targets[0] = 1;
     targets[1] = 0;
 
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     start_and_tick(simulation);
 
     auto const& capital_simulation{simulation.get_capital_ships()};
@@ -295,7 +305,8 @@ TEST(FighterLiveCap, PendingLaunchSurvivesFinalCapitalDeathUnowned) {
     targets[0] = 1;
     targets[1] = 0;
 
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
 
@@ -327,7 +338,8 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
 
     std::vector<Team> const capitals{Team::White};
     auto make_data{[&] { return make_cap_battle(capitals, capitals, 1, 1, 0.f); }};
-    LevelSim simulation{make_data()};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data()};
     start_and_tick(simulation);
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 1)
         << "Initial fighter fills the budget";
@@ -372,8 +384,9 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_fighters().get_tasks()[0], FighterTask::Standby);
 
+    GameMemory reconstructed_memory;
     std::optional<LevelSim> reconstructed;
-    reconstructed.emplace(make_data());
+    reconstructed.emplace(reconstructed_memory, make_data());
     start_and_tick(*reconstructed);
     EXPECT_EQ(reconstructed->get_fighters().get_num_instances(), 1)
         << "Reconstruction starts with a fresh budget";
@@ -384,7 +397,8 @@ TEST(FighterLiveCap, UnknownTeamRejected) {
     std::vector<Team> const capitals{Team::Green};
     std::vector<Team> const participants{Team::White};
     auto data{make_cap_battle(capitals, participants, 10, 1)};
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     start_and_tick(simulation);
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0)
         << "Unknown team creates no fighter";

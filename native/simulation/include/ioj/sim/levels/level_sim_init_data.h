@@ -12,7 +12,6 @@
 #include <ioj/sim/fixed_tick_loop.h>
 #include <ioj/sim/lasers/laser_sim_config.h>
 #include <ioj/sim/levels/compiled_level_events.h>
-#include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/player/sim.h>
 #include <ioj/sim/spinners/spinner_sim_config.h>
 #include <ioj/sim/telemetry/block_history_types.h>
@@ -49,7 +48,6 @@ struct LevelSimInitData {
 
     std::optional<LevelTelemetryRunMetadata> telemetry_metadata{};
     LevelTelemetryHistoryConfig telemetry_history{};
-    GameMemory* game_memory{};
     bool fighter_diagnostics_enabled{};
 };
 }

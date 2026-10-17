@@ -62,14 +62,12 @@ static void finalise_participating_teams(LevelSimInitData& data) {
 /* **************************************** */
 // Construction and lifecycle
 /* **************************************** */
-LevelSim::LevelSim(LevelSimInitData data)
-    : local_game_memory_{data.game_memory == nullptr ? std::make_unique<GameMemory>() : nullptr}
-    , game_memory_{data.game_memory != nullptr ? data.game_memory : local_game_memory_.get()}
-    , frame_memory_block_{game_memory_->acquire_block(data.frame_memory_capacity_bytes,
-                                                      ml::FrameMemoryResource::backing_alignment)}
+LevelSim::LevelSim(GameMemory& game_memory, LevelSimInitData data)
+    : frame_memory_block_{game_memory.acquire_block(data.frame_memory_capacity_bytes,
+                                                    ml::FrameMemoryResource::backing_alignment)}
     , frame_memory_{std::span<std::byte>{frame_memory_block_.data(),
                                          frame_memory_block_.size_bytes()}}
-    , query_manager_{entity_tables_, &game_memory_->memory_resource()}
+    , query_manager_{entity_tables_, &game_memory.memory_resource()}
     , overlap_handler_{data.overlap_response}
     , lasers_simulation_{clock_, combat_events_, query_manager_}
     , lasers_phase_{lasers_simulation_}
@@ -101,7 +99,7 @@ LevelSim::LevelSim(LevelSimInitData data)
                      spinners_simulation_,
                      mission_manager_}
     , level_telemetry_manager_{
-          clock_, entity_ledger_, lasers_simulation_, *game_memory_, data.telemetry_history} {
+          clock_, entity_ledger_, lasers_simulation_, game_memory, data.telemetry_history} {
     // Initialise timing and metadata
     clock_.initialise(data.clock_settings);
     telemetry_metadata_ = std::move(data.telemetry_metadata);

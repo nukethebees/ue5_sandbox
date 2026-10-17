@@ -60,7 +60,8 @@ TEST(TickPhases, CompletedBurstsStopUntilTheNextFirePress) {
         data.player->laser_fire_rate = rate;
         data.player->config.laser.fire_cooldown = 0.05f;
 
-        LevelSim simulation{std::move(data)};
+        GameMemory simulation_memory;
+        LevelSim simulation{simulation_memory, std::move(data)};
         simulation.finish_initialisation();
         simulation.start();
         auto* const commands{simulation.get_player_ship_commands()};
@@ -86,7 +87,8 @@ TEST(TickPhases, AutomaticFireContinuesUntilReleased) {
     data.player->laser_fire_rate = ShipFireRate::FullAuto;
     data.player->config.laser.fire_cooldown = 0.05f;
 
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
     auto* const commands{simulation.get_player_ship_commands()};
@@ -107,7 +109,8 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
     add_capital_spawn(data, {}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
     schedule_turret(data, {});
 
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
 
     auto const& ledger{simulation.get_entity_ledger()};
@@ -155,7 +158,8 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     data.fighters.health = 100;
     data.fighters.speed = 0.f;
 
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
 
     simulation.start();
@@ -183,7 +187,8 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
     auto data{make_world()};
     add_moving_player(data);
 
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
 
     auto* commands{simulation.get_player_ship_commands()};
@@ -215,7 +220,8 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
     add_capital_spawn(
         data, {{0.f, 100.f, 0.f}}, Team::White, invalid_level_entity_index, 0.f, 60.f, 100);
 
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     simulation.get_player_ship_commands()->set_right_input(1.f);
 
@@ -237,7 +243,8 @@ TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {
         data, {{-2000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
     schedule_turret(data, {{500.f, 100.f, 0.f}}, 2);
 
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
 
     lasers::LaserSpawnRequests shot{};
@@ -285,7 +292,8 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
     mission.save_results = false;
     mission.must_survive_entity_indices = {static_cast<std::int32_t>(capital_index)};
 
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
 
     auto const& ledger{simulation.get_entity_ledger()};
@@ -324,7 +332,8 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterwa
     add_capital_spawn(
         data, {{-2000.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
 
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
 
     auto const& laser_sim{simulation.get_lasers()};
@@ -372,7 +381,8 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndBoundsAdvanceAfterwa
 TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
     auto data{make_world()};
     add_moving_player(data);
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     auto const* player{simulation.get_player_ship_simulation()};
     simulation.get_player_ship_commands()->start_fire_laser();
@@ -398,7 +408,8 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     auto data{make_world()};
     add_capital_spawn(
         data, {{40.f, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     lasers::LaserSpawnRequests shot;
     tests::add_laser_spawn(
@@ -438,7 +449,8 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         mission.hero_entity_indices = {static_cast<std::int32_t>(second)};
         mission.required_kill_entity_indices = {static_cast<std::int32_t>(first)};
 
-        LevelSim simulation{std::move(data)};
+        GameMemory simulation_memory;
+        LevelSim simulation{simulation_memory, std::move(data)};
         simulation.finish_initialisation();
 
         auto const& ledger{simulation.get_entity_ledger()};
@@ -496,7 +508,8 @@ TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
         add_capital_spawn(
             data, {{x, 0.f, 0.f}}, Team::White, invalid_level_entity_index, 60.f, 60.f, 100);
     }
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     auto const initial{simulation.get_read_access().get_capitals().get_entities()};
     std::vector<EntityUniqueId> visual_ids{initial.entity_ids().begin(),

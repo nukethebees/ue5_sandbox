@@ -119,11 +119,10 @@ TEST(NativeSimulation, LevelSimFrameMemoryUsesAndReturnsGameMemoryBlock) {
     GameMemory memory{{.root_capacity_bytes = frame_capacity * 2}};
     auto const* const backing_address{memory.backing_address()};
     auto data{make_battle()};
-    data.game_memory = &memory;
     data.frame_memory_capacity_bytes = frame_capacity;
 
     {
-        LevelSim simulation{std::move(data)};
+        LevelSim simulation{memory, std::move(data)};
         auto const stats{memory.get_stats()};
         EXPECT_EQ(stats.live_block_count, 1);
         EXPECT_EQ(stats.live_block_bytes, frame_capacity);
@@ -144,7 +143,8 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     auto data{make_battle()};
     data.telemetry_metadata.emplace();
     data.telemetry_metadata->run_id = "completion-test";
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
@@ -183,7 +183,8 @@ TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
         .launched_utc = "2026-09-06T12:00:00Z",
     };
     add_mission(data);
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
 
@@ -211,7 +212,8 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
     auto data{make_battle()};
     data.clock_settings.tick_rate = 10.0;
     add_mission(data);
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     auto queue_shot = [](LevelSim& level, float const location) {
         lasers::LaserSpawnRequests requests;
@@ -255,7 +257,8 @@ TEST(NativeSimulation, LevelSimCollisionBoundsTest) {
     auto data{make_battle()};
     collision::WorldAABBs static_bounds;
     collision::add(static_bounds, {{-10.f, 490.f, -10.f}}, {{10.f, 510.f, 10.f}});
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.set_static_collision(std::move(static_bounds));
     simulation.finish_initialisation();
 
@@ -282,7 +285,8 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     capitals_events.target_entity_indices()[1] = player_index;
     add_turret_spawn(data, {{0.f, -1000.f, 0.f}}, {0.f, 90.f, 0.f}, Team::Green, 20, 5);
     add_turret_spawn(data, {{0.f, 1000.f, 0.f}}, {}, Team::White, 30, 7);
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     auto const& capitals{simulation.get_capital_ships()};
     EXPECT_TRUE(capitals.get_target_id(0) == capitals.get_id(1))
@@ -318,7 +322,8 @@ TEST(NativeSimulation, PlayerPreservesPartialSpawnHealth) {
     add_player_spawn(data, {});
     data.player->health = {50, 100};
 
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
 
     auto const* const player{simulation.get_player_ship_simulation()};
@@ -360,7 +365,8 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
     scheduled_turret.healths()[0] = 75;
     ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, payload_offset, 1));
 
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
     auto const tick_period{simulation.get_clock().get_tick_period()};
@@ -412,11 +418,12 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
 }
 
 TEST(NativeSimulation, LevelSimReconstructionTest) {
+    GameMemory simulation_memory;
     std::optional<LevelSim> simulation;
     EXPECT_FALSE(simulation.has_value()) << "Construction can be delayed";
     auto first_data{make_battle()};
     add_mission(first_data);
-    simulation.emplace(std::move(first_data));
+    simulation.emplace(simulation_memory, std::move(first_data));
     simulation->finish_initialisation();
     simulation->start();
     simulation->advance(simulation->get_clock().get_tick_period());
@@ -425,7 +432,7 @@ TEST(NativeSimulation, LevelSimReconstructionTest) {
     simulation.reset();
     auto second_data{make_battle()};
     add_mission(second_data);
-    simulation.emplace(std::move(second_data));
+    simulation.emplace(simulation_memory, std::move(second_data));
     simulation->finish_initialisation();
     EXPECT_EQ(simulation->get_clock().get_completed_ticks(), std::uint64_t{0})
         << "Fresh clock starts at zero";
@@ -446,7 +453,8 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
     gunship.config.translation.right.manual.response.mode = player::ResponseMode::Direct;
     gunship.config.translation.up.manual.response.mode = player::ResponseMode::Direct;
 
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
 
@@ -488,7 +496,8 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
 }
 
 TEST(NativeSimulation, LevelSimOverlapResponseTest) {
-    LevelSim simulation{make_overlap_response_battle()};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_overlap_response_battle()};
     simulation.finish_initialisation();
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
@@ -533,8 +542,10 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     auto second_data{make_battle()};
     add_mission(first_data);
     add_mission(second_data);
-    LevelSim first{std::move(first_data)};
-    LevelSim second{std::move(second_data)};
+    GameMemory first_memory;
+    LevelSim first{first_memory, std::move(first_data)};
+    GameMemory second_memory;
+    LevelSim second{second_memory, std::move(second_data)};
     EXPECT_EQ(first.get_state(), OrchestratorState::Uninitialised)
         << "Construction leaves external setup open";
     first.advance(1.0);
@@ -592,7 +603,8 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
         .level_display_name = "Telemetry Test",
         .launched_utc = "2026-09-06T12:00:00Z",
     };
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     EXPECT_FALSE(simulation.get_level_telemetry_manager().is_run_recording())
         << "Construction does not start telemetry recording";
     simulation.finish_initialisation();

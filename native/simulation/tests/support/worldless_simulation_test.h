@@ -21,6 +21,7 @@ class WorldlessSimulationTest {
     std::function<void(LevelSim&)> on_end_tick;
     FTestTimeline timeline;
   private:
+    GameMemory game_memory_;
     LevelSim simulation_;
 };
 }

@@ -118,7 +118,8 @@ class FighterMembershipRefresh : public ::testing::Test {
         LevelSimTestAccess::queue_fighter_orders(simulation, orders);
     }
 
-    LevelSim simulation{make_world()};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_world()};
     EntityUniqueId first_parent;
     EntityUniqueId second_parent;
     EntityUniqueId enemy;
@@ -336,7 +337,8 @@ TEST(FighterMembership, CapitalRegistrationInitializesNewEmptySpan) {
     spawn.initial_fighter_spawn_delays()[0] = 60.f;
     ASSERT_TRUE(schedule.add_spawn_group(EntityType::CapitalShip, payload_offset, 1));
 
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     simulation.start();
     auto const period{simulation.get_clock().get_tick_period()};
@@ -354,7 +356,8 @@ TEST(FighterMembership, CapitalRegistrationInitializesNewEmptySpan) {
 }
 
 TEST_F(FighterMembershipRefresh, ReconstructedSimulationBuildsItsOwnEmptyCache) {
-    LevelSim reconstructed{make_world()};
+    GameMemory reconstructed_memory;
+    LevelSim reconstructed{reconstructed_memory, make_world()};
     reconstructed.finish_initialisation();
     ml::FrameScratchScope scope{memory};
     auto const before{memory.get_stats().current_root_claim_count};

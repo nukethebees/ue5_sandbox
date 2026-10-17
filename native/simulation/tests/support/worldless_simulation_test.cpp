@@ -8,7 +8,7 @@
 #include <cmath>
 namespace ioj::sim::tests {
 WorldlessSimulationTest::WorldlessSimulationTest(LevelSimInitData data)
-    : simulation_{std::move(data)} {}
+    : simulation_{game_memory_, std::move(data)} {}
 
 void WorldlessSimulationTest::advance(time_type const dt) {
     auto const previous_tick{simulation_.get_clock().get_completed_ticks()};

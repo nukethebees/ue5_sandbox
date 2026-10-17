@@ -71,7 +71,7 @@ auto add_worldless_capital_spawn(::ioj::sim::LevelSimInitData& data,
 }
 
 FWorldlessSimulationTest::FWorldlessSimulationTest(::ioj::sim::LevelSimInitData data)
-    : simulation_{MoveTemp(data)} {}
+    : simulation_{game_memory_, MoveTemp(data)} {}
 
 void FWorldlessSimulationTest::finish_initialisation() {
     simulation_.finish_initialisation();

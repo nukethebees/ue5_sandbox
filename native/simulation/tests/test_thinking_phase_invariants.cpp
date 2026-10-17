@@ -17,7 +17,8 @@ auto make_data(Health const health = 100) -> LevelSimInitData {
 }
 
 TEST(ThinkingPhaseInvariants, AcceptsLiveGridAndUnchangedState) {
-    LevelSim simulation{make_data()};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data()};
     simulation.finish_initialisation();
     auto const state{LevelSimTestAccess::capture_thinking_phase_state(simulation)};
 
@@ -26,7 +27,8 @@ TEST(ThinkingPhaseInvariants, AcceptsLiveGridAndUnchangedState) {
 }
 
 TEST(ThinkingPhaseInvariants, RejectsDeadEntitiesStillInGrid) {
-    LevelSim simulation{make_data()};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data()};
     simulation.finish_initialisation();
     LevelSimTestAccess::set_capital_health(simulation, 0, 0);
     auto const state{LevelSimTestAccess::capture_thinking_phase_state(simulation)};
@@ -35,7 +37,8 @@ TEST(ThinkingPhaseInvariants, RejectsDeadEntitiesStillInGrid) {
 }
 
 TEST(ThinkingPhaseInvariants, RejectsLiveEntitiesMissingFromGrid) {
-    LevelSim simulation{make_data(0)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data(0)};
     simulation.finish_initialisation();
     LevelSimTestAccess::set_capital_health(simulation, 0, 100);
     auto const state{LevelSimTestAccess::capture_thinking_phase_state(simulation)};
@@ -44,7 +47,8 @@ TEST(ThinkingPhaseInvariants, RejectsLiveEntitiesMissingFromGrid) {
 }
 
 TEST(ThinkingPhaseInvariants, RejectsHealthChangesEvenWhenEntityRemainsAlive) {
-    LevelSim simulation{make_data()};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data()};
     simulation.finish_initialisation();
     auto const state{LevelSimTestAccess::capture_thinking_phase_state(simulation)};
     LevelSimTestAccess::set_capital_health(simulation, 0, 99);
@@ -53,7 +57,8 @@ TEST(ThinkingPhaseInvariants, RejectsHealthChangesEvenWhenEntityRemainsAlive) {
 }
 
 TEST(ThinkingPhaseInvariants, RejectsTeamAndTransformWritesThroughOwnerViews) {
-    LevelSim simulation{make_data()};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data()};
     simulation.finish_initialisation();
     auto const state{LevelSimTestAccess::capture_thinking_phase_state(simulation)};
     auto const entities{LevelSimTestAccess::capital_entities(simulation)};
@@ -71,7 +76,8 @@ TEST(ThinkingPhaseInvariants, RejectsTeamAndTransformWritesThroughOwnerViews) {
 }
 
 TEST(ThinkingPhaseInvariants, PermitsDecisionStateChanges) {
-    LevelSim simulation{make_data()};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, make_data()};
     simulation.finish_initialisation();
     auto const state{LevelSimTestAccess::capture_thinking_phase_state(simulation)};
     auto const entities{LevelSimTestAccess::capital_entities(simulation)};
@@ -83,7 +89,8 @@ TEST(ThinkingPhaseInvariants, PermitsDecisionStateChanges) {
 TEST(ThinkingPhaseInvariants, RejectsPlayerTeamChanges) {
     auto data{make_data()};
     add_player_spawn(data, {});
-    LevelSim simulation{std::move(data)};
+    GameMemory simulation_memory;
+    LevelSim simulation{simulation_memory, std::move(data)};
     simulation.finish_initialisation();
     auto const state{LevelSimTestAccess::capture_thinking_phase_state(simulation)};
     auto& player{LevelSimTestAccess::player_simulation(simulation)};

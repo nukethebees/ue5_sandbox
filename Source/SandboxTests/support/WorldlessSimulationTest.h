@@ -60,6 +60,7 @@ class FWorldlessSimulationTest {
     TFunction<void(::ioj::sim::LevelSim&)> on_end_tick;
     FTestTimeline timeline;
   private:
+    ::ioj::sim::GameMemory game_memory_;
     ::ioj::sim::LevelSim simulation_;
 };
 }

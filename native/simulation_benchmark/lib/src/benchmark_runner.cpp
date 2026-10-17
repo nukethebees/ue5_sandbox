@@ -265,7 +265,8 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         };
     }
 
-    ioj::sim::LevelSim simulation{std::move(data)};
+    ioj::sim::GameMemory simulation_memory;
+    ioj::sim::LevelSim simulation{simulation_memory, std::move(data)};
 
     simulation.finish_initialisation();
     auto const initial_capital_ships{simulation.get_capital_ships().get_num_instances()};
