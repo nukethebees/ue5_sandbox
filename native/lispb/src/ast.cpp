@@ -612,7 +612,7 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                 for (auto const& base : value.bases) {
                     bases.push_back(base.spelling);
                 }
-                auto header{value.record_kind};
+                auto header{std::string{record_keyword(value.record_kind)}};
                 if (value.export_specifier.has_value()) {
                     header += " " + *value.export_specifier;
                 }

@@ -102,7 +102,7 @@ auto lower_facade_impl(FacadeSchema const& facade, TypeRegistry const& types)
         .name = facade.name,
         .children = class_nodes.build(),
         .export_specifier = facade.export_specifier,
-        .record_kind = "class",
+        .record_kind = RecordKind::class_,
     }};
     NodeListBuilder definitions;
     if (facade.definitions_in_source) {

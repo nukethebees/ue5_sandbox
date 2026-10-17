@@ -2,6 +2,7 @@
 
 #include <codegen/ast/cpp_type.h>
 #include <codegen/ast/node_fwd.h>
+#include <codegen/ast/record_kind.h>
 
 #include <optional>
 #include <string>
@@ -16,7 +17,7 @@ struct Struct {
     std::optional<std::string> template_parameters;
     std::optional<std::string> requires_clause;
     std::optional<std::string> export_specifier;
-    std::string record_kind{"struct"};
+    RecordKind record_kind{RecordKind::struct_};
     std::vector<TypeDependency> dependencies;
 };
 

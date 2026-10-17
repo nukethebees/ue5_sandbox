@@ -256,7 +256,7 @@ TEST(Ast, RendersClassInheritanceAndMemberInitializers) {
             },
         .bases = {CppType{"FBase"}},
         .export_specifier = "PROJECT_API",
-        .record_kind = "class",
+        .record_kind = RecordKind::class_,
     }})};
 
     EXPECT_EQ(rendered,

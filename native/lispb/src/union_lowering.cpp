@@ -30,7 +30,7 @@ auto union_node(UnionSchema const& schema, TypeRegistry const& types) -> Node {
     return Struct{.name = schema.name,
                   .children = alternatives.build(),
                   .export_specifier = schema.export_specifier,
-                  .record_kind = "union"};
+                  .record_kind = RecordKind::union_};
 }
 
 auto tagged_union_node(TaggedUnionSchema const& schema, TypeRegistry const& types) -> Node {
@@ -46,8 +46,8 @@ auto tagged_union_node(TaggedUnionSchema const& schema, TypeRegistry const& type
 
     NodeListBuilder members;
     members.add(Member{resolve_type(schema.discriminant, types), "tag"});
-    members.add(
-        Struct{.name = "Payload", .children = alternatives.build(), .record_kind = "union"});
+    members.add(Struct{
+        .name = "Payload", .children = alternatives.build(), .record_kind = RecordKind::union_});
     members.add(Member{CppType{"Payload"}, "payload"});
     return Struct{.name = schema.name,
                   .children = members.build(),
